@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OBS Football Dashboard</title>
+
+  <!-- Bootstrap (선택) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <style>
+    :root{
+      --bg:#111827;
+      --panel:#0b1220;
+      --line:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.55);
+      --chip:rgba(255,255,255,.08);
+      --accent:rgba(255,255,255,.18);
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+    }
+
+    /* 상단 고정 영역(스코어보드 + 탭바) */
+    .scoreboard{
+      background:#0f172a;
+      border-bottom:1px solid var(--line);
+      padding:14px 16px;
+    }
+    .scoreboard .title{
+      font-size:26px;
+      font-weight:800;
+      text-align:center;
+      line-height:1.2;
+    }
+    .tabs{
+      display:flex;
+      gap:10px;
+      border-bottom:1px solid var(--line);
+      padding:10px 12px;
+      background:#0f172a;
+    }
+    .tab{
+      padding:10px 14px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:transparent;
+      color:var(--text);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .tab.active{
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.22);
+    }
+
+    /* 탭 페이지(아래 전체가 바뀜) */
+    .pages{ height:calc(100% - 120px); } /* 대충, 필요하면 조정 */
+    .page{
+      display:none;
+      height:100%;
+    }
+    .page.active{ display:block; }
+
+    /* 일정 확인 탭 레이아웃 */
+    .schedule-page{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap:12px;
+      padding:12px;
+      height:100%;
+      box-sizing:border-box;
+    }
+    .leftPanel, .rightPanel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      min-height:0;
+    }
+
+    /* 왼쪽 패널(달력+시간대) */
+    .leftHeader{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .leftHeader .label{
+      font-weight:800;
+      letter-spacing:-.2px;
+    }
+    .leftBody{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .cal-head{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .cal-title{
+      font-weight:900;
+      flex:1;
+      text-align:center;
+    }
+    .cal-weekdays, .cal-grid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap:6px;
+    }
+    .cal-weekdays div{
+      text-align:center;
+      font-weight:800;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .cal-cell{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 0;
+      cursor:pointer;
+      font-weight:800;
+    }
+    .cal-cell.muted{ opacity:.35; }
+    .cal-cell.today{ outline:2px solid rgba(255,255,255,.22); }
+    .cal-cell.selected{
+      border-color:rgba(255,255,255,.28);
+      box-shadow:0 0 0 2px rgba(255,255,255,.18) inset;
+      background:rgba(255,255,255,.06);
+    }
+    .tz-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .tz-row .tz-label{
+      color:var(--muted);
+      font-weight:700;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    /* 오른쪽 패널(필터바 + 리스트) */
+    .rightTop{
+      display:grid;
+      grid-template-columns: 1fr 220px;
+      gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      align-items:center;
+    }
+    .filters{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .chip{
+      border:1px solid var(--line);
+      background:var(--chip);
+      padding:8px 10px;
+      border-radius:999px;
+      font-weight:800;
+      cursor:pointer;
+      user-select:none;
+    }
+    .chip.active{
+      background:rgba(255,255,255,.10);
+      border-color:rgba(255,255,255,.24);
+    }
+    .refreshBox{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      align-items:center;
+    }
+
+    .listArea{
+      height:calc(100% - 62px);
+      overflow:auto;
+      padding:12px;
+    }
+    .matchCard{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.16);
+      border-radius:16px;
+      padding:12px;
+      display:grid;
+      grid-template-columns: 90px 1fr 120px;
+      gap:10px;
+      align-items:center;
+      margin-bottom:10px;
+    }
+    .matchTime{
+      font-weight:900;
+      font-size:18px;
+      text-align:center;
+    }
+    .matchMeta{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:2px;
+    }
+    .teamsLine{
+      font-weight:900;
+      font-size:16px;
+      letter-spacing:-.2px;
+    }
+    .statusBadge{
+      justify-self:end;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:12px;
+      text-align:center;
+      width:110px;
+    }
+    .btn-small{
+      padding:8px 10px;
+      border-radius:12px;
+      font-weight:800;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Scoreboard (고정) -->
+  <div class="scoreboard">
+    <div class="title">홈팀 2 (3) - (1) 0 원정팀</div>
+    <div style="text-align:center;color:var(--muted);font-weight:700;margin-top:6px;">
+      (승부차기 있으면 여기다가 빨간색/초록색 표시)
+    </div>
+  </div>
+
+  <!-- Tabs (고정) -->
+  <div class="tabs">
+    <button class="tab" data-page="main">메인화면</button>
+    <button class="tab" data-page="theme">테마</button>
+    <button class="tab active" data-page="schedule">일정 확인</button>
+    <button class="tab" data-page="about">about</button>
+  </div>
+
+  <!-- Pages -->
+  <div class="pages">
+    <div id="page-main" class="page">메인화면(나중에)</div>
+    <div id="page-theme" class="page">테마(나중에)</div>
+
+    <!-- ✅ 일정 확인 탭 -->
+    <div id="page-schedule" class="page active">
+      <div class="schedule-page">
+
+        <!-- Left: calendar + timezone -->
+        <div class="leftPanel">
+          <div class="leftHeader">
+            <div class="label">일정 확인</div>
+            <div style="color:var(--muted);font-size:12px;font-weight:800;">
+              날짜 클릭 = 즉시 로딩
+            </div>
+          </div>
+
+          <div class="leftBody">
+            <!-- Calendar -->
+            <div>
+              <div class="cal-head">
+                <button id="calPrev" class="btn btn-sm btn-outline-light btn-small">‹</button>
+                <div id="calTitle" class="cal-title"></div>
+                <button id="calNext" class="btn btn-sm btn-outline-light btn-small">›</button>
+                <button id="calToday" class="btn btn-sm btn-outline-primary btn-small">오늘</button>
+              </div>
+              <div class="mt-2 cal-weekdays">
+                <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+              </div>
+              <div id="calGrid" class="mt-2 cal-grid"></div>
+            </div>
+
+            <!-- Timezone -->
+            <div>
+              <div class="tz-row">
+                <div class="fw-bold" style="white-space:nowrap;">시간대</div>
+                <select id="tzSelect" class="form-select form-select-sm"></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: filter bar + list -->
+        <div class="rightPanel">
+          <div class="rightTop">
+            <div class="filters">
+              <div class="chip active" data-filter="ALL">모든 경기</div>
+              <div class="chip" data-filter="LIVE">진행 중</div>
+              <div class="chip" data-filter="NS">시작 전</div>
+              <div class="chip" data-filter="FT">완료</div>
+            </div>
+
+            <div class="refreshBox">
+              <button id="btnRefresh" class="btn btn-sm btn-outline-warning btn-small">새로고침</button>
+            </div>
+          </div>
+
+          <div class="listArea">
+            <div id="scheduleHeader" style="color:var(--muted);font-weight:800;margin-bottom:10px;"></div>
+            <div id="matchList"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="page-about" class="page">about(나중에)</div>
+  </div>
+
+<script>
+  // -----------------------------
+  // Tabs
+  // -----------------------------
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabs.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const page = btn.dataset.page;
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      document.getElementById(`page-${page}`).classList.add("active");
+    });
+  });
+
+// -----------------------------
+// Timezone utilities (CLOCK 버전 그대로 이식)
+// -----------------------------
+  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+  // (UTC+09:00) 같은 라벨 만들기용 (브라우저가 지원하면)
+  const _offsetCache = new Map();
+  function tzOffsetLabel(tz) {
+    if (_offsetCache.has(tz)) return _offsetCache.get(tz);
+    let label = '';
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'shortOffset',
+        hour: '2-digit', minute: '2-digit',
+        hour12: false,
+      }).formatToParts(new Date());
+      const name = parts.find(p => p.type === 'timeZoneName')?.value || '';
+      label = name.replace('GMT', 'UTC'); // UTC+09:00
+    } catch (e) {
+      label = '';
+    }
+    const out = label ? `(${label})` : '';
+    _offsetCache.set(tz, out);
+    return out;
+  }
+
+  function getSupportedTimeZones() {
+    if (typeof Intl.supportedValuesOf === 'function') {
+      try { return Intl.supportedValuesOf('timeZone'); } catch (e) {}
+    }
+    // fallback
+    return [localTz, 'UTC', 'Asia/Seoul', 'Asia/Tokyo', 'America/New_York', 'Europe/London'];
+  }
+
+  const _offsetMinCache = new Map();
+  function getOffsetMinutes(tz, date = new Date()) {
+    const key = tz + '|' + date.toISOString().slice(0, 10);
+    if (_offsetMinCache.has(key)) return _offsetMinCache.get(key);
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+
+    const map = {};
+    for (const p of parts) if (p.type !== 'literal') map[p.type] = p.value;
+
+    const y = +map.year, mo = +map.month, d = +map.day;
+    const h = +map.hour, mi = +map.minute, s = +map.second;
+
+    const asIfUtc = Date.UTC(y, mo - 1, d, h, mi, s);
+    const offsetMin = Math.round((asIfUtc - date.getTime()) / 60000);
+
+    _offsetMinCache.set(key, offsetMin);
+    return offsetMin;
+  }
+
+  // ✅ clock과 같은 방식으로 select 만들기
+  function buildTimezoneSelect(selectEl, selectedTzValue = '') {
+    const now = new Date();
+    const list = getSupportedTimeZones();
+
+    // 로컬/UTC는 위로 고정하고 나머지만 정렬
+    const rest = list.filter(tz => tz !== localTz && tz !== 'UTC');
+
+    rest.sort((a, b) => {
+      const oa = getOffsetMinutes(a, now);
+      const ob = getOffsetMinutes(b, now);
+      if (oa !== ob) return oa - ob;   // 오프셋 순
+      return a.localeCompare(b);       // 같으면 알파벳
+    });
+
+    selectEl.innerHTML = '';
+    selectEl.appendChild(new Option(`로컬 (${localTz})`, '')); // '' = 로컬
+    if (list.includes('UTC')) selectEl.appendChild(new Option(`(UTC+00:00) UTC`, 'UTC'));
+
+    for (const tz of rest) {
+      const text = `${tzOffsetLabel(tz)} ${tz}`.trim();
+      selectEl.appendChild(new Option(text, tz));
+    }
+
+    selectEl.value = selectedTzValue || '';
+  }
+
+// -----------------------------
+  // State
+  // -----------------------------
+  const state = {
+    viewYear: 0,
+    viewMonth: 0, // 0-11
+    selectedDate: null, // "YYYY-MM-DD"
+    tz: localTz,
+    filter: "ALL", // ALL, LIVE, NS, FT
+    lastFetchedAt: null,
+    cachedMatches: [],
+  };
+
+  const TZ_KEY = "obs_schedule_tz";
+  const FILTER_KEY = "obs_schedule_filter";
+
+  // -----------------------------
+  // Helpers
+  // -----------------------------
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function toYmd(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+
+  // 표시 시간 포맷(선택 TZ 기준)
+  function uiTz(){
+    return state.tz || localTz;
+  }
+  function fmtTime(iso){
+    return new Intl.DateTimeFormat('ko-KR', {
+      timeZone: uiTz(),
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(iso));
+  }
+
+  function setViewTo(dateObj){
+    state.viewYear = dateObj.getFullYear();
+    state.viewMonth = dateObj.getMonth();
+  }
+
+  // -----------------------------
+  // Calendar render
+  // -----------------------------
+  function renderCalendar(){
+    const y = state.viewYear;
+    const m = state.viewMonth;
+
+    document.getElementById("calTitle").textContent = `${y}년 ${m+1}월`;
+    const grid = document.getElementById("calGrid");
+    grid.innerHTML = "";
+
+    const firstOfMonth = new Date(y, m, 1);
+    const startDay = firstOfMonth.getDay(); // 0=Sun
+    const startDate = new Date(y, m, 1 - startDay); // grid start
+
+    const todayYmd = toYmd(new Date());
+
+    for(let i=0;i<42;i++){
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+
+      const ymd = toYmd(d);
+      const inMonth = (d.getMonth() === m);
+
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "cal-cell";
+      cell.textContent = d.getDate();
+
+      if(!inMonth) cell.classList.add("muted");
+      if(ymd === todayYmd) cell.classList.add("today");
+      if(state.selectedDate === ymd) cell.classList.add("selected");
+
+      cell.addEventListener("click", () => {
+        state.selectedDate = ymd;
+        // 다른 달 날짜 클릭 시 뷰도 이동(스프레드시트 느낌)
+        if(d.getMonth() !== state.viewMonth) setViewTo(d);
+        renderCalendar();
+        // ✅ 별도 확인 버튼 없이 즉시 로딩
+        fetchSchedule();
+      });
+
+      grid.appendChild(cell);
+    }
+  }
+
+  // -----------------------------
+  // Filter chips
+  // -----------------------------
+  document.querySelectorAll(".chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      state.filter = chip.dataset.filter;
+      localStorage.setItem(FILTER_KEY, state.filter);
+      renderMatchList(state.cachedMatches);
+    });
+  });
+
+  // -----------------------------
+  // Timezone select init
+  // -----------------------------
+  function initTzSelect(){
+    const tzSelect = document.getElementById("tzSelect");
+
+    // 저장값 복원: ''이면 로컬
+    const saved = localStorage.getItem(TZ_KEY);
+    state.tz = saved ?? ""; // null이면 로컬로
+
+    // ✅ clock과 동일하게 옵션 구성
+    buildTimezoneSelect(tzSelect, state.tz);
+
+    tzSelect.addEventListener("change", () => {
+      state.tz = tzSelect.value; // ''이면 로컬
+      localStorage.setItem(TZ_KEY, state.tz);
+      fetchSchedule(); // 시간대 바꾸면 즉시 호출
+    });
+  }
+
+  // -----------------------------
+  // Schedule fetch (여기만 네 백엔드에 붙이면 됨)
+  // -----------------------------
+  async function fetchSchedule(){
+    if(!state.selectedDate) return;
+
+    // ✅ 로컬('')이면 브라우저 timezone 문자열로 치환해서 보냄
+    const tzForApi = state.tz || localTz;
+
+    // tz 파라미터는 항상 값이 있도록
+    const url = `/api/obs/schedule?date=${encodeURIComponent(state.selectedDate)}&timezone=${encodeURIComponent(tzForApi)}`;
+
+    let payload;
+    try {
+      const res = await fetch(url);
+      if(!res.ok) throw new Error("fetch failed");
+      payload = await res.json();
+    } catch (e) {
+      payload = demoSchedule();
+    }
+
+    // payload 형식은 너가 정하면 되는데,
+    // 여기선 matches: [{ fixtureId, dateIso, statusShort, league, home, away }] 형태로 가정
+    state.cachedMatches = payload.matches || [];
+    state.lastFetchedAt = new Date();
+
+    renderHeader();
+    renderMatchList(state.cachedMatches);
+  }
+
+  function renderHeader(){
+    const el = document.getElementById("scheduleHeader");
+    const fetched = state.lastFetchedAt
+      ? new Intl.DateTimeFormat('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(state.lastFetchedAt)
+      : "-";
+    const tzText = state.tz ? state.tz : `로컬 (${localTz})`;
+    el.innerHTML =
+      `선택 날짜: <b>${state.selectedDate}</b> / TZ: <b>${tzText}</b> ${tzOffsetLabel(uiTz())} / 마지막 새로고침: <b>${fetched}</b>`;
+  }
+
+  function isLive(short){
+    return ["1H","2H","HT","ET","BT","P","LIVE"].includes(short);
+  }
+
+  function passFilter(m){
+    if(state.filter === "ALL") return true;
+    if(state.filter === "LIVE") return isLive(m.statusShort);
+    if(state.filter === "NS") return m.statusShort === "NS";
+    if(state.filter === "FT") return m.statusShort === "FT";
+    return true;
+  }
+
+  function renderMatchList(matches){
+    const list = document.getElementById("matchList");
+    list.innerHTML = "";
+
+    const filtered = matches.filter(passFilter);
+    if(filtered.length === 0){
+      list.innerHTML = `<div style="color:var(--muted);font-weight:800;padding:12px;">표시할 경기가 없음</div>`;
+      return;
+    }
+
+    filtered.forEach(m => {
+      const card = document.createElement("div");
+      card.className = "matchCard";
+
+      card.innerHTML = `
+        <div class="matchTime">${fmtTime(m.dateIso)}</div>
+        <div>
+          <div class="teamsLine">${m.home} vs ${m.away}</div>
+          <div class="matchMeta">${m.league}</div>
+          <div class="matchMeta">fixtureId: ${m.fixtureId}</div>
+        </div>
+        <div class="statusBadge">${m.statusShort}</div>
+      `;
+
+      // 클릭하면 "이 경기 선택" 같은 동작으로 연결하면 됨
+      card.addEventListener("click", () => {
+        alert(`이 경기 선택: ${m.fixtureId}\n(여기서 메인 탭으로 이동 + fixtures?id 폴링 시작하면 됨)`);
+      });
+
+      list.appendChild(card);
+    });
+  }
+
+  // 수동 새로고침 버튼
+  document.getElementById("btnRefresh").addEventListener("click", fetchSchedule);
+
+  document.getElementById("calPrev").addEventListener("click", () => {
+  state.viewMonth -= 1;
+  if (state.viewMonth < 0) {
+    state.viewMonth = 11;
+    state.viewYear -= 1;
+  }
+  renderCalendar();
+  });
+
+  document.getElementById("calNext").addEventListener("click", () => {
+    state.viewMonth += 1;
+    if (state.viewMonth > 11) {
+      state.viewMonth = 0;
+      state.viewYear += 1;
+    }
+    renderCalendar();
+  });
+
+  document.getElementById("calToday").addEventListener("click", () => {
+    const now = new Date();
+    state.selectedDate = toYmd(now);
+    setViewTo(now);
+    renderCalendar();
+    fetchSchedule(); // 오늘로 즉시 일정 로딩
+  });
+
+  // -----------------------------
+  // Init
+  // -----------------------------
+  (function init(){
+    // 필터 복원
+    const savedFilter = localStorage.getItem(FILTER_KEY);
+    if(savedFilter){
+      state.filter = savedFilter;
+      document.querySelectorAll(".chip").forEach(c => {
+        c.classList.toggle("active", c.dataset.filter === state.filter);
+      });
+    }
+
+    // 날짜 초기값 = 오늘
+    const now = new Date();
+    state.selectedDate = toYmd(now);
+    setViewTo(now);
+
+    initTzSelect();
+    renderCalendar();
+    renderHeader();
+    fetchSchedule(); // 초기 1회 로딩
+  })();
+
+  // -----------------------------
+  // Demo data (fetch 실패 시)
+  // -----------------------------
+  function demoSchedule(){
+    // statusShort 예시: NS, 1H, HT, 2H, FT
+    const base = `${state.selectedDate}T`;
+    return {
+      matches: [
+        { fixtureId: 111, dateIso: base+"12:00:00+00:00", statusShort:"NS", league:"Premier League", home:"Nottingham Forest", away:"Liverpool" },
+        { fixtureId: 222, dateIso: base+"14:00:00+00:00", statusShort:"HT", league:"La Liga", home:"Barcelona", away:"Real Madrid" },
+        { fixtureId: 333, dateIso: base+"18:30:00+00:00", statusShort:"FT", league:"Serie A", home:"Inter", away:"Milan" },
+      ]
+    };
+  }
+</script>
+
+</body>
+</html>

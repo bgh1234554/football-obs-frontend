@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OBS Football Dashboard</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- API-SPORTS Widgets -->
+  <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
+
+  <style>
+    :root{
+      --bg:#111827;
+      --panel:#0b1220;
+      --line:rgba(255,255,255,.12);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.55);
+      --chip:rgba(255,255,255,.08);
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden; /* 🔥 전체 스크롤 제거 */
+    }
+    body{
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+
+      background:var(--bg);
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+    }
+
+    /* 상단 고정 영역(스코어보드 + 탭바) */
+    .scoreboard{
+      background:#0f172a;
+      border-bottom:1px solid var(--line);
+      padding:14px 16px;
+    }
+    .scoreboard .title{
+      font-size:26px;
+      font-weight:800;
+      text-align:center;
+      line-height:1.2;
+    }
+    .tabs{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border-bottom:1px solid var(--line);
+      padding:10px 12px;
+      background:#0f172a;
+    }
+    .tab-group{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .fixture-toggle-btn{
+      border:1px solid var(--line);
+      background:transparent;
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:700;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .fixture-toggle-btn.active{
+      background:rgba(255,255,255,.1);
+    }
+
+    /* --- Fixture overlay (does NOT push layout) --- */
+    .fixture-overlay-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.38);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease;
+      z-index:50;
+    }
+    .fixture-overlay-backdrop.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .fixture-overlay{
+      position:fixed;
+      left:12px;
+      right:12px;
+      max-width: 1100px;
+      margin: 0 auto;
+      top: var(--fixture-overlay-top, 120px);
+      transform: translateY(-10px);
+      opacity:0;
+      pointer-events:none;
+      transition: transform .18s ease, opacity .18s ease;
+      z-index:60;
+    }
+    .fixture-overlay.open{
+      transform: translateY(0);
+      opacity:1;
+      pointer-events:auto;
+    }
+    .tab{
+      padding:10px 14px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:transparent;
+      color:var(--text);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .tab.active{
+      background:rgba(255,255,255,.08);
+      border-color:rgba(255,255,255,.22);
+    }
+
+    /* 탭 페이지: 남은 영역만 차지 (스크롤은 내부로) */
+    .pages{
+      flex: 1;
+      min-height: 0;   /* 🔥 flex 내부 스크롤 핵심 */
+      overflow: hidden;
+    }
+    .page{
+      display:none;
+      height:100%;
+      min-height: 0;
+      overflow: hidden; /* 전체 스크롤 금지 */
+    }
+    .page.active{ display:block; }
+
+    /* 일정 확인: 위젯 기반 레이아웃 */
+    .schedule-page{
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding:12px;
+      height:100%;
+      min-height: 0;
+      overflow: hidden; /* 전체 스크롤 금지 */
+      box-sizing:border-box;
+    }
+
+    /* 상단 바(선택 fixtureId + 복사 버튼) */
+    .fixtureBar{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+    .fixtureText{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:baseline;
+      font-weight:800;
+    }
+    .fixtureText .muted{ color:var(--muted); font-weight:800; }
+    .fixtureText .id{
+      font-weight:900;
+      color:var(--text);
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+    }
+
+    /* 위젯 패널 */
+    .widgetGrid{
+      flex: 1;         /* 🔥 상단 바 제외 남은 공간 */
+      display:grid;
+      grid-template-columns: 360px 1fr 420px;
+      gap:12px;
+      height:100%;
+      min-height:0;
+      overflow: hidden; /* grid 자체는 스크롤 X */
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .panelHeader{
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .panelHeader .hint{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    /* ✅ 각 패널 내부만 스크롤 */
+    .panelBody{
+      flex: 1;
+      padding:0;
+      overflow:auto;
+      min-height:0;
+    }
+
+    /* game detail target 안내문 */
+    .emptyHelp{
+      padding:12px;
+      color:var(--muted);
+      font-weight:800;
+      font-size:12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Scoreboard (고정) -->
+  <div class="scoreboard">
+    <div class="title">홈팀 2 (3) - (1) 0 원정팀</div>
+    <div style="text-align:center;color:var(--muted);font-weight:700;margin-top:6px;">
+      (승부차기 있으면 여기다가 빨간색/초록색 표시)
+    </div>
+  </div>
+
+  <!-- Tabs (고정) -->
+  <div class="tabs">
+    <div class="tab-group">
+      <button class="tab" data-page="main">메인화면</button>
+      <button class="tab" data-page="theme">테마</button>
+      <button class="tab active" data-page="schedule">일정 확인</button>
+      <button class="tab" data-page="about">about</button>
+    </div>
+
+    <button id="toggle-fixture-ui" class="fixture-toggle-btn" title="선택된 경기 ID 표시/복사">
+      경기ID 입력
+    </button>
+  </div>
+
+  <!-- ✅ Overlay (경기ID 표시/복사) : 레이아웃 밀지 않음 -->
+  <div id="fixture-overlay-backdrop" class="fixture-overlay-backdrop" aria-hidden="true"></div>
+  <div id="fixture-overlay" class="fixture-overlay" aria-hidden="true">
+    <div class="fixtureBar">
+      <div class="fixtureText">
+        <span class="muted">선택된 경기 ID</span>
+        <span id="selected-fixture-id" class="id">-</span>
+        <span id="fixture-status" class="muted"></span>
+      </div>
+
+      <button id="copy-fixture-btn" class="btn btn-sm btn-outline-light" disabled>
+        경기 id 복사하기
+      </button>
+    </div>
+  </div>
+
+  <!-- Pages -->
+  <div class="pages">
+    
+    <div id="page-main" class="page">
+      <div class="schedule-page">
+        <!-- 메인: 사용자가 fixtureId 입력 후 버튼 클릭 시에만 표시 -->
+        <div class="panel">
+          <div class="panelHeader">
+            <div>메인 화면 - 경기 표시</div>
+            <div class="hint">fixtureId 붙여넣고 '메인에 표시'</div>
+          </div>
+          <div class="panelBody" style="padding:12px;">
+            <div class="input-group">
+              <input id="main-fixture-input" class="form-control" placeholder="fixtureId (예: 1521155)" />
+              <button id="main-show-btn" class="btn btn-primary">메인에 표시</button>
+              <button id="main-use-last-btn" class="btn btn-outline-light">최근 선택값</button>
+              <button id="main-clear-btn" class="btn btn-outline-secondary">비우기</button>
+            </div>
+            <div class="small text-secondary mt-2">
+              • '최근 선택값'은 일정 확인 탭에서 마지막으로 클릭된 경기 ID를 불러와.
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="min-height:340px;">
+          <div class="panelHeader">
+            <div>현재 메인에 표시 중</div>
+            <div class="hint" id="main-current-label">-</div>
+          </div>
+          <div class="panelBody" id="main-game-host"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-theme" class="page">테마(나중에)</div>
+
+    <!-- ✅ 일정 확인 탭 (Widget + fixtureId 추출) -->
+    <div id="page-schedule" class="page active">
+      <div class="schedule-page">
+        <!-- ✅ Widget Grid -->
+        <div class="widgetGrid">
+
+          <!-- Left: leagues -->
+          <div class="panel">
+            <div class="panelHeader">
+              <div>Leagues</div>
+              <div class="hint">리그 선택 → 경기 목록 갱신</div>
+            </div>
+            <div class="panelBody">
+              <api-sports-widget data-type="leagues"></api-sports-widget>
+            </div>
+          </div>
+
+          <!-- Middle: games + game detail target -->
+          <div class="panel">
+            <div class="panelHeader">
+              <div>Games</div>
+              <div class="hint">경기 클릭 → 오른쪽 디테일 + ID 추출</div>
+            </div>
+            <div class="panelBody">
+              <!-- games list target -->
+              <div id="games-list">
+                <api-sports-widget data-type="games"></api-sports-widget>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: standings/team (선택) -->
+          <div class="panel">
+            <div class="panelHeader">
+              <div>Details</div>
+              <div class="hint">선택에 따라 자동 표시</div>
+            </div>
+            <div class="panelBody">
+              <!-- ✅ 경기 디테일 (경기 클릭 시 여기로 렌더링) -->
+              <div id="game-content"></div>
+
+              <div style="border-top:1px solid var(--line);"></div>
+              <div id="standings-content"></div>
+
+              <div style="border-top:1px solid var(--line);"></div>
+              <div id="team-content"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div id="page-about" class="page">about(나중에)</div>
+  </div>
+
+  <!-- ✅ Config widget: Dynamic Targeting 설정 -->
+  <api-sports-widget
+    data-type="config"
+    data-sport="football"
+    data-key="75f25a92c3048b889fa8caa1d76ace91"
+    data-lang="en"
+    data-theme="grey"
+    data-show-error="false"
+    data-show-logos="true"
+    data-refresh="20"
+    data-favorite="true"
+    data-standings="true"
+    data-team-squad="true"
+    data-team-statistics="true"
+    data-player-statistics="true"
+    data-tab="games"
+    data-game-tab="statistics"
+
+    data-target-league="#games-list"
+    data-target-game="#game-content"
+    data-target-standings="#standings-content"
+    data-target-team="#team-content"
+    data-target-player="modal"
+  ></api-sports-widget>
+
+<script>
+  // -----------------------------
+  // Tabs
+  // -----------------------------
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabs.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const page = btn.dataset.page;
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+      document.getElementById(`page-${page}`).classList.add("active");
+    });
+  });
+
+  // -----------------------------
+  // fixtureId extraction + copy
+  // -----------------------------
+  const selectedEl = document.getElementById("selected-fixture-id");
+  const statusEl = document.getElementById("fixture-status");
+  const copyBtn = document.getElementById("copy-fixture-btn");
+  const gameTarget = document.querySelector("#game-content");
+
+  let currentFixtureId = null;
+
+  function setFixtureId(id) {
+    currentFixtureId = id || null;
+    selectedEl.textContent = currentFixtureId ?? "-";
+    copyBtn.disabled = !currentFixtureId;
+    if (currentFixtureId) {
+      localStorage.setItem("last_fixture_id", currentFixtureId);
+    }
+  }
+
+  function setStatus(msg) {
+    statusEl.textContent = msg ? `(${msg})` : "";
+  }
+
+  function readFixtureIdFromTarget(targetEl) {
+    // 가장 흔한 케이스: target 안에 game 위젯이 생김
+    const gameWidget = targetEl.querySelector('api-sports-widget[data-type="game"]');
+    if (gameWidget) {
+      const id = gameWidget.getAttribute("data-game-id");
+      if (id) return id;
+    }
+    return null;
+  }
+
+  // target DOM 변화 감시
+  if (gameTarget) {
+    const observer = new MutationObserver(() => {
+      const id = readFixtureIdFromTarget(gameTarget);
+      if (id && id !== currentFixtureId) {
+        setFixtureId(id);
+        setStatus("클릭으로 선택됨");
+      }
+    });
+    observer.observe(gameTarget, { childList: true, subtree: true });
+  }
+
+  // 복사 버튼
+  copyBtn.addEventListener("click", async () => {
+    if (!currentFixtureId) return;
+
+    try {
+      await navigator.clipboard.writeText(currentFixtureId);
+      const prev = copyBtn.textContent;
+      copyBtn.textContent = "복사됨!";
+      setStatus("클립보드 복사 완료");
+      setTimeout(() => {
+        copyBtn.textContent = prev;
+        setStatus("");
+      }, 900);
+    } catch (e) {
+      setStatus("복사 실패(브라우저 권한 확인)");
+    }
+  });
+
+
+  // -----------------------------
+  // Main tab: paste fixtureId and render on demand
+  // -----------------------------
+  const mainInput = document.getElementById("main-fixture-input");
+  const mainShowBtn = document.getElementById("main-show-btn");
+  const mainUseLastBtn = document.getElementById("main-use-last-btn");
+  const mainClearBtn = document.getElementById("main-clear-btn");
+  const mainHost = document.getElementById("main-game-host");
+  const mainLabel = document.getElementById("main-current-label");
+
+  function renderMainGame(fixtureId) {
+    const id = (fixtureId || "").trim();
+    if (!id) return;
+
+    mainHost.innerHTML = "";
+
+    const w = document.createElement("api-sports-widget");
+    w.setAttribute("data-type", "game");
+    w.setAttribute("data-game-id", id);
+    mainHost.appendChild(w);
+
+    if (typeof w.connectedCallback === "function") {
+      w.connectedCallback();
+    }
+
+    mainLabel.textContent = `fixtureId: ${id}`;
+  }
+
+  if (mainShowBtn) {
+    mainShowBtn.addEventListener("click", () => {
+      renderMainGame(mainInput?.value);
+    });
+  }
+
+  if (mainUseLastBtn) {
+    mainUseLastBtn.addEventListener("click", () => {
+      const last = localStorage.getItem("last_fixture_id");
+      if (!last) return;
+      if (mainInput) mainInput.value = last;
+    });
+  }
+
+  if (mainClearBtn) {
+    mainClearBtn.addEventListener("click", () => {
+      if (mainInput) mainInput.value = "";
+      if (mainHost) mainHost.innerHTML = "";
+      if (mainLabel) mainLabel.textContent = "-";
+    });
+  }
+  // -----------------------------
+  // Fixture overlay (tabs 오른쪽 버튼)
+  // -----------------------------
+  const toggleBtn = document.getElementById("toggle-fixture-ui");
+  const overlay = document.getElementById("fixture-overlay");
+  const backdrop = document.getElementById("fixture-overlay-backdrop");
+  const tabsBar = document.querySelector(".tabs");
+
+  function isScheduleActive() {
+    return document.getElementById("page-schedule")?.classList.contains("active");
+  }
+
+  function updateOverlayTop() {
+    if (!tabsBar) return;
+    const rect = tabsBar.getBoundingClientRect();
+    document.documentElement.style.setProperty("--fixture-overlay-top", `${Math.round(rect.bottom + 8)}px`);
+  }
+
+  function openOverlay() {
+    updateOverlayTop();
+    overlay?.classList.add("open");
+    backdrop?.classList.add("open");
+    toggleBtn?.classList.add("active");
+    overlay?.setAttribute("aria-hidden", "false");
+    backdrop?.setAttribute("aria-hidden", "false");
+  }
+
+  function closeOverlay() {
+    overlay?.classList.remove("open");
+    backdrop?.classList.remove("open");
+    toggleBtn?.classList.remove("active");
+    overlay?.setAttribute("aria-hidden", "true");
+    backdrop?.setAttribute("aria-hidden", "true");
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      // 일정 확인 탭이 아니면, 먼저 일정 확인으로 이동한 뒤 오버레이 오픈
+      if (!isScheduleActive()) {
+        document.querySelector('.tab[data-page="schedule"]')?.click();
+      }
+      const willOpen = !overlay?.classList.contains("open");
+      if (willOpen) openOverlay();
+      else closeOverlay();
+    });
+  }
+
+  backdrop?.addEventListener("click", closeOverlay);
+  window.addEventListener("resize", () => {
+    if (overlay?.classList.contains("open")) updateOverlayTop();
+  });
+
+  // 탭 전환 시: 일정 확인이 아니면 오버레이 닫기
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.page !== "schedule") closeOverlay();
+    });
+  });
+</script>
+
+</body>
+</html>
