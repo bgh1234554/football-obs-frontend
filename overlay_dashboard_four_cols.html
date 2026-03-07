@@ -445,7 +445,7 @@
     }
 
     /* 패널 내부 공통 스타일 */
-    .prow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .prow { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
     .pgroup { display: grid; gap: 6px; }
     .pgroup label { font-size: 12px; opacity: .85; }
     .pgroup input[type="text"],
@@ -792,7 +792,7 @@
             <div class="section-title">타이머 · 경기 정보</div>
             <div class="prow">
               <div class="pgroup">
-                <label>전/후반</label>
+                <label>전/후반 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;"><span class="kbd">[</span>/<span class="kbd">]</span></span></label>
                 <div class="prow">
                   <button id="prevHalf">이전</button>
                   <select id="halfSelect">
@@ -804,7 +804,6 @@
                   </select>
                   <button id="nextHalf">다음</button>
                 </div>
-                <small><span class="kbd">[</span>/<span class="kbd">]</span></small>
               </div>
               <div class="pgroup">
                 <label>경기 타이머</label>
@@ -836,7 +835,7 @@
                 </div>
               </div>
               <div class="pgroup">
-                <label>합계점수 표시</label>
+                <label>합계점수 표시 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">켜면 현재 득점이 합계에 자동 반영</span></label>
                 <div class="prow">
                   <label style="display:flex;align-items:center;gap:6px;">
                     <input id="aggToggle" type="checkbox"> 표시
@@ -844,7 +843,6 @@
                   <input id="aggHomeBase" type="number" min="0" step="1" value="0" placeholder="홈 합계" title="홈 합계 기준값" style="width:90px;">
                   <input id="aggAwayBase" type="number" min="0" step="1" value="0" placeholder="원정 합계" title="원정 합계 기준값" style="width:90px;">
                 </div>
-                <small>표시 켜면 현재 득점이 합계에 자동 반영</small>
               </div>
             </div>
           </div>
@@ -855,13 +853,13 @@
             <div class="prow">
               <div class="pgroup">
                 <label>배율 (<span id="boardScaleLabel">100</span>%)</label>
-                <div class="prow" style="align-items:center; gap:8px;">
+                <div class="prow">
                   <input type="range" id="boardScaleRange" min="50" max="100" step="1" value="100" style="width:160px; cursor:pointer;" />
                   <button id="boardScaleReset">초기화</button>
                 </div>
               </div>
               <div class="pgroup">
-                <label>PK</label>
+                <label>PK &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">홈: <span class="kbd">q</span>/<span class="kbd">a</span> · 원정: <span class="kbd">w</span>/<span class="kbd">s</span> · 되돌리기: <span class="kbd">z</span> · 초기화: <span class="kbd">x</span></span></label>
                 <div class="prow">
                   <button id="pkHomeGoal">홈 득점</button>
                   <button id="pkHomeMiss">홈 실축</button>
@@ -870,7 +868,6 @@
                   <button id="pkUndo" class="ghost">되돌리기</button>
                   <button id="pkReset">초기화</button>
                 </div>
-                <small>홈: <span class="kbd">q</span>/<span class="kbd">a</span> · 원정: <span class="kbd">w</span>/<span class="kbd">s</span> · 되돌리기: <span class="kbd">z</span> · 초기화: <span class="kbd">x</span></small>
               </div>
             </div>
           </div>
@@ -937,7 +934,7 @@
               <div class="pgroup">
                 <label>보드 너비(px)</label>
                 <div class="prow">
-                  <input id="boardWidth" type="number" min="10" step="1" value="1080" />
+                  <input id="boardWidth" type="number" min="10" step="1" value="1080" style="width:90px;" />
                   <button id="boardWidthReset" class="ghost">초기화</button>
                 </div>
               </div>
