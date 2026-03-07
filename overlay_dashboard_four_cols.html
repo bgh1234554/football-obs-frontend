@@ -202,11 +202,11 @@
     }
     #homeCard .logo-img {
       transform: translate(calc(-50% + var(--home-logo-x)), calc(-50% + var(--home-logo-y)))
-                 scale(var(--home-logo-scale, 1));
+                scale(var(--home-logo-scale, 1));
     }
     #awayCard .logo-img {
       transform: translate(calc(-50% + var(--away-logo-x)), calc(-50% + var(--away-logo-y)))
-                 scale(var(--away-logo-scale, 1));
+                scale(var(--away-logo-scale, 1));
     }
     #homeLogo, #awayLogo { transform: scale(1); will-change: transform; position: relative; z-index: 2; }
 
@@ -216,7 +216,7 @@
     .score {
       display: grid;
       grid-template-columns: auto 1fr auto;
-      grid-template-areas: "aggL digits aggR" "meta meta meta";
+      grid-template-areas: "aggL digits aggR" "pk pk pk" "meta meta meta";
       place-items: center;
       gap: 6px;
       min-width: 180px;
@@ -229,13 +229,24 @@
     #aggHomeWrap { grid-area: aggL; align-self: center; }
     #aggAwayWrap { grid-area: aggR; align-self: center; }
     .score .digits { grid-area: digits; }
+    .score .pk-score-row { grid-area: pk; }
     .score .meta { grid-area: meta; }
     .score .agg { color: var(--digits-color) !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
     .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: var(--digits-color); }
     .meta { font-size: 14px; opacity: .95; display: flex; gap: 10px; align-items: center; }
+    .pk-score-row { display: flex; justify-content: center; }
+    .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
     .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
     .timer .minsec:hover { background: rgba(255,255,255,.1); }
     .timer .extra { font-size: 18px; font-weight: 700; color: var(--extra-color); }
+
+    /* PK 모드: 새 행 추가로 높이가 늘어나지 않도록 전체 축소 */
+    .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }
+    .score.pk-mode .pk-score-text { font-size: 17px; }
+    .score.pk-mode .timer .minsec { font-size: 17px; }
+    .score.pk-mode .timer .extra  { font-size: 14px; }
+    .score.pk-mode .half          { font-size: 12px; padding: 1px 6px; }
+    .score.pk-mode .agg           { font-size: 17px; }
 
     /* 인라인 시간 편집기 */
     .clock-editor {
@@ -352,6 +363,20 @@
       flex-shrink: 0;
     }
     .tab-group { display: flex; gap: 10px; align-items: center; }
+
+    .bmc-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: #FFDD00; color: #000000;
+      font-weight: 800; font-size: 13px;
+      padding: 5px 12px 5px 8px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: filter .15s, transform .1s;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .bmc-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .bmc-btn img { width: 20px; height: 20px; object-fit: contain; }
     .tab {
       padding: 10px 14px;
       border: 1px solid var(--line);
@@ -449,6 +474,25 @@
       text-transform: uppercase; color: var(--muted);
       border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 2px;
     }
+
+    /* ========== 마크다운 렌더 ========== */
+    .md-body { color: var(--text); line-height: 1.75; font-size: 14px; }
+    .md-body h1 { font-size: 24px; font-weight: 900; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .md-body h2 { font-size: 18px; font-weight: 800; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    .md-body h3 { font-size: 15px; font-weight: 800; margin: 20px 0 8px; color: var(--muted); }
+    .md-body p  { margin: 0 0 12px; }
+    .md-body ul, .md-body ol { margin: 0 0 12px 20px; }
+    .md-body li { margin-bottom: 4px; }
+    .md-body code { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 13px; font-family: monospace; }
+    .md-body pre  { background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px; }
+    .md-body pre code { background: none; border: none; padding: 0; }
+    .md-body blockquote { border-left: 3px solid var(--muted); margin: 0 0 12px; padding: 4px 0 4px 14px; color: var(--muted); }
+    .md-body a  { color: #60a5fa; text-decoration: underline; }
+    .md-body hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
+    .md-body strong { font-weight: 800; }
+    .md-body table { border-collapse: collapse; width: 100%; margin-bottom: 14px; font-size: 13px; }
+    .md-body th, .md-body td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+    .md-body th { background: rgba(255,255,255,.05); font-weight: 800; }
 
     /* API 데이터 상태 배지 */
     .api-badge {
@@ -549,8 +593,25 @@
     .overlay-body { padding: 12px; }
     .overlay-body .input-group .btn { font-weight: 800; }
 
+    .bmc-slot {
+      display: flex;
+      align-items: center;
+      height: 42px;
+      width: 150px;
+      flex: 0 0 150px;
+      overflow: visible;
+    }
+
+    .bmc-wrapper {
+      transform: scale(0.72);
+      transform-origin: left center;
+      line-height: 0;
+    }
+
     @media (max-width: 720px) { .name { font-size: 18px; } .digits { font-size: 36px; } .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
   </style>
+  <!-- 마크다운을 HTML에 자동 렌더링 해주는 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
 <body>
 
@@ -576,6 +637,10 @@
         <span class="agg hidden" id="aggHomeWrap">(<span id="aggHomeVal">0</span>)</span>
         <div class="digits"><span id="homeScore">0</span> : <span id="awayScore">0</span></div>
         <span class="agg hidden" id="aggAwayWrap">(<span id="aggAwayVal">0</span>)</span>
+        <!-- PK 점수 (PK 하프일 때만 표시) -->
+        <div class="pk-score-row hidden" id="pkScoreRow">
+          <span class="pk-score-text">(<span id="pkScoreHome">0</span> PK <span id="pkScoreAway">0</span>)</span>
+        </div>
         <div class="meta">
           <div class="timer">
             <span class="t minsec" id="clock" title="더블클릭해서 시간 조정">00:00</span>
@@ -632,7 +697,24 @@
       <button class="tab" data-page="main-small">메인(캠 작은)</button>
       <button class="tab" data-page="theme">테마</button>
       <button class="tab" data-page="schedule">일정 확인</button>
-      <button class="tab" data-page="about">about</button>
+      <button class="tab" data-page="about">About</button>
+      <div class="bmc-slot">
+        <div class="bmc-wrapper">
+          <script
+            type="text/javascript"
+            src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js"
+            data-name="bmc-button"
+            data-slug="bgh1234554"
+            data-color="#FFDD00"
+            data-emoji=""
+            data-font="Cookie"
+            data-text="Buy me a coffee"
+            data-outline-color="#000000"
+            data-font-color="#000000"
+            data-coffee-color="#ffffff">
+          </script>
+        </div>
+      </div>
     </div>
     <button id="open-fixture-overlay" class="right-btn">경기ID 입력</button>
   </div>
@@ -1088,8 +1170,9 @@
     <div id="page-about" class="page">
       <div class="page-wrap">
         <div class="panel-box">
-          <div class="panelHeader"><div>about</div><div class="hint">나중에</div></div>
-          <div class="panelBody" style="padding:12px;">about(나중에)</div>
+          <div class="panelBody" style="padding: 20px 24px;">
+            <div id="about-rendered" class="md-body"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1289,7 +1372,23 @@
   function renderPK(){
     const isPK = state.half === 'PK';
     el.pkWrap.classList.toggle('show', isPK);
+    const scorePanel = document.getElementById('scorePanel');
+    if(scorePanel) scorePanel.classList.toggle('pk-mode', isPK);
+
+    // PK 점수 행 토글
+    const pkScoreRow = $('pkScoreRow');
+    if(pkScoreRow) pkScoreRow.classList.toggle('hidden', !isPK);
+
     if(!isPK) return;
+
+    // PK 점수 계산 (득점만 카운트)
+    const homeGoals = state.pk.home.filter(v => v === 'G').length;
+    const awayGoals = state.pk.away.filter(v => v === 'G').length;
+    const pkScoreHome = $('pkScoreHome');
+    const pkScoreAway = $('pkScoreAway');
+    if(pkScoreHome) pkScoreHome.textContent = homeGoals;
+    if(pkScoreAway) pkScoreAway.textContent = awayGoals;
+
     const makeDots = arr => {
       const base=Math.max(5,arr.length); const nodes=[];
       for(let i=0;i<base;i++){ const v=arr[i]; const d=document.createElement('div'); d.className='pk-dot'+(v==='G'?' goal':v==='M'?' miss':''); d.textContent=v==='M'?'×':''; nodes.push(d); } return nodes;
@@ -2006,6 +2105,34 @@
   syncScoreCol();
   // 배율은 DOM이 렌더된 뒤 적용해야 scrollHeight가 정확함
   requestAnimationFrame(initBoardScale);
+
+  // =============================
+  // About 페이지 마크다운 렌더
+  // =============================
+  // =============================
+  // About 페이지 — about.md 외부 파일 로드
+  // =============================
+  const aboutEl = document.getElementById('about-rendered');
+
+  async function loadAbout(){
+    if(!aboutEl) return;
+    if(typeof marked === 'undefined'){
+      aboutEl.innerHTML = '<p style="color:var(--muted)">marked.js 로드 실패</p>';
+      return;
+    }
+    try {
+      const res = await fetch('./about.md');
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      aboutEl.innerHTML = marked.parse(text);
+    } catch(e) {
+      aboutEl.innerHTML = `<p style="color:var(--muted)">about.md 로드 실패: ${e.message}<br>
+        <small>로컬 파일(file://)에서 직접 열면 브라우저 보안 정책상 외부 파일을 불러올 수 없어요.<br>
+        Vercel 배포 환경 또는 로컬 웹서버(예: VS Code Live Server 플러그인)에서 사용하세요.</small></p>`;
+    }
+  }
+
+  loadAbout();
 </script>
 </body>
 </html>
