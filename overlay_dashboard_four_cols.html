@@ -75,7 +75,7 @@
 
     /* ========== 전체 레이아웃 ========== */
     * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; overflow: hidden; }
+    html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: hidden; }
     body {
       height: 100vh;
       display: flex;
@@ -210,10 +210,10 @@
     }
     #homeLogo, #awayLogo { transform: scale(1); will-change: transform; position: relative; z-index: 2; }
 
-    .name { font-weight: 800; font-size: 24px; letter-spacing: .2px; line-height: 1.1; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .board .name { font-weight: 800; font-size: 24px; letter-spacing: .2px; line-height: 1.1; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* 스코어 패널 */
-    .score {
+    .board .score {
       display: grid;
       grid-template-columns: auto 1fr auto;
       grid-template-areas: "aggL digits aggR" "pk pk pk" "meta meta meta";
@@ -225,28 +225,28 @@
       background: var(--score-bg);
       color: var(--meta-color);
     }
-    .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
+    .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
     #aggHomeWrap { grid-area: aggL; align-self: center; }
     #aggAwayWrap { grid-area: aggR; align-self: center; }
-    .score .digits { grid-area: digits; }
-    .score .pk-score-row { grid-area: pk; }
-    .score .meta { grid-area: meta; }
-    .score .agg { color: var(--digits-color) !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
-    .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: var(--digits-color); }
-    .meta { font-size: 14px; opacity: .95; display: flex; gap: 10px; align-items: center; }
-    .pk-score-row { display: flex; justify-content: center; }
-    .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
-    .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
-    .timer .minsec:hover { background: rgba(255,255,255,.1); }
-    .timer .extra { font-size: 18px; font-weight: 700; color: var(--extra-color); }
+    .board .score .digits { grid-area: digits; }
+    .board .score .pk-score-row { grid-area: pk; }
+    .board .score .meta { grid-area: meta; }
+    .board .score .agg { color: var(--digits-color) !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
+    .board .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: var(--digits-color); }
+    .board .meta { font-size: 14px; opacity: .95; display: flex; gap: 10px; align-items: center; }
+    .board .pk-score-row { display: flex; justify-content: center; }
+    .board .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
+    .board .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
+    .board .timer .minsec:hover { background: rgba(255,255,255,.1); }
+    .board .timer .extra { font-size: 18px; font-weight: 700; color: var(--extra-color); }
 
     /* PK 모드: 새 행 추가로 높이가 늘어나지 않도록 전체 축소 */
-    .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }
-    .score.pk-mode .pk-score-text { font-size: 17px; }
-    .score.pk-mode .timer .minsec { font-size: 17px; }
-    .score.pk-mode .timer .extra  { font-size: 14px; }
-    .score.pk-mode .half          { font-size: 12px; padding: 1px 6px; }
-    .score.pk-mode .agg           { font-size: 17px; }
+    .board .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }
+    .board .score.pk-mode .pk-score-text { font-size: 17px; }
+    .board .score.pk-mode .timer .minsec { font-size: 17px; }
+    .board .score.pk-mode .timer .extra  { font-size: 14px; }
+    .board .score.pk-mode .half          { font-size: 12px; padding: 1px 6px; }
+    .board .score.pk-mode .agg           { font-size: 17px; }
 
     /* 인라인 시간 편집기 */
     .clock-editor {
@@ -313,7 +313,7 @@
       align-self: center;
     }
     .ce-confirm:hover { background: rgba(34,197,94,.4); }
-    .half { padding: 2px 8px; border-radius: 999px; background: var(--half-bg); color: var(--half-text); font-weight: 800; }
+    .board .half { padding: 2px 8px; border-radius: 999px; background: var(--half-bg); color: var(--half-text); font-weight: 800; }
 
     /* 레드카드 */
     .rc-rail {
@@ -398,7 +398,7 @@
     .page { display: none; height: 100%; min-height: 0; overflow: hidden; }
     .page.active { display: block; }
     .page-wrap {
-      display: flex; flex-direction: column; gap: 12px; padding: 12px;
+      display: flex; flex-direction: column; gap: 8px; padding: 8px;
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
     }
 
@@ -422,14 +422,57 @@
     .panelBody { flex: 1; padding: 0; overflow: auto; min-height: 0; }
 
     /* ========== 일정 확인 ========== */
-    .fixtureBar {
-      background: var(--panel-ui); border: 1px solid var(--line); border-radius: 16px;
-      padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    /* 탭바 인라인 경기 ID */
+    .fixture-inline { display: flex; align-items: center; gap: 6px; padding: 0 4px; }
+    .fixture-inline-label { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .fixture-inline-id {
+      font-size: 13px; font-weight: 900; color: var(--text);
+      padding: 3px 10px; border-radius: 999px;
+      border: 1px solid var(--line); background: rgba(0,0,0,.25);
+      cursor: pointer; user-select: none; transition: background .15s;
+      white-space: nowrap;
     }
-    .fixtureText { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; font-weight: 800; }
-    .fixtureText .muted { color: var(--muted); font-weight: 800; }
-    .fixtureText .id { font-weight: 900; color: var(--text); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(0,0,0,.18); }
-    .widgetGrid { flex: 1; display: grid; grid-template-columns: 360px 1fr 420px; gap: 12px; height: 100%; min-height: 0; overflow: hidden; }
+    .fixture-inline-id:hover { background: rgba(255,255,255,.1); }
+    .fixture-inline-status { font-size: 13px; color: var(--muted); white-space: nowrap; }
+
+    /* 토스트 알림 */
+    .copy-toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(12px);
+      background: #07BC0C; color: #fff; font-size: 13px; font-weight: 700;
+      padding: 8px 20px; border-radius: 999px; box-shadow: 0 4px 16px #00000044;
+      opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+      z-index: 9999;
+    }
+    .copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .widgetGrid { flex: 1; display: grid; grid-template-columns: 190px minmax(0,1fr) minmax(0,2.2fr) minmax(0,2fr); gap: 8px; height: 100%; min-height: 0; overflow: hidden; }
+
+    /* ── 점수판 CSS 변수가 위젯에 새어들어가지 않도록 격리 ── */
+    #game-content, #standings-content, #team-content, #games-list {
+      --home-bg: initial;
+      --away-bg: initial;
+      --home-text: initial;
+      --away-text: initial;
+      --board-a: initial;
+      --board-b: initial;
+      --score-bg: initial;
+      --digits-color: initial;
+      --meta-color: initial;
+      --half-bg: initial;
+      --half-text: initial;
+    }
+
+    /* ── Games: 패딩 제거해서 견본처럼 컴팩트하게 ── */
+    #games-list .game-list-header { padding: 6px 10px !important; font-size: 12px !important; }
+    #games-list game-item { display: flex !important; align-items: stretch !important; min-height: 0 !important; }
+    #games-list .game-infos { padding: 0 6px !important; font-size: 11px !important; min-width: 30px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+    #games-list .game-teams { flex: 1 !important; padding: 0 !important; gap: 0 !important; }
+    #games-list .team-info { padding: 0 8px !important; gap: 6px !important; }
+    #games-list .team-logo { width: 16px !important; height: 16px !important; }
+    #games-list .team-name { font-size: 12px !important; line-height: 1.4 !important; }
+    #games-list .game-score { display: flex !important; flex-direction: column !important; align-items: flex-end !important; justify-content: center !important; padding: 0 8px !important; gap: 0 !important; }
+    #games-list .score-home, #games-list .score-away { display: flex !important; align-items: center !important; gap: 4px !important; line-height: 1.4 !important; }
+    #games-list .score-home .score, #games-list .score-away .score { background: none !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; width: auto !important; height: auto !important; font-size: 12px !important; font-weight: 700 !important; }
+    #games-list .score-home-half, #games-list .score-away-half { font-size: 10px !important; opacity: 0.5 !important; }
     .panel { background: var(--panel-ui); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
 
     /* ========== 테마 탭 - 컨트롤 패널 ========== */
@@ -608,7 +651,7 @@
       line-height: 0;
     }
 
-    @media (max-width: 720px) { .name { font-size: 18px; } .digits { font-size: 36px; } .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
+    @media (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
   </style>
   <!-- 마크다운을 HTML에 자동 렌더링 해주는 라이브러리 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
@@ -715,9 +758,18 @@
           </script>
         </div>
       </div>
+      <!-- 선택된 경기 ID (인라인) -->
+      <div class="fixture-inline" id="fixture-inline-wrap" style="display:none">
+        <span class="fixture-inline-label">경기 ID</span>
+        <span id="selected-fixture-id" class="fixture-inline-id" title="클릭하여 복사">-</span>
+        <span id="fixture-status" class="fixture-inline-status"></span>
+      </div>
     </div>
     <button id="open-fixture-overlay" class="right-btn">경기ID 입력</button>
   </div>
+
+  <!-- 토스트 알림 -->
+  <div id="copy-toast" class="copy-toast">복사되었습니다!</div>
 
   <!-- ========== 페이지 영역 ========== -->
   <div class="pages">
@@ -1117,14 +1169,6 @@
     <!-- SCHEDULE -->
     <div id="page-schedule" class="page">
       <div class="page-wrap">
-        <div class="fixtureBar">
-          <div class="fixtureText">
-            <span class="muted">선택된 경기 ID</span>
-            <span id="selected-fixture-id" class="id">-</span>
-            <span id="fixture-status" class="muted"></span>
-          </div>
-          <button id="copy-fixture-btn" class="btn btn-sm btn-outline-light" disabled>경기 id 복사하기</button>
-        </div>
         <div class="widgetGrid">
           <div class="panel">
             <div class="panelHeader">
@@ -1140,22 +1184,27 @@
               <div>Games</div>
               <div class="hint">경기 클릭 → 오른쪽 디테일 + ID 추출</div>
             </div>
-            <div class="panelBody">
-              <div id="games-list">
-                <api-sports-widget data-type="games"></api-sports-widget>
-              </div>
+            <div class="panelBody" id="games-list">
+              <api-sports-widget data-type="games"></api-sports-widget>
             </div>
           </div>
           <div class="panel">
             <div class="panelHeader">
               <div>Details</div>
-              <div class="hint">선택에 따라 자동 표시</div>
+              <div class="hint">경기 클릭 → 자동 표시</div>
+            </div>
+            <div class="panelBody" id="game-content">
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panelHeader">
+              <div>Standings</div>
+              <div class="hint">리그 클릭 → 순위 자동 표시</div>
             </div>
             <div class="panelBody">
-              <div id="game-content"></div>
-              <div style="border-top:1px solid var(--line);"></div>
-              <div id="standings-content"></div>
-              <div style="border-top:1px solid var(--line);"></div>
+              <div id="standings-content">
+                <api-sports-widget data-type="standings"></api-sports-widget>
+              </div>
               <div id="team-content"></div>
             </div>
           </div>
@@ -1974,25 +2023,117 @@
   // =============================
   const selectedEl = $('selected-fixture-id');
   const statusEl = $('fixture-status');
-  const copyBtn = $('copy-fixture-btn');
+  const fixtureInlineWrap = $('fixture-inline-wrap');
+  const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
+  let toastTimer = null;
 
-  function setFixtureId(id){ currentFixtureId=id||null; if(selectedEl) selectedEl.textContent=currentFixtureId??'-'; if(copyBtn) copyBtn.disabled=!currentFixtureId; if(currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId); }
+  function showToast(msg) {
+    if (!copyToast) return;
+    copyToast.textContent = msg;
+    copyToast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => copyToast.classList.remove('show'), 1800);
+  }
+
+  function setFixtureId(id) {
+    currentFixtureId = id || null;
+    if (selectedEl) selectedEl.textContent = currentFixtureId ?? '-';
+    if (fixtureInlineWrap) fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none';
+    if (currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
+  }
   function setStatus(msg){ if(!statusEl) return; statusEl.textContent=msg?`(${msg})`:''; }
   function readFixtureIdFromTarget(targetEl){ const w=targetEl.querySelector('api-sports-widget[data-type="game"]'); if(w){ const id=w.getAttribute('data-game-id'); if(id) return id; } return null; }
 
-  if(gameTarget){
-    const observer=new MutationObserver(()=>{ const id=readFixtureIdFromTarget(gameTarget); if(id&&id!==currentFixtureId){ setFixtureId(id); setStatus('클릭으로 선택됨'); } });
-    observer.observe(gameTarget,{childList:true,subtree:true});
-  }
-  if(copyBtn){
-    copyBtn.addEventListener('click', async ()=>{
-      if(!currentFixtureId) return;
-      try{ await navigator.clipboard.writeText(currentFixtureId); const prev=copyBtn.textContent; copyBtn.textContent='복사됨!'; setStatus('클립보드 복사 완료'); setTimeout(()=>{ copyBtn.textContent=prev; setStatus(''); },900); }
-      catch{ setStatus('복사 실패(브라우저 권한 확인)'); }
+  // 경기 ID 클릭 → 복사 + 토스트
+  if (selectedEl) {
+    selectedEl.addEventListener('click', async () => {
+      if (!currentFixtureId) return;
+      try {
+        await navigator.clipboard.writeText(currentFixtureId);
+        showToast('복사되었습니다!');
+      } catch {
+        showToast('복사 실패 (브라우저 권한 확인)');
+      }
     });
   }
+
+
+  if(gameTarget){
+    const observer=new MutationObserver(()=>{
+      const w = gameTarget.querySelector('api-sports-widget[data-type="game"]');
+      const id = w ? w.getAttribute('data-game-id') : null;
+      if(id && id !== currentFixtureId){
+        setFixtureId(id);
+        setStatus('클릭으로 선택됨');
+        autoClickStandings(id);
+      }
+    });
+    observer.observe(gameTarget,{childList:true,subtree:true,attributes:true,attributeFilter:['data-game-id']});
+  }
+
+  // 경기 클릭 시 해당 리그의 Standings 버튼 자동 클릭
+  function autoClickStandings(fixtureId) {
+    const gamesList = document.querySelector('#games-list');
+    if (!gamesList) return;
+
+    setTimeout(() => {
+      // game-item[data-id="fixtureId"] 찾기
+      const gameItem = gamesList.querySelector(`game-item[data-id="${fixtureId}"]`);
+      if (!gameItem) return;
+
+      // 부모 games-container → 이전 형제 game-list-header → .league-standings 클릭
+      const gamesContainer = gameItem.closest('.games-container');
+      if (!gamesContainer) return;
+
+      const header = gamesContainer.previousElementSibling;
+      if (!header || !header.classList.contains('game-list-header')) return;
+
+      const standingsBtn = header.querySelector('.league-standings');
+      if (standingsBtn) standingsBtn.click();
+    }, 300);
+  }
+
+  // =============================
+  // 위젯 Shadow DOM / iframe 내부 CSS 주입
+  // =============================
+  const WIDGET_CSS = `
+    /* Details 점수 가운데 정렬 */
+    .game-detail { display: flex !important; align-items: center !important; justify-content: center !important; }
+    .game-center { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
+    /* Lineups 선수명 작게 */
+    .lineup-player-name, .player-name, .player-item span, .player-item div { font-size: 11px !important; }
+    .lineup-player { font-size: 11px !important; }
+    .shirt-number { font-size: 10px !important; }
+  `;
+
+  function injectCSS(root) {
+    if (!root || root._cssInjected) return;
+    try {
+      const style = root.ownerDocument
+        ? root.ownerDocument.createElement('style')
+        : document.createElement('style');
+      style.textContent = WIDGET_CSS;
+      (root.head || root).appendChild(style);
+      root._cssInjected = true;
+    } catch(e) {}
+  }
+
+  function injectWidgetCSS() {
+    document.querySelectorAll('api-sports-widget').forEach(widget => {
+      // Shadow DOM
+      if (widget.shadowRoot) injectCSS(widget.shadowRoot);
+      // iframe
+      const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
+      if (iframe) {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc?.head) injectCSS(doc);
+      }
+    });
+  }
+
+  setInterval(injectWidgetCSS, 1000);
 
   // =============================
   // 메인 페이지 렌더 (위젯)
