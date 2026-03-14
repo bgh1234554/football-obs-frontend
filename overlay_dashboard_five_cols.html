@@ -96,22 +96,24 @@
       /* 높이는 JS로 동적 조정 */
     }
     .board-stage-inner {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
       padding: 12px 16px 14px;
       transform-origin: top center;
       transition: transform .2s;
-      /* transform은 JS로 설정 */
     }
 
-    /* 득점자 박스 - 보드 양 옆 */
+    /* 득점자 박스 - JS로 board 기준 absolute 배치 */
     .note-side {
-      width: 200px;
-      flex: 0 0 200px;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
       min-width: 0;
+      white-space: nowrap;
     }
+    .note-side.hidden { display: none !important; }
     .note {
       background: transparent;
       border: none;
@@ -660,6 +662,7 @@
   <!-- ========== 보드 스테이지 (항상 표시) ========== -->
   <div class="board-stage-wrap" id="boardStageWrap">
     <div class="board-stage-inner" id="boardStageInner">
+
     <!-- 홈 득점자 (좌측) -->
     <div class="note-side" id="homeNoteSide">
       <div class="note home" id="homeNote"></div>
@@ -729,6 +732,7 @@
     <div class="note-side" id="awayNoteSide">
       <div class="note away" id="awayNote"></div>
     </div>
+
     </div><!-- /board-stage-inner -->
   </div><!-- /board-stage-wrap -->
 
@@ -1513,12 +1517,12 @@
     // 득점자
     if(el.homeNoteSide) el.homeNoteSide.classList.toggle('hidden', !state.noteEnabled);
     if(el.awayNoteSide) el.awayNoteSide.classList.toggle('hidden', !state.noteEnabled);
-    if(el.homeNote) el.homeNote.textContent = state.notes?.home ?? '';
-    if(el.awayNote) el.awayNote.textContent = state.notes?.away ?? '';
     if(el.noteOn) el.noteOn.checked = !!state.noteEnabled;
-    if(el.noteFontSize) el.noteFontSize.value = state.noteFontSize ?? 18;
     if(el.inNoteStroke) el.inNoteStroke.value = state.colors.noteStroke;
     if(el.inNoteText) el.inNoteText.value = state.colors.noteText;
+
+    // 득점자 자동 레이아웃 (1줄→2줄→폰트 축소)
+    autoLayoutNotes();
 
     // 정렬
     const boardEl = $('board');
@@ -1734,6 +1738,130 @@
   $('radiusMode')?.addEventListener('change', e=>{ state.radiusMode=e.target.value; render(); persist(); });
   $('boardWidth')?.addEventListener('input', e=>{ state.boardWidth=Math.max(10,Number(e.target.value)||1080); render(); persist(); });
   $('boardWidthReset')?.addEventListener('click', ()=>{ state.boardWidth=1080; render(); persist(); });
+
+  // =============================
+  // 득점자 자동 레이아웃
+  // =============================
+  /*
+  [테스트 케이스 - 콘솔에 붙여넣어 사용]
+
+  // 케이스 1: 한글 이름 (짧음)
+  state.notes.home = "12' V. 요케레스\n34' E. 에제\n67' K. 하베르츠";
+  state.notes.away = "23' R. 벤탕쿠르\n89' Kh. 크바라츠헬리아";
+  render();
+
+  // 케이스 2: 영어 긴 이름 (10명 → 2명씩 1줄 + 폰트 축소 테스트)
+  state.notes.home = "12' Max Alleyne\n24' Rodri\n42' OG Jake Doyle-Hayes\n45+2' OG Jack Fitzwater\n49' Rico Lewis\n54' Antoine Semenyo\n71' Tijjani Reijnders\n79' Nico O'Reilly\n86' Ryan McAidoo\n90+1' Rico Lewis";
+  state.notes.away = "";
+  render();
+
+  // 케이스 3: 한글+영어 혼합
+  state.notes.home = "15' 손흥민\n33' Salah\n67' 김민재\n88' K. Mbappé";
+  state.notes.away = "10' K. De Bruyne\n45+3' 이강인\n78' E. Haaland";
+  render();
+
+  // 케이스 4: 양쪽 많음 (2명씩 한 줄 전환 테스트)
+  state.notes.home = "3' 홍길동\n12' 김철수\n24' 이민준\n31' 박지성\n45' 최강희\n52' 황희찬";
+  state.notes.away = "8' L. Messi\n19' C. Ronaldo\n33' K. Mbappé\n47' E. Haaland\n61' M. Salah\n75' K. De Bruyne";
+  render();
+
+  // 케이스 5: 극단적으로 많음 (폰트 축소 테스트)
+  state.notes.home = "3' 홍길동\n12' 김철수\n24' 이민준\n31' 박지성\n45' 최강희\n52' 황희찬\n60' 손흥민\n71' 이강인\n80' 조규성\n88' 김민재";
+  state.notes.away = "5' L. Messi\n18' C. Ronaldo\n27' K. Mbappé\n39' E. Haaland\n50' M. Salah\n63' K. De Bruyne\n74' Neymar\n85' K. Benzema\n90' R. Lewandowski\n90+4' L. Modric";
+  render();
+
+  // 케이스 6: 한쪽만 득점 (비대칭 너비 테스트)
+  state.notes.home = "45+2' (OG) Jake Doyle-Hayes\n67' Tijjani Reijnders";
+  state.notes.away = "";
+  render();
+
+  // 케이스 7: PK 포함 혼합
+  state.notes.home = "23' (PK) 손흥민\n45' R. 벤탕쿠르\n67' (PK) 히샤를리송";
+  state.notes.away = "11' E. Haaland\n55' (PK) O. Marmoush\n90+3' R. Cherki";
+  render();
+
+  // 케이스 8: 초기화
+  state.notes.home = '';
+  state.notes.away = '';
+  render();
+  */
+  function formatScorers(lines, perRow) {
+    // perRow=1: 그대로, perRow=2: 두 명씩 한 줄
+    if (perRow === 1) return lines.join('\n');
+    const rows = [];
+    for (let i = 0; i < lines.length; i += 2) {
+      if (i + 1 < lines.length) rows.push(lines[i] + '  ' + lines[i+1]);
+      else rows.push(lines[i]);
+    }
+    return rows.join('\n');
+  }
+
+  function autoLayoutNotes() {
+    const boardEl = $('board');
+    if (!boardEl || !el.homeNote || !el.awayNote) return;
+
+    const baseSize = state.noteFontSize ?? 18;
+    const boardH = boardEl.offsetHeight;
+    if (!boardH) return;
+
+    const homeLines = (state.notes?.home ?? '').split('\n').filter(l => l.trim());
+    const awayLines = (state.notes?.away ?? '').split('\n').filter(l => l.trim());
+
+    const homeNoteSide = $('homeNoteSide');
+    const awayNoteSide = $('awayNoteSide');
+
+    let effectiveSize = baseSize;
+    let perRow = 1;
+
+    // 1단계: 1줄씩, 기본 폰트
+    setCSS('--note-font-size', effectiveSize + 'px');
+    el.homeNote.textContent = formatScorers(homeLines, 1);
+    el.awayNote.textContent = formatScorers(awayLines, 1);
+
+    const overflows = () =>
+      el.homeNote.scrollHeight > boardH ||
+      el.awayNote.scrollHeight > boardH;
+
+    // 2단계: 2명씩 한 줄로
+    if (overflows()) {
+      perRow = 2;
+      el.homeNote.textContent = formatScorers(homeLines, 2);
+      el.awayNote.textContent = formatScorers(awayLines, 2);
+    }
+
+    // 3단계: 폰트 축소 (최소 8px까지)
+    if (overflows()) {
+      const MIN_SIZE = 8;
+      while (overflows() && effectiveSize > MIN_SIZE) {
+        effectiveSize -= 1;
+        setCSS('--note-font-size', effectiveSize + 'px');
+      }
+    }
+
+    // 테마 탭 입력값 업데이트 (실제 적용된 크기 반영)
+    if (el.noteFontSize) el.noteFontSize.value = effectiveSize;
+
+    // note-side 너비를 내용 scrollWidth에 맞게 동적 조정 + board 기준 absolute 배치
+    const PAD = 20;
+    const stageEl = $('boardStageInner');
+    const homeW = homeLines.length ? el.homeNote.scrollWidth + PAD : 0;
+    const awayW = awayLines.length ? el.awayNote.scrollWidth + PAD : 0;
+
+    if (homeNoteSide) homeNoteSide.style.width = homeW + 'px';
+    if (awayNoteSide) awayNoteSide.style.width = awayW + 'px';
+
+    // board의 stageInner 내 위치 계산 → note-side를 board 양 옆에 고정
+    if (stageEl && boardEl) {
+      const boardLeft  = boardEl.offsetLeft;
+      const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
+      if (homeNoteSide) {
+        homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
+      }
+      if (awayNoteSide) {
+        awayNoteSide.style.left = boardLeft + boardEl.offsetWidth + 'px';
+      }
+    }
+  }
 
   // =============================
   // 점수판 배율
@@ -2244,6 +2372,12 @@
   syncScoreCol();
   // 배율은 DOM이 렌더된 뒤 적용해야 scrollHeight가 정확함
   requestAnimationFrame(initBoardScale);
+
+  // 창 크기 변경 시 (개발자도구 열고닫기 포함) note 위치 재계산
+  window.addEventListener('resize', () => autoLayoutNotes());
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => autoLayoutNotes()).observe($('board'));
+  }
 
   // =============================
   // About 페이지 마크다운 렌더
