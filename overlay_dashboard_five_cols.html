@@ -909,9 +909,9 @@
             <div class="section-title">PK 관리 · 점수판 배율</div>
             <div class="prow">
               <div class="pgroup">
-                <label>배율 (<span id="boardScaleLabel">100</span>%)</label>
+                <label>배율 (<span id="boardScaleLabel">75</span>%)</label>
                 <div class="prow">
-                  <input type="range" id="boardScaleRange" min="50" max="100" step="1" value="100" style="width:160px; cursor:pointer;" />
+                  <input type="range" id="boardScaleRange" min="50" max="100" step="1" value="75" style="width:160px; cursor:pointer;" />
                   <button id="boardScaleReset">초기화</button>
                 </div>
               </div>
@@ -1316,7 +1316,7 @@
     homeLogo: '', awayLogo: '',
     radiusMode: 'round',
     boardWidth: 1080,
-    boardScale: 100,
+    boardScale: 75,
     homeLogoScale: 1, awayLogoScale: 1,
     homeLogoX: 0, homeLogoY: 0,
     awayLogoX: 0, awayLogoY: 0,
@@ -1880,7 +1880,7 @@
 
   // 초기 적용 (restore 후)
   function initBoardScale(){
-    const pct = state.boardScale ?? 100;
+    const pct = state.boardScale ?? 75;
     applyBoardScale(pct);
   }
 
@@ -1891,8 +1891,8 @@
   });
 
   $('boardScaleReset')?.addEventListener('click', ()=>{
-    state.boardScale = 100;
-    applyBoardScale(100);
+    state.boardScale = 75;
+    applyBoardScale(75);
     persist();
   });
 
