@@ -399,6 +399,7 @@
     .pages { flex: 1; min-height: 0; overflow: hidden; }
     .page { display: none; height: 100%; min-height: 0; overflow: hidden; }
     .page.active { display: block; }
+    #page-tactics.active { display: flex; flex-direction: column; }
     .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
@@ -743,6 +744,7 @@
       <button class="tab" data-page="main-small">메인(캠 작은)</button>
       <button class="tab" data-page="theme">테마</button>
       <button class="tab" data-page="schedule">일정 확인</button>
+      <button class="tab" data-page="tactics">전술판</button>
       <button class="tab" data-page="about">About</button>
       <div class="bmc-slot">
         <div class="bmc-wrapper">
@@ -1217,6 +1219,109 @@
       </div>
     </div>
 
+    <!-- ========== 전술판 ========== -->
+    <div id="page-tactics" class="page" style="flex-direction:column;">
+
+      <!-- 컨트롤 바 -->
+      <div style="flex-shrink:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
+        <span style="font-size:11px;color:#64748b;font-weight:700;">HOME</span>
+        <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;">
+          <option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option>
+        </select>
+        <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
+        <span style="font-size:11px;color:#64748b;font-weight:700;">AWAY</span>
+        <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;">
+          <option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option>
+        </select>
+        <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
+        <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">초기화</button>
+        <button onclick="tacticsRenderTokens()" style="background:#1e40af;color:#fff;border:none;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;" title="점수판 유니폼 색상을 전술판에 반영">색상 적용</button>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;">
+          <input type="checkbox" id="tactics-show-names" checked> 이름 표시
+        </label>
+        <!-- TODO: 백엔드 연동 후 활성화
+        <button onclick="tacticsLoadFromFixture()">경기 ID로 불러오기</button>
+        -->
+      </div>
+
+      <!-- 메인 영역: 피치(좌) + 드로잉 패널(우) -->
+      <div style="flex:1;min-height:0;display:flex;gap:0;overflow:hidden;">
+
+        <!-- 피치 래퍼 — aspect-ratio 3/2 유지, 세로는 꽉 채움 -->
+        <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:flex-start;padding:8px 6px 8px 8px;overflow:hidden;">
+          <div id="tactics-pitch" style="position:relative;height:100%;aspect-ratio:3/2;max-width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%);">
+            <div style="position:absolute;inset:0;pointer-events:none;opacity:.08;background-image:repeating-linear-gradient(90deg,transparent,transparent 4.54%,rgba(255,255,255,.5) 4.54%,rgba(255,255,255,.5) 9.09%);"></div>
+            <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 150 100" preserveAspectRatio="none">
+              <rect x="2" y="2" width="146" height="96" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <line x1="75" y1="2" x2="75" y2="98" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <circle cx="75" cy="50" r="13" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <circle cx="75" cy="50" r="0.6" fill="rgba(255,255,255,0.4)"/>
+              <rect x="2" y="21.5" width="23" height="57" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <rect x="2" y="37" width="8" height="26" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <circle cx="17.3" cy="50" r="0.5" fill="rgba(255,255,255,0.4)"/>
+              <path d="M 25 39.8 A 13 13 0 0 1 25 60.2" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <rect x="0" y="44.5" width="2" height="11" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.3"/>
+              <rect x="125" y="21.5" width="23" height="57" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <rect x="140" y="37" width="8" height="26" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <circle cx="132.7" cy="50" r="0.5" fill="rgba(255,255,255,0.4)"/>
+              <path d="M 125 39.8 A 13 13 0 0 0 125 60.2" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
+              <rect x="148" y="44.5" width="2" height="11" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.3"/>
+              <path d="M 2 3.3 A 1.3 1.3 0 0 1 3.3 2" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
+              <path d="M 146.7 2 A 1.3 1.3 0 0 1 148 3.3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
+              <path d="M 2 96.7 A 1.3 1.3 0 0 0 3.3 98" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
+              <path d="M 146.7 98 A 1.3 1.3 0 0 0 148 96.7" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
+            </svg>
+            <!-- 드로잉 레이어 -->
+            <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs></defs>
+            </svg>
+            <!-- 팀 레이블 -->
+            <div style="position:absolute;top:8px;left:12px;z-index:5;pointer-events:none;">
+              <span id="tactics-home-label" style="padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.2)">홈팀</span>
+            </div>
+            <div style="position:absolute;top:8px;right:12px;z-index:5;pointer-events:none;">
+              <span id="tactics-away-label" style="padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;background:rgba(0,0,0,0.55);color:#fff;border:1px solid rgba(255,255,255,0.2)">어웨이팀</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측 드로잉 도구 패널 -->
+        <div style="width:150px;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
+          <div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
+
+          <!-- 도구 선택 -->
+          <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
+          <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 화살표</button>
+          <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
+          <button id="td-tool-dashed" onclick="tacticsDrawSetTool('dashed')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅ 점선</button>
+          <button id="td-tool-box" onclick="tacticsDrawSetTool('box')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▢ 박스</button>
+
+          <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
+
+          <!-- 색상 -->
+          <div style="font-size:10px;color:#475569;font-weight:600;">선 색상</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            <button onclick="tacticsDrawSetColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;background:#ffffff;border:2px solid #94a3b8;cursor:pointer;" title="흰색"></button>
+            <button onclick="tacticsDrawSetColor('#facc15')" style="width:22px;height:22px;border-radius:50%;background:#facc15;border:2px solid transparent;cursor:pointer;" title="노랑"></button>
+            <button onclick="tacticsDrawSetColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;border:2px solid transparent;cursor:pointer;" title="빨강"></button>
+            <button onclick="tacticsDrawSetColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;border:2px solid transparent;cursor:pointer;" title="파랑"></button>
+            <button onclick="tacticsDrawSetColor('#22c55e')" style="width:22px;height:22px;border-radius:50%;background:#22c55e;border:2px solid transparent;cursor:pointer;" title="초록"></button>
+            <button onclick="tacticsDrawSetColor('#f97316')" style="width:22px;height:22px;border-radius:50%;background:#f97316;border:2px solid transparent;cursor:pointer;" title="주황"></button>
+            <button onclick="tacticsDrawSetColor('#a855f7')" style="width:22px;height:22px;border-radius:50%;background:#a855f7;border:2px solid transparent;cursor:pointer;" title="보라"></button>
+            <button onclick="tacticsDrawSetColor('#1e293b')" style="width:22px;height:22px;border-radius:50%;background:#1e293b;border:2px solid #475569;cursor:pointer;" title="검정"></button>
+            <button onclick="tacticsDrawSetColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;border:2px solid transparent;cursor:pointer;" title="분홍"></button>
+            <button onclick="tacticsDrawSetColor('#92400e')" style="width:22px;height:22px;border-radius:50%;background:#92400e;border:2px solid transparent;cursor:pointer;" title="갈색"></button>
+          </div>
+
+          <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
+
+          <button onclick="tacticsDrawUndo()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">↩ 되돌리기</button>
+          <button onclick="tacticsDrawClear()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">🗑 전체 지우기</button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ABOUT -->
     <div id="page-about" class="page">
       <div class="page-wrap">
@@ -1599,6 +1704,9 @@
     renderPK();
     renderRedCards();
     syncScoreCol();
+    // 전술판 토큰 색상 동기화 (점수판 색 변경 시 자동 반영)
+    // tacticsState가 초기화된 이후에만 호출 (선언 순서 문제 방지)
+    if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') tacticsRenderTokens();
   }
 
   // =============================
@@ -2403,6 +2511,469 @@
   }
 
   loadAbout();
+
+  // ============================================================
+  // 전술판 (Tactical Board)
+  // ============================================================
+
+  // -- 포메이션 좌표 (x,y = 피치 내 퍼센트, GK→수비→미드→공격 순)
+  // -- 출처: 공개된 포메이션 배치 수학적 비율을 독자적으로 구현
+  const TACTICS_FM = {
+    "4-4-2":   [{x:5,y:50},{x:14,y:10},{x:14,y:35},{x:14,y:65},{x:14,y:90},{x:27,y:10},{x:27,y:35},{x:27,y:65},{x:27,y:90},{x:40,y:35},{x:40,y:65}],
+    "4-3-3":   [{x:5,y:50},{x:14,y:10},{x:14,y:35},{x:14,y:65},{x:14,y:90},{x:27,y:20},{x:27,y:50},{x:27,y:80},{x:40,y:20},{x:40,y:50},{x:40,y:80}],
+    "4-2-3-1": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:22,y:35},{x:22,y:65},{x:32,y:15},{x:32,y:50},{x:32,y:85},{x:42,y:50}],
+    "3-5-2":   [{x:5,y:50},{x:15,y:30},{x:15,y:50},{x:15,y:70},{x:28,y:10},{x:28,y:30},{x:28,y:50},{x:28,y:70},{x:28,y:90},{x:41,y:38},{x:41,y:62}],
+    "3-1-4-2": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:23,y:50},{x:33,y:10},{x:33,y:35},{x:33,y:65},{x:33,y:90},{x:43,y:35},{x:43,y:65}],
+    "3-5-1-1": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:23,y:10},{x:23,y:30},{x:23,y:50},{x:23,y:70},{x:23,y:90},{x:33,y:50},{x:43,y:50}],
+    "5-4-1":   [{x:5,y:50},{x:15,y:10},{x:15,y:30},{x:15,y:50},{x:15,y:70},{x:15,y:90},{x:28,y:17},{x:28,y:39},{x:28,y:61},{x:28,y:83},{x:41,y:50}],
+    "4-5-1":   [{x:5,y:50},{x:14,y:10},{x:14,y:35},{x:14,y:65},{x:14,y:90},{x:25,y:10},{x:25,y:30},{x:25,y:50},{x:25,y:70},{x:25,y:90},{x:38,y:50}],
+    "3-4-3":   [{x:5,y:50},{x:15,y:20},{x:15,y:50},{x:15,y:80},{x:28,y:10},{x:28,y:35},{x:28,y:65},{x:28,y:90},{x:41,y:20},{x:41,y:50},{x:41,y:80}],
+    "5-3-2":   [{x:5,y:50},{x:17,y:10},{x:17,y:30},{x:17,y:50},{x:17,y:70},{x:17,y:90},{x:29,y:25},{x:29,y:50},{x:29,y:75},{x:41,y:35},{x:41,y:65}],
+    "4-1-4-1": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:22,y:50},{x:32,y:10},{x:32,y:35},{x:32,y:65},{x:32,y:90},{x:42,y:50}],
+    "4-4-1-1": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:22,y:10},{x:22,y:35},{x:22,y:65},{x:22,y:90},{x:32,y:50},{x:42,y:50}],
+    "3-4-2-1": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:23,y:10},{x:23,y:35},{x:23,y:65},{x:23,y:90},{x:33,y:30},{x:33,y:70},{x:43,y:50}],
+    "4-3-2-1": [{x:5,y:50},{x:12,y:10},{x:12,y:32},{x:12,y:68},{x:12,y:90},{x:24,y:22},{x:24,y:50},{x:24,y:78},{x:34,y:35},{x:34,y:65},{x:44,y:50}],
+    "4-2-2-2": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:22,y:35},{x:22,y:65},{x:32,y:35},{x:32,y:65},{x:42,y:35},{x:42,y:65}],
+    "5-2-3":   [{x:5,y:50},{x:17,y:5},{x:17,y:28},{x:17,y:50},{x:17,y:72},{x:17,y:95},{x:29,y:35},{x:29,y:65},{x:41,y:12},{x:41,y:50},{x:41,y:88}],
+    "3-3-1-3": [{x:5,y:50},{x:12,y:25},{x:12,y:50},{x:12,y:75},{x:22,y:25},{x:22,y:50},{x:22,y:75},{x:32,y:50},{x:42,y:25},{x:42,y:50},{x:42,y:75}],
+    "3-4-1-2": [{x:5,y:50},{x:12,y:25},{x:12,y:50},{x:12,y:75},{x:22,y:10},{x:22,y:35},{x:22,y:65},{x:22,y:90},{x:32,y:50},{x:42,y:35},{x:42,y:65}],
+    "4-3-1-2": [{x:5,y:50},{x:14,y:10},{x:14,y:35},{x:14,y:65},{x:14,y:90},{x:26,y:25},{x:26,y:50},{x:26,y:75},{x:36,y:50},{x:44,y:35},{x:44,y:65}],
+    "4-1-3-2": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:22,y:50},{x:32,y:20},{x:32,y:50},{x:32,y:80},{x:42,y:35},{x:42,y:65}],
+  };
+
+  // -- 포지션 레이블 (포메이션별)
+  const TACTICS_LABELS = {
+    "4-4-2":   ['GK','RB','CB','CB','LB','RM','CM','CM','LM','ST','ST'],
+    "4-3-3":   ['GK','RB','CB','CB','LB','CM','CM','CM','RW','ST','LW'],
+    "4-2-3-1": ['GK','RB','CB','CB','LB','DM','DM','RW','AM','LW','ST'],
+    "3-5-2":   ['GK','CB','CB','CB','RM','CM','CM','CM','LM','ST','ST'],
+    "3-1-4-2": ['GK','CB','CB','CB','DM','RM','CM','CM','LM','ST','ST'],
+    "3-5-1-1": ['GK','CB','CB','CB','RM','CM','CM','CM','LM','AM','ST'],
+    "5-4-1":   ['GK','RWB','CB','CB','CB','LWB','RM','CM','CM','LM','ST'],
+    "4-5-1":   ['GK','RB','CB','CB','LB','RM','CM','CM','CM','LM','ST'],
+    "3-4-3":   ['GK','CB','CB','CB','RM','CM','CM','LM','RW','ST','LW'],
+    "5-3-2":   ['GK','RWB','CB','CB','CB','LWB','CM','CM','CM','ST','ST'],
+    "4-1-4-1": ['GK','RB','CB','CB','LB','DM','RM','CM','CM','LM','ST'],
+    "4-4-1-1": ['GK','RB','CB','CB','LB','RM','CM','CM','LM','AM','ST'],
+    "3-4-2-1": ['GK','CB','CB','CB','RM','CM','CM','LM','AM','AM','ST'],
+    "4-3-2-1": ['GK','RB','CB','CB','LB','CM','CM','CM','AM','AM','ST'],
+    "4-2-2-2": ['GK','RB','CB','CB','LB','DM','DM','AM','AM','ST','ST'],
+    "5-2-3":   ['GK','RWB','CB','CB','CB','LWB','CM','CM','RW','ST','LW'],
+    "3-3-1-3": ['GK','CB','CB','CB','CM','CM','CM','AM','RW','ST','LW'],
+    "3-4-1-2": ['GK','CB','CB','CB','RM','CM','CM','LM','AM','ST','ST'],
+    "4-3-1-2": ['GK','RB','CB','CB','LB','CM','CM','CM','AM','ST','ST'],
+    "4-1-3-2": ['GK','RB','CB','CB','LB','DM','RW','AM','LW','ST','ST'],
+  };
+
+  // ---------------------------------------------------------------
+  // TODO: 백엔드 연동 시 아래 MOCK_LINEUP을 실제 fetch로 교체
+  //
+  // 스프링부트 엔드포인트 예정:
+  //   GET /api/lineups/{fixtureId}
+  //
+  // 응답 shape (이 구조에 맞춰 백엔드 구현):
+  // {
+  //   home: {
+  //     teamName: "Liverpool",
+  //     formation: "4-3-3",
+  //     players: [
+  //       { nameKo: "알리송", number: 1, pos: "GK", _isReal: true },
+  //       ...  // _isReal: true 를 붙여야 포지션 레이블 대신 이름이 표시됨
+  //     ]
+  //   },
+  //   away: { ... }
+  // }
+  // ---------------------------------------------------------------
+
+  // -- Fallback mock 데이터 (백엔드 완성 전까지 표시되는 데이터)
+  const TACTICS_MOCK_LINEUP = {
+    home: {
+      teamName: "홈팀",
+      formation: "4-3-3",
+      players: [
+        { nameKo: "GK", number: 1,  pos: "GK" },
+        { nameKo: "RB", number: 2,  pos: "RB" },
+        { nameKo: "CB", number: 5,  pos: "CB" },
+        { nameKo: "CB", number: 4,  pos: "CB" },
+        { nameKo: "LB", number: 3,  pos: "LB" },
+        { nameKo: "CM", number: 8,  pos: "CM" },
+        { nameKo: "CM", number: 6,  pos: "CM" },
+        { nameKo: "CM", number: 10, pos: "CM" },
+        { nameKo: "RW", number: 7,  pos: "RW" },
+        { nameKo: "ST", number: 9,  pos: "ST" },
+        { nameKo: "LW", number: 11, pos: "LW" },
+      ]
+    },
+    away: {
+      teamName: "어웨이팀",
+      formation: "4-3-3",
+      players: [
+        { nameKo: "GK", number: 1,  pos: "GK" },
+        { nameKo: "RB", number: 2,  pos: "RB" },
+        { nameKo: "CB", number: 5,  pos: "CB" },
+        { nameKo: "CB", number: 4,  pos: "CB" },
+        { nameKo: "LB", number: 3,  pos: "LB" },
+        { nameKo: "CM", number: 8,  pos: "CM" },
+        { nameKo: "CM", number: 6,  pos: "CM" },
+        { nameKo: "CM", number: 10, pos: "CM" },
+        { nameKo: "RW", number: 7,  pos: "RW" },
+        { nameKo: "ST", number: 9,  pos: "ST" },
+        { nameKo: "LW", number: 11, pos: "LW" },
+      ]
+    }
+  };
+
+  // -- 현재 전술판 상태 (var: render()보다 늦게 선언되므로 호이스팅 필요)
+  var tacticsState = {
+    homePositions: [],  // [{x, y}, ...]
+    awayPositions: [],
+    lineup: null,       // tacticsApplyLineup 후 저장
+  };
+
+  // -- 좌표 미러 (홈 좌표 → 어웨이: x=100-x, y=100-y)
+  function tacticsMirror(coords) {
+    return coords.map(({x, y}) => ({ x: 100 - x, y: 100 - y }));
+  }
+
+  // -- 라인업 데이터를 받아 전술판에 적용
+  // -- 백엔드 연동 시에도 이 함수만 호출하면 됨
+  function tacticsApplyLineup(data) {
+    const homeFm = data.home.formation || '4-3-3';
+    const awayFm = data.away.formation || '4-3-3';
+
+    // 포메이션 select 동기화
+    const homeFmSel = document.getElementById('tactics-home-fm');
+    const awayFmSel = document.getElementById('tactics-away-fm');
+    if (homeFmSel && TACTICS_FM[homeFm]) homeFmSel.value = homeFm;
+    if (awayFmSel && TACTICS_FM[awayFm]) awayFmSel.value = awayFm;
+
+    // 좌표 계산
+    const homeCoords = TACTICS_FM[homeFm] || TACTICS_FM['4-3-3'];
+    const awayCoords = tacticsMirror(TACTICS_FM[awayFm] || TACTICS_FM['4-3-3']);
+    tacticsState.homePositions = homeCoords.map(p => ({...p}));
+    tacticsState.awayPositions = awayCoords.map(p => ({...p}));
+    tacticsState.lineup = data;
+
+    // 팀 레이블 — 점수판 팀명과 연동
+    const homeLabel = document.getElementById('tactics-home-label');
+    const awayLabel = document.getElementById('tactics-away-label');
+    if (homeLabel) homeLabel.textContent = state.homeName || data.home.teamName || '홈팀';
+    if (awayLabel) awayLabel.textContent = state.awayName || data.away.teamName || '어웨이팀';
+
+    tacticsRenderTokens();
+  }
+
+  // -- 선수 토큰 렌더링
+  function tacticsRenderTokens() {
+    const pitch = document.getElementById('tactics-pitch');
+    if (!pitch) return;
+    pitch.querySelectorAll('.tactics-token').forEach(t => t.remove());
+
+    const showNames = document.getElementById('tactics-show-names')?.checked ?? true;
+    const lineup = tacticsState.lineup || TACTICS_MOCK_LINEUP;
+
+    // 현재 선택된 포메이션 기준으로 레이블 가져오기
+    const homeFm  = document.getElementById('tactics-home-fm')?.value || lineup.home.formation || '4-3-3';
+    const awayFm  = document.getElementById('tactics-away-fm')?.value || lineup.away.formation || '4-3-3';
+    const homeLabels = TACTICS_LABELS[homeFm] || TACTICS_LABELS['4-3-3'];
+    const awayLabels = TACTICS_LABELS[awayFm] || TACTICS_LABELS['4-3-3'];
+
+    // 팀 레이블도 점수판 state와 동기화
+    const homeLabel = document.getElementById('tactics-home-label');
+    const awayLabel = document.getElementById('tactics-away-label');
+    if (homeLabel) homeLabel.textContent = (typeof state !== 'undefined' && state.homeName) || lineup.home.teamName || '홈팀';
+    if (awayLabel) awayLabel.textContent = (typeof state !== 'undefined' && state.awayName) || lineup.away.teamName || '어웨이팀';
+
+    // 점수판 state.colors와 연동
+    const homeColor = {
+      bg:     state.colors.homeBg   || '#3B82F6',
+      border: state.colors.homeBg   || '#3B82F6',
+      text:   state.colors.homeText || '#ffffff',
+    };
+    const awayColor = {
+      bg:     state.colors.awayBg   || '#EF4444',
+      border: state.colors.awayBg   || '#EF4444',
+      text:   state.colors.awayText || '#ffffff',
+    };
+
+    // 홈팀 토큰 — 포지션 레이블은 현재 포메이션 기준으로 덮어씀
+    tacticsState.homePositions.forEach((pos, i) => {
+      const player = lineup.home.players[i];
+      if (!player) return;
+      // 실제 선수 이름이 있으면 그대로, 없으면(fallback) 포메이션 레이블
+      const label = player._isReal ? player.nameKo : homeLabels[i] || player.pos;
+      pitch.appendChild(tacticsCreateToken(i, pos.x, 100 - pos.y, homeColor, {...player, nameKo: label}, showNames));
+    });
+
+    // 어웨이팀 토큰
+    tacticsState.awayPositions.forEach((pos, i) => {
+      const player = lineup.away.players[i];
+      if (!player) return;
+      const label = player._isReal ? player.nameKo : awayLabels[i] || player.pos;
+      pitch.appendChild(tacticsCreateToken(i + 11, pos.x, 100 - pos.y, awayColor, {...player, nameKo: label}, showNames));
+    });
+
+    tacticsDragSetup();
+  }
+
+  function tacticsCreateToken(idx, x, y, color, player, showNames) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tactics-token';
+    wrap.dataset.idx = idx;
+    wrap.style.cssText = `
+      position:absolute; left:${x}%; top:${y}%;
+      transform:translate(-50%,-50%);
+      display:flex; flex-direction:column; align-items:center;
+      user-select:none; cursor:grab; z-index:10;
+      transition:left .15s ease, top .15s ease;
+    `;
+
+    const circle = document.createElement('div');
+    circle.style.cssText = `
+      width:44px; height:44px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:14px; color:${color.text};
+      background:${color.bg}; border:2px solid ${color.border};
+      box-shadow:0 2px 8px rgba(0,0,0,.45);
+    `;
+    circle.textContent = player.number ?? (idx < 11 ? idx + 1 : idx - 10);
+    wrap.appendChild(circle);
+
+    if (showNames) {
+      const badge = document.createElement('div');
+      badge.style.cssText = `
+        margin-top:2px; padding:1px 6px; border-radius:4px;
+        font-size:10px; font-weight:600; white-space:nowrap;
+        background:rgba(0,0,0,.75); color:#fff;
+      `;
+      // nameKo 우선 표시, 없으면 pos 표시
+      badge.textContent = player.nameKo || player.pos || '';
+      wrap.appendChild(badge);
+    }
+
+    return wrap;
+  }
+
+  // -- 드래그 (Pointer Events API 사용)
+  let tacticsDragging = null;
+  let tacticsDragOffX = 0, tacticsDragOffY = 0;
+  let tacticsPitchRect = null;
+
+  function tacticsDragSetup() {
+    document.querySelectorAll('.tactics-token').forEach(tok => {
+      tok.addEventListener('pointerdown', tacticsDragStart);
+    });
+  }
+
+  function tacticsDragStart(e) {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    tacticsDragging = e.currentTarget;
+    tacticsDragging.style.transition = 'none';
+    tacticsDragging.style.zIndex = '50';
+    tacticsPitchRect = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width * 100;
+    const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
+    tacticsDragOffX = cx - parseFloat(tacticsDragging.style.left);
+    tacticsDragOffY = cy - parseFloat(tacticsDragging.style.top);
+    window.addEventListener('pointermove', tacticsDragMove);
+    window.addEventListener('pointerup',   tacticsDragEnd);
+  }
+
+  function tacticsDragMove(e) {
+    if (!tacticsDragging) return;
+    const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width  * 100;
+    const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
+    const nx = Math.max(1, Math.min(99, cx - tacticsDragOffX));
+    const ny = Math.max(1, Math.min(99, cy - tacticsDragOffY));
+    tacticsDragging.style.left = nx + '%';
+    tacticsDragging.style.top  = ny + '%';
+    const idx = +tacticsDragging.dataset.idx;
+    const stored = { x: nx, y: 100 - ny };
+    if (idx < 11) tacticsState.homePositions[idx] = stored;
+    else           tacticsState.awayPositions[idx - 11] = stored;
+  }
+
+  function tacticsDragEnd() {
+    if (tacticsDragging) {
+      tacticsDragging.style.transition = 'left .15s ease, top .15s ease';
+      tacticsDragging.style.zIndex = '10';
+      tacticsDragging = null;
+    }
+    window.removeEventListener('pointermove', tacticsDragMove);
+    window.removeEventListener('pointerup',   tacticsDragEnd);
+  }
+
+  // -- 포메이션 적용 (select 변경 시)
+  function tacticsApplyFm() {
+    const homeFm = document.getElementById('tactics-home-fm')?.value || '4-3-3';
+    const awayFm = document.getElementById('tactics-away-fm')?.value || '4-3-3';
+    const lineup = tacticsState.lineup || TACTICS_MOCK_LINEUP;
+    lineup.home.formation = homeFm;
+    lineup.away.formation = awayFm;
+    tacticsApplyLineup(lineup);
+  }
+
+  // -- 초기화 (현재 포메이션 기준 좌표 리셋)
+  function tacticsReset() {
+    tacticsApplyLineup(tacticsState.lineup || TACTICS_MOCK_LINEUP);
+  }
+
+  // -- 이름 표시 토글
+  document.getElementById('tactics-show-names')?.addEventListener('change', tacticsRenderTokens);
+
+  // -- 초기 렌더 (mock 데이터로 fallback)
+  tacticsApplyLineup(TACTICS_MOCK_LINEUP);
+  // ============================================================
+  // 전술판 드로잉 도구
+  // ============================================================
+  let tdTool = 'select';       // select | arrow | line | dashed | box
+  let tdColor = '#ffffff';
+  let tdDrawings = [];         // {type, x1,y1,x2,y2, color}
+  let tdDrawing = false;
+  let tdStart = null;
+  let tdPreview = null;
+
+  function tacticsDrawSetTool(t) {
+    tdTool = t;
+    ['select','arrow','line','dashed','box'].forEach(n => {
+      const b = document.getElementById('td-tool-' + n);
+      if (b) b.style.background = n === t ? '#1e40af' : '#1e293b';
+    });
+    // 드로잉 모드면 pitch 위 draw-layer에 pointer-events 활성화
+    const layer = document.getElementById('tactics-draw-layer');
+    if (layer) layer.style.pointerEvents = t === 'select' ? 'none' : 'all';
+  }
+
+  function tacticsDrawSetColor(c) {
+    tdColor = c;
+  }
+
+  function tdGetPt(e, layer) {
+    const r = document.getElementById('tactics-pitch').getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)),
+      y: Math.max(0, Math.min(100, (e.clientY - r.top)  / r.height * 100)),
+    };
+  }
+
+  // 색상을 마커 ID에 쓸 수 있는 문자열로 변환 (#3b82f6 → c3b82f6)
+  function tdColorId(color) {
+    return 'tdm' + color.replace(/[^a-zA-Z0-9]/g, '');
+  }
+
+  // 해당 색상의 마커가 defs에 없으면 추가
+  function tdEnsureMarker(layer, color) {
+    const id = tdColorId(color);
+    if (layer.querySelector('#' + id)) return id;
+    const NS = 'http://www.w3.org/2000/svg';
+    let defs = layer.querySelector('defs');
+    if (!defs) { defs = document.createElementNS(NS, 'defs'); layer.prepend(defs); }
+    const marker = document.createElementNS(NS, 'marker');
+    marker.setAttribute('id', id);
+    marker.setAttribute('markerWidth', '6');
+    marker.setAttribute('markerHeight', '4');
+    marker.setAttribute('refX', '5');
+    marker.setAttribute('refY', '2');
+    marker.setAttribute('orient', 'auto');
+    const poly = document.createElementNS(NS, 'polygon');
+    poly.setAttribute('points', '0 0, 6 2, 0 4');
+    poly.setAttribute('fill', color);
+    marker.appendChild(poly);
+    defs.appendChild(marker);
+    return id;
+  }
+
+  function tdMakeEl(d, isPreview) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const op = isPreview ? 0.6 : 1;
+    const layer = document.getElementById('tactics-draw-layer');
+    if (d.type === 'box') {
+      const r = document.createElementNS(NS, 'rect');
+      r.setAttribute('x', Math.min(d.x1, d.x2));
+      r.setAttribute('y', Math.min(d.y1, d.y2));
+      r.setAttribute('width', Math.abs(d.x2 - d.x1));
+      r.setAttribute('height', Math.abs(d.y2 - d.y1));
+      r.setAttribute('fill', 'none');
+      r.setAttribute('stroke', d.color);
+      r.setAttribute('stroke-width', '0.5');
+      r.setAttribute('opacity', op);
+      r.setAttribute('rx', '0.3');
+      return r;
+    } else {
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', d.x1); line.setAttribute('y1', d.y1);
+      line.setAttribute('x2', d.x2); line.setAttribute('y2', d.y2);
+      line.setAttribute('stroke', d.color);
+      line.setAttribute('stroke-width', '0.5');
+      line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('opacity', op);
+      if (d.type === 'dashed') line.setAttribute('stroke-dasharray', '1.5 1');
+      if (d.type === 'arrow' && layer) {
+        const markerId = tdEnsureMarker(layer, d.color);
+        line.setAttribute('marker-end', `url(#${markerId})`);
+      }
+      return line;
+    }
+  }
+
+  function tdRenderAll() {
+    const layer = document.getElementById('tactics-draw-layer');
+    if (!layer) return;
+    // defs 보존하고 나머지 제거
+    [...layer.children].forEach(c => { if (c.tagName !== 'defs') c.remove(); });
+    tdDrawings.forEach(d => layer.appendChild(tdMakeEl(d, false)));
+  }
+
+  // 드로잉 레이어 이벤트
+  document.addEventListener('DOMContentLoaded', () => {
+    // DOMContentLoaded 이후 attach — 요소가 있을 때
+  });
+
+  // pointerdown on draw layer
+  document.getElementById('tactics-draw-layer')?.addEventListener('pointerdown', e => {
+    if (tdTool === 'select') return;
+    e.preventDefault();
+    e.target.setPointerCapture(e.pointerId);
+    tdDrawing = true;
+    tdStart = tdGetPt(e);
+    tdPreview = null;
+  });
+
+  document.getElementById('tactics-draw-layer')?.addEventListener('pointermove', e => {
+    if (!tdDrawing || tdTool === 'select') return;
+    const cur = tdGetPt(e);
+    const layer = document.getElementById('tactics-draw-layer');
+    if (!layer) return;
+    if (tdPreview) tdPreview.remove();
+    tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor}, true);
+    layer.appendChild(tdPreview);
+  });
+
+  document.getElementById('tactics-draw-layer')?.addEventListener('pointerup', e => {
+    if (!tdDrawing || tdTool === 'select') return;
+    tdDrawing = false;
+    if (tdPreview) { tdPreview.remove(); tdPreview = null; }
+    const cur = tdGetPt(e);
+    const dx = Math.abs(cur.x - tdStart.x), dy = Math.abs(cur.y - tdStart.y);
+    if (dx > 1 || dy > 1) {
+      tdDrawings.push({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor});
+      tdRenderAll();
+    }
+  });
+
+  function tacticsDrawUndo() {
+    tdDrawings.pop();
+    tdRenderAll();
+  }
+
+  function tacticsDrawClear() {
+    tdDrawings = [];
+    tdRenderAll();
+  }
+  // ============================================================
+  // END 드로잉 도구
+  // ============================================================
 </script>
 </body>
 </html>
