@@ -1239,6 +1239,9 @@
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;">
           <input type="checkbox" id="tactics-show-names" checked> 이름 표시
         </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;">
+          <input type="checkbox" id="tactics-show-ball"> 공 표시
+        </label>
         <!-- TODO: 백엔드 연동 후 활성화
         <button onclick="tacticsLoadFromFixture()">경기 ID로 불러오기</button>
         -->
@@ -1272,7 +1275,7 @@
               <path d="M 146.7 98 A 1.3 1.3 0 0 0 148 96.7" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
             </svg>
             <!-- 드로잉 레이어 -->
-            <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs></defs>
             </svg>
             <!-- 팀 레이블 -->
@@ -1286,7 +1289,7 @@
         </div>
 
         <!-- 우측 드로잉 도구 패널 -->
-        <div style="width:150px;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
+        <div style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
           <div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
 
           <!-- 도구 선택 -->
@@ -2627,6 +2630,7 @@
   var tacticsState = {
     homePositions: [],  // [{x, y}, ...]
     awayPositions: [],
+    ballPosition: { x: 50, y: 50 },
     lineup: null,       // tacticsApplyLineup 후 저장
   };
 
@@ -2667,9 +2671,10 @@
   function tacticsRenderTokens() {
     const pitch = document.getElementById('tactics-pitch');
     if (!pitch) return;
-    pitch.querySelectorAll('.tactics-token').forEach(t => t.remove());
+    pitch.querySelectorAll('.tactics-token, .tactics-ball-token').forEach(t => t.remove());
 
     const showNames = document.getElementById('tactics-show-names')?.checked ?? true;
+    const showBall = document.getElementById('tactics-show-ball')?.checked ?? false;
     const lineup = tacticsState.lineup || TACTICS_MOCK_LINEUP;
 
     // 현재 선택된 포메이션 기준으로 레이블 가져오기
@@ -2713,6 +2718,11 @@
       pitch.appendChild(tacticsCreateToken(i + 11, pos.x, 100 - pos.y, awayColor, {...player, nameKo: label}, showNames));
     });
 
+    if (showBall) {
+      const ballPos = tacticsState.ballPosition || { x: 50, y: 50 };
+      pitch.appendChild(tacticsCreateBallToken(ballPos.x, 100 - ballPos.y));
+    }
+
     tacticsDragSetup();
   }
 
@@ -2720,6 +2730,7 @@
     const wrap = document.createElement('div');
     wrap.className = 'tactics-token';
     wrap.dataset.idx = idx;
+    wrap.dataset.kind = 'player';
     wrap.style.cssText = `
       position:absolute; left:${x}%; top:${y}%;
       transform:translate(-50%,-50%);
@@ -2754,13 +2765,33 @@
     return wrap;
   }
 
+  function tacticsCreateBallToken(x, y) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tactics-ball-token';
+    wrap.dataset.kind = 'ball';
+    wrap.style.cssText = `
+      position:absolute; left:${x}%; top:${y}%;
+      transform:translate(-50%,-50%);
+      display:flex; align-items:center; justify-content:center;
+      width:34px; height:34px;
+      font-size:24px; line-height:1;
+      user-select:none; cursor:grab; z-index:15;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
+      transition:left .15s ease, top .15s ease;
+    `;
+    wrap.textContent = '⚽';
+    wrap.title = '드래그해서 공 위치 이동';
+    return wrap;
+  }
+
   // -- 드래그 (Pointer Events API 사용)
   let tacticsDragging = null;
   let tacticsDragOffX = 0, tacticsDragOffY = 0;
   let tacticsPitchRect = null;
 
   function tacticsDragSetup() {
-    document.querySelectorAll('.tactics-token').forEach(tok => {
+    document.querySelectorAll('.tactics-token, .tactics-ball-token').forEach(tok => {
+      tok.removeEventListener('pointerdown', tacticsDragStart);
       tok.addEventListener('pointerdown', tacticsDragStart);
     });
   }
@@ -2788,8 +2819,12 @@
     const ny = Math.max(1, Math.min(99, cy - tacticsDragOffY));
     tacticsDragging.style.left = nx + '%';
     tacticsDragging.style.top  = ny + '%';
-    const idx = +tacticsDragging.dataset.idx;
     const stored = { x: nx, y: 100 - ny };
+    if (tacticsDragging.dataset.kind === 'ball') {
+      tacticsState.ballPosition = stored;
+      return;
+    }
+    const idx = +tacticsDragging.dataset.idx;
     if (idx < 11) tacticsState.homePositions[idx] = stored;
     else           tacticsState.awayPositions[idx - 11] = stored;
   }
@@ -2816,14 +2851,29 @@
 
   // -- 초기화 (현재 포메이션 기준 좌표 리셋)
   function tacticsReset() {
+    tacticsState.ballPosition = { x: 50, y: 50 };
     tacticsApplyLineup(tacticsState.lineup || TACTICS_MOCK_LINEUP);
   }
 
-  // -- 이름 표시 토글
+  // -- 이름 표시/공 표시 토글
   document.getElementById('tactics-show-names')?.addEventListener('change', tacticsRenderTokens);
+  document.getElementById('tactics-show-ball')?.addEventListener('change', tacticsRenderTokens);
 
   // -- 초기 렌더 (mock 데이터로 fallback)
-  tacticsApplyLineup(TACTICS_MOCK_LINEUP);
+  // 새로고침 직후 전술판이 실제로 선택 모드가 되도록 마지막에 한 번 더 확정 초기화
+  function tacticsInitDefaultSelect() {
+    tacticsApplyLineup(TACTICS_MOCK_LINEUP);
+    tacticsDrawSetTool('select');
+    const layer = document.getElementById('tactics-draw-layer');
+    if (layer) layer.style.pointerEvents = 'none';
+    tacticsDragSetup();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tacticsInitDefaultSelect, { once: true });
+  } else {
+    tacticsInitDefaultSelect();
+  }
   // ============================================================
   // 전술판 드로잉 도구
   // ============================================================
