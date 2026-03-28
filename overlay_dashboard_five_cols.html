@@ -1275,6 +1275,8 @@
               <path d="M 146.7 98 A 1.3 1.3 0 0 0 148 96.7" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
             </svg>
             <!-- 드로잉 레이어 -->
+            <!-- 지우개 커서 표시 -->
+            <div id="td-eraser-cursor" style="display:none;position:absolute;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);z-index:30;background:rgba(255,80,80,0.15);"></div>
             <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs></defs>
             </svg>
@@ -1294,26 +1296,31 @@
 
           <!-- 도구 선택 -->
           <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
-          <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 화살표</button>
           <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
           <button id="td-tool-dashed" onclick="tacticsDrawSetTool('dashed')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅ 점선</button>
+          <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 실선화살표</button>
+          <button id="td-tool-dashed-arrow" onclick="tacticsDrawSetTool('dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅➡ 점선화살표</button>
+          <button id="td-tool-curve-arrow" onclick="tacticsDrawSetTool('curve-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒➡ 곡선실선화살표</button>
+          <button id="td-tool-curve-dashed-arrow" onclick="tacticsDrawSetTool('curve-dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒┅➡ 곡선점선화살표</button>
           <button id="td-tool-box" onclick="tacticsDrawSetTool('box')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▢ 박스</button>
-
+          <button id="td-tool-circle" onclick="tacticsDrawSetTool('circle')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">○ 원</button>
+          <button id="td-tool-polygon" onclick="tacticsDrawSetTool('polygon')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">⬡ 다각형</button>
+          <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
           <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
 
           <!-- 색상 -->
           <div style="font-size:10px;color:#475569;font-weight:600;">선 색상</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px;">
-            <button onclick="tacticsDrawSetColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;background:#ffffff;border:2px solid #94a3b8;cursor:pointer;" title="흰색"></button>
-            <button onclick="tacticsDrawSetColor('#facc15')" style="width:22px;height:22px;border-radius:50%;background:#facc15;border:2px solid transparent;cursor:pointer;" title="노랑"></button>
-            <button onclick="tacticsDrawSetColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;border:2px solid transparent;cursor:pointer;" title="빨강"></button>
-            <button onclick="tacticsDrawSetColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;border:2px solid transparent;cursor:pointer;" title="파랑"></button>
-            <button onclick="tacticsDrawSetColor('#22c55e')" style="width:22px;height:22px;border-radius:50%;background:#22c55e;border:2px solid transparent;cursor:pointer;" title="초록"></button>
-            <button onclick="tacticsDrawSetColor('#f97316')" style="width:22px;height:22px;border-radius:50%;background:#f97316;border:2px solid transparent;cursor:pointer;" title="주황"></button>
-            <button onclick="tacticsDrawSetColor('#a855f7')" style="width:22px;height:22px;border-radius:50%;background:#a855f7;border:2px solid transparent;cursor:pointer;" title="보라"></button>
-            <button onclick="tacticsDrawSetColor('#1e293b')" style="width:22px;height:22px;border-radius:50%;background:#1e293b;border:2px solid #475569;cursor:pointer;" title="검정"></button>
-            <button onclick="tacticsDrawSetColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;border:2px solid transparent;cursor:pointer;" title="분홍"></button>
-            <button onclick="tacticsDrawSetColor('#92400e')" style="width:22px;height:22px;border-radius:50%;background:#92400e;border:2px solid transparent;cursor:pointer;" title="갈색"></button>
+            <button data-clr="#ffffff" onclick="tacticsDrawSetColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;background:#ffffff;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="흰색"></button>
+            <button data-clr="#facc15" onclick="tacticsDrawSetColor('#facc15')" style="width:22px;height:22px;border-radius:50%;background:#facc15;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="노랑"></button>
+            <button data-clr="#ef4444" onclick="tacticsDrawSetColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="빨강"></button>
+            <button data-clr="#3b82f6" onclick="tacticsDrawSetColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="파랑"></button>
+            <button data-clr="#22c55e" onclick="tacticsDrawSetColor('#22c55e')" style="width:22px;height:22px;border-radius:50%;background:#22c55e;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="초록"></button>
+            <button data-clr="#f97316" onclick="tacticsDrawSetColor('#f97316')" style="width:22px;height:22px;border-radius:50%;background:#f97316;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="주황"></button>
+            <button data-clr="#a855f7" onclick="tacticsDrawSetColor('#a855f7')" style="width:22px;height:22px;border-radius:50%;background:#a855f7;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="보라"></button>
+            <button data-clr="#1e293b" onclick="tacticsDrawSetColor('#1e293b')" style="width:22px;height:22px;border-radius:50%;background:#1e293b;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="검정"></button>
+            <button data-clr="#ec4899" onclick="tacticsDrawSetColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="분홍"></button>
+            <button data-clr="#92400e" onclick="tacticsDrawSetColor('#92400e')" style="width:22px;height:22px;border-radius:50%;background:#92400e;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="갈색"></button>
           </div>
 
           <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
@@ -2218,6 +2225,9 @@
   clockEl?.addEventListener('dblclick', openClockEditor);
   window.addEventListener('keydown', e=>{
     if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+    // Ctrl+Z: undo / Ctrl+Y: redo
+    if(e.ctrlKey && (e.key==='z'||e.key==='Z')){ e.preventDefault(); tdUndo(); return; }
+    if(e.ctrlKey && (e.key==='y'||e.key==='Y')){ e.preventDefault(); tdRedo(); return; }
     if(e.code==='Space'){ e.preventDefault(); state.running=!state.running; render(); persist(); }
     if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
     if(e.key==='t'||e.key==='T'){ state.extraShown=!state.extraShown; render(); persist(); }
@@ -2707,7 +2717,9 @@
       if (!player) return;
       // 실제 선수 이름이 있으면 그대로, 없으면(fallback) 포메이션 레이블
       const label = player._isReal ? player.nameKo : homeLabels[i] || player.pos;
-      pitch.appendChild(tacticsCreateToken(i, pos.x, 100 - pos.y, homeColor, {...player, nameKo: label}, showNames));
+      const tok = tacticsCreateToken(i, pos.x, 100 - pos.y, homeColor, {...player, nameKo: label}, showNames);
+      tok.dataset.team = 'home';
+      pitch.appendChild(tok);
     });
 
     // 어웨이팀 토큰
@@ -2715,7 +2727,9 @@
       const player = lineup.away.players[i];
       if (!player) return;
       const label = player._isReal ? player.nameKo : awayLabels[i] || player.pos;
-      pitch.appendChild(tacticsCreateToken(i + 11, pos.x, 100 - pos.y, awayColor, {...player, nameKo: label}, showNames));
+      const tok = tacticsCreateToken(i + 11, pos.x, 100 - pos.y, awayColor, {...player, nameKo: label}, showNames);
+      tok.dataset.team = 'away';
+      pitch.appendChild(tok);
     });
 
     if (showBall) {
@@ -2724,6 +2738,8 @@
     }
 
     tacticsDragSetup();
+    // 다각형 glow 복원 (토큰 재생성 후)
+    if (typeof tdApplyGlows === 'function') tdApplyGlows();
   }
 
   function tacticsCreateToken(idx, x, y, color, player, showNames) {
@@ -2807,6 +2823,14 @@
     const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
     tacticsDragOffX = cx - parseFloat(tacticsDragging.style.left);
     tacticsDragOffY = cy - parseFloat(tacticsDragging.style.top);
+    // undo용 시작 위치 기록
+    tdDragHistoryData = {
+      tok: tacticsDragging,
+      kind: tacticsDragging.dataset.kind === 'ball' ? 'ball' : 'player',
+      idx:  +tacticsDragging.dataset.idx,
+      fromX: parseFloat(tacticsDragging.style.left),
+      fromY: parseFloat(tacticsDragging.style.top),
+    };
     window.addEventListener('pointermove', tacticsDragMove);
     window.addEventListener('pointerup',   tacticsDragEnd);
   }
@@ -2833,6 +2857,22 @@
     if (tacticsDragging) {
       tacticsDragging.style.transition = 'left .15s ease, top .15s ease';
       tacticsDragging.style.zIndex = '10';
+      // undo 기록: 실제로 위치가 바뀐 경우만
+      if (tdDragHistoryData) {
+        const toX = parseFloat(tacticsDragging.style.left);
+        const toY = parseFloat(tacticsDragging.style.top);
+        if (Math.abs(toX - tdDragHistoryData.fromX) > 0.1 || Math.abs(toY - tdDragHistoryData.fromY) > 0.1) {
+          tdHistoryPush({
+            type: 'move',
+            kind: tdDragHistoryData.kind,
+            idx:  tdDragHistoryData.idx,
+            fromX: tdDragHistoryData.fromX,
+            fromY: tdDragHistoryData.fromY,
+            toX, toY,
+          });
+        }
+        tdDragHistoryData = null;
+      }
       tacticsDragging = null;
     }
     window.removeEventListener('pointermove', tacticsDragMove);
@@ -2852,6 +2892,8 @@
   // -- 초기화 (현재 포메이션 기준 좌표 리셋)
   function tacticsReset() {
     tacticsState.ballPosition = { x: 50, y: 50 };
+    tdHistory = [];
+    tdFuture = [];
     tacticsApplyLineup(tacticsState.lineup || TACTICS_MOCK_LINEUP);
   }
 
@@ -2877,26 +2919,50 @@
   // ============================================================
   // 전술판 드로잉 도구
   // ============================================================
-  let tdTool = 'select';       // select | arrow | line | dashed | box
+  let tdTool = 'select';       // select | arrow | line | dashed | box | eraser | ...
   let tdColor = '#ffffff';
   let tdDrawings = [];         // {type, x1,y1,x2,y2, color}
   let tdDrawing = false;
   let tdStart = null;
   let tdPreview = null;
+  let tdHistory = [];          // undo 스택: {type:'draw'|'erase'|'move'|'flip', ...}
+  let tdFuture = [];           // redo 스택 (Ctrl+Y)
+  let tdDragHistoryData = null; // 드래그 시작 시 저장
 
   function tacticsDrawSetTool(t) {
     tdTool = t;
-    ['select','arrow','line','dashed','box'].forEach(n => {
+    ['select','arrow','dashed-arrow','line','dashed','box','circle','polygon','curve-arrow','curve-dashed-arrow','eraser'].forEach(n => {
       const b = document.getElementById('td-tool-' + n);
       if (b) b.style.background = n === t ? '#1e40af' : '#1e293b';
     });
-    // 드로잉 모드면 pitch 위 draw-layer에 pointer-events 활성화
     const layer = document.getElementById('tactics-draw-layer');
-    if (layer) layer.style.pointerEvents = t === 'select' ? 'none' : 'all';
+    if (layer) layer.style.pointerEvents = (t === 'select') ? 'none' : 'all';
+    // 지우개 커서 표시 여부
+    const ec = document.getElementById('td-eraser-cursor');
+    if (ec) ec.style.display = t === 'eraser' ? 'block' : 'none';
+    // 지우개일 때 피치 커서 숨기기 (커서 div로 대체)
+    const pitch = document.getElementById('tactics-pitch');
+    if (pitch) pitch.style.cursor = t === 'eraser' ? 'none' : '';
   }
 
   function tacticsDrawSetColor(c) {
     tdColor = c;
+    document.querySelectorAll('[data-clr]').forEach(btn => {
+      btn.textContent = '';
+      btn.style.border = '2px solid transparent';
+      btn.style.boxShadow = btn.dataset.clr === '#ffffff' ? 'inset 0 0 0 1px rgba(0,0,0,0.2)'
+                          : btn.dataset.clr === '#facc15' ? 'inset 0 0 0 1px rgba(0,0,0,0.15)'
+                          : btn.dataset.clr === '#1e293b' ? 'inset 0 0 0 1px rgba(255,255,255,0.15)'
+                          : '';
+    });
+    const sel = document.querySelector(`[data-clr="${c}"]`);
+    if (sel) {
+      sel.textContent = '✓';
+      sel.style.color = '#fff';
+      sel.style.textShadow = '0 0 3px rgba(0,0,0,0.9),0 0 3px rgba(0,0,0,0.9)';
+      sel.style.border = '2px solid rgba(255,255,255,0.95)';
+      sel.style.boxShadow = '0 0 0 2px rgba(0,0,0,0.65)';
+    }
   }
 
   function tdGetPt(e, layer) {
@@ -2905,6 +2971,137 @@
       x: Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)),
       y: Math.max(0, Math.min(100, (e.clientY - r.top)  / r.height * 100)),
     };
+  }
+
+  // ── History (undo / redo) ──
+  function tdHistoryPush(action) {
+    tdHistory.push(action);
+    tdFuture = []; // 새 액션이 생기면 redo 스택 초기화
+    if (tdHistory.length > 200) tdHistory.shift();
+  }
+
+  function tdApplyMove(tok, action, toX, toY) {
+    tok.style.left = toX + '%';
+    tok.style.top  = toY + '%';
+    const stored = { x: toX, y: 100 - toY };
+    if (action.kind === 'ball') tacticsState.ballPosition = stored;
+    else if (action.idx < 11)  tacticsState.homePositions[action.idx] = stored;
+    else                        tacticsState.awayPositions[action.idx - 11] = stored;
+  }
+
+  function tdUndo() {
+    if (tdHistory.length === 0) return;
+    const action = tdHistory.pop();
+    tdFuture.push(action);
+    if (action.type === 'draw') {
+      for (let i = tdDrawings.length - 1; i >= 0; i--) {
+        if (tdDrawings[i] === action.drawing) { tdDrawings.splice(i, 1); break; }
+      }
+    } else if (action.type === 'erase') {
+      tdDrawings.splice(action.index, 0, action.drawing);
+    } else if (action.type === 'move') {
+      const tok = document.querySelector(
+        action.kind === 'ball' ? '.tactics-ball-token' : `.tactics-token[data-idx="${action.idx}"]`
+      );
+      if (tok) tdApplyMove(tok, action, action.fromX, action.fromY);
+      return;
+    } else if (action.type === 'flip') {
+      const d = tdDrawings[action.index];
+      if (d) { d.cx = action.prevCx; d.cy = action.prevCy; }
+    }
+    tdRenderAll();
+  }
+
+  function tdRedo() {
+    if (tdFuture.length === 0) return;
+    const action = tdFuture.pop();
+    tdHistory.push(action); // tdHistoryPush 대신 직접 push (future 초기화 안 함)
+    if (action.type === 'draw') {
+      tdDrawings.push(action.drawing);
+    } else if (action.type === 'erase') {
+      tdDrawings.splice(action.index, 1);
+    } else if (action.type === 'move') {
+      const tok = document.querySelector(
+        action.kind === 'ball' ? '.tactics-ball-token' : `.tactics-token[data-idx="${action.idx}"]`
+      );
+      if (tok) tdApplyMove(tok, action, action.toX, action.toY);
+      return;
+    } else if (action.type === 'flip') {
+      const d = tdDrawings[action.index];
+      if (d) {
+        const mx = (d.x1+d.x2)/2, my = (d.y1+d.y2)/2;
+        d.cx = 2*mx - action.prevCx;
+        d.cy = 2*my - action.prevCy;
+      }
+    }
+    tdRenderAll();
+  }
+
+  // 모든 drawing 타입에 대해 클릭 위치 px,py(viewBox %) hit test
+  function tdHitTestAny(px, py) {
+    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const W = pitch.width, H = pitch.height;
+    const spx = px/100*W, spy = py/100*H;
+    const THRESH = 14;
+    for (let i = tdDrawings.length - 1; i >= 0; i--) {
+      const d = tdDrawings[i];
+      const sx1 = d.x1/100*W, sy1 = d.y1/100*H;
+      if (d.type === 'curve-arrow' || d.type === 'curve-dashed-arrow') {
+        const cx = (d.cx ?? (d.x1+d.x2)/2), cy = (d.cy ?? (d.y1+d.y2)/2);
+        const sx2 = d.x2/100*W, sy2 = d.y2/100*H;
+        const scx = cx/100*W, scy = cy/100*H;
+        for (let t = 0; t <= 1; t += 0.04) {
+          const u = 1-t;
+          const bx = u*u*sx1 + 2*u*t*scx + t*t*sx2;
+          const by = u*u*sy1 + 2*u*t*scy + t*t*sy2;
+          if (Math.hypot(bx - spx, by - spy) < THRESH) return i;
+        }
+      } else if (d.type === 'line' || d.type === 'dashed' || d.type === 'arrow' || d.type === 'dashed-arrow') {
+        const sx2 = d.x2/100*W, sy2 = d.y2/100*H;
+        // 선분 위 최근접 거리
+        const ldx = sx2-sx1, ldy = sy2-sy1;
+        const llen2 = ldx*ldx + ldy*ldy;
+        if (llen2 < 1) { if (Math.hypot(spx-sx1, spy-sy1) < THRESH) return i; continue; }
+        const t = Math.max(0, Math.min(1, ((spx-sx1)*ldx + (spy-sy1)*ldy) / llen2));
+        const nx = sx1 + t*ldx, ny = sy1 + t*ldy;
+        if (Math.hypot(spx-nx, spy-ny) < THRESH) return i;
+      } else if (d.type === 'box') {
+        const sx2 = d.x2/100*W, sy2 = d.y2/100*H;
+        const rx1 = Math.min(sx1,sx2), ry1 = Math.min(sy1,sy2);
+        const rx2 = Math.max(sx1,sx2), ry2 = Math.max(sy1,sy2);
+        // 외곽선에서 THRESH 이내
+        const inX = spx >= rx1-THRESH && spx <= rx2+THRESH;
+        const inY = spy >= ry1-THRESH && spy <= ry2+THRESH;
+        const nearL = Math.abs(spx-rx1) < THRESH && inY;
+        const nearR = Math.abs(spx-rx2) < THRESH && inY;
+        const nearT = Math.abs(spy-ry1) < THRESH && inX;
+        const nearB = Math.abs(spy-ry2) < THRESH && inX;
+        if (nearL || nearR || nearT || nearB) return i;
+      } else if (d.type === 'circle') {
+        const sx2 = d.x2/100*W, sy2 = d.y2/100*H;
+        const rcx = (sx1+sx2)/2, rcy = (sy1+sy2)/2;
+        const ra = Math.abs(sx2-sx1)/2, rb = Math.abs(sy2-sy1)/2;
+        if (ra < 1 || rb < 1) continue;
+        // 타원 경계까지 거리 근사
+        const ex = (spx-rcx)/ra, ey = (spy-rcy)/rb;
+        const dist = Math.abs(Math.sqrt(ex*ex+ey*ey) - 1) * Math.min(ra,rb);
+        if (dist < THRESH) return i;
+      } else if (d.type === 'polygon' && d.points) {
+        // 변(edge)에서 THRESH 이내
+        const pts = d.points;
+        for (let j = 0; j < pts.length; j++) {
+          const p1 = pts[j], p2 = pts[(j+1)%pts.length];
+          const ex1 = p1.x/100*W, ey1 = p1.y/100*H;
+          const ex2 = p2.x/100*W, ey2 = p2.y/100*H;
+          const edx = ex2-ex1, edy = ey2-ey1;
+          const elen2 = edx*edx + edy*edy;
+          if (elen2 < 1) continue;
+          const et = Math.max(0, Math.min(1, ((spx-ex1)*edx + (spy-ey1)*edy) / elen2));
+          if (Math.hypot(spx - (ex1+et*edx), spy - (ey1+et*edy)) < THRESH) return i;
+        }
+      }
+    }
+    return -1;
   }
 
   // 색상을 마커 ID에 쓸 수 있는 문자열로 변환 (#3b82f6 → c3b82f6)
@@ -2934,53 +3131,190 @@
     return id;
   }
 
+  // 곡선 컨트롤 포인트 자동 계산 (선 길이의 25%, 왼쪽 수직 방향)
+  // 피치 실제 픽셀 크기 기준으로 계산해 비율 왜곡 보정
+  function tdCalcCurveCtrl(x1, y1, x2, y2) {
+    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const W = pitch.width, H = pitch.height;
+    // viewBox % → 화면 픽셀
+    const sx1 = x1/100*W, sy1 = y1/100*H;
+    const sx2 = x2/100*W, sy2 = y2/100*H;
+    const dx = sx2-sx1, dy = sy2-sy1;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len < 1) return { cx: (x1+x2)/2, cy: (y1+y2)/2 };
+    // 왼쪽/오른쪽 수직 단위벡터
+    const px = -dy/len, py = dx/len;
+    const off = len * 0.25;
+    const msx = (sx1+sx2)/2, msy = (sy1+sy2)/2;
+    // 두 후보 컨트롤 포인트 (viewBox %)
+    const cy1 = (msy + py*off) / H * 100;
+    const cy2 = (msy - py*off) / H * 100;
+    // 피치 세로 중심(y=50)에서 더 먼 쪽(바깥쪽)을 선택
+    const useLeft = Math.abs(cy1 - 50) >= Math.abs(cy2 - 50);
+    return {
+      cx: useLeft ? (msx + px*off)/W*100 : (msx - px*off)/W*100,
+      cy: useLeft ? cy1 : cy2,
+    };
+  }
+
+  // hex → rgba 변환 헬퍼
+  function tdHexRgba(hex, alpha) {
+    const h = hex.replace('#','');
+    const r = parseInt(h.substring(0,2),16);
+    const g = parseInt(h.substring(2,4),16);
+    const b = parseInt(h.substring(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
   function tdMakeEl(d, isPreview) {
     const NS = 'http://www.w3.org/2000/svg';
     const op = isPreview ? 0.6 : 1;
     const layer = document.getElementById('tactics-draw-layer');
+
     if (d.type === 'box') {
       const r = document.createElementNS(NS, 'rect');
       r.setAttribute('x', Math.min(d.x1, d.x2));
       r.setAttribute('y', Math.min(d.y1, d.y2));
       r.setAttribute('width', Math.abs(d.x2 - d.x1));
       r.setAttribute('height', Math.abs(d.y2 - d.y1));
-      r.setAttribute('fill', 'none');
+      r.setAttribute('fill', tdHexRgba(d.color, 0.18));   // 음영 효과
       r.setAttribute('stroke', d.color);
       r.setAttribute('stroke-width', '0.5');
       r.setAttribute('opacity', op);
       r.setAttribute('rx', '0.3');
       return r;
-    } else {
-      const line = document.createElementNS(NS, 'line');
-      line.setAttribute('x1', d.x1); line.setAttribute('y1', d.y1);
-      line.setAttribute('x2', d.x2); line.setAttribute('y2', d.y2);
-      line.setAttribute('stroke', d.color);
-      line.setAttribute('stroke-width', '0.5');
-      line.setAttribute('stroke-linecap', 'round');
-      line.setAttribute('opacity', op);
-      if (d.type === 'dashed') line.setAttribute('stroke-dasharray', '1.5 1');
-      if (d.type === 'arrow' && layer) {
-        const markerId = tdEnsureMarker(layer, d.color);
-        line.setAttribute('marker-end', `url(#${markerId})`);
-      }
-      return line;
     }
+
+    if (d.type === 'circle') {
+      const el = document.createElementNS(NS, 'ellipse');
+      el.setAttribute('cx', (d.x1 + d.x2) / 2);
+      el.setAttribute('cy', (d.y1 + d.y2) / 2);
+      el.setAttribute('rx', Math.abs(d.x2 - d.x1) / 2);
+      el.setAttribute('ry', Math.abs(d.y2 - d.y1) / 2);
+      el.setAttribute('fill', tdHexRgba(d.color, 0.18));  // 음영 효과
+      el.setAttribute('stroke', d.color);
+      el.setAttribute('stroke-width', '0.5');
+      el.setAttribute('opacity', op);
+      return el;
+    }
+
+    if (d.type === 'polygon') {
+      const pts = d.points.map(p => `${p.x},${p.y}`).join(' ');
+      const el = document.createElementNS(NS, 'polygon');
+      el.setAttribute('points', pts);
+      el.setAttribute('fill', tdHexRgba(d.color, 0.2));   // 음영 효과
+      el.setAttribute('stroke', d.color);
+      el.setAttribute('stroke-width', '0.5');
+      el.setAttribute('opacity', op);
+      return el;
+    }
+
+    // curve-arrow / curve-dashed-arrow
+    if (d.type === 'curve-arrow' || d.type === 'curve-dashed-arrow') {
+      const cx = d.cx ?? (d.x1+d.x2)/2;
+      const cy = d.cy ?? (d.y1+d.y2)/2;
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', `M ${d.x1} ${d.y1} Q ${cx} ${cy} ${d.x2} ${d.y2}`);
+      path.setAttribute('stroke', d.color);
+      path.setAttribute('stroke-width', '0.5');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('opacity', op);
+      if (d.type === 'curve-dashed-arrow') path.setAttribute('stroke-dasharray', '1.5 1');
+      if (layer) {
+        const markerId = tdEnsureMarker(layer, d.color);
+        path.setAttribute('marker-end', `url(#${markerId})`);
+      }
+      return path;
+    }
+
+    // line / dashed / arrow
+    const line = document.createElementNS(NS, 'line');
+    line.setAttribute('x1', d.x1); line.setAttribute('y1', d.y1);
+    line.setAttribute('x2', d.x2); line.setAttribute('y2', d.y2);
+    line.setAttribute('stroke', d.color);
+    line.setAttribute('stroke-width', '0.5');
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('opacity', op);
+    if (d.type === 'dashed' || d.type === 'dashed-arrow') line.setAttribute('stroke-dasharray', '1.5 1');
+    if ((d.type === 'arrow' || d.type === 'dashed-arrow') && layer) {
+      const markerId = tdEnsureMarker(layer, d.color);
+      line.setAttribute('marker-end', `url(#${markerId})`);
+    }
+    return line;
+  }
+
+  // 볼록 껍질 (Gift Wrapping)
+  function tdConvexHull(pts) {
+    if (pts.length < 3) return pts;
+    const start = pts.reduce((a, b) => (a.x < b.x || (a.x === b.x && a.y < b.y)) ? a : b);
+    const hull = [];
+    let cur = start;
+    do {
+      hull.push(cur);
+      let next = pts[0];
+      for (const p of pts) {
+        if (next === cur) { next = p; continue; }
+        const cross = (next.x - cur.x) * (p.y - cur.y) - (next.y - cur.y) * (p.x - cur.x);
+        const d1 = (p.x-cur.x)**2 + (p.y-cur.y)**2;
+        const d2 = (next.x-cur.x)**2 + (next.y-cur.y)**2;
+        if (cross < 0 || (cross === 0 && d1 > d2)) next = p;
+      }
+      cur = next;
+    } while (cur !== start && hull.length <= pts.length + 1);
+    return hull;
+  }
+
+  // 다각형 꼭짓점 토큰에 glow 적용
+  function tdApplyGlows() {
+    // 기존 glow 초기화
+    document.querySelectorAll('.tactics-token').forEach(tok => {
+      const circle = tok.querySelector('div');
+      if (circle) circle.style.boxShadow = '0 2px 8px rgba(0,0,0,.45)';
+    });
+    // polygon 드로잉에서 playerIndices 수집 후 glow 적용
+    const glowMap = {};  // idx → color
+    tdDrawings.forEach(d => {
+      if (d.type === 'polygon' && d.playerIndices) {
+        d.playerIndices.forEach(i => { glowMap[i] = d.color; });
+      }
+    });
+    Object.entries(glowMap).forEach(([idx, color]) => {
+      const tok = document.querySelector(`.tactics-token[data-idx="${idx}"]`);
+      if (!tok) return;
+      const circle = tok.querySelector('div');
+      if (circle) {
+        circle.style.boxShadow =
+          `0 0 0 3px rgba(255,255,255,0.85),
+           0 0 10px 4px ${tdHexRgba(color, 0.7)},
+           0 0 20px 6px ${tdHexRgba(color, 0.35)}`;
+      }
+    });
+  }
+
+  // 드래그 중 선택 rect 안의 토큰 임시 하이라이트
+  function tdHighlightTokensInRect(x1, y1, x2, y2) {
+    document.querySelectorAll('.tactics-token').forEach(tok => {
+      const tx = parseFloat(tok.style.left);
+      const ty = parseFloat(tok.style.top);
+      const inside = tx >= x1 && tx <= x2 && ty >= y1 && ty <= y2;
+      const circle = tok.querySelector('div');
+      if (!circle) return;
+      circle.style.boxShadow = inside
+        ? `0 0 0 3px rgba(255,255,255,0.85), 0 0 12px 4px ${tdHexRgba(tdColor, 0.7)}`
+        : '0 2px 8px rgba(0,0,0,.45)';
+    });
   }
 
   function tdRenderAll() {
     const layer = document.getElementById('tactics-draw-layer');
     if (!layer) return;
-    // defs 보존하고 나머지 제거
     [...layer.children].forEach(c => { if (c.tagName !== 'defs') c.remove(); });
     tdDrawings.forEach(d => layer.appendChild(tdMakeEl(d, false)));
+    tdApplyGlows();
   }
 
-  // 드로잉 레이어 이벤트
-  document.addEventListener('DOMContentLoaded', () => {
-    // DOMContentLoaded 이후 attach — 요소가 있을 때
-  });
-
-  // pointerdown on draw layer
+  // ── 드로잉 레이어 이벤트 ──
   document.getElementById('tactics-draw-layer')?.addEventListener('pointerdown', e => {
     if (tdTool === 'select') return;
     e.preventDefault();
@@ -2991,36 +3325,198 @@
   });
 
   document.getElementById('tactics-draw-layer')?.addEventListener('pointermove', e => {
+    // 지우개 커서 위치 업데이트 (드래그 여부 무관)
+    if (tdTool === 'eraser') {
+      const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+      const ec = document.getElementById('td-eraser-cursor');
+      if (ec) {
+        ec.style.left = (e.clientX - pitch.left) + 'px';
+        ec.style.top  = (e.clientY - pitch.top)  + 'px';
+      }
+    }
     if (!tdDrawing || tdTool === 'select') return;
     const cur = tdGetPt(e);
     const layer = document.getElementById('tactics-draw-layer');
     if (!layer) return;
+    // 지우개: 드래그 중 닿는 도형 지우기
+    if (tdTool === 'eraser') {
+      const idx = tdHitTestAny(cur.x, cur.y);
+      if (idx >= 0) {
+        tdHistoryPush({ type: 'erase', index: idx, drawing: tdDrawings[idx] });
+        tdDrawings.splice(idx, 1);
+        tdRenderAll();
+      }
+      return;
+    }
     if (tdPreview) tdPreview.remove();
-    tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor}, true);
-    layer.appendChild(tdPreview);
+
+    if (tdTool === 'polygon') {
+      // 선택 사각형 미리보기
+      const NS = 'http://www.w3.org/2000/svg';
+      const r = document.createElementNS(NS, 'rect');
+      const rx = Math.min(tdStart.x, cur.x), ry = Math.min(tdStart.y, cur.y);
+      r.setAttribute('x', rx);       r.setAttribute('y', ry);
+      r.setAttribute('width', Math.abs(cur.x - tdStart.x));
+      r.setAttribute('height', Math.abs(cur.y - tdStart.y));
+      r.setAttribute('fill', 'rgba(255,255,255,0.04)');
+      r.setAttribute('stroke', 'rgba(255,255,255,0.55)');
+      r.setAttribute('stroke-width', '0.4');
+      r.setAttribute('stroke-dasharray', '2 1');
+      tdPreview = r;
+      layer.appendChild(tdPreview);
+      // 드래그 중 토큰 하이라이트
+      tdHighlightTokensInRect(rx, ry, rx + Math.abs(cur.x - tdStart.x), ry + Math.abs(cur.y - tdStart.y));
+    } else if (tdTool === 'curve-arrow' || tdTool === 'curve-dashed-arrow') {
+      const ctrl = tdCalcCurveCtrl(tdStart.x, tdStart.y, cur.x, cur.y);
+      tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, cx:ctrl.cx, cy:ctrl.cy, color:tdColor}, true);
+      layer.appendChild(tdPreview);
+    } else {
+      tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor}, true);
+      layer.appendChild(tdPreview);
+    }
   });
 
   document.getElementById('tactics-draw-layer')?.addEventListener('pointerup', e => {
     if (!tdDrawing || tdTool === 'select') return;
     tdDrawing = false;
     if (tdPreview) { tdPreview.remove(); tdPreview = null; }
+    // 지우개: 단일 클릭으로도 지우기
+    if (tdTool === 'eraser') {
+      const cur = tdGetPt(e);
+      const idx = tdHitTestAny(cur.x, cur.y);
+      if (idx >= 0) {
+        tdHistoryPush({ type: 'erase', index: idx, drawing: tdDrawings[idx] });
+        tdDrawings.splice(idx, 1);
+        tdRenderAll();
+      }
+      return;
+    }
     const cur = tdGetPt(e);
+
+    if (tdTool === 'polygon') {
+      // 선택 rect 안의 토큰 수집
+      const x1 = Math.min(tdStart.x, cur.x), y1 = Math.min(tdStart.y, cur.y);
+      const x2 = Math.max(tdStart.x, cur.x), y2 = Math.max(tdStart.y, cur.y);
+      const inRect = [];
+      document.querySelectorAll('.tactics-token').forEach(tok => {
+        const tx = parseFloat(tok.style.left);
+        const ty = parseFloat(tok.style.top);
+        if (tx >= x1 && tx <= x2 && ty >= y1 && ty <= y2) {
+          inRect.push({ x: tx, y: ty, idx: +tok.dataset.idx, team: tok.dataset.team });
+        }
+      });
+      // 드래그 시작점에 가장 가까운 토큰의 팀만 선택 (DOM 순서 무관)
+      let firstTeam = null;
+      if (inRect.length > 0) {
+        const closest = inRect.reduce((best, t) => {
+          const d  = (t.x - tdStart.x) ** 2 + (t.y - tdStart.y) ** 2;
+          const bd = (best.x - tdStart.x) ** 2 + (best.y - tdStart.y) ** 2;
+          return d < bd ? t : best;
+        });
+        firstTeam = closest.team;
+      }
+      const selected = firstTeam ? inRect.filter(t => t.team === firstTeam) : inRect;
+      if (selected.length >= 3) {
+        const hull = tdConvexHull(selected.map(p => ({x: p.x, y: p.y})));
+        const drawing = {
+          type: 'polygon',
+          points: hull,
+          playerIndices: selected.map(p => p.idx),
+          color: tdColor,
+        };
+        tdDrawings.push(drawing);
+        tdHistoryPush({ type: 'draw', drawing });
+      } else {
+        // 3개 미만 → 하이라이트만 초기화
+        tdApplyGlows();
+      }
+      tdRenderAll();
+      return;
+    }
+
     const dx = Math.abs(cur.x - tdStart.x), dy = Math.abs(cur.y - tdStart.y);
     if (dx > 1 || dy > 1) {
-      tdDrawings.push({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor});
+      let drawing;
+      if (tdTool === 'curve-arrow' || tdTool === 'curve-dashed-arrow') {
+        const ctrl = tdCalcCurveCtrl(tdStart.x, tdStart.y, cur.x, cur.y);
+        drawing = {type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, cx:ctrl.cx, cy:ctrl.cy, color:tdColor};
+      } else {
+        drawing = {type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor};
+      }
+      tdDrawings.push(drawing);
+      tdHistoryPush({ type: 'draw', drawing });
       tdRenderAll();
     }
   });
 
   function tacticsDrawUndo() {
-    tdDrawings.pop();
-    tdRenderAll();
+    tdUndo();
   }
 
   function tacticsDrawClear() {
     tdDrawings = [];
+    tdHistory = [];
+    tdFuture = [];
     tdRenderAll();
   }
+
+  // ── 곡선 화살표 클릭 → 방향 반전 ──
+  // 클릭 위치(viewBox %)와 베지어 곡선 사이 최소 거리를 샘플링으로 구함
+  function tdHitTestCurve(px, py) {
+    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const W = pitch.width, H = pitch.height;
+    const spx = px/100*W, spy = py/100*H;
+    const THRESHOLD = 14; // 픽셀
+    // 위에 그린 것부터 탐색 (최근 드로잉 우선)
+    for (let i = tdDrawings.length - 1; i >= 0; i--) {
+      const d = tdDrawings[i];
+      if (d.type !== 'curve-arrow' && d.type !== 'curve-dashed-arrow') continue;
+      const cx = d.cx ?? (d.x1+d.x2)/2, cy = d.cy ?? (d.y1+d.y2)/2;
+      for (let t = 0; t <= 1; t += 0.05) {
+        const u = 1 - t;
+        const bx = u*u*d.x1 + 2*u*t*cx + t*t*d.x2;
+        const by = u*u*d.y1 + 2*u*t*cy + t*t*d.y2;
+        if (Math.hypot(bx/100*W - spx, by/100*H - spy) < THRESHOLD) return i;
+      }
+    }
+    return -1;
+  }
+
+  // 컨트롤 포인트를 시작-끝 중점 기준으로 반전
+  function tdFlipCurve(idx) {
+    const d = tdDrawings[idx];
+    if (!d) return;
+    const prevCx = d.cx ?? (d.x1+d.x2)/2;
+    const prevCy = d.cy ?? (d.y1+d.y2)/2;
+    const mx = (d.x1+d.x2)/2, my = (d.y1+d.y2)/2;
+    d.cx = 2*mx - prevCx;
+    d.cy = 2*my - prevCy;
+    tdHistoryPush({ type: 'flip', index: idx, prevCx, prevCy });
+    tdRenderAll();
+  }
+
+  // select 모드에서 피치 클릭 → 곡선 화살표 근처면 반전
+  document.getElementById('tactics-pitch')?.addEventListener('click', e => {
+    if (tdTool !== 'select') return;
+    if (e.target.closest('.tactics-token, .tactics-ball-token')) return;
+    const pt = tdGetPt(e);
+    const idx = tdHitTestCurve(pt.x, pt.y);
+    if (idx >= 0) tdFlipCurve(idx);
+  });
+
+  // 지우개 커서 — 피치 영역 벗어나면 숨기기
+  document.getElementById('tactics-pitch')?.addEventListener('mouseleave', () => {
+    const ec = document.getElementById('td-eraser-cursor');
+    if (ec) ec.style.display = 'none';
+  });
+  document.getElementById('tactics-pitch')?.addEventListener('mouseenter', () => {
+    if (tdTool !== 'eraser') return;
+    const ec = document.getElementById('td-eraser-cursor');
+    if (ec) ec.style.display = 'block';
+  });
+
+  // 초기 색상 버튼 UI 상태 설정
+  tacticsDrawSetColor(tdColor);
   // ============================================================
   // END 드로잉 도구
   // ============================================================
