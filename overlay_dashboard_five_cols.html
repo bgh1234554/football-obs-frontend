@@ -770,7 +770,10 @@
         <span id="fixture-status" class="fixture-inline-status"></span>
       </div>
     </div>
-    <button id="open-fixture-overlay" class="right-btn">경기ID 입력</button>
+    <div style="display:flex;gap:4px;">
+      <button id="open-fixture-overlay" class="right-btn">경기ID 입력</button>
+      <button onclick="toggleTabsAndPages()" class="right-btn" id="btn-toggle-tabs">탭 숨기기 (H)</button>
+    </div>
   </div>
 
   <!-- 토스트 알림 -->
@@ -1277,6 +1280,8 @@
             <!-- 드로잉 레이어 -->
             <!-- 지우개 커서 표시 -->
             <div id="td-eraser-cursor" style="display:none;position:absolute;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);z-index:30;background:rgba(255,80,80,0.15);"></div>
+            <!-- 레이저 포인터 캔버스 -->
+            <canvas id="td-laser-canvas" style="display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;"></canvas>
             <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs></defs>
             </svg>
@@ -1306,6 +1311,7 @@
           <button id="td-tool-circle" onclick="tacticsDrawSetTool('circle')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">○ 원</button>
           <button id="td-tool-polygon" onclick="tacticsDrawSetTool('polygon')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">⬡ 다각형</button>
           <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
+          <button id="td-tool-laser" onclick="tacticsDrawSetTool('laser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="클릭하지 않고 마우스만 움직여도 됩니다">🔴 레이저</button>
           <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
 
           <!-- 색상 -->
@@ -2251,6 +2257,8 @@
   function toggleTabsAndPages(){
     tabsHidden = !tabsHidden;
     tabsEl.style.display = tabsHidden ? 'none' : '';
+    const btn = document.getElementById('btn-toggle-tabs');
+    if (btn) btn.textContent = tabsHidden ? '탭 보이기 (H)' : '탭 숨기기 (H)';
   }
 
   // =============================
@@ -2929,9 +2937,146 @@
   let tdFuture = [];           // redo 스택 (Ctrl+Y)
   let tdDragHistoryData = null; // 드래그 시작 시 저장
 
+  // ── 레이저 포인터 ──
+  // ── 레이저 포인터 (굿노트 방식) ──
+  // 클릭+드래그 시 획이 생기고, 뗀 뒤 일정 시간 후 획 단위로 사라짐
+  let tdLaserStrokes  = [];    // [{points:[{x,y}], alpha, fadeStart}]
+  let tdLaserCurStroke = null; // 현재 그리는 획 (포인터 누른 동안)
+  let tdLaserMouseX = 50;
+  let tdLaserMouseY = 50;
+  let tdLaserLastUp = 0;
+  let tdLaserFading = false;
+  let tdLaserRAF = null;
+  let tdLaserRunning = false;
+  const TD_LASER_IDLE_MS = 300;  // 뗀 뒤 대기 시간
+  const TD_LASER_FADE_MS = 350;  // 획 하나가 사라지는 시간
+  const TD_LASER_GAP_MS  = 150;  // 획 간 딜레이
+
+  function tdLaserStart() {
+    tdLaserRunning = true;
+    tdLaserStrokes = [];
+    tdLaserCurStroke = null;
+    tdLaserFading = false;
+    const canvas = document.getElementById('td-laser-canvas');
+    if (canvas) canvas.style.display = 'block';
+    if (!tdLaserRAF) tdLaserRAF = requestAnimationFrame(tdLaserDraw);
+  }
+
+  function tdLaserStop() {
+    tdLaserRunning = false;
+    tdLaserCurStroke = null;
+    // 획이 남아있으면 RAF가 사라질 때까지 계속 돌다 스스로 종료
+  }
+
+  function tdLaserPointerDown(e) {
+    e.preventDefault();
+    e.target.setPointerCapture(e.pointerId);
+    // 새 획 시작. 이미 fade 중이었으면 리셋 (다시 쓰기 시작)
+    tdLaserFading = false;
+    tdLaserStrokes.forEach(s => { s.fadeStart = null; s.alpha = 1; });
+    tdLaserCurStroke = { points: [], alpha: 1, fadeStart: null };
+    tdLaserStrokes.push(tdLaserCurStroke);
+    const pt = tdGetPt(e);
+    tdLaserMouseX = pt.x; tdLaserMouseY = pt.y;
+    const pts = tdLaserCurStroke.points;
+    pts.push({ x: pt.x, y: pt.y });
+  }
+
+  function tdLaserPointerMove(e) {
+    const pt = tdGetPt(e);
+    tdLaserMouseX = pt.x; tdLaserMouseY = pt.y;
+    if (!tdLaserCurStroke) return; // hover만이면 점만 이동
+    const pts = tdLaserCurStroke.points;
+    const last = pts[pts.length - 1];
+    if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 0.3) return;
+    pts.push({ x: pt.x, y: pt.y });
+  }
+
+  function tdLaserPointerUp() {
+    tdLaserCurStroke = null;
+    tdLaserLastUp = performance.now();
+  }
+
+  function tdLaserDraw() {
+    const canvas = document.getElementById('td-laser-canvas');
+    if (!canvas) { tdLaserRAF = null; return; }
+
+    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const W = Math.round(pitch.width), H = Math.round(pitch.height);
+    if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+
+    const ctx = canvas.getContext('2d');
+    const now = performance.now();
+    ctx.clearRect(0, 0, W, H);
+
+    // 손을 뗀 뒤 대기 시간이 지나면 획별로 fade 스케줄 등록
+    const stoppedIdle = !tdLaserCurStroke
+      && tdLaserStrokes.length > 0
+      && (now - tdLaserLastUp) > TD_LASER_IDLE_MS;
+    if (stoppedIdle && !tdLaserFading) {
+      tdLaserFading = true;
+      tdLaserStrokes.forEach((s, i) => {
+        s.fadeStart = now + i * TD_LASER_GAP_MS;
+      });
+    }
+
+    // alpha 업데이트 (현재 그리는 획은 항상 1)
+    for (const s of tdLaserStrokes) {
+      if (s === tdLaserCurStroke) { s.alpha = 1; continue; }
+      if (s.fadeStart !== null) {
+        const elapsed = now - s.fadeStart;
+        s.alpha = elapsed < 0 ? 1 : Math.max(0, 1 - elapsed / TD_LASER_FADE_MS);
+      }
+    }
+    // 완전히 사라진 획 제거 (현재 획은 보존)
+    tdLaserStrokes = tdLaserStrokes.filter(s => s === tdLaserCurStroke || s.alpha > 0);
+
+    // 획 그리기
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    for (const s of tdLaserStrokes) {
+      if (s.points.length < 2) continue;
+      ctx.globalAlpha = s.alpha;
+      ctx.shadowColor = 'rgba(255,60,60,0.5)';
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.moveTo(s.points[0].x / 100 * W, s.points[0].y / 100 * H);
+      for (let i = 1; i < s.points.length; i++) {
+        ctx.lineTo(s.points[i].x / 100 * W, s.points[i].y / 100 * H);
+      }
+      ctx.strokeStyle = 'rgba(235,70,70,0.85)';
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+
+    // 커서 점 — 레이저 모드 활성화 중 항상 표시
+    if (tdLaserRunning) {
+      const cx = tdLaserMouseX / 100 * W, cy = tdLaserMouseY / 100 * H;
+      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 12);
+      grd.addColorStop(0, 'rgba(255,140,140,0.45)');
+      grd.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+      ctx.fillStyle = grd; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(235,60,60,1)'; ctx.fill();
+    }
+
+    // 모드 종료 + 모든 획 사라짐 → RAF 정지
+    if (!tdLaserRunning && tdLaserStrokes.length === 0) {
+      canvas.style.display = 'none';
+      tdLaserRAF = null;
+      return;
+    }
+    tdLaserRAF = requestAnimationFrame(tdLaserDraw);
+  }
+
   function tacticsDrawSetTool(t) {
     tdTool = t;
-    ['select','arrow','dashed-arrow','line','dashed','box','circle','polygon','curve-arrow','curve-dashed-arrow','eraser'].forEach(n => {
+    ['select','arrow','dashed-arrow','line','dashed','box','circle','polygon','curve-arrow','curve-dashed-arrow','eraser','laser'].forEach(n => {
       const b = document.getElementById('td-tool-' + n);
       if (b) b.style.background = n === t ? '#1e40af' : '#1e293b';
     });
@@ -2940,9 +3085,12 @@
     // 지우개 커서 표시 여부
     const ec = document.getElementById('td-eraser-cursor');
     if (ec) ec.style.display = t === 'eraser' ? 'block' : 'none';
-    // 지우개일 때 피치 커서 숨기기 (커서 div로 대체)
+    // 지우개/레이저일 때 피치 커서 숨기기
     const pitch = document.getElementById('tactics-pitch');
-    if (pitch) pitch.style.cursor = t === 'eraser' ? 'none' : '';
+    if (pitch) pitch.style.cursor = (t === 'eraser' || t === 'laser') ? 'none' : '';
+    // 레이저
+    if (t === 'laser') tdLaserStart();
+    else               tdLaserStop();
   }
 
   function tacticsDrawSetColor(c) {
@@ -3317,6 +3465,7 @@
   // ── 드로잉 레이어 이벤트 ──
   document.getElementById('tactics-draw-layer')?.addEventListener('pointerdown', e => {
     if (tdTool === 'select') return;
+    if (tdTool === 'laser') { tdLaserPointerDown(e); return; }
     e.preventDefault();
     e.target.setPointerCapture(e.pointerId);
     tdDrawing = true;
@@ -3334,6 +3483,8 @@
         ec.style.top  = (e.clientY - pitch.top)  + 'px';
       }
     }
+    // 레이저 포인터 — hover 시 점 이동, 클릭+드래그 시 획 추가
+    if (tdTool === 'laser') { tdLaserPointerMove(e); return; }
     if (!tdDrawing || tdTool === 'select') return;
     const cur = tdGetPt(e);
     const layer = document.getElementById('tactics-draw-layer');
@@ -3377,6 +3528,7 @@
   });
 
   document.getElementById('tactics-draw-layer')?.addEventListener('pointerup', e => {
+    if (tdTool === 'laser') { tdLaserPointerUp(); return; }
     if (!tdDrawing || tdTool === 'select') return;
     tdDrawing = false;
     if (tdPreview) { tdPreview.remove(); tdPreview = null; }
