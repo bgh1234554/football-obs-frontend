@@ -1278,6 +1278,8 @@
               <path d="M 146.7 98 A 1.3 1.3 0 0 0 148 96.7" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
             </svg>
             <!-- 드로잉 레이어 -->
+            <!-- 다중 선택 rect -->
+            <div id="td-select-rect" style="display:none;position:absolute;border:1.5px dashed rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);pointer-events:none;z-index:18;box-sizing:border-box;"></div>
             <!-- 지우개 커서 표시 -->
             <div id="td-eraser-cursor" style="display:none;position:absolute;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);z-index:30;background:rgba(255,80,80,0.15);"></div>
             <!-- 레이저 포인터 캔버스 -->
@@ -1310,6 +1312,7 @@
           <button id="td-tool-box" onclick="tacticsDrawSetTool('box')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▢ 박스</button>
           <button id="td-tool-circle" onclick="tacticsDrawSetTool('circle')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">○ 원</button>
           <button id="td-tool-polygon" onclick="tacticsDrawSetTool('polygon')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">⬡ 다각형</button>
+          <button id="td-tool-line-connect" onclick="tacticsDrawSetTool('line-connect')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="드래그로 선수 선택 → x 순서로 직선 연결">⊨ 라인</button>
           <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
           <button id="td-tool-laser" onclick="tacticsDrawSetTool('laser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="클릭하지 않고 마우스만 움직여도 됩니다">🔴 레이저</button>
           <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
@@ -2813,6 +2816,28 @@
     return wrap;
   }
 
+  // -- 다중 선택
+  let tdSelectedTokens = new Set(); // 선택된 .tactics-token 엘리먼트들
+
+  function tdSelectApplyGlow() {
+    // 선택된 토큰에만 selection glow 적용 (나머지는 건드리지 않음)
+    tdSelectedTokens.forEach(tok => {
+      const circle = tok.querySelector('div');
+      if (!circle) return;
+      const bg = tok.dataset.team === 'home'
+        ? (state.colors.homeBg || '#3B82F6')
+        : (state.colors.awayBg || '#EF4444');
+      circle.style.boxShadow =
+        `0 0 0 2.5px rgba(255,255,255,0.9), 0 0 10px 4px ${bg}, 0 0 22px 8px ${bg}88`;
+    });
+  }
+
+  function tdClearSelection() {
+    tdSelectedTokens.clear();
+    // polygon glow 포함 전체 glow 재계산
+    if (typeof tdApplyGlows === 'function') tdApplyGlows();
+  }
+
   // -- 드래그 (Pointer Events API 사용)
   let tacticsDragging = null;
   let tacticsDragOffX = 0, tacticsDragOffY = 0;
@@ -2825,25 +2850,50 @@
     });
   }
 
+  // 그룹 이동 상태
+  let tdGroupDrag = null; // { tokens:[{tok,offX,offY,kind,idx,fromX,fromY}], pitchRect }
+
   function tacticsDragStart(e) {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     tacticsDragging = e.currentTarget;
-    tacticsDragging.style.transition = 'none';
-    tacticsDragging.style.zIndex = '50';
     tacticsPitchRect = document.getElementById('tactics-pitch').getBoundingClientRect();
     const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width * 100;
     const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
-    tacticsDragOffX = cx - parseFloat(tacticsDragging.style.left);
-    tacticsDragOffY = cy - parseFloat(tacticsDragging.style.top);
-    // undo용 시작 위치 기록
-    tdDragHistoryData = {
-      tok: tacticsDragging,
-      kind: tacticsDragging.dataset.kind === 'ball' ? 'ball' : 'player',
-      idx:  +tacticsDragging.dataset.idx,
-      fromX: parseFloat(tacticsDragging.style.left),
-      fromY: parseFloat(tacticsDragging.style.top),
-    };
+
+    // 선택 그룹에 포함된 토큰을 드래그하면 그룹 이동
+    if (tdSelectedTokens.size > 1 && tdSelectedTokens.has(tacticsDragging)) {
+      tdGroupDrag = {
+        tokens: [...tdSelectedTokens].map(tok => ({
+          tok,
+          offX: cx - parseFloat(tok.style.left),
+          offY: cy - parseFloat(tok.style.top),
+          kind: tok.dataset.kind === 'ball' ? 'ball' : 'player',
+          idx:  +tok.dataset.idx,
+          fromX: parseFloat(tok.style.left),
+          fromY: parseFloat(tok.style.top),
+        })),
+        pitchRect: tacticsPitchRect,
+      };
+      tdGroupDrag.tokens.forEach(t => {
+        t.tok.style.transition = 'none';
+        t.tok.style.zIndex = '50';
+      });
+    } else {
+      // 단일 토큰 드래그 — 선택 해제
+      tdClearSelection();
+      tacticsDragging.style.transition = 'none';
+      tacticsDragging.style.zIndex = '50';
+      tacticsDragOffX = cx - parseFloat(tacticsDragging.style.left);
+      tacticsDragOffY = cy - parseFloat(tacticsDragging.style.top);
+      tdDragHistoryData = {
+        tok: tacticsDragging,
+        kind: tacticsDragging.dataset.kind === 'ball' ? 'ball' : 'player',
+        idx:  +tacticsDragging.dataset.idx,
+        fromX: parseFloat(tacticsDragging.style.left),
+        fromY: parseFloat(tacticsDragging.style.top),
+      };
+    }
     window.addEventListener('pointermove', tacticsDragMove);
     window.addEventListener('pointerup',   tacticsDragEnd);
   }
@@ -2852,6 +2902,23 @@
     if (!tacticsDragging) return;
     const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width  * 100;
     const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
+
+    // 그룹 이동
+    if (tdGroupDrag) {
+      tdGroupDrag.tokens.forEach(t => {
+        const nx = Math.max(1, Math.min(99, cx - t.offX));
+        const ny = Math.max(1, Math.min(99, cy - t.offY));
+        t.tok.style.left = nx + '%';
+        t.tok.style.top  = ny + '%';
+        const stored = { x: nx, y: 100 - ny };
+        if (t.kind === 'ball') tacticsState.ballPosition = stored;
+        else if (t.idx < 11)   tacticsState.homePositions[t.idx] = stored;
+        else                    tacticsState.awayPositions[t.idx - 11] = stored;
+      });
+      return;
+    }
+
+    // 단일 이동
     const nx = Math.max(1, Math.min(99, cx - tacticsDragOffX));
     const ny = Math.max(1, Math.min(99, cy - tacticsDragOffY));
     tacticsDragging.style.left = nx + '%';
@@ -2866,26 +2933,69 @@
     else           tacticsState.awayPositions[idx - 11] = stored;
   }
 
+  // 이동된 토큰 idx 목록으로 polygon/line-connect 처리:
+  // - 전체 구성원이 이동 → 새 위치로 points 업데이트
+  // - 일부만 이동 → 제거
+  function tdRemovePolygonsForMovedTokens(movedIndices) {
+    if (!movedIndices.length) return;
+    const moved = new Set(movedIndices);
+    let needsRender = false;
+    for (let i = tdDrawings.length - 1; i >= 0; i--) {
+      const d = tdDrawings[i];
+      if ((d.type !== 'polygon' && d.type !== 'line-connect') || !d.playerIndices) continue;
+      const allMoved = d.playerIndices.every(idx => moved.has(idx));
+      const anyMoved = d.playerIndices.some(idx => moved.has(idx));
+      if (allMoved) {
+        // 새 토큰 위치로 points 재계산
+        const newPts = d.playerIndices.map(idx => {
+          const tok = document.querySelector(`.tactics-token[data-idx="${idx}"]`);
+          return tok ? { x: parseFloat(tok.style.left), y: parseFloat(tok.style.top) } : null;
+        }).filter(Boolean);
+        if (d.type === 'polygon') {
+          d.points = tdConvexHull(newPts);
+        } else {
+          d.points = newPts.slice().sort((a, b) => a.y - b.y);
+        }
+        needsRender = true;
+      } else if (anyMoved) {
+        tdDrawings.splice(i, 1);
+        needsRender = true;
+      }
+    }
+    if (needsRender) tdRenderAll();
+  }
+
   function tacticsDragEnd() {
     if (tacticsDragging) {
-      tacticsDragging.style.transition = 'left .15s ease, top .15s ease';
-      tacticsDragging.style.zIndex = '10';
-      // undo 기록: 실제로 위치가 바뀐 경우만
-      if (tdDragHistoryData) {
-        const toX = parseFloat(tacticsDragging.style.left);
-        const toY = parseFloat(tacticsDragging.style.top);
-        if (Math.abs(toX - tdDragHistoryData.fromX) > 0.1 || Math.abs(toY - tdDragHistoryData.fromY) > 0.1) {
-          tdHistoryPush({
-            type: 'move',
-            kind: tdDragHistoryData.kind,
-            idx:  tdDragHistoryData.idx,
-            fromX: tdDragHistoryData.fromX,
-            fromY: tdDragHistoryData.fromY,
-            toX, toY,
-          });
+      const movedIndices = [];
+      if (tdGroupDrag) {
+        // 그룹 이동 undo 기록
+        tdGroupDrag.tokens.forEach(t => {
+          t.tok.style.transition = 'left .15s ease, top .15s ease';
+          t.tok.style.zIndex = '10';
+          const toX = parseFloat(t.tok.style.left);
+          const toY = parseFloat(t.tok.style.top);
+          if (Math.abs(toX - t.fromX) > 0.1 || Math.abs(toY - t.fromY) > 0.1) {
+            tdHistoryPush({ type: 'move', kind: t.kind, idx: t.idx, fromX: t.fromX, fromY: t.fromY, toX, toY });
+            if (t.kind === 'player') movedIndices.push(t.idx);
+          }
+        });
+        tdGroupDrag = null;
+      } else {
+        tacticsDragging.style.transition = 'left .15s ease, top .15s ease';
+        tacticsDragging.style.zIndex = '10';
+        if (tdDragHistoryData) {
+          const toX = parseFloat(tacticsDragging.style.left);
+          const toY = parseFloat(tacticsDragging.style.top);
+          if (Math.abs(toX - tdDragHistoryData.fromX) > 0.1 || Math.abs(toY - tdDragHistoryData.fromY) > 0.1) {
+            tdHistoryPush({ type: 'move', kind: tdDragHistoryData.kind, idx: tdDragHistoryData.idx,
+              fromX: tdDragHistoryData.fromX, fromY: tdDragHistoryData.fromY, toX, toY });
+            if (tdDragHistoryData.kind === 'player') movedIndices.push(tdDragHistoryData.idx);
+          }
+          tdDragHistoryData = null;
         }
-        tdDragHistoryData = null;
       }
+      tdRemovePolygonsForMovedTokens(movedIndices);
       tacticsDragging = null;
     }
     window.removeEventListener('pointermove', tacticsDragMove);
@@ -3081,7 +3191,7 @@
 
   function tacticsDrawSetTool(t) {
     tdTool = t;
-    ['select','arrow','dashed-arrow','line','dashed','box','circle','polygon','curve-arrow','curve-dashed-arrow','eraser','laser'].forEach(n => {
+    ['select','arrow','dashed-arrow','line','dashed','box','circle','polygon','line-connect','curve-arrow','curve-dashed-arrow','eraser','laser'].forEach(n => {
       const b = document.getElementById('td-tool-' + n);
       if (b) b.style.background = n === t ? '#1e40af' : '#1e293b';
     });
@@ -3096,6 +3206,8 @@
     // 레이저
     if (t === 'laser') tdLaserStart();
     else               tdLaserStop();
+    // 선택 모드가 아니면 선택 해제
+    if (t !== 'select') tdClearSelection();
   }
 
   function tacticsDrawSetColor(c) {
@@ -3239,11 +3351,12 @@
         const ex = (spx-rcx)/ra, ey = (spy-rcy)/rb;
         const dist = Math.abs(Math.sqrt(ex*ex+ey*ey) - 1) * Math.min(ra,rb);
         if (dist < THRESH) return i;
-      } else if (d.type === 'polygon' && d.points) {
-        // 변(edge)에서 THRESH 이내
+      } else if ((d.type === 'polygon' || d.type === 'line-connect') && d.points) {
+        // 변(edge)에서 THRESH 이내 (polygon은 닫힌 루프, line-connect는 열린 선)
         const pts = d.points;
-        for (let j = 0; j < pts.length; j++) {
-          const p1 = pts[j], p2 = pts[(j+1)%pts.length];
+        const len = d.type === 'polygon' ? pts.length : pts.length - 1;
+        for (let j = 0; j < len; j++) {
+          const p1 = pts[j], p2 = pts[(j+1) % pts.length];
           const ex1 = p1.x/100*W, ey1 = p1.y/100*H;
           const ex2 = p2.x/100*W, ey2 = p2.y/100*H;
           const edx = ex2-ex1, edy = ey2-ey1;
@@ -3355,9 +3468,22 @@
       const pts = d.points.map(p => `${p.x},${p.y}`).join(' ');
       const el = document.createElementNS(NS, 'polygon');
       el.setAttribute('points', pts);
-      el.setAttribute('fill', tdHexRgba(d.color, 0.2));   // 음영 효과
+      el.setAttribute('fill', tdHexRgba(d.color, 0.2));
       el.setAttribute('stroke', d.color);
       el.setAttribute('stroke-width', '0.5');
+      el.setAttribute('opacity', op);
+      return el;
+    }
+
+    if (d.type === 'line-connect') {
+      const pts = d.points.map(p => `${p.x},${p.y}`).join(' ');
+      const el = document.createElementNS(NS, 'polyline');
+      el.setAttribute('points', pts);
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', d.color);
+      el.setAttribute('stroke-width', '0.7');
+      el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke-linejoin', 'round');
       el.setAttribute('opacity', op);
       return el;
     }
@@ -3420,15 +3546,16 @@
 
   // 다각형 꼭짓점 토큰에 glow 적용
   function tdApplyGlows() {
-    // 기존 glow 초기화
+    // 기존 glow 초기화 (선택된 토큰은 유지)
     document.querySelectorAll('.tactics-token').forEach(tok => {
+      if (tdSelectedTokens.has(tok)) return;
       const circle = tok.querySelector('div');
       if (circle) circle.style.boxShadow = '0 2px 8px rgba(0,0,0,.45)';
     });
     // polygon 드로잉에서 playerIndices 수집 후 glow 적용
     const glowMap = {};  // idx → color
     tdDrawings.forEach(d => {
-      if (d.type === 'polygon' && d.playerIndices) {
+      if ((d.type === 'polygon' || d.type === 'line-connect') && d.playerIndices) {
         d.playerIndices.forEach(i => { glowMap[i] = d.color; });
       }
     });
@@ -3443,6 +3570,8 @@
            0 0 20px 6px ${tdHexRgba(color, 0.35)}`;
       }
     });
+    // 선택 glow 재적용 (polygon glow에 덮어씌워진 경우 복원)
+    tdSelectApplyGlow();
   }
 
   // 드래그 중 선택 rect 안의 토큰 임시 하이라이트
@@ -3506,7 +3635,7 @@
     }
     if (tdPreview) tdPreview.remove();
 
-    if (tdTool === 'polygon') {
+    if (tdTool === 'polygon' || tdTool === 'line-connect') {
       // 선택 사각형 미리보기
       const NS = 'http://www.w3.org/2000/svg';
       const r = document.createElementNS(NS, 'rect');
@@ -3550,7 +3679,7 @@
     }
     const cur = tdGetPt(e);
 
-    if (tdTool === 'polygon') {
+    if (tdTool === 'polygon' || tdTool === 'line-connect') {
       // 선택 rect 안의 토큰 수집
       const x1 = Math.min(tdStart.x, cur.x), y1 = Math.min(tdStart.y, cur.y);
       const x2 = Math.max(tdStart.x, cur.x), y2 = Math.max(tdStart.y, cur.y);
@@ -3573,18 +3702,24 @@
         firstTeam = closest.team;
       }
       const selected = firstTeam ? inRect.filter(t => t.team === firstTeam) : inRect;
-      if (selected.length >= 3) {
-        const hull = tdConvexHull(selected.map(p => ({x: p.x, y: p.y})));
+      const minPts = tdTool === 'polygon' ? 3 : 2;
+      if (selected.length >= minPts) {
+        let points;
+        if (tdTool === 'polygon') {
+          points = tdConvexHull(selected.map(p => ({x: p.x, y: p.y})));
+        } else {
+          // y 순서로 정렬 (위→아래)
+          points = selected.slice().sort((a, b) => a.y - b.y).map(p => ({x: p.x, y: p.y}));
+        }
         const drawing = {
-          type: 'polygon',
-          points: hull,
+          type: tdTool,
+          points,
           playerIndices: selected.map(p => p.idx),
           color: tdColor,
         };
         tdDrawings.push(drawing);
         tdHistoryPush({ type: 'draw', drawing });
       } else {
-        // 3개 미만 → 하이라이트만 초기화
         tdApplyGlows();
       }
       tdRenderAll();
@@ -3651,6 +3786,69 @@
     tdHistoryPush({ type: 'flip', index: idx, prevCx, prevCy });
     tdRenderAll();
   }
+
+  // ── 선택 rect (select 모드에서 빈 피치 드래그) ──
+  let tdSelecting = false;
+  let tdSelStart = null;
+
+  document.getElementById('tactics-pitch')?.addEventListener('pointerdown', e => {
+    if (tdTool !== 'select') return;
+    if (e.target.closest('.tactics-token, .tactics-ball-token')) return;
+    tdSelecting = true;
+    tdSelStart = tdGetPt(e);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    tdClearSelection();
+  });
+
+  document.getElementById('tactics-pitch')?.addEventListener('pointermove', e => {
+    if (!tdSelecting || !tdSelStart) return;
+    const cur = tdGetPt(e);
+    const pitch = document.getElementById('tactics-pitch');
+    const pr = pitch.getBoundingClientRect();
+    const rx1 = Math.min(tdSelStart.x, cur.x), ry1 = Math.min(tdSelStart.y, cur.y);
+    const rx2 = Math.max(tdSelStart.x, cur.x), ry2 = Math.max(tdSelStart.y, cur.y);
+    const rect = document.getElementById('td-select-rect');
+    if (rect) {
+      rect.style.display = 'block';
+      rect.style.left   = (rx1 / 100 * pr.width)  + 'px';
+      rect.style.top    = (ry1 / 100 * pr.height) + 'px';
+      rect.style.width  = ((rx2 - rx1) / 100 * pr.width)  + 'px';
+      rect.style.height = ((ry2 - ry1) / 100 * pr.height) + 'px';
+    }
+    // 실시간 하이라이트
+    document.querySelectorAll('.tactics-token').forEach(tok => {
+      const tx = parseFloat(tok.style.left), ty = parseFloat(tok.style.top);
+      const inside = tx >= rx1 && tx <= rx2 && ty >= ry1 && ty <= ry2;
+      const circle = tok.querySelector('div');
+      if (!circle) return;
+      if (inside) {
+        const bg = tok.dataset.team === 'home' ? (state.colors.homeBg || '#3B82F6') : (state.colors.awayBg || '#EF4444');
+        circle.style.boxShadow = `0 0 0 2.5px rgba(255,255,255,0.9), 0 0 10px 4px ${bg}, 0 0 22px 8px ${bg}88`;
+      } else {
+        circle.style.boxShadow = '0 2px 8px rgba(0,0,0,.45)';
+      }
+    });
+  });
+
+  document.getElementById('tactics-pitch')?.addEventListener('pointerup', e => {
+    if (!tdSelecting) return;
+    tdSelecting = false;
+    const rect = document.getElementById('td-select-rect');
+    if (rect) rect.style.display = 'none';
+    if (!tdSelStart) return;
+    const cur = tdGetPt(e);
+    const rx1 = Math.min(tdSelStart.x, cur.x), ry1 = Math.min(tdSelStart.y, cur.y);
+    const rx2 = Math.max(tdSelStart.x, cur.x), ry2 = Math.max(tdSelStart.y, cur.y);
+    tdSelStart = null;
+    // 드래그가 너무 짧으면 선택 해제만
+    if (rx2 - rx1 < 1 && ry2 - ry1 < 1) { tdClearSelection(); return; }
+    tdSelectedTokens.clear();
+    document.querySelectorAll('.tactics-token').forEach(tok => {
+      const tx = parseFloat(tok.style.left), ty = parseFloat(tok.style.top);
+      if (tx >= rx1 && tx <= rx2 && ty >= ry1 && ty <= ry2) tdSelectedTokens.add(tok);
+    });
+    tdSelectApplyGlow();
+  });
 
   // select 모드에서 피치 클릭 → 곡선 화살표 근처면 반전
   document.getElementById('tactics-pitch')?.addEventListener('click', e => {
