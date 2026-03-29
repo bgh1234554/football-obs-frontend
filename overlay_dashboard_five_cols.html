@@ -2245,6 +2245,11 @@
       if(e.key==='z') pkUndo(); if(e.key==='x') pkReset();
     }
     if(e.key==='h'||e.key==='H'){ toggleTabsAndPages(); }
+    // 1~6: 탭 전환, 7: 경기ID 입력, 8: Buy me a coffee
+    const tabPages = ['main-big','main-small','theme','schedule','tactics','about'];
+    if(e.key>='1'&&e.key<='6'){ activatePage(tabPages[+e.key-1]); }
+    if(e.key==='7'){ document.getElementById('open-fixture-overlay')?.click(); }
+    if(e.key==='8'){ window.open('https://www.buymeacoffee.com/bgh1234554','_blank'); }
   });
 
   // =============================
