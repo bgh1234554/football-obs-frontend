@@ -421,7 +421,7 @@
       font-weight: 900;
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
     }
-    .panelHeader .hint { color: var(--muted); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .panelHeader .hint { color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
     .panelBody { flex: 1; padding: 0; overflow: auto; min-height: 0; }
 
     /* ========== 일정 확인 ========== */
@@ -1183,7 +1183,7 @@
           <div class="panel">
             <div class="panelHeader">
               <div>Leagues</div>
-              <div class="hint">리그 선택 → 경기 목록 갱신</div>
+              <div class="hint">리그 선택 → 경기 목록</div>
             </div>
             <div class="panelBody">
               <api-sports-widget data-type="leagues"></api-sports-widget>
@@ -1192,7 +1192,7 @@
           <div class="panel">
             <div class="panelHeader">
               <div>Games</div>
-              <div class="hint">경기 클릭 → 오른쪽 디테일 + ID 추출</div>
+              <div class="hint">경기 클릭 → 해당 경기 정보 + 순위 + ID 추출</div>
             </div>
             <div class="panelBody" id="games-list">
               <api-sports-widget data-type="games"></api-sports-widget>
@@ -1201,7 +1201,7 @@
           <div class="panel">
             <div class="panelHeader">
               <div>Details</div>
-              <div class="hint">경기 클릭 → 자동 표시</div>
+              <div class="hint">경기 클릭 시 자동으로 표시</div>
             </div>
             <div class="panelBody" id="game-content">
             </div>
@@ -1209,7 +1209,7 @@
           <div class="panel">
             <div class="panelHeader">
               <div>Standings</div>
-              <div class="hint">리그 클릭 → 순위 자동 표시</div>
+              <div class="hint">경기 클릭 시 자동으로 표시</div>
             </div>
             <div class="panelBody">
               <div id="standings-content">
@@ -3063,8 +3063,8 @@
   let tdLaserFading = false;
   let tdLaserRAF = null;
   let tdLaserRunning = false;
-  const TD_LASER_IDLE_MS = 300;  // 뗀 뒤 대기 시간
-  const TD_LASER_FADE_MS = 350;  // 획 하나가 사라지는 시간
+  const TD_LASER_IDLE_MS = 750;  // 뗀 뒤 대기 시간
+  const TD_LASER_FADE_MS = 300;  // 획 하나가 사라지는 시간
   const TD_LASER_GAP_MS  = 150;  // 획 간 딜레이
 
   function tdLaserStart() {
