@@ -2904,12 +2904,23 @@
   // 드래그 중 실시간 도형 업데이트 — 제거 없이 재계산만
   function tdUpdateShapesLive(movingIndices) {
     const moving = new Set(movingIndices);
+    const formationLock = document.getElementById('tactics-formation-lock')?.checked;
     let changed = false;
     tdDrawings.forEach(d => {
-      if ((d.type !== 'polygon' && d.type !== 'line-connect') || !d.playerIndices) return;
-      if (d.playerIndices.some(i => moving.has(i))) {
-        tdRecomputeShapePoints(d);
-        changed = true;
+      if ((d.type === 'polygon' || d.type === 'line-connect') && d.playerIndices) {
+        if (d.playerIndices.some(i => moving.has(i))) {
+          tdRecomputeShapePoints(d);
+          changed = true;
+        }
+      }
+      // 대형 유지 ON: 토큰 클릭으로 생성된 원도 실시간으로 따라옴
+      if (formationLock && d.type === 'circle' && d.playerIdx !== undefined && moving.has(d.playerIdx)) {
+        const tok = document.querySelector(`.tactics-token[data-idx="${d.playerIdx}"]`);
+        if (tok) {
+          d.cx = parseFloat(tok.style.left) + (d.cx_off || 0);
+          d.cy = parseFloat(tok.style.top) + (d.cy_off || 0);
+          changed = true;
+        }
       }
     });
     if (changed) tdRenderAll();
@@ -3295,7 +3306,19 @@
         action.kind === 'ball' ? '.tactics-ball-token' : `.tactics-token[data-idx="${action.idx}"]`
       );
       if (tok) tdApplyMove(tok, action, action.fromX, action.fromY);
-      return;
+      if (action.kind === 'player') {
+        tdDrawings.forEach(d => {
+          if ((d.type === 'polygon' || d.type === 'line-connect') && d.playerIndices?.includes(action.idx))
+            tdRecomputeShapePoints(d);
+          if (d.type === 'circle' && d.playerIdx === action.idx) {
+            const tok = document.querySelector(`.tactics-token[data-idx="${action.idx}"]`);
+            if (tok) {
+              d.cx = parseFloat(tok.style.left) + (d.cx_off || 0);
+              d.cy = parseFloat(tok.style.top) + (d.cy_off || 0);
+            }
+          }
+        });
+      }
     } else if (action.type === 'flip') {
       const d = tdDrawings[action.index];
       if (d) { d.cx = action.prevCx; d.cy = action.prevCy; }
@@ -3316,7 +3339,19 @@
         action.kind === 'ball' ? '.tactics-ball-token' : `.tactics-token[data-idx="${action.idx}"]`
       );
       if (tok) tdApplyMove(tok, action, action.toX, action.toY);
-      return;
+      if (action.kind === 'player') {
+        tdDrawings.forEach(d => {
+          if ((d.type === 'polygon' || d.type === 'line-connect') && d.playerIndices?.includes(action.idx))
+            tdRecomputeShapePoints(d);
+          if (d.type === 'circle' && d.playerIdx === action.idx) {
+            const tok = document.querySelector(`.tactics-token[data-idx="${action.idx}"]`);
+            if (tok) {
+              d.cx = parseFloat(tok.style.left) + (d.cx_off || 0);
+              d.cy = parseFloat(tok.style.top) + (d.cy_off || 0);
+            }
+          }
+        });
+      }
     } else if (action.type === 'flip') {
       const d = tdDrawings[action.index];
       if (d) {
@@ -3648,7 +3683,14 @@
         const cx = (cr.left + cr.width  / 2 - pr.left) / pr.width  * 100;
         const cy = (cr.top  + cr.height / 2 - pr.top)  / pr.height * 100;
         const r_px = TD_TOKEN_RADIUS_PX * TD_CIRCLE_TOKEN_RADIUS_MULT;
-        const drawing = { type: 'circle', cx, cy, rx: r_px / pr.width * 100, ry: r_px / pr.height * 100, color: tdColor };
+        const cx_off = cx - parseFloat(hitTok.style.left);
+        const cy_off = cy - parseFloat(hitTok.style.top);
+        const drawing = {
+          type: 'circle', cx, cy,
+          rx: r_px / pr.width * 100, ry: r_px / pr.height * 100,
+          color: tdColor,
+          playerIdx: +hitTok.dataset.idx, cx_off, cy_off,
+        };
         tdDrawings.push(drawing);
         tdHistoryPush({ type: 'draw', drawing });
         tdRenderAll();
