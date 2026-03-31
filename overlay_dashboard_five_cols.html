@@ -1246,7 +1246,7 @@
           <input type="checkbox" id="tactics-show-ball"> 공 표시
         </label>
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 다각형·라인에 묶인 선수가 일부만 이동해도 도형이 유지됩니다">
-          <input type="checkbox" id="tactics-formation-lock"> 대형 유지
+          <input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지
         </label>
         <!-- TODO: 백엔드 연동 후 활성화
         <button onclick="tacticsLoadFromFixture()">경기 ID로 불러오기</button>
@@ -2785,17 +2785,18 @@
     circle.textContent = player.number ?? (idx < 11 ? idx + 1 : idx - 10);
     wrap.appendChild(circle);
 
-    if (showNames) {
-      const badge = document.createElement('div');
-      badge.style.cssText = `
-        margin-top:2px; padding:1px 6px; border-radius:4px;
-        font-size:10px; font-weight:600; white-space:nowrap;
-        background:rgba(0,0,0,.75); color:#fff;
-      `;
-      // nameKo 우선 표시, 없으면 pos 표시
-      badge.textContent = player.nameKo || player.pos || '';
-      wrap.appendChild(badge);
-    }
+    // 배지는 항상 DOM에 존재 — visibility로만 토글해서 wrap 높이를 일정하게 유지
+    // (display:none 시 wrap 높이 변동 → translate(-50%,-50%) 중심 틀어짐 방지)
+    const badge = document.createElement('div');
+    badge.className = 'tactics-name-badge';
+    badge.style.cssText = `
+      margin-top:2px; padding:1px 6px; border-radius:4px;
+      font-size:10px; font-weight:600; white-space:nowrap;
+      background:rgba(0,0,0,.75); color:#fff;
+      visibility:${showNames ? 'visible' : 'hidden'};
+    `;
+    badge.textContent = player.nameKo || player.pos || '';
+    wrap.appendChild(badge);
 
     return wrap;
   }
@@ -2901,6 +2902,20 @@
     window.addEventListener('pointerup',   tacticsDragEnd);
   }
 
+  // 드래그 중 실시간 도형 업데이트 — 제거 없이 재계산만
+  function tdUpdateShapesLive(movingIndices) {
+    const moving = new Set(movingIndices);
+    let changed = false;
+    tdDrawings.forEach(d => {
+      if ((d.type !== 'polygon' && d.type !== 'line-connect') || !d.playerIndices) return;
+      if (d.playerIndices.some(i => moving.has(i))) {
+        tdRecomputeShapePoints(d);
+        changed = true;
+      }
+    });
+    if (changed) tdRenderAll();
+  }
+
   function tacticsDragMove(e) {
     if (!tacticsDragging) return;
     const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width  * 100;
@@ -2918,6 +2933,7 @@
         else if (t.idx < 11)   tacticsState.homePositions[t.idx] = stored;
         else                    tacticsState.awayPositions[t.idx - 11] = stored;
       });
+      tdUpdateShapesLive(tdGroupDrag.tokens.filter(t => t.kind === 'player').map(t => t.idx));
       return;
     }
 
@@ -2934,6 +2950,7 @@
     const idx = +tacticsDragging.dataset.idx;
     if (idx < 11) tacticsState.homePositions[idx] = stored;
     else           tacticsState.awayPositions[idx - 11] = stored;
+    tdUpdateShapesLive([idx]);
   }
 
   // 이동된 토큰 idx 목록으로 polygon/line-connect 처리:
@@ -3026,7 +3043,10 @@
   }
 
   // -- 이름 표시/공 표시 토글
-  document.getElementById('tactics-show-names')?.addEventListener('change', tacticsRenderTokens);
+  document.getElementById('tactics-show-names')?.addEventListener('change', e => {
+    const v = e.target.checked ? 'visible' : 'hidden';
+    document.querySelectorAll('.tactics-name-badge').forEach(b => b.style.visibility = v);
+  });
   document.getElementById('tactics-show-ball')?.addEventListener('change', tacticsRenderTokens);
 
   // -- 초기 렌더 (mock 데이터로 fallback)
@@ -3842,6 +3862,24 @@
   let tdSelecting = false;
   let tdSelStart = null;
 
+  // rect 안 토큰 중 startPt에 가장 가까운 토큰의 팀만 반환
+  function tdFilteredInRect(rx1, ry1, rx2, ry2, startPt) {
+    const inRect = [];
+    document.querySelectorAll('.tactics-token').forEach(tok => {
+      const tx = parseFloat(tok.style.left), ty = parseFloat(tok.style.top);
+      if (tx >= rx1 && tx <= rx2 && ty >= ry1 && ty <= ry2) inRect.push(tok);
+    });
+    if (!inRect.length) return [];
+    const closest = inRect.reduce((best, tok) => {
+      const tx = parseFloat(tok.style.left), ty = parseFloat(tok.style.top);
+      const d  = (tx - startPt.x) ** 2 + (ty - startPt.y) ** 2;
+      const bd = (parseFloat(best.style.left) - startPt.x) ** 2 + (parseFloat(best.style.top) - startPt.y) ** 2;
+      return d < bd ? tok : best;
+    });
+    const team = closest.dataset.team;
+    return inRect.filter(tok => tok.dataset.team === team);
+  }
+
   document.getElementById('tactics-pitch')?.addEventListener('pointerdown', e => {
     if (tdTool !== 'select') return;
     if (e.target.closest('.tactics-token, .tactics-ball-token')) return;
@@ -3866,13 +3904,12 @@
       rect.style.width  = ((rx2 - rx1) / 100 * pr.width)  + 'px';
       rect.style.height = ((ry2 - ry1) / 100 * pr.height) + 'px';
     }
-    // 실시간 하이라이트
+    // 실시간 하이라이트 — 드래그 시작점 기준 가장 가까운 토큰의 팀만
+    const highlighted = new Set(tdFilteredInRect(rx1, ry1, rx2, ry2, tdSelStart));
     document.querySelectorAll('.tactics-token').forEach(tok => {
-      const tx = parseFloat(tok.style.left), ty = parseFloat(tok.style.top);
-      const inside = tx >= rx1 && tx <= rx2 && ty >= ry1 && ty <= ry2;
       const circle = tok.querySelector('div');
       if (!circle) return;
-      if (inside) {
+      if (highlighted.has(tok)) {
         const bg = tok.dataset.team === 'home' ? (state.colors.homeBg || '#3B82F6') : (state.colors.awayBg || '#EF4444');
         circle.style.boxShadow = `0 0 0 2.5px rgba(255,255,255,0.9), 0 0 10px 4px ${bg}, 0 0 22px 8px ${bg}88`;
       } else {
@@ -3890,14 +3927,11 @@
     const cur = tdGetPt(e);
     const rx1 = Math.min(tdSelStart.x, cur.x), ry1 = Math.min(tdSelStart.y, cur.y);
     const rx2 = Math.max(tdSelStart.x, cur.x), ry2 = Math.max(tdSelStart.y, cur.y);
+    const startPt = tdSelStart;
     tdSelStart = null;
-    // 드래그가 너무 짧으면 선택 해제만
     if (rx2 - rx1 < 1 && ry2 - ry1 < 1) { tdClearSelection(); return; }
     tdSelectedTokens.clear();
-    document.querySelectorAll('.tactics-token').forEach(tok => {
-      const tx = parseFloat(tok.style.left), ty = parseFloat(tok.style.top);
-      if (tx >= rx1 && tx <= rx2 && ty >= ry1 && ty <= ry2) tdSelectedTokens.add(tok);
-    });
+    tdFilteredInRect(rx1, ry1, rx2, ry2, startPt).forEach(tok => tdSelectedTokens.add(tok));
     tdSelectApplyGlow();
   });
 
