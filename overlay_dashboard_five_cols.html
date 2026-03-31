@@ -1245,6 +1245,9 @@
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;">
           <input type="checkbox" id="tactics-show-ball"> 공 표시
         </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 다각형·라인에 묶인 선수가 일부만 이동해도 도형이 유지됩니다">
+          <input type="checkbox" id="tactics-formation-lock"> 대형 유지
+        </label>
         <!-- TODO: 백엔드 연동 후 활성화
         <button onclick="tacticsLoadFromFixture()">경기 ID로 불러오기</button>
         -->
@@ -2936,33 +2939,35 @@
   // 이동된 토큰 idx 목록으로 polygon/line-connect 처리:
   // - 전체 구성원이 이동 → 새 위치로 points 업데이트
   // - 일부만 이동 → 제거
+  function tdRecomputeShapePoints(d) {
+    const newPts = d.playerIndices.map(idx => {
+      const tok = document.querySelector(`.tactics-token[data-idx="${idx}"]`);
+      return tok ? { x: parseFloat(tok.style.left), y: parseFloat(tok.style.top) } : null;
+    }).filter(Boolean);
+    if (d.type === 'polygon') d.points = tdConvexHull(newPts);
+    else d.points = newPts.slice().sort((a, b) => a.y - b.y);
+  }
+
   function tdRemovePolygonsForMovedTokens(movedIndices) {
     if (!movedIndices.length) return;
     const moved = new Set(movedIndices);
+    const formationLock = document.getElementById('tactics-formation-lock')?.checked;
     let needsRender = false;
     for (let i = tdDrawings.length - 1; i >= 0; i--) {
       const d = tdDrawings[i];
       if ((d.type !== 'polygon' && d.type !== 'line-connect') || !d.playerIndices) continue;
       const allMoved = d.playerIndices.every(idx => moved.has(idx));
       const anyMoved = d.playerIndices.some(idx => moved.has(idx));
-      if (allMoved) {
-        // 새 토큰 위치로 points 재계산
-        const newPts = d.playerIndices.map(idx => {
-          const tok = document.querySelector(`.tactics-token[data-idx="${idx}"]`);
-          return tok ? { x: parseFloat(tok.style.left), y: parseFloat(tok.style.top) } : null;
-        }).filter(Boolean);
-        if (d.type === 'polygon') {
-          d.points = tdConvexHull(newPts);
-        } else {
-          d.points = newPts.slice().sort((a, b) => a.y - b.y);
-        }
+      if (allMoved || (anyMoved && formationLock)) {
+        // 현재 토큰 위치로 points 재계산
+        tdRecomputeShapePoints(d);
         needsRender = true;
       } else if (anyMoved) {
         tdDrawings.splice(i, 1);
         needsRender = true;
       }
     }
-    if (needsRender) tdRenderAll();
+    if (needsRender) { tdRenderAll(); tdApplyGlows(); }
   }
 
   function tacticsDragEnd() {
@@ -3063,6 +3068,8 @@
   let tdLaserFading = false;
   let tdLaserRAF = null;
   let tdLaserRunning = false;
+  const TD_TOKEN_RADIUS_PX         = 22;   // 선수 바둑알 원형 div 반지름 (px) — tacticsCreateToken circle 44px 기준
+  const TD_CIRCLE_TOKEN_RADIUS_MULT = 1.5; // 바둑알 클릭 시 자동 원 반지름 = 바둑알 반지름 × 이 배율
   const TD_LASER_IDLE_MS = 750;  // 뗀 뒤 대기 시간
   const TD_LASER_FADE_MS = 300;  // 획 하나가 사라지는 시간
   const TD_LASER_GAP_MS  = 150;  // 획 간 딜레이
@@ -3343,9 +3350,8 @@
         const nearB = Math.abs(spy-ry2) < THRESH && inX;
         if (nearL || nearR || nearT || nearB) return i;
       } else if (d.type === 'circle') {
-        const sx2 = d.x2/100*W, sy2 = d.y2/100*H;
-        const rcx = (sx1+sx2)/2, rcy = (sy1+sy2)/2;
-        const ra = Math.abs(sx2-sx1)/2, rb = Math.abs(sy2-sy1)/2;
+        const rcx = d.cx/100*W, rcy = d.cy/100*H;
+        const ra = d.rx/100*W, rb = d.ry/100*H;
         if (ra < 1 || rb < 1) continue;
         // 타원 경계까지 거리 근사
         const ex = (spx-rcx)/ra, ey = (spy-rcy)/rb;
@@ -3453,11 +3459,11 @@
 
     if (d.type === 'circle') {
       const el = document.createElementNS(NS, 'ellipse');
-      el.setAttribute('cx', (d.x1 + d.x2) / 2);
-      el.setAttribute('cy', (d.y1 + d.y2) / 2);
-      el.setAttribute('rx', Math.abs(d.x2 - d.x1) / 2);
-      el.setAttribute('ry', Math.abs(d.y2 - d.y1) / 2);
-      el.setAttribute('fill', tdHexRgba(d.color, 0.18));  // 음영 효과
+      el.setAttribute('cx', d.cx);
+      el.setAttribute('cy', d.cy);
+      el.setAttribute('rx', d.rx);
+      el.setAttribute('ry', d.ry);
+      el.setAttribute('fill', tdHexRgba(d.color, 0.18));
       el.setAttribute('stroke', d.color);
       el.setAttribute('stroke-width', '0.5');
       el.setAttribute('opacity', op);
@@ -3601,6 +3607,36 @@
     if (tdTool === 'select') return;
     if (tdTool === 'laser') { tdLaserPointerDown(e); return; }
     e.preventDefault();
+
+    // 원 도구: 선수 바둑알 위 클릭 시 해당 바둑알 중심으로 원 자동 생성
+    if (tdTool === 'circle') {
+      const pr = document.getElementById('tactics-pitch').getBoundingClientRect();
+      const ptX_px = e.clientX - pr.left;
+      const ptY_px = e.clientY - pr.top;
+      // style.left/top이 아닌 내부 circle div의 실제 화면 중심 사용
+      // (wrap에 이름 배지가 있으면 translate(-50%,-50%)가 circle 중심이 아닌 wrap 중심에 맞춰짐)
+      const hitTok = [...document.querySelectorAll('.tactics-token')].find(tok => {
+        const circDiv = tok.querySelector('div');
+        if (!circDiv) return false;
+        const cr = circDiv.getBoundingClientRect();
+        const tx = cr.left + cr.width  / 2 - pr.left;
+        const ty = cr.top  + cr.height / 2 - pr.top;
+        return Math.hypot(ptX_px - tx, ptY_px - ty) < TD_TOKEN_RADIUS_PX;
+      });
+      if (hitTok) {
+        const circDiv = hitTok.querySelector('div');
+        const cr = circDiv.getBoundingClientRect();
+        const cx = (cr.left + cr.width  / 2 - pr.left) / pr.width  * 100;
+        const cy = (cr.top  + cr.height / 2 - pr.top)  / pr.height * 100;
+        const r_px = TD_TOKEN_RADIUS_PX * TD_CIRCLE_TOKEN_RADIUS_MULT;
+        const drawing = { type: 'circle', cx, cy, rx: r_px / pr.width * 100, ry: r_px / pr.height * 100, color: tdColor };
+        tdDrawings.push(drawing);
+        tdHistoryPush({ type: 'draw', drawing });
+        tdRenderAll();
+        return; // 드래그 없이 즉시 완료
+      }
+    }
+
     e.target.setPointerCapture(e.pointerId);
     tdDrawing = true;
     tdStart = tdGetPt(e);
@@ -3654,6 +3690,15 @@
     } else if (tdTool === 'curve-arrow' || tdTool === 'curve-dashed-arrow') {
       const ctrl = tdCalcCurveCtrl(tdStart.x, tdStart.y, cur.x, cur.y);
       tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, cx:ctrl.cx, cy:ctrl.cy, color:tdColor}, true);
+      layer.appendChild(tdPreview);
+    } else if (tdTool === 'circle') {
+      const pr = document.getElementById('tactics-pitch').getBoundingClientRect();
+      const dx_px = (cur.x - tdStart.x) / 100 * pr.width;
+      const dy_px = (cur.y - tdStart.y) / 100 * pr.height;
+      const r_px = Math.sqrt(dx_px * dx_px + dy_px * dy_px);
+      const rx = r_px / pr.width * 100;
+      const ry = r_px / pr.height * 100;
+      tdPreview = tdMakeEl({type:'circle', cx:tdStart.x, cy:tdStart.y, rx, ry, color:tdColor}, true);
       layer.appendChild(tdPreview);
     } else {
       tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor}, true);
@@ -3732,6 +3777,12 @@
       if (tdTool === 'curve-arrow' || tdTool === 'curve-dashed-arrow') {
         const ctrl = tdCalcCurveCtrl(tdStart.x, tdStart.y, cur.x, cur.y);
         drawing = {type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, cx:ctrl.cx, cy:ctrl.cy, color:tdColor};
+      } else if (tdTool === 'circle') {
+        const pr = document.getElementById('tactics-pitch').getBoundingClientRect();
+        const dx_px = (cur.x - tdStart.x) / 100 * pr.width;
+        const dy_px = (cur.y - tdStart.y) / 100 * pr.height;
+        const r_px = Math.sqrt(dx_px * dx_px + dy_px * dy_px);
+        drawing = {type:'circle', cx:tdStart.x, cy:tdStart.y, rx: r_px/pr.width*100, ry: r_px/pr.height*100, color:tdColor};
       } else {
         drawing = {type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, color:tdColor};
       }
