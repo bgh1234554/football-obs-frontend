@@ -3001,17 +3001,19 @@
     if (tacticsDragging) {
       const movedIndices = [];
       if (tdGroupDrag) {
-        // 그룹 이동 undo 기록
+        // 그룹 이동 undo 기록 — 한 번의 Ctrl+Z로 전체 복원되도록 group-move 단일 액션으로 묶음
+        const groupMoves = [];
         tdGroupDrag.tokens.forEach(t => {
           t.tok.style.transition = 'left .15s ease, top .15s ease';
           t.tok.style.zIndex = '10';
           const toX = parseFloat(t.tok.style.left);
           const toY = parseFloat(t.tok.style.top);
           if (Math.abs(toX - t.fromX) > 0.1 || Math.abs(toY - t.fromY) > 0.1) {
-            tdHistoryPush({ type: 'move', kind: t.kind, idx: t.idx, fromX: t.fromX, fromY: t.fromY, toX, toY });
+            groupMoves.push({ kind: t.kind, idx: t.idx, fromX: t.fromX, fromY: t.fromY, toX, toY });
             if (t.kind === 'player') movedIndices.push(t.idx);
           }
         });
+        if (groupMoves.length > 0) tdHistoryPush({ type: 'group-move', moves: groupMoves });
         tdGroupDrag = null;
       } else {
         tacticsDragging.style.transition = 'left .15s ease, top .15s ease';
@@ -3319,6 +3321,23 @@
           }
         });
       }
+    } else if (action.type === 'group-move') {
+      action.moves.forEach(m => {
+        const tok = document.querySelector(
+          m.kind === 'ball' ? '.tactics-ball-token' : `.tactics-token[data-idx="${m.idx}"]`
+        );
+        if (tok) tdApplyMove(tok, m, m.fromX, m.fromY);
+        if (m.kind === 'player') {
+          tdDrawings.forEach(d => {
+            if ((d.type === 'polygon' || d.type === 'line-connect') && d.playerIndices?.includes(m.idx))
+              tdRecomputeShapePoints(d);
+            if (d.type === 'circle' && d.playerIdx === m.idx) {
+              const t2 = document.querySelector(`.tactics-token[data-idx="${m.idx}"]`);
+              if (t2) { d.cx = parseFloat(t2.style.left) + (d.cx_off || 0); d.cy = parseFloat(t2.style.top) + (d.cy_off || 0); }
+            }
+          });
+        }
+      });
     } else if (action.type === 'flip') {
       const d = tdDrawings[action.index];
       if (d) { d.cx = action.prevCx; d.cy = action.prevCy; }
@@ -3352,6 +3371,23 @@
           }
         });
       }
+    } else if (action.type === 'group-move') {
+      action.moves.forEach(m => {
+        const tok = document.querySelector(
+          m.kind === 'ball' ? '.tactics-ball-token' : `.tactics-token[data-idx="${m.idx}"]`
+        );
+        if (tok) tdApplyMove(tok, m, m.toX, m.toY);
+        if (m.kind === 'player') {
+          tdDrawings.forEach(d => {
+            if ((d.type === 'polygon' || d.type === 'line-connect') && d.playerIndices?.includes(m.idx))
+              tdRecomputeShapePoints(d);
+            if (d.type === 'circle' && d.playerIdx === m.idx) {
+              const t2 = document.querySelector(`.tactics-token[data-idx="${m.idx}"]`);
+              if (t2) { d.cx = parseFloat(t2.style.left) + (d.cx_off || 0); d.cy = parseFloat(t2.style.top) + (d.cy_off || 0); }
+            }
+          });
+        }
+      });
     } else if (action.type === 'flip') {
       const d = tdDrawings[action.index];
       if (d) {
