@@ -3242,7 +3242,17 @@
   const TD_CIRCLE_TOKEN_RADIUS_MULT = 1.5; // 바둑알 클릭 시 자동 원 반지름 = 바둑알 반지름 × 이 배율
   const TD_LASER_IDLE_MS = 750;  // 뗀 뒤 대기 시간
   const TD_LASER_FADE_MS = 300;  // 획 하나가 사라지는 시간
-  const TD_LASER_GAP_MS  = 150;  // 획 간 딜레이
+  const TD_LASER_GAP_MS  = 100;  // 획 간 딜레이
+
+  // ── 레이저 색상 설정 ── 색상을 바꾸려면 아래 상수들을 수정하세요 ──
+  const TD_LASER_COLOR_CORE   = 'rgba(255,210,200,1)';   // 획 중심 코어 (밝은 흰빛) — 레이저 특유의 빛나는 중심선
+  const TD_LASER_COLOR_MID    = 'rgba(255,8,6,0.98)';  // 획 메인 색 (진한 빨강) — 실제로 눈에 보이는 주요 획 색
+  // ※ OUTER는 stroke가 거의 안 보이고 shadowBlur만 퍼져야 함. 불투명하게 하면 어두운 테두리가 생김
+  const TD_LASER_COLOR_OUTER  = 'rgba(255,80,80,0.12)';  // 외77곽 ambient glow용 — stroke 자체는 거의 안 보임
+  const TD_LASER_SHADOW_MID   = '#cc0000';               // MID 레이어 shadowColor — 이 색으로 글로우가 번짐
+  const TD_LASER_SHADOW_OUTER = '#ff3030';               // OUTER 레이어 shadowColor — 밝은 빨강이어야 글로우처럼 보임
+  const TD_LASER_CURSOR_GLOW  = 'rgba(255,0,0,0.55)';   // 커서 외곽 확산 그래디언트 시작색
+  const TD_LASER_CURSOR_RING  = 'rgba(255,0,0,0.95)'; // 커서 링 색
 
   /** 레이저 포인터 모드 시작 — 스트로크 초기화 및 RAF 루프 시작 */
   function tdLaserStart() {
@@ -3335,38 +3345,71 @@
     // 5. 완전히 사라진 획 제거 (현재 그리는 획은 보존)
     tdLaserStrokes = tdLaserStrokes.filter(s => s === tdLaserCurStroke || s.alpha > 0);
 
-    // 6. 남은 획 그리기 (빨간 계열, 그림자 효과 포함)
+    // 6. 남은 획 그리기 — 2겹 레이어로 레이저 글로우 효과
+    // 6a. 중간점 quadratic curve 보간으로 부드러운 획 경로를 생성하는 헬퍼
+    const buildPath = (pts) => {
+      ctx.moveTo(pts[0].x / 100 * W, pts[0].y / 100 * H);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2 / 100 * W;
+        const my = (pts[i].y + pts[i + 1].y) / 2 / 100 * H;
+        ctx.quadraticCurveTo(pts[i].x / 100 * W, pts[i].y / 100 * H, mx, my);
+      }
+      const last = pts[pts.length - 1];
+      ctx.lineTo(last.x / 100 * W, last.y / 100 * H);
+    };
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.lineWidth = 3;
     for (const s of tdLaserStrokes) {
       if (s.points.length < 2) continue;
+      const pts = s.points;
+
+      // 6b. 레이어 1 — 외곽 ambient glow
+      //     strokeStyle(TD_LASER_COLOR_OUTER)이 거의 투명 → stroke 자체는 보이지 않음
+      //     shadowBlur만 주변으로 넓게 퍼져서 부드러운 후광을 만듦 (불투명하게 하면 어두운 테두리 생김)
+      ctx.globalAlpha = s.alpha * 0.55;
+      ctx.lineWidth = 22;
+      ctx.shadowColor = TD_LASER_SHADOW_OUTER;
+      ctx.shadowBlur = 30;
+      ctx.strokeStyle = TD_LASER_COLOR_OUTER;
+      ctx.beginPath(); buildPath(pts); ctx.stroke();
+
+      // 6c. 레이어 2 — 메인 빨간 획 (TD_LASER_COLOR_MID) — 굵게 해서 네온 튜브 느낌
       ctx.globalAlpha = s.alpha;
-      ctx.shadowColor = 'rgba(255,60,60,0.5)';
-      ctx.shadowBlur = 5;
-      ctx.beginPath();
-      ctx.moveTo(s.points[0].x / 100 * W, s.points[0].y / 100 * H);
-      for (let i = 1; i < s.points.length; i++) {
-        ctx.lineTo(s.points[i].x / 100 * W, s.points[i].y / 100 * H);
-      }
-      ctx.strokeStyle = 'rgba(235,70,70,0.85)';
-      ctx.stroke();
+      ctx.lineWidth = 7;
+      ctx.shadowColor = TD_LASER_SHADOW_MID;
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = TD_LASER_COLOR_MID;
+      ctx.beginPath(); buildPath(pts); ctx.stroke();
+
+      // 6d. 레이어 3 — 밝은 흰빛 코어 (TD_LASER_COLOR_CORE) — 굵게 해서 뚜렷하게
+      ctx.globalAlpha = s.alpha;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#ffffff';
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = TD_LASER_COLOR_CORE;
+      ctx.beginPath(); buildPath(pts); ctx.stroke();
     }
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
-    // 7. 커서 점 — 레이저 모드 활성화 중 항상 표시 (방사형 그래디언트 + 흰 점 + 빨간 코어)
+    // 7. 커서 점 — 레이저 모드 활성화 중 항상 표시 (확산 글로우 + 빨간 링 + 흰 코어)
     if (tdLaserRunning) {
       const cx = tdLaserMouseX / 100 * W, cy = tdLaserMouseY / 100 * H;
-      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 12);
-      grd.addColorStop(0, 'rgba(255,140,140,0.45)');
-      grd.addColorStop(1, 'rgba(255,60,60,0)');
-      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+      // 커서 외곽 확산 (TD_LASER_CURSOR_GLOW)
+      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 20);
+      grd.addColorStop(0, TD_LASER_CURSOR_GLOW);
+      grd.addColorStop(1, 'rgba(180,0,0,0)');
+      ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI * 2);
       ctx.fillStyle = grd; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(235,60,60,1)'; ctx.fill();
+      // 커서 링 (TD_LASER_CURSOR_RING)
+      ctx.shadowColor = TD_LASER_SHADOW_MID; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.fillStyle = TD_LASER_CURSOR_RING; ctx.fill();
+      // 커서 흰 코어
+      ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     // 8. 모드 종료 + 모든 획이 사라지면 RAF 정지 및 canvas 숨기기
