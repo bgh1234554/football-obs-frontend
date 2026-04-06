@@ -127,7 +127,7 @@ OBS 스트리밍용 축구 스코어보드 대시보드입니다.
 - **API 테스트** — Postman
 - **CDN / 캐시** — BunnyCDN
 - **배포** — Vercel (프론트), Render (백엔드)
-- **FE 소스 코드** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](GitHub_URL_here)
+- **FE 소스 코드** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-frontend)
 - **BE 소스 코드** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-backend)
 - **사용 AI** — Claude Code, ChatGPT Codex
 ### 개발 아이디어
