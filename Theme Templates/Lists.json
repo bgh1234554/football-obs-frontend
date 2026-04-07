@@ -379,7 +379,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -561,7 +561,7 @@
       "awayOutline": "#ffffff"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -599,7 +599,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -639,7 +639,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -791,7 +791,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -867,7 +867,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -907,7 +907,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -982,7 +982,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -1023,7 +1023,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -1064,7 +1064,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,

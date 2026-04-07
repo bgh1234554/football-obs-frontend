@@ -4,7 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const folderPath = 'c:\\Users\\MSI\\Desktop\\OBS\\templates';
+const folderPath = __dirname;
 const outputFile = path.join(folderPath, 'Lists.json');
 
 function updateListsJson() {

@@ -897,6 +897,98 @@
             <span class="kbd">T</span> 추가시간 토글
           </div>
 
+          <!-- ─── 수동 모드 ─── -->
+          <div id="manual-section">
+            <div class="section-title">수동 모드 입력</div>
+
+            <!-- 수동 모드 단축키 힌트 -->
+            <div style="opacity:.75; font-size:12px; margin-bottom:8px;">
+              ⌨️ 점수: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 +/− &nbsp;·&nbsp;
+              <span class="kbd">w</span>/<span class="kbd">s</span> 원정 +/− &nbsp;|&nbsp;
+              <span class="kbd">f</span> 점수 초기화 &nbsp;|&nbsp;
+              PSO 상태: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 득점/실축 &nbsp;·&nbsp;
+              <span class="kbd">w</span>/<span class="kbd">s</span> 원정 득점/실축 &nbsp;·&nbsp;
+              <span class="kbd">z</span> 되돌리기 &nbsp;·&nbsp; <span class="kbd">x</span> 초기화
+            </div>
+
+            <!-- 팀 이름 + 로고 -->
+            <div class="prow">
+              <div class="pgroup">
+                <label>홈 팀명</label>
+                <input id="manualHomeName" type="text" placeholder="HOME" />
+              </div>
+              <div class="pgroup">
+                <label>원정 팀명</label>
+                <input id="manualAwayName" type="text" placeholder="AWAY" />
+              </div>
+              <div class="pgroup">
+                <label>홈 로고 (파일)</label>
+                <input id="manualHomeLogo" type="file" accept="image/png,image/svg+xml,image/*" class="file" />
+              </div>
+              <div class="pgroup">
+                <label>홈 로고 URL</label>
+                <input id="manualHomeLogoUrl" type="text" placeholder="https://..." />
+              </div>
+              <div class="pgroup">
+                <label>원정 로고 (파일)</label>
+                <input id="manualAwayLogo" type="file" accept="image/png,image/svg+xml,image/*" class="file" />
+              </div>
+              <div class="pgroup">
+                <label>원정 로고 URL</label>
+                <input id="manualAwayLogoUrl" type="text" placeholder="https://..." />
+              </div>
+            </div>
+
+            <!-- 점수 -->
+            <div class="manual-controls-row">
+              <div class="manual-score-group">
+                <label>홈 점수</label>
+                <div class="manual-score-row">
+                  <button class="manual-score-btn" id="manualHomeMinus">−</button>
+                  <span class="manual-score-val" id="manualHomeScoreVal">0</span>
+                  <button class="manual-score-btn" id="manualHomePlus">＋</button>
+                </div>
+              </div>
+              <div class="manual-score-group">
+                <label>원정 점수</label>
+                <div class="manual-score-row">
+                  <button class="manual-score-btn" id="manualAwayMinus">−</button>
+                  <span class="manual-score-val" id="manualAwayScoreVal">0</span>
+                  <button class="manual-score-btn" id="manualAwayPlus">＋</button>
+                </div>
+              </div>
+              <div class="manual-side-tools">
+                <div class="pgroup" style="flex-direction:row;align-items:center;">
+                  <button id="manualResetScore" class="ghost">점수 초기화 (F)</button>
+                </div>
+                <div class="pgroup">
+                  <label>PK 관리 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">PSO 전반 선택 후 사용</span></label>
+                  <div class="manual-pk-buttons">
+                    <button id="pkHomeGoal">홈 득점</button>
+                    <button id="pkHomeMiss">홈 실축</button>
+                    <button id="pkAwayGoal">원정 득점</button>
+                    <button id="pkAwayMiss">원정 실축</button>
+                    <button id="pkUndo" class="ghost">되돌리기</button>
+                    <button id="pkReset">초기화</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 득점자 -->
+            <div class="prow" style="margin-top:8px;">
+              <div class="pgroup" style="min-width:320px">
+                <label>홈 득점자</label>
+                <textarea id="manualHomeNote" rows="3" placeholder="예: 12' 코디 학포&#10;45' 모하메드 살라"></textarea>
+              </div>
+              <div class="pgroup" style="min-width:320px">
+                <label>원정 득점자</label>
+                <textarea id="manualAwayNote" rows="3" placeholder="예: 55' 베냐민 셰슈코"></textarea>
+              </div>
+            </div>
+
+          </div><!-- /manual-section -->
+
           <!-- ─── 타이머 / 전반 / 추가시간 ─── -->
           <div>
             <div class="section-title">타이머 · 경기 정보</div>
@@ -1204,98 +1296,6 @@
               </div>
             </div>
           </div>
-
-          <!-- ─── 수동 모드 ─── -->
-          <div id="manual-section">
-            <div class="section-title">수동 모드 입력</div>
-
-            <!-- 수동 모드 단축키 힌트 -->
-            <div style="opacity:.75; font-size:12px; margin-bottom:8px;">
-              ⌨️ 점수: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 +/− &nbsp;·&nbsp;
-              <span class="kbd">w</span>/<span class="kbd">s</span> 원정 +/− &nbsp;|&nbsp;
-              <span class="kbd">f</span> 점수 초기화 &nbsp;|&nbsp;
-              PSO 상태: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 득점/실축 &nbsp;·&nbsp;
-              <span class="kbd">w</span>/<span class="kbd">s</span> 원정 득점/실축 &nbsp;·&nbsp;
-              <span class="kbd">z</span> 되돌리기 &nbsp;·&nbsp; <span class="kbd">x</span> 초기화
-            </div>
-
-            <!-- 팀 이름 + 로고 -->
-            <div class="prow">
-              <div class="pgroup">
-                <label>홈 팀명</label>
-                <input id="manualHomeName" type="text" placeholder="HOME" />
-              </div>
-              <div class="pgroup">
-                <label>원정 팀명</label>
-                <input id="manualAwayName" type="text" placeholder="AWAY" />
-              </div>
-              <div class="pgroup">
-                <label>홈 로고 (파일)</label>
-                <input id="manualHomeLogo" type="file" accept="image/png,image/svg+xml,image/*" class="file" />
-              </div>
-              <div class="pgroup">
-                <label>홈 로고 URL</label>
-                <input id="manualHomeLogoUrl" type="text" placeholder="https://..." />
-              </div>
-              <div class="pgroup">
-                <label>원정 로고 (파일)</label>
-                <input id="manualAwayLogo" type="file" accept="image/png,image/svg+xml,image/*" class="file" />
-              </div>
-              <div class="pgroup">
-                <label>원정 로고 URL</label>
-                <input id="manualAwayLogoUrl" type="text" placeholder="https://..." />
-              </div>
-            </div>
-
-            <!-- 점수 -->
-            <div class="manual-controls-row">
-              <div class="manual-score-group">
-                <label>홈 점수</label>
-                <div class="manual-score-row">
-                  <button class="manual-score-btn" id="manualHomeMinus">−</button>
-                  <span class="manual-score-val" id="manualHomeScoreVal">0</span>
-                  <button class="manual-score-btn" id="manualHomePlus">＋</button>
-                </div>
-              </div>
-              <div class="manual-score-group">
-                <label>원정 점수</label>
-                <div class="manual-score-row">
-                  <button class="manual-score-btn" id="manualAwayMinus">−</button>
-                  <span class="manual-score-val" id="manualAwayScoreVal">0</span>
-                  <button class="manual-score-btn" id="manualAwayPlus">＋</button>
-                </div>
-              </div>
-              <div class="manual-side-tools">
-                <div class="pgroup" style="flex-direction:row;align-items:center;">
-                  <button id="manualResetScore" class="ghost">점수 초기화 (F)</button>
-                </div>
-                <div class="pgroup">
-                  <label>PK 관리 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">PSO 전반 선택 후 사용</span></label>
-                  <div class="manual-pk-buttons">
-                    <button id="pkHomeGoal">홈 득점</button>
-                    <button id="pkHomeMiss">홈 실축</button>
-                    <button id="pkAwayGoal">원정 득점</button>
-                    <button id="pkAwayMiss">원정 실축</button>
-                    <button id="pkUndo" class="ghost">되돌리기</button>
-                    <button id="pkReset">초기화</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 득점자 -->
-            <div class="prow" style="margin-top:8px;">
-              <div class="pgroup" style="min-width:320px">
-                <label>홈 득점자</label>
-                <textarea id="manualHomeNote" rows="3" placeholder="예: 12' 코디 학포&#10;45' 모하메드 살라"></textarea>
-              </div>
-              <div class="pgroup" style="min-width:320px">
-                <label>원정 득점자</label>
-                <textarea id="manualAwayNote" rows="3" placeholder="예: 55' 베냐민 셰슈코"></textarea>
-              </div>
-            </div>
-
-          </div><!-- /manual-section -->
 
         </div><!-- /theme-panel-inner -->
       </div>
