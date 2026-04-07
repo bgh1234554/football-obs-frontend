@@ -418,10 +418,16 @@
     /* ========== 수동 모드 섹션 ========== */
     #manual-section { display: none; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 16px; }
     #manual-section.visible { display: block; }
+    .manual-controls-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 24px; margin-top: 8px; }
     .manual-score-row { display: flex; align-items: center; gap: 8px; }
     .manual-score-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 18px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .manual-score-btn:hover { background: rgba(255,255,255,.1); }
     .manual-score-val { font-size: 22px; font-weight: 900; min-width: 28px; text-align: center; }
+    .manual-score-group { display: grid; gap: 8px; }
+    .manual-score-group label { font-size: 12px; opacity: .85; }
+    .manual-side-tools { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+    .manual-side-tools .pgroup { justify-items: start; }
+    .manual-pk-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
 
     /* ========== 페이지 영역 ========== */
     .pages { flex: 1; min-height: 0; overflow: hidden; }
@@ -547,6 +553,16 @@
       font-size: 11px; font-weight: 900; letter-spacing: 1px;
       text-transform: uppercase; color: var(--muted);
       border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 2px;
+    }
+    .theme-inline-sections {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .theme-inline-section {
+      flex: 1 1 320px;
+      min-width: 0;
     }
 
     /* ========== 마크다운 렌더 ========== */
@@ -873,15 +889,11 @@
       <div class="theme-panel-wrap">
         <div class="theme-panel-inner" id="themePanel">
 
-          <!-- 단축키 힌트 -->
+          <!-- 단축키 힌트 (자동 모드 기준 최소 표시) -->
           <div style="opacity:.75; font-size:12px;">
             ⌨️ <span class="kbd">Space</span> 시작/정지 ·
             <span class="kbd">R</span> 리셋 ·
             <span class="kbd">[</span>/<span class="kbd">]</span> 전/후반 이동 ·
-            <span class="kbd">q/a</span> 홈 PK ·
-            <span class="kbd">w/s</span> 원정 PK ·
-            <span class="kbd">z</span> PK되돌리기 ·
-            <span class="kbd">x</span> PK초기화 ·
             <span class="kbd">T</span> 추가시간 토글
           </div>
 
@@ -942,29 +954,12 @@
                   <input id="aggAwayBase" type="number" min="0" step="1" value="0" placeholder="원정 합계" title="원정 합계 기준값" style="width:90px;">
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- ─── PK 관리 + 점수판 배율 ─── -->
-          <div>
-            <div class="section-title">PK 관리 · 점수판 배율</div>
-            <div class="prow">
+              <!-- 점수판 배율 — PK 관리 섹션과 합쳐서 항상 표시 -->
               <div class="pgroup">
-                <label>배율 (<span id="boardScaleLabel">75</span>%)</label>
+                <label>점수판 배율 (<span id="boardScaleLabel">75</span>%)</label>
                 <div class="prow">
                   <input type="range" id="boardScaleRange" min="50" max="100" step="1" value="75" style="width:160px; cursor:pointer;" />
                   <button id="boardScaleReset">초기화</button>
-                </div>
-              </div>
-              <div class="pgroup">
-                <label>PK &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">홈: <span class="kbd">q</span>/<span class="kbd">a</span> · 원정: <span class="kbd">w</span>/<span class="kbd">s</span> · 되돌리기: <span class="kbd">z</span> · 초기화: <span class="kbd">x</span></span></label>
-                <div class="prow">
-                  <button id="pkHomeGoal">홈 득점</button>
-                  <button id="pkHomeMiss">홈 실축</button>
-                  <button id="pkAwayGoal">원정 득점</button>
-                  <button id="pkAwayMiss">원정 실축</button>
-                  <button id="pkUndo" class="ghost">되돌리기</button>
-                  <button id="pkReset">초기화</button>
                 </div>
               </div>
             </div>
@@ -1039,23 +1034,6 @@
             </div>
           </div>
 
-          <!-- ─── 득점자 메모 스타일 ─── -->
-          <div>
-            <div class="section-title">득점자 표시 스타일</div>
-            <div class="prow">
-              <div class="pgroup">
-                <label>득점자 표시</label>
-                <div class="prow"><input id="noteOn" type="checkbox" checked></div>
-              </div>
-              <div class="pgroup"><label>글씨 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div>
-              <div class="pgroup">
-                <label>글자 크기(px)</label>
-                <input id="noteFontSize" type="number" min="10" step="1" value="18">
-              </div>
-              <div class="pgroup"><label>글씨 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div>
-            </div>
-          </div>
-
           <!-- ─── 색상 ─── -->
           <div>
             <div class="section-title">색상</div>
@@ -1079,71 +1057,90 @@
             </div>
           </div>
 
-          <!-- ─── 테두리 ─── -->
-          <div>
-            <div class="section-title">테두리</div>
-            <div class="prow">
-              <div class="pgroup">
-                <label>홈 테두리 표시</label>
-                <div class="prow"><input id="homeOutlineOn" type="checkbox"></div>
-              </div>
-              <div class="pgroup">
-                <label>원정 테두리 표시</label>
-                <div class="prow"><input id="awayOutlineOn" type="checkbox"></div>
-              </div>
-              <div class="pgroup">
-                <label>홈 테두리 두께(px)</label>
-                <input id="homeOutlineWidth" type="number" min="0" step="1" value="1" />
-              </div>
-              <div class="pgroup">
-                <label>원정 테두리 두께(px)</label>
-                <input id="awayOutlineWidth" type="number" min="0" step="1" value="1" />
-              </div>
-              <div class="pgroup">
-                <label>보드 테두리 표시</label>
-                <div class="prow"><input id="boardOutlineOn" type="checkbox" checked></div>
-              </div>
-              <div class="pgroup">
-                <label>보드 테두리 두께(px)</label>
-                <input id="boardOutlineWidth" type="number" min="0" step="1" value="1" />
-              </div>
-              <div class="pgroup">
-                <label>숫자 패널 테두리 표시</label>
-                <div class="prow"><input id="scoreOutlineOn" type="checkbox" checked></div>
-              </div>
-              <div class="pgroup">
-                <label>숫자 패널 두께(px)</label>
-                <input id="scoreOutlineWidth" type="number" min="0" step="1" value="1" />
+          <div class="theme-inline-sections">
+            <!-- ─── 득점자 메모 스타일 ─── -->
+            <div class="theme-inline-section">
+              <div class="section-title">득점자 표시 스타일</div>
+              <div class="prow">
+                <div class="pgroup">
+                  <label>득점자 표시</label>
+                  <div class="prow"><input id="noteOn" type="checkbox" checked></div>
+                </div>
+                <div class="pgroup"><label>글씨 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div>
+                <div class="pgroup">
+                  <label>글자 크기(px)</label>
+                  <input id="noteFontSize" type="number" min="10" step="1" value="18">
+                </div>
+                <div class="pgroup"><label>글씨 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div>
               </div>
             </div>
-          </div>
 
-          <!-- ─── 레드카드 시각 설정 ─── -->
-          <div>
-            <div class="section-title">레드카드 시각 설정</div>
-            <div class="prow">
-              <div class="pgroup">
-                <label>레드카드 크기/간격(px)</label>
-                <div class="prow">
-                  <input id="rcSize" type="number" min="6" max="40" step="1" value="14" />
-                  <input id="rcGap" type="number" min="0" max="20" step="1" value="6" />
+            <!-- ─── 테두리 ─── -->
+            <div class="theme-inline-section">
+              <div class="section-title">테두리</div>
+              <div class="prow">
+                <div class="pgroup">
+                  <label>홈 테두리 표시</label>
+                  <div class="prow"><input id="homeOutlineOn" type="checkbox"></div>
                 </div>
-                <small>크기: 14, 간격: 6</small>
+                <div class="pgroup">
+                  <label>원정 테두리 표시</label>
+                  <div class="prow"><input id="awayOutlineOn" type="checkbox"></div>
+                </div>
+                <div class="pgroup">
+                  <label>홈 테두리 두께(px)</label>
+                  <input id="homeOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="pgroup">
+                  <label>원정 테두리 두께(px)</label>
+                  <input id="awayOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="pgroup">
+                  <label>보드 테두리 표시</label>
+                  <div class="prow"><input id="boardOutlineOn" type="checkbox" checked></div>
+                </div>
+                <div class="pgroup">
+                  <label>보드 테두리 두께(px)</label>
+                  <input id="boardOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="pgroup">
+                  <label>숫자 패널 테두리 표시</label>
+                  <div class="prow"><input id="scoreOutlineOn" type="checkbox" checked></div>
+                </div>
+                <div class="pgroup">
+                  <label>숫자 패널 두께(px)</label>
+                  <input id="scoreOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
               </div>
-              <div class="pgroup">
-                <label>레드카드 위치(px)</label>
-                <div class="prow">
-                  <label class="prow" style="gap:6px;">위쪽
-                    <input id="rcTop" type="number" step="1" value="-25" style="width:60px;">
-                  </label>
-                  <label class="prow" style="gap:6px;">홈 안쪽
-                    <input id="rcHomeInset" type="number" step="1" value="6" style="width:60px;">
-                  </label>
-                  <label class="prow" style="gap:6px;">원정 안쪽
-                    <input id="rcAwayInset" type="number" step="1" value="6" style="width:60px;">
-                  </label>
+            </div>
+
+            <!-- ─── 레드카드 시각 설정 ─── -->
+            <div class="theme-inline-section">
+              <div class="section-title">레드카드 시각 설정</div>
+              <div class="prow">
+                <div class="pgroup">
+                  <label>레드카드 크기/간격(px)</label>
+                  <div class="prow">
+                    <input id="rcSize" type="number" min="6" max="40" step="1" value="14" />
+                    <input id="rcGap" type="number" min="0" max="20" step="1" value="6" />
+                  </div>
+                  <small>크기: 14, 간격: 6</small>
                 </div>
-                <small>기본 - 위쪽: -25, 안쪽: 6</small>
+                <div class="pgroup">
+                  <label>레드카드 위치(px)</label>
+                  <div class="prow">
+                    <label class="prow" style="gap:6px;">위쪽
+                      <input id="rcTop" type="number" step="1" value="-25" style="width:60px;">
+                    </label>
+                    <label class="prow" style="gap:6px;">홈 안쪽
+                      <input id="rcHomeInset" type="number" step="1" value="6" style="width:60px;">
+                    </label>
+                    <label class="prow" style="gap:6px;">원정 안쪽
+                      <input id="rcAwayInset" type="number" step="1" value="6" style="width:60px;">
+                    </label>
+                  </div>
+                  <small>기본 - 위쪽: -25, 안쪽: 6</small>
+                </div>
               </div>
             </div>
           </div>
@@ -1212,6 +1209,16 @@
           <div id="manual-section">
             <div class="section-title">수동 모드 입력</div>
 
+            <!-- 수동 모드 단축키 힌트 -->
+            <div style="opacity:.75; font-size:12px; margin-bottom:8px;">
+              ⌨️ 점수: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 +/− &nbsp;·&nbsp;
+              <span class="kbd">w</span>/<span class="kbd">s</span> 원정 +/− &nbsp;|&nbsp;
+              <span class="kbd">f</span> 점수 초기화 &nbsp;|&nbsp;
+              PSO 상태: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 득점/실축 &nbsp;·&nbsp;
+              <span class="kbd">w</span>/<span class="kbd">s</span> 원정 득점/실축 &nbsp;·&nbsp;
+              <span class="kbd">z</span> 되돌리기 &nbsp;·&nbsp; <span class="kbd">x</span> 초기화
+            </div>
+
             <!-- 팀 이름 + 로고 -->
             <div class="prow">
               <div class="pgroup">
@@ -1241,8 +1248,8 @@
             </div>
 
             <!-- 점수 -->
-            <div class="prow" style="align-items:center;gap:24px;margin-top:8px;">
-              <div class="pgroup" style="flex-direction:row;align-items:center;gap:8px;">
+            <div class="manual-controls-row">
+              <div class="manual-score-group">
                 <label>홈 점수</label>
                 <div class="manual-score-row">
                   <button class="manual-score-btn" id="manualHomeMinus">−</button>
@@ -1250,7 +1257,7 @@
                   <button class="manual-score-btn" id="manualHomePlus">＋</button>
                 </div>
               </div>
-              <div class="pgroup" style="flex-direction:row;align-items:center;gap:8px;">
+              <div class="manual-score-group">
                 <label>원정 점수</label>
                 <div class="manual-score-row">
                   <button class="manual-score-btn" id="manualAwayMinus">−</button>
@@ -1258,8 +1265,21 @@
                   <button class="manual-score-btn" id="manualAwayPlus">＋</button>
                 </div>
               </div>
-              <div class="pgroup" style="flex-direction:row;align-items:center;">
-                <button id="manualResetScore" class="ghost">점수 초기화</button>
+              <div class="manual-side-tools">
+                <div class="pgroup" style="flex-direction:row;align-items:center;">
+                  <button id="manualResetScore" class="ghost">점수 초기화 (F)</button>
+                </div>
+                <div class="pgroup">
+                  <label>PK 관리 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">PSO 전반 선택 후 사용</span></label>
+                  <div class="manual-pk-buttons">
+                    <button id="pkHomeGoal">홈 득점</button>
+                    <button id="pkHomeMiss">홈 실축</button>
+                    <button id="pkAwayGoal">원정 득점</button>
+                    <button id="pkAwayMiss">원정 실축</button>
+                    <button id="pkUndo" class="ghost">되돌리기</button>
+                    <button id="pkReset">초기화</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1274,6 +1294,7 @@
                 <textarea id="manualAwayNote" rows="3" placeholder="예: 55' 베냐민 셰슈코"></textarea>
               </div>
             </div>
+
           </div><!-- /manual-section -->
 
         </div><!-- /theme-panel-inner -->
@@ -2355,7 +2376,14 @@
   el.manualAwayPlus?.addEventListener('click',  ()=>{ state.awayScore++; syncManualInputs(); render(); persist(); });
   el.manualAwayMinus?.addEventListener('click', ()=>{ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); });
   // [이벤트 등록] 수동 모드 — 점수 초기화
-  el.manualResetScore?.addEventListener('click',()=>{ state.homeScore=0; state.awayScore=0; syncManualInputs(); render(); persist(); });
+  function resetManualScore(){
+    state.homeScore = 0;
+    state.awayScore = 0;
+    syncManualInputs();
+    render();
+    persist();
+  }
+  el.manualResetScore?.addEventListener('click', resetManualScore);
 
   /**
    * 이미지 파일을 읽어 URL 문자열을 콜백으로 전달.
@@ -2531,6 +2559,7 @@
     if(e.ctrlKey && (e.key==='y'||e.key==='Y')){ e.preventDefault(); tdRedo(); return; }
     if(e.code==='Space'){ e.preventDefault(); state.running=!state.running; render(); persist(); }
     if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
+    if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
     if(e.key==='t'||e.key==='T'){ state.extraShown=!state.extraShown; render(); persist(); }
     if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); state.half=halfOrder[i]; render(); persist(); }
     if(e.key===']'){ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); state.half=halfOrder[i]; render(); persist(); }
@@ -2792,6 +2821,13 @@
       if(data.homeLogo)       state.homeLogo   = data.homeLogo;
       if(data.awayLogo)       state.awayLogo   = data.awayLogo;
       if(data.half)           state.half       = data.half;
+
+      // 추가시간 자동 트리거 — 사용자가 수동으로 건드린 경우(extraManualOverride)는 건너뜀
+      if(data.extra != null && !state.extraManualOverride){
+        state.extra = data.extra;
+        // extra가 0보다 크면 추가시간 표시 ON, 0이면 OFF
+        state.showExtra = data.extra > 0;
+      }
 
       render(); persist();
       setApiStatus('ok', `${data.homeTeam} vs ${data.awayTeam}`);

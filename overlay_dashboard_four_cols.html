@@ -517,6 +517,16 @@
       text-transform: uppercase; color: var(--muted);
       border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 2px;
     }
+    .theme-inline-sections {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .theme-inline-section {
+      flex: 1 1 320px;
+      min-width: 0;
+    }
 
     /* ========== 마크다운 렌더 ========== */
     .md-body { color: var(--text); line-height: 1.75; font-size: 14px; }
@@ -993,23 +1003,6 @@
             </div>
           </div>
 
-          <!-- ─── 득점자 메모 스타일 ─── -->
-          <div>
-            <div class="section-title">득점자 표시 스타일</div>
-            <div class="prow">
-              <div class="pgroup">
-                <label>득점자 표시</label>
-                <div class="prow"><input id="noteOn" type="checkbox" checked></div>
-              </div>
-              <div class="pgroup"><label>글씨 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div>
-              <div class="pgroup">
-                <label>글자 크기(px)</label>
-                <input id="noteFontSize" type="number" min="10" step="1" value="18">
-              </div>
-              <div class="pgroup"><label>글씨 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div>
-            </div>
-          </div>
-
           <!-- ─── 색상 ─── -->
           <div>
             <div class="section-title">색상</div>
@@ -1033,71 +1026,90 @@
             </div>
           </div>
 
-          <!-- ─── 테두리 ─── -->
-          <div>
-            <div class="section-title">테두리</div>
-            <div class="prow">
-              <div class="pgroup">
-                <label>홈 테두리 표시</label>
-                <div class="prow"><input id="homeOutlineOn" type="checkbox"></div>
-              </div>
-              <div class="pgroup">
-                <label>원정 테두리 표시</label>
-                <div class="prow"><input id="awayOutlineOn" type="checkbox"></div>
-              </div>
-              <div class="pgroup">
-                <label>홈 테두리 두께(px)</label>
-                <input id="homeOutlineWidth" type="number" min="0" step="1" value="1" />
-              </div>
-              <div class="pgroup">
-                <label>원정 테두리 두께(px)</label>
-                <input id="awayOutlineWidth" type="number" min="0" step="1" value="1" />
-              </div>
-              <div class="pgroup">
-                <label>보드 테두리 표시</label>
-                <div class="prow"><input id="boardOutlineOn" type="checkbox" checked></div>
-              </div>
-              <div class="pgroup">
-                <label>보드 테두리 두께(px)</label>
-                <input id="boardOutlineWidth" type="number" min="0" step="1" value="1" />
-              </div>
-              <div class="pgroup">
-                <label>숫자 패널 테두리 표시</label>
-                <div class="prow"><input id="scoreOutlineOn" type="checkbox" checked></div>
-              </div>
-              <div class="pgroup">
-                <label>숫자 패널 두께(px)</label>
-                <input id="scoreOutlineWidth" type="number" min="0" step="1" value="1" />
+          <div class="theme-inline-sections">
+            <!-- ─── 득점자 메모 스타일 ─── -->
+            <div class="theme-inline-section">
+              <div class="section-title">득점자 표시 스타일</div>
+              <div class="prow">
+                <div class="pgroup">
+                  <label>득점자 표시</label>
+                  <div class="prow"><input id="noteOn" type="checkbox" checked></div>
+                </div>
+                <div class="pgroup"><label>글씨 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div>
+                <div class="pgroup">
+                  <label>글자 크기(px)</label>
+                  <input id="noteFontSize" type="number" min="10" step="1" value="18">
+                </div>
+                <div class="pgroup"><label>글씨 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div>
               </div>
             </div>
-          </div>
 
-          <!-- ─── 레드카드 시각 설정 ─── -->
-          <div>
-            <div class="section-title">레드카드 시각 설정</div>
-            <div class="prow">
-              <div class="pgroup">
-                <label>레드카드 크기/간격(px)</label>
-                <div class="prow">
-                  <input id="rcSize" type="number" min="6" max="40" step="1" value="14" />
-                  <input id="rcGap" type="number" min="0" max="20" step="1" value="6" />
+            <!-- ─── 테두리 ─── -->
+            <div class="theme-inline-section">
+              <div class="section-title">테두리</div>
+              <div class="prow">
+                <div class="pgroup">
+                  <label>홈 테두리 표시</label>
+                  <div class="prow"><input id="homeOutlineOn" type="checkbox"></div>
                 </div>
-                <small>크기: 14, 간격: 6</small>
+                <div class="pgroup">
+                  <label>원정 테두리 표시</label>
+                  <div class="prow"><input id="awayOutlineOn" type="checkbox"></div>
+                </div>
+                <div class="pgroup">
+                  <label>홈 테두리 두께(px)</label>
+                  <input id="homeOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="pgroup">
+                  <label>원정 테두리 두께(px)</label>
+                  <input id="awayOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="pgroup">
+                  <label>보드 테두리 표시</label>
+                  <div class="prow"><input id="boardOutlineOn" type="checkbox" checked></div>
+                </div>
+                <div class="pgroup">
+                  <label>보드 테두리 두께(px)</label>
+                  <input id="boardOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
+                <div class="pgroup">
+                  <label>숫자 패널 테두리 표시</label>
+                  <div class="prow"><input id="scoreOutlineOn" type="checkbox" checked></div>
+                </div>
+                <div class="pgroup">
+                  <label>숫자 패널 두께(px)</label>
+                  <input id="scoreOutlineWidth" type="number" min="0" step="1" value="1" />
+                </div>
               </div>
-              <div class="pgroup">
-                <label>레드카드 위치(px)</label>
-                <div class="prow">
-                  <label class="prow" style="gap:6px;">위쪽
-                    <input id="rcTop" type="number" step="1" value="-25" style="width:60px;">
-                  </label>
-                  <label class="prow" style="gap:6px;">홈 안쪽
-                    <input id="rcHomeInset" type="number" step="1" value="6" style="width:60px;">
-                  </label>
-                  <label class="prow" style="gap:6px;">원정 안쪽
-                    <input id="rcAwayInset" type="number" step="1" value="6" style="width:60px;">
-                  </label>
+            </div>
+
+            <!-- ─── 레드카드 시각 설정 ─── -->
+            <div class="theme-inline-section">
+              <div class="section-title">레드카드 시각 설정</div>
+              <div class="prow">
+                <div class="pgroup">
+                  <label>레드카드 크기/간격(px)</label>
+                  <div class="prow">
+                    <input id="rcSize" type="number" min="6" max="40" step="1" value="14" />
+                    <input id="rcGap" type="number" min="0" max="20" step="1" value="6" />
+                  </div>
+                  <small>크기: 14, 간격: 6</small>
                 </div>
-                <small>기본 - 위쪽: -25, 안쪽: 6</small>
+                <div class="pgroup">
+                  <label>레드카드 위치(px)</label>
+                  <div class="prow">
+                    <label class="prow" style="gap:6px;">위쪽
+                      <input id="rcTop" type="number" step="1" value="-25" style="width:60px;">
+                    </label>
+                    <label class="prow" style="gap:6px;">홈 안쪽
+                      <input id="rcHomeInset" type="number" step="1" value="6" style="width:60px;">
+                    </label>
+                    <label class="prow" style="gap:6px;">원정 안쪽
+                      <input id="rcAwayInset" type="number" step="1" value="6" style="width:60px;">
+                    </label>
+                  </div>
+                  <small>기본 - 위쪽: -25, 안쪽: 6</small>
+                </div>
               </div>
             </div>
           </div>
