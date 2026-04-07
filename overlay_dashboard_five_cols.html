@@ -893,8 +893,7 @@
           <div style="opacity:.75; font-size:12px;">
             ⌨️ <span class="kbd">Space</span> 시작/정지 ·
             <span class="kbd">R</span> 리셋 ·
-            <span class="kbd">[</span>/<span class="kbd">]</span> 전/후반 이동 ·
-            <span class="kbd">T</span> 추가시간 토글
+            <span class="kbd">[</span>/<span class="kbd">]</span> 전/후반 이동
           </div>
 
           <!-- ─── 수동 모드 ─── -->
@@ -906,6 +905,7 @@
               ⌨️ 점수: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 +/− &nbsp;·&nbsp;
               <span class="kbd">w</span>/<span class="kbd">s</span> 원정 +/− &nbsp;|&nbsp;
               <span class="kbd">f</span> 점수 초기화 &nbsp;|&nbsp;
+              <span class="kbd">t</span> 추가시간 표시 &nbsp;|&nbsp;
               PSO 상태: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 득점/실축 &nbsp;·&nbsp;
               <span class="kbd">w</span>/<span class="kbd">s</span> 원정 득점/실축 &nbsp;·&nbsp;
               <span class="kbd">z</span> 되돌리기 &nbsp;·&nbsp; <span class="kbd">x</span> 초기화
@@ -960,6 +960,15 @@
               <div class="manual-side-tools">
                 <div class="pgroup" style="flex-direction:row;align-items:center;">
                   <button id="manualResetScore" class="ghost">점수 초기화 (F)</button>
+                </div>
+                <div class="pgroup">
+                  <label>추가시간 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;"><span class="kbd">T</span></span></label>
+                  <div class="prow">
+                    <input id="extraInput" type="number" min="0" value="0" style="width:72px;" />
+                    <button id="toggleExtra" class="ghost">표시 토글 (T)</button>
+                    <button id="extraPlus">+1</button>
+                    <button id="extraMinus">-1</button>
+                  </div>
                 </div>
                 <div class="pgroup">
                   <label>PK 관리 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">PSO 전반 선택 후 사용</span></label>
@@ -1026,15 +1035,6 @@
               <div class="pgroup">
                 <label>배속</label>
                 <input id="secPerTick" type="number" step="0.1" value="1" title="가속 배율" />
-              </div>
-              <div class="pgroup">
-                <label>추가시간</label>
-                <div class="prow">
-                  <input id="extraInput" type="number" min="0" value="0" />
-                  <button id="toggleExtra">표시 토글 (T)</button>
-                  <button id="extraPlus">+1</button>
-                  <button id="extraMinus">-1</button>
-                </div>
               </div>
               <div class="pgroup">
                 <label>합계점수 표시 &nbsp;<span style="font-weight:400;opacity:.6;font-size:11px;">켜면 현재 득점이 합계에 자동 반영</span></label>
@@ -2232,10 +2232,23 @@
   el.quick90?.addEventListener('click', ()=>{ el.startAt.value='90:00'; el.applyStartAt.click(); });
 
   // [이벤트 등록] 추가 시간 표시/숨김 및 값 조정
-  el.toggleExtra?.addEventListener('click', ()=>{ state.extraShown=!state.extraShown; render(); persist(); });
-  el.extraInput?.addEventListener('input', e=>{ state.extra=Math.max(0,Number(e.target.value)||0); render(); persist(); });
-  el.extraPlus?.addEventListener('click', ()=>{ state.extra++; render(); persist(); });
-  el.extraMinus?.addEventListener('click', ()=>{ state.extra=Math.max(0,state.extra-1); render(); persist(); });
+  function setManualExtra(nextValue){
+    if(!state.manualMode) return;
+    state.extra = Math.max(0, Number(nextValue) || 0);
+    state.extraShown = state.extra > 0;
+    render();
+    persist();
+  }
+  function toggleManualExtra(){
+    if(!state.manualMode) return;
+    state.extraShown = !state.extraShown;
+    render();
+    persist();
+  }
+  el.toggleExtra?.addEventListener('click', toggleManualExtra);
+  el.extraInput?.addEventListener('input', e=>setManualExtra(e.target.value));
+  el.extraPlus?.addEventListener('click', ()=>setManualExtra(state.extra + 1));
+  el.extraMinus?.addEventListener('click', ()=>setManualExtra(state.extra - 1));
 
   // [이벤트 등록] 득점자 표시 여부 및 폰트 크기
   el.noteOn?.addEventListener('change', e=>{ state.noteEnabled=!!e.target.checked; render(); persist(); });
@@ -2360,6 +2373,7 @@
     if(el.manualAwayName) el.manualAwayName.value = state.awayName || '';
     if(el.manualHomeScoreVal) el.manualHomeScoreVal.textContent = state.homeScore ?? 0;
     if(el.manualAwayScoreVal) el.manualAwayScoreVal.textContent = state.awayScore ?? 0;
+    if(el.extraInput) el.extraInput.value = state.extra ?? 0;
     if(el.manualHomeNote) el.manualHomeNote.value = state.notes.home || '';
     if(el.manualAwayNote) el.manualAwayNote.value = state.notes.away || '';
   }
@@ -2560,7 +2574,7 @@
     if(e.code==='Space'){ e.preventDefault(); state.running=!state.running; render(); persist(); }
     if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
     if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
-    if(e.key==='t'||e.key==='T'){ state.extraShown=!state.extraShown; render(); persist(); }
+    if(state.manualMode && (e.key==='t'||e.key==='T')){ toggleManualExtra(); }
     if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); state.half=halfOrder[i]; render(); persist(); }
     if(e.key===']'){ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); state.half=halfOrder[i]; render(); persist(); }
     // q/a → 홈 점수 +/-, w/s → 원정 점수 +/-
@@ -2822,12 +2836,9 @@
       if(data.awayLogo)       state.awayLogo   = data.awayLogo;
       if(data.half)           state.half       = data.half;
 
-      // 추가시간 자동 트리거 — 사용자가 수동으로 건드린 경우(extraManualOverride)는 건너뜀
-      if(data.extra != null && !state.extraManualOverride){
-        state.extra = data.extra;
-        // extra가 0보다 크면 추가시간 표시 ON, 0이면 OFF
-        state.showExtra = data.extra > 0;
-      }
+      // 자동 모드에서는 API extra 값을 그대로 반영한다. null이면 숨김 처리.
+      state.extra = Math.max(0, Number(data.extra) || 0);
+      state.extraShown = data.extra != null && state.extra > 0;
 
       render(); persist();
       setApiStatus('ok', `${data.homeTeam} vs ${data.awayTeam}`);
