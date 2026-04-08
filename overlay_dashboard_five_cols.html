@@ -930,12 +930,20 @@
                 <input id="manualHomeLogoUrl" type="text" placeholder="https://..." />
               </div>
               <div class="pgroup">
+                <label>홈 로고 지우기</label>
+                <button id="manualHomeLogoClear" type="button" class="ghost">로고 삭제</button>
+              </div>
+              <div class="pgroup">
                 <label>원정 로고 (파일)</label>
                 <input id="manualAwayLogo" type="file" accept="image/png,image/svg+xml,image/*" class="file" />
               </div>
               <div class="pgroup">
                 <label>원정 로고 URL</label>
                 <input id="manualAwayLogoUrl" type="text" placeholder="https://..." />
+              </div>
+              <div class="pgroup">
+                <label>원정 로고 지우기</label>
+                <button id="manualAwayLogoClear" type="button" class="ghost">로고 삭제</button>
               </div>
             </div>
 
@@ -1237,6 +1245,27 @@
             </div>
           </div>
 
+          
+          <!-- ─── 템플릿 ─── -->
+          <div>
+            <div class="section-title">템플릿</div>
+            <div class="prow">
+              <div class="pgroup">
+                <label>저장된 템플릿</label>
+                <div class="prow">
+                  <select id="templateSelect" style="min-width:180px"></select>
+                  <input id="templateName" type="text" placeholder="예: 프리미어리그" />
+                  <button id="saveTemplate" class="primary">로컬 저장</button>
+                  <button id="deleteTemplate" class="ghost">삭제</button>
+                  <button id="exportTemplates">내보내기(JSON)</button>
+                  <label for="importTemplates">불러오기</label>
+                  <input id="importTemplates" type="file" accept="application/json" class="file" />
+                </div>
+                <small>브라우저 LocalStorage + JSON 내보내기/불러오기</small>
+              </div>
+            </div>
+          </div>
+
           <!-- ─── 폰트 ─── -->
           <div>
             <div class="section-title">폰트</div>
@@ -1244,15 +1273,41 @@
               <div class="pgroup">
                 <label>프리셋</label>
                 <select id="fontPreset">
-                  <option value="system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Helvetica, Arial, sans-serif">시스템 기본</option>
-                  <option value="'Roboto', sans-serif">Roboto</option>
-                  <option value="'Noto Sans KR', sans-serif">Noto Sans KR</option>
-                  <option value="'Montserrat', sans-serif">Montserrat</option>
-                  <option value="'Bebas Neue', sans-serif">Bebas Neue</option>
+                  <option value="">직접 입력 / 사용자 지정</option>
+                  <optgroup label="기본 / 시스템">
+                    <option value="'Ubuntu', 'NanumSquareRound', sans-serif">기본값</option>
+                    <option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif">시스템 기본</option>
+                    <option value="'Segoe UI', 'Malgun Gothic', Arial, sans-serif">Segoe UI + 맑은 고딕</option>
+                    <option value="'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">맑은 고딕</option>
+                    <option value="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">Apple SD Gothic Neo</option>
+                    <option value="'Arial', Helvetica, sans-serif">Arial</option>
+                    <option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option>
+                    <option value="'Tahoma', Geneva, sans-serif">Tahoma</option>
+                    <option value="'Verdana', Geneva, sans-serif">Verdana</option>
+                    <option value="'Trebuchet MS', Helvetica, sans-serif">Trebuchet MS</option>
+                  </optgroup>
+                  <optgroup label="웹">
+                    <option value="'Ubuntu', sans-serif">Ubuntu</option>
+                    <option value="'NanumSquareRound', sans-serif">NanumSquareRound</option>
+                    <option value="'Roboto', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">Roboto</option>
+                    <option value="'Noto Sans KR', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">Noto Sans KR</option>
+                    <option value="'Montserrat', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap">Montserrat</option>
+                    <option value="'Bebas Neue', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">Bebas Neue</option>
+                  </optgroup>
+                  <optgroup label="세리프 / 모노 / 디스플레이">
+                    <option value="'Georgia', 'Times New Roman', serif">Georgia</option>
+                    <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="'Consolas', 'Courier New', monospace">Consolas</option>
+                    <option value="'Impact', 'Arial Black', sans-serif">Impact</option>
+                    <option value="sans-serif">sans-serif</option>
+                    <option value="serif">serif</option>
+                    <option value="monospace">monospace</option>
+                  </optgroup>
                 </select>
               </div>
               <div class="pgroup">
-                <label>설치 폰트 (권한 요청)</label>
+                <label>기기에 설치된 폰트 (권한 필요)</label>
                 <div class="prow">
                   <button id="askLocalFonts">설치 폰트 읽기</button>
                   <select id="systemFonts" style="min-width:200px"></select>
@@ -1274,25 +1329,9 @@
                 <label style="visibility:hidden">폰트 적용</label>
                 <button id="applyFont" class="primary">폰트 적용</button>
               </div>
-            </div>
-          </div>
-
-          <!-- ─── 템플릿 ─── -->
-          <div>
-            <div class="section-title">템플릿</div>
-            <div class="prow">
               <div class="pgroup">
-                <label>저장된 템플릿</label>
-                <div class="prow">
-                  <select id="templateSelect" style="min-width:180px"></select>
-                  <input id="templateName" type="text" placeholder="예: 프리미어리그" />
-                  <button id="saveTemplate" class="primary">로컬 저장</button>
-                  <button id="deleteTemplate" class="ghost">삭제</button>
-                  <button id="exportTemplates">내보내기(JSON)</button>
-                  <label for="importTemplates">불러오기</label>
-                  <input id="importTemplates" type="file" accept="application/json" class="file" />
-                </div>
-                <small>브라우저 LocalStorage + JSON 내보내기/불러오기</small>
+                <label style="visibility:hidden">폰트 초기화</label>
+                <button id="resetFont">폰트 초기화</button>
               </div>
             </div>
           </div>
@@ -1569,13 +1608,25 @@
   const halfOrder = ['1','2','ET1','ET2','PK'];
   const TKEY = 'obs-scoreboard-templates-v1';
   const SKEY = 'obs-scoreboard-state-v2';
+  const DEFAULT_FONT_FAMILY = "'Ubuntu', 'NanumSquareRound', sans-serif";
+
+  function sanitizeFontFamily(fontMaybe){
+    const raw = (typeof fontMaybe === 'string') ? fontMaybe.trim() : '';
+    if(!raw) return '';
+    const parts = raw.split(',').map(s=>s.trim()).filter(Boolean)
+      .filter(s=>!/^['"]?HUMidnight140['"]?$/i.test(s));
+    if(parts.length === 0) return '';
+    if(/^['"]?Ubuntu['"]?$/i.test(parts[0]) && parts.length === 1 && /HUMidnight140/i.test(raw)) return DEFAULT_FONT_FAMILY;
+    return parts.join(', ');
+  }
 
   const state = {
-    logoAlign: 'outer',
+    logoAlign: 'hybrid',
     homeName: 'HOME', awayName: 'AWAY',
     homeScore: 0, awayScore: 0,
     aggEnabled: false, aggHomeBase: 0, aggAwayBase: 0,
     homeLogo: '', awayLogo: '',
+    homeLogoManual: '', awayLogoManual: '',
     radiusMode: 'round',
     boardWidth: 1080,
     boardScale: 75,
@@ -1596,7 +1647,7 @@
     homeOutlineWidth: 1, awayOutlineWidth: 1,
     boardOutlineEnabled: true, scoreOutlineEnabled: true,
     boardOutlineWidth: 1, scoreOutlineWidth: 1,
-    fontFamily: "'Ubuntu', 'NanumSquareRound', sans-serif",
+    fontFamily: DEFAULT_FONT_FAMILY,
     half: '1', running: false, seconds: 0, secPerTick: 1,
     extraShown: false, extra: 0,
     redHome: 0, redAway: 0,
@@ -1646,12 +1697,13 @@
     rcTop: $('rcTop'), rcHomeInset: $('rcHomeInset'), rcAwayInset: $('rcAwayInset'),
     templateSelect: $('templateSelect'), templateName: $('templateName'), saveTemplate: $('saveTemplate'), deleteTemplate: $('deleteTemplate'),
     exportTemplates: $('exportTemplates'), importTemplates: $('importTemplates'),
-    fontPreset: $('fontPreset'), fontCssUrl: $('fontCssUrl'), fontFamily: $('fontFamily'), applyFont: $('applyFont'),
+    fontPreset: $('fontPreset'), fontCssUrl: $('fontCssUrl'), fontFamily: $('fontFamily'), applyFont: $('applyFont'), resetFont: $('resetFont'),
     askLocalFonts: $('askLocalFonts'), systemFonts: $('systemFonts'), fontFile: $('fontFile'),
     logoAlign: $('logoAlign'),
     manualHomeName: $('manualHomeName'), manualAwayName: $('manualAwayName'),
     manualHomeLogo: $('manualHomeLogo'), manualAwayLogo: $('manualAwayLogo'),
     manualHomeLogoUrl: $('manualHomeLogoUrl'), manualAwayLogoUrl: $('manualAwayLogoUrl'),
+    manualHomeLogoClear: $('manualHomeLogoClear'), manualAwayLogoClear: $('manualAwayLogoClear'),
     manualHomePlus: $('manualHomePlus'), manualHomeMinus: $('manualHomeMinus'),
     manualAwayPlus: $('manualAwayPlus'), manualAwayMinus: $('manualAwayMinus'),
     manualResetScore: $('manualResetScore'),
@@ -1779,6 +1831,8 @@
     setCSS('--away-logo-x', (state.awayLogoX??0)+'px');
     setCSS('--away-logo-y', (state.awayLogoY??0)+'px');
     setCSS('--font-family', state.fontFamily);
+    if(el.fontFamily) el.fontFamily.value = state.fontFamily;
+    if(el.fontPreset) el.fontPreset.value = Array.from(el.fontPreset.options).some(o=>o.value===state.fontFamily) ? state.fontFamily : '';
     setCSS('--rc-size', (state.rcSize??14)+'px');
     setCSS('--rc-gap', (state.rcGap??6)+'px');
     setCSS('--rc-top', (state.rcTop??-25)+'px');
@@ -1896,8 +1950,15 @@
   /** 현재 state를 LocalStorage에 JSON으로 저장 (로고 데이터는 용량 절약을 위해 제외) */
   function persist(){
     try{
-      const snap = JSON.parse(JSON.stringify({...state, homeLogo:'', awayLogo:''}));
-      localStorage.setItem(SKEY, JSON.stringify(snap));
+      try{
+        localStorage.setItem(SKEY, JSON.stringify(JSON.parse(JSON.stringify(state))));
+        return;
+      }catch(e){
+        const snap = JSON.parse(JSON.stringify({...state, homeLogo:'', awayLogo:'', homeLogoManual:'', awayLogoManual:''}));
+        localStorage.setItem(SKEY, JSON.stringify(snap));
+        console.warn('Logo data was excluded from localStorage because it exceeded the browser quota.', e);
+        return;
+      }
     }catch(e){ console.warn('저장 실패:', e); }
   }
   /** LocalStorage에서 저장된 state를 불러와 현재 state에 병합 (running은 항상 false로 초기화) */
@@ -1907,6 +1968,22 @@
       if(saved) Object.assign(state, saved, {running:false});
       if(!state.pk) state.pk={home:[],away:[]};
       if(!state.notes) state.notes={home:'',away:''};
+      const legacyHomeManual = !!state.homeLogoManualOverride;
+      const legacyAwayManual = !!state.awayLogoManualOverride;
+      state.homeLogoManual = typeof state.homeLogoManual === 'string' ? state.homeLogoManual : '';
+      state.awayLogoManual = typeof state.awayLogoManual === 'string' ? state.awayLogoManual : '';
+      if(!state.homeLogoManual && legacyHomeManual && state.homeLogo) state.homeLogoManual = state.homeLogo;
+      if(!state.awayLogoManual && legacyAwayManual && state.awayLogo) state.awayLogoManual = state.awayLogo;
+      if(state.manualMode){
+        state.homeLogo = state.homeLogoManual || '';
+        state.awayLogo = state.awayLogoManual || '';
+      }else{
+        if(legacyHomeManual && !('homeLogoManual' in (saved || {}))) state.homeLogo = '';
+        if(legacyAwayManual && !('awayLogoManual' in (saved || {}))) state.awayLogo = '';
+      }
+      delete state.homeLogoManualOverride;
+      delete state.awayLogoManualOverride;
+      state.fontFamily = sanitizeFontFamily(state.fontFamily) || DEFAULT_FONT_FAMILY;
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
     }catch{}
   }
@@ -1918,6 +1995,17 @@
   /** 현재 state에서 템플릿 객체를 생성 (이름 포함, 색상·폰트·레이아웃 설정 포함) */
   function buildCurrentTemplate(name){
     return { name, colors:{...state.colors}, fontFamily:state.fontFamily, logoAlign:state.logoAlign, radiusMode:state.radiusMode, boardWidth:state.boardWidth, homeLogoScale:state.homeLogoScale, awayLogoScale:state.awayLogoScale, homeOutlineEnabled:state.homeOutlineEnabled, awayOutlineEnabled:state.awayOutlineEnabled, homeOutlineWidth:state.homeOutlineWidth, awayOutlineWidth:state.awayOutlineWidth, boardOutlineEnabled:state.boardOutlineEnabled, scoreOutlineEnabled:state.scoreOutlineEnabled, boardOutlineWidth:state.boardOutlineWidth, scoreOutlineWidth:state.scoreOutlineWidth, noteEnabled:state.noteEnabled, noteFontSize:state.noteFontSize };
+  }
+
+  function resolveTemplateFontFamily(t){
+    const font = sanitizeFontFamily(t?.fontFamily);
+    return font || DEFAULT_FONT_FAMILY;
+  }
+
+  function resolveTemplateSaveName(nameMaybe){
+    const typed = (nameMaybe||'').trim();
+    if(typed) return typed;
+    return (el.templateSelect?.value||'').trim();
   }
 
   /** LocalStorage에서 템플릿 목록을 읽어 select 요소에 option으로 채움 (selectedName 있으면 선택 유지) */
@@ -1934,6 +2022,7 @@
 
   /** 현재 설정을 주어진 이름으로 LocalStorage에 저장 (동명 템플릿 존재 시 덮어쓰기 확인) */
   function saveTemplate(name){
+    name = resolveTemplateSaveName(name);
     if(!name) return alert('템플릿 이름을 입력해주세요.');
     const list=JSON.parse(localStorage.getItem(TKEY)||'[]');
     const exists=list.some(t=>t&&t.name===name);
@@ -1963,6 +2052,7 @@
     const idx=list.findIndex(x=>x&&x.name===name);
     if(idx!==-1&&askOnDuplicate){ const ok=confirm(`"${name}" 이미 있음. 덮어쓸까요?`); if(!ok) return{saved:false,replaced:false,name}; }
     const toSave=buildCurrentTemplate(name); Object.assign(toSave, t);
+    toSave.fontFamily = resolveTemplateFontFamily(t);
     if(idx!==-1) list[idx]=toSave; else list.push(toSave);
     localStorage.setItem(TKEY, JSON.stringify(list));
     return{saved:true,replaced:(idx!==-1),name};
@@ -2297,7 +2387,7 @@
     const name=el.templateSelect.value; if(!name) return;
     const t=loadTemplates().find(x=>x&&x.name===name); if(!t) return;
     state.colors={...state.colors,...(t.colors||{})};
-    if(t.fontFamily) state.fontFamily=t.fontFamily;
+    state.fontFamily=resolveTemplateFontFamily(t);
     if(t.logoAlign) state.logoAlign=t.logoAlign;
     if(t.radiusMode) state.radiusMode=t.radiusMode;
     if(t.boardWidth) state.boardWidth=t.boardWidth;
@@ -2321,7 +2411,7 @@
     try{
       const text=await f.text(); const parsed=JSON.parse(text);
       if(Array.isArray(parsed)){ let added=0,replaced=0,skipped=0; for(let i=0;i<parsed.length;i++){ const raw=parsed[i]; if(!raw||typeof raw!=='object'){ skipped++; continue; } if(!raw.name) raw.name=`${fallbackName||'Imported'}-${i+1}`; const res=upsertTemplateToLocal(raw,true); if(!res.saved){ skipped++; continue; } if(res.replaced) replaced++; else added++; } loadTemplates(); alert(`추가 ${added}, 덮어쓰기 ${replaced}, 건너뜀 ${skipped}`); }
-      else if(parsed&&typeof parsed==='object'){ const t={...parsed}; if(!t.name) t.name=fallbackName||'Imported'; if(t.colors) state.colors={...state.colors,...t.colors}; if(t.fontFamily) state.fontFamily=t.fontFamily; if(t.logoAlign) state.logoAlign=t.logoAlign; if(t.radiusMode) state.radiusMode=t.radiusMode; if(t.boardWidth) state.boardWidth=t.boardWidth; render(); persist(); const{saved,name}=upsertTemplateToLocal(t,true); loadTemplates(); if(saved) el.templateSelect.value=name; alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':'')); }
+      else if(parsed&&typeof parsed==='object'){ const t={...parsed}; if(!t.name) t.name=fallbackName||'Imported'; if(t.colors) state.colors={...state.colors,...t.colors}; state.fontFamily=resolveTemplateFontFamily(t); if(t.logoAlign) state.logoAlign=t.logoAlign; if(t.radiusMode) state.radiusMode=t.radiusMode; if(t.boardWidth) state.boardWidth=t.boardWidth; render(); persist(); const{saved,name}=upsertTemplateToLocal(t,true); loadTemplates(); if(saved) el.templateSelect.value=name; alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':'')); }
       else alert('알 수 없는 템플릿 형식.');
     }catch{ alert('JSON 형식이 아닙니다.'); }
     finally{ e.target.value=''; }
@@ -2360,7 +2450,15 @@
     // 4. 수동 모드 입력 섹션 표시/숨김
     el.manualSection.classList.toggle('visible', turningOn);
     // 5. ON 시 현재 state 값을 입력 필드에 미리 채워 넣음
-    if(turningOn) syncManualInputs();
+    if(turningOn){
+      state.homeLogo = state.homeLogoManual || '';
+      state.awayLogo = state.awayLogoManual || '';
+      syncManualInputs();
+    }else{
+      state.homeLogo = '';
+      state.awayLogo = '';
+    }
+    render();
     persist();
   }
 
@@ -2376,6 +2474,8 @@
     if(el.extraInput) el.extraInput.value = state.extra ?? 0;
     if(el.manualHomeNote) el.manualHomeNote.value = state.notes.home || '';
     if(el.manualAwayNote) el.manualAwayNote.value = state.notes.away || '';
+    if(el.manualHomeLogoUrl) el.manualHomeLogoUrl.value = (/^(https?:)?\/\//i.test(state.homeLogoManual || '') ? state.homeLogoManual : '');
+    if(el.manualAwayLogoUrl) el.manualAwayLogoUrl.value = (/^(https?:)?\/\//i.test(state.awayLogoManual || '') ? state.awayLogoManual : '');
   }
 
   // [이벤트 등록] 수동 모드 — 팀 이름·득점자 텍스트 입력
@@ -2418,32 +2518,88 @@
     }
   }
   // [이벤트 등록] 수동 모드 — 로고 파일 업로드 (파일 선택 시 URL 입력란 초기화)
+  function clearManualLogo(side){
+    if(side === 'home'){
+      state.homeLogoManual = '';
+      if(state.manualMode) state.homeLogo = '';
+      if(el.manualHomeLogo) el.manualHomeLogo.value = '';
+      if(el.manualHomeLogoUrl) el.manualHomeLogoUrl.value = '';
+    }else{
+      state.awayLogoManual = '';
+      if(state.manualMode) state.awayLogo = '';
+      if(el.manualAwayLogo) el.manualAwayLogo.value = '';
+      if(el.manualAwayLogoUrl) el.manualAwayLogoUrl.value = '';
+    }
+    render();
+    persist();
+  }
   el.manualHomeLogo?.addEventListener('change', e=>{
     const f=e.target.files?.[0]; if(!f) return;
-    readLogoFile(f, url=>{ state.homeLogo=url; if(el.manualHomeLogoUrl) el.manualHomeLogoUrl.value=''; render(); persist(); });
+    readLogoFile(f, url=>{ state.homeLogoManual=url; if(state.manualMode) state.homeLogo=url; if(el.manualHomeLogoUrl) el.manualHomeLogoUrl.value=''; render(); persist(); });
   });
   el.manualAwayLogo?.addEventListener('change', e=>{
     const f=e.target.files?.[0]; if(!f) return;
-    readLogoFile(f, url=>{ state.awayLogo=url; if(el.manualAwayLogoUrl) el.manualAwayLogoUrl.value=''; render(); persist(); });
+    readLogoFile(f, url=>{ state.awayLogoManual=url; if(state.manualMode) state.awayLogo=url; if(el.manualAwayLogoUrl) el.manualAwayLogoUrl.value=''; render(); persist(); });
   });
   // [이벤트 등록] 수동 모드 — 로고 URL 직접 입력 (URL 입력 시 파일 선택 초기화)
   el.manualHomeLogoUrl?.addEventListener('change', e=>{
-    const url=e.target.value.trim(); if(!url) return;
-    state.homeLogo=url; if(el.manualHomeLogo) el.manualHomeLogo.value=''; render();
+    const url=e.target.value.trim(); if(!url){ clearManualLogo('home'); return; }
+    state.homeLogoManual=url; if(state.manualMode) state.homeLogo=url; if(el.manualHomeLogo) el.manualHomeLogo.value=''; render(); persist();
   });
   el.manualAwayLogoUrl?.addEventListener('change', e=>{
-    const url=e.target.value.trim(); if(!url) return;
-    state.awayLogo=url; if(el.manualAwayLogo) el.manualAwayLogo.value=''; render();
+    const url=e.target.value.trim(); if(!url){ clearManualLogo('away'); return; }
+    state.awayLogoManual=url; if(state.manualMode) state.awayLogo=url; if(el.manualAwayLogo) el.manualAwayLogo.value=''; render(); persist();
   });
+  el.manualHomeLogoUrl?.addEventListener('input', e=>{ if(!e.target.value.trim() && state.homeLogoManual) clearManualLogo('home'); });
+  el.manualAwayLogoUrl?.addEventListener('input', e=>{ if(!e.target.value.trim() && state.awayLogoManual) clearManualLogo('away'); });
+  el.manualHomeLogoClear?.addEventListener('click', ()=> clearManualLogo('home'));
+  el.manualAwayLogoClear?.addEventListener('click', ()=> clearManualLogo('away'));
 
   // [이벤트 등록] 폰트 프리셋, URL 입력, 로컬 폰트 목록, 파일 업로드
   let dynamicFontLink = null;
+  let uploadedFontStyle = null;
+  function clearRuntimeFontAssets(){
+    if(dynamicFontLink){ dynamicFontLink.remove(); dynamicFontLink = null; }
+    if(uploadedFontStyle){ uploadedFontStyle.remove(); uploadedFontStyle = null; }
+    if(el.fontFile) el.fontFile.value = '';
+  }
+  function attachDynamicFontLink(url){
+    if(!url) return;
+    dynamicFontLink=document.createElement('link');
+    dynamicFontLink.rel='stylesheet';
+    dynamicFontLink.href=url;
+    document.head.appendChild(dynamicFontLink);
+  }
+  function resetFontToDefault(){
+    clearRuntimeFontAssets();
+    if(el.fontCssUrl) el.fontCssUrl.value = '';
+    if(el.systemFonts) el.systemFonts.value = '';
+    if(el.fontPreset) el.fontPreset.value = DEFAULT_FONT_FAMILY;
+    state.fontFamily = DEFAULT_FONT_FAMILY;
+    render();
+    persist();
+  }
   /** CSS URL과 폰트 패밀리 입력값을 읽어 동적으로 폰트를 적용 */
-  function applyFontFromInputs(){ const url=el.fontCssUrl?.value.trim(); const fam=el.fontFamily?.value.trim(); if(url){ if(dynamicFontLink) dynamicFontLink.remove(); dynamicFontLink=document.createElement('link'); dynamicFontLink.rel='stylesheet'; dynamicFontLink.href=url; document.head.appendChild(dynamicFontLink); } if(fam) state.fontFamily=fam; render(); persist(); }
+  function applyFontFromInputs(){
+    const url=el.fontCssUrl?.value.trim();
+    const fam=sanitizeFontFamily(el.fontFamily?.value);
+    if(!url && !fam){ resetFontToDefault(); return; }
+    clearRuntimeFontAssets();
+    if(el.systemFonts) el.systemFonts.value = '';
+    if(url) attachDynamicFontLink(url);
+    if(fam) state.fontFamily=fam;
+    render();
+    persist();
+  }
   el.fontPreset?.addEventListener('change', ()=>{
-    const fam=el.fontPreset.value; state.fontFamily=fam;
-    const needsLink=/Bebas Neue|Montserrat|Roboto|Noto Sans KR/.test(fam);
-    if(needsLink){ const map={"'Roboto', sans-serif":"https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap","'Noto Sans KR', sans-serif":"https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap","'Montserrat', sans-serif":"https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap","'Bebas Neue', sans-serif":"https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap"}; if(dynamicFontLink) dynamicFontLink.remove(); dynamicFontLink=document.createElement('link'); dynamicFontLink.rel='stylesheet'; dynamicFontLink.href=map[fam]; document.head.appendChild(dynamicFontLink); }
+    if(!el.fontPreset.value) return;
+    const option=el.fontPreset.selectedOptions?.[0];
+    const fam=sanitizeFontFamily(el.fontPreset.value) || DEFAULT_FONT_FAMILY;
+    clearRuntimeFontAssets();
+    if(el.fontCssUrl) el.fontCssUrl.value = '';
+    if(el.systemFonts) el.systemFonts.value = '';
+    state.fontFamily=fam;
+    attachDynamicFontLink(option?.dataset?.fontUrl?.trim());
     render(); persist();
   });
   if(el.askLocalFonts) el.askLocalFonts.addEventListener('click', async()=>{
@@ -2451,10 +2607,10 @@
     try{ const fonts=await window.queryLocalFonts(); const fams=[...new Set(fonts.map(f=>f.family))].sort(); el.systemFonts.innerHTML=''; fams.forEach(name=>{ const o=document.createElement('option'); o.value=name; o.textContent=name; el.systemFonts.appendChild(o); }); }
     catch(e){ alert('설치 폰트 권한이 거부되었거나 지원되지 않습니다.'); }
   });
-  if(el.systemFonts) el.systemFonts.addEventListener('change', e=>{ state.fontFamily=e.target.value; render(); persist(); });
-  let uploadedFontStyle = null;
-  if(el.fontFile) el.fontFile.addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; const url=URL.createObjectURL(f); const fam=(f.name.replace(/\.[^.]+$/,'')||'Uploaded').replace(/[^A-Za-z0-9 _-]/g,''); const css=`@font-face{font-family:"${fam}";src:url('${url}');font-weight:100 900;font-style:normal;font-display:swap}`; if(uploadedFontStyle) uploadedFontStyle.remove(); uploadedFontStyle=document.createElement('style'); uploadedFontStyle.textContent=css; document.head.appendChild(uploadedFontStyle); state.fontFamily=`'${fam}', ${state.fontFamily}`; render(); persist(); });
+  if(el.systemFonts) el.systemFonts.addEventListener('change', e=>{ clearRuntimeFontAssets(); if(el.fontCssUrl) el.fontCssUrl.value = ''; state.fontFamily=sanitizeFontFamily(e.target.value) || DEFAULT_FONT_FAMILY; render(); persist(); });
+  if(el.fontFile) el.fontFile.addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; if(dynamicFontLink){ dynamicFontLink.remove(); dynamicFontLink = null; } const url=URL.createObjectURL(f); const fam=(f.name.replace(/\.[^.]+$/,'')||'Uploaded').replace(/[^A-Za-z0-9 _-]/g,''); const css=`@font-face{font-family:"${fam}";src:url('${url}');font-weight:100 900;font-style:normal;font-display:swap}`; if(uploadedFontStyle) uploadedFontStyle.remove(); uploadedFontStyle=document.createElement('style'); uploadedFontStyle.textContent=css; document.head.appendChild(uploadedFontStyle); if(el.fontCssUrl) el.fontCssUrl.value = ''; if(el.systemFonts) el.systemFonts.value = ''; state.fontFamily=sanitizeFontFamily(`'${fam}', ${DEFAULT_FONT_FAMILY}`) || `'${fam}', ${DEFAULT_FONT_FAMILY}`; render(); persist(); });
   el.applyFont?.addEventListener('click', applyFontFromInputs);
+  el.resetFont?.addEventListener('click', resetFontToDefault);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [타이머 - 인라인 시간 편집기] 시계를 더블클릭하면 분/초를 직접 입력할 수 있는 인라인 편집 UI
@@ -2832,8 +2988,8 @@
       if(data.awayScorers != null) state.notes.away = data.awayScorers;
       if(data.homeRedCards != null) state.redHome = data.homeRedCards;
       if(data.awayRedCards != null) state.redAway = data.awayRedCards;
-      if(data.homeLogo)       state.homeLogo   = data.homeLogo;
-      if(data.awayLogo)       state.awayLogo   = data.awayLogo;
+      if('homeLogo' in data) state.homeLogo = data.homeLogo || '';
+      if('awayLogo' in data) state.awayLogo = data.awayLogo || '';
       if(data.half)           state.half       = data.half;
 
       // 자동 모드에서는 API extra 값을 그대로 반영한다. null이면 숨김 처리.
