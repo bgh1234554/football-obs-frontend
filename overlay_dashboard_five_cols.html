@@ -441,6 +441,28 @@
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
     }
+    #tactics-draw-toolbar {
+      padding: 8px 7px 6px !important;
+      gap: 4px !important;
+    }
+    #tactics-draw-toolbar > button {
+      padding: 5px 8px !important;
+      min-height: 28px !important;
+      font-size: 12px !important;
+      line-height: 1.2 !important;
+    }
+    #tactics-draw-toolbar .tactics-draw-title,
+    #tactics-draw-toolbar .tactics-draw-subtitle {
+      line-height: 1.1;
+    }
+    #tactics-draw-toolbar .tactics-draw-title { margin-bottom: 0 !important; }
+    #tactics-draw-toolbar .tactics-draw-divider { margin: 1px 0 !important; }
+    #tactics-draw-toolbar .tactics-draw-swatches { gap: 4px !important; }
+    #tactics-draw-toolbar .tactics-draw-swatches button {
+      width: 20px !important;
+      height: 20px !important;
+      font-size: 12px !important;
+    }
 
     /* ========== 메인 페이지 패널 ========== */
     .panel-box {
@@ -1468,11 +1490,12 @@
         </div>
 
         <!-- 우측 드로잉 도구 패널 -->
-        <div style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
-          <div style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
+        <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
+          <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
 
           <!-- 도구 선택 -->
           <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
+          <button id="td-tool-pencil" onclick="tacticsDrawSetTool('pencil')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✎ 연필</button>
           <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
           <button id="td-tool-dashed" onclick="tacticsDrawSetTool('dashed')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅ 점선</button>
           <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 실선화살표</button>
@@ -1485,11 +1508,11 @@
           <button id="td-tool-line-connect" onclick="tacticsDrawSetTool('line-connect')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="드래그로 선수 선택 → x 순서로 직선 연결">⊨ 라인</button>
           <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
           <button id="td-tool-laser" onclick="tacticsDrawSetTool('laser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="클릭하지 않고 마우스만 움직여도 됩니다">🔴 레이저</button>
-          <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
+          <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
 
           <!-- 색상 -->
-          <div style="font-size:10px;color:#475569;font-weight:600;">선 색상</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          <div class="tactics-draw-subtitle" style="font-size:10px;color:#475569;font-weight:600;">선 색상</div>
+          <div class="tactics-draw-swatches" style="display:flex;flex-wrap:wrap;gap:5px;">
             <button data-clr="#ffffff" onclick="tacticsDrawSetColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;background:#ffffff;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="흰색"></button>
             <button data-clr="#facc15" onclick="tacticsDrawSetColor('#facc15')" style="width:22px;height:22px;border-radius:50%;background:#facc15;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="노랑"></button>
             <button data-clr="#ef4444" onclick="tacticsDrawSetColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="빨강"></button>
@@ -1502,7 +1525,7 @@
             <button data-clr="#92400e" onclick="tacticsDrawSetColor('#92400e')" style="width:22px;height:22px;border-radius:50%;background:#92400e;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="갈색"></button>
           </div>
 
-          <div style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
+          <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
 
           <button onclick="tacticsDrawUndo()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">↩ 되돌리기</button>
           <button onclick="tacticsDrawClear()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">🗑 전체 지우기</button>
@@ -1619,6 +1642,7 @@
   const TKEY = 'obs-scoreboard-templates-v1';
   const SKEY = 'obs-scoreboard-state-v2';
   const DEFAULT_FONT_FAMILY = "'Ubuntu', 'NanumSquareRound', sans-serif";
+  const PK_RETENTION_MS = 30 * 1000;
 
   function sanitizeFontFamily(fontMaybe){
     const raw = (typeof fontMaybe === 'string') ? fontMaybe.trim() : '';
@@ -1663,6 +1687,7 @@
     redHome: 0, redAway: 0,
     rcSize: 14, rcGap: 6, rcTop: -25, rcHomeInset: 6, rcAwayInset: 6,
     pk: { home: [], away: [] },
+    pkLastExitedAt: 0,
     noteEnabled: true,
     notes: { home: '', away: '' },
     noteFontSize: 18,
@@ -1944,6 +1969,35 @@
     if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') tacticsRenderTokens();
   }
 
+  function clearPkState() {
+    if(!state.pk) state.pk = { home: [], away: [] };
+    state.pk.home = [];
+    state.pk.away = [];
+  }
+
+  function expireStalePkState(now = Date.now()) {
+    const lastExitedAt = Number(state.pkLastExitedAt) || 0;
+    if (state.half === 'PK' || !lastExitedAt) return false;
+    if ((now - lastExitedAt) <= PK_RETENTION_MS) return false;
+    clearPkState();
+    state.pkLastExitedAt = 0;
+    return true;
+  }
+
+  function setMatchHalf(nextHalf) {
+    if (!halfOrder.includes(nextHalf) || nextHalf === state.half) return;
+    const now = Date.now();
+    const prevHalf = state.half;
+    if (prevHalf === 'PK' && nextHalf !== 'PK') {
+      state.pkLastExitedAt = now;
+    } else if (prevHalf !== 'PK' && nextHalf === 'PK') {
+      const lastExitedAt = Number(state.pkLastExitedAt) || 0;
+      if (lastExitedAt && (now - lastExitedAt) > PK_RETENTION_MS) clearPkState();
+      state.pkLastExitedAt = 0;
+    }
+    state.half = nextHalf;
+  }
+
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [타이머] 200ms 인터벌로 경기 시간을 증가시키고 시계 텍스트를 갱신
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1977,6 +2031,8 @@
       const saved = JSON.parse(localStorage.getItem(SKEY)||'null');
       if(saved) Object.assign(state, saved, {running:false});
       if(!state.pk) state.pk={home:[],away:[]};
+      state.pkLastExitedAt = Math.max(0, Number(state.pkLastExitedAt) || 0);
+      expireStalePkState();
       if(!state.notes) state.notes={home:'',away:''};
       const legacyHomeManual = !!state.homeLogoManualOverride;
       const legacyAwayManual = !!state.awayLogoManualOverride;
@@ -2321,9 +2377,9 @@
   el.awayOffsetReset?.addEventListener('click', ()=>{ state.awayLogoX=0; state.awayLogoY=0; render(); persist(); });
 
   // [이벤트 등록] 전/후반 선택, 타이머 시작/정지/리셋 및 시작 시각 설정
-  el.halfSelect?.addEventListener('change', e=>{ state.half=e.target.value; render(); persist(); });
-  el.prevHalf?.addEventListener('click', ()=>{ const i=Math.max(0,halfOrder.indexOf(state.half)-1); state.half=halfOrder[i]; render(); persist(); });
-  el.nextHalf?.addEventListener('click', ()=>{ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); state.half=halfOrder[i]; render(); persist(); });
+  el.halfSelect?.addEventListener('change', e=>{ setMatchHalf(e.target.value); render(); persist(); });
+  el.prevHalf?.addEventListener('click', ()=>{ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); });
+  el.nextHalf?.addEventListener('click', ()=>{ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); });
   el.startPause?.addEventListener('click', ()=>{ state.running=!state.running; render(); persist(); });
   el.resetTime?.addEventListener('click', ()=>{ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); });
   el.secPerTick?.addEventListener('input', e=>{ state.secPerTick=Math.max(0.1,Number(e.target.value)||1); render(); persist(); });
@@ -2380,7 +2436,7 @@
   /** 마지막으로 추가된 PK 결과를 제거 (홈/어웨이 중 더 많은 쪽에서 pop) */
   function pkUndo(){ const h=state.pk.home.length,a=state.pk.away.length; if(h===0&&a===0) return; if(h>=a) state.pk.home.pop(); else state.pk.away.pop(); render(); persist(); }
   /** PK 결과 전체 초기화 */
-  function pkReset(){ state.pk.home=[]; state.pk.away=[]; render(); persist(); }
+  function pkReset(){ clearPkState(); render(); persist(); }
   // [이벤트 등록] PK 버튼 (홈/어웨이 골/미스, 되돌리기, 초기화)
   el.pkHomeGoal?.addEventListener('click', ()=>pkPush('home','G'));
   el.pkHomeMiss?.addEventListener('click', ()=>pkPush('home','M'));
@@ -2741,23 +2797,25 @@
     if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
     if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
     if(state.manualMode && (e.key==='t'||e.key==='T')){ toggleManualExtra(); }
-    if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); state.half=halfOrder[i]; render(); persist(); }
-    if(e.key===']'){ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); state.half=halfOrder[i]; render(); persist(); }
-    // q/a → 홈 점수 +/-, w/s → 원정 점수 +/-
+    if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); }
+    if(e.key===']'){ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); }
+    // q/a → 홈 점수 +/-, w/s → 원정 점수 +/- (수동 모드에서만 동작)
     // PSO 상태에서는 같은 키가 PK 득점/실축으로 동작 (점수 변경 없음)
     // z/x(PK undo/reset)는 PSO 상태에서만 동작
-    if(state.half==='PK'){
-      if(e.key==='q'||e.key==='Q') pkPush('home','G');
-      if(e.key==='a'||e.key==='A') pkPush('home','M');
-      if(e.key==='w'||e.key==='W') pkPush('away','G');
-      if(e.key==='s'||e.key==='S') pkPush('away','M');
-      if(e.key==='z'||e.key==='Z') pkUndo();
-      if(e.key==='x'||e.key==='X') pkReset();
-    } else {
-      if(e.key==='q'||e.key==='Q'){ state.homeScore++; syncManualInputs(); render(); persist(); }
-      if(e.key==='a'||e.key==='A'){ state.homeScore=Math.max(0,state.homeScore-1); syncManualInputs(); render(); persist(); }
-      if(e.key==='w'||e.key==='W'){ state.awayScore++; syncManualInputs(); render(); persist(); }
-      if(e.key==='s'||e.key==='S'){ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); }
+    if(state.manualMode){
+      if(state.half==='PK'){
+        if(e.key==='q'||e.key==='Q') pkPush('home','G');
+        if(e.key==='a'||e.key==='A') pkPush('home','M');
+        if(e.key==='w'||e.key==='W') pkPush('away','G');
+        if(e.key==='s'||e.key==='S') pkPush('away','M');
+        if(e.key==='z'||e.key==='Z') pkUndo();
+        if(e.key==='x'||e.key==='X') pkReset();
+      } else {
+        if(e.key==='q'||e.key==='Q'){ state.homeScore++; syncManualInputs(); render(); persist(); }
+        if(e.key==='a'||e.key==='A'){ state.homeScore=Math.max(0,state.homeScore-1); syncManualInputs(); render(); persist(); }
+        if(e.key==='w'||e.key==='W'){ state.awayScore++; syncManualInputs(); render(); persist(); }
+        if(e.key==='s'||e.key==='S'){ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); }
+      }
     }
     if(e.key==='h'||e.key==='H'){ toggleTabsAndPages(); }
     // \: 전술판 전체화면 토글 (전술판 탭 활성화 시에만)
@@ -3063,7 +3121,7 @@
       if(data.awayRedCards != null) state.redAway = data.awayRedCards;
       if('homeLogo' in data) state.homeLogo = data.homeLogo || '';
       if('awayLogo' in data) state.awayLogo = data.awayLogo || '';
-      if(data.half)           state.half       = data.half;
+      if(data.half)           setMatchHalf(data.half);
 
       // 자동 모드에서는 API extra 값을 그대로 반영한다. null이면 숨김 처리.
       state.extra = Math.max(0, Number(data.extra) || 0);
@@ -3765,6 +3823,7 @@
   let tdDrawing = false;
   let tdStart = null;
   let tdPreview = null;
+  let tdPencilPoints = [];
   let tdHistory = [];          // undo 스택: {type:'draw'|'erase'|'move'|'flip', ...}
   let tdFuture = [];           // redo 스택 (Ctrl+Y)
   let tdDragHistoryData = null; // 드래그 시작 시 저장
@@ -3782,6 +3841,7 @@
   let tdLaserRunning = false;
   const TD_TOKEN_RADIUS_PX         = 22;   // 선수 바둑알 원형 div 반지름 (px) — tacticsCreateToken circle 44px 기준
   const TD_CIRCLE_TOKEN_RADIUS_MULT = 1.5; // 바둑알 클릭 시 자동 원 반지름 = 바둑알 반지름 × 이 배율
+  const TD_PENCIL_POINT_STEP = 0.45;
   const TD_LASER_IDLE_MS = 750;  // 뗀 뒤 대기 시간
   const TD_LASER_FADE_MS = 300;  // 획 하나가 사라지는 시간
   const TD_LASER_GAP_MS  = 100;  // 획 간 딜레이
@@ -3973,7 +4033,7 @@
    */
   function tacticsDrawSetTool(t) {
     tdTool = t;
-    ['select','arrow','dashed-arrow','line','dashed','box','circle','polygon','line-connect','curve-arrow','curve-dashed-arrow','eraser','laser'].forEach(n => {
+    ['select','pencil','arrow','dashed-arrow','line','dashed','box','circle','polygon','line-connect','curve-arrow','curve-dashed-arrow','eraser','laser'].forEach(n => {
       const b = document.getElementById('td-tool-' + n);
       if (b) b.style.background = n === t ? '#1e40af' : '#1e293b';
     });
@@ -3988,6 +4048,7 @@
     // 레이저
     if (t === 'laser') tdLaserStart();
     else               tdLaserStop();
+    if (t !== 'pencil') tdPencilPoints = [];
     // 선택 모드가 아니면 선택 해제
     if (t !== 'select') tdClearSelection();
   }
@@ -4024,6 +4085,22 @@
       x: Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)),
       y: Math.max(0, Math.min(100, (e.clientY - r.top)  / r.height * 100)),
     };
+  }
+
+  function tdAppendPencilPoint(pt, minDistance = TD_PENCIL_POINT_STEP) {
+    if (!pt) return;
+    const last = tdPencilPoints[tdPencilPoints.length - 1];
+    if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) >= minDistance) {
+      tdPencilPoints.push({ x: pt.x, y: pt.y });
+    }
+  }
+
+  function tdHasVisiblePencilStroke(points) {
+    if (!points || points.length < 2) return false;
+    for (let i = 1; i < points.length; i++) {
+      if (Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y) >= 0.5) return true;
+    }
+    return false;
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4219,9 +4296,10 @@
         const ex = (spx-rcx)/ra, ey = (spy-rcy)/rb;
         const dist = Math.abs(Math.sqrt(ex*ex+ey*ey) - 1) * Math.min(ra,rb);
         if (dist < THRESH) return i;
-      } else if ((d.type === 'polygon' || d.type === 'line-connect') && d.points) {
+      } else if ((d.type === 'polygon' || d.type === 'line-connect' || d.type === 'pencil') && d.points) {
         // 변(edge)에서 THRESH 이내 (polygon은 닫힌 루프, line-connect는 열린 선)
         const pts = d.points;
+        if (pts.length < 2) continue;
         const len = d.type === 'polygon' ? pts.length : pts.length - 1;
         for (let j = 0; j < len; j++) {
           const p1 = pts[j], p2 = pts[(j+1) % pts.length];
@@ -4310,7 +4388,7 @@
   /**
    * 드로잉 데이터(d)에서 SVG 엘리먼트를 생성하여 반환.
    * isPreview=true이면 opacity를 0.6으로 설정해 미리보기 효과를 부여한다.
-   * 지원 타입: box, circle, polygon, line-connect, curve-arrow, curve-dashed-arrow,
+   * 지원 타입: box, circle, polygon, line-connect, pencil, curve-arrow, curve-dashed-arrow,
    *            line, dashed, arrow, dashed-arrow
    */
   function tdMakeEl(d, isPreview) {
@@ -4362,6 +4440,19 @@
     // line-connect: 채움 없이 선으로만 연결하는 open polyline
     if (d.type === 'line-connect') {
       const pts = d.points.map(p => `${p.x},${p.y}`).join(' ');
+      const el = document.createElementNS(NS, 'polyline');
+      el.setAttribute('points', pts);
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', d.color);
+      el.setAttribute('stroke-width', '0.7');
+      el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke-linejoin', 'round');
+      el.setAttribute('opacity', op);
+      return el;
+    }
+
+    if (d.type === 'pencil') {
+      const pts = (d.points || []).map(p => `${p.x},${p.y}`).join(' ');
       const el = document.createElementNS(NS, 'polyline');
       el.setAttribute('points', pts);
       el.setAttribute('fill', 'none');
@@ -4541,6 +4632,8 @@
     e.target.setPointerCapture(e.pointerId);
     tdDrawing = true;
     tdStart = tdGetPt(e);
+    tdPencilPoints = [];
+    if (tdTool === 'pencil') tdAppendPencilPoint(tdStart, 0);
     tdPreview = null;
   });
 
@@ -4573,7 +4666,13 @@
     }
     if (tdPreview) tdPreview.remove();
 
-    if (tdTool === 'polygon' || tdTool === 'line-connect') {
+    if (tdTool === 'pencil') {
+      tdAppendPencilPoint(cur);
+      if (tdPencilPoints.length >= 2) {
+        tdPreview = tdMakeEl({ type: 'pencil', points: tdPencilPoints, color: tdColor }, true);
+        layer.appendChild(tdPreview);
+      }
+    } else if (tdTool === 'polygon' || tdTool === 'line-connect') {
       // 선택 사각형 미리보기
       const NS = 'http://www.w3.org/2000/svg';
       const r = document.createElementNS(NS, 'rect');
@@ -4626,6 +4725,22 @@
       return;
     }
     const cur = tdGetPt(e);
+
+    if (tdTool === 'pencil') {
+      tdAppendPencilPoint(cur, TD_PENCIL_POINT_STEP / 2);
+      if (tdHasVisiblePencilStroke(tdPencilPoints)) {
+        const drawing = {
+          type: 'pencil',
+          points: tdPencilPoints.map(p => ({ x: p.x, y: p.y })),
+          color: tdColor,
+        };
+        tdDrawings.push(drawing);
+        tdHistoryPush({ type: 'draw', drawing });
+        tdRenderAll();
+      }
+      tdPencilPoints = [];
+      return;
+    }
 
     if (tdTool === 'polygon' || tdTool === 'line-connect') {
       // 선택 rect 안의 토큰 수집
