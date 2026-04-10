@@ -1603,6 +1603,12 @@
   function slugify(s){ const max_len=200; let name=(s??'').toString().trim(); name=name.replace(/[\u0000-\u001F\u007F]+/g,''); name=name.replace(/[\\/:*?"<>|]/g,''); name=name.replace(/^\.+/,'').replace(/\.+$/,'').replace(/\s+/g,' ').trim(); if(/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(name)) name='_'+name; if(!name) name='NoNameTemplate'; return name.slice(0,max_len); }
   /** "mm:ss" 또는 "mm" 형식의 문자열을 초 단위 숫자로 파싱 (형식 불일치 시 null 반환) */
   function parseStartTime(v){ if(!v) return 0; v=String(v).trim(); if(v.includes(':')){ const[m,s='0']=v.split(':'); const mm=parseInt(m,10),ss=parseInt(s,10); if(Number.isNaN(mm)||Number.isNaN(ss)||ss<0||ss>59) return null; return Math.max(0,mm)*60+ss; } const mm=parseInt(v,10); if(Number.isNaN(mm)) return null; return Math.max(0,mm)*60; }
+  /** SPA 경로 진입에서도 about.md 같은 정적 파일을 항상 루트 기준으로 읽어오기 위한 helper */
+  function appAssetPath(fileName){
+    const clean = String(fileName || '').replace(/^\/+/, '');
+    if(window.location.protocol === 'file:') return `./${clean}`;
+    return `/${clean}`;
+  }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [전역 상태] 스코어보드 전체 상태 객체와 LocalStorage 키 정의
@@ -2783,16 +2789,75 @@
   /** 해당 page id의 탭 버튼을 활성화하고 해당 페이지 콘텐츠만 표시 */
   const tabButtons = document.querySelectorAll('.tab');
   const manualToggleTabbar = $('manual-toggle-tabbar');
-  function activatePage(page){
-    tabButtons.forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+  const PAGE_TO_ROUTE = Object.freeze({
+    'main-big': '/',
+    'main-small': '/detail',
+    'theme': '/theme',
+    'schedule': '/schedule',
+    'tactics': '/tactics',
+    'about': '/about',
+  });
+  const ROUTE_TO_PAGE = Object.freeze(Object.fromEntries(
+    Object.entries(PAGE_TO_ROUTE).map(([page, route]) => [route, page])
+  ));
+  const LOCAL_ROUTE_HOSTS = new Set(['127.0.0.1', 'localhost']);
+  const ROUTING_MODE = ((window.location.protocol === 'http:' || window.location.protocol === 'https:')
+    && !LOCAL_ROUTE_HOSTS.has(window.location.hostname))
+    ? 'path'
+    : 'hash';
+  function normalizeRoutePath(pathname){
+    let path = String(pathname || '/').trim() || '/';
+    if(!path.startsWith('/')) path = `/${path}`;
+    path = path.replace(/\/+$/, '') || '/';
+    path = path.toLowerCase();
+    if(path === '/index.html' || path === '/overlay_dashboard_five_cols' || path === '/overlay_dashboard_five_cols.html'){
+      return '/';
+    }
+    return path;
+  }
+
+  function getActiveRoutePath(){
+    if(ROUTING_MODE === 'hash'){
+      return normalizeRoutePath((window.location.hash || '').replace(/^#/, '') || '/');
+    }
+    return normalizeRoutePath(window.location.pathname);
+  }
+
+  function resolvePageFromPath(pathname = null){
+    if(pathname != null) return ROUTE_TO_PAGE[normalizeRoutePath(pathname)] || 'main-big';
+    return ROUTE_TO_PAGE[getActiveRoutePath()] || 'main-big';
+  }
+
+  function syncRouteForPage(page, historyMode = 'push'){
+    const route = PAGE_TO_ROUTE[page] || '/';
+    if(getActiveRoutePath() === route) return;
+    const fn = historyMode === 'replace' ? 'replaceState' : 'pushState';
+    if(ROUTING_MODE === 'hash'){
+      const base = `${window.location.pathname}${window.location.search}`;
+      const nextUrl = route === '/' ? base : `${base}#${route}`;
+      window.history[fn]({ page }, '', nextUrl);
+      return;
+    }
+    window.history[fn]({ page }, '', route);
+  }
+  function activatePage(page, options = {}){
+    const nextPage = PAGE_TO_ROUTE[page] ? page : 'main-big';
+    const { syncRoute = true, historyMode = 'push' } = options;
+    tabButtons.forEach(b=>b.classList.toggle('active', b.dataset.page===nextPage));
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    const el2=document.getElementById(`page-${page}`);
+    const el2=document.getElementById(`page-${nextPage}`);
     if(el2) el2.classList.add('active');
     // 테마 탭일 때만 수동 모드 토글 표시
-    if(manualToggleTabbar) manualToggleTabbar.style.display = page==='theme' ? 'flex' : 'none';
+    if(manualToggleTabbar) manualToggleTabbar.style.display = nextPage==='theme' ? 'flex' : 'none';
+    if(syncRoute) syncRouteForPage(nextPage, historyMode);
   }
   // [이벤트 등록] 탭 버튼 클릭으로 페이지 전환
   tabButtons.forEach(btn=>btn.addEventListener('click', ()=>activatePage(btn.dataset.page)));
+  window.addEventListener('popstate', ()=>activatePage(resolvePageFromPath(), { syncRoute: false }));
+  if(ROUTING_MODE === 'hash'){
+    window.addEventListener('hashchange', ()=>activatePage(resolvePageFromPath(), { syncRoute: false }));
+  }
+  activatePage(resolvePageFromPath(), { historyMode: 'replace' });
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [API / 경기 ID 연동] API-Sports 위젯에서 경기 ID를 추출하고 스코어보드에 반영
@@ -3061,7 +3126,7 @@
       return;
     }
     try {
-      const res = await fetch('./about.md');
+      const res = await fetch(appAssetPath('about.md'));
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       aboutEl.innerHTML = marked.parse(text);
