@@ -434,6 +434,9 @@
     .page { display: none; height: 100%; min-height: 0; overflow: hidden; }
     .page.active { display: block; }
     #page-tactics.active { display: flex; flex-direction: column; }
+    /* 전술판 전체화면 — :fullscreen 상태에서 배경 보정 */
+    #page-tactics:fullscreen { background: #0f172a; }
+    #page-tactics:-webkit-full-screen { background: #0f172a; }
     .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
@@ -1411,6 +1414,7 @@
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 다각형·라인에 묶인 선수가 일부만 이동해도 도형이 유지됩니다">
           <input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지
         </label>
+        <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" title="전체화면 (\)" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⛶ 전체화면</button>
         <!-- TODO: 백엔드 연동 후 활성화
         <button onclick="tacticsLoadFromFixture()">경기 ID로 불러오기</button>
         -->
@@ -1447,7 +1451,7 @@
             <!-- 다중 선택 rect -->
             <div id="td-select-rect" style="display:none;position:absolute;border:1.5px dashed rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);pointer-events:none;z-index:18;box-sizing:border-box;"></div>
             <!-- 지우개 커서 표시 -->
-            <div id="td-eraser-cursor" style="display:none;position:absolute;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);z-index:30;background:rgba(255,80,80,0.15);"></div>
+            <div id="td-eraser-cursor" style="display:none;position:absolute;width:calc(28px * var(--td-scale,1));height:calc(28px * var(--td-scale,1));border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);z-index:30;background:rgba(255,80,80,0.15);"></div>
             <!-- 레이저 포인터 캔버스 -->
             <canvas id="td-laser-canvas" style="display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;"></canvas>
             <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -2750,6 +2754,10 @@
       if(e.key==='s'||e.key==='S'){ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); }
     }
     if(e.key==='h'||e.key==='H'){ toggleTabsAndPages(); }
+    // \: 전술판 전체화면 토글 (전술판 탭 활성화 시에만)
+    if(e.key==='\\' && document.getElementById('page-tactics')?.classList.contains('active')){
+      tacticsToggleFullscreen();
+    }
     // 1~6: 탭 전환, 7: 경기ID 입력, 8: Buy me a coffee
     const tabPages = ['main-big','main-small','theme','schedule','tactics','about'];
     if(e.key>='1'&&e.key<='6'){ activatePage(tabPages[+e.key-1]); }
@@ -3312,9 +3320,9 @@
 
     const circle = document.createElement('div');
     circle.style.cssText = `
-      width:44px; height:44px; border-radius:50%;
+      width:calc(44px * var(--td-scale,1)); height:calc(44px * var(--td-scale,1)); border-radius:50%;
       display:flex; align-items:center; justify-content:center;
-      font-weight:700; font-size:14px; color:${color.text};
+      font-weight:700; font-size:calc(14px * var(--td-scale,1)); color:${color.text};
       background:${color.bg}; border:2px solid ${color.border};
       box-shadow:0 2px 8px rgba(0,0,0,.45);
     `;
@@ -3327,7 +3335,7 @@
     badge.className = 'tactics-name-badge';
     badge.style.cssText = `
       margin-top:2px; padding:1px 6px; border-radius:4px;
-      font-size:10px; font-weight:600; white-space:nowrap;
+      font-size:calc(10px * var(--td-scale,1)); font-weight:600; white-space:nowrap;
       background:rgba(0,0,0,.75); color:#fff;
       visibility:${showNames ? 'visible' : 'hidden'};
     `;
@@ -3346,8 +3354,8 @@
       position:absolute; left:${x}%; top:${y}%;
       transform:translate(-50%,-50%);
       display:flex; align-items:center; justify-content:center;
-      width:34px; height:34px;
-      font-size:24px; line-height:1;
+      width:calc(34px * var(--td-scale,1)); height:calc(34px * var(--td-scale,1));
+      font-size:calc(24px * var(--td-scale,1)); line-height:1;
       user-select:none; cursor:grab; z-index:15;
       filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
       transition:left .15s ease, top .15s ease;
@@ -3619,6 +3627,23 @@
     tacticsApplyLineup(lineup);
   }
 
+  /** 전술판 전체화면 토글 — requestFullscreen API 사용 */
+  function tacticsToggleFullscreen() {
+    const page = document.getElementById('page-tactics');
+    if (!document.fullscreenElement) {
+      page.requestFullscreen().catch(err => console.warn('전체화면 진입 실패:', err));
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  // [이벤트 등록] 전체화면 상태 변경 시 버튼 텍스트 동기화
+  document.addEventListener('fullscreenchange', () => {
+    const btn = document.getElementById('btn-tactics-fullscreen');
+    if (!btn) return;
+    btn.textContent = document.fullscreenElement ? '✕ 전체화면 종료' : '⛶ 전체화면';
+  });
+
   /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 라인업 재렌더 */
   function tacticsReset() {
     tacticsState.ballPosition = { x: 50, y: 50 };
@@ -3650,6 +3675,19 @@
     document.addEventListener('DOMContentLoaded', tacticsInitDefaultSelect, { once: true });
   } else {
     tacticsInitDefaultSelect();
+  }
+
+  // [이벤트 등록] 피치 크기 변화 시 --td-scale 갱신 → 토큰/배지/공/지우개 크기 자동 비례
+  {
+    let tdPitchBaseWidth = 0;
+    const tdPitchObserver = new ResizeObserver(entries => {
+      const w = entries[0].contentRect.width;
+      if (!tdPitchBaseWidth && w > 0) tdPitchBaseWidth = w;
+      const scale = tdPitchBaseWidth > 0 ? w / tdPitchBaseWidth : 1;
+      entries[0].target.style.setProperty('--td-scale', scale);
+    });
+    const pitchEl = document.getElementById('tactics-pitch');
+    if (pitchEl) tdPitchObserver.observe(pitchEl);
   }
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [전술판 - 레이저 포인터] 굿노트 방식의 레이저 포인터 — 드래그 시 획 생성, 손을 떼면 서서히 소멸
