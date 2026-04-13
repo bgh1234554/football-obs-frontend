@@ -667,24 +667,36 @@
     }
 
     /* ── 캠 큰 버전 3열 ── */
-    .layout-big .lp-lineup  { flex: 0 0 18%; }
+    .layout-big .lp-lineup  {
+      flex: 0 0 auto;
+      height: 100%;
+      aspect-ratio: 68/105;
+    }
     .layout-big .lp-cam-big { flex: 1; }
-    .layout-big .lp-col     { flex: 0 0 20%; }
+    .layout-big .lp-col     { flex: 0 0 18%; }
     .layout-big .lp-events,
     .layout-big .lp-stat    { flex: 1; }
 
     /* ── 캠 작은 버전 5열 ── */
     /* events / stat 각각 독립 컬럼, 위아래 꽉 채움 */
-    .layout-small .lp-col-events { flex: 1; }
-    .layout-small .lp-col-stat   { flex: 1; }
-    /* 라인업: 축구장 비율 2:3 (가로:세로) → aspect-ratio로 자동 계산 */
-    .layout-small .lp-lineup-s   { aspect-ratio: 2/3; flex: none; }
-    /* 벤치/부상 */
-    .layout-small .lp-col-bench  { flex: 0 0 18%; }
+    .layout-small .lp-col-events { flex: 0.9 1 0; }
+    .layout-small .lp-col-stat   { flex: 0.9 1 0; }
+    /* 라인업: 메인 화면 세로형 패널이므로 축구장 비율을 세로 방향(68:105)으로 적용 */
+    .layout-small .lp-lineup-s   {
+      flex: 0 0 auto;
+      height: 100%;
+      aspect-ratio: 68/105;
+    }
+    /* 벤치/부상 컬럼도 라인업과 같은 세로 기준 비율(68:105) 유지 */
+    .layout-small .lp-col-bench  {
+      flex: 0 0 auto;
+      height: 100%;
+      aspect-ratio: 68/105;
+    }
     .layout-small .lp-bench      { flex: 2; }
     .layout-small .lp-injury     { flex: 1; }
-    /* 채팅/캠 합친 단일 패널 */
-    .layout-small .lp-cam-chat   { flex: 0 0 14.5%; }
+    /* 채팅/캠 합친 단일 패널 — 기존 대비 약 1.2배 확장 */
+    .layout-small .lp-cam-chat   { flex: 0 0 17.4%; }
 
     /* ========== 오버레이 (fixture 입력) ========== */
     .overlay-backdrop {
@@ -1426,7 +1438,7 @@
           <option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option>
         </select>
         <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
-        <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">초기화</button>
+        <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 위치 초기화</button>
 <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;">
           <input type="checkbox" id="tactics-show-names" checked> 이름 표시
         </label>
@@ -1445,9 +1457,9 @@
       <!-- 메인 영역: 피치(좌) + 드로잉 패널(우) -->
       <div style="flex:1;min-height:0;display:flex;gap:0;overflow:hidden;">
 
-        <!-- 피치 래퍼 — aspect-ratio 3/2 유지, 세로는 꽉 채움 -->
+        <!-- 피치 래퍼 — 실제 축구장 표준 비율(105:68)에 맞춤, 세로는 꽉 채움 -->
         <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:flex-start;padding:8px 6px 8px 8px;overflow:hidden;">
-          <div id="tactics-pitch" style="position:relative;height:100%;aspect-ratio:3/2;max-width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%);">
+          <div id="tactics-pitch" style="position:relative;height:100%;aspect-ratio:105/68;max-width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%);">
             <div style="position:absolute;inset:0;pointer-events:none;opacity:.08;background-image:repeating-linear-gradient(90deg,transparent,transparent 4.54%,rgba(255,255,255,.5) 4.54%,rgba(255,255,255,.5) 9.09%);"></div>
             <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 150 100" preserveAspectRatio="none">
               <rect x="2" y="2" width="146" height="96" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.4"/>
@@ -1500,8 +1512,8 @@
           <button id="td-tool-dashed" onclick="tacticsDrawSetTool('dashed')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅ 점선</button>
           <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 실선화살표</button>
           <button id="td-tool-dashed-arrow" onclick="tacticsDrawSetTool('dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅➡ 점선화살표</button>
-          <button id="td-tool-curve-arrow" onclick="tacticsDrawSetTool('curve-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒➡ 곡선실선화살표</button>
-          <button id="td-tool-curve-dashed-arrow" onclick="tacticsDrawSetTool('curve-dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒┅➡ 곡선점선화살표</button>
+          <button id="td-tool-curve-arrow" onclick="tacticsDrawSetTool('curve-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 곡선을 클릭하면 방향 반전">⌒➡ 곡선실선화살표</button>
+          <button id="td-tool-curve-dashed-arrow" onclick="tacticsDrawSetTool('curve-dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 곡선을 클릭하면 방향 반전">⌒┅➡ 곡선점선화살표</button>
           <button id="td-tool-box" onclick="tacticsDrawSetTool('box')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▢ 박스</button>
           <button id="td-tool-circle" onclick="tacticsDrawSetTool('circle')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">○ 원</button>
           <button id="td-tool-polygon" onclick="tacticsDrawSetTool('polygon')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">⬡ 다각형</button>
@@ -3123,6 +3135,13 @@
       if('awayLogo' in data) state.awayLogo = data.awayLogo || '';
       if(data.half)           setMatchHalf(data.half);
 
+      // 타이머 자동 정지: 경기 중 상태(1H/2H/ET1/ET2/PSO)가 아닌 경우(HT·FT·BT·NS 등) 타이머를 멈춤
+      // API 응답값(1H, 2H, PSO)과 내부 halfOrder값(1, 2, PK) 모두 커버
+      const PLAYING_HALVES = new Set(['1','1H','2','2H','ET1','ET2','PK','PSO']);
+      if(data.half && !PLAYING_HALVES.has(data.half)){
+        state.running = false;
+      }
+
       // 자동 모드에서는 API extra 값을 그대로 반영한다. null이면 숨김 처리.
       state.extra = Math.max(0, Number(data.extra) || 0);
       state.extraShown = data.extra != null && state.extra > 0;
@@ -3839,7 +3858,7 @@
   let tdLaserFading = false;
   let tdLaserRAF = null;
   let tdLaserRunning = false;
-  const TD_TOKEN_RADIUS_PX         = 22;   // 선수 바둑알 원형 div 반지름 (px) — tacticsCreateToken circle 44px 기준
+  const TD_TOKEN_RADIUS_PX         = 22;   // 선수 바둑알 기본 반지름 fallback (px) — 실제 렌더 크기 계산 실패 시 사용
   const TD_CIRCLE_TOKEN_RADIUS_MULT = 1.5; // 바둑알 클릭 시 자동 원 반지름 = 바둑알 반지름 × 이 배율
   const TD_PENCIL_POINT_STEP = 0.45;
   const TD_LASER_IDLE_MS = 750;  // 뗀 뒤 대기 시간
@@ -4084,6 +4103,18 @@
     return {
       x: Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)),
       y: Math.max(0, Math.min(100, (e.clientY - r.top)  / r.height * 100)),
+    };
+  }
+
+  /** 현재 화면에 렌더된 선수 바둑알의 실제 중심/반지름(px)을 반환 */
+  function tdGetTokenCircleMetrics(tok, pitchRect) {
+    const circDiv = tok?.querySelector('div');
+    if (!circDiv) return null;
+    const cr = circDiv.getBoundingClientRect();
+    return {
+      radiusPx: Math.max(cr.width, cr.height) / 2 || TD_TOKEN_RADIUS_PX,
+      centerXPx: cr.left + cr.width / 2 - pitchRect.left,
+      centerYPx: cr.top + cr.height / 2 - pitchRect.top,
     };
   }
 
@@ -4387,13 +4418,13 @@
 
   /**
    * 드로잉 데이터(d)에서 SVG 엘리먼트를 생성하여 반환.
-   * isPreview=true이면 opacity를 0.6으로 설정해 미리보기 효과를 부여한다.
+   * isPreview=true이면 일부 도형에 opacity를 적용해 미리보기 효과를 부여한다.
    * 지원 타입: box, circle, polygon, line-connect, pencil, curve-arrow, curve-dashed-arrow,
    *            line, dashed, arrow, dashed-arrow
    */
   function tdMakeEl(d, isPreview) {
     const NS = 'http://www.w3.org/2000/svg';
-    const op = isPreview ? 0.6 : 1;
+    const op = (isPreview && d.type !== 'pencil') ? 0.6 : 1;
     const layer = document.getElementById('tactics-draw-layer');
 
     // box: 반투명 채움 + 외곽선 rect
@@ -4601,19 +4632,16 @@
       // style.left/top이 아닌 내부 circle div의 실제 화면 중심 사용
       // (wrap에 이름 배지가 있으면 translate(-50%,-50%)가 circle 중심이 아닌 wrap 중심에 맞춰짐)
       const hitTok = [...document.querySelectorAll('.tactics-token')].find(tok => {
-        const circDiv = tok.querySelector('div');
-        if (!circDiv) return false;
-        const cr = circDiv.getBoundingClientRect();
-        const tx = cr.left + cr.width  / 2 - pr.left;
-        const ty = cr.top  + cr.height / 2 - pr.top;
-        return Math.hypot(ptX_px - tx, ptY_px - ty) < TD_TOKEN_RADIUS_PX;
+        const metrics = tdGetTokenCircleMetrics(tok, pr);
+        if (!metrics) return false;
+        return Math.hypot(ptX_px - metrics.centerXPx, ptY_px - metrics.centerYPx) < metrics.radiusPx;
       });
       if (hitTok) {
-        const circDiv = hitTok.querySelector('div');
-        const cr = circDiv.getBoundingClientRect();
-        const cx = (cr.left + cr.width  / 2 - pr.left) / pr.width  * 100;
-        const cy = (cr.top  + cr.height / 2 - pr.top)  / pr.height * 100;
-        const r_px = TD_TOKEN_RADIUS_PX * TD_CIRCLE_TOKEN_RADIUS_MULT;
+        const metrics = tdGetTokenCircleMetrics(hitTok, pr);
+        if (!metrics) return;
+        const cx = metrics.centerXPx / pr.width * 100;
+        const cy = metrics.centerYPx / pr.height * 100;
+        const r_px = metrics.radiusPx * TD_CIRCLE_TOKEN_RADIUS_MULT;
         const cx_off = cx - parseFloat(hitTok.style.left);
         const cy_off = cy - parseFloat(hitTok.style.top);
         const drawing = {
@@ -4725,6 +4753,17 @@
       return;
     }
     const cur = tdGetPt(e);
+    const dx = Math.abs(cur.x - tdStart.x), dy = Math.abs(cur.y - tdStart.y);
+
+    // 다른 그리기 도구에서도 곡선 화살표를 클릭만 하면 방향을 뒤집을 수 있게 한다.
+    if (dx <= 1 && dy <= 1) {
+      const idx = tdHitTestCurve(cur.x, cur.y);
+      if (idx >= 0) {
+        tdPencilPoints = [];
+        tdFlipCurve(idx);
+        return;
+      }
+    }
 
     if (tdTool === 'pencil') {
       tdAppendPencilPoint(cur, TD_PENCIL_POINT_STEP / 2);
@@ -4789,7 +4828,6 @@
       return;
     }
 
-    const dx = Math.abs(cur.x - tdStart.x), dy = Math.abs(cur.y - tdStart.y);
     if (dx > 1 || dy > 1) {
       let drawing;
       if (tdTool === 'curve-arrow' || tdTool === 'curve-dashed-arrow') {
