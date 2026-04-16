@@ -3196,6 +3196,16 @@
   /** about.md 파일을 fetch하여 marked.js로 파싱 후 about-rendered 요소에 삽입 */
   const aboutEl = document.getElementById('about-rendered');
 
+  /** 헤딩 텍스트를 앵커 id로 변환 (한글 포함, 공백→하이픈, 특수문자 제거) */
+  function aboutSlug(raw) {
+    return raw
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s-]/gu, '')
+      .replace(/\s+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
   async function loadAbout(){
     if(!aboutEl) return;
     if(typeof marked === 'undefined'){
@@ -3206,7 +3216,28 @@
       const res = await fetch(appAssetPath('about.md'));
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
+
+      // marked v9은 기본적으로 헤딩 id를 생성하지 않으므로 파싱 후 DOM에서 직접 주입
       aboutEl.innerHTML = marked.parse(text);
+      aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
+        h.id = aboutSlug(h.textContent);
+      });
+
+      // hash 라우팅 충돌 방지: 앵커 클릭을 가로채 panelBody scrollTop 직접 조정
+      const scrollPane = document.getElementById('page-about').querySelector('.panelBody');
+      const allHeadings = Array.from(aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6'));
+      aboutEl.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id = decodeURIComponent(a.getAttribute('href').slice(1));
+          const target = allHeadings.find(h => h.id === id);
+          if(!target || !scrollPane) return;
+          const paneRect = scrollPane.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          scrollPane.scrollTop = scrollPane.scrollTop + (targetRect.top - paneRect.top);
+        });
+      });
     } catch(e) {
       aboutEl.innerHTML = `<p style="color:var(--muted)">about.md 로드 실패: ${e.message}<br>
         <small>로컬 파일(file://)에서 직접 열면 브라우저 보안 정책상 외부 파일을 불러올 수 없어요.<br>
@@ -3674,7 +3705,7 @@
 
   /**
    * 다각형/라인 도형의 playerIndices에 해당하는 토큰의 현재 위치로 points를 재계산.
-   * polygon은 볼록 껍질(convexHull), line-connect는 y축 정렬 순서로 재계산한다.
+   * polygon은 중심점 기준 각도 정렬(모든 선수 꼭짓점 포함), line-connect는 y축 정렬 순서로 재계산한다.
    */
   function tdRecomputeShapePoints(d) {
     const newPts = d.playerIndices.map(idx => {
@@ -4531,27 +4562,17 @@
   }
 
   /**
-   * Gift Wrapping 알고리즘으로 점 집합의 볼록 껍질(convex hull)을 계산하여 반환.
+   * 모든 점을 꼭짓점으로 포함하는 단순 다각형을 만들기 위해
+   * 중심점(centroid) 기준 각도 순으로 정렬하여 반환.
    * 3개 미만이면 그대로 반환한다.
    */
   function tdConvexHull(pts) {
     if (pts.length < 3) return pts;
-    const start = pts.reduce((a, b) => (a.x < b.x || (a.x === b.x && a.y < b.y)) ? a : b);
-    const hull = [];
-    let cur = start;
-    do {
-      hull.push(cur);
-      let next = pts[0];
-      for (const p of pts) {
-        if (next === cur) { next = p; continue; }
-        const cross = (next.x - cur.x) * (p.y - cur.y) - (next.y - cur.y) * (p.x - cur.x);
-        const d1 = (p.x-cur.x)**2 + (p.y-cur.y)**2;
-        const d2 = (next.x-cur.x)**2 + (next.y-cur.y)**2;
-        if (cross < 0 || (cross === 0 && d1 > d2)) next = p;
-      }
-      cur = next;
-    } while (cur !== start && hull.length <= pts.length + 1);
-    return hull;
+    const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+    const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+    return pts.slice().sort((a, b) =>
+      Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx)
+    );
   }
 
   /**
