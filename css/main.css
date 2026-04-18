@@ -1,6 +1,6 @@
     /* ========== CSS 변수 ========== */
     :root {
-      --font-family: 'Ubuntu', 'NanumSquareRound', Arial, sans-serif;
+      --font-family: 'Ubuntu', 'NanumSquareRound', 'Arial', sans-serif;
 
       /* Overlay UI */
       --bg-ui: #111827;
@@ -153,7 +153,7 @@
       align-items: center;
       position: relative;
       gap: 10px;
-      border-radius: var(--board-radius, 14px);
+      border-radius: var(--team-radius, 14px);
       padding: 10px 12px;
       min-height: 70px;
       min-width: 0;
@@ -211,7 +211,7 @@
       gap: 6px;
       min-width: 180px;
       padding: 10px 14px;
-      border-radius: var(--board-radius, 14px);
+      border-radius: var(--score-radius, 14px);
       background: var(--score-bg);
       color: var(--meta-color);
     }
