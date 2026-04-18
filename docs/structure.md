@@ -85,6 +85,6 @@ state.extraManualOverride // 추가시간 수동 입력 시 true
 |---|---|
 | `GET /api/fixtures/{fixtureId}` | 경기 전체 정보 (FixtureResponseDto) |
 | `GET /api/playerStats/{playerId}` | 선수 시즌별 대회별 스탯 |
-| `GET /api/fixtures/headtohead?home={id}&away={id}` | 상대 전적 |
+| `GET /api/hth/{teamA}/{teamB}` | 상대 전적 |
 
 응답 → state 매핑, 득점자/카드 가공 로직은 `CLAUDE.md` "백엔드 연동 시 프런트엔드 구현 사항" 섹션 참조.

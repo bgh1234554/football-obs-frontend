@@ -60,7 +60,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // GET /api/fixtures/headtohead?home={homeTeamId}&away={awayTeamId}
+  // GET /api/hth/{teamA}/{teamB}
   // 응답: 상대 전적 목록
   //
   // TODO: 상대 전적 팝업 또는 패널 구현 시 사용
