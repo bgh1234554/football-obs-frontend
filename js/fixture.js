@@ -109,13 +109,21 @@
   /** 페이지 내 모든 api-sports-widget 요소의 Shadow DOM과 iframe에 CSS를 주입 (1초마다 재시도) */
   function injectWidgetCSS() {
     document.querySelectorAll('api-sports-widget').forEach(widget => {
-      // Shadow DOM
-      if (widget.shadowRoot) injectCSS(widget.shadowRoot);
-      // iframe
+      // Shadow DOM에 주입 후 위젯 엘리먼트에 플래그 설정
+      if (widget.shadowRoot && !widget.shadowRoot._cssInjected) {
+        injectCSS(widget.shadowRoot);
+        if (widget.shadowRoot._cssInjected) widget._cssInjected = true;
+      }
+      // iframe — 크로스오리진 접근은 SecurityError를 던질 수 있으므로 try-catch로 감쌈
       const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
-      if (iframe) {
-        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (doc?.head) injectCSS(doc);
+      if (iframe && !widget._cssInjected) {
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc?.head) {
+            injectCSS(doc);
+            if (doc._cssInjected) widget._cssInjected = true;
+          }
+        } catch(e) { /* cross-origin: 무시 */ }
       }
     });
   }
@@ -180,6 +188,9 @@
     if(ts&&status==='ok') ts.textContent=`(${new Date().toLocaleTimeString('ko-KR')})`;
   }
 
+  // 마지막으로 요청된 경기 ID — 이전 요청의 응답이 늦게 도착해도 state를 덮어쓰지 않도록 비교에 사용
+  let _lastFetchId = null;
+
   /**
    * 경기 ID로 API 데이터를 가져와 state에 적용하고 스코어보드를 갱신.
    * 현재는 stub 데이터를 사용하며, 백엔드 배포 시 실제 fetch URL로 교체 필요.
@@ -187,6 +198,9 @@
   async function fetchAndApplyFixtureData(fixtureId){
     if(!fixtureId) return;
     if(state.manualMode){ setApiStatus('idle', '수동 모드 ON — API 적용 건너뜀'); return; }
+    // 동시에 여러 요청이 날아올 때 마지막 요청의 응답만 state에 반영
+    const requestId = fixtureId;
+    _lastFetchId = requestId;
     // 1. 로딩 상태 표시
     setApiStatus('loading');
     try{
@@ -197,6 +211,9 @@
       // ── 현재는 stub 데이터로 대체 ──
       await new Promise(r=>setTimeout(r,600)); // 네트워크 딜레이 시뮬레이션
       const data = await stubFetchFixture(fixtureId);
+
+      // 이 응답이 도착할 때까지 더 최신 요청이 있었으면 무시
+      if(_lastFetchId !== requestId) return;
 
       // 2. API 응답 데이터로 state 업데이트
       if(data.homeTeam)       state.homeName   = data.homeTeam;

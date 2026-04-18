@@ -128,25 +128,29 @@
   function persist(){
     try{
       try{
-        localStorage.setItem(SKEY, JSON.stringify(JSON.parse(JSON.stringify(state))));
+        localStorage.setItem(SKEY, JSON.stringify(state));
         return;
       }catch(e){
+        if(e.name !== 'QuotaExceededError' && e.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e;
         const snap = JSON.parse(JSON.stringify({...state, homeLogo:'', awayLogo:'', homeLogoManual:'', awayLogoManual:''}));
         localStorage.setItem(SKEY, JSON.stringify(snap));
         console.warn('Logo data was excluded from localStorage because it exceeded the browser quota.', e);
         return;
       }
-    }catch(e){ console.warn('저장 실패:', e); }
+    }catch(e){ console.warn('저장 실패 (' + SKEY + '):', e); }
   }
   /** LocalStorage에서 저장된 state를 불러와 현재 state에 병합 (running은 항상 false로 초기화) */
   function restore(){
     try{
       const saved = JSON.parse(localStorage.getItem(SKEY)||'null');
+      // colors/pk/notes는 중첩 객체이므로 shallow assign 후 기본값으로 누락 키를 보완
+      const defaultColors = {...state.colors};
       if(saved) Object.assign(state, saved, {running:false});
-      if(!state.pk) state.pk={home:[],away:[]};
+      state.colors = Object.assign({}, defaultColors, (saved||{}).colors || {});
+      state.pk = Object.assign({home:[],away:[]}, (saved||{}).pk || {});
+      state.notes = Object.assign({home:'',away:''}, (saved||{}).notes || {});
       state.pkLastExitedAt = Math.max(0, Number(state.pkLastExitedAt) || 0);
       expireStalePkState();
-      if(!state.notes) state.notes={home:'',away:''};
       const legacyHomeManual = !!state.homeLogoManualOverride;
       const legacyAwayManual = !!state.awayLogoManualOverride;
       state.homeLogoManual = typeof state.homeLogoManual === 'string' ? state.homeLogoManual : '';
@@ -164,6 +168,6 @@
       delete state.awayLogoManualOverride;
       state.fontFamily = sanitizeFontFamily(state.fontFamily) || DEFAULT_FONT_FAMILY;
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
-    }catch{}
+    }catch(e){ console.warn('복원 실패:', e); }
   }
 

@@ -17,7 +17,16 @@
   /** 문자열을 파일명으로 안전하게 변환 (특수문자 제거, 길이 제한) */
   function slugify(s){ const max_len=200; let name=(s??'').toString().trim(); name=name.replace(/[\u0000-\u001F\u007F]+/g,''); name=name.replace(/[\\/:*?"<>|]/g,''); name=name.replace(/^\.+/,'').replace(/\.+$/,'').replace(/\s+/g,' ').trim(); if(/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(name)) name='_'+name; if(!name) name='NoNameTemplate'; return name.slice(0,max_len); }
   /** "mm:ss" 또는 "mm" 형식의 문자열을 초 단위 숫자로 파싱 (형식 불일치 시 null 반환) */
-  function parseStartTime(v){ if(!v) return 0; v=String(v).trim(); if(v.includes(':')){ const[m,s='0']=v.split(':'); const mm=parseInt(m,10),ss=parseInt(s,10); if(Number.isNaN(mm)||Number.isNaN(ss)||ss<0||ss>59) return null; return Math.max(0,mm)*60+ss; } const mm=parseInt(v,10); if(Number.isNaN(mm)) return null; return Math.max(0,mm)*60; }
+  function parseStartTime(v){
+    if(!v) return 0;
+    v = String(v).trim();
+    // 정확히 "숫자" 또는 "숫자:00~59" 형식만 허용 — "1abc", "1:2x", "1:02:03" 등은 null
+    const m = /^(\d+)(?::([0-5]?\d))?$/.exec(v);
+    if(!m) return null;
+    const mm = parseInt(m[1], 10);
+    const ss = m[2] !== undefined ? parseInt(m[2], 10) : 0;
+    return Math.max(0, mm) * 60 + ss;
+  }
   /** SPA 경로 진입에서도 about.md 같은 정적 파일을 항상 루트 기준으로 읽어오기 위한 helper */
   function appAssetPath(fileName){
     const clean = String(fileName || '').replace(/^\/+/, '');

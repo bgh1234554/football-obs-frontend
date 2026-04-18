@@ -2,8 +2,19 @@
   // [타이머] 200ms 인터벌로 경기 시간을 증가시키고 시계 텍스트를 갱신
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /** 200ms마다 호출되는 타이머 틱 — running 상태일 때만 seconds를 증가시켜 시계를 업데이트 */
-  function tick(){ if(!state.running) return; state.seconds += 0.2*state.secPerTick; el.clock.textContent = fmtClock(state.seconds); }
+  let _lastTick = null; // performance.now() 기반 drift 방지용 — running 중단 시 null로 리셋
+
+  /** 200ms마다 호출되는 타이머 틱 — 실제 경과 시간(delta)을 계산해 seconds에 반영 */
+  function tick(){
+    const now = performance.now();
+    if(!state.running){ _lastTick = null; return; }
+    if(_lastTick !== null){
+      const delta = (now - _lastTick) / 1000;
+      state.seconds += delta * state.secPerTick;
+      el.clock.textContent = fmtClock(state.seconds);
+    }
+    _lastTick = now;
+  }
   // 200ms 인터벌로 tick 호출 (1초당 5회 → secPerTick 배율로 속도 조절)
   let timer = setInterval(tick, 200);
 
@@ -42,7 +53,7 @@
       const mm = Math.max(0, parseInt(ceMin.value, 10) || 0);
       const ss = Math.min(59, Math.max(0, parseInt(ceSec.value, 10) || 0));
       state.seconds = mm * 60 + ss;
-      state.running = true;
+      state.running = wasRunning; // 편집 전 상태 복원 — 멈춰있던 타이머를 강제로 재개하지 않음
       clockEl.textContent = fmtClock(state.seconds);
       closeClockEditor();
       cleanup();
@@ -91,7 +102,9 @@
   });
   $('ceSecDown')?.addEventListener('click', () => {
     let s = (parseInt(ceSec.value)||0) - 1;
-    if (s < 0) { s = 59; ceMin.value = Math.max(0, (parseInt(ceMin.value)||0) - 1); }
+    const m = parseInt(ceMin.value)||0;
+    // 00:00 미만으로 내려가면 wrap이 아닌 clamp — 분이 남아있으면 빌려씀
+    if (s < 0) { if (m > 0) { s = 59; ceMin.value = m - 1; } else { s = 0; } }
     ceSec.value = s;
   });
 
@@ -100,8 +113,10 @@
   ceSec?.addEventListener('wheel', e => {
     e.preventDefault();
     let s = (parseInt(ceSec.value)||0) + (e.deltaY < 0 ? 1 : -1);
-    if (s > 59) { s = 0; ceMin.value = (parseInt(ceMin.value)||0) + 1; }
-    else if (s < 0) { s = 59; ceMin.value = Math.max(0, (parseInt(ceMin.value)||0) - 1); }
+    const m = parseInt(ceMin.value)||0;
+    if (s > 59) { s = 0; ceMin.value = m + 1; }
+    // 00:00 미만: wrap 대신 clamp
+    else if (s < 0) { if (m > 0) { s = 59; ceMin.value = m - 1; } else { s = 0; } }
     ceSec.value = s;
   }, { passive: false });
 

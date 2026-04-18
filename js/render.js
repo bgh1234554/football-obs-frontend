@@ -207,9 +207,11 @@
     renderPK();
     renderRedCards();
     syncScoreCol();
-    // 전술판 토큰 색상 동기화 (점수판 색 변경 시 자동 반영)
-    // tacticsState가 초기화된 이후에만 호출 (선언 순서 문제 방지)
-    if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') tacticsRenderTokens();
+    // 전술판 토큰 색상 동기화 — 팀 색상이 실제로 바뀐 경우에만 재렌더 (매 render() 호출 시 DOM 재생성하면 드래그/선택 상태가 깨짐)
+    if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') {
+      const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');
+      if (_tck !== render._lastTacticsColorKey) { render._lastTacticsColorKey = _tck; tacticsRenderTokens(); }
+    }
   }
 
   function clearPkState() {
@@ -458,8 +460,8 @@
   // [이벤트 등록] 보드/점수/팀카드 테두리 ON/OFF 및 두께 조정
   el.boardOutlineOn?.addEventListener('change', e=>{ state.boardOutlineEnabled=!!e.target.checked; render(); persist(); });
   el.scoreOutlineOn?.addEventListener('change', e=>{ state.scoreOutlineEnabled=!!e.target.checked; render(); persist(); });
-  el.boardOutlineWidth?.addEventListener('input', e=>{ state.boardOutlineWidth=Math.max(0,Number(e.target.value)||0); setCSS('--board-outline-w',state.boardOutlineWidth+'px'); render(); });
-  el.scoreOutlineWidth?.addEventListener('input', e=>{ state.scoreOutlineWidth=Math.max(0,Number(e.target.value)||0); setCSS('--score-outline-w',state.scoreOutlineWidth+'px'); render(); });
+  el.boardOutlineWidth?.addEventListener('input', e=>{ state.boardOutlineWidth=Math.max(0,Number(e.target.value)||0); setCSS('--board-outline-w',state.boardOutlineWidth+'px'); render(); persist(); });
+  el.scoreOutlineWidth?.addEventListener('input', e=>{ state.scoreOutlineWidth=Math.max(0,Number(e.target.value)||0); setCSS('--score-outline-w',state.scoreOutlineWidth+'px'); render(); persist(); });
   el.homeOutlineOn?.addEventListener('change', e=>{ state.homeOutlineEnabled=!!e.target.checked; render(); persist(); });
   el.awayOutlineOn?.addEventListener('change', e=>{ state.awayOutlineEnabled=!!e.target.checked; render(); persist(); });
   el.homeOutlineWidth?.addEventListener('input', e=>{ state.homeOutlineWidth=Math.max(0,Number(e.target.value)||0); render(); persist(); });
@@ -491,12 +493,9 @@
   el.pkReset?.addEventListener('click', pkReset);
 
   // [이벤트 등록] 템플릿 저장/삭제/내보내기/가져오기/불러오기
-  el.saveTemplate?.addEventListener('click', ()=>saveTemplate(el.templateName.value.trim()));
-  el.deleteTemplate?.addEventListener('click', ()=>{ const typed=(el.templateName?.value||'').trim(); const selected=el.templateSelect?.value||''; deleteTemplate(typed||selected); });
-  el.exportTemplates?.addEventListener('click', exportTemplatesFile);
-  el.templateSelect?.addEventListener('change', ()=>{
-    const name=el.templateSelect.value; if(!name) return;
-    const t=loadTemplates().find(x=>x&&x.name===name); if(!t) return;
+
+  /** templateSelect와 단일 템플릿 import가 공통으로 사용하는 state 반영 로직 */
+  function applyTemplate(t){
     state.colors={...state.colors,...(t.colors||{})};
     state.fontFamily=resolveTemplateFontFamily(t);
     if(t.logoAlign) state.logoAlign=t.logoAlign;
@@ -514,6 +513,15 @@
     if('scoreOutlineWidth' in t) state.scoreOutlineWidth=Number(t.scoreOutlineWidth)||0;
     if('noteEnabled' in t) state.noteEnabled=!!t.noteEnabled;
     if('noteFontSize' in t) state.noteFontSize=Number(t.noteFontSize)||18;
+  }
+
+  el.saveTemplate?.addEventListener('click', ()=>saveTemplate(el.templateName.value.trim()));
+  el.deleteTemplate?.addEventListener('click', ()=>{ const typed=(el.templateName?.value||'').trim(); const selected=el.templateSelect?.value||''; deleteTemplate(typed||selected); });
+  el.exportTemplates?.addEventListener('click', exportTemplatesFile);
+  el.templateSelect?.addEventListener('change', ()=>{
+    const name=el.templateSelect.value; if(!name) return;
+    const t=loadTemplates().find(x=>x&&x.name===name); if(!t) return;
+    applyTemplate(t);
     render(); persist();
   });
   el.importTemplates?.addEventListener('change', async e=>{
@@ -522,7 +530,7 @@
     try{
       const text=await f.text(); const parsed=JSON.parse(text);
       if(Array.isArray(parsed)){ let added=0,replaced=0,skipped=0; for(let i=0;i<parsed.length;i++){ const raw=parsed[i]; if(!raw||typeof raw!=='object'){ skipped++; continue; } if(!raw.name) raw.name=`${fallbackName||'Imported'}-${i+1}`; const res=upsertTemplateToLocal(raw,true); if(!res.saved){ skipped++; continue; } if(res.replaced) replaced++; else added++; } loadTemplates(); alert(`추가 ${added}, 덮어쓰기 ${replaced}, 건너뜀 ${skipped}`); }
-      else if(parsed&&typeof parsed==='object'){ const t={...parsed}; if(!t.name) t.name=fallbackName||'Imported'; if(t.colors) state.colors={...state.colors,...t.colors}; state.fontFamily=resolveTemplateFontFamily(t); if(t.logoAlign) state.logoAlign=t.logoAlign; if(t.radiusMode) state.radiusMode=t.radiusMode; if(t.boardWidth) state.boardWidth=t.boardWidth; render(); persist(); const{saved,name}=upsertTemplateToLocal(t,true); loadTemplates(); if(saved) el.templateSelect.value=name; alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':'')); }
+      else if(parsed&&typeof parsed==='object'){ const t={...parsed}; if(!t.name) t.name=fallbackName||'Imported'; applyTemplate(t); render(); persist(); const{saved,name}=upsertTemplateToLocal(t,true); loadTemplates(); if(saved) el.templateSelect.value=name; alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':'')); }
       else alert('알 수 없는 템플릿 형식.');
     }catch{ alert('JSON 형식이 아닙니다.'); }
     finally{ e.target.value=''; }

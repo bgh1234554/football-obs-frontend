@@ -12,10 +12,10 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   window.addEventListener('keydown', e=>{
-    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
-    // Ctrl+Z: undo / Ctrl+Y: redo
-    if(e.ctrlKey && (e.key==='z'||e.key==='Z')){ e.preventDefault(); tdUndo(); return; }
-    if(e.ctrlKey && (e.key==='y'||e.key==='Y')){ e.preventDefault(); tdRedo(); return; }
+    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+    // Ctrl+Z/Y: 전술판 탭이 활성화된 경우에만 undo/redo 실행
+    if(e.ctrlKey && (e.key==='z'||e.key==='Z')){ if(document.getElementById('page-tactics')?.classList.contains('active')){ e.preventDefault(); tdUndo(); } return; }
+    if(e.ctrlKey && (e.key==='y'||e.key==='Y')){ if(document.getElementById('page-tactics')?.classList.contains('active')){ e.preventDefault(); tdRedo(); } return; }
     if(e.code==='Space'){ e.preventDefault(); state.running=!state.running; render(); persist(); }
     if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
     if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }

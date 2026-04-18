@@ -568,11 +568,13 @@
     btn.textContent = document.fullscreenElement ? '✕ 전체화면 종료' : '⛶ 전체화면';
   });
 
-  /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 라인업 재렌더 */
+  /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 드로잉 초기화, 라인업 재렌더 */
   function tacticsReset() {
     tacticsState.ballPosition = { x: 50, y: 50 };
     tdHistory = [];
     tdFuture = [];
+    tdDrawings = []; // 캔버스 드로잉도 함께 초기화
+    tdRenderAll();
     tacticsApplyLineup(tacticsState.lineup || TACTICS_MOCK_LINEUP);
   }
 
@@ -595,11 +597,8 @@
     tacticsDragSetup();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tacticsInitDefaultSelect, { once: true });
-  } else {
-    tacticsInitDefaultSelect();
-  }
+  // tacticsInitDefaultSelect 호출은 tdTool/tdDrawings 등 드로잉 변수 선언 이후로 이동
+  // (아래 파일 하단의 "END 전술판 드로잉 도구" 블록 이후에서 실제 호출)
 
   // [이벤트 등록] 피치 크기 변화 시 --td-scale 갱신 → 토큰/배지/공/지우개 크기 자동 비례
   {
@@ -1777,6 +1776,12 @@
 
   // [초기화] 초기 색상 버튼 UI 상태 설정 (기본값 흰색)
   tacticsDrawSetColor(tdColor);
+  // tdTool/tdDrawings/tdHistory/tdFuture 등 드로잉 변수가 선언된 이후에 호출해야 TDZ 에러 방지
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tacticsInitDefaultSelect, { once: true });
+  } else {
+    tacticsInitDefaultSelect();
+  }
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // END 전술판 드로잉 도구
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

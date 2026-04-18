@@ -22,7 +22,8 @@
   // 5. 창 크기 변경 시 (개발자도구 열고닫기 포함) 득점자 note 위치 재계산
   window.addEventListener('resize', () => autoLayoutNotes());
   if (window.ResizeObserver) {
-    new ResizeObserver(() => autoLayoutNotes()).observe($('board'));
+    const board = $('board');
+    if (board) new ResizeObserver(() => autoLayoutNotes()).observe(board);
   }
 
   /** about.md 파일을 fetch하여 marked.js로 파싱 후 about-rendered 요소에 삽입 */
@@ -50,13 +51,15 @@
       const text = await res.text();
 
       // marked v9은 기본적으로 헤딩 id를 생성하지 않으므로 파싱 후 DOM에서 직접 주입
+      // TODO: marked v9은 HTML을 sanitize하지 않으므로 about.md가 외부 소스로 교체될 경우 DOMPurify 적용 필요
       aboutEl.innerHTML = marked.parse(text);
       aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
         h.id = aboutSlug(h.textContent);
       });
 
       // hash 라우팅 충돌 방지: 앵커 클릭을 가로채 panelBody scrollTop 직접 조정
-      const scrollPane = document.getElementById('page-about').querySelector('.panelBody');
+      const pageAbout = document.getElementById('page-about');
+      const scrollPane = pageAbout?.querySelector('.panelBody');
       const allHeadings = Array.from(aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6'));
       aboutEl.querySelectorAll('a[href^="#"]').forEach(a => {
         a.addEventListener('click', e => {
@@ -71,9 +74,16 @@
         });
       });
     } catch(e) {
-      aboutEl.innerHTML = `<p style="color:var(--muted)">about.md 로드 실패: ${e.message}<br>
-        <small>로컬 파일(file://)에서 직접 열면 브라우저 보안 정책상 외부 파일을 불러올 수 없어요.<br>
-        Vercel 배포 환경 또는 로컬 웹서버(예: VS Code Live Server 플러그인)에서 사용하세요.</small></p>`;
+      // e.message를 innerHTML에 직접 넣으면 XSS 위험이 있으므로 DOM API로 삽입
+      const p = document.createElement('p');
+      p.style.color = 'var(--muted)';
+      const msg = document.createElement('span');
+      msg.textContent = `about.md 로드 실패: ${e.message}`;
+      const br = document.createElement('br');
+      const small = document.createElement('small');
+      small.textContent = '로컬 파일(file://)에서 직접 열면 브라우저 보안 정책상 외부 파일을 불러올 수 없어요. Vercel 배포 환경 또는 로컬 웹서버(예: VS Code Live Server 플러그인)에서 사용하세요.';
+      p.append(msg, br, small);
+      aboutEl.appendChild(p);
     }
   }
 

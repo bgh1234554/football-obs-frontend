@@ -315,6 +315,7 @@
     .rc-rail.hidden { display: none; }
     .rc-card {
       width: var(--rc-size);
+      height: calc(var(--rc-size) * 1.41421356); /* fallback: sqrt(2) numeric */
       height: calc(var(--rc-size) * sqrt(2));
       background: var(--rc-color);
       border-radius: 2px;
