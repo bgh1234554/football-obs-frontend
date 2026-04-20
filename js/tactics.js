@@ -565,7 +565,7 @@
   document.addEventListener('fullscreenchange', () => {
     const btn = document.getElementById('btn-tactics-fullscreen');
     if (!btn) return;
-    btn.textContent = document.fullscreenElement ? '✕ 전체화면 종료' : '⛶ 전체화면';
+    btn.textContent = document.fullscreenElement ? '✕ 전체화면 종료' : '⤢ 전체화면 (\\)';
   });
 
   /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 드로잉 초기화, 라인업 재렌더 */

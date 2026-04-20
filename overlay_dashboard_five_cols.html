@@ -14,6 +14,7 @@
   <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
 
   <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/hamburger-nav.css"/>
   <!-- 마크다운을 HTML에 자동 렌더링 해주는 라이브러리 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
@@ -96,52 +97,71 @@
     </div><!-- /board-stage-inner -->
   </div><!-- /board-stage-wrap -->
 
-  <!-- ========== 탭 바 ========== -->
-  <div class="tabs" id="tabsBar">
-    <div class="tab-group">
-      <button class="tab active" data-page="main-big">메인(캠 큰)</button>
-      <button class="tab" data-page="main-small">메인(캠 작은)</button>
-      <button class="tab" data-page="theme">테마</button>
-      <button class="tab" data-page="schedule">일정 확인</button>
-      <button class="tab" data-page="tactics">전술판</button>
-      <button class="tab" data-page="about">About</button>
-      <div class="bmc-slot">
-        <div class="bmc-wrapper">
-          <script
-            type="text/javascript"
-            src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js"
-            data-name="bmc-button"
-            data-slug="bgh1234554"
-            data-color="#FFDD00"
-            data-emoji=""
-            data-font="Cookie"
-            data-text="Buy me a coffee"
-            data-outline-color="#000000"
-            data-font-color="#000000"
-            data-coffee-color="#ffffff">
-          </script>
-        </div>
-      </div>
-      <!-- 선택된 경기 ID (인라인) -->
-      <div class="fixture-inline" id="fixture-inline-wrap" style="display:none">
+  <!-- ========== 사이드바 백드롭 ========== -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- ========== 사이드바 ========== -->
+  <nav class="sidebar-nav" id="sidebarNav" aria-hidden="true">
+    <div class="sidebar-header">
+      <button class="sidebar-close" id="sidebarClose" aria-label="닫기">✕</button>
+      <span class="sidebar-title">메뉴</span>
+    </div>
+    <div class="sidebar-body">
+
+      <!-- 탭 버튼 (수직) -->
+      <button class="tab sidebar-tab active" data-page="main-big">
+        메인(캠 큰) <span class="tab-key">1</span>
+      </button>
+      <button class="tab sidebar-tab" data-page="main-small">
+        메인(캠 작은) <span class="tab-key">2</span>
+      </button>
+      <button class="tab sidebar-tab" data-page="theme">
+        테마 <span class="tab-key">3</span>
+      </button>
+      <button class="tab sidebar-tab" data-page="schedule">
+        일정 확인 <span class="tab-key">4</span>
+      </button>
+      <button class="tab sidebar-tab" data-page="tactics">
+        전술판 <span class="tab-key">5</span>
+      </button>
+      <button class="tab sidebar-tab" data-page="about">
+        About <span class="tab-key">6</span>
+      </button>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- 선택된 경기 ID -->
+      <div class="fixture-inline" id="fixture-inline-wrap" data-fixture-inline-wrap style="display:none">
         <span class="fixture-inline-label">경기 ID</span>
-        <span id="selected-fixture-id" class="fixture-inline-id" title="클릭하여 복사">-</span>
+        <span id="selected-fixture-id" data-selected-fixture-id class="fixture-inline-id" title="클릭하여 복사">-</span>
         <span id="fixture-status" class="fixture-inline-status"></span>
       </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <!-- 수동 모드 토글 (테마 탭일 때만 표시) -->
-      <div class="manual-toggle-wrap" id="manual-toggle-tabbar" style="display:none;margin:0;">
-        <label class="toggle-switch" for="manualModeToggle">
-          <input type="checkbox" id="manualModeToggle" onchange="toggleManualMode()" />
+
+      <div class="sidebar-divider"></div>
+
+      <!-- 수동 모드 (사이드바 미러 토글) -->
+      <div id="manual-toggle-tabbar" style="display:none;"></div>
+      <div class="manual-toggle-wrap" style="padding:6px 4px;">
+        <label class="toggle-switch" for="sidebarManualMirror">
+          <input type="checkbox" id="sidebarManualMirror" />
           <span class="toggle-track"></span>
         </label>
-        <label for="manualModeToggle">수동 모드</label>
+        <label for="sidebarManualMirror" style="cursor:pointer;">수동 모드</label>
       </div>
-      <button id="open-fixture-overlay" class="right-btn">경기ID 입력</button>
-      <button onclick="toggleTabsAndPages()" class="right-btn" id="btn-toggle-tabs">탭 숨기기 (H)</button>
+
+      <!-- 경기ID 입력 -->
+      <button id="open-fixture-overlay" class="sidebar-action-btn">경기ID 입력 <span style="opacity:.4;font-size:10px;font-weight:400;">7</span></button>
+
+      <!-- 탭 숨기기 -->
+      <button onclick="toggleTabsAndPages()" class="sidebar-action-btn" id="btn-toggle-tabs">메뉴 바 숨기기 (H)</button>
+
     </div>
-  </div>
+  </nav>
+
+  <!-- ========== 플로팅 햄버거 버튼 ========== -->
+  <button class="float-hamburger" id="tabsBar" aria-label="메뉴 열기">
+    <span></span><span></span><span></span>
+  </button>
 
   <!-- 토스트 알림 -->
   <div id="copy-toast" class="copy-toast">복사되었습니다!</div>
@@ -204,11 +224,20 @@
       <div class="theme-panel-wrap">
         <div class="theme-panel-inner" id="themePanel">
 
-          <!-- 단축키 힌트 (자동 모드 기준 최소 표시) -->
-          <div style="opacity:.75; font-size:12px;">
-            ⌨️ <span class="kbd">Space</span> 시작/정지 ·
-            <span class="kbd">R</span> 리셋 ·
-            <span class="kbd">[</span>/<span class="kbd">]</span> 전/후반 이동
+          <!-- 단축키 힌트 + 수동 모드 토글 (오른쪽 끝) -->
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="opacity:.75;font-size:12px;">
+              ⌨️ <span class="kbd">Space</span> 시작/정지 ·
+              <span class="kbd">R</span> 리셋 ·
+              <span class="kbd">[</span>/<span class="kbd">]</span> 전/후반 이동
+            </div>
+            <div class="manual-toggle-wrap" style="margin:0;flex-shrink:0;">
+              <label class="toggle-switch" for="manualModeToggle">
+                <input type="checkbox" id="manualModeToggle" onchange="toggleManualMode()" />
+                <span class="toggle-track"></span>
+              </label>
+              <label for="manualModeToggle">수동 모드</label>
+            </div>
           </div>
 
           <!-- ─── 수동 모드 ─── -->
@@ -369,7 +398,7 @@
                   <input id="aggAwayBase" type="number" min="0" step="1" value="0" placeholder="원정 합계" title="원정 합계 기준값" style="width:90px;">
                 </div>
               </div>
-              <!-- 점수판 배율 — PK 관리 섹션과 합쳐서 항상 표시 -->
+              <!-- 점수판 배율 -->
               <div class="pgroup">
                 <label>점수판 배율 (<span id="boardScaleLabel">75</span>%)</label>
                 <div class="prow">
@@ -384,14 +413,6 @@
           <div>
             <div class="section-title">로고 · 정렬 · 보드 크기</div>
             <div class="prow">
-              <!-- <div class="pgroup">
-                <label>홈 로고</label>
-                <input id="inHomeLogo" type="file" accept="image/*" class="file" />
-              </div>
-              <div class="pgroup">
-                <label>어웨이 로고</label>
-                <input id="inAwayLogo" type="file" accept="image/*" class="file" />
-              </div> -->
               <div class="pgroup">
                 <label>홈 로고 배율</label>
                 <input id="homeLogoScale" type="number" step="0.1" min="0.2" max="5" value="1" />
@@ -560,7 +581,6 @@
             </div>
           </div>
 
-          
           <!-- ─── 템플릿 ─── -->
           <div>
             <div class="section-title">템플릿</div>
@@ -573,8 +593,10 @@
                   <button id="saveTemplate" class="primary">로컬 저장</button>
                   <button id="deleteTemplate" class="ghost">삭제</button>
                   <button id="exportTemplates">내보내기(JSON)</button>
-                  <label for="importTemplates">불러오기</label>
-                  <input id="importTemplates" type="file" accept="application/json" class="file" />
+                  <div class="theme-file-upload">
+                    <span class="theme-file-caption">불러오기</span>
+                    <input id="importTemplates" type="file" accept="application/json" class="file template-import-file" />
+                  </div>
                 </div>
                 <small>브라우저 LocalStorage + JSON 내보내기/불러오기</small>
               </div>
@@ -679,8 +701,17 @@
           </div>
           <div class="panel">
             <div class="panelHeader">
-              <div>Details</div>
-              <div class="hint">경기 클릭 시 자동으로 표시</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div>Details</div>
+                <div class="hint">경기 클릭 시 자동으로 표시</div>
+              </div>
+              <div class="panel-fixture-tools">
+                <div class="fixture-inline fixture-inline-compact" data-fixture-inline-wrap style="display:none">
+                  <span class="fixture-inline-label">선택 경기</span>
+                  <span data-selected-fixture-id class="fixture-inline-id" title="클릭하여 복사">-</span>
+                </div>
+                <button class="panel-fixture-btn" onclick="openOverlay()">경기ID 입력</button>
+              </div>
             </div>
             <div class="panelBody" id="game-content">
             </div>
@@ -717,7 +748,7 @@
         </select>
         <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
         <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 위치 초기화</button>
-<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;">
           <input type="checkbox" id="tactics-show-names" checked> 이름 표시
         </label>
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;">
@@ -726,7 +757,7 @@
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 다각형·라인에 묶인 선수가 일부만 이동해도 도형이 유지됩니다">
           <input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지
         </label>
-        <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" title="전체화면 (\)" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⛶ 전체화면</button>
+        <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⤢ 전체화면 (\)</button>
         <!-- TODO: 백엔드 연동 후 활성화
         <button onclick="tacticsLoadFromFixture()">경기 ID로 불러오기</button>
         -->
@@ -735,7 +766,7 @@
       <!-- 메인 영역: 피치(좌) + 드로잉 패널(우) -->
       <div style="flex:1;min-height:0;display:flex;gap:0;overflow:hidden;">
 
-        <!-- 피치 래퍼 — 실제 축구장 표준 비율(105:68)에 맞춤, 세로는 꽉 채움 -->
+        <!-- 피치 래퍼 -->
         <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:flex-start;padding:8px 6px 8px 8px;overflow:hidden;">
           <div id="tactics-pitch" style="position:relative;height:100%;aspect-ratio:105/68;max-width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%);">
             <div style="position:absolute;inset:0;pointer-events:none;opacity:.08;background-image:repeating-linear-gradient(90deg,transparent,transparent 4.54%,rgba(255,255,255,.5) 4.54%,rgba(255,255,255,.5) 9.09%);"></div>
@@ -760,11 +791,8 @@
               <path d="M 146.7 98 A 1.3 1.3 0 0 0 148 96.7" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="0.3"/>
             </svg>
             <!-- 드로잉 레이어 -->
-            <!-- 다중 선택 rect -->
             <div id="td-select-rect" style="display:none;position:absolute;border:1.5px dashed rgba(255,255,255,0.7);background:rgba(255,255,255,0.05);pointer-events:none;z-index:18;box-sizing:border-box;"></div>
-            <!-- 지우개 커서 표시 -->
             <div id="td-eraser-cursor" style="display:none;position:absolute;width:calc(28px * var(--td-scale,1));height:calc(28px * var(--td-scale,1));border-radius:50%;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 1px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);z-index:30;background:rgba(255,80,80,0.15);"></div>
-            <!-- 레이저 포인터 캔버스 -->
             <canvas id="td-laser-canvas" style="display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;"></canvas>
             <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs></defs>
@@ -783,7 +811,6 @@
         <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
           <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
 
-          <!-- 도구 선택 -->
           <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
           <button id="td-tool-pencil" onclick="tacticsDrawSetTool('pencil')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✎ 연필</button>
           <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
@@ -895,6 +922,9 @@
     </div>
   </div>
 
+<!-- BMC 플로팅 위젯 (사이드바 열릴 때만 표시) -->
+<script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="bgh1234554" data-description="Support me on Buy me a coffee!" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
+
 <script src="js/utils.js"></script>
 <script src="js/state.js"></script>
 <script src="js/render.js"></script>
@@ -906,19 +936,23 @@
 <script src="js/keyboard.js"></script>
 <script src="js/tactics.js"></script>
 <script src="js/init.js"></script>
+
+<script src="js/sidebar.js"></script>
 <!--
-  css/main.css    — 전체 스타일 (CSS 변수, 점수판, 탭, 전술판, 위젯 격리)
-  js/utils.js     — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
-  js/state.js     — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
-  js/render.js    — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
-  js/timer.js     — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
-  js/theme.js     — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
-  js/router.js    — 탭/페이지 전환, path-based URL 동기화
-  js/fixture.js   — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch
-  js/api.js       — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead) — 구현 예정
-  js/keyboard.js  — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
-  js/tactics.js   — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
-  js/init.js      — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
+  css/main.css          — 전체 스타일 (CSS 변수, 점수판, 탭, 전술판, 위젯 격리)
+  css/hamburger-nav.css — 햄버거 사이드바 네비게이션 스타일
+  js/utils.js           — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
+  js/state.js           — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
+  js/render.js          — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
+  js/timer.js           — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
+  js/theme.js           — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
+  js/router.js          — 탭/페이지 전환, path-based URL 동기화
+  js/fixture.js         — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch
+  js/api.js             — 백엔드 fetch 함수 (fetchFixture 등) — 구현 예정
+  js/keyboard.js        — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
+  js/tactics.js         — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
+  js/init.js            — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
+  js/sidebar.js         — 햄버거 사이드바 제어 (open/close, 미러 토글, Tab/Esc 단축키)
 -->
 </body>
 </html>

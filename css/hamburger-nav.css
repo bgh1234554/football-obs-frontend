@@ -1,0 +1,203 @@
+/* ========== 햄버거 사이드바 네비게이션 ========== */
+
+/* BMC 위젯 - 사이드바 열릴 때만 표시 */
+#bmc-wbtn { display: none !important; }
+body.sidebar-open #bmc-wbtn { display: flex !important; }
+
+/* 플로팅 햄버거 버튼 (화면 왼쪽 위) */
+.float-hamburger {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 85;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  opacity: .35;
+  transition: opacity .2s;
+}
+.float-hamburger:hover { opacity: .9; }
+.float-hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+/* 백드롭 */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s;
+}
+body.sidebar-open .sidebar-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 사이드바 패널 */
+.sidebar-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 220px;
+  max-width: 82vw;
+  background: #0b1220;
+  border-right: 1px solid rgba(255,255,255,.12);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+body.sidebar-open .sidebar-nav {
+  transform: translateX(0);
+}
+
+/* 사이드바 헤더 */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  flex-shrink: 0;
+}
+.sidebar-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.7);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.sidebar-close:hover { background: rgba(255,255,255,.1); }
+.sidebar-title {
+  font-weight: 800;
+  font-size: 13px;
+  color: rgba(255,255,255,.7);
+  letter-spacing: .02em;
+}
+
+/* 사이드바 본문 */
+.sidebar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 8px 14px;
+  flex: 1;
+}
+
+/* 사이드바 탭 버튼 (수직) */
+.sidebar-tab.tab {
+  width: 100%;
+  text-align: left !important;
+  padding: 12px 16px !important;
+  border-radius: 10px !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.sidebar-tab.tab .tab-key {
+  font-size: 11px;
+  opacity: .4;
+  font-weight: 400;
+  font-family: monospace;
+}
+
+/* 사이드바 구분선 */
+.sidebar-divider {
+  height: 1px;
+  background: rgba(255,255,255,.08);
+  margin: 5px 0;
+}
+
+/* 사이드바 액션 버튼 */
+.sidebar-action-btn {
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255,255,255,.85);
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 14px;
+  transition: background .15s;
+}
+.sidebar-action-btn:hover { background: rgba(255,255,255,.07); }
+
+/* 사이드바 내 fixture-inline 래퍼 */
+.sidebar-body .fixture-inline {
+  padding: 7px 12px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sidebar-body .fixture-inline-label {
+  font-size: 10px;
+  color: rgba(255,255,255,.45);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sidebar-body .fixture-inline-id {
+  font-size: 14px;
+  font-weight: 900;
+  color: rgba(255,255,255,.9);
+  cursor: pointer;
+}
+.sidebar-body .fixture-inline-status {
+  font-size: 10px;
+  color: rgba(255,255,255,.45);
+}
+
+/* 사이드바 내 수동 모드 토글 */
+.sidebar-body .manual-toggle-wrap {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+/* Details 패널 경기ID 버튼 */
+.panel-fixture-btn {
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,.8);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.panel-fixture-btn:hover { background: rgba(255,255,255,.09); }

@@ -69,13 +69,14 @@
   }
 
   /** 이름 입력란이 있으면 해당 템플릿 단건, 없으면 전체 목록을 JSON 파일로 다운로드 */
-  async function exportTemplatesFile(){
+  async function exportTemplatesFileImpl(){
     const nameInput=(el.templateName?.value||'').trim();
     let dataStr,filename;
     if(nameInput){ dataStr=JSON.stringify(buildCurrentTemplate(nameInput),null,2); filename=`${slugify(nameInput)}.json`; }
     else{ const list=JSON.parse(localStorage.getItem(TKEY)||'[]'); dataStr=JSON.stringify(list,null,2); filename='scoreboard-templates.json'; }
     downloadBlob(filename, new Blob([dataStr],{type:'application/json'}));
   }
+  window.exportTemplatesFileImpl = exportTemplatesFileImpl;
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [색상/폰트 바인딩] 색상 피커와 HEX 텍스트 입력을 양방향으로 연결하고 폰트 변경 처리
@@ -334,4 +335,3 @@
   if(el.fontFile) el.fontFile.addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; if(dynamicFontLink){ dynamicFontLink.remove(); dynamicFontLink = null; } const url=URL.createObjectURL(f); const fam=(f.name.replace(/\.[^.]+$/,'')||'Uploaded').replace(/[^A-Za-z0-9 _-]/g,''); const css=`@font-face{font-family:"${fam}";src:url('${url}');font-weight:100 900;font-style:normal;font-display:swap}`; if(uploadedFontStyle) uploadedFontStyle.remove(); uploadedFontStyle=document.createElement('style'); uploadedFontStyle.textContent=css; document.head.appendChild(uploadedFontStyle); if(el.fontCssUrl) el.fontCssUrl.value = ''; if(el.systemFonts) el.systemFonts.value = ''; state.fontFamily=sanitizeFontFamily(`'${fam}', ${DEFAULT_FONT_FAMILY}`) || `'${fam}', ${DEFAULT_FONT_FAMILY}`; render(); persist(); });
   el.applyFont?.addEventListener('click', applyFontFromInputs);
   el.resetFont?.addEventListener('click', resetFontToDefault);
-

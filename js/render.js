@@ -515,6 +515,11 @@
     if('noteFontSize' in t) state.noteFontSize=Number(t.noteFontSize)||18;
   }
 
+  // theme.js가 나중에 로드되므로, export 버튼은 구현체를 지연 조회한다.
+  function exportTemplatesFile(){
+    return window.exportTemplatesFileImpl?.();
+  }
+
   el.saveTemplate?.addEventListener('click', ()=>saveTemplate(el.templateName.value.trim()));
   el.deleteTemplate?.addEventListener('click', ()=>{ const typed=(el.templateName?.value||'').trim(); const selected=el.templateSelect?.value||''; deleteTemplate(typed||selected); });
   el.exportTemplates?.addEventListener('click', exportTemplatesFile);
@@ -535,4 +540,3 @@
     }catch{ alert('JSON 형식이 아닙니다.'); }
     finally{ e.target.value=''; }
   });
-

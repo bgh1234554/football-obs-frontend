@@ -1,9 +1,9 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [API / 경기 ID 연동] API-Sports 위젯에서 경기 ID를 추출하고 스코어보드에 반영
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const selectedEl = $('selected-fixture-id');
+  const selectedEls = Array.from(document.querySelectorAll('[data-selected-fixture-id]'));
   const statusEl = $('fixture-status');
-  const fixtureInlineWrap = $('fixture-inline-wrap');
+  const fixtureInlineWraps = Array.from(document.querySelectorAll('[data-fixture-inline-wrap]'));
   const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
@@ -21,8 +21,8 @@
   /** 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신 */
   function setFixtureId(id) {
     currentFixtureId = id || null;
-    if (selectedEl) selectedEl.textContent = currentFixtureId ?? '-';
-    if (fixtureInlineWrap) fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none';
+    selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
+    fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
     if (currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
   }
   /** 경기 상태 텍스트를 statusEl에 표시 */
@@ -31,7 +31,7 @@
   function readFixtureIdFromTarget(targetEl){ const w=targetEl.querySelector('api-sports-widget[data-type="game"]'); if(w){ const id=w.getAttribute('data-game-id'); if(id) return id; } return null; }
 
   // [이벤트 등록] 경기 ID 텍스트 클릭 → 클립보드 복사 + 토스트 알림
-  if (selectedEl) {
+  selectedEls.forEach(selectedEl => {
     selectedEl.addEventListener('click', async () => {
       if (!currentFixtureId) return;
       try {
@@ -41,7 +41,7 @@
         showToast('복사 실패 (브라우저 권한 확인)');
       }
     });
-  }
+  });
 
 
   if(gameTarget){
@@ -88,6 +88,11 @@
     .game-detail { display: flex !important; align-items: center !important; justify-content: center !important; }
     .game-center { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
     /* Lineups 선수명 작게 */
+    .group-title, .lineup-section h3 {
+      font-family: Poppins, sans-serif !important;
+      font-weight: 700 !important;
+      letter-spacing: normal !important;
+    }
     .lineup-player-name, .player-name, .player-item span, .player-item div { font-size: 11px !important; }
     .lineup-player { font-size: 11px !important; }
     .shirt-number { font-size: 10px !important; }
@@ -258,4 +263,3 @@
     };
     return stubs[fixtureId] ?? { homeTeam:`HOME (${fixtureId})`, awayTeam:`AWAY (${fixtureId})`, homeScore:0, awayScore:0, homeScorers:'', awayScorers:'', homeRedCards:0, awayRedCards:0, half:'1', homeLogo:'', awayLogo:'' };
   }
-

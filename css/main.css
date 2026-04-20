@@ -291,18 +291,40 @@
       padding-bottom: 2px;
     }
     .ce-confirm {
-      background: rgba(34,197,94,.25);
-      border: 1px solid rgba(34,197,94,.5);
-      color: #22c55e;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 800;
-      padding: 3px 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: linear-gradient(180deg, rgba(17,24,39,.96) 0%, rgba(11,18,32,.98) 100%);
+      border: 1px solid rgba(255,255,255,.78);
+      box-shadow:
+        0 0 0 1px rgba(34,197,94,.42),
+        0 3px 10px rgba(0,0,0,.35);
+      color: #86efac;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
       cursor: pointer;
-      margin-left: 2px;
+      margin-left: 4px;
       align-self: center;
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+      transition: transform .08s, background-color .12s, box-shadow .12s, color .12s;
     }
-    .ce-confirm:hover { background: rgba(34,197,94,.4); }
+    .ce-confirm:hover {
+      background: linear-gradient(180deg, rgba(30,41,59,.98) 0%, rgba(15,23,42,1) 100%);
+      color: #dcfce7;
+      box-shadow:
+        0 0 0 1px rgba(74,222,128,.62),
+        0 4px 12px rgba(0,0,0,.42);
+    }
+    .ce-confirm:active { transform: translateY(1px); }
+    .ce-confirm:focus-visible {
+      outline: 2px solid rgba(255,255,255,.92);
+      outline-offset: 2px;
+    }
     .board .half { padding: 2px 8px; border-radius: 999px; background: var(--half-bg); color: var(--half-text); font-weight: 800; }
 
     /* 레드카드 */
@@ -481,6 +503,13 @@
     }
     .fixture-inline-id:hover { background: rgba(255,255,255,.1); }
     .fixture-inline-status { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .panel-fixture-tools {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 8px; flex-wrap: wrap; min-width: 0;
+    }
+    .fixture-inline-compact { padding: 0; }
+    .fixture-inline-compact .fixture-inline-label { font-size: 11px; opacity: .8; }
+    .fixture-inline-compact .fixture-inline-id { font-size: 12px; padding: 2px 8px; }
 
     /* 토스트 알림 */
     .copy-toast {
@@ -495,6 +524,7 @@
 
     /* ── 점수판 CSS 변수가 위젯에 새어들어가지 않도록 격리 ── */
     #game-content, #standings-content, #team-content, #games-list {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, sans-serif !important;
       --home-bg: initial;
       --away-bg: initial;
       --home-text: initial;
@@ -548,6 +578,9 @@
     .pgroup button { cursor: pointer; font-weight: 700; }
     .pgroup button.primary { background: #16a34a; color: #052e16; border: none; }
     .pgroup button.ghost { background: rgb(117,117,117); border: 1px dashed #94a3b8; color: white; width: auto; }
+    .theme-file-upload { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+    .theme-file-caption { display: flex; align-items: center; height: 36px; font-size: 12px; opacity: .85; white-space: nowrap; line-height: 1; }
+    .template-import-file { min-width: 220px; }
     .pspacer { flex: 1; }
     .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #111827; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffffff22; }
     .hidden { display: none !important; }
