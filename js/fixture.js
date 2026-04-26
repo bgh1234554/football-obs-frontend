@@ -1,4 +1,4 @@
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+﻿  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [API / 경기 ID 연동] API-Sports 위젯에서 경기 ID를 추출하고 스코어보드에 반영
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const selectedEls = Array.from(document.querySelectorAll('[data-selected-fixture-id]'));
@@ -165,7 +165,7 @@
       resetFixtureDrivenState({
         clearFixtureId: true,
         clearCache: true,
-        statusMessage: '경기 선택 안 됨'
+        statusMessage: '경기 선택 대기'
       });
       return;
     }
@@ -183,7 +183,7 @@
     resetFixtureDrivenState({
       clearFixtureId: true,
       clearCache: true,
-      statusMessage: '경기 선택 안 됨'
+      statusMessage: '경기 선택 대기'
     });
   });
 
@@ -249,6 +249,7 @@
   //   - FT + 3분 경과 / 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO): 호출 중단
   //   - kickoffUtc 없는 NS: 안전하게 1분 간격으로 재호출 (fallback)
   const POLL_INTERVAL_MS    = 30 * 1000;
+  const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
   const PRE_KICKOFF_BUFFER_MS = 30 * 1000;
   const FT_LIKE_STATUSES    = new Set(['FT','AET','PEN']); // 백엔드는 'FT'로 통일하지만 방어
@@ -259,9 +260,9 @@
   let _ftFirstDetectedAt = null;
 
   /** 진행 중인 폴링 타이머 취소 + FT 추적 시각 리셋 */
-  function clearPolling() {
+  function clearPolling(resetFt = true) {
     if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
-    _ftFirstDetectedAt = null;
+    if (resetFt) _ftFirstDetectedAt = null;
   }
 
   /**
@@ -269,7 +270,7 @@
    * 사용자가 다른 fixtureId로 바꾸면 _lastFetchId 비교로 자동 폐기됨.
    */
   function schedulePoll(data) {
-    clearPolling();
+    clearPolling(false);
 
     const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
     if (!fixtureId) return;
@@ -281,7 +282,7 @@
     // 1) FT 도달 — 3분 윈도우 내에서만 폴링 유지
     if (FT_LIKE_STATUSES.has(status)) {
       if (!_ftFirstDetectedAt) _ftFirstDetectedAt = now;
-      if (now - _ftFirstDetectedAt >= POST_FT_WINDOW_MS) return; // 종료
+      if (now - _ftFirstDetectedAt >= POST_FT_WINDOW_MS) return;
     } else {
       _ftFirstDetectedAt = null;
     }
@@ -306,13 +307,19 @@
       }
     }
 
-    // 4) 진행 중 / HT / kickoff 임박 / kickoff 모르는 NS → 1분 간격
-    if (LIVE_STATUSES_POLL.has(status) || status === 'NS' || FT_LIKE_STATUSES.has(status)) {
+    if (FT_LIKE_STATUSES.has(status)) {
+      _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
+      return;
+    }
+
+    if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
+      _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
+    }
+  }
+    if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
       _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
     }
     // 그 외(미지의 status)는 안전하게 폴링하지 않음
-  }
-  // ────────────────────────────────────────────────────────────────────────
 
   function clearCachedFixtureData() {
     try { sessionStorage.removeItem('cached_fixture_data'); } catch {}
@@ -370,7 +377,7 @@
       resetFixtureDrivenState({
         clearFixtureId: true,
         clearCache: true,
-        statusMessage: '경기 선택 안 됨'
+        statusMessage: '경기 선택 대기'
       });
       return;
     }
@@ -410,7 +417,6 @@
       // 다음 호출 자동 예약 (1분 간격, FT+3분 후 중단, 비정상 상태 중단, 경기 시작 전 대기)
       schedulePoll(data);
 
-      // [Iter 2-3 저장 정책]
       //   sessionStorage: 경기 캐시 + 현재 표시 상태 (탭 닫으면 자동 소거)
       //   localStorage : 마지막 fixtureId만 유지 (다음 세션에서 '최근 선택값'으로 의도적 재호출용)
       try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
@@ -579,7 +585,7 @@
         resetFixtureDrivenState({
           clearFixtureId: true,
           clearCache: true,
-          statusMessage: '경기 선택 안 됨'
+          statusMessage: '경기 선택 대기'
         });
         return;
       }
@@ -588,7 +594,7 @@
         resetFixtureDrivenState({
           clearFixtureId: true,
           clearCache: true,
-          statusMessage: '경기 선택 안 됨'
+          statusMessage: '경기 선택 대기'
         });
         return;
       }
@@ -611,3 +617,4 @@
       });
     } catch {}
   });
+
