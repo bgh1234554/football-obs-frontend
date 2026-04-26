@@ -117,8 +117,10 @@
     // bootstrap 스타일 적용
     hexInput.style.background='#0b1220'; hexInput.style.color='#e5e7eb'; hexInput.style.border='1px solid #ffffff20'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
     colorInput.insertAdjacentElement('afterend', hexInput);
-    colorInput.addEventListener('input', e=>{ const val=e.target.value; state.colors[key]=val; setCSS(cssVar,val); hexInput.value=val; persist(); render(); });
-    hexInput.addEventListener('change', e=>{ const nv=normalizeHex(e.target.value); if(!nv){ hexInput.value=state.colors[key]; alert('HEX 형식은 #RRGGBB 또는 #RGB입니다.'); return; } state.colors[key]=nv; setCSS(cssVar,nv); colorInput.value=nv; persist(); render(); });
+    // 'theme:colors-changed' 이벤트 — 라인업 패널 등 점수판 외 영역도 새 컬러로 재렌더할 수 있게 신호
+    const dispatchThemeChange = () => document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key } }));
+    colorInput.addEventListener('input', e=>{ const val=e.target.value; state.colors[key]=val; setCSS(cssVar,val); hexInput.value=val; persist(); render(); dispatchThemeChange(); });
+    hexInput.addEventListener('change', e=>{ const nv=normalizeHex(e.target.value); if(!nv){ hexInput.value=state.colors[key]; alert('HEX 형식은 #RRGGBB 또는 #RGB입니다.'); return; } state.colors[key]=nv; setCSS(cssVar,nv); colorInput.value=nv; persist(); render(); dispatchThemeChange(); });
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
 

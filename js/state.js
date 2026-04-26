@@ -145,7 +145,19 @@
       const saved = JSON.parse(localStorage.getItem(SKEY)||'null');
       // colors/pk/notes는 중첩 객체이므로 shallow assign 후 기본값으로 누락 키를 보완
       const defaultColors = {...state.colors};
-      if(saved) Object.assign(state, saved, {running:false});
+      // running 상태 보존 — 새로고침 사이에도 타이머가 이어지도록 (이전엔 항상 false로 리셋했음)
+      if(saved) Object.assign(state, saved);
+      // 새로고침 사이 경과한 실제 시간을 더해줘서 시계가 끊기지 않게 보정.
+      // lastRunningTickMs는 timer.js의 tick()에서 매 틱마다 Date.now()로 갱신 + beforeunload에서 persist.
+      if (state.running && state.lastRunningTickMs) {
+        const elapsedMs = Date.now() - Number(state.lastRunningTickMs);
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+        if (elapsedMs > 0 && elapsedMs < ONE_DAY) {
+          const secPerTick = Number(state.secPerTick) || 1;
+          state.seconds = Number(state.seconds || 0) + (elapsedMs / 1000) * secPerTick;
+        }
+      }
+      state.lastRunningTickMs = 0; // 현재 세션에서 다시 채워짐
       state.colors = Object.assign({}, defaultColors, (saved||{}).colors || {});
       state.pk = Object.assign({home:[],away:[]}, (saved||{}).pk || {});
       state.notes = Object.assign({home:'',away:''}, (saved||{}).notes || {});

@@ -14,9 +14,36 @@
       el.clock.textContent = fmtClock(state.seconds);
     }
     _lastTick = now;
+    // 새로고침 시 끊김 없이 이어가기 위해 매 틱마다 wallclock 시각 기록.
+    // (persist는 매 틱마다 안 함 — beforeunload + visibilitychange에서 한꺼번에 저장)
+    state.lastRunningTickMs = Date.now();
   }
   // 200ms 인터벌로 tick 호출 (1초당 5회 → secPerTick 배율로 속도 조절)
   let timer = setInterval(tick, 200);
+
+  // 페이지 unload 직전(새로고침/탭 닫기) 또는 background 전환 시 최신 시각 한 번 더 기록 후 persist.
+  // restore에서 이 값과 현재 Date.now() 차이만큼 state.seconds에 더해줘서 끊김 없이 이어감.
+  function _saveTimerCheckpoint() {
+    if (state.running) {
+      state.lastRunningTickMs = Date.now();
+      try { persist(); } catch {}
+    }
+  }
+  window.addEventListener('beforeunload', _saveTimerCheckpoint);
+  window.addEventListener('pagehide', _saveTimerCheckpoint);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') _saveTimerCheckpoint();
+  });
+
+  // 브라우저 탭이 background로 갔다가 visible 복귀 시 setInterval throttle/freeze 영향으로
+  // 표시 시계가 stale할 수 있음. 즉시 1회 sync해서 사용자가 "탭 돌아오니 시간 멈춤"으로
+  // 인지하지 않도록 보정. (delta 누적은 performance.now 기반이라 자동 정확)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      _lastTick = null;  // delta 0부터 다시 시작
+      tick();
+    }
+  });
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [타이머 - 인라인 시간 편집기] 시계를 더블클릭하면 분/초를 직접 입력할 수 있는 인라인 편집 UI
@@ -53,7 +80,10 @@
       const mm = Math.max(0, parseInt(ceMin.value, 10) || 0);
       const ss = Math.min(59, Math.max(0, parseInt(ceSec.value, 10) || 0));
       state.seconds = mm * 60 + ss;
-      state.running = wasRunning; // 편집 전 상태 복원 — 멈춰있던 타이머를 강제로 재개하지 않음
+      // 편집 확정 시 항상 재생 시작. (이전엔 wasRunning 복원이라 00:00 정지 상태에서
+      // 편집 후 체크 눌러도 멈춰있었음 — '시간을 정했으니 돌리자'가 자연스러움)
+      state.running = true;
+      _lastTick = null; // delta 누적 초기화 — 다음 tick부터 정확히 시작
       clockEl.textContent = fmtClock(state.seconds);
       closeClockEditor();
       cleanup();
@@ -66,7 +96,10 @@
       clockEl.style.display = '';
     }
 
-    ceConfirm.onclick = applyTime;
+    // 체크 버튼 클릭 — applyTime + cleanup 묶어 호출.
+    // (이전엔 cleanup 누락으로 keydown/mousedown 리스너가 다음 편집 세션에 중복 등록되어,
+    // state.running=false 상태(스페이스 안 눌러 멈춰있을 때)에서 체크 버튼이 정상 동작 안 함)
+    ceConfirm.onclick = () => { applyTime(); cleanup(); };
 
     // 4. Enter로 확인, Escape로 취소 (편집 세션 키보드 이벤트)
     function onKeyDown(e) {

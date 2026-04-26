@@ -350,6 +350,14 @@
     const homeNoteSide = $('homeNoteSide');
     const awayNoteSide = $('awayNoteSide');
 
+    // 중요: autoLayoutNote는 noteEl.scrollHeight를 보고 보드 높이 초과 여부를 판정하는데,
+    // .note에 overflow-wrap:anywhere + white-space:pre-line이 걸려있어서, 부모 noteSide의
+    // shrink-to-fit(width:auto)이 min-content(한 토큰 폭, 예: "16'" 47px)로 떨어지는 케이스가
+    // 있음. 그러면 자식이 모든 글자에 줄바꿈하여 scrollHeight가 폭증, 잘못된 압축/축소 발동.
+    // → max-content로 명시 고정해 자연 폭(가장 긴 줄)을 강제로 사용하게 한 뒤 측정.
+    if (homeNoteSide) homeNoteSide.style.width = 'max-content';
+    if (awayNoteSide) awayNoteSide.style.width = 'max-content';
+
     // 3. 홈/원정 각각 독립적으로 폰트 크기 최적화
     const homeSize = autoLayoutNote(el.homeNote, homeNoteSide, homeLines, boardH, '--note-font-size-home');
     const awaySize = autoLayoutNote(el.awayNote, awayNoteSide, awayLines, boardH, '--note-font-size-away');
@@ -357,7 +365,7 @@
     // 4. 테마 탭 폰트 크기 입력란에 둘 중 작은 값 표시
     if (el.noteFontSize) el.noteFontSize.value = Math.min(homeSize, awaySize);
 
-    // 5. note-side 너비를 내용 scrollWidth에 맞게 동적 조정
+    // 5. note-side 너비를 내용 scrollWidth에 맞게 동적 조정 (위에서 'auto'로 풀어둔 상태)
     const PAD = 20;
     const stageEl = $('boardStageInner');
     const homeW = homeLines.length ? el.homeNote.scrollWidth + PAD : 0;
@@ -436,15 +444,15 @@
 
   // [이벤트 등록] 추가 시간 표시/숨김 및 값 조정
   function setManualExtra(nextValue){
-    if(!state.manualMode) return;
     state.extra = Math.max(0, Number(nextValue) || 0);
     state.extraShown = state.extra > 0;
+    state.extraManualOverride = true; // 수동 조작 후엔 API 자동 갱신 건너뜀
     render();
     persist();
   }
   function toggleManualExtra(){
-    if(!state.manualMode) return;
     state.extraShown = !state.extraShown;
+    state.extraManualOverride = true; // 수동 토글 후엔 API 자동 갱신 건너뜀
     render();
     persist();
   }
@@ -496,7 +504,18 @@
 
   /** templateSelect와 단일 템플릿 import가 공통으로 사용하는 state 반영 로직 */
   function applyTemplate(t){
-    state.colors={...state.colors,...(t.colors||{})};
+    // 경기 ID가 로딩된 상태(자동 폴링 중 또는 fixture 응답 캐시 있음)에서는
+    // 템플릿이 home/away 팀 컬러를 덮어쓰지 않게 보호.
+    //   - API에서 받은 컬러 그대로 유지
+    //   - 사용자가 테마 탭에서 수정한 컬러도 그대로 유지
+    // (보드 배경/스코어/디지트/메타 등 비-팀 컬러는 템플릿대로 적용)
+    const incoming = (t.colors || {});
+    const fixtureLoaded = (typeof currentFixtureId !== 'undefined') && !!currentFixtureId;
+    const TEAM_COLOR_KEYS = ['homeBg','homeText','awayBg','awayText','homeOutline','awayOutline'];
+    const colorsToApply = fixtureLoaded
+      ? Object.fromEntries(Object.entries(incoming).filter(([k]) => !TEAM_COLOR_KEYS.includes(k)))
+      : incoming;
+    state.colors={...state.colors,...colorsToApply};
     state.fontFamily=resolveTemplateFontFamily(t);
     if(t.logoAlign) state.logoAlign=t.logoAlign;
     if(t.radiusMode) state.radiusMode=t.radiusMode;

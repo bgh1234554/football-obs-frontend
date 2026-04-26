@@ -10,8 +10,14 @@
     if(el.manualSection) el.manualSection.classList.add('visible');
     syncManualInputs();
   }
-  // 2. 템플릿 목록 select 채우기
-  loadTemplates();
+  // 2. 템플릿 목록 select 채우기 + 마지막 선택 템플릿 복원
+  const selectedTemplateName = (typeof getLastSelectedTemplateName === 'function')
+    ? getLastSelectedTemplateName()
+    : '';
+  loadTemplates(selectedTemplateName);
+  if(selectedTemplateName && typeof restoreLastSelectedTemplate === 'function'){
+    restoreLastSelectedTemplate();
+  }
   // 3. 시계 텍스트 초기화 및 전체 렌더
   el.clock.textContent = fmtClock(state.seconds);
   render();
@@ -88,4 +94,3 @@
   }
 
   loadAbout();
-

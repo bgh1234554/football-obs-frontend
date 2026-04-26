@@ -107,7 +107,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "AFC Challenge League",
@@ -399,7 +399,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "EPL",
@@ -619,7 +619,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "FNL2B",
@@ -659,7 +659,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "Jupiler Pro League",
@@ -699,7 +699,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "KLeague",
@@ -811,7 +811,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "리그앙",
@@ -887,7 +887,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "Romania Liga I",
@@ -927,7 +927,7 @@
     "boardOutlineWidth": 1,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "SPFL",
@@ -967,7 +967,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "SerieA",
@@ -1043,7 +1043,7 @@
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
     "noteBorderWidth": 1,
-    "noteFontSize": 15,
+    "noteFontSize": 20,
     "noteMinHeight": 56
   },
   {
@@ -1084,7 +1084,7 @@
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
     "noteBorderWidth": 1,
-    "noteFontSize": 16,
+    "noteFontSize": 20,
     "noteMinHeight": 56
   },
   {
@@ -1125,7 +1125,7 @@
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
     "noteBorderWidth": 1,
-    "noteFontSize": 15,
+    "noteFontSize": 20,
     "noteMinHeight": 56
   }
 ]

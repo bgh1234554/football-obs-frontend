@@ -2,16 +2,64 @@
   // [백엔드 API fetch]
   // 백엔드: https://football-obs-backend.onrender.com
   //
-  // TODO: 아래 함수들을 구현하고, fixture.js의 fetchAndApplyFixtureData()에서 호출.
+  // 통신 레이어 전용. 응답 본문(JSON)을 그대로 반환하거나 ApiError를 throw.
+  // state 매핑/렌더링은 호출자(fixture.js 등)에서 처리.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   const API_BASE = 'https://football-obs-backend.onrender.com';
 
+  /**
+   * 백엔드 ErrorResult를 담는 커스텀 에러.
+   * 응답 본문이 ErrorResult 형식이면 code/message/status/path/timestamp가 채워짐.
+   * 네트워크 오류 등 본문 파싱 실패 시 status=0, code='NETWORK_ERROR'.
+   */
+  class ApiError extends Error {
+    constructor({ code, message, status, path, timestamp }) {
+      super(message || `API error (${code || status})`);
+      this.name = 'ApiError';
+      this.code = code || null;
+      this.status = status ?? 0;
+      this.path = path || null;
+      this.timestamp = timestamp || null;
+    }
+  }
+
+  /**
+   * 공통 fetch 헬퍼. 응답이 ok가 아니면 ErrorResult를 파싱해 ApiError throw.
+   * 응답 본문이 비어있거나 JSON 파싱 실패하면 null 반환.
+   */
+  async function apiFetch(path) {
+    let res;
+    try {
+      res = await fetch(`${API_BASE}${path}`);
+    } catch (e) {
+      throw new ApiError({ code: 'NETWORK_ERROR', message: e.message, status: 0, path });
+    }
+
+    let body = null;
+    const text = await res.text();
+    if (text) {
+      try { body = JSON.parse(text); } catch { /* 본문이 JSON이 아니면 null 유지 */ }
+    }
+
+    if (!res.ok) {
+      const err = (body && typeof body === 'object') ? body : {};
+      throw new ApiError({
+        code:      err.code      || `HTTP_${res.status}`,
+        message:   err.message   || res.statusText,
+        status:    err.status    ?? res.status,
+        path:      err.path      || path,
+        timestamp: err.timestamp || null,
+      });
+    }
+    return body;
+  }
+
   // ---------------------------------------------------------------------------
   // GET /api/fixtures/{fixtureId}
-  // 응답: FixtureResponseDto
+  // 응답: FixtureResponseDto (또는 200 null — fixture 원본 미존재 시)
   //
-  // 응답 → state 매핑:
+  // 응답 → state 매핑 (fixture.js에서 처리):
   //   matchInfo.homeTeamNameShort → state.homeName
   //   matchInfo.awayTeamNameShort → state.awayName
   //   matchInfo.homeScore         → state.homeScore   (정규+연장 goals)
@@ -36,38 +84,30 @@
   // 라인업 연동:
   //   homeLineup.startXi / awayLineup.startXi → tacticsApplyLineup() 호출
   //   PlayerDto { playerId, name, number, pos, grid } → _isReal: true 플래그 추가 시 전술판에서 한글 이름 표시
-  //
-  // TODO: 구현 완료 후 fixture.js의 fetchAndApplyFixtureData() stub을 이 함수로 교체
   // ---------------------------------------------------------------------------
   async function fetchFixture(fixtureId) {
-    // TODO
-    // const res = await fetch(`${API_BASE}/api/fixtures/${fixtureId}`);
-    // if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // return await res.json();
+    return await apiFetch(`/api/fixtures/${encodeURIComponent(fixtureId)}`);
   }
 
   // ---------------------------------------------------------------------------
   // GET /api/playerStats/{playerId}
-  // 응답: 선수 시즌별 대회별 스탯 목록
+  // 응답: PlayerProfileStatResponseDto (선수 기본 정보 + 시즌별 대회 스탯)
   //
-  // TODO: 선수 클릭 → 메뉴 → 개인 스탯 팝업 구현 시 사용
+  // 시즌은 백엔드가 결정 (9/1 이전: 전 시즌+현 시즌, 이후: 현 시즌).
+  // 사용처: 선수 클릭 → 메뉴 → 개인 스탯 팝업
   // ---------------------------------------------------------------------------
   async function fetchPlayerStats(playerId) {
-    // TODO
-    // const res = await fetch(`${API_BASE}/api/playerStats/${playerId}`);
-    // if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // return await res.json();
+    return await apiFetch(`/api/playerStats/${encodeURIComponent(playerId)}`);
   }
 
   // ---------------------------------------------------------------------------
-  // GET /api/hth/{teamA}/{teamB}
-  // 응답: 상대 전적 목록
+  // GET /api/hth?teamA={teamA}&teamB={teamB}
+  // 응답: HthResponseDto (matches[]는 날짜 내림차순 정렬)
   //
-  // TODO: 상대 전적 팝업 또는 패널 구현 시 사용
+  // 양 팀 순서가 바뀌어도 동일 결과 반환.
+  // 사용처: 상대 전적 패널 / 팝업
   // ---------------------------------------------------------------------------
-  async function fetchHeadToHead(homeTeamId, awayTeamId) {
-    // TODO
-    // const res = await fetch(`${API_BASE}/api/fixtures/headtohead?home=${homeTeamId}&away=${awayTeamId}`);
-    // if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // return await res.json();
+  async function fetchHeadToHead(teamA, teamB) {
+    const qs = `teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`;
+    return await apiFetch(`/api/hth?${qs}`);
   }

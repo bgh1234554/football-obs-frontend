@@ -19,7 +19,7 @@
     if(e.code==='Space'){ e.preventDefault(); state.running=!state.running; render(); persist(); }
     if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
     if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
-    if(state.manualMode && (e.key==='t'||e.key==='T')){ toggleManualExtra(); }
+    if(e.key==='t'||e.key==='T'){ toggleManualExtra(); }
     if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); }
     if(e.key===']'){ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); }
     // q/a → 홈 점수 +/-, w/s → 원정 점수 +/- (수동 모드에서만 동작)
