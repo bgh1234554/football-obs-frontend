@@ -712,22 +712,28 @@ function renderInjuryPanel(effectiveData, rawData) {
 }
 
 function renderLineupGrid(effectiveData, rawData) {
-  const panel = document.getElementById('lineupPanel');
-  if (!panel) return;
-
-  const body = ensureLineupPanelScaffold(panel);
-  if (!body) return;
-
-  panel.classList.toggle('dp-mode-long', typeof isLongName === 'function' && isLongName('lineup'));
-  setPanelTitle(panel, '선발 라인업', '');
+  // 메인 (캠 큼) + 메인 (캠 작음) 양쪽 페이지에 같은 라인업 패널이 있으므로
+  // [data-dp-role="lineup"]가 붙은 모든 인스턴스에 동일하게 렌더.
+  const panels = document.querySelectorAll('[data-dp-role="lineup"]');
+  if (!panels.length) return;
 
   const usePitchMode =
     canRenderPitchMode(effectiveData?.homeLineup) &&
     canRenderPitchMode(effectiveData?.awayLineup);
 
-  body.innerHTML = usePitchMode
+  const html = usePitchMode
     ? buildLineupPitchModeHtml(effectiveData, rawData)
     : buildLineupListModeHtml(effectiveData, rawData);
+
+  const longMode = typeof isLongName === 'function' && isLongName('lineup');
+
+  panels.forEach(panel => {
+    const body = ensureLineupPanelScaffold(panel);
+    if (!body) return;
+    panel.classList.toggle('dp-mode-long', longMode);
+    setPanelTitle(panel, '선발 라인업', '');
+    body.innerHTML = html;
+  });
 }
 
 function buildTacticsPlayers(lineup) {
@@ -835,8 +841,11 @@ function rerenderLineupPanels() {
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
   syncTacticsBoard(effectiveData);
 
-  // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame)
-  requestAnimationFrame(() => fitLineupNamePills(document.getElementById('lineupPanel')));
+  // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).
+  // 양쪽 페이지의 라인업 인스턴스 모두 처리.
+  requestAnimationFrame(() => {
+    document.querySelectorAll('[data-dp-role="lineup"]').forEach(p => fitLineupNamePills(p));
+  });
 }
 
 function applyLineupPanels(fixtureData) {
@@ -877,13 +886,13 @@ function clearLineupPanels() {
     injuryPanel.querySelectorAll('.dp-side-name').forEach(el => { el.textContent = 'TEAM'; });
   }
 
-  const lineupPanel = document.getElementById('lineupPanel');
-  if (lineupPanel) {
+  // 라인업 패널 다중 인스턴스 정리 (메인 캠 큼 + 메인 캠 작음)
+  document.querySelectorAll('[data-dp-role="lineup"]').forEach(lineupPanel => {
     const body = ensureLineupPanelScaffold(lineupPanel);
     setPanelTitle(lineupPanel, '선발 라인업');
     lineupPanel.classList.remove('dp-mode-long');
     if (body) body.innerHTML = '';
-  }
+  });
 
   clearTacticsLineupSync();
 }

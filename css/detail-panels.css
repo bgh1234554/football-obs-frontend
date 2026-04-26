@@ -354,8 +354,9 @@
 }
 /* 라인업 패널에서는 별도 타이틀 줄 숨김 — 안쪽 피치 위/아래의 home/away chip이
    "팀명 + 포메이션"을 이미 표시하므로 redundant. 빈 공간 차지하면 피치 압축됨. */
-#lineupPanel > .dp-title { display: none; }
-#lineupPanel { padding: 0; }
+/* 라인업 패널은 별도 타이틀 줄 없이 피치만 — 양쪽 페이지의 모든 인스턴스 적용 */
+[data-dp-role="lineup"] > .dp-title { display: none; }
+[data-dp-role="lineup"] { padding: 0; }
 .layout-small .lp-cam-chat {
   flex: 0 0 19.2%;
 }
@@ -378,12 +379,22 @@
   justify-content: stretch;
 }
 
-.lp.lp-lineup-s {
+.lp.lp-lineup-s,
+.lp.lp-lineup {
   align-items: stretch;
   justify-content: stretch;
 }
-.lp.lp-lineup-s > .lp-label {
+.lp.lp-lineup-s > .lp-label,
+.lp.lp-lineup > .lp-label {
   display: none;
+}
+
+/* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정. */
+/* 남는 가로 공간은 lp-cam-big(flex:1)이 자연스럽게 흡수. */
+.layout-big .lp-lineup {
+  flex: 0 0 auto;
+  height: 100%;
+  aspect-ratio: 62 / 105;
 }
 
 /* ===== side header / inline edit ===== */

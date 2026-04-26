@@ -191,8 +191,13 @@
     <!-- MAIN 캠 큰 버전 -->
     <div id="page-main-big" class="page active">
       <div class="layout-wrap layout-big">
-        <!-- 라인업 -->
-        <div class="lp lp-lineup"><div class="lp-label">라인업<br>(포메이션 그리드)</div></div>
+        <!-- 라인업 (메인 캠 큼) — 메인 캠 작음과 같은 데이터/구조 공유 -->
+        <div class="lp lp-lineup">
+          <div class="dp-panel" data-dp-role="lineup">
+            <div class="dp-title">선발 라인업</div>
+            <div class="dp-lineup-body"></div>
+          </div>
+        </div>
         <!-- 캠 -->
         <div class="lp lp-cam-big"><div class="lp-label">캠 및 채팅창</div></div>
         <!-- 이벤트 -->
@@ -214,9 +219,9 @@
           <div class="lp lp-stat-s"><div class="lp-label">경기 스탯</div></div>
         </div>
 
-        <!-- 라인업 -->
+        <!-- 라인업 (메인 캠 작음) — 메인 캠 큼과 같은 데이터/구조 공유 -->
         <div class="lp lp-lineup-s">
-          <div class="dp-panel" id="lineupPanel">
+          <div class="dp-panel" id="lineupPanel" data-dp-role="lineup">
             <div class="dp-title">선발 라인업</div>
             <div class="dp-lineup-body"></div>
           </div>
