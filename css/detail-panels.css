@@ -202,7 +202,7 @@
 .dp-bench-footer {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr) minmax(0, 0.9fr);
   gap: 4px;
   padding: 6px 2px 2px;
   margin-top: 4px;
@@ -236,26 +236,53 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dp-bench-footer [data-bench-referee] {
+  gap: 4px;
+}
+.dp-bench-footer [data-bench-referee] .dp-referee-name {
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 
 /* 감독/주심 줄 아래 경기장 이름 — 가운데 정렬, 한 줄 */
 .dp-bench-venue {
   flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
   padding: 4px 4px 2px;
-  text-align: center;
   font-size: 11px;
   color: rgba(255,255,255,.55);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.dp-venue-name {
+.dp-league-name,
+.dp-venue-wrap {
   min-width: 0;
   max-width: 100%;
-  display: inline-block;
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: bottom;
+  line-height: 1.2;
+}
+.dp-league-name {
+  text-align: left;
+}
+.dp-venue-wrap {
+  text-align: right;
+}
+.dp-venue-wrap .dp-label {
+  color: rgba(255,255,255,.45);
+  font-weight: 700;
+  margin-right: 4px;
+}
+.dp-venue-name {
+  color: rgba(255,255,255,.75);
 }
 
 /* ===== 빈 상태 (데이터 없음) ===== */
@@ -343,7 +370,9 @@
 
 /* 벤치/부상 세로 비율 — 벤치 패널이 푸터(감독/주심) + 경기장 이름 줄까지 가지므로
    부상 컬럼에서 한 줄 정도 가져옴. 1.2 → 1.45. */
-.layout-small .lp-col-bench .lp-bench  { flex: 1.45; }
+/* 벤치 15명일 때 미세하게 스크롤바가 생기는 문제 — 부상 컬럼에서 몇 px 가져와 해소.
+   1.45 → 1.55 (벤치 +)/ 1 → 0.95 (부상 -). 부상은 보통 3-5명이라 줄어들어도 영향 적음. */
+.layout-small .lp-col-bench .lp-bench  { flex: 1.5; }
 .layout-small .lp-col-bench .lp-injury { flex: 1; }
 /* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
    컬럼 = 피치 가득 채움 → 옆에 빈 공간 안 생김. */
@@ -389,12 +418,133 @@
   display: none;
 }
 
-/* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정. */
-/* 남는 가로 공간은 lp-cam-big(flex:1)이 자연스럽게 흡수. */
+/* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.
+   --lp-lineup-scale: 0.5~1.0 (default 1). 비율 유지하며 height만 축소 → cam-big(flex:1)이 남는 폭 흡수.
+   align-self: flex-end → 축소 시 컬럼이 아래로 정렬되어 윗 모서리에 위치한 resize handle을 위로 끌어 확장하기 자연스럽게.
+   position: relative → 우상단 .lp-lineup-resize 핸들을 absolute로 띄우기 위함. */
 .layout-big .lp-lineup {
   flex: 0 0 auto;
-  height: 100%;
+  height: calc(100% * var(--lp-lineup-scale, 1));
   aspect-ratio: 62 / 105;
+  align-self: flex-end;
+  position: relative;
+}
+
+/* 라인업 우상단 resize 핸들 — 마우스 드래그로 라인업 크기 조정.
+   .layout-big .lp-lineup 내부에만 출현 (작은 캠 페이지/모바일에서는 미생성). */
+.lp-lineup-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nesw-resize;
+  z-index: 10;
+  border-radius: 0 14px 0 6px;
+  background: linear-gradient(225deg,
+    rgba(255,255,255,.55) 0%, rgba(255,255,255,.55) 18%,
+    transparent 18%, transparent 36%,
+    rgba(255,255,255,.42) 36%, rgba(255,255,255,.42) 50%,
+    transparent 50%);
+  opacity: .5;
+  transition: opacity .12s, background-color .12s;
+}
+.lp-lineup-resize:hover { opacity: 1; }
+.lp-lineup.is-resizing .lp-lineup-resize { opacity: 1; }
+/* drag 중 user-select 방지 (실수로 텍스트 잡히는거) */
+body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
+
+/* 라인업 패널 height가 원래의 75% 이하로 축소되면 바둑알/얼굴/이름/팀chip 같이 축소.
+   nodeScale = min(1, lineupScale / 0.75)
+   - lineupScale 100% → 1.0 (변화 없음)
+   - lineupScale  75% → 1.0 (이 지점부터 변화 시작)
+   - lineupScale  60% → 0.80
+   - lineupScale  50% → 0.67
+   layout-big의 .lp-lineup 내부에만 적용 — layout-small/모바일은 영향 없음.
+   font-size뿐 아니라 node width/gap, name pill padding, 팀chip 사이즈까지 같이 비례 축소
+   해야 시각적으로 부조화가 안 생긴다. */
+.layout-big .lp-lineup {
+  --lp-node-scale: min(1, calc(var(--lp-lineup-scale, 1) / 0.75));
+}
+/* node는 원/아바타만 담음. translate(-50%, -50%)는 element 크기 비례라 별도 스케일 불필요. */
+.layout-big .lp-lineup .dp-lineup-name-wrap {
+  width: calc(90px * var(--lp-node-scale, 1));
+  transform: translate(-50%, calc(24px * var(--lp-node-scale, 1)));
+}
+.layout-big .lp-lineup .dp-mode-long .dp-lineup-name-wrap {
+  width: calc(108px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-circle {
+  width: calc(42px * var(--lp-node-scale, 1));
+  height: calc(42px * var(--lp-node-scale, 1));
+  font-size: calc(16px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-avatar {
+  width: calc(44px * var(--lp-node-scale, 1));
+  height: calc(44px * var(--lp-node-scale, 1));
+}
+/* 이름 pill — 폰트는 base var × nodeScale, 패딩/border-radius도 같이 축소 */
+.layout-big .lp-lineup .dp-lineup-name {
+  font-size: calc(var(--lp-name-base-size, 12px) * var(--lp-node-scale, 1));
+  padding: calc(2px * var(--lp-node-scale, 1)) calc(6px * var(--lp-node-scale, 1));
+  border-radius: calc(4px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-mode-long .dp-lineup-name {
+  font-size: calc(var(--lp-name-base-size, 12px) * var(--lp-node-scale, 1));
+}
+
+/* 팀 chip(상단 home / 하단 away의 "팀명 + 포메이션" 패널) — 라인업 패널 축소 시 함께 축소 */
+.layout-big .lp-lineup .dp-lineup-team-chip {
+  left: calc(14px * var(--lp-node-scale, 1));
+  right: calc(14px * var(--lp-node-scale, 1));
+  gap: calc(10px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-chip.is-home {
+  top: calc(14px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-chip.is-away {
+  bottom: calc(14px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-main {
+  min-width: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: calc(5px * var(--lp-node-scale, 1)) calc(10px * var(--lp-node-scale, 1));
+  gap: calc(8px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-stacked {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(2px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-name {
+  font-size: calc(11px * var(--lp-node-scale, 1));
+  max-width: calc(150px * var(--lp-node-scale, 1));
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-stacked .dp-lineup-team-name {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+.layout-big .lp-lineup .dp-lineup-team-fm {
+  font-size: calc(10px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-chip .dp-side-edit-btn {
+  min-width: 0;
+  padding: calc(2px * var(--lp-node-scale, 1)) calc(8px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1));
+  line-height: 1.15;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 /* ===== side header / inline edit ===== */
@@ -432,22 +582,30 @@
   background: rgba(255,255,255,.14);
   color: #fff;
 }
-#benchPanel .dp-side-edit-btn,
-#injuryPanel .dp-side-edit-btn {
+#benchPanel .dp-side-header .dp-side-edit-btn,
+#injuryPanel .dp-side-header .dp-side-edit-btn {
   display: none;
 }
-.dp-coach-name.dp-coach-editable {
+.dp-coach-name.dp-coach-editable,
+.dp-referee-name.dp-referee-editable {
   cursor: text;
   border-bottom: 1px dotted rgba(255,255,255,.28);
 }
-.dp-coach-name.dp-coach-editable:hover {
+.dp-coach-name.dp-coach-editable:hover,
+.dp-referee-name.dp-referee-editable:hover {
   border-bottom-color: rgba(255,255,255,.62);
 }
-.dp-coach-name.dp-coach-editing {
+.dp-coach-name.dp-coach-editing,
+.dp-referee-name.dp-referee-editing {
   flex: 1 1 auto;
   max-width: none;
   overflow: visible;
   border-bottom-color: transparent;
+  /* line-clamp:2(referee 기본)나 다른 줄제한이 input에 영향 안 가도록 reset */
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: unset;
 }
 .dp-coach-inline-input {
   width: 100%;
@@ -601,7 +759,9 @@
   position: absolute;
   left: 14px;
   right: 14px;
-  z-index: 2;
+  /* 노드(z=3)/이름(z=4)보다 위에 와야 GK 위에 chip이 보인다 — 작은 스케일에서 chip이
+     GK 원에 가려지는 문제 방지. */
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -613,23 +773,36 @@
 .dp-lineup-team-chip.is-away {
   bottom: 14px;
 }
+/* chip의 가로 영역(left:14 ~ right:14) 안에서 team-main이 shrink 가능하도록 flex 명시.
+   inline-flex이면 shrink-to-fit 으로 동작해 chip 폭에 맞춰 줄어들지 않아 team-name이 wrap을
+   못 했음 → team-main을 flex:0 1 auto + min-width:0으로 바꿔 좁은 chip에선 알아서 줄어듦. */
 .dp-lineup-team-main {
   min-width: 0;
-  display: inline-flex;
+  flex: 0 1 auto;
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 5px 10px;
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgba(10,15,23,.55);
   border: 1px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 55%, transparent);
   backdrop-filter: blur(3px);
 }
 .dp-lineup-team-name {
   min-width: 0;
-  max-width: 150px;
+  flex: 0 1 auto;
+  /* max-width 200px = 큰 화면 상한. 좁은 chip에선 자연스럽게 더 줄어듦. */
+  max-width: 200px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* 긴 팀이름은 2줄까지 wrap. 1줄에 맞으면 1줄. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
   font-size: 11px;
   font-weight: 800;
   color: rgba(255,255,255,.92);
@@ -654,24 +827,28 @@
 .dp-side-header .dp-side-formation + .dp-side-edit-btn {
   margin-left: 0;
 }
-/* 전술판 토큰 룩 — 깔끔한 단색 원 + 검정 pill 이름 (2줄 wrap 가능, 폰트 키움).
-   X는 노드 폭의 절반 → 가로 중앙. Y는 노드 전체가 아닌 '원의 절반 높이'(21px)만큼만
-   위로 올려서 원의 중심이 항상 슬롯 좌표에 고정. 이름이 1줄이든 2줄이든 원 위치 변동 없음.
-   양 팀 모두 원이 위, 이름이 아래로 표시. */
+/* 전술판 토큰 룩 — 슬롯 좌표(slot.left%, slot.top%)에 원/아바타 중심을 고정.
+   이름 라벨은 별도 .dp-lineup-name-wrap으로 분리 렌더 → 모든 이름이 모든 원보다 위 z-index
+   (홈/원정 양쪽 같은 규칙). 이전엔 동일 노드 내 flex column 구조라 인접 팀 원에 가려짐. */
 .dp-lineup-node {
   position: absolute;
-  transform: translate(-50%, -21px);
-  display: flex;
-  flex-direction: column;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
-  width: 90px;
+  justify-content: center;
   z-index: 3;
   pointer-events: none;
 }
-/* 사진 모드(아바타 44px) — 절반 22px로 보정 */
-.dp-lineup-node:has(.dp-lineup-avatar) {
-  transform: translate(-50%, -22px);
+/* 이름 라벨 별도 컨테이너 — 슬롯 좌표 기준 원 아래(circle radius + gap = 24px)에 위치.
+   z-index 4 → 모든 .dp-lineup-node(z-index 3)보다 항상 위. */
+.dp-lineup-name-wrap {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  width: 90px;
+  transform: translate(-50%, 24px);
+  z-index: 4;
+  pointer-events: none;
 }
 .dp-lineup-circle {
   width: 42px;
@@ -689,8 +866,8 @@
   font-variant-numeric: tabular-nums;
 }
 .dp-lineup-avatar {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
@@ -707,7 +884,8 @@
   border-radius: 4px;
   background: rgba(0,0,0,.72);
   color: #fff;
-  font-size: 12px;
+  /* --lp-name-base-size: 설정 팝업의 "이름 글자 크기" 슬라이더로 조정. document root에 설정. */
+  font-size: var(--lp-name-base-size, 12px);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -722,11 +900,11 @@
   overflow: hidden;
   box-sizing: border-box;
 }
-.dp-mode-long .dp-lineup-node {
+.dp-mode-long .dp-lineup-name-wrap {
   width: 108px;
 }
 .dp-mode-long .dp-lineup-name {
-  font-size: 10.5px;
+  font-size: var(--lp-name-base-size, 12px);
 }
 .dp-lineup-list-wrap {
   flex: 1 1 0;
@@ -883,7 +1061,7 @@
   align-items: center;
 }
 .dp-manual-row.is-injury {
-  grid-template-columns: 72px 72px minmax(0, 1fr) 132px minmax(0, 1fr);
+  grid-template-columns: 72px 72px minmax(0, 1fr) minmax(180px, 240px);
 }
 .dp-slot-label {
   font-size: 11px;
@@ -896,6 +1074,79 @@
   font-size: 11px;
   color: rgba(255,255,255,.48);
   line-height: 1.45;
+}
+
+/* ===== Iter 3: 그리드 모드 (포메이션만 null인 경우 드래그-드롭 UI) ===== */
+.dp-grid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dp-grid-row {
+  display: grid;
+  grid-template-columns: 22px 38px 30px 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+  transition: background .12s, border-color .12s, transform .12s;
+}
+.dp-grid-row:hover { background: rgba(255,255,255,.08); }
+.dp-grid-row.is-dragging { opacity: .35; cursor: grabbing; }
+.dp-grid-row.is-drop-target {
+  background: rgba(76,217,100,.18);
+  border-color: rgba(76,217,100,.55);
+  transform: translateY(-1px);
+}
+.dp-grid-handle {
+  cursor: grab;
+  color: rgba(255,255,255,.55);
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+  font-weight: 800;
+}
+.dp-grid-row.is-dragging .dp-grid-handle { cursor: grabbing; }
+.dp-grid-slot-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.62);
+  text-align: center;
+}
+.dp-grid-photo {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.dp-grid-photo-empty {
+  background-color: rgba(255,255,255,.04);
+  background-image: none;
+}
+.dp-grid-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,.78);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.dp-grid-name {
+  font-size: 13px;
+  color: #f0f0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-grid-name.dp-grid-empty {
+  color: rgba(255,255,255,.32);
+  font-style: italic;
 }
 @media (max-width: 900px) {
   .dp-manual-row,

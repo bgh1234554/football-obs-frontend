@@ -173,7 +173,13 @@
   }
 
   // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기)
-  if(mainShowBtn)    mainShowBtn.addEventListener('click', ()=>{ renderMainGame(mainInput?.value); closeOverlay(); });
+  // 메인 표시 버튼 — 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  if(mainShowBtn)    mainShowBtn.addEventListener('click', ()=>{
+    renderMainGame(mainInput?.value);
+    closeOverlay();
+    const target = (typeof getSetting === 'function' && getSetting('mainPage') === 'small') ? 'main-small' : 'main-big';
+    if (typeof window.activatePage === 'function') window.activatePage(target);
+  });
   if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{ const last=localStorage.getItem('last_fixture_id'); if(!last) return; if(mainInput) mainInput.value=last; mainInput.focus(); });
   if(mainClearBtn)   mainClearBtn.addEventListener('click', ()=>{
     if(mainInput){
@@ -241,6 +247,19 @@
   // 마지막 fixture 응답 보관 — scorer 토글 변경 시 events에서 notes 재구성용
   let _lastFixtureData = null;
 
+  /**
+   * 팀 로고 URL 결정 — 설정 토글 'teamLogo'에 따라 기본/협회 중 선택.
+   *   'logo' (default): matchInfo.homeTeamLogo (클럽=팀 로고, 국가대표=국기)
+   *   'fa'            : matchInfo.homeTeamFaUrl (협회 로고). null이면 'logo'로 자동 폴백.
+   */
+  function resolveTeamLogoUrl(matchInfo, side) {
+    const useFa = typeof getSetting === 'function' && getSetting('teamLogo') === 'fa';
+    const faKey = side === 'home' ? 'homeTeamFaUrl' : 'awayTeamFaUrl';
+    const logoKey = side === 'home' ? 'homeTeamLogo' : 'awayTeamLogo';
+    if (useFa && matchInfo?.[faKey]) return matchInfo[faKey];
+    return matchInfo?.[logoKey] || '';
+  }
+
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
@@ -251,6 +270,9 @@
   const POLL_INTERVAL_MS    = 30 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
+  // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
+  // 일정 페이지에서 며칠 전 끝난 경기를 클릭한 경우 등 쓸데없이 매분 호출하는 것 방지.
+  const FT_STALE_AFTER_MS   = 4 * 60 * 60 * 1000;
   const PRE_KICKOFF_BUFFER_MS = 30 * 1000;
   const FT_LIKE_STATUSES    = new Set(['FT','AET','PEN']); // 백엔드는 'FT'로 통일하지만 방어
   const ABNORMAL_STATUSES   = new Set(['PST','CANC','SUSP','INT','ABD','AWD','WO']);
@@ -279,8 +301,12 @@
     const kickoffUtc = data?.matchInfo?.kickoffUtc;
     const now = Date.now();
 
-    // 1) FT 도달 — 3분 윈도우 내에서만 폴링 유지
+    // 1) FT 도달 — 킥오프 후 4시간 이상 경과 시 즉시 종료. 그 외에는 3분 윈도우 내에서만 유지.
     if (FT_LIKE_STATUSES.has(status)) {
+      if (kickoffUtc) {
+        const kickoffMs = Date.parse(kickoffUtc);
+        if (!isNaN(kickoffMs) && (now - kickoffMs) >= FT_STALE_AFTER_MS) return;
+      }
       if (!_ftFirstDetectedAt) _ftFirstDetectedAt = now;
       if (now - _ftFirstDetectedAt >= POST_FT_WINDOW_MS) return;
     } else {
@@ -330,6 +356,8 @@
     clearPolling();
     _lastFetchId = null;
     _lastFixtureData = null;
+    state.teamColorOverride = false;
+    state.teamColorOverrideFixtureId = null;
 
     if (clearCache) clearCachedFixtureData();
     if (clearFixtureId) setFixtureId(null);
@@ -403,6 +431,12 @@
         return;
       }
 
+      const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
+      if (previousFixtureId && previousFixtureId !== normalizedFixtureId) {
+        state.teamColorOverride = false;
+        state.teamColorOverrideFixtureId = null;
+      }
+
       _lastFixtureData = data;
       applyFixtureToState(data);
       setFixtureId(normalizedFixtureId);
@@ -438,6 +472,15 @@
    */
   function applyFixtureToState(data, options){
     const m = data?.matchInfo || {};
+    const fixtureId = String(m.fixtureId ?? '').trim();
+    const preserveTeamColors = !!state.teamColorOverride
+      && !!fixtureId
+      && state.teamColorOverrideFixtureId === fixtureId;
+
+    if (!preserveTeamColors && state.teamColorOverrideFixtureId && state.teamColorOverrideFixtureId !== fixtureId) {
+      state.teamColorOverride = false;
+      state.teamColorOverrideFixtureId = null;
+    }
 
     // 팀 이름 (단축명 우선, 없으면 풀네임)
     const homeTeamName = pickMatchTeamName(m, 'home');
@@ -449,16 +492,16 @@
     if (m.homeScore != null) state.homeScore = m.homeScore;
     if (m.awayScore != null) state.awayScore = m.awayScore;
 
-    // 로고
-    if ('homeTeamLogo' in m) state.homeLogo = m.homeTeamLogo || '';
-    if ('awayTeamLogo' in m) state.awayLogo = m.awayTeamLogo || '';
+    // 로고 — 설정의 teamLogo('logo'|'fa')에 따라 기본 로고/협회 로고 중 선택. 협회 URL 없으면 기본으로 자동 폴백.
+    if ('homeTeamLogo' in m || 'homeTeamFaUrl' in m) state.homeLogo = resolveTeamLogoUrl(m, 'home');
+    if ('awayTeamLogo' in m || 'awayTeamFaUrl' in m) state.awayLogo = resolveTeamLogoUrl(m, 'away');
 
-    // 팀 컬러 (Hex, '#' 없음 → 붙여서 저장)
+    // 팀 컬러 (Hex, '#' 없음 → 붙여서 저장). 사용자 override가 있으면 건너뜀.
     state.colors = state.colors || {};
-    if (m.homePrimaryColor) state.colors.homeBg   = '#' + m.homePrimaryColor;
-    if (m.homeNumberColor)  state.colors.homeText = '#' + m.homeNumberColor;
-    if (m.awayPrimaryColor) state.colors.awayBg   = '#' + m.awayPrimaryColor;
-    if (m.awayNumberColor)  state.colors.awayText = '#' + m.awayNumberColor;
+    if (!preserveTeamColors && m.homePrimaryColor) state.colors.homeBg   = '#' + m.homePrimaryColor;
+    if (!preserveTeamColors && m.homeNumberColor)  state.colors.homeText = '#' + m.homeNumberColor;
+    if (!preserveTeamColors && m.awayPrimaryColor) state.colors.awayBg   = '#' + m.awayPrimaryColor;
+    if (!preserveTeamColors && m.awayNumberColor)  state.colors.awayText = '#' + m.awayNumberColor;
 
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
     if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m));
@@ -514,7 +557,8 @@
       .map(e => {
         const min = e.extra ? `${e.elapsed}+${e.extra}'` : `${e.elapsed}'`;
         // pickName은 settings-popup.js의 헬퍼 — playerName/playerNameKoLong 양쪽 지원
-        const name = (typeof pickName === 'function') ? pickName(e, 'scorer') : (e.playerName || '');
+        const rawName = (typeof pickName === 'function') ? pickName(e, 'scorer') : (e.playerName || '');
+        const name = String(rawName ?? '').trim() || '골';
         // 자책골/페널티 모두 이름 뒤에 표기. 일반골은 이름만.
         if (e.detail === 'Own Goal') return `${min} ${name} (OG)`;
         if (e.detail === 'Penalty')  return `${min} ${name} (PK)`;
@@ -559,11 +603,13 @@
     return '1';
   }
 
-  // scorer 토글 변경 시 notes만 재계산 후 다시 렌더 (점수판 옆 메모 즉시 반영)
+  // 토글 변경 시 fixture를 다시 적용 — scorer/teamName(이름 표기), teamLogo(기본/협회 로고).
+  // 사용자가 수동으로 켠 타이머는 보존(resetRunning: false). 팀 컬러 보존은 state.teamColorOverride
+  // 플래그가 처리하므로 별도 옵션 불필요.
   document.addEventListener('settings:change', e => {
-    if (e.detail?.category !== 'scorer' && e.detail?.category !== 'teamName') return;
+    const category = e.detail?.category;
+    if (category !== 'scorer' && category !== 'teamName' && category !== 'teamLogo') return;
     if (!_lastFixtureData) return;
-    // 토글 변경은 표시 텍스트만 갱신해야 하므로 사용자가 수동으로 켠 타이머를 보존
     applyFixtureToState(_lastFixtureData, { resetRunning: false });
   });
 

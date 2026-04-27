@@ -1,6 +1,6 @@
     /* ========== CSS 변수 ========== */
     :root {
-      --font-family: 'Ubuntu', 'NanumSquareRound', 'Arial', sans-serif;
+      --font-family: 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Arial', sans-serif;
 
       /* Overlay UI */
       --bg-ui: #111827;
@@ -129,6 +129,47 @@
     .note-side.hidden { display: none !important; }
 
     /* ========== 보드 ========== */
+    .note-side.manual-editable { cursor: text; }
+    .note-side.manual-editable.editing { z-index: 5; }
+    .note.manual-editable {
+      box-sizing: border-box;
+      min-height: 44px;
+      cursor: text;
+    }
+    .note.manual-editable:hover { background: rgba(255,255,255,.08); }
+    .note-inline-editor {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      width: 100%;
+    }
+    .note-inline-editor.away { flex-direction: row-reverse; }
+    .note-inline-textarea {
+      width: 100%;
+      min-width: 0;
+      min-height: 96px;
+      resize: none;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 10px;
+      background: rgba(11,18,32,.92);
+      color: var(--note-text);
+      font-family: var(--font-family);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      box-shadow: 0 8px 24px rgba(0,0,0,.28);
+    }
+    .note-inline-editor.home .note-inline-textarea { text-align: right; }
+    .note-inline-editor.away .note-inline-textarea { text-align: left; }
+    .note-inline-textarea::placeholder { color: rgba(229,231,235,.65); }
+    .note-inline-textarea:focus {
+      outline: 2px solid rgba(255,255,255,.85);
+      outline-offset: 1px;
+      border-color: rgba(255,255,255,.5);
+    }
+    .note-inline-save { flex: 0 0 auto; margin-top: 2px; }
+
     .board {
       display: grid;
       grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
@@ -640,6 +681,16 @@
     .api-badge .dot.loading { background: #f59e0b; animation: blink .7s infinite; }
     @keyframes blink { 50% { opacity: .2; } }
 
+    /* 점수판/득점자 박스 깜빡임 — render.js의 triggerScoreFlashOnChange에서 클래스 부여.
+       brightness/saturate 강조 후 자연스럽게 원복. animationend 후 클래스 자동 제거. */
+    @keyframes board-flash {
+      0%   { filter: none; }
+      30%  { filter: brightness(1.55) saturate(1.18); }
+      55%  { filter: brightness(0.92); }
+      100% { filter: none; }
+    }
+    .flash-update { animation: board-flash 0.55s ease-in-out 1; }
+
     /* API 데이터 파섹션 */
     .api-section {
       background: rgba(255,255,255,.03); border: 1px solid var(--line);
@@ -685,6 +736,7 @@
     }
 
     /* ── 캠 큰 버전 3열 ── */
+    /* lp-lineup의 정확한 크기 규칙(aspect-ratio + scale 변수)은 detail-panels.css에서 오버라이드한다. */
     .layout-big .lp-lineup  {
       flex: 0 0 auto;
       height: 100%;
@@ -694,6 +746,13 @@
     .layout-big .lp-col     { flex: 0 0 18%; }
     .layout-big .lp-events,
     .layout-big .lp-stat    { flex: 1; }
+    /* 캠/채팅 컬럼 — 캠 큼 페이지에서는 OBS 위에 실제 캠 영상을 합성하므로 점선 테두리 + 라벨을 항상 숨김.
+       컬럼 자리(flex 폭)는 유지해 다른 컬럼 비율 영향 X. */
+    .layout-big .lp-cam-big {
+      border-color: transparent;
+      background: transparent;
+    }
+    .layout-big .lp-cam-big .lp-label { visibility: hidden; }
 
     /* ── 캠 작은 버전 5열 ── */
     /* events / stat 각각 독립 컬럼, 위아래 꽉 채움 */

@@ -210,3 +210,51 @@
 .sp-toggle-cluster .sp-toggle-side.is-active {
   color: #fff;
 }
+
+/* ----- 슬라이더 (range) ----- */
+.sp-slider-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+.sp-slider-cluster input[type="range"] {
+  width: 140px;
+  height: 4px;
+  background: rgba(255,255,255,.18);
+  border-radius: 999px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.sp-slider-cluster input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4cd964;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  cursor: pointer;
+}
+.sp-slider-cluster input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4cd964;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  cursor: pointer;
+}
+.sp-slider-cluster input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 2px rgba(76,217,100,.4);
+}
+.sp-slider-value {
+  min-width: 38px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,.78);
+  font-variant-numeric: tabular-nums;
+}

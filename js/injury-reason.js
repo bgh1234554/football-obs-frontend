@@ -69,10 +69,10 @@
 
     // 출장 정지 카테고리
     'Suspended':                    '출장 정지',
-    'Suspension':                   '출장 정지',
-    'Red card':                     '퇴장 (레드카드)',
-    'Red Card':                     '퇴장 (레드카드)',
     'Yellow Cards':                 '경고 누적',
+    'Red card':                     '퇴장 (레드카드)',
+    'Suspension':                   '출장 정지',
+    'Red Card':                     '퇴장 (레드카드)',
     'Yellow Card Accumulation':     '경고 누적',
   };
 

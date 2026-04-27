@@ -111,6 +111,10 @@
    * 색상 피커(input[type=color])와 HEX 텍스트 입력 필드를 양방향으로 연결.
    * 어느 쪽을 변경해도 state, CSS 변수, 상대 필드가 모두 동기화됨.
    */
+  // 사용자가 테마 탭에서 직접 만지면 state.teamColorOverride=true로 마킹할 키 목록.
+  // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
+  const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText','homeOutline','awayOutline']);
+
   function bindColorWithHex(colorId, key, cssVar){
     const colorInput=$(colorId); if(!colorInput) return;
     const hexInput=document.createElement('input'); hexInput.type='text'; hexInput.id=colorId+'Hex'; hexInput.placeholder='#RRGGBB'; hexInput.style.width='92px'; hexInput.style.marginLeft='6px'; hexInput.value=state.colors[key]||colorInput.value||'#000000';
@@ -119,8 +123,18 @@
     colorInput.insertAdjacentElement('afterend', hexInput);
     // 'theme:colors-changed' 이벤트 — 라인업 패널 등 점수판 외 영역도 새 컬러로 재렌더할 수 있게 신호
     const dispatchThemeChange = () => document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key } }));
-    colorInput.addEventListener('input', e=>{ const val=e.target.value; state.colors[key]=val; setCSS(cssVar,val); hexInput.value=val; persist(); render(); dispatchThemeChange(); });
-    hexInput.addEventListener('change', e=>{ const nv=normalizeHex(e.target.value); if(!nv){ hexInput.value=state.colors[key]; alert('HEX 형식은 #RRGGBB 또는 #RGB입니다.'); return; } state.colors[key]=nv; setCSS(cssVar,nv); colorInput.value=nv; persist(); render(); dispatchThemeChange(); });
+    const markOverride = () => {
+      if (!TEAM_COLOR_KEYS.has(key)) return;
+      state.teamColorOverride = true;
+      state.teamColorOverrideFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim() || null;
+    };
+    const commitThemeColor = value => { state.colors[key]=value; setCSS(cssVar,value); hexInput.value=value; markOverride(); persist(); render(); dispatchThemeChange(); };
+    const deferUntilChange = key === 'homeBg' || key === 'homeText' || key === 'awayBg' || key === 'awayText';
+    colorInput.addEventListener('input', e=>{ const val=e.target.value; if(deferUntilChange){ hexInput.value=val; return; } commitThemeColor(val); });
+    if(deferUntilChange){
+      colorInput.addEventListener('change', e=>commitThemeColor(e.target.value));
+    }
+    hexInput.addEventListener('change', e=>{ const nv=normalizeHex(e.target.value); if(!nv){ hexInput.value=state.colors[key]; alert('HEX 형식은 #RRGGBB 또는 #RGB입니다.'); return; } state.colors[key]=nv; setCSS(cssVar,nv); colorInput.value=nv; markOverride(); persist(); render(); dispatchThemeChange(); });
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
 

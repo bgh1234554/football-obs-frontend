@@ -77,7 +77,11 @@
     // 테마 탭일 때만 수동 모드 토글 표시
     if(manualToggleTabbar) manualToggleTabbar.style.display = nextPage==='theme' ? 'flex' : 'none';
     if(syncRoute) syncRouteForPage(nextPage, historyMode);
+    document.dispatchEvent(new CustomEvent('page:activated', { detail: { page: nextPage } }));
   }
+  // 외부에서 페이지 전환 가능하도록 노출 (fixture.js의 메인 표시 버튼 등에서 사용)
+  window.activatePage = activatePage;
+
   // [이벤트 등록] 탭 버튼 클릭으로 페이지 전환.
   // 클릭 후 버튼 blur — 활성 버튼이 포커스를 잡고 있으면 이후 사용자가 누르는 Space가
   // 버튼의 native click 트리거에도 걸려 토글이 꼬이는 문제 방지 (또한 timer space 단축키 정상 동작)
@@ -87,4 +91,3 @@
     window.addEventListener('hashchange', ()=>activatePage(resolvePageFromPath(), { syncRoute: false }));
   }
   activatePage(resolvePageFromPath(), { historyMode: 'replace' });
-

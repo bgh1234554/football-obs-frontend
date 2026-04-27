@@ -20,6 +20,114 @@
   }
 
   /** PK 하프 여부에 따라 PK 패널 토글 및 PK 결과 도트(G/M) 렌더링 */
+  let activeNoteEditor = null;
+
+  function canEditNotesInline() {
+    return !!(state.manualMode && state.noteEnabled);
+  }
+
+  function getNoteTargets(side) {
+    if (side === 'home') return { note: el.homeNote, noteSide: el.homeNoteSide };
+    return { note: el.awayNote, noteSide: el.awayNoteSide };
+  }
+
+  function closeNoteEditor(options = {}) {
+    if (!activeNoteEditor) return;
+
+    const { save = false } = options;
+    const { side, note, noteSide, editorWrap, textarea, cleanup } = activeNoteEditor;
+    const nextValue = String(textarea?.value ?? '').replace(/\r\n?/g, '\n');
+
+    cleanup?.();
+    editorWrap?.remove();
+    if (note) note.style.display = '';
+    if (noteSide) {
+      noteSide.classList.remove('editing');
+      noteSide.style.width = '';
+    }
+    activeNoteEditor = null;
+
+    if (save) {
+      state.notes = state.notes || { home: '', away: '' };
+      state.notes[side] = nextValue;
+      if (typeof syncManualInputs === 'function') syncManualInputs();
+      render();
+      persist();
+      return;
+    }
+
+    autoLayoutNotes();
+  }
+
+  function openNoteEditor(side) {
+    if (!canEditNotesInline()) return;
+
+    const { note, noteSide } = getNoteTargets(side);
+    if (!note || !noteSide) return;
+
+    if (activeNoteEditor?.side === side) {
+      activeNoteEditor.textarea?.focus();
+      activeNoteEditor.textarea?.select();
+      return;
+    }
+    if (activeNoteEditor) closeNoteEditor({ save: true });
+
+    const lockedWidth = Math.max(Math.ceil(noteSide.getBoundingClientRect().width || 0), 220);
+    const editorWrap = document.createElement('div');
+    const textarea = document.createElement('textarea');
+    const confirmBtn = document.createElement('button');
+
+    editorWrap.className = `note-inline-editor ${side}`;
+    textarea.className = 'note-inline-textarea';
+    textarea.value = state.notes?.[side] || '';
+    textarea.rows = Math.max(4, textarea.value.split('\n').length || 0);
+    textarea.placeholder = "예: 54' 골";
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'ce-confirm note-inline-save';
+    confirmBtn.textContent = '✓';
+    confirmBtn.setAttribute('aria-label', '득점자 저장');
+
+    editorWrap.append(textarea, confirmBtn);
+    note.style.display = 'none';
+    noteSide.classList.add('editing');
+    noteSide.style.width = `${lockedWidth}px`;
+    noteSide.appendChild(editorWrap);
+
+    const onOutsideClick = event => {
+      if (!activeNoteEditor || activeNoteEditor.side !== side) return;
+      if (editorWrap.contains(event.target)) return;
+      closeNoteEditor();
+    };
+
+    const cleanup = () => {
+      document.removeEventListener('mousedown', onOutsideClick);
+    };
+
+    activeNoteEditor = { side, note, noteSide, editorWrap, textarea, cleanup };
+
+    confirmBtn.addEventListener('click', () => closeNoteEditor({ save: true }));
+    textarea.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        closeNoteEditor({ save: true });
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeNoteEditor();
+      }
+    });
+
+    setTimeout(() => document.addEventListener('mousedown', onOutsideClick), 0);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.select();
+    });
+  }
+
+  el.homeNoteSide?.addEventListener('dblclick', () => openNoteEditor('home'));
+  el.awayNoteSide?.addEventListener('dblclick', () => openNoteEditor('away'));
+
   function renderPK(){
     const isPK = state.half === 'PK';
     el.pkWrap.classList.toggle('show', isPK);
@@ -54,6 +162,7 @@
    * 모든 UI 요소를 일괄 갱신한다.
    */
   function render(){
+    if (activeNoteEditor && !canEditNotesInline()) closeNoteEditor();
     // 1. 팀명 / 점수 텍스트 갱신
     el.homeName.textContent = state.homeName || 'HOME';
     el.awayName.textContent = state.awayName || 'AWAY';
@@ -125,6 +234,16 @@
     // 5. 득점자 표시 여부 및 색상 피커 동기화
     if(el.homeNoteSide) el.homeNoteSide.classList.toggle('hidden', !state.noteEnabled);
     if(el.awayNoteSide) el.awayNoteSide.classList.toggle('hidden', !state.noteEnabled);
+    if(el.homeNoteSide) el.homeNoteSide.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
+    if(el.awayNoteSide) el.awayNoteSide.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
+    if(el.homeNote) {
+      el.homeNote.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
+      el.homeNote.title = (state.manualMode && state.noteEnabled) ? '더블클릭해서 홈 득점자 편집' : '';
+    }
+    if(el.awayNote) {
+      el.awayNote.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
+      el.awayNote.title = (state.manualMode && state.noteEnabled) ? '더블클릭해서 원정 득점자 편집' : '';
+    }
     if(el.noteOn) el.noteOn.checked = !!state.noteEnabled;
     if(el.inNoteStroke) el.inNoteStroke.value = state.colors.noteStroke;
     if(el.inNoteText) el.inNoteText.value = state.colors.noteText;
@@ -212,6 +331,43 @@
       const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');
       if (_tck !== render._lastTacticsColorKey) { render._lastTacticsColorKey = _tck; tacticsRenderTokens(); }
     }
+
+    // 14. 점수/득점자 변경 시 해당 박스 깜빡임 애니메이션
+    triggerScoreFlashOnChange();
+  }
+
+  // 점수판/득점자 박스에 'flash-update' 클래스를 일시 부여해 깜빡임 애니메이션 트리거.
+  // 이전 render의 스냅샷과 비교해 실제 값이 바뀌었을 때만 발동 (색상/폰트 변경 등 다른
+  // render 호출에는 반응하지 않음). animationend로 자동 클래스 제거.
+  function triggerScoreFlashOnChange() {
+    const scorePanel = document.getElementById('scorePanel');
+    const scoreChanged = render._lastHomeScore !== undefined && (
+      render._lastHomeScore !== state.homeScore || render._lastAwayScore !== state.awayScore
+    );
+    if (scoreChanged && scorePanel) flashElement(scorePanel);
+
+    const homeNote = state.notes?.home ?? '';
+    const awayNote = state.notes?.away ?? '';
+    if (render._lastHomeNote !== undefined && render._lastHomeNote !== homeNote) {
+      flashElement(el.homeNoteSide);
+    }
+    if (render._lastAwayNote !== undefined && render._lastAwayNote !== awayNote) {
+      flashElement(el.awayNoteSide);
+    }
+
+    render._lastHomeScore = state.homeScore;
+    render._lastAwayScore = state.awayScore;
+    render._lastHomeNote = homeNote;
+    render._lastAwayNote = awayNote;
+  }
+
+  function flashElement(target) {
+    if (!target) return;
+    target.classList.remove('flash-update');
+    // 강제 reflow → 같은 클래스 재부여 시 애니메이션 재시작 보장
+    void target.offsetWidth;
+    target.classList.add('flash-update');
+    target.addEventListener('animationend', () => target.classList.remove('flash-update'), { once: true });
   }
 
   function clearPkState() {
@@ -336,6 +492,7 @@
    * note-side 박스를 스코어보드 양 옆에 절대 위치로 고정시키는 통합 함수.
    */
   function autoLayoutNotes() {
+    if (activeNoteEditor) return;
     // 1. 보드 높이 측정 — 아직 렌더되지 않으면 종료
     const boardEl = $('board');
     if (!boardEl || !el.homeNote || !el.awayNote) return;
@@ -367,9 +524,10 @@
 
     // 5. note-side 너비를 내용 scrollWidth에 맞게 동적 조정 (위에서 'auto'로 풀어둔 상태)
     const PAD = 20;
+    const MIN_EDIT_W = (state.manualMode && state.noteEnabled) ? 140 : 0;
     const stageEl = $('boardStageInner');
-    const homeW = homeLines.length ? el.homeNote.scrollWidth + PAD : 0;
-    const awayW = awayLines.length ? el.awayNote.scrollWidth + PAD : 0;
+    const homeW = Math.max(MIN_EDIT_W, homeLines.length ? el.homeNote.scrollWidth + PAD : 0);
+    const awayW = Math.max(MIN_EDIT_W, awayLines.length ? el.awayNote.scrollWidth + PAD : 0);
 
     if (homeNoteSide) homeNoteSide.style.width = homeW + 'px';
     if (awayNoteSide) awayNoteSide.style.width = awayW + 'px';

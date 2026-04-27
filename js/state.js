@@ -6,13 +6,30 @@
   const halfOrder = ['1','2','ET1','ET2','PK'];
   const TKEY = 'obs-scoreboard-templates-v1';
   const SKEY = 'obs-scoreboard-state-v2';
-  const DEFAULT_FONT_FAMILY = "'Ubuntu', 'NanumSquareRound', sans-serif";
+  function normalizeFontFamilySpec(fontMaybe){
+    return String(fontMaybe || '')
+      .split(',')
+      .map(part => part.trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+  const DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
+  const LEGACY_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'NanumSquareRound', sans-serif");
+  const LEGACY_NANUM_GOTHIC_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
   const PK_RETENTION_MS = 30 * 1000;
 
   function sanitizeFontFamily(fontMaybe){
     const raw = (typeof fontMaybe === 'string') ? fontMaybe.trim() : '';
     if(!raw) return '';
-    const parts = raw.split(',').map(s=>s.trim()).filter(Boolean)
+    const normalized = normalizeFontFamilySpec(raw);
+    if(!normalized) return '';
+    if(normalized === LEGACY_DEFAULT_FONT_FAMILY || normalized === LEGACY_NANUM_GOTHIC_DEFAULT_FONT_FAMILY) return DEFAULT_FONT_FAMILY;
+    const parts = normalized.split(',').map(s=>s.trim()).filter(Boolean)
+      .map(s => {
+        if(/^['"]?NanumSquareRound['"]?$/i.test(s)) return "'Nanum Barun Gothic'";
+        if(/^['"]?Nanum Gothic['"]?$/i.test(s)) return "'Nanum Barun Gothic'";
+        return s;
+      })
       .filter(s=>!/^['"]?HUMidnight140['"]?$/i.test(s));
     if(parts.length === 0) return '';
     if(/^['"]?Ubuntu['"]?$/i.test(parts[0]) && parts.length === 1 && /HUMidnight140/i.test(raw)) return DEFAULT_FONT_FAMILY;
@@ -53,6 +70,10 @@
     rcSize: 14, rcGap: 6, rcTop: -25, rcHomeInset: 6, rcAwayInset: 6,
     pk: { home: [], away: [] },
     pkLastExitedAt: 0,
+    // 사용자가 테마 탭에서 home/away 컬러를 직접 수정한 적이 있으면 true.
+    // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드용. localStorage로 영속화돼서 새로고침 후에도 보존.
+    teamColorOverride: false,
+    teamColorOverrideFixtureId: null,
     noteEnabled: true,
     notes: { home: '', away: '' },
     noteFontSize: 18,
@@ -180,6 +201,7 @@
       delete state.awayLogoManualOverride;
       state.fontFamily = sanitizeFontFamily(state.fontFamily) || DEFAULT_FONT_FAMILY;
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
+      state.teamColorOverride = !!state.teamColorOverride;
+      state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
     }catch(e){ console.warn('복원 실패:', e); }
   }
-
