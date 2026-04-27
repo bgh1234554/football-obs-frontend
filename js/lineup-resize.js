@@ -10,6 +10,7 @@
 const LINEUP_RESIZE_MIN = 50;
 const LINEUP_RESIZE_MAX = 100;
 
+/** 큰 캠 라인업 패널마다 우하단 리사이즈 핸들을 한 번만 생성한다. */
 function ensureLineupResizeHandles() {
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
     if (panel.querySelector(':scope > .lp-lineup-resize')) return;
@@ -22,6 +23,10 @@ function ensureLineupResizeHandles() {
   });
 }
 
+/**
+ * 라인업 리사이즈 드래그 세션 시작.
+ * 드래그 중에는 CSS 변수만 즉시 갱신하고, pointerup 시 최종 값을 setting으로 저장한다.
+ */
 function startLineupResize(event) {
   if (event.button !== 0) return;
   event.preventDefault();
@@ -45,6 +50,7 @@ function startLineupResize(event) {
   let lastPct = startScalePct;
 
   const onMove = (e) => {
+    // 1) 포인터 이동량을 layout 높이 기준 백분율로 환산한다.
     // 위로 드래그(deltaY > 0) → 확장, 아래로 드래그(deltaY < 0) → 축소.
     const deltaY = startY - e.clientY;
     const deltaPct = (deltaY / layoutHeight) * 100;
@@ -52,12 +58,15 @@ function startLineupResize(event) {
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
     if (next === lastPct) return;
     lastPct = next;
+
+    // 2) 드래그 중에는 root CSS 변수만 바꿔 미리보기를 즉시 반영한다.
     // document root에 변수 설정 → settings-popup.js의 applyLayoutSettings와 동일 위치.
     // .layout-big 별도 인라인 스타일이 있으면 root보다 우선되므로 root만 셋해도 화면 반영.
     document.documentElement.style.setProperty('--lp-lineup-scale', String(next / 100));
   };
 
   const onUp = () => {
+    // 3) 드래그 종료 시 이벤트를 정리하고 최종 값만 저장한다.
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onUp);

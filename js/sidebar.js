@@ -1,18 +1,25 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [사이드바] 탭 바를 사이드바 메뉴처럼 열고 닫고, 수동 모드 토글과 기본 단축키를 연결
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (function() {
   const backdrop  = document.getElementById('sidebarBackdrop');
   const nav       = document.getElementById('sidebarNav');
   const toggleBtn = document.getElementById('tabsBar');
   const closeBtn  = document.getElementById('sidebarClose');
 
+  /** 사이드바를 화면에 노출하고 접근성 상태를 열린 값으로 바꾼다. */
   function openSidebar() {
     document.body.classList.add('sidebar-open');
     nav.setAttribute('aria-hidden', 'false');
   }
+
+  /** 사이드바를 닫고 접근성 상태를 숨김으로 되돌린다. */
   function closeSidebar() {
     document.body.classList.remove('sidebar-open');
     nav.setAttribute('aria-hidden', 'true');
   }
 
+  // 기본 열기/닫기 트리거 연결.
   toggleBtn.addEventListener('click', openSidebar);
   closeBtn.addEventListener('click', closeSidebar);
   backdrop.addEventListener('click', closeSidebar);

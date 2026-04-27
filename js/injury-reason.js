@@ -51,7 +51,7 @@
     'Fracture':          '골절',
     'Sprain':            '염좌',
     'Strain':            '근육 긴장',
-    'Tendon Injury':     '인대 부상',
+    'Tendon Injury':     '힘줄 부상',
     'Ligament Injury':   '인대 부상',
     'ACL Injury':        '전방십자인대 부상',
     'Meniscus Injury':   '반월판 부상',

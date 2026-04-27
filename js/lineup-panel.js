@@ -1,3 +1,6 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [상세 패널 / 라인업] 교체 명단·부상자 명단·선발 라인업 렌더와 수동 입력, 전술판 동기화
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const DETAIL_MANUAL_STORAGE_KEY = 'obs.detail.manual.v1';
 const DETAIL_MANUAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DETAIL_DEFAULT_FORMATION = '4-3-3';
@@ -64,6 +67,8 @@ function normalizeCoachName(name) {
   return value;
 }
 
+// ─── 수동 입력 저장소 (fixture 단위) ──────────────────────────────────────
+// localStorage에 fixtureId 기준 override를 보관하고, API 응답에 얹어서 실제 렌더 데이터로 사용.
 function readManualStore() {
   let parsed = {};
   try {
@@ -208,13 +213,19 @@ function deleteManualKind(fixtureId, side, kind) {
   });
 }
 
+/**
+ * API fixture 응답에 수동 override를 합성해 "실제 표시용" 상세 패널 데이터를 만든다.
+ * startXi 풀폼 override, grid-only override, 교체 명단, 감독/주심, 부상자 명단을 모두 여기서 병합한다.
+ */
 function buildEffectiveFixtureData(data) {
   if (!data) return null;
 
+  // 1) 현재 fixture에 대해 저장된 수동 입력이 없으면 원본 응답을 그대로 사용.
   const fixtureId = getFixtureIdFromData(data);
   const entry = getManualEntry(fixtureId);
   if (!entry) return data;
 
+  // 2) 원본 객체를 직접 훼손하지 않도록 라인업/부상 배열을 먼저 복제한다.
   const next = {
     ...data,
     homeLineup: cloneLineup(data.homeLineup),
@@ -223,6 +234,7 @@ function buildEffectiveFixtureData(data) {
     awayInjuries: cloneInjuries(data.awayInjuries),
   };
 
+  // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
   ['home', 'away'].forEach(side => {
     const manualSide = entry[side];
     if (!manualSide) return;
@@ -290,6 +302,7 @@ function buildEffectiveFixtureData(data) {
     }
   });
 
+  // 4) 주심은 fixture 공통 데이터라 side 바깥에서 한 번만 반영한다.
   // fixture 단위로 저장된 manualEntry.refereeName 적용 — API에 주심 없을 때만 의미가 있지만,
   // setRefereeElement는 raw fixture 기준 editable 여부를 판별하므로 항상 override 우선.
   const manualReferee = String(entry.refereeName || '').trim();
@@ -752,16 +765,20 @@ function buildLineupListModeHtml(effectiveData, rawData) {
   </div>`;
 }
 
+// ─── 상세 패널 렌더 ──────────────────────────────────────────────────────
+// 교체 명단 / 부상자 명단 / 선발 라인업 패널은 공통 fixture 데이터를 공유하되 표시 규칙은 각각 다르다.
 function renderBenchPanel(effectiveData, rawData) {
   const panel = document.getElementById('benchPanel');
   if (!panel) return;
 
+  // 1) 패널 모드(long/short)와 타이틀 액션 버튼을 먼저 확정한다.
   panel.classList.toggle('dp-mode-long', typeof isLongName === 'function' && isLongName('roster'));
   setPanelTitle(panel, '교체 명단', [
     shouldShowBenchManualButton(rawData, 'home') ? buildTitleActionButton('bench', 'home') : '',
     shouldShowBenchManualButton(rawData, 'away') ? buildTitleActionButton('bench', 'away') : '',
   ].filter(Boolean).join(''));
 
+  // 2) 팀명과 양쪽 리스트를 채운다.
   setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'));
   setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'));
 
@@ -779,11 +796,13 @@ function renderBenchPanel(effectiveData, rawData) {
     applyBenchCountClass(awayList);
   }
 
+  // 3) 벤치 패널 하단의 감독 / 주심 인라인 편집 영역을 함께 갱신한다.
   setCoachElement(panel.querySelector('[data-bench-coach="home"] .dp-coach-name'), effectiveData, rawData, 'home');
   setCoachElement(panel.querySelector('[data-bench-coach="away"] .dp-coach-name'), effectiveData, rawData, 'away');
 
   setRefereeElement(panel.querySelector('[data-bench-referee] .dp-referee-name'), effectiveData, rawData);
 
+  // 4) 리그/라운드와 경기장 정보를 하단 메타 라인에 반영한다.
   // 경기장 이름 — venueName + venueCity (도시 있으면 ", 도시" 형태로 붙임)
   const leagueEl = panel.querySelector('[data-bench-venue] .dp-league-name');
   const venueEl = panel.querySelector('[data-bench-venue] .dp-venue-name');
@@ -807,40 +826,51 @@ function renderInjuryPanel(effectiveData, rawData) {
   const panel = document.getElementById('injuryPanel');
   if (!panel) return;
 
+  // 1) 패널 모드와 수동 입력 버튼 상태를 맞춘다.
   panel.classList.toggle('dp-mode-long', typeof isLongName === 'function' && isLongName('roster'));
   setPanelTitle(panel, '부상자 명단', [
     shouldShowInjuryManualButton(rawData, 'home') ? buildTitleActionButton('injury', 'home') : '',
     shouldShowInjuryManualButton(rawData, 'away') ? buildTitleActionButton('injury', 'away') : '',
   ].filter(Boolean).join(''));
 
+  // 2) 좌우 팀명을 갱신한다.
   setSideName(panel, 'injury', 'home', getTeamName(effectiveData, 'home'));
   setSideName(panel, 'injury', 'away', getTeamName(effectiveData, 'away'));
 
+  // 3) raw/effective 어느 쪽이든 데이터가 있는지 판단해 empty 문구를 제어한다.
   const hasHomeInjuryData = Array.isArray(rawData?.homeInjuries) || Array.isArray(effectiveData?.homeInjuries);
   const hasAwayInjuryData = Array.isArray(rawData?.awayInjuries) || Array.isArray(effectiveData?.awayInjuries);
 
+  // 4) 최종 리스트 HTML을 좌우 컬럼에 삽입한다.
   const homeList = panel.querySelector('[data-injury-side="home"] .dp-list');
   const awayList = panel.querySelector('[data-injury-side="away"] .dp-list');
   if (homeList) homeList.innerHTML = buildInjuryListHtml(effectiveData?.homeInjuries, hasHomeInjuryData);
   if (awayList) awayList.innerHTML = buildInjuryListHtml(effectiveData?.awayInjuries, hasAwayInjuryData);
 }
 
+/**
+ * 선발 라인업 패널을 모든 라인업 인스턴스에 동기 렌더한다.
+ * 포메이션 + startXi가 모두 유효하면 피치 모드, 아니면 리스트 모드로 자동 전환된다.
+ */
 function renderLineupGrid(effectiveData, rawData) {
   // 메인 (캠 큼) + 메인 (캠 작음) 양쪽 페이지에 같은 라인업 패널이 있으므로
   // [data-dp-role="lineup"]가 붙은 모든 인스턴스에 동일하게 렌더.
   const panels = document.querySelectorAll('[data-dp-role="lineup"]');
   if (!panels.length) return;
 
+  // 1) 홈/원정 모두 피치 렌더가 가능한지 먼저 판단한다.
   const usePitchMode =
     canRenderPitchMode(effectiveData?.homeLineup) &&
     canRenderPitchMode(effectiveData?.awayLineup);
 
+  // 2) 사용할 마크업(pitch/list)과 이름 길이 모드를 고른다.
   const html = usePitchMode
     ? buildLineupPitchModeHtml(effectiveData, rawData)
     : buildLineupListModeHtml(effectiveData, rawData);
 
   const longMode = typeof isLongName === 'function' && isLongName('lineup');
 
+  // 3) 현재 페이지에 떠 있는 모든 라인업 패널 인스턴스에 같은 결과를 주입한다.
   panels.forEach(panel => {
     const body = ensureLineupPanelScaffold(panel);
     if (!body) return;
@@ -911,6 +941,8 @@ function syncTacticsBoard(effectiveData) {
   return false;
 }
 
+// ─── 텍스트 피팅 / 충돌 보정 ─────────────────────────────────────────────
+// 라인업 이름 pill, 벤치 하단 텍스트, 팀 칩은 모두 렌더 후 실제 픽셀 기준으로 한 번 더 보정한다.
 const LINEUP_NAME_MIN_FONT_PX = 7;
 const LINEUP_NAME_MIN_WIDTH_PX = 44;
 const BENCH_FOOTER_MIN_FONT_PX = 8;
@@ -1012,6 +1044,21 @@ function tightenLineupNameWidth(nameEl) {
   return tightenTextElementWidth(nameEl, LINEUP_NAME_MIN_WIDTH_PX, canStayWithinTwoLineClamp);
 }
 
+function isBigLineupName(nameEl) {
+  return !!nameEl?.closest('.layout-big .lp-lineup');
+}
+
+function getBigLineupNameMinWidthPx(nameEl) {
+  const wrap = nameEl?.closest('.dp-lineup-name-wrap');
+  const wrapWidth = wrap ? Math.floor(wrap.getBoundingClientRect().width) : 0;
+  if (!Number.isFinite(wrapWidth) || wrapWidth <= 0) return LINEUP_NAME_MIN_WIDTH_PX;
+  return Math.max(30, Math.min(LINEUP_NAME_MIN_WIDTH_PX, Math.floor(wrapWidth * 0.58)));
+}
+
+function tightenBigLineupNameWidth(nameEl) {
+  return tightenTextElementWidth(nameEl, getBigLineupNameMinWidthPx(nameEl), canStayWithinTwoLineClamp);
+}
+
 function fitLineupNameSelf(nameEl) {
   if (!canMeasureTextElement(nameEl) || !nameEl.firstChild) return;
   let safety = 0;
@@ -1025,6 +1072,12 @@ function fitLineupNameSelf(nameEl) {
 function shrinkLineupName(nameEl) {
   if (!shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) return false;
   fitLineupNameSelf(nameEl);
+  return true;
+}
+
+function shrinkBigLineupName(nameEl) {
+  if (!shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) return false;
+  tightenBigLineupNameWidth(nameEl);
   return true;
 }
 
@@ -1053,6 +1106,48 @@ function chooseWrapToShrink(leftWrap, rightWrap) {
   return leftRect.top > rightRect.top ? leftWrap : rightWrap;
 }
 
+/**
+ * 큰 캠 라인업 축소 시에만 추가로 도는 보정 패스.
+ * 기본 pill 로직이 끝난 뒤에도 남는 충돌만 대상으로 폭 축소 → 폰트 축소 순서로 한 번 더 정리한다.
+ */
+function fitResidualBigLineupNameCollisions(labels) {
+  const bigLabels = labels.filter(nameEl => isBigLineupName(nameEl) && canMeasureTextElement(nameEl));
+  if (bigLabels.length < 2) return;
+
+  let pass = 0;
+  while (pass < 24) {
+    let changed = false;
+
+    for (let i = 0; i < bigLabels.length; i += 1) {
+      for (let j = i + 1; j < bigLabels.length; j += 1) {
+        const leftEl = bigLabels[i];
+        const rightEl = bigLabels[j];
+        if (!canMeasureTextElement(leftEl) || !canMeasureTextElement(rightEl)) continue;
+        if (!wrapsOverlap(leftEl, rightEl)) continue;
+
+        const primaryEl = chooseWrapToShrink(leftEl, rightEl);
+        const secondaryEl = primaryEl === leftEl ? rightEl : leftEl;
+
+        if ((primaryEl && tightenBigLineupNameWidth(primaryEl))
+          || (secondaryEl && tightenBigLineupNameWidth(secondaryEl))) {
+          changed = true;
+          break;
+        }
+
+        if ((primaryEl && shrinkBigLineupName(primaryEl))
+          || (secondaryEl && shrinkBigLineupName(secondaryEl))) {
+          changed = true;
+          break;
+        }
+      }
+      if (changed) break;
+    }
+
+    if (!changed) break;
+    pass += 1;
+  }
+}
+
 function fitBenchFooterNames(root) {
   const scope = root || document;
   scope.querySelectorAll('.dp-bench-footer .dp-coach-name, .dp-bench-footer .dp-referee-name').forEach(nameEl => {
@@ -1074,11 +1169,12 @@ function fitBenchFooterNames(root) {
 }
 
 /**
- * 라인업 토큰 이름 pill 처리 — 두 단계.
+ * 라인업 토큰 이름 pill 처리 — 세 단계.
  *  1) 잘림(2줄 line-clamp 후 ellipsis) 감지 시 해당 라벨 font-size만 점진 축소.
  *     scrollHeight > clientHeight 이면 텍스트가 잘리는 상태 → min 7px / -0.5px씩 축소.
  *     라벨별 inline 스타일이라 다른 라벨 시각 균형 안 깨짐.
  *  2) Range API로 줄별 폭 측정 → 가장 긴 줄 폭 + padding으로 width 고정 (pill을 텍스트에 딱 맞춤).
+ *  3) 큰 캠 축소 상황에서만 남는 충돌이 있으면 폭 축소, 그래도 안 풀리면 추가 폰트 축소를 적용.
  *
  * 호출 시점: innerHTML 갱신 후 다음 frame, 라인업 리사이즈 종료 후에도 다시 호출.
  */
@@ -1194,6 +1290,7 @@ function fitLineupNamePills(root) {
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'))
     .filter(nameEl => !!(nameEl && nameEl.firstChild));
 
+  // 1) 모든 라벨을 CSS 기본 상태로 되돌린 뒤 현재 텍스트 폭에 맞춰 pill width를 잠근다.
   labels.forEach(nameEl => {
     nameEl.style.width = '';
     nameEl.style.fontSize = '';
@@ -1201,6 +1298,7 @@ function fitLineupNamePills(root) {
     lockLineupNameWidth(nameEl);
   });
 
+  // 2) 공통 충돌 보정: 좁히기 가능한 쪽부터 width를 줄이고, 더 이상 안 되면 font-size를 줄인다.
   let pass = 0;
   while (pass < 24) {
     let changed = false;
@@ -1235,6 +1333,9 @@ function fitLineupNamePills(root) {
     if (!changed) break;
     pass += 1;
   }
+
+  // 3) 큰 캠 축소 상태에서만 남는 충돌은 별도 패스로 한 번 더 정리한다.
+  fitResidualBigLineupNameCollisions(labels);
   fitBigLineupTeamChips(scope);
   return;
   {
@@ -1323,18 +1424,24 @@ document.addEventListener('page:activated', () => {
   });
 });
 
+// ─── 라인업 패널 재렌더 진입점 ──────────────────────────────────────────
+// fixture 재적용, 수동 저장/초기화, 페이지 재활성화 시 모두 이 경로로 들어온다.
 function rerenderLineupPanels() {
   if (!lineupPanelState.lastFixture) {
     clearLineupPanels();
     return;
   }
 
+  // 1) raw fixture + 수동 override를 합성한 표시용 데이터를 만든다.
   const effectiveData = buildEffectiveFixtureData(lineupPanelState.lastFixture);
+
+  // 2) 상세 패널 3종과 전술판을 같은 기준 데이터로 동시에 갱신한다.
   renderBenchPanel(effectiveData, lineupPanelState.lastFixture);
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
   syncTacticsBoard(effectiveData);
 
+  // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
   // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).
   // 양쪽 페이지의 라인업 인스턴스 모두 처리.
   requestAnimationFrame(() => {
@@ -1343,6 +1450,7 @@ function rerenderLineupPanels() {
   });
 }
 
+/** 외부에서 fixture 데이터를 넘겨 상세 패널 전체를 적용할 때 쓰는 공개 진입점. */
 function applyLineupPanels(fixtureData) {
   if (!fixtureData) {
     clearLineupPanels();
@@ -1352,6 +1460,7 @@ function applyLineupPanels(fixtureData) {
   rerenderLineupPanels();
 }
 
+/** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
 function clearLineupPanels() {
   lineupPanelState.lastFixture = null;
   lineupPanelState.manualModal = null;
@@ -1671,6 +1780,10 @@ function hasManualOverrideForKind(fixtureId, side, kind) {
   return false;
 }
 
+/**
+ * 수동 입력 모달의 현재 종류(lineup / bench / injury)에 맞는 폼을 렌더한다.
+ * lineup은 다시 grid 모드와 풀폼 모드로 갈라지고, bench/injury는 각 전용 full form을 사용한다.
+ */
 function renderManualPanelForm(kind, side) {
   const fixtureId = getActiveFixtureId();
   const effectiveData = buildEffectiveFixtureData(lineupPanelState.lastFixture);
@@ -1685,6 +1798,7 @@ function renderManualPanelForm(kind, side) {
   meta.textContent = `fixtureId ${fixtureId} · ${getTeamName(effectiveData, side)}`;
   resetBtn.hidden = !hasManualOverrideForKind(fixtureId, side, kind);
 
+  // 1) 선발 라인업은 grid-only override와 full form override를 구분해 렌더한다.
   if (kind === 'lineup') {
     if (isGridMode(lineupPanelState.lastFixture, side)) {
       // 그리드 모드 — API 라인업이 있고 포메이션만 없는 경우
@@ -1697,8 +1811,10 @@ function renderManualPanelForm(kind, side) {
       content.innerHTML = buildLineupManualFormHtml(effectiveData?.[`${side}Lineup`]);
     }
   } else if (kind === 'bench') {
+    // 2) 교체 명단은 번호/이름 full form.
     content.innerHTML = buildBenchManualFormHtml(effectiveData?.[`${side}Lineup`]?.substitutes);
   } else {
+    // 3) 부상자 명단은 번호/이름/사유 full form.
     content.innerHTML = buildInjuryManualFormHtml(effectiveData?.[`${side}Injuries`]);
   }
 }
@@ -1818,12 +1934,18 @@ function extractInjuryOverrideFromForm(form, side) {
   return injuries;
 }
 
+/**
+ * 현재 열린 수동 입력 모달의 값을 fixture별 manual store에 저장한다.
+ * 저장 후에는 상세 패널 3종과 전술판을 같은 override 기준으로 즉시 다시 렌더한다.
+ */
 function saveManualPanel() {
   const modalState = lineupPanelState.manualModal;
   const form = document.getElementById('manualPanelForm');
   if (!modalState || !form) return;
 
   const { kind, side, fixtureId } = modalState;
+
+  // 1) kind별 추출 함수를 통해 sideData를 갱신한다.
   updateManualEntry(fixtureId, side, sideData => {
     if (kind === 'lineup') {
       // 그리드 모드 vs 풀폼 모드 분기. gridState가 살아있으면 그리드, 아니면 풀폼.
@@ -1846,6 +1968,7 @@ function saveManualPanel() {
     return sideData;
   });
 
+  // 2) 저장이 끝나면 모달을 닫고, 3) 같은 fixture를 기준으로 패널을 즉시 다시 그린다.
   closeManualPanel();
   rerenderLineupPanels();
 }
@@ -1878,6 +2001,7 @@ function finishCoachInlineEdit(hostEl, inputEl, side, saveValue) {
   rerenderLineupPanels();
 }
 
+/** API에 감독명이 없을 때만 허용되는 벤치 하단 인라인 감독 편집 진입점. */
 function startCoachInlineEdit(hostEl) {
   if (!hostEl || hostEl.dataset.apiMissing !== 'true') return;
   if (hostEl.querySelector('input')) return;
@@ -1932,6 +2056,7 @@ function finishRefereeInlineEdit(hostEl, inputEl, saveValue) {
   rerenderLineupPanels();
 }
 
+/** API에 주심명이 없을 때만 허용되는 벤치 하단 인라인 주심 편집 진입점. */
 function startRefereeInlineEdit(hostEl) {
   if (!hostEl || hostEl.dataset.apiMissing !== 'true') return;
   if (hostEl.querySelector('input')) return;
