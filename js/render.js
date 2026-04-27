@@ -331,36 +331,11 @@
       const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');
       if (_tck !== render._lastTacticsColorKey) { render._lastTacticsColorKey = _tck; tacticsRenderTokens(); }
     }
-
-    // 14. 점수/득점자 변경 시 해당 박스 깜빡임 애니메이션
-    triggerScoreFlashOnChange();
   }
 
-  // 점수판/득점자 박스에 'flash-update' 클래스를 일시 부여해 깜빡임 애니메이션 트리거.
-  // 이전 render의 스냅샷과 비교해 실제 값이 바뀌었을 때만 발동 (색상/폰트 변경 등 다른
-  // render 호출에는 반응하지 않음). animationend로 자동 클래스 제거.
-  function triggerScoreFlashOnChange() {
-    const scorePanel = document.getElementById('scorePanel');
-    const scoreChanged = render._lastHomeScore !== undefined && (
-      render._lastHomeScore !== state.homeScore || render._lastAwayScore !== state.awayScore
-    );
-    if (scoreChanged && scorePanel) flashElement(scorePanel);
-
-    const homeNote = state.notes?.home ?? '';
-    const awayNote = state.notes?.away ?? '';
-    if (render._lastHomeNote !== undefined && render._lastHomeNote !== homeNote) {
-      flashElement(el.homeNoteSide);
-    }
-    if (render._lastAwayNote !== undefined && render._lastAwayNote !== awayNote) {
-      flashElement(el.awayNoteSide);
-    }
-
-    render._lastHomeScore = state.homeScore;
-    render._lastAwayScore = state.awayScore;
-    render._lastHomeNote = homeNote;
-    render._lastAwayNote = awayNote;
-  }
-
+  // 점수판/득점자 박스 깜빡임 — fixture.js의 폴링 응답 처리에서 호출.
+  // render() 안에서 자동 비교하지 않음 (render는 색상/폰트 등 다른 사유로도 호출되므로
+  // 깜빡임이 무관한 시점에 발동되는 문제 방지).
   function flashElement(target) {
     if (!target) return;
     target.classList.remove('flash-update');
@@ -369,6 +344,9 @@
     target.classList.add('flash-update');
     target.addEventListener('animationend', () => target.classList.remove('flash-update'), { once: true });
   }
+  // 외부(fixture.js)에서 호출용. side: 'home'|'away'
+  window.flashScore = side => flashElement(side === 'home' ? el.homeScore : el.awayScore);
+  window.flashNote  = side => flashElement(side === 'home' ? el.homeNoteSide : el.awayNoteSide);
 
   function clearPkState() {
     if(!state.pk) state.pk = { home: [], away: [] };

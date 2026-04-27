@@ -247,6 +247,32 @@
   // 마지막 fixture 응답 보관 — scorer 토글 변경 시 events에서 notes 재구성용
   let _lastFixtureData = null;
 
+  // 폴링 응답에서 점수/득점자 변경 감지용 스냅샷. fetchAndApplyFixtureData가 성공할 때마다
+  // applyFixtureToState로 state 갱신한 직후의 값을 저장해 두고, 다음 호출 때 비교.
+  // null이면 첫 fetch라는 뜻 → 깜빡임 없이 스냅샷만 초기화.
+  let _flashSnapshot = null;
+
+  function maybeTriggerFixtureFlash() {
+    const homeNote = state.notes?.home ?? '';
+    const awayNote = state.notes?.away ?? '';
+    const next = {
+      homeScore: state.homeScore,
+      awayScore: state.awayScore,
+      homeNote,
+      awayNote,
+    };
+
+    if (_flashSnapshot) {
+      // 변경된 항목만 깜빡임. 점수/득점자 박스 단위.
+      if (_flashSnapshot.homeScore !== next.homeScore && typeof window.flashScore === 'function') window.flashScore('home');
+      if (_flashSnapshot.awayScore !== next.awayScore && typeof window.flashScore === 'function') window.flashScore('away');
+      if (_flashSnapshot.homeNote  !== next.homeNote  && typeof window.flashNote  === 'function') window.flashNote('home');
+      if (_flashSnapshot.awayNote  !== next.awayNote  && typeof window.flashNote  === 'function') window.flashNote('away');
+    }
+
+    _flashSnapshot = next;
+  }
+
   /**
    * 팀 로고 URL 결정 — 설정 토글 'teamLogo'에 따라 기본/협회 중 선택.
    *   'logo' (default): matchInfo.homeTeamLogo (클럽=팀 로고, 국가대표=국기)
@@ -373,6 +399,7 @@
     clearPolling();
     _lastFetchId = null;
     _lastFixtureData = null;
+    _flashSnapshot = null;
     state.teamColorOverride = false;
     state.teamColorOverrideFixtureId = null;
 
@@ -452,10 +479,15 @@
       if (previousFixtureId && previousFixtureId !== normalizedFixtureId) {
         state.teamColorOverride = false;
         state.teamColorOverrideFixtureId = null;
+        // 다른 경기로 전환 — 깜빡임 비교용 스냅샷도 초기화 (이전 경기와 비교하면 의미 없음)
+        _flashSnapshot = null;
       }
 
       _lastFixtureData = data;
       applyFixtureToState(data);
+      // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
+      // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
+      maybeTriggerFixtureFlash();
       setFixtureId(normalizedFixtureId);
       // 벤치/부상 패널 채우기 (lineup-panel.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
@@ -665,6 +697,14 @@
       // init.js의 첫 render() 다음 사이클에서 적용 — 레이아웃 안정화 후
       requestAnimationFrame(() => {
         applyFixtureToState(data);
+        // 캐시 복원 직후 깜빡임 스냅샷 초기화 — 다음 폴링 응답이 캐시 대비 점수/득점자 변화가
+        // 있으면 자연스럽게 깜빡임이 발동되도록. 복원 자체로는 깜빡임 발동 안 함 (값 동일).
+        _flashSnapshot = {
+          homeScore: state.homeScore,
+          awayScore: state.awayScore,
+          homeNote: state.notes?.home ?? '',
+          awayNote: state.notes?.away ?? '',
+        };
         const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
         if (fixtureId) {
           setFixtureId(fixtureId);

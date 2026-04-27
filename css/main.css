@@ -681,15 +681,14 @@
     .api-badge .dot.loading { background: #f59e0b; animation: blink .7s infinite; }
     @keyframes blink { 50% { opacity: .2; } }
 
-    /* 점수판/득점자 박스 깜빡임 — render.js의 triggerScoreFlashOnChange에서 클래스 부여.
-       brightness/saturate 강조 후 자연스럽게 원복. animationend 후 클래스 자동 제거. */
+    /* 점수/득점자 갱신 깜빡임 — opacity로 3회 사라졌다가 보였다가 반복.
+       fixture.js의 폴링 응답에서 값 변화 감지 시 .flash-update 부여 (window.flashScore/flashNote).
+       animationend 후 클래스 자동 제거 (render.js: flashElement). */
     @keyframes board-flash {
-      0%   { filter: none; }
-      30%  { filter: brightness(1.55) saturate(1.18); }
-      55%  { filter: brightness(0.92); }
-      100% { filter: none; }
+      0%, 33%, 66%, 100% { opacity: 1; }
+      16%, 50%, 83%       { opacity: 0; }
     }
-    .flash-update { animation: board-flash 0.55s ease-in-out 1; }
+    .flash-update { animation: board-flash 2.5s linear 1; }
 
     /* API 데이터 파섹션 */
     .api-section {
