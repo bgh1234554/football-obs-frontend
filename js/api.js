@@ -27,12 +27,30 @@
   /**
    * 공통 fetch 헬퍼. 응답이 ok가 아니면 ErrorResult를 파싱해 ApiError throw.
    * 응답 본문이 비어있거나 JSON 파싱 실패하면 null 반환.
+   * timeout: AbortController로 10초 기본 타임아웃 구현. timeout 발생 시 NETWORK_TIMEOUT 코드 반환.
    */
-  async function apiFetch(path) {
+  async function apiFetch(path, options = {}) {
+    const timeoutMs = options.timeoutMs ?? 10000; // 기본 10초 타임아웃
+    const controller = new AbortController();
+    let timeoutId = null;
     let res;
+
     try {
-      res = await fetch(`${API_BASE}${path}`);
+      // 타임아웃 타이머 시작
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+
+      // fetch 성공 시 타이머 즉시 정리
+      clearTimeout(timeoutId);
     } catch (e) {
+      clearTimeout(timeoutId);
+
+      // AbortError는 NETWORK_TIMEOUT으로 변환
+      if (e.name === 'AbortError') {
+        throw new ApiError({ code: 'NETWORK_TIMEOUT', message: '요청 시간 초과 (10초)', status: 0, path });
+      }
+
       throw new ApiError({ code: 'NETWORK_ERROR', message: e.message, status: 0, path });
     }
 

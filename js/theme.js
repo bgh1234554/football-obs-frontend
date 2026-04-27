@@ -126,7 +126,7 @@
     const markOverride = () => {
       if (!TEAM_COLOR_KEYS.has(key)) return;
       state.teamColorOverride = true;
-      state.teamColorOverrideFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim() || null;
+      state.teamColorOverrideFixtureId = (typeof getLastFixtureId === 'function') ? getLastFixtureId() : null;
     };
     const commitThemeColor = value => { state.colors[key]=value; setCSS(cssVar,value); hexInput.value=value; markOverride(); persist(); render(); dispatchThemeChange(); };
     const deferUntilChange = key === 'homeBg' || key === 'homeText' || key === 'awayBg' || key === 'awayText';

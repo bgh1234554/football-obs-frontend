@@ -192,8 +192,10 @@ function updateManualEntry(fixtureId, side, updater) {
   if (isManualEntryEmpty(draft)) {
     delete store[fixtureId];
   } else {
+    // 기존 top-level 필드 (refereeName 등)를 보존하면서 새 home/away와 병합
     store[fixtureId] = {
-      ...draft,
+      ...current, // 기존 refereeName, savedAt 등 모두 유지
+      ...draft,   // draft.home, draft.away로 덮어쓰기
       savedAt: Date.now(),
       expiresAt: Date.now() + DETAIL_MANUAL_TTL_MS,
     };

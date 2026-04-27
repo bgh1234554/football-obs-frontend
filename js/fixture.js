@@ -298,7 +298,7 @@
     if (!fixtureId) return;
 
     const status = String(data?.matchInfo?.status || '');
-    const kickoffUtc = data?.matchInfo?.kickoffUtc;
+    const kickoffUtc = data?.matchInfo?.kickoffAt || data?.matchInfo?.kickoffUtc;
     const now = Date.now();
 
     // 1) FT 도달 — 킥오프 후 4시간 이상 경과 시 즉시 종료. 그 외에는 3분 윈도우 내에서만 유지.
@@ -316,11 +316,31 @@
     // 2) 비정상 상태면 폴링 중단
     if (ABNORMAL_STATUSES.has(status)) return;
 
-    const wakeAndFetch = () => {
+    const wakeAndFetch = async () => {
       // 폴링 진행 중에 사용자가 다른 ID로 바꾸거나 reset한 경우 폐기
       if (_lastFetchId !== fixtureId) return;
       // silent=true → 풀스크린 로딩 오버레이 안 띄움 (시청자 화면 깜빡임 방지)
-      fetchAndApplyFixtureData(fixtureId, { silent: true });
+      try {
+        await fetchAndApplyFixtureData(fixtureId, { silent: true });
+      } catch (e) {
+        console.error('Silent poll error:', e);
+        // 오류 발생했어도 다음 폴 타이머는 반드시 재스케줄
+      } finally {
+        // 폴링 실패해도 다음 폴 재예약: wakeAndFetch 마지막에 재귀적으로 schedulePoll 호출
+        // 단, 첫 응답을 받지 못한 경우라면 _lastFixtureData가 없으므로 재스케줄 불가
+        // → 이 경우 사용자가 다시 선택하거나 마지막 성공한 응답 데이터로 이용
+        if (_lastFixtureData) {
+          // _lastFixtureData 존재 = 이전에 성공한 응답이 있음 → 그 데이터로 다음 폴 스케줄
+          const status = String(_lastFixtureData?.matchInfo?.status || '');
+          if (!ABNORMAL_STATUSES.has(status) && !FT_LIKE_STATUSES.has(status)) {
+            _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
+          } else if (FT_LIKE_STATUSES.has(status)) {
+            _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
+          } else if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
+            _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
+          }
+        }
+      }
     };
 
     // 3) 경기 시작 전(NS) + kickoffUtc 알면 시작 직전까지 대기
@@ -341,11 +361,8 @@
     if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
       _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
     }
-  }
-    if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
-      _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-    }
     // 그 외(미지의 status)는 안전하게 폴링하지 않음
+  }
 
   function clearCachedFixtureData() {
     try { sessionStorage.removeItem('cached_fixture_data'); } catch {}
@@ -663,4 +680,13 @@
       });
     } catch {}
   });
+
+  /**
+   * 마지막으로 로드된 fixture 데이터의 ID를 반환.
+   * theme.js 등에서 _lastFixtureData 직접 접근 불가하므로 이 getter 사용.
+   */
+  function getLastFixtureId() {
+    const fixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
+    return fixtureId || null;
+  }
 
