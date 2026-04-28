@@ -137,7 +137,9 @@
    */
   async function apiFetch(path, options = {}) {
     const timeoutMs = options.timeoutMs ?? 10000; // 기본 10초 타임아웃
-    const maxRateLimitRetries = Math.max(0, Number(options.rateLimitRetries) || RATE_LIMIT_MAX_RETRIES);
+    // ?? 대신 || 를 쓰면 호출자가 명시적으로 0(=재시도 없음)을 넘겨도 기본값으로 덮여버림.
+    // nullish 병합으로 undefined/null만 fallback 처리.
+    const maxRateLimitRetries = Math.max(0, Number(options.rateLimitRetries ?? RATE_LIMIT_MAX_RETRIES));
 
     // 일반 오류는 즉시 throw, 429만 같은 호출 컨텍스트 안에서 재시도한다.
     for (let attempt = 0; attempt <= maxRateLimitRetries; attempt++) {

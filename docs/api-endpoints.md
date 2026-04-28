@@ -565,10 +565,10 @@ API-Football 문서상 `h2h` 값은 `ID-ID` 형식이다. 같은 엔드포인트
 | 항목 | 확인 내용 |
 | --- | --- |
 | `fetchFixture` | `GET https://football-obs-backend.onrender.com/api/fixtures/{fixtureId}` 호출. `200 null` 방어 필요 |
-| 경기 상태 | `PSO`는 프런트 내부 half 값에서 `PK`로 매핑할지 결정 |
+| 경기 상태 | `PSO` → `PK` 매핑은 **프런트 표시용 결정**. API의 `status` 값은 그대로 두고, 프런트 내부 half에서만 변환한다 (백엔드/응답 본문에 `PK`라는 값이 들어오지는 않는다) |
 | 점수 | `homeScore`, `awayScore`는 API `goals` 기준이라 연장 득점이 포함된다 |
 | 승부차기 | `homePenaltyScore`, `awayPenaltyScore`가 둘 다 null이면 승부차기 경기 아님 |
-| 득점자 표시 | `events[]`에서 `type === "Goal"`이고 `detail !== "Missed Penalty"`인 항목 사용 |
+| 득점자 표시 | `events[]`에서 `type === "Goal"` && `detail !== "Missed Penalty"` && `comments !== "Penalty Shootout"`인 항목만 사용 (승부차기 PK 시도는 별도 시퀀스로만 처리, 일반 득점자에 섞이지 않게) |
 | 레드카드 | `events[]`에서 `type === "Card"`이고 `detail === "Red Card"` 또는 `Second Yellow Card` 사용 |
 | 라인업 | `homeLineup`, `awayLineup`은 null 가능. 경기 전/미제공 대회 방어 필요 |
 | 선수 사진 | 응답 URL은 백엔드에서 CDN 치환 후 내려오는 값을 그대로 사용 |
