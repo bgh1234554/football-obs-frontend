@@ -947,6 +947,7 @@ function syncTacticsBoard(effectiveData) {
 // 라인업 이름 pill, 벤치 하단 텍스트, 팀 칩은 모두 렌더 후 실제 픽셀 기준으로 한 번 더 보정한다.
 const LINEUP_NAME_MIN_FONT_PX = 7;
 const LINEUP_NAME_MIN_WIDTH_PX = 44;
+const LINEUP_NAME_PITCH_PADDING_PX = 2;
 const BENCH_FOOTER_MIN_FONT_PX = 8;
 const TEAM_CHIP_NAME_MIN_FONT_PX = 7;
 const TEAM_CHIP_NAME_MIN_WIDTH_PX = 44;
@@ -1079,8 +1080,67 @@ function shrinkLineupName(nameEl) {
 
 function shrinkBigLineupName(nameEl) {
   if (!shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) return false;
+  fitLineupNameSelf(nameEl);
   tightenBigLineupNameWidth(nameEl);
   return true;
+}
+
+function getLineupNameWrap(nameEl) {
+  return nameEl?.closest('.dp-lineup-name-wrap') || null;
+}
+
+function resetLineupNameWrapOffset(nameEl) {
+  const wrap = getLineupNameWrap(nameEl);
+  if (!wrap) return;
+  wrap.style.marginLeft = '';
+  wrap.style.marginTop = '';
+}
+
+function getLineupNamePitchOverflow(nameEl, paddingPx = LINEUP_NAME_PITCH_PADDING_PX) {
+  const wrap = getLineupNameWrap(nameEl);
+  const pitch = wrap?.closest('.dp-lineup-vertical-pitch');
+  if (!wrap || !pitch || !canMeasureTextElement(wrap) || !canMeasureTextElement(pitch)) return null;
+
+  const wrapRect = wrap.getBoundingClientRect();
+  const pitchRect = pitch.getBoundingClientRect();
+  return {
+    left: Math.max(0, (pitchRect.left + paddingPx) - wrapRect.left),
+    right: Math.max(0, wrapRect.right - (pitchRect.right - paddingPx)),
+    top: Math.max(0, (pitchRect.top + paddingPx) - wrapRect.top),
+    bottom: Math.max(0, wrapRect.bottom - (pitchRect.bottom - paddingPx)),
+  };
+}
+
+function hasLineupNamePitchOverflow(nameEl, paddingPx = LINEUP_NAME_PITCH_PADDING_PX) {
+  const overflow = getLineupNamePitchOverflow(nameEl, paddingPx);
+  return !!(overflow && (overflow.left > 0.5 || overflow.right > 0.5 || overflow.top > 0.5 || overflow.bottom > 0.5));
+}
+
+function tightenLineupNameWidthForContext(nameEl) {
+  return isBigLineupName(nameEl) ? tightenBigLineupNameWidth(nameEl) : tightenLineupNameWidth(nameEl);
+}
+
+function fitLineupNameWithinPitchBounds(nameEl) {
+  if (!canMeasureTextElement(nameEl)) return false;
+
+  let changed = false;
+  let safety = 0;
+  while (safety < 16 && hasLineupNamePitchOverflow(nameEl)) {
+    const overflow = getLineupNamePitchOverflow(nameEl);
+    const horizontalOverflow = overflow && (overflow.left > 0.5 || overflow.right > 0.5);
+
+    if (horizontalOverflow && tightenLineupNameWidthForContext(nameEl)) {
+      changed = true;
+      safety += 1;
+      continue;
+    }
+
+    if (!shrinkLineupName(nameEl)) break;
+    changed = true;
+    safety += 1;
+  }
+
+  return changed;
 }
 
 function wrapsOverlap(leftWrap, rightWrap) {
@@ -1294,10 +1354,15 @@ function fitLineupNamePills(root) {
 
   // 1) 모든 라벨을 CSS 기본 상태로 되돌린 뒤 현재 텍스트 폭에 맞춰 pill width를 잠근다.
   labels.forEach(nameEl => {
+    resetLineupNameWrapOffset(nameEl);
     nameEl.style.width = '';
     nameEl.style.fontSize = '';
     if (!canMeasureTextElement(nameEl)) return;
-    lockLineupNameWidth(nameEl);
+    fitLineupNameSelf(nameEl);
+  });
+
+  labels.forEach(nameEl => {
+    fitLineupNameWithinPitchBounds(nameEl);
   });
 
   // 2) 공통 충돌 보정: 좁히기 가능한 쪽부터 width를 줄이고, 더 이상 안 되면 font-size를 줄인다.
@@ -1338,6 +1403,9 @@ function fitLineupNamePills(root) {
 
   // 3) 큰 캠 축소 상태에서만 남는 충돌은 별도 패스로 한 번 더 정리한다.
   fitResidualBigLineupNameCollisions(labels);
+  labels.forEach(nameEl => {
+    fitLineupNameWithinPitchBounds(nameEl);
+  });
   fitBigLineupTeamChips(scope);
   return;
   {

@@ -106,6 +106,28 @@
   text-overflow: ellipsis;
 }
 
+/* 벤치/부상 패널은 폭이 좁아지면 이름과 보조 UI가 다음 줄로 내려갈 수 있게 둔다. */
+#benchPanel .dp-item,
+#injuryPanel .dp-item {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  white-space: normal;
+  overflow: visible;
+}
+
+#benchPanel .dp-item-name,
+#injuryPanel .dp-item-name {
+  flex: 1 1 120px;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
 /* ===== 선수 이름 상태별 색상 (교체/카드) ===== */
 /* 교체 들어온 선수 — 연두색 */
 .dp-item-name.is-sub-in   { color: #7CFC8E; }
