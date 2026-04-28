@@ -17,6 +17,10 @@
   const LEGACY_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'NanumSquareRound', sans-serif");
   const LEGACY_NANUM_GOTHIC_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
   const PK_RETENTION_MS = 30 * 1000;
+  function normalizePenaltyScore(scoreMaybe){
+    if(scoreMaybe == null) return null;
+    return Math.max(0, Number(scoreMaybe) || 0);
+  }
 
   function sanitizeFontFamily(fontMaybe){
     const raw = (typeof fontMaybe === 'string') ? fontMaybe.trim() : '';
@@ -69,6 +73,7 @@
     redHome: 0, redAway: 0,
     rcSize: 14, rcGap: 6, rcTop: -25, rcHomeInset: 6, rcAwayInset: 6,
     pk: { home: [], away: [] },
+    pkScore: { home: null, away: null },
     pkLastExitedAt: 0,
     // 사용자가 테마 탭에서 home/away 컬러를 직접 수정한 적이 있으면 true.
     // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드용. localStorage로 영속화돼서 새로고침 후에도 보존.
@@ -181,7 +186,10 @@
       state.lastRunningTickMs = 0; // 현재 세션에서 다시 채워짐
       state.colors = Object.assign({}, defaultColors, (saved||{}).colors || {});
       state.pk = Object.assign({home:[],away:[]}, (saved||{}).pk || {});
+      state.pkScore = Object.assign({home:null,away:null}, (saved||{}).pkScore || {});
       state.notes = Object.assign({home:'',away:''}, (saved||{}).notes || {});
+      state.pkScore.home = normalizePenaltyScore(state.pkScore.home);
+      state.pkScore.away = normalizePenaltyScore(state.pkScore.away);
       state.pkLastExitedAt = Math.max(0, Number(state.pkLastExitedAt) || 0);
       expireStalePkState();
       const legacyHomeManual = !!state.homeLogoManualOverride;

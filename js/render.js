@@ -128,6 +128,16 @@
   el.homeNoteSide?.addEventListener('dblclick', () => openNoteEditor('home'));
   el.awayNoteSide?.addEventListener('dblclick', () => openNoteEditor('away'));
 
+  function countPkGoals(arr) {
+    return (Array.isArray(arr) ? arr : []).filter(v => v === 'G').length;
+  }
+
+  function getPkDisplayScore(team) {
+    const apiScore = state.pkScore?.[team];
+    if (!state.manualMode && apiScore != null) return Math.max(0, Number(apiScore) || 0);
+    return countPkGoals(state.pk?.[team]);
+  }
+
   function renderPK(){
     const isPK = state.half === 'PK';
     el.pkWrap.classList.toggle('show', isPK);
@@ -141,12 +151,10 @@
     if(!isPK) return;
 
     // PK 점수 계산 (득점만 카운트)
-    const homeGoals = state.pk.home.filter(v => v === 'G').length;
-    const awayGoals = state.pk.away.filter(v => v === 'G').length;
     const pkScoreHome = $('pkScoreHome');
     const pkScoreAway = $('pkScoreAway');
-    if(pkScoreHome) pkScoreHome.textContent = homeGoals;
-    if(pkScoreAway) pkScoreAway.textContent = awayGoals;
+    if(pkScoreHome) pkScoreHome.textContent = getPkDisplayScore('home');
+    if(pkScoreAway) pkScoreAway.textContent = getPkDisplayScore('away');
 
     const makeDots = arr => {
       const base=Math.max(5,arr.length); const nodes=[];

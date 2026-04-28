@@ -18,6 +18,35 @@
     toastTimer = setTimeout(() => copyToast.classList.remove('show'), 1800);
   }
 
+  /**
+   * api.js가 429 응답을 받으면 api:rate-limit 이벤트를 발행한다.
+   *
+   * 여기서는 "수동 조회"처럼 사용자가 직접 트리거한 요청에만
+   * 토스트 + API 상태 문구를 갱신하고,
+   * silent poll(detail.silent=true)은 시청자 화면을 건드리지 않는다.
+   *
+   * 참고:
+   *   - 실제 재시도 대기/재호출은 api.js의 공통 fetch 레이어가 담당.
+   *   - fixture.js는 사용자에게 "몇 초 뒤 자동 재시도 중인지"를 알려주는 UI 역할만 한다.
+   */
+  document.addEventListener('api:rate-limit', event => {
+    const detail = event.detail || {};
+    if (detail.silent) return;
+
+    const waitMs = Math.max(0, Number(detail.waitMs) || 0);
+    const retrySeconds = Math.max(1, Math.ceil(waitMs / 1000));
+    const message = `요청 제한 도달 - ${retrySeconds}초 후 재시도`;
+
+    showToast(message);
+    setApiStatus('loading', message, { noOverlay: true });
+
+    const loading = $('dpLoading');
+    const loadingMsg = $('dpLoadingMsg');
+    if (loading?.classList.contains('open') && loadingMsg) {
+      loadingMsg.textContent = message;
+    }
+  });
+
   /** 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신 */
   function setFixtureId(id) {
     currentFixtureId = id || null;
@@ -426,6 +455,7 @@
     state.notes = { home: '', away: '' };
     state.running = false;
     state.pk = { home: [], away: [] };
+    state.pkScore = { home: null, away: null };
     state.pkLastExitedAt = 0;
     setMatchHalf('1');
 
@@ -464,7 +494,7 @@
     _lastFetchId = requestId;
     if (!silent) setApiStatus('loading');
     try{
-      const data = await fetchFixture(normalizedFixtureId);
+      const data = await fetchFixture(normalizedFixtureId, { silent });
       if(_lastFetchId !== requestId) return;
       if(!data){
         resetFixtureDrivenState({
@@ -479,6 +509,9 @@
       if (previousFixtureId && previousFixtureId !== normalizedFixtureId) {
         state.teamColorOverride = false;
         state.teamColorOverrideFixtureId = null;
+        clearPkState();
+        state.pkScore = { home: null, away: null };
+        state.pkLastExitedAt = 0;
         // 다른 경기로 전환 — 깜빡임 비교용 스냅샷도 초기화 (이전 경기와 비교하면 의미 없음)
         _flashSnapshot = null;
       }
@@ -565,9 +598,25 @@
 
     // 페널티 슛아웃 결과 — events에서 PK 이벤트 추출해 배열 재구성
     state.pk = state.pk || { home: [], away: [] };
+    state.pkScore = state.pkScore || { home: null, away: null };
     if (m.homePenaltyScore != null || m.awayPenaltyScore != null) {
-      state.pk.home = buildPkArray(data.events || [], 'home');
-      state.pk.away = buildPkArray(data.events || [], 'away');
+      state.pkScore.home = normalizePenaltyScore(m.homePenaltyScore);
+      state.pkScore.away = normalizePenaltyScore(m.awayPenaltyScore);
+
+      const nextPkHome = buildPkArray(data.events || [], 'home');
+      const nextPkAway = buildPkArray(data.events || [], 'away');
+      const nextPkCount = nextPkHome.length + nextPkAway.length;
+      const currentPkCount = (state.pk.home?.length || 0) + (state.pk.away?.length || 0);
+
+      // API가 PK 이벤트를 생략하거나 더 짧게 보내도, 이미 확보한 시퀀스는 유지한다.
+      if (nextPkCount > 0 && nextPkCount >= currentPkCount) {
+        state.pk.home = nextPkHome;
+        state.pk.away = nextPkAway;
+      }
+    } else {
+      state.pkScore.home = null;
+      state.pkScore.away = null;
+      clearPkState();
     }
 
     // 득점자/레드카드 (events 가공)
@@ -602,7 +651,11 @@
    */
   function buildScorers(events, side){
     return events
-      .filter(e => e.side === side && e.type === 'Goal' && e.detail !== 'Missed Penalty')
+      .filter(e =>
+        e.side === side &&
+        e.type === 'Goal' &&
+        e.comments !== 'Penalty Shootout' &&
+        e.detail !== 'Missed Penalty')
       .map(e => {
         const min = e.extra ? `${e.elapsed}+${e.extra}'` : `${e.elapsed}'`;
         // pickName은 settings-popup.js의 헬퍼 — playerName/playerNameKoLong 양쪽 지원
@@ -628,7 +681,7 @@
   /** PSO 이벤트 → 'G'/'M' 배열 (일반 'Penalty'=득점, 'Missed Penalty'=실패) */
   function buildPkArray(events, side){
     return events
-      .filter(e => e.comments === 'Penalty Shootout' && e.side === side)
+      .filter(e => e.type === 'Goal' && e.comments === 'Penalty Shootout' && e.side === side)
       .map(e => e.detail === 'Penalty' ? 'G' : 'M');
   }
 

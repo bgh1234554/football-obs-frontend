@@ -167,6 +167,42 @@ API-Football 문서상 `/fixtures?id={id}` 요청은 이벤트, 라인업, 팀 �
 
 API-Football 문서상 `Goal`은 `Normal Goal`, `Own Goal`, `Penalty`, `Missed Penalty`, `Card`는 `Yellow Card`, `Red Card`, `Subst`는 `Substitution n`, `Var`는 `Goal cancelled`, `Penalty confirmed` 같은 상세값을 가질 수 있다.
 
+##### 승부차기(Penalty Shootout) 이벤트 식별
+
+`type === "Goal"`이고 `comments === "Penalty Shootout"`인 이벤트는 **정규/연장 시간 중의 골이 아니라 승부차기 시퀀스**에서 발생한 PK 시도다. 일반 득점자 표시에 섞이지 않도록 별도로 분기해서 처리해야 한다.
+
+| `detail` | 의미 |
+| --- | --- |
+| `Penalty` | 승부차기 PK 성공 |
+| `Missed Penalty` | 승부차기 PK 미스(빗나감/세이브) |
+
+판별 로직 예시:
+
+```javascript
+const isShootout = (e) => e.type === 'Goal' && e.comments === 'Penalty Shootout';
+const shootoutEvents = events.filter(isShootout);
+// detail === 'Penalty' → 'G', 'Missed Penalty' → 'M'
+const pkSeq = (side) => shootoutEvents
+  .filter(e => e.side === side)
+  .map(e => e.detail === 'Penalty' ? 'G' : 'M');
+
+// 일반 득점자 표시에서는 승부차기 이벤트를 제외해야 한다
+const regularGoals = events.filter(e =>
+  e.type === 'Goal' && e.comments !== 'Penalty Shootout' && e.detail !== 'Missed Penalty');
+```
+
+승부차기 이벤트의 `time.elapsed`는 일반적으로 `120`이고 `time.extra`는 슛 순서(1, 2, 3, ...)를 나타낸다.
+
+> ⚠️ **주의: 승부차기 이벤트는 응답에 항상 포함되지 않는다.**
+>
+> API Football의 `/fixtures?id={id}` 응답에 들어 있는 `events` 배열은 **경기 종료 직후에는 승부차기 시퀀스를 포함**하지만, 시간이 지나면 PK 시도 이벤트가 응답에서 사라지는 현상이 관찰됐다. 즉 같은 경기라도 조회 시점에 따라 PK 이벤트가 있을 수도, 없을 수도 있다.
+>
+> 따라서 프런트엔드는 다음 원칙으로 처리해야 한다:
+>
+> - **승부차기 발생 여부의 단일 판단 근거는 `matchInfo.homePenaltyScore` / `matchInfo.awayPenaltyScore`다.** 이 값이 non-null이면 PK가 진행됐다(또는 진행 중)는 뜻이고, 점수판의 PK 스코어 표시는 항상 이 값으로 그린다.
+> - **승부차기 시도 시퀀스(O/X 표시)는 best-effort 데이터로 취급한다.** `events`에 PK 이벤트가 있으면 위 코드 예시처럼 순서대로 그리고, 없으면 시도 시퀀스 표시는 생략하고 최종 PK 스코어만 보여준다.
+> - 실시간 폴링 중에는 PK 이벤트가 들어올 가능성이 높으므로 받은 데이터는 그대로 활용하되, 폴링 중간에 갑자기 사라져도(같은 매치인데 events에서 빠진 경우) 화면이 깨지지 않도록 fallback을 갖춰야 한다.
+
 #### `teamStats[]`
 
 | key | 설명 | value 타입 | 옵션 | Nullable | 예시 |

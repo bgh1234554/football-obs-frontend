@@ -25,20 +25,18 @@
     // q/a → 홈 점수 +/-, w/s → 원정 점수 +/- (수동 모드에서만 동작)
     // PSO 상태에서는 같은 키가 PK 득점/실축으로 동작 (점수 변경 없음)
     // z/x(PK undo/reset)는 PSO 상태에서만 동작
-    if(state.manualMode){
-      if(state.half==='PK'){
-        if(e.key==='q'||e.key==='Q') pkPush('home','G');
-        if(e.key==='a'||e.key==='A') pkPush('home','M');
-        if(e.key==='w'||e.key==='W') pkPush('away','G');
-        if(e.key==='s'||e.key==='S') pkPush('away','M');
-        if(e.key==='z'||e.key==='Z') pkUndo();
-        if(e.key==='x'||e.key==='X') pkReset();
-      } else {
-        if(e.key==='q'||e.key==='Q'){ state.homeScore++; syncManualInputs(); render(); persist(); }
-        if(e.key==='a'||e.key==='A'){ state.homeScore=Math.max(0,state.homeScore-1); syncManualInputs(); render(); persist(); }
-        if(e.key==='w'||e.key==='W'){ state.awayScore++; syncManualInputs(); render(); persist(); }
-        if(e.key==='s'||e.key==='S'){ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); }
-      }
+    if(state.half==='PK'){
+      if(e.key==='q'||e.key==='Q') pkPush('home','G');
+      if(e.key==='a'||e.key==='A') pkPush('home','M');
+      if(e.key==='w'||e.key==='W') pkPush('away','G');
+      if(e.key==='s'||e.key==='S') pkPush('away','M');
+      if(e.key==='z'||e.key==='Z') pkUndo();
+      if(e.key==='x'||e.key==='X') pkReset();
+    } else if(state.manualMode){
+      if(e.key==='q'||e.key==='Q'){ state.homeScore++; syncManualInputs(); render(); persist(); }
+      if(e.key==='a'||e.key==='A'){ state.homeScore=Math.max(0,state.homeScore-1); syncManualInputs(); render(); persist(); }
+      if(e.key==='w'||e.key==='W'){ state.awayScore++; syncManualInputs(); render(); persist(); }
+      if(e.key==='s'||e.key==='S'){ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); }
     }
     if(e.key==='h'||e.key==='H'){ toggleTabsAndPages(); }
     // \: 전술판 전체화면 토글 (전술판 탭 활성화 시에만)
