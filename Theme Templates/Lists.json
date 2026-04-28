@@ -86,9 +86,13 @@
       "awayBg": "#ee1338",
       "awayText": "#322917",
       "outline": "#9689d4",
-      "pkBase": "#334155"
+      "pkBase": "#334155",
+      "homeOutline": "#9689d4",
+      "awayOutline": "#9689d4",
+      "noteText": "#e5e7eb",
+      "noteStroke": "#000000"
     },
-    "_fontFamily": "Ubuntu, HUMidnight140",
+    "fontFamily": "'Ubuntu', 'NanumSquareRound', sans-serif",
     "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
@@ -101,7 +105,9 @@
     "boardOutlineEnabled": true,
     "scoreOutlineEnabled": false,
     "boardOutlineWidth": 2,
-    "scoreOutlineWidth": 1
+    "scoreOutlineWidth": 1,
+    "noteEnabled": true,
+    "noteFontSize": 20
   },
   {
     "name": "AFC Challenge League",
@@ -379,7 +385,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -393,7 +399,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "EPL",
@@ -561,7 +567,7 @@
       "awayOutline": "#ffffff"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -579,14 +585,14 @@
     "name": "FNL2A",
     "colors": {
       "bg": "#ff00e1",
-      "boardA": "#eb0029",
-      "boardB": "#eb0029",
+      "boardA": "#000000",
+      "boardB": "#000000",
       "scoreBg": "#ffffff",
       "digits": "#eb0029",
       "meta": "#eb0029",
       "extra": "#eb0029",
-      "halfBg": "#eb0029",
-      "halfText": "#ffffff",
+      "halfBg": "#000000",
+      "halfText": "#eb0029",
       "homeBg": "#ffffff",
       "homeText": "#000000",
       "awayBg": "#df5900",
@@ -598,8 +604,8 @@
       "noteText": "#e5e7eb",
       "noteStroke": "#000000"
     },
-    "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "_fontFamily": "'Ubuntu','HUMidnight140'",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -613,7 +619,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "FNL2B",
@@ -639,7 +645,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -653,7 +659,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "Jupiler Pro League",
@@ -693,7 +699,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "KLeague",
@@ -791,7 +797,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -805,7 +811,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "리그앙",
@@ -867,7 +873,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -881,7 +887,47 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
+  },
+  {
+    "name": "Romania Liga I",
+    "colors": {
+      "bg": "#ff00ff",
+      "boardA": "#ffffff",
+      "boardB": "#ffffff",
+      "scoreBg": "#e1081f",
+      "digits": "#ffffff",
+      "meta": "#ffffff",
+      "extra": "#ffffff",
+      "halfBg": "#ffffff",
+      "halfText": "#e1081f",
+      "homeBg": "#8c0d5d",
+      "homeText": "#ffffff",
+      "awayBg": "#002aff",
+      "awayText": "#ffffff",
+      "outline": "#ffffff",
+      "pkBase": "#334155",
+      "homeOutline": "#ffffff",
+      "awayOutline": "#ffffff",
+      "noteText": "#e5e7eb",
+      "noteStroke": "#000000"
+    },
+    "_fontFamily": "'Ubuntu','HUMidnight140'",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 720,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 1,
+    "awayOutlineWidth": 1,
+    "boardOutlineEnabled": false,
+    "scoreOutlineEnabled": false,
+    "boardOutlineWidth": 1,
+    "scoreOutlineWidth": 1,
+    "noteEnabled": true,
+    "noteFontSize": 20
   },
   {
     "name": "SPFL",
@@ -907,7 +953,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -921,7 +967,7 @@
     "boardOutlineWidth": 2,
     "scoreOutlineWidth": 9,
     "noteEnabled": true,
-    "noteFontSize": 15
+    "noteFontSize": 20
   },
   {
     "name": "SerieA",
@@ -982,7 +1028,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -997,7 +1043,7 @@
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
     "noteBorderWidth": 1,
-    "noteFontSize": 15,
+    "noteFontSize": 20,
     "noteMinHeight": 56
   },
   {
@@ -1023,7 +1069,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -1038,7 +1084,7 @@
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
     "noteBorderWidth": 1,
-    "noteFontSize": 16,
+    "noteFontSize": 20,
     "noteMinHeight": 56
   },
   {
@@ -1064,7 +1110,7 @@
       "noteStroke": "#000000"
     },
     "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "inner",
+    "logoAlign": "hybrid",
     "radiusMode": "round",
     "boardWidth": 1080,
     "homeLogoScale": 1,
@@ -1079,7 +1125,7 @@
     "scoreOutlineWidth": 1,
     "noteEnabled": true,
     "noteBorderWidth": 1,
-    "noteFontSize": 15,
+    "noteFontSize": 20,
     "noteMinHeight": 56
   }
 ]

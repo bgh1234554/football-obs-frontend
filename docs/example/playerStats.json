@@ -1,0 +1,599 @@
+{
+    "player": {
+        "id": 19545,
+        "name": "R. 제임스",
+        "fullName": "리스 제임스",
+        "age": 26,
+        "birth": {
+            "date": "1999-12-08",
+            "place": "London",
+            "country": "잉글랜드"
+        },
+        "nationality": "잉글랜드",
+        "height": "182",
+        "weight": "82",
+        "photoUrl": "https://media-handle-obsoverlay.b-cdn.net/football/players/19545.png"
+    },
+    "statistics": {
+        "2025": [
+            {
+                "team": {
+                    "id": 49,
+                    "name": "첼시",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/teams/49.png"
+                },
+                "league": {
+                    "id": 2,
+                    "name": "UEFA 챔피언스 리그",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/leagues/2.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 8,
+                    "lineups": 7,
+                    "minutes": 564,
+                    "number": 24,
+                    "position": "Midfielder",
+                    "rating": "6.85",
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 1,
+                    "out": 3,
+                    "bench": 2
+                },
+                "shots": {
+                    "total": 6,
+                    "on": 2
+                },
+                "goals": {
+                    "total": 0,
+                    "conceded": 0,
+                    "assists": 2,
+                    "saves": null
+                },
+                "passes": {
+                    "total": 387,
+                    "key": 9,
+                    "accuracy": 90
+                },
+                "tackles": {
+                    "total": 8,
+                    "blocks": 3,
+                    "interceptions": 10
+                },
+                "duels": {
+                    "total": 33,
+                    "won": 19
+                },
+                "dribbles": {
+                    "attempts": 5,
+                    "success": 4,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": 6,
+                    "committed": 4
+                },
+                "cards": {
+                    "yellow": 1,
+                    "yellowred": 0,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            },
+            {
+                "team": {
+                    "id": 49,
+                    "name": "첼시",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/teams/49.png"
+                },
+                "league": {
+                    "id": 15,
+                    "name": "FIFA 클럽 월드컵",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/leagues/15.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 6,
+                    "lineups": 6,
+                    "minutes": 288,
+                    "number": null,
+                    "position": "Defender",
+                    "rating": "7.040000",
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 0,
+                    "out": null,
+                    "bench": null
+                },
+                "shots": {
+                    "total": 1,
+                    "on": 1
+                },
+                "goals": {
+                    "total": 1,
+                    "conceded": 0,
+                    "assists": 0,
+                    "saves": null
+                },
+                "passes": {
+                    "total": 173,
+                    "key": 3,
+                    "accuracy": null
+                },
+                "tackles": {
+                    "total": 6,
+                    "blocks": 2,
+                    "interceptions": 7
+                },
+                "duels": {
+                    "total": 23,
+                    "won": 11
+                },
+                "dribbles": {
+                    "attempts": 2,
+                    "success": null,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": 3,
+                    "committed": 4
+                },
+                "cards": {
+                    "yellow": 1,
+                    "yellowred": null,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            },
+            {
+                "team": {
+                    "id": 49,
+                    "name": "첼시",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/teams/49.png"
+                },
+                "league": {
+                    "id": 39,
+                    "name": "잉글랜드 프리미어 리그",
+                    "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Premier_League_Logo.svg/3840px-Premier_League_Logo.svg.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 27,
+                    "lineups": 20,
+                    "minutes": 1896,
+                    "number": 24,
+                    "position": "Defender",
+                    "rating": "7.2",
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 7,
+                    "out": 5,
+                    "bench": 8
+                },
+                "shots": {
+                    "total": 12,
+                    "on": 6
+                },
+                "goals": {
+                    "total": 2,
+                    "conceded": 0,
+                    "assists": 4,
+                    "saves": null
+                },
+                "passes": {
+                    "total": 1272,
+                    "key": 27,
+                    "accuracy": 88
+                },
+                "tackles": {
+                    "total": 47,
+                    "blocks": 6,
+                    "interceptions": 32
+                },
+                "duels": {
+                    "total": 183,
+                    "won": 107
+                },
+                "dribbles": {
+                    "attempts": 20,
+                    "success": 10,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": 20,
+                    "committed": 27
+                },
+                "cards": {
+                    "yellow": 4,
+                    "yellowred": 0,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            },
+            {
+                "team": {
+                    "id": 49,
+                    "name": "첼시",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/teams/49.png"
+                },
+                "league": {
+                    "id": 45,
+                    "name": "FA 컵",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/leagues/45.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 1,
+                    "lineups": 1,
+                    "minutes": 60,
+                    "number": 24,
+                    "position": "Defender",
+                    "rating": "6.9",
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 0,
+                    "out": 1,
+                    "bench": 1
+                },
+                "shots": {
+                    "total": null,
+                    "on": null
+                },
+                "goals": {
+                    "total": 0,
+                    "conceded": 0,
+                    "assists": 0,
+                    "saves": null
+                },
+                "passes": {
+                    "total": 49,
+                    "key": null,
+                    "accuracy": 97
+                },
+                "tackles": {
+                    "total": 2,
+                    "blocks": null,
+                    "interceptions": 1
+                },
+                "duels": {
+                    "total": 3,
+                    "won": 3
+                },
+                "dribbles": {
+                    "attempts": 1,
+                    "success": 1,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": null,
+                    "committed": null
+                },
+                "cards": {
+                    "yellow": 0,
+                    "yellowred": 0,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            },
+            {
+                "team": {
+                    "id": 49,
+                    "name": "첼시",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/teams/49.png"
+                },
+                "league": {
+                    "id": 48,
+                    "name": "EFL 컵",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/leagues/48.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 0,
+                    "lineups": 0,
+                    "minutes": null,
+                    "number": 24,
+                    "position": "Defender",
+                    "rating": null,
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 0,
+                    "out": 0,
+                    "bench": 3
+                },
+                "shots": {
+                    "total": null,
+                    "on": null
+                },
+                "goals": {
+                    "total": 0,
+                    "conceded": 0,
+                    "assists": 0,
+                    "saves": null
+                },
+                "passes": {
+                    "total": null,
+                    "key": null,
+                    "accuracy": null
+                },
+                "tackles": {
+                    "total": null,
+                    "blocks": null,
+                    "interceptions": null
+                },
+                "duels": {
+                    "total": null,
+                    "won": null
+                },
+                "dribbles": {
+                    "attempts": null,
+                    "success": null,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": null,
+                    "committed": null
+                },
+                "cards": {
+                    "yellow": 0,
+                    "yellowred": 0,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            },
+            {
+                "team": {
+                    "id": 10,
+                    "name": "잉글랜드",
+                    "logo": "https://upload.wikimedia.org/wikipedia/en/b/be/Flag_of_England.svg"
+                },
+                "league": {
+                    "id": 10,
+                    "name": "남자 국가대표 친선경기",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/leagues/10.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 0,
+                    "lineups": 0,
+                    "minutes": null,
+                    "number": 3,
+                    "position": "Defender",
+                    "rating": null,
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 0,
+                    "out": 0,
+                    "bench": 1
+                },
+                "shots": {
+                    "total": null,
+                    "on": null
+                },
+                "goals": {
+                    "total": 0,
+                    "conceded": 0,
+                    "assists": 0,
+                    "saves": null
+                },
+                "passes": {
+                    "total": null,
+                    "key": null,
+                    "accuracy": null
+                },
+                "tackles": {
+                    "total": null,
+                    "blocks": null,
+                    "interceptions": null
+                },
+                "duels": {
+                    "total": null,
+                    "won": null
+                },
+                "dribbles": {
+                    "attempts": null,
+                    "success": null,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": null,
+                    "committed": null
+                },
+                "cards": {
+                    "yellow": 0,
+                    "yellowred": 0,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            },
+            {
+                "team": {
+                    "id": 49,
+                    "name": "첼시",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/teams/49.png"
+                },
+                "league": {
+                    "id": 667,
+                    "name": "클럽 친선경기",
+                    "logo": "https://media-handle-obsoverlay.b-cdn.net/football/leagues/667.png",
+                    "season": 2025
+                },
+                "games": {
+                    "appearences": 6,
+                    "lineups": 6,
+                    "minutes": 288,
+                    "number": null,
+                    "position": "Defender",
+                    "rating": "7.040000",
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 0,
+                    "out": null,
+                    "bench": null
+                },
+                "shots": {
+                    "total": 1,
+                    "on": 1
+                },
+                "goals": {
+                    "total": 1,
+                    "conceded": 0,
+                    "assists": 0,
+                    "saves": null
+                },
+                "passes": {
+                    "total": 173,
+                    "key": 3,
+                    "accuracy": null
+                },
+                "tackles": {
+                    "total": 6,
+                    "blocks": 2,
+                    "interceptions": 7
+                },
+                "duels": {
+                    "total": 23,
+                    "won": 11
+                },
+                "dribbles": {
+                    "attempts": 2,
+                    "success": null,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": 3,
+                    "committed": 4
+                },
+                "cards": {
+                    "yellow": 1,
+                    "yellowred": null,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            }
+        ],
+        "2026": [
+            {
+                "team": {
+                    "id": 10,
+                    "name": "잉글랜드",
+                    "logo": "https://upload.wikimedia.org/wikipedia/en/b/be/Flag_of_England.svg"
+                },
+                "league": {
+                    "id": null,
+                    "name": "UEFA World Cup Qualifiers",
+                    "logo": null,
+                    "season": 2026
+                },
+                "games": {
+                    "appearences": 2,
+                    "lineups": 1,
+                    "minutes": 90,
+                    "number": null,
+                    "position": "Defender",
+                    "rating": "8.300000",
+                    "captain": false
+                },
+                "substitutes": {
+                    "in": 1,
+                    "out": 0,
+                    "bench": 1
+                },
+                "shots": {
+                    "total": 1,
+                    "on": 1
+                },
+                "goals": {
+                    "total": 1,
+                    "conceded": 0,
+                    "assists": 0,
+                    "saves": null
+                },
+                "passes": {
+                    "total": 101,
+                    "key": 1,
+                    "accuracy": 50
+                },
+                "tackles": {
+                    "total": 2,
+                    "blocks": null,
+                    "interceptions": 2
+                },
+                "duels": {
+                    "total": 5,
+                    "won": 2
+                },
+                "dribbles": {
+                    "attempts": 1,
+                    "success": null,
+                    "past": null
+                },
+                "fouls": {
+                    "drawn": null,
+                    "committed": 1
+                },
+                "cards": {
+                    "yellow": 0,
+                    "yellowred": 0,
+                    "red": 0
+                },
+                "penalty": {
+                    "won": null,
+                    "committed": null,
+                    "scored": 0,
+                    "missed": 0,
+                    "saved": null
+                }
+            }
+        ]
+    }
+}
