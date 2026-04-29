@@ -13,7 +13,7 @@
       .filter(Boolean)
       .join(', ');
   }
-  const DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
+  const DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif");
   const LEGACY_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'NanumSquareRound', sans-serif");
   const LEGACY_NANUM_GOTHIC_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
   const PK_RETENTION_MS = 30 * 1000;

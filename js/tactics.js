@@ -561,12 +561,17 @@
     }
   }
 
-  // [이벤트 등록] 전체화면 상태 변경 시 버튼 텍스트 동기화
-  document.addEventListener('fullscreenchange', () => {
+  function syncTacticsFullscreenButtonLabel() {
     const btn = document.getElementById('btn-tactics-fullscreen');
     if (!btn) return;
     btn.textContent = document.fullscreenElement ? '✕ 전체화면 종료' : '⤢ 전체화면 (\\)';
+  }
+
+  // [이벤트 등록] 전체화면 상태 변경 시 버튼 텍스트 동기화
+  document.addEventListener('fullscreenchange', () => {
+    syncTacticsFullscreenButtonLabel();
   });
+  document.addEventListener('DOMContentLoaded', syncTacticsFullscreenButtonLabel);
 
   /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 드로잉 초기화, 라인업 재렌더 */
   function tacticsReset() {

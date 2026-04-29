@@ -123,12 +123,15 @@
 
   /** API-Sports 위젯의 Shadow DOM 또는 iframe에 커스텀 CSS를 주입 */
   const WIDGET_CSS = `
+    :host, body {
+      font-family: var(--font-family, 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif) !important;
+    }
     /* Details 점수 가운데 정렬 */
     .game-detail { display: flex !important; align-items: center !important; justify-content: center !important; }
     .game-center { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
     /* Lineups 선수명 작게 */
-    .group-title, .lineup-section h3 {
-      font-family: Poppins, sans-serif !important;
+    .lineup-section .group-title,
+    .lineup-section h3 {
       font-weight: 700 !important;
       letter-spacing: normal !important;
     }
@@ -437,6 +440,8 @@
 
     if (state.manualMode) {
       if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
+    if (typeof applyEventsPanel === 'function') applyEventsPanel(null);
+    if (typeof applyStatsPanel === 'function') applyStatsPanel(null);
       setApiStatus('idle', statusMessage);
       return;
     }
@@ -460,6 +465,8 @@
     setMatchHalf('1');
 
     if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
+    if (typeof applyEventsPanel === 'function') applyEventsPanel(null);
+    if (typeof applyStatsPanel === 'function') applyStatsPanel(null);
 
     render();
     persist();
@@ -524,6 +531,9 @@
       setFixtureId(normalizedFixtureId);
       // 벤치/부상 패널 채우기 (lineup-panel.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
+      // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
+      if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+      if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
 
       const m = data.matchInfo || {};
       const homeName = pickMatchTeamName(m, 'home');
@@ -764,6 +774,8 @@
           _lastFetchId = fixtureId; // 폴링 콜백의 _lastFetchId 비교용
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
+        if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+        if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
         const m = data.matchInfo;
         const homeName = pickMatchTeamName(m, 'home');
         const awayName = pickMatchTeamName(m, 'away');

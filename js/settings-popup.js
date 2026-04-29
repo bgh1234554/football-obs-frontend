@@ -22,7 +22,18 @@ const SETTINGS_DEFAULTS = {
   teamLogo: 'logo',
   // '메인에 표시' 버튼 클릭 시 자동 이동할 페이지: 'big'(캠 큼) / 'small'(캠 작음 = /detail).
   mainPage: 'big',
+  // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
+  statsAutoSwipe: 'off',
+  statsAutoSwipeSec: 5,
+  // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
+  event: 'short',
+  eventNameSize: 15,
 };
+
+const EVENT_NAME_SIZE_MIN = 10;
+const EVENT_NAME_SIZE_MAX = 22;
+const STATS_SWIPE_SEC_MIN = 1;
+const STATS_SWIPE_SEC_MAX = 60;
 
 const LINEUP_SCALE_MIN = 50;
 const LINEUP_SCALE_MAX = 100;
@@ -35,11 +46,18 @@ function isValidSetting(category, value) {
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
   if (category === 'teamLogo') return value === 'logo' || value === 'fa';
   if (category === 'mainPage') return value === 'big' || value === 'small';
+  if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
+  if (category === 'statsAutoSwipeSec') {
+    return Number.isFinite(value) && value >= STATS_SWIPE_SEC_MIN && value <= STATS_SWIPE_SEC_MAX;
+  }
   if (category === 'lineupScale') {
     return Number.isFinite(value) && value >= LINEUP_SCALE_MIN && value <= LINEUP_SCALE_MAX;
   }
   if (category === 'lineupNameSize') {
     return Number.isFinite(value) && value >= LINEUP_NAME_SIZE_MIN && value <= LINEUP_NAME_SIZE_MAX;
+  }
+  if (category === 'eventNameSize') {
+    return Number.isFinite(value) && value >= EVENT_NAME_SIZE_MIN && value <= EVENT_NAME_SIZE_MAX;
   }
   return value === 'short' || value === 'long';
 }
@@ -103,9 +121,11 @@ function setSetting(category, value) {
 function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
+  const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
   const root = document.documentElement;
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
+  root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
   // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-panel.js의 fit 함수)
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
@@ -119,8 +139,15 @@ function syncSliderUi(category) {
   if (input.value !== String(value)) input.value = String(value);
   const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value');
   if (!label) return;
-  if (category === 'lineupNameSize') label.textContent = `${value}px`;
+  if (category === 'lineupNameSize' || category === 'eventNameSize') label.textContent = `${value}px`;
   else label.textContent = `${value}%`;
+}
+
+function syncNumberUi(category) {
+  const input = document.querySelector(`input[data-settings-number="${category}"]`);
+  if (!input) return;
+  const value = Number(getSetting(category));
+  if (Number.isFinite(value) && input.value !== String(value)) input.value = String(value);
 }
 
 function setNameMode(category, mode) {
@@ -155,6 +182,7 @@ function getSwitchSides(category) {
   if (category === 'lineupNode') return { off: 'number', on: 'photo' };
   if (category === 'teamLogo') return { off: 'logo', on: 'fa' };
   if (category === 'mainPage') return { off: 'big', on: 'small' };
+  if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
   return { off: 'short', on: 'long' };
 }
 
@@ -175,11 +203,47 @@ function syncSwitchUi(category) {
   if (onEl) onEl.classList.toggle('is-active', value === on);
 }
 
+/**
+ * 설정 팝업 카테고리 탭 — sp-tabs 안의 버튼 클릭 시 data-sp-tab-section과 매칭하는 섹션만 표시.
+ * 탭 상태는 localStorage에 저장(다음 진입 시 마지막 탭 복원).
+ */
+const SETTINGS_TAB_KEY = 'obs.settings.activeTab.v1';
+
+function applySettingsTab(tabName) {
+  document.querySelectorAll('.sp-tab').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.spTab === tabName);
+  });
+  document.querySelectorAll('[data-sp-tab-section]').forEach(section => {
+    if (section.dataset.spTabSection === tabName) section.removeAttribute('hidden');
+    else section.setAttribute('hidden', '');
+  });
+  try { localStorage.setItem(SETTINGS_TAB_KEY, tabName); } catch {}
+}
+
+function initSettingsTabs() {
+  const tabButtons = document.querySelectorAll('.sp-tab');
+  if (!tabButtons.length) return;
+  let initial = 'names';
+  try {
+    const saved = localStorage.getItem(SETTINGS_TAB_KEY);
+    if (saved && document.querySelector(`[data-sp-tab="${saved}"]`)) initial = saved;
+  } catch {}
+  applySettingsTab(initial);
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.spTab;
+      if (name) applySettingsTab(name);
+    });
+  });
+}
+
 function initSettingsPopup() {
   // loadSettings는 모듈 로드 시 이미 한 번 실행됨 (아래 즉시 호출). 여기서는 UI 와이어업만.
   const gearBtn = document.getElementById('settingsGearBtn');
   const closeBtn = document.getElementById('settingsCloseBtn');
   const backdrop = document.getElementById('settingsBackdrop');
+
+  initSettingsTabs();
 
   if (gearBtn) gearBtn.addEventListener('click', openSettingsPopup);
   if (closeBtn) closeBtn.addEventListener('click', closeSettingsPopup);
@@ -211,6 +275,19 @@ function initSettingsPopup() {
     input.addEventListener('input', () => {
       setSetting(category, Number(input.value));
     });
+  });
+
+  // 숫자 입력 (예: statsAutoSwipeSec). slider와 별개로 단순 number input — sp-num-cluster 안에 들어감.
+  document.querySelectorAll('input[data-settings-number]').forEach(input => {
+    const category = input.dataset.settingsNumber;
+    syncNumberUi(category);
+    // change(blur 시) + input(타이핑 중) 둘 다 반영. step=0.5도 그대로 처리됨.
+    const handler = () => {
+      const v = Number(input.value);
+      if (Number.isFinite(v)) setSetting(category, v);
+    };
+    input.addEventListener('change', handler);
+    input.addEventListener('input', handler);
   });
 }
 

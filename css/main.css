@@ -1,6 +1,6 @@
     /* ========== CSS 변수 ========== */
     :root {
-      --font-family: 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Arial', sans-serif;
+      --font-family: 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif;
 
       /* Overlay UI */
       --bg-ui: #111827;
@@ -581,7 +581,7 @@
 
     /* ── 점수판 CSS 변수가 위젯에 새어들어가지 않도록 격리 ── */
     #game-content, #standings-content, #team-content, #games-list {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, sans-serif !important;
+      font-family: var(--font-family) !important;
       --home-bg: initial;
       --away-bg: initial;
       --home-text: initial;
@@ -639,7 +639,7 @@
     .theme-file-caption { display: flex; align-items: center; height: 36px; font-size: 12px; opacity: .85; white-space: nowrap; line-height: 1; }
     .template-import-file { min-width: 220px; }
     .pspacer { flex: 1; }
-    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #111827; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffffff22; }
+    .kbd { font-family: var(--font-family); font-size: 12px; background: #111827; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffffff22; }
     .hidden { display: none !important; }
 
     /* 숫자 입력 폭 */
@@ -673,7 +673,7 @@
     .md-body p  { margin: 0 0 12px; }
     .md-body ul, .md-body ol { margin: 0 0 12px 20px; }
     .md-body li { margin-bottom: 4px; }
-    .md-body code { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 13px; font-family: monospace; }
+    .md-body code { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 13px; font-family: var(--font-family); }
     .md-body pre  { background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px; }
     .md-body pre code { background: none; border: none; padding: 0; }
     .md-body blockquote { border-left: 3px solid var(--muted); margin: 0 0 12px; padding: 4px 0 4px 14px; color: var(--muted); }
@@ -760,7 +760,14 @@
     .layout-big .lp-cam-big { flex: 1; }
     .layout-big .lp-col     { flex: 0 0 18%; }
     .layout-big .lp-events,
+    .layout-big .lp-chat-big,
     .layout-big .lp-stat    { flex: 1; }
+    /* 채팅창 placeholder — 캠처럼 실제 임베드 시 점선/라벨 숨김. 컬럼 자리만 유지. */
+    .layout-big .lp-chat-big {
+      border-color: transparent;
+      background: transparent;
+    }
+    .layout-big .lp-chat-big .lp-label { visibility: hidden; }
     /* 캠/채팅 컬럼 — 캠 큼 페이지에서는 OBS 위에 실제 캠 영상을 합성하므로 점선 테두리 + 라벨을 항상 숨김.
        컬럼 자리(flex 폭)는 유지해 다른 컬럼 비율 영향 X. */
     .layout-big .lp-cam-big {
@@ -827,3 +834,443 @@
     }
 
     @media (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       [이벤트 패널 — 문자중계 타임라인 / Iter 5-2]
+       events-panel.js의 applyEventsPanel(fixture)이 .ev-list 트리를 [data-events-panel]에 주입.
+       lp-events-s 안에서만 사용 (캠 작음 페이지). 캠 큼 페이지에는 안 표시 (사용자 요청).
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .lp-events-s [data-events-panel] {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 8px 6px;
+      box-sizing: border-box;
+      color: #f0f0f0;
+      font-family: var(--font-family);
+      overflow: hidden;
+    }
+    /* 패널 제목 줄 — 교체명단/부상 패널 .dp-title 톤 유지 */
+    .ev-title {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,.70);
+      padding: 4px 0 6px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      margin-bottom: 6px;
+    }
+    .ev-list {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    .ev-list::-webkit-scrollbar { width: 6px; }
+    .ev-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .ev-list::-webkit-scrollbar-track { background: transparent; }
+
+    .ev-empty {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,.35);
+      font-size: 12px;
+    }
+
+    .ev-row {
+      display: flex;
+      align-items: stretch;
+      background: rgba(255,255,255,.04);
+      border-radius: 6px;
+      overflow: hidden;
+      min-height: 36px;
+    }
+    .ev-bar {
+      flex: 0 0 4px;
+      background: rgba(255,255,255,.6);
+    }
+    /* 이벤트 종류별 색상 막대 */
+    .ev-bar-blue   .ev-bar { background: #3b82f6; }
+    .ev-bar-yellow .ev-bar { background: #f5c518; }
+    .ev-bar-red    .ev-bar { background: #ef4444; }
+    .ev-bar-green  .ev-bar { background: #22c55e; }
+    .ev-bar-orange .ev-bar { background: #f97316; }
+    .ev-bar-white  .ev-bar { background: rgba(255, 255, 255, 0.925); }
+
+    /* 메인 줄 (단일 flex row): 시간 + 라벨 + 아이콘 + 텍스트 + 인라인 코멘트 + 팀 로고 */
+    .ev-main {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px 4px 8px;
+      overflow: hidden;
+    }
+    .ev-time {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255,255,255,.65);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .02em;
+      min-width: 30px;
+    }
+    /* 라벨 배경 — 이벤트 색상과 매칭 (.ev-label-{color}). min-width로 골/경고/교체 등 너비 통일. */
+    .ev-label {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      min-width: 36px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .ev-label-blue   { background: rgba(59,130,246,.30);  color: #bfdbfe; }
+    .ev-label-yellow { background: rgba(245,197,24,.30);  color: #fde68a; }
+    .ev-label-red    { background: rgba(239,68,68,.30);   color: #fecaca; }
+    .ev-label-green  { background: rgba(34,197,94,.30);   color: #bbf7d0; }
+    .ev-label-orange { background: rgba(249,115,22,.30);  color: #fed7aa; }
+    .ev-label-white  { background: rgba(255,255,255,.18); color: #fff; }
+    .ev-icon {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      line-height: 1;
+    }
+    .ev-icon-glyph {
+      font-size: 13px;
+      line-height: 1;
+    }
+    .ev-icon-own { filter: hue-rotate(180deg) saturate(1.2); }
+    .ev-icon-sub {
+      font-size: 9px;
+      font-weight: 800;
+      color: rgba(255,255,255,.7);
+    }
+    .ev-icon-sub.ev-icon-x { color: #ef4444; }
+    .ev-icon-var {
+      font-size: 9px;
+      font-weight: 900;
+      color: rgba(255,255,255,.85);
+      padding: 1px 3px;
+      border: 1px solid rgba(255,255,255,.55);
+      border-radius: 2px;
+      letter-spacing: .04em;
+    }
+    .ev-icon-card {
+      display: inline-block;
+      width: 8px;
+      height: 11px;
+      border-radius: 1px;
+    }
+    .ev-icon-card-yellow { background: #f5c518; }
+    .ev-icon-card-red    { background: #ef4444; }
+    /* 경고누적 — 노랑 아래 빨강 살짝 겹쳐서 표시 */
+    .ev-icon-card-stack {
+      margin-right: -3px;
+    }
+    .ev-icon-card-stack:last-child { margin-right: 0; }
+
+    /* 텍스트 — 기본은 한 줄 시도, 잘리면 2줄 wrap (line-clamp). evFitText에서 fontSize/lineClamp 동적 조정. */
+    .ev-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: var(--ev-name-base-size, 15px);
+      font-weight: 700;
+      color: #f0f0f0;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+    /* 교체용 — IN/OUT 두 줄 스택. 각 라인이 line-clamp:2까지 wrap 가능 → 총 최대 4줄. */
+    .ev-text-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      -webkit-line-clamp: unset;
+      line-clamp: unset;
+      overflow: visible;
+    }
+    .ev-text-line {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+    }
+    .ev-text-in  { color: #7CFC8E; }   /* 들어옴 — 연두 */
+    .ev-text-out { color: rgba(255,255,255,.65); }
+    /* 교체 row는 IN/OUT 2줄 보장하기 위해 더 큰 min-height. */
+    .ev-row-subst { min-height: 52px; }
+    /* 인라인 코멘트 — .ev-text 또는 .ev-text-line 내부에서 선수 이름 바로 옆에 인라인 표시.
+       부모(.ev-text/.ev-text-line) 폰트 사이즈를 따라가도록 em 단위 사용 → evFitText에서 px 줄여도 같이 축소. */
+    .ev-comment {
+      font-size: 0.75em;
+      font-style: normal;
+      color: rgba(255,255,255,.55);
+      font-weight: 600;
+      margin-left: 4px;
+    }
+    .ev-comment::before {
+      content: '· ';
+      color: rgba(255,255,255,.35);
+    }
+    /* 선수 이름 wrapper — 굵게 강조 (.ev-text 내부에서 강한 폰트로 visual hierarchy). */
+    .ev-text-name {
+      font-weight: 800;
+    }
+    /* 골의 어시스트 라인 — 회색 + 작게 (.ev-comment와 동일한 톤). */
+    .ev-text-assist {
+      font-size: 0.82em;
+      font-weight: 600;
+      color: rgba(255,255,255,.55);
+    }
+    /* 골 1줄(어시스트 있음) — 첫 라인 기본 굵기. */
+    .ev-text-primary { font-weight: 700; }
+
+    /* 팀 로고 — row 우측 끝. 점수판 .logo-img 패턴(max-width/max-height + auto + position absolute)으로
+       자연 종횡비 유지하면서 컨테이너에 cap. 박스 정중앙 정렬. */
+    .ev-team-logo {
+      flex: 0 0 26px;
+      width: 26px;
+      height: 26px;
+      position: relative;
+      align-self: center;
+      margin-right: 2px;
+    }
+    .ev-team-logo img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       [경기 스탯 패널 / Iter 5-2]
+       stats-panel.js가 [data-stat-panel] 컨테이너에 .st-wrap 트리 주입.
+       lp-stat(캠 큼) + lp-stat-s(캠 작음) 두 곳 동일 데이터, 독립 페이지 상태.
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .lp-stat [data-stat-panel],
+    .lp-stat-s [data-stat-panel] {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 10px 6px;
+      box-sizing: border-box;
+      color: #f0f0f0;
+      font-family: var(--font-family);
+    }
+    /* 패널 제목 — 교체명단/부상 톤과 동일 (.dp-title 참조) */
+    .st-title-bar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,.70);
+      padding: 4px 0 6px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      margin-bottom: 6px;
+    }
+    .st-wrap {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .st-page {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 4px;
+      overflow: hidden;
+    }
+    .st-empty {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,.35);
+      font-size: 12px;
+    }
+
+    .st-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 2px 0;
+    }
+    .st-top {
+      display: grid;
+      grid-template-columns: 36px 1fr 36px;
+      align-items: center;
+      gap: 8px;
+    }
+    .st-title {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,.85);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .st-val {
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      color: rgba(255,255,255,.85);
+      font-variant-numeric: tabular-nums;
+      padding: 2px 4px;
+      min-width: 28px;
+      border-radius: 999px;
+      background: transparent;
+    }
+    /* 강조: 더 큰 값 쪽에 팀 컬러 원 (인라인 style로 background/color 주입) */
+    .st-val.is-emphasized {
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+    }
+
+    .st-bar {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      background: rgba(255,255,255,.08);
+    }
+    .st-bar-home, .st-bar-away {
+      height: 100%;
+      transition: width .28s ease;
+    }
+    /* 막대 경계선 — 홈/원정 색이 비슷할 때도 구분 가능하게 1.5px 가는 선.
+       색은 stats-panel.js에서 인라인 style로 홈팀 컬러 보색 주입. */
+    .st-bar-divider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1.5px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.5);
+      pointer-events: none;
+    }
+
+    .st-controls {
+      position: relative; /* .st-pause를 오른쪽 구석에 absolute 배치하기 위함 */
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding-top: 4px;
+    }
+    .st-arrow {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.78);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .st-arrow:hover {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+    }
+    .st-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .st-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    .st-dot:hover { background: rgba(255,255,255,.55); }
+    .st-dot.is-active {
+      background: rgba(255,255,255,.85);
+      transform: scale(1.2);
+    }
+    /* 일시정지 버튼 — 자동 스와이프 ON일 때만 노출. 오른쪽 구석 absolute 배치 (좌우 화살표 사이 X). */
+    .st-pause {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.78);
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 1;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -1px;
+    }
+    .st-pause:hover {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+    }
+    .st-pause.is-paused {
+      background: rgba(76,217,100,.18);
+      border-color: rgba(76,217,100,.55);
+      color: #4cd964;
+      letter-spacing: 0;
+    }

@@ -58,7 +58,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-family);
   color: #f0f0f0;
 }
 
@@ -257,4 +257,78 @@
   font-weight: 700;
   color: rgba(255,255,255,.78);
   font-variant-numeric: tabular-nums;
+}
+
+/* 숫자 입력 cluster — slider와 동일 톤, 단위(unit)를 옆에 표시. */
+.sp-num-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.sp-num-input {
+  width: 64px;
+  height: 30px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(0,0,0,.28);
+  color: #f0f0f0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.sp-num-input::-webkit-outer-spin-button,
+.sp-num-input::-webkit-inner-spin-button {
+  /* 기본 spinner 비표시 — 깔끔한 룩. 사용자는 직접 입력 또는 step 변경 가능. */
+  -webkit-appearance: auto;
+  opacity: .7;
+}
+.sp-num-input:focus {
+  outline: none;
+  border-color: rgba(76,217,100,.55);
+  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+}
+.sp-num-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .02em;
+}
+
+/* ━━━ 카테고리 탭 — 설정 종류 그룹 전환 ━━━
+   sp-body 최상단에 가로로 배치. 클릭 시 data-sp-tab과 일치하는 data-sp-tab-section 만 표시. */
+.sp-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 10px;
+  margin: 0 0 6px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  flex-wrap: wrap;
+}
+.sp-tab {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.sp-tab:hover {
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.92);
+}
+.sp-tab.is-active {
+  background: rgba(76,217,100,.22);
+  border-color: rgba(76,217,100,.55);
+  color: #d4f8d8;
+}
+.sp-tab.is-active:hover {
+  background: rgba(76,217,100,.30);
 }
