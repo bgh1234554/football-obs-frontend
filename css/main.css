@@ -234,6 +234,17 @@
       transform-origin: center center;
       z-index: 2;
     }
+    /* 일부 원격 SVG(예: Wikimedia 국기)는 intrinsic width/height가 100%로 들어와
+       auto + max-* 조합에서 실제 렌더 박스가 과하게 작아질 수 있다.
+       SVG만 48x48 logo-box 기준으로 contain시키고, 기존 scale/X/Y 보정 로직은 유지한다. */
+    .logo-img[src$=".svg"],
+    .logo-img[src*=".svg?"],
+    .logo-img[src^="data:image/svg+xml"] {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+    }
     #homeCard .logo-img {
       transform: translate(calc(-50% + var(--home-logo-x)), calc(-50% + var(--home-logo-y)))
                 scale(var(--home-logo-scale, 1));

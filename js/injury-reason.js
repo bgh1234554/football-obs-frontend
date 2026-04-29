@@ -30,6 +30,7 @@
     'Knee Injury':       '무릎 부상',
     'Leg Injury':        '다리 부상',
     'Ankle Injury':      '발목 부상',
+    'Achilles Tendon Injury': '아킬레스건 부상',
     'Foot Injury':       '발 부상',
     'Toe Injury':        '발가락 부상',
     'Achilles Injury':   '아킬레스 부상',
@@ -65,6 +66,7 @@
     'Coach Decision':    '감독 결정',
     'National Team':     '국가대표 차출',
     'Rest':              '휴식',
+    'Inactive':          '출전 불가',
     'Unknown':           '미상',
 
     // 출장 정지 카테고리

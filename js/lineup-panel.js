@@ -225,7 +225,6 @@ function buildEffectiveFixtureData(data) {
   // 1) 현재 fixture에 대해 저장된 수동 입력이 없으면 원본 응답을 그대로 사용.
   const fixtureId = getFixtureIdFromData(data);
   const entry = getManualEntry(fixtureId);
-  if (!entry) return data;
 
   // 2) 원본 객체를 직접 훼손하지 않도록 라인업/부상 배열을 먼저 복제한다.
   const next = {
@@ -235,6 +234,7 @@ function buildEffectiveFixtureData(data) {
     homeInjuries: cloneInjuries(data.homeInjuries),
     awayInjuries: cloneInjuries(data.awayInjuries),
   };
+  if (!entry) return next;
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
   ['home', 'away'].forEach(side => {
@@ -430,7 +430,10 @@ function buildManualGridValues(formation) {
   return slots.map(slot => {
     const lineIndex = uniqueLines.indexOf(slot.coord.x) + 1;
     const rowSlots = slots.filter(candidate => candidate.coord.x === slot.coord.x);
-    const rowIndex = rowSlots.findIndex(candidate => candidate.originalIndex === slot.originalIndex) + 1;
+    // grid 값의 col은 API-Football 관례와 동일하게 "오른쪽 -> 왼쪽" 순서로 저장한다.
+    // getOrderedLineupPlayers()가 같은 line 안에서 col 내림차순으로 정렬하기 때문에,
+    // 여기서도 RB/RW가 더 큰 col을 갖도록 맞춰야 저장 후 재로딩 시 좌우가 뒤집히지 않는다.
+    const rowIndex = rowSlots.length - rowSlots.findIndex(candidate => candidate.originalIndex === slot.originalIndex);
     return `${lineIndex}:${rowIndex}`;
   });
 }
@@ -645,7 +648,8 @@ function mapFormationSlotToPitchPosition(slot, side) {
   //   - away: -0.5% (≈  4px on 470px pitch) — 이름 pill이 원 아래로 그려져 피치 밖으로 잘리지
   //           않을 정도로만 살짝 올림. 너무 올리면 미드필더와 겹치므로 조금만.
   if (depth === 0) top -= isHome ? 3.5 : -0.5;
-  const yLocal = rawY;
+  // 홈팀은 rawY 그대로, 원정팀은 100 - rawY를 써서 서로 마주보는 방향으로 배치한다.
+  const yLocal = isHome ? rawY : (100 - rawY);
   // 가로는 5~95% (90% 폭)
   const left = 5 + (yLocal / 100) * 90;
   return { left, top };
