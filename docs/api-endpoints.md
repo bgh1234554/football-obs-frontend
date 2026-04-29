@@ -197,6 +197,8 @@ const regularGoals = events.filter(e =>
 >
 > API Football의 `/fixtures?id={id}` 응답에 들어 있는 `events` 배열은 **경기 종료 직후에는 승부차기 시퀀스를 포함**하지만, 시간이 지나면 PK 시도 이벤트가 응답에서 사라지는 현상이 관찰됐다. 즉 같은 경기라도 조회 시점에 따라 PK 이벤트가 있을 수도, 없을 수도 있다.
 >
+> API 제공사 support 설명 기준, 이 현상은 원본 데이터 공급처가 **안정적인 event id를 제공하지 않기 때문**에 발생할 수 있다. 경기 종료 후 선수명/시간 보정 같은 post-match adjustment가 들어가면 기존 이벤트가 수정·교체되거나 제거될 수 있어, 동일 fixture라도 사후 조회 시 PK 이벤트 추적이 안정적으로 보장되지 않는다.
+>
 > 따라서 프런트엔드는 다음 원칙으로 처리해야 한다:
 >
 > - **승부차기 발생 여부의 단일 판단 근거는 `matchInfo.homePenaltyScore` / `matchInfo.awayPenaltyScore`다.** 이 값이 non-null이면 PK가 진행됐다(또는 진행 중)는 뜻이고, 점수판의 PK 스코어 표시는 항상 이 값으로 그린다.
@@ -256,6 +258,8 @@ API-Football 문서상 `grid`는 `X:Y` 형식이다. `X`는 골키퍼 라인에�
 | coachId | 감독 ID | Long |  | X | `1234` |
 | name | 감독 표시명 | String | 한글 우선 | X | `Pep Guardiola` |
 | nameKoLong | 감독 한글 풀네임 | String | CSV에 있을 때만 | O | `펩 과르디올라` |
+
+> 주의: 감독 정보는 일부 경기에서 `coach: null`일 수 있다. API 제공사 support 기준 Everton 사례처럼 공급자 원본에 감독 데이터 자체가 빠지는 경우가 있으며, 이 경우 프런트는 감독 UI를 null-safe 하게 처리해야 한다.
 
 #### `playerStats[]`
 

@@ -222,9 +222,13 @@
       overflow: visible; position: relative;
       display: grid; place-items: center;
     }
+    /* max-width/height로 변경 — width/height: 100% 조합이 비정사각 이미지(예: 1:1.75 이탈리아 FIGC)에서
+       height만 자연 종횡비로 늘어나는 브라우저 버그 회피. max-* + width/height auto로 자연 종횡비 유지하며
+       logo-box 48×48에 capped되게 함. 결과적으로 모든 로고가 박스 안에 정확히 들어옴(transform 중심 어긋남 해소). */
     .logo-img {
       position: absolute; top: 50%; left: 50%;
-      width: 100%; height: 100%;
+      max-width: 100%; max-height: 100%;
+      width: auto; height: auto;
       object-fit: contain;
       transform: translate(-50%, -50%) scale(1);
       transform-origin: center center;
@@ -238,8 +242,10 @@
       transform: translate(calc(-50% + var(--away-logo-x)), calc(-50% + var(--away-logo-y)))
                 scale(var(--away-logo-scale, 1));
     }
-    /* will-change: transform 제거 — GPU 레이어 사전 래스터화로 인한 SVG 화질 저하 방지 */
-    #homeLogo, #awayLogo { position: relative; z-index: 2; }
+    /* will-change: transform 제거 — GPU 레이어 사전 래스터화로 인한 SVG 화질 저하 방지.
+       position은 .logo-img의 absolute를 그대로 두기 위해 override 안 함 — relative로 덮으면
+       top/left/translate 기반 정중앙 정렬이 깨져서 비정사각 로고(예: 이탈리아 1:1.75) 위치 어긋남. */
+    #homeLogo, #awayLogo { z-index: 2; }
 
     .board .name { font-weight: 800; font-size: 24px; letter-spacing: .2px; line-height: 1.1; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
