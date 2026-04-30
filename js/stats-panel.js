@@ -159,10 +159,10 @@ function stCreateRow(row, fixtureData) {
   const m = fixtureData?.matchInfo || {};
   // 우선순위: API matchInfo 컬러 → state.colors(사용자 override 반영) → 하드코딩 default
   const stateCol = (typeof state !== 'undefined' && state?.colors) ? state.colors : {};
-  const homeBg = stEnsureHashColor(m.homePrimaryColor) || stateCol.homeBg || '#1d4ed8';
-  const homeText = stEnsureHashColor(m.homeNumberColor) || stateCol.homeText || '#ffffff';
-  const awayBg = stEnsureHashColor(m.awayPrimaryColor) || stateCol.awayBg || '#ef4444';
-  const awayText = stEnsureHashColor(m.awayNumberColor) || stateCol.awayText || '#ffffff';
+  const homeBg = stEnsureHashColor(stateCol.homeBg) || stEnsureHashColor(m.homePrimaryColor) || '#1d4ed8';
+  const homeText = stEnsureHashColor(stateCol.homeText) || stEnsureHashColor(m.homeNumberColor) || '#ffffff';
+  const awayBg = stEnsureHashColor(stateCol.awayBg) || stEnsureHashColor(m.awayPrimaryColor) || '#ef4444';
+  const awayText = stEnsureHashColor(stateCol.awayText) || stEnsureHashColor(m.awayNumberColor) || '#ffffff';
 
   const { homePct, awayPct, emphasize, zeroTotal } = stComputeBar(row.homeVal, row.awayVal);
 
@@ -416,6 +416,13 @@ document.addEventListener('settings:change', e => {
   if (cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec') {
     if (statsLastFixtureData != null) applyStatsPanel(statsLastFixtureData);
   }
+});
+
+document.addEventListener('theme:colors-changed', e => {
+  if (statsLastFixtureData == null) return;
+  const key = e.detail?.key;
+  if (!['homeBg', 'homeText', 'awayBg', 'awayText'].includes(key)) return;
+  applyStatsPanel(statsLastFixtureData);
 });
 
 document.addEventListener('page:activated', () => {
