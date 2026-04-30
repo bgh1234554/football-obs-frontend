@@ -78,6 +78,242 @@
   }
   window.exportTemplatesFileImpl = exportTemplatesFileImpl;
 
+  let defaultTemplateCache = null;
+  let defaultTemplateLoadPromise = null;
+  let mergedTemplateCache = [];
+
+  function resolveTemplateFontFamily(t){
+    const font = sanitizeFontFamily(t?.fontFamily ?? t?._fontFamily);
+    return font || DEFAULT_FONT_FAMILY;
+  }
+
+  function cloneTemplateRecord(templateMaybe){
+    if(!templateMaybe || typeof templateMaybe !== 'object') return null;
+    const name = String(templateMaybe.name || '').trim();
+    if(!name) return null;
+    const next = { ...templateMaybe, name };
+    next.colors = (templateMaybe.colors && typeof templateMaybe.colors === 'object') ? { ...templateMaybe.colors } : {};
+    next.fontFamily = resolveTemplateFontFamily(templateMaybe);
+    delete next._fontFamily;
+    return next;
+  }
+
+  function readLocalTemplates(){
+    try{
+      const list = JSON.parse(localStorage.getItem(TKEY) || '[]');
+      return Array.isArray(list) ? list.map(cloneTemplateRecord).filter(Boolean) : [];
+    }catch{
+      return [];
+    }
+  }
+
+  function writeLocalTemplates(list){
+    localStorage.setItem(TKEY, JSON.stringify(list));
+  }
+
+  function setLastSelectedTemplateName(nameMaybe){
+    const name = String(nameMaybe || '').trim();
+    try{
+      if(name) localStorage.setItem(TLASTKEY, name);
+      else localStorage.removeItem(TLASTKEY);
+    }catch{}
+  }
+
+  function getLastSelectedTemplateName(){
+    try{
+      return String(localStorage.getItem(TLASTKEY) || '').trim();
+    }catch{
+      return '';
+    }
+  }
+
+  async function loadDefaultTemplates(){
+    if(Array.isArray(defaultTemplateCache)) return defaultTemplateCache;
+    if(!defaultTemplateLoadPromise){
+      defaultTemplateLoadPromise = fetch(encodeURI(appAssetPath('Theme Templates/Lists.json')))
+        .then(res => {
+          if(!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(list => {
+          defaultTemplateCache = Array.isArray(list) ? list.map(cloneTemplateRecord).filter(Boolean) : [];
+          return defaultTemplateCache;
+        })
+        .catch(err => {
+          console.warn('Failed to load default templates from Theme Templates/Lists.json:', err);
+          defaultTemplateCache = [];
+          return defaultTemplateCache;
+        });
+    }
+    return defaultTemplateLoadPromise;
+  }
+
+  async function getMergedTemplates(){
+    const defaults = await loadDefaultTemplates();
+    const locals = readLocalTemplates();
+    const merged = new Map(defaults.map(t => [t.name, cloneTemplateRecord(t)]));
+    locals.forEach(t => merged.set(t.name, t));
+    mergedTemplateCache = Array.from(merged.values()).map(cloneTemplateRecord).filter(Boolean);
+    return mergedTemplateCache;
+  }
+
+  function getTemplateByName(nameMaybe){
+    const name = String(nameMaybe || '').trim();
+    if(!name) return null;
+    return mergedTemplateCache.find(t => t && t.name === name) || null;
+  }
+
+  function resolveTemplateSaveName(nameMaybe){
+    const typed = (nameMaybe||'').trim();
+    if(typed) return typed;
+    return (el.templateSelect?.value||'').trim();
+  }
+
+  async function loadTemplates(selectedName){
+    const list = await getMergedTemplates();
+    const prevValue = (selectedName!==undefined) ? selectedName : (el.templateSelect?.value||'');
+    if(el.templateSelect){
+      el.templateSelect.innerHTML = '';
+      const o=document.createElement('option');
+      o.value='';
+      o.textContent='로드된 템플릿';
+      el.templateSelect.appendChild(o);
+      list.forEach(t=>{
+        if(!t||!t.name) return;
+        const x=document.createElement('option');
+        x.value=t.name;
+        x.textContent=t.name;
+        el.templateSelect.appendChild(x);
+      });
+      const stillExists=list.some(t=>t&&t.name===prevValue);
+      el.templateSelect.value = stillExists ? prevValue : '';
+      if(stillExists) setLastSelectedTemplateName(prevValue);
+      else if(prevValue) setLastSelectedTemplateName('');
+    }
+    return list;
+  }
+
+  async function saveTemplate(name){
+    await loadDefaultTemplates();
+    name = resolveTemplateSaveName(name);
+    if(!name) return alert('템플릿 이름을 입력해 주세요.');
+    const localList = readLocalTemplates();
+    const mergedList = await getMergedTemplates();
+    const localExists = localList.some(t=>t&&t.name===name);
+    const defaultExists = defaultTemplateCache.some(t=>t&&t.name===name);
+    const mergedExists = mergedList.some(t=>t&&t.name===name);
+    if(mergedExists){
+      const message = (defaultExists && !localExists)
+        ? `"${name}" 기본 템플릿을 현재 설정으로 덮어쓸까요? (로컬 override로 저장됩니다.)`
+        : `"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`;
+      if(!confirm(message)) return;
+    }
+    const next = localList.filter(t=>t&&t.name!==name);
+    next.push(buildCurrentTemplate(name));
+    try{
+      writeLocalTemplates(next);
+    }catch(e){
+      return alert('저장 공간이 부족합니다.');
+    }
+    await loadTemplates(name);
+    if(el.templateSelect) el.templateSelect.value=name;
+    setLastSelectedTemplateName(name);
+    alert('저장되었습니다.');
+  }
+
+  async function deleteTemplate(nameMaybe){
+    await loadDefaultTemplates();
+    const typed=(el.templateName?.value||'').trim();
+    const selected=(el.templateSelect?.value||'').trim();
+    const name=(typed||nameMaybe||selected||'').trim();
+    if(!name){ alert('삭제할 템플릿을 선택하거나 이름을 입력해 주세요.'); return; }
+    const localList = readLocalTemplates();
+    const localExists = localList.some(t=>t&&t.name===name);
+    const defaultExists = defaultTemplateCache.some(t=>t&&t.name===name);
+    if(!localExists && !defaultExists){ alert(`"${name}" 템플릿을 찾을 수 없습니다.`); return; }
+    if(defaultExists && !localExists){ alert('기본 템플릿은 삭제할 수 없습니다.'); return; }
+    writeLocalTemplates(localList.filter(t=>t&&t.name!==name));
+    const selectedName = selected === name ? (defaultExists ? name : '') : selected;
+    const list = await loadTemplates(selectedName);
+    if(defaultExists && selected === name){
+      const fallback = list.find(t=>t&&t.name===name);
+      if(fallback){
+        applyTemplate(fallback);
+        render();
+        persist();
+        setLastSelectedTemplateName(name);
+      }
+    }else if(selected === name){
+      setLastSelectedTemplateName('');
+    }
+    if(el.templateName) el.templateName.value='';
+    alert(defaultExists ? `"${name}" 로컬 저장본을 지우고 기본 템플릿으로 되돌렸습니다.` : `"${name}" 삭제 완료.`);
+  }
+
+  async function resetTemplates(){
+    await loadDefaultTemplates();
+    const localList = readLocalTemplates();
+    if(localList.length === 0){ alert('초기화할 로컬 템플릿이 없습니다.'); return; }
+    if(!confirm('로컬에 저장된 템플릿과 기본 템플릿 변경 사항을 모두 지울까요?')) return;
+    try{
+      localStorage.removeItem(TKEY);
+    }catch(e){
+      console.warn('Failed to reset local templates:', e);
+    }
+    const selected = (el.templateSelect?.value || '').trim();
+    const selectedDefaultExists = defaultTemplateCache.some(t=>t&&t.name===selected);
+    const list = await loadTemplates(selectedDefaultExists ? selected : '');
+    if(selectedDefaultExists){
+      const fallback = list.find(t=>t&&t.name===selected);
+      if(fallback){
+        applyTemplate(fallback);
+        render();
+        persist();
+        setLastSelectedTemplateName(selected);
+      }
+    }else{
+      setLastSelectedTemplateName('');
+    }
+    if(el.templateName) el.templateName.value = '';
+    alert('기본 템플릿만 남기고 로컬 템플릿을 초기화했습니다.');
+  }
+
+  async function upsertTemplateToLocal(t, askOnDuplicate=true){
+    await loadDefaultTemplates();
+    const list = readLocalTemplates();
+    const mergedList = await getMergedTemplates();
+    const name = String(t?.name || 'Imported').trim() || 'Imported';
+    const exists = mergedList.some(x=>x&&x.name===name);
+    if(exists && askOnDuplicate){
+      const ok = confirm(`"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`);
+      if(!ok) return{saved:false,replaced:false,name};
+    }
+    const toSave = buildCurrentTemplate(name);
+    Object.assign(toSave, t);
+    toSave.name = name;
+    toSave.fontFamily = resolveTemplateFontFamily(t);
+    const next = list.filter(x=>x&&x.name!==name);
+    next.push(cloneTemplateRecord(toSave));
+    writeLocalTemplates(next);
+    return{saved:true,replaced:exists,name};
+  }
+
+  async function exportTemplatesFileImpl(){
+    const nameInput=(el.templateName?.value||'').trim();
+    let dataStr,filename;
+    if(nameInput){
+      dataStr=JSON.stringify(buildCurrentTemplate(nameInput),null,2);
+      filename=`${slugify(nameInput)}.json`;
+    }else{
+      const list=await getMergedTemplates();
+      dataStr=JSON.stringify(list,null,2);
+      filename='scoreboard-templates.json';
+    }
+    downloadBlob(filename, new Blob([dataStr],{type:'application/json'}));
+  }
+  window.exportTemplatesFileImpl = exportTemplatesFileImpl;
+  loadDefaultTemplates();
+
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [색상/폰트 바인딩] 색상 피커와 HEX 텍스트 입력을 양방향으로 연결하고 폰트 변경 처리
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -113,7 +349,7 @@
    */
   // 사용자가 테마 탭에서 직접 만지면 state.teamColorOverride=true로 마킹할 키 목록.
   // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
-  const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText','homeOutline','awayOutline']);
+  const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
   function bindColorWithHex(colorId, key, cssVar){
     const colorInput=$(colorId); if(!colorInput) return;

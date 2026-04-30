@@ -1,5 +1,5 @@
 {
-  "name": "RPL",
+  "name": "Russian Premier League",
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#03194b",
@@ -36,5 +36,5 @@
   "boardOutlineWidth": 2,
   "scoreOutlineWidth": 9,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }

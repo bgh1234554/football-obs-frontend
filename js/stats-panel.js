@@ -20,6 +20,13 @@
 const statsPanelStates = new WeakMap();
 let statsLastFixtureData = null;
 
+function stRerenderActivePanels() {
+  if (statsLastFixtureData == null) return;
+  document.querySelectorAll('.page.active [data-stat-panel]').forEach(panel => {
+    stRenderPanel(panel, statsLastFixtureData);
+  });
+}
+
 /** API 응답의 색상이 #으로 시작 안 할 수 있어 정규화. "1d4ed8" → "#1d4ed8". */
 function stEnsureHashColor(c) {
   if (!c) return null;
@@ -304,7 +311,7 @@ function stRenderPanel(panel, fixtureData) {
   if (!rows.length) {
     const empty = document.createElement('div');
     empty.className = 'st-empty';
-    empty.textContent = '데이터 없음';
+    empty.textContent = '데이터가 없습니다';
     panel.appendChild(empty);
     stClearAutoSwipe(state);
     return;
@@ -397,6 +404,9 @@ function applyStatsPanel(fixtureData) {
   document.querySelectorAll('[data-stat-panel]').forEach(panel => {
     stRenderPanel(panel, fixtureData);
   });
+  requestAnimationFrame(() => {
+    stRerenderActivePanels();
+  });
 }
 
 // settings 변경(자동 스와이프 토글/간격) 감지 시 즉시 반영.
@@ -406,6 +416,18 @@ document.addEventListener('settings:change', e => {
   if (cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec') {
     if (statsLastFixtureData != null) applyStatsPanel(statsLastFixtureData);
   }
+});
+
+document.addEventListener('page:activated', () => {
+  requestAnimationFrame(() => {
+    stRerenderActivePanels();
+  });
+});
+
+window.addEventListener('resize', () => {
+  requestAnimationFrame(() => {
+    stRerenderActivePanels();
+  });
 });
 
 window.applyStatsPanel = applyStatsPanel;

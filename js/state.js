@@ -5,6 +5,7 @@
   // 전/후반 진행 순서 정의 ([ 버튼과 ] 버튼으로 순환)
   const halfOrder = ['1','2','ET1','ET2','PK'];
   const TKEY = 'obs-scoreboard-templates-v1';
+  const TLASTKEY = 'obs-scoreboard-selected-template-v1';
   const SKEY = 'obs-scoreboard-state-v2';
   function normalizeFontFamilySpec(fontMaybe){
     return String(fontMaybe || '')
@@ -121,7 +122,7 @@
     rcHome: $('rcHome'), rcAway: $('rcAway'),
     rcSize: $('rcSize'), rcGap: $('rcGap'),
     rcTop: $('rcTop'), rcHomeInset: $('rcHomeInset'), rcAwayInset: $('rcAwayInset'),
-    templateSelect: $('templateSelect'), templateName: $('templateName'), saveTemplate: $('saveTemplate'), deleteTemplate: $('deleteTemplate'),
+    templateSelect: $('templateSelect'), templateName: $('templateName'), saveTemplate: $('saveTemplate'), deleteTemplate: $('deleteTemplate'), resetTemplates: $('resetTemplates'),
     exportTemplates: $('exportTemplates'), importTemplates: $('importTemplates'),
     fontPreset: $('fontPreset'), fontCssUrl: $('fontCssUrl'), fontFamily: $('fontFamily'), applyFont: $('applyFont'), resetFont: $('resetFont'),
     askLocalFonts: $('askLocalFonts'), systemFonts: $('systemFonts'), fontFile: $('fontFile'),

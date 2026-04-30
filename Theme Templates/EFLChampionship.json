@@ -1,10 +1,10 @@
 {
-  "name": "EFL챔피언십",
+  "name": "EFL Championship",
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#ffffff",
     "boardB": "#ffffff",
-    "scoreBg": "#baa045",
+    "scoreBg": "#b79c3e",
     "digits": "#ffffff",
     "meta": "#ffffff",
     "extra": "#ffffff",
@@ -36,5 +36,5 @@
   "boardOutlineWidth": 2,
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }

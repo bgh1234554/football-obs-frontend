@@ -166,6 +166,7 @@ function openSettingsPopup() {
   if (typeof closeSidebar === 'function') closeSidebar();
   const backdrop = document.getElementById('settingsBackdrop');
   if (backdrop) backdrop.classList.add('open');
+  syncSettingsTabSectionHeights();
 }
 
 function closeSettingsPopup() {
@@ -209,6 +210,45 @@ function syncSwitchUi(category) {
  */
 const SETTINGS_TAB_KEY = 'obs.settings.activeTab.v1';
 
+function syncSettingsTabSectionHeights() {
+  const body = document.querySelector('.sp-body');
+  const sections = Array.from(document.querySelectorAll('[data-sp-tab-section]'));
+  if (!body || !sections.length) return;
+
+  const bodyRect = body.getBoundingClientRect();
+  const bodyStyles = getComputedStyle(body);
+  const availableWidth = Math.max(
+    0,
+    bodyRect.width - (parseFloat(bodyStyles.paddingLeft) || 0) - (parseFloat(bodyStyles.paddingRight) || 0)
+  );
+
+  let maxHeight = 0;
+  sections.forEach(section => {
+    const wasHidden = section.hasAttribute('hidden');
+    const prevCssText = section.style.cssText;
+
+    if (wasHidden) section.removeAttribute('hidden');
+    section.style.position = 'absolute';
+    section.style.visibility = 'hidden';
+    section.style.pointerEvents = 'none';
+    section.style.left = '-99999px';
+    section.style.top = '0';
+    section.style.width = `${availableWidth}px`;
+    section.style.minHeight = '';
+
+    const height = Math.ceil(section.getBoundingClientRect().height || section.scrollHeight || 0);
+    if (height > maxHeight) maxHeight = height;
+
+    section.style.cssText = prevCssText;
+    if (wasHidden) section.setAttribute('hidden', '');
+  });
+
+  if (!maxHeight) return;
+  sections.forEach(section => {
+    section.style.minHeight = `${maxHeight}px`;
+  });
+}
+
 function applySettingsTab(tabName) {
   document.querySelectorAll('.sp-tab').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.spTab === tabName);
@@ -217,6 +257,7 @@ function applySettingsTab(tabName) {
     if (section.dataset.spTabSection === tabName) section.removeAttribute('hidden');
     else section.setAttribute('hidden', '');
   });
+  syncSettingsTabSectionHeights();
   try { localStorage.setItem(SETTINGS_TAB_KEY, tabName); } catch {}
 }
 
@@ -244,6 +285,11 @@ function initSettingsPopup() {
   const backdrop = document.getElementById('settingsBackdrop');
 
   initSettingsTabs();
+  syncSettingsTabSectionHeights();
+
+  window.addEventListener('resize', () => {
+    syncSettingsTabSectionHeights();
+  });
 
   if (gearBtn) gearBtn.addEventListener('click', openSettingsPopup);
   if (closeBtn) closeBtn.addEventListener('click', closeSettingsPopup);

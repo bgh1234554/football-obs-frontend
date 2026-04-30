@@ -14,7 +14,7 @@
   const selectedTemplateName = (typeof getLastSelectedTemplateName === 'function')
     ? getLastSelectedTemplateName()
     : '';
-  loadTemplates(selectedTemplateName);
+  loadTemplates(selectedTemplateName).catch(err => console.warn('Template list load failed:', err));
   if(selectedTemplateName && typeof restoreLastSelectedTemplate === 'function'){
     restoreLastSelectedTemplate();
   }

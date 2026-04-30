@@ -457,6 +457,14 @@
   display: none;
 }
 
+/* 팬 반응 패널 (캠 큼 lp-chat-big + 캠 작음 lp-cam-chat) — 경기 스탯/벤치/부상과 같은 dp-panel
+   + dp-title 구조 사용. .lp의 가운데 flex 정렬을 stretch로 덮어 dp-panel이 가득 차게 함. */
+.lp.lp-chat-big,
+.lp.lp-cam-chat {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
 /* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.
    --lp-lineup-scale: 0.5~1.0 (default 1). 비율 유지하며 height만 축소 → cam-big(flex:1)이 남는 폭 흡수.
    align-self: flex-end → 축소 시 컬럼이 아래로 정렬되어 윗 모서리에 위치한 resize handle을 위로 끌어 확장하기 자연스럽게.

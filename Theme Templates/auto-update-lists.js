@@ -13,16 +13,31 @@ function updateListsJson() {
       .filter(f => f.endsWith('.json') && f !== 'Lists.json')
       .sort();
 
-    const jsonArray = [];
+    const templates = [];
     for (const file of files) {
       const filePath = path.join(folderPath, file);
       try {
         const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        jsonArray.push(content);
+        const name = typeof content?.name === 'string' && content.name.trim()
+          ? content.name.trim()
+          : file.replace(/\.json$/i, '');
+        templates.push({ file, name, content });
       } catch (err) {
         console.log(`⚠  WARNING: Cannot read ${file}`);
       }
     }
+
+    templates.sort((a, b) =>
+      a.name.localeCompare(b.name, ['ko', 'en'], {
+        numeric: true,
+        sensitivity: 'base',
+      }) || a.file.localeCompare(b.file, ['ko', 'en'], {
+        numeric: true,
+        sensitivity: 'base',
+      })
+    );
+
+    const jsonArray = templates.map(template => template.content);
 
     // Write with clean formatting (2-space indent)
     fs.writeFileSync(outputFile, JSON.stringify(jsonArray, null, 2) + '\n', 'utf8');

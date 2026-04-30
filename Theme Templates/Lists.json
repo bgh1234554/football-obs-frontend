@@ -1,6 +1,6 @@
 [
   {
-    "name": "2Bundesliga",
+    "name": "2. Bundesliga",
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#bbbcbe",
@@ -182,7 +182,7 @@
     "scoreOutlineWidth": 0
   },
   {
-    "name": "CarabaoCup",
+    "name": "Carabao Cup",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#218757",
@@ -218,79 +218,7 @@
     "scoreOutlineWidth": 1
   },
   {
-    "name": "챔피언스리그",
-    "colors": {
-      "bg": "#ff0000",
-      "boardA": "#010059",
-      "boardB": "#0137ff",
-      "scoreBg": "#ffffff",
-      "digits": "#000000",
-      "meta": "#000000",
-      "extra": "#0137ff",
-      "halfBg": "#0137ff",
-      "halfText": "#ffffff",
-      "homeBg": "#005f33",
-      "homeText": "#000000",
-      "awayBg": "#b8faff",
-      "awayText": "#002c4e",
-      "outline": "#d61cd8",
-      "pkBase": "#334155",
-      "homeOutline": "#d61cd8",
-      "awayOutline": "#d61cd8"
-    },
-    "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "hybrid",
-    "radiusMode": "round",
-    "boardWidth": 1080,
-    "homeLogoScale": 1,
-    "awayLogoScale": 1,
-    "homeOutlineEnabled": true,
-    "awayOutlineEnabled": true,
-    "homeOutlineWidth": 2,
-    "awayOutlineWidth": 2,
-    "boardOutlineEnabled": true,
-    "scoreOutlineEnabled": true,
-    "boardOutlineWidth": 2,
-    "scoreOutlineWidth": 2
-  },
-  {
-    "name": "컨퍼런스리그",
-    "colors": {
-      "bg": "#ff00ff",
-      "boardA": "#000000",
-      "boardB": "#000000",
-      "scoreBg": "#ffffff",
-      "digits": "#000000",
-      "meta": "#000000",
-      "extra": "#04ba21",
-      "halfBg": "#04ba21",
-      "halfText": "#000000",
-      "homeBg": "#005f33",
-      "homeText": "#000000",
-      "awayBg": "#b8faff",
-      "awayText": "#002c4e",
-      "outline": "#04ba21",
-      "pkBase": "#334155",
-      "homeOutline": "#04ba21",
-      "awayOutline": "#04ba21"
-    },
-    "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "hybrid",
-    "radiusMode": "round",
-    "boardWidth": 1080,
-    "homeLogoScale": 1,
-    "awayLogoScale": 1,
-    "homeOutlineEnabled": true,
-    "awayOutlineEnabled": true,
-    "homeOutlineWidth": 2,
-    "awayOutlineWidth": 2,
-    "boardOutlineEnabled": true,
-    "scoreOutlineEnabled": true,
-    "boardOutlineWidth": 2,
-    "scoreOutlineWidth": 2
-  },
-  {
-    "name": "CopaDelRey",
+    "name": "Copa Del Rey",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#1b1629",
@@ -326,7 +254,7 @@
     "scoreOutlineWidth": 1
   },
   {
-    "name": "DFBPokal",
+    "name": "DFB Pokal",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#03c18c",
@@ -362,12 +290,12 @@
     "scoreOutlineWidth": 1
   },
   {
-    "name": "EFL챔피언십",
+    "name": "EFL Championship",
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ffffff",
       "boardB": "#ffffff",
-      "scoreBg": "#baa045",
+      "scoreBg": "#b79c3e",
       "digits": "#ffffff",
       "meta": "#ffffff",
       "extra": "#ffffff",
@@ -381,6 +309,46 @@
       "pkBase": "#334155",
       "homeOutline": "#b79c3e",
       "awayOutline": "#b79c3e",
+      "noteText": "#e5e7eb",
+      "noteStroke": "#000000"
+    },
+    "_fontFamily": "Ubuntu, HUMidnight140",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 1,
+    "awayOutlineWidth": 1,
+    "boardOutlineEnabled": true,
+    "scoreOutlineEnabled": false,
+    "boardOutlineWidth": 2,
+    "scoreOutlineWidth": 1,
+    "noteEnabled": true,
+    "noteFontSize": 20
+  },
+  {
+    "name": "EFL League One",
+    "colors": {
+      "bg": "#ff00e1",
+      "boardA": "#ffffff",
+      "boardB": "#ffffff",
+      "scoreBg": "#8e8f8f",
+      "digits": "#ffffff",
+      "meta": "#ffffff",
+      "extra": "#ffffff",
+      "halfBg": "#ffffff",
+      "halfText": "#8e8f8f",
+      "homeBg": "#0e5ca6",
+      "homeText": "#fdbf09",
+      "awayBg": "#ee1338",
+      "awayText": "#322917",
+      "outline": "#8e8f8f",
+      "pkBase": "#334155",
+      "homeOutline": "#8e8f8f",
+      "awayOutline": "#8e8f8f",
       "noteText": "#e5e7eb",
       "noteStroke": "#000000"
     },
@@ -474,43 +442,7 @@
     "scoreOutlineWidth": 1
   },
   {
-    "name": "유로파리그",
-    "colors": {
-      "bg": "#ff00ff",
-      "boardA": "#000000",
-      "boardB": "#000000",
-      "scoreBg": "#ffffff",
-      "digits": "#000000",
-      "meta": "#000000",
-      "extra": "#ff6e00",
-      "halfBg": "#ff6e00",
-      "halfText": "#000000",
-      "homeBg": "#005f33",
-      "homeText": "#000000",
-      "awayBg": "#b8faff",
-      "awayText": "#002c4e",
-      "outline": "#ff6e00",
-      "pkBase": "#334155",
-      "homeOutline": "#ff6e00",
-      "awayOutline": "#ff6e00"
-    },
-    "_fontFamily": "Ubuntu, HUMidnight140",
-    "logoAlign": "hybrid",
-    "radiusMode": "round",
-    "boardWidth": 1080,
-    "homeLogoScale": 1,
-    "awayLogoScale": 1,
-    "homeOutlineEnabled": true,
-    "awayOutlineEnabled": true,
-    "homeOutlineWidth": 2,
-    "awayOutlineWidth": 2,
-    "boardOutlineEnabled": true,
-    "scoreOutlineEnabled": true,
-    "boardOutlineWidth": 2,
-    "scoreOutlineWidth": 2
-  },
-  {
-    "name": "FACup",
+    "name": "FA Cup",
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#e81b24",
@@ -639,8 +571,8 @@
       "awayText": "#000000",
       "outline": "#eb0029",
       "pkBase": "#ffffff",
-      "homeOutline": "#ffffff",
-      "awayOutline": "#ffffff",
+      "homeOutline": "#000000",
+      "awayOutline": "#000000",
       "noteText": "#e5e7eb",
       "noteStroke": "#000000"
     },
@@ -702,7 +634,7 @@
     "noteFontSize": 20
   },
   {
-    "name": "KLeague",
+    "name": "K League",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#011d45",
@@ -738,7 +670,7 @@
     "scoreOutlineWidth": 1
   },
   {
-    "name": "KoreanCup",
+    "name": "Korean Cup",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#02115e",
@@ -774,7 +706,7 @@
     "scoreOutlineWidth": 1
   },
   {
-    "name": "라리가",
+    "name": "La Liga",
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ff4b44",
@@ -814,7 +746,7 @@
     "noteFontSize": 20
   },
   {
-    "name": "리그앙",
+    "name": "Ligue 1",
     "colors": {
       "bg": "#00ff00",
       "boardA": "#085fff",
@@ -850,7 +782,47 @@
     "scoreOutlineWidth": 2
   },
   {
-    "name": "RPL",
+    "name": "Romania Liga I",
+    "colors": {
+      "bg": "#ff00ff",
+      "boardA": "#ffffff",
+      "boardB": "#ffffff",
+      "scoreBg": "#e1081f",
+      "digits": "#ffffff",
+      "meta": "#ffffff",
+      "extra": "#ffffff",
+      "halfBg": "#ffffff",
+      "halfText": "#e1081f",
+      "homeBg": "#8c0d5d",
+      "homeText": "#ffffff",
+      "awayBg": "#002aff",
+      "awayText": "#ffffff",
+      "outline": "#ffffff",
+      "pkBase": "#334155",
+      "homeOutline": "#ffffff",
+      "awayOutline": "#ffffff",
+      "noteText": "#e5e7eb",
+      "noteStroke": "#000000"
+    },
+    "_fontFamily": "'Ubuntu','HUMidnight140'",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 1,
+    "awayOutlineWidth": 1,
+    "boardOutlineEnabled": false,
+    "scoreOutlineEnabled": false,
+    "boardOutlineWidth": 1,
+    "scoreOutlineWidth": 1,
+    "noteEnabled": true,
+    "noteFontSize": 20
+  },
+  {
+    "name": "Russian Premier League",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#03194b",
@@ -890,47 +862,7 @@
     "noteFontSize": 20
   },
   {
-    "name": "Romania Liga I",
-    "colors": {
-      "bg": "#ff00ff",
-      "boardA": "#ffffff",
-      "boardB": "#ffffff",
-      "scoreBg": "#e1081f",
-      "digits": "#ffffff",
-      "meta": "#ffffff",
-      "extra": "#ffffff",
-      "halfBg": "#ffffff",
-      "halfText": "#e1081f",
-      "homeBg": "#8c0d5d",
-      "homeText": "#ffffff",
-      "awayBg": "#002aff",
-      "awayText": "#ffffff",
-      "outline": "#ffffff",
-      "pkBase": "#334155",
-      "homeOutline": "#ffffff",
-      "awayOutline": "#ffffff",
-      "noteText": "#e5e7eb",
-      "noteStroke": "#000000"
-    },
-    "_fontFamily": "'Ubuntu','HUMidnight140'",
-    "logoAlign": "hybrid",
-    "radiusMode": "round",
-    "boardWidth": 720,
-    "homeLogoScale": 1,
-    "awayLogoScale": 1,
-    "homeOutlineEnabled": true,
-    "awayOutlineEnabled": true,
-    "homeOutlineWidth": 1,
-    "awayOutlineWidth": 1,
-    "boardOutlineEnabled": false,
-    "scoreOutlineEnabled": false,
-    "boardOutlineWidth": 1,
-    "scoreOutlineWidth": 1,
-    "noteEnabled": true,
-    "noteFontSize": 20
-  },
-  {
-    "name": "SPFL",
+    "name": "Scottish Premiership",
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ffffff",
@@ -970,7 +902,7 @@
     "noteFontSize": 20
   },
   {
-    "name": "SerieA",
+    "name": "Serie A",
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#18208c",
@@ -1047,7 +979,7 @@
     "noteMinHeight": 56
   },
   {
-    "name": "U23AsianCup",
+    "name": "U-23 Asian Cup",
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#14713d",
@@ -1086,6 +1018,114 @@
     "noteBorderWidth": 1,
     "noteFontSize": 20,
     "noteMinHeight": 56
+  },
+  {
+    "name": "UEFA Champions League",
+    "colors": {
+      "bg": "#ff0000",
+      "boardA": "#010059",
+      "boardB": "#0137ff",
+      "scoreBg": "#ffffff",
+      "digits": "#000000",
+      "meta": "#000000",
+      "extra": "#0137ff",
+      "halfBg": "#0137ff",
+      "halfText": "#ffffff",
+      "homeBg": "#005f33",
+      "homeText": "#000000",
+      "awayBg": "#b8faff",
+      "awayText": "#002c4e",
+      "outline": "#d61cd8",
+      "pkBase": "#334155",
+      "homeOutline": "#d61cd8",
+      "awayOutline": "#d61cd8"
+    },
+    "_fontFamily": "Ubuntu, HUMidnight140",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 2,
+    "awayOutlineWidth": 2,
+    "boardOutlineEnabled": true,
+    "scoreOutlineEnabled": true,
+    "boardOutlineWidth": 2,
+    "scoreOutlineWidth": 2
+  },
+  {
+    "name": "UEFA Conference League",
+    "colors": {
+      "bg": "#ff00ff",
+      "boardA": "#000000",
+      "boardB": "#000000",
+      "scoreBg": "#ffffff",
+      "digits": "#000000",
+      "meta": "#000000",
+      "extra": "#04ba21",
+      "halfBg": "#04ba21",
+      "halfText": "#000000",
+      "homeBg": "#005f33",
+      "homeText": "#000000",
+      "awayBg": "#b8faff",
+      "awayText": "#002c4e",
+      "outline": "#04ba21",
+      "pkBase": "#334155",
+      "homeOutline": "#04ba21",
+      "awayOutline": "#04ba21"
+    },
+    "_fontFamily": "Ubuntu, HUMidnight140",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 2,
+    "awayOutlineWidth": 2,
+    "boardOutlineEnabled": true,
+    "scoreOutlineEnabled": true,
+    "boardOutlineWidth": 2,
+    "scoreOutlineWidth": 2
+  },
+  {
+    "name": "UEFA Europa League",
+    "colors": {
+      "bg": "#ff00ff",
+      "boardA": "#000000",
+      "boardB": "#000000",
+      "scoreBg": "#ffffff",
+      "digits": "#000000",
+      "meta": "#000000",
+      "extra": "#ff6e00",
+      "halfBg": "#ff6e00",
+      "halfText": "#000000",
+      "homeBg": "#005f33",
+      "homeText": "#000000",
+      "awayBg": "#b8faff",
+      "awayText": "#002c4e",
+      "outline": "#ff6e00",
+      "pkBase": "#334155",
+      "homeOutline": "#ff6e00",
+      "awayOutline": "#ff6e00"
+    },
+    "_fontFamily": "Ubuntu, HUMidnight140",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 2,
+    "awayOutlineWidth": 2,
+    "boardOutlineEnabled": true,
+    "scoreOutlineEnabled": true,
+    "boardOutlineWidth": 2,
+    "scoreOutlineWidth": 2
   },
   {
     "name": "Women's Asian Cup",

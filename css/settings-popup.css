@@ -113,6 +113,14 @@
   padding-top: 14px;
   border-top: 1px dashed rgba(255,255,255,.10);
 }
+[data-sp-tab-section].sp-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+[data-sp-tab-section][hidden] {
+  display: none !important;
+}
 .sp-section-title {
   font-size: 11px;
   font-weight: 800;
@@ -303,9 +311,9 @@
 .sp-tabs {
   display: flex;
   gap: 4px;
-  padding: 0 0 10px;
-  margin: 0 0 6px;
-  border-bottom: 1px solid rgba(255,255,255,.10);
+  padding: 0 0 4px;
+  margin: 0 0 10px;
+  border-bottom: none;
   flex-wrap: wrap;
 }
 .sp-tab {

@@ -297,9 +297,14 @@
         </div>
         <!-- 캠 -->
         <div class="lp lp-cam-big"><div class="lp-label">캠 및 채팅창</div></div>
-        <!-- 채팅창 placeholder + 경기 스탯 — 캠 큼 페이지의 lp-col은 채팅(상)/스탯(하) 두 슬롯으로 분할. -->
+        <!-- 팬 반응 + 경기 스탯 — 캠 큼 페이지의 lp-col은 팬 반응(상)/스탯(하) 두 슬롯으로 분할.
+             팬 반응은 dp-panel + dp-title 구조로 경기 스탯과 동일하게 맨 윗줄에 제목 + 구분선. -->
         <div class="lp-col">
-          <div class="lp lp-chat-big"><div class="lp-label">채팅창</div></div>
+          <div class="lp lp-chat-big">
+            <div class="dp-panel">
+              <div class="dp-title">팬 반응</div>
+            </div>
+          </div>
           <div class="lp lp-stat"><div data-stat-panel></div></div>
         </div>
       </div>
@@ -374,8 +379,12 @@
           </div>
         </div>
 
-        <!-- 캠 및 채팅창 -->
-        <div class="lp lp-cam-chat"><div class="lp-label">캠 및 채팅창</div></div>
+        <!-- 팬 반응 — 캠 큼 페이지 lp-chat-big과 동일하게 dp-panel + dp-title 구조로 윗줄 제목 + 구분선. -->
+        <div class="lp lp-cam-chat">
+          <div class="dp-panel">
+            <div class="dp-title">팬 반응</div>
+          </div>
+        </div>
       </div>
     </div>
     <!-- THEME (컨트롤 패널) -->
@@ -460,7 +469,7 @@
         <div class="theme-inline-section"><div class="section-title">레드카드 위치</div><div class="prow"><div class="pgroup"><label>레드카드 크기/간격(px)</label><div class="prow"><input id="rcSize" type="number" min="6" max="40" step="1" value="14" /><input id="rcGap" type="number" min="0" max="20" step="1" value="6" /></div><small>기본: 크기 14, 간격 6</small></div><div class="pgroup"><label>레드카드 위치(px)</label><div class="prow"><label class="prow" style="gap:6px;">위쪽<input id="rcTop" type="number" step="1" value="-25" style="width:60px;"></label><label class="prow" style="gap:6px;">홈 안쪽<input id="rcHomeInset" type="number" step="1" value="6" style="width:60px;"></label><label class="prow" style="gap:6px;">원정 안쪽<input id="rcAwayInset" type="number" step="1" value="6" style="width:60px;"></label></div><small>기본값: 위쪽 -25, 안쪽 6</small></div></div></div>
       </div>
       <!-- ─── 템플릿 ─── -->
-      <div><div class="section-title">템플릿</div><div class="prow"><div class="pgroup"><label>저장된 템플릿</label><div class="prow"><select id="templateSelect" style="min-width:180px"></select><input id="templateName" type="text" placeholder="예: 프리미어리그" /><button id="saveTemplate" class="primary">로컬에 저장</button><button id="deleteTemplate" class="ghost">삭제</button><button id="exportTemplates">내보내기(JSON)</button><div class="theme-file-upload"><span class="theme-file-caption">불러오기</span><input id="importTemplates" type="file" accept="application/json" class="file template-import-file" /></div></div><small>브라우저 LocalStorage + JSON 내보내기/불러오기</small></div></div></div>
+      <div><div class="section-title">템플릿</div><div class="prow"><div class="pgroup"><label>저장된 템플릿</label><div class="prow"><select id="templateSelect" style="min-width:180px"></select><input id="templateName" type="text" placeholder="예: 프리미어리그" /><button id="saveTemplate" class="primary">로컬에 저장</button><button id="deleteTemplate" class="ghost">삭제</button><button id="resetTemplates" class="ghost">초기화</button><button id="exportTemplates">내보내기(JSON)</button><div class="theme-file-upload"><span class="theme-file-caption">불러오기</span><input id="importTemplates" type="file" accept="application/json" class="file template-import-file" /></div></div><small>기본 템플릿(Lists.json) + 브라우저 LocalStorage 오버라이드 + JSON 내보내기/불러오기</small></div></div></div>
       <!-- ─── 폰트 ─── -->
       <div><div class="section-title">폰트</div><div class="prow"><div class="pgroup"><label>프리셋</label><select id="fontPreset"><option value="">직접 입력 / 사용자 지정</option><optgroup label="기본 / 시스템"><option value="'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">기본값</option><option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif">시스템 기본</option><option value="'Segoe UI', 'Malgun Gothic', Arial, sans-serif">Segoe UI + 맑은 고딕</option><option value="'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">맑은 고딕</option><option value="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">Apple SD Gothic Neo</option><option value="'Arial', Helvetica, sans-serif">Arial</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option><option value="'Tahoma', Geneva, sans-serif">Tahoma</option><option value="'Verdana', Geneva, sans-serif">Verdana</option><option value="'Trebuchet MS', Helvetica, sans-serif">Trebuchet MS</option></optgroup><optgroup label="웹 폰트"><option value="'Ubuntu', sans-serif">Ubuntu</option><option value="'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">Nanum Barun Gothic</option><option value="'Roboto', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">Roboto</option><option value="'Noto Sans KR', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">Noto Sans KR</option><option value="'Montserrat', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap">Montserrat</option><option value="'Bebas Neue', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">Bebas Neue</option></optgroup><optgroup label="세리프 / 모노 / 디스플레이"><option value="'Georgia', 'Times New Roman', serif">Georgia</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Courier New', Courier, monospace">Courier New</option><option value="'Consolas', 'Courier New', monospace">Consolas</option><option value="'Impact', 'Arial Black', sans-serif">Impact</option><option value="sans-serif">sans-serif</option><option value="serif">serif</option><option value="monospace">monospace</option></optgroup></select></div><div class="pgroup"><label>기기에 설치된 폰트 (권한 필요)</label><div class="prow"><button id="askLocalFonts">설치 폰트 찾기</button><select id="systemFonts" style="min-width:200px"></select></div></div><div class="pgroup"><label>폰트 파일 업로드 (.ttf/.otf/.woff/.woff2)</label><input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" class="file" /></div><div class="pgroup" style="min-width:340px"><label>커스텀 폰트 CSS URL (Google Fonts 등)</label><input id="fontCssUrl" type="text" placeholder="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" /></div><div class="pgroup"><label>폰트 패밀리</label><input id="fontFamily" type="text" placeholder="'Montserrat', sans-serif" /></div><div class="pgroup"><label style="visibility:hidden">폰트 적용</label><button id="applyFont" class="primary">폰트 적용</button></div><div class="pgroup"><label style="visibility:hidden">폰트 초기화</label><button id="resetFont">폰트 초기화</button></div></div></div>
     </div><!-- /theme-panel-inner -->

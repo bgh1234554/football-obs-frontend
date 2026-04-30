@@ -24,7 +24,7 @@
   "_fontFamily": "'Ubuntu','HUMidnight140'",
   "logoAlign": "hybrid",
   "radiusMode": "round",
-  "boardWidth": 720,
+  "boardWidth": 1080,
   "homeLogoScale": 1,
   "awayLogoScale": 1,
   "homeOutlineEnabled": true,
@@ -36,5 +36,5 @@
   "boardOutlineWidth": 1,
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }
