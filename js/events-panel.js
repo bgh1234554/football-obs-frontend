@@ -23,6 +23,15 @@ function evDetailIs(detail, target) {
   return String(detail || '').trim().toLowerCase() === String(target || '').trim().toLowerCase();
 }
 
+function evVarDetailKey(detail) {
+  const normalized = String(detail || '').trim().toLowerCase();
+  if (normalized === 'goal cancelled' || normalized === 'goal canceled') return 'goal-cancel';
+  if (normalized === 'penalty cancelled' || normalized === 'penalty canceled') return 'penalty-cancel';
+  if (normalized === 'goal confirmed') return 'goal-confirm';
+  if (normalized === 'penalty confirmed') return 'penalty-confirm';
+  return '';
+}
+
 /** 이벤트 표시 시간 — extra가 있으면 "{elapsed}+{extra}'", 없으면 "{elapsed}'". */
 function evFormatTime(ev) {
   const elapsed = Number(ev.elapsed ?? 0);
@@ -33,6 +42,11 @@ function evFormatTime(ev) {
 /** detail/type 한글 라벨. 라벨은 색상 막대 옆 짧은 종류 표시용. */
 function evLabelKo(ev) {
   const detail = ev._displayDetail || ev.detail || '';
+  const varDetailKey = evTypeIs(ev, 'Var') ? evVarDetailKey(detail) : '';
+  if (varDetailKey === 'goal-cancel') return 'VAR 골 취소';
+  if (varDetailKey === 'penalty-cancel') return 'VAR PK 취소';
+  if (varDetailKey === 'goal-confirm') return 'VAR 골 선언';
+  if (varDetailKey === 'penalty-confirm') return 'VAR PK 선언';
   if (evTypeIs(ev, 'Goal')) {
     if (evDetailIs(detail, 'Missed Penalty')) return 'PK 실축';
     if (evDetailIs(detail, 'Own Goal')) return '자책골';
@@ -57,6 +71,13 @@ function evLabelKo(ev) {
 /** 이벤트 종류 → { color, icon } 매핑. CSS에서 ev-bar-{color}, ev-icon-{icon} 스타일 사용. */
 function evStyle(ev) {
   const detail = ev._displayDetail || ev.detail || '';
+  const varDetailKey = evTypeIs(ev, 'Var') ? evVarDetailKey(detail) : '';
+  if (varDetailKey === 'goal-cancel' || varDetailKey === 'penalty-cancel') {
+    return { color: 'orange', icon: 'var-cancel' };
+  }
+  if (varDetailKey === 'goal-confirm' || varDetailKey === 'penalty-confirm') {
+    return { color: 'white', icon: 'var-confirm' };
+  }
   if (evTypeIs(ev, 'Goal')) {
     if (evDetailIs(detail, 'Missed Penalty')) return { color: 'orange', icon: 'pk-miss' };
     if (evDetailIs(detail, 'Own Goal')) return { color: 'blue', icon: 'own-goal' };

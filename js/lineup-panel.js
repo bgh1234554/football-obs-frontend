@@ -1103,9 +1103,9 @@ function resetLineupNameWrapOffset(nameEl) {
 function getLineupNamePitchOverflow(nameEl, paddingPx = LINEUP_NAME_PITCH_PADDING_PX) {
   const wrap = getLineupNameWrap(nameEl);
   const pitch = wrap?.closest('.dp-lineup-vertical-pitch');
-  if (!wrap || !pitch || !canMeasureTextElement(wrap) || !canMeasureTextElement(pitch)) return null;
+  if (!wrap || !pitch || !canMeasureTextElement(nameEl) || !canMeasureTextElement(pitch)) return null;
 
-  const wrapRect = wrap.getBoundingClientRect();
+  const wrapRect = nameEl.getBoundingClientRect();
   const pitchRect = pitch.getBoundingClientRect();
   return {
     left: Math.max(0, (pitchRect.left + paddingPx) - wrapRect.left),

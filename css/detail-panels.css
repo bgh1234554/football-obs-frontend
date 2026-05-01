@@ -530,14 +530,14 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   width: calc(44px * var(--lp-node-scale, 1));
   height: calc(44px * var(--lp-node-scale, 1));
 }
-/* 이름 pill — 폰트는 base var × nodeScale, 패딩/border-radius도 같이 축소 */
+/* 이름 pill — 축소 시 폭/패딩은 줄이되, 폰트는 base 크기를 유지하고 실제 충돌 시 JS가 별도로 축소 */
 .layout-big .lp-lineup .dp-lineup-name {
-  font-size: calc(var(--lp-name-base-size, 12px) * var(--lp-node-scale, 1));
+  font-size: var(--lp-name-base-size, 12px);
   padding: calc(2px * var(--lp-node-scale, 1)) calc(6px * var(--lp-node-scale, 1));
   border-radius: calc(4px * var(--lp-node-scale, 1));
 }
 .layout-big .lp-lineup .dp-mode-long .dp-lineup-name {
-  font-size: calc(var(--lp-name-base-size, 12px) * var(--lp-node-scale, 1));
+  font-size: var(--lp-name-base-size, 12px);
 }
 
 /* 팀 chip(상단 home / 하단 away의 "팀명 + 포메이션" 패널) — 라인업 패널 축소 시 함께 축소 */
