@@ -1,5 +1,6 @@
 {
   "name": "EFL League One",
+  "leagueId": 41,
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#ffffff",

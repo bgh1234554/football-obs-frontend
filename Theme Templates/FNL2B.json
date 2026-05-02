@@ -1,5 +1,6 @@
 {
   "name": "FNL2B",
+  "leagueId": [650,651,652,653],
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#eb0029",

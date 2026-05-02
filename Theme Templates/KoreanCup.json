@@ -1,5 +1,6 @@
 {
   "name": "Korean Cup",
+  "leagueId": 294,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#02115e",

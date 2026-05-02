@@ -1,5 +1,6 @@
 {
   "name": "Scottish Premiership",
+  "leagueId": [179,180,183,184],
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#ffffff",

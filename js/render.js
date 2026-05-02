@@ -355,7 +355,7 @@
     target.addEventListener('animationend', () => target.classList.remove('flash-update'), { once: true });
   }
   // 외부(fixture.js)에서 호출용. side: 'home'|'away'
-  window.flashScore = side => flashElement(side === 'home' ? el.homeScore : el.awayScore);
+  window.flashScore = side => flashElement(side === 'away' ? el.awayScore : el.homeScore);
   window.flashNote  = side => flashElement(side === 'home' ? el.homeNoteSide : el.awayNoteSide);
 
   function clearPkState() {

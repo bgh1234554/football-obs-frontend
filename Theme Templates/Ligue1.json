@@ -1,5 +1,6 @@
 {
   "name": "Ligue 1",
+  "leagueId": 61,
   "colors": {
     "bg": "#00ff00",
     "boardA": "#085fff",

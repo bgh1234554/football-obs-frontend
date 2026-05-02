@@ -12,7 +12,7 @@ const SETTINGS_DEFAULTS = {
   lineup: 'short',
   scorer: 'long',
   roster: 'short',
-  lineupNode: 'number',
+  lineupNode: 'photo',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
@@ -22,12 +22,22 @@ const SETTINGS_DEFAULTS = {
   teamLogo: 'logo',
   // '메인에 표시' 버튼 클릭 시 자동 이동할 페이지: 'big'(캠 큼) / 'small'(캠 작음 = /detail).
   mainPage: 'big',
+  fanReaction: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'off',
   statsAutoSwipeSec: 5,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
-  event: 'short',
+  event: 'long',
   eventNameSize: 15,
+  // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
+  // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
+  // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
+  subReflect: 'on',
+  // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
+  lineupShowGoals: 'on',     // 골/어시스트 이모티콘
+  lineupShowCards: 'on',     // 옐로/레드 카드
+  lineupShowRating: 'off',   // 평점 박스
+  lineupShowSubTime: 'off',  // 교체 IN 시간(72' 등)
 };
 
 const EVENT_NAME_SIZE_MIN = 10;
@@ -42,11 +52,34 @@ const LINEUP_NAME_SIZE_MAX = 16;
 
 const settingsState = { ...SETTINGS_DEFAULTS };
 
+function syncAllSettingsUi() {
+  Object.keys(SETTINGS_DEFAULTS).forEach(category => {
+    syncSwitchUi(category);
+    syncSliderUi(category);
+    syncNumberUi(category);
+  });
+}
+
+function emitSettingsChange(category) {
+  const value = getSetting(category);
+  document.dispatchEvent(new CustomEvent('settings:change', {
+    detail: { category, value, mode: value }
+  }));
+}
+
 function isValidSetting(category, value) {
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
   if (category === 'teamLogo') return value === 'logo' || value === 'fa';
   if (category === 'mainPage') return value === 'big' || value === 'small';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
+  if (category === 'subReflect'
+    || category === 'fanReaction'
+    || category === 'lineupShowGoals'
+    || category === 'lineupShowCards'
+    || category === 'lineupShowRating'
+    || category === 'lineupShowSubTime') {
+    return value === 'on' || value === 'off';
+  }
   if (category === 'statsAutoSwipeSec') {
     return Number.isFinite(value) && value >= STATS_SWIPE_SEC_MIN && value <= STATS_SWIPE_SEC_MAX;
   }
@@ -109,9 +142,53 @@ function setSetting(category, value) {
   syncSwitchUi(category);
   syncSliderUi(category);
   if (category === 'lineupScale' || category === 'lineupNameSize') applyLayoutSettings();
+  // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
+  if (category === 'fanReaction'
+    || category === 'lineupShowGoals' || category === 'lineupShowCards'
+    || category === 'lineupShowRating' || category === 'lineupShowSubTime') {
+    applyLayoutSettings();
+  }
   document.dispatchEvent(new CustomEvent('settings:change', {
     detail: { category, value, mode: value }
   }));
+}
+
+function resetSettingsToDefaults() {
+  const changedCategories = Object.keys(SETTINGS_DEFAULTS)
+    .filter(category => settingsState[category] !== SETTINGS_DEFAULTS[category]);
+
+  if (!changedCategories.length) {
+    if (typeof showToast === 'function') showToast('이미 기본 설정입니다');
+    return;
+  }
+
+  Object.keys(settingsState).forEach(category => { delete settingsState[category]; });
+  Object.assign(settingsState, SETTINGS_DEFAULTS);
+
+  try { localStorage.removeItem(SETTINGS_STORAGE_KEY); } catch {}
+
+  syncAllSettingsUi();
+  applyLayoutSettings();
+  changedCategories.forEach(emitSettingsChange);
+
+  if (typeof showToast === 'function') showToast('설정을 기본값으로 초기화했습니다');
+}
+
+function clearAppCaches() {
+  if (typeof resetFixtureDrivenState === 'function') {
+    resetFixtureDrivenState({
+      clearFixtureId: true,
+      clearCache: true,
+      statusMessage: '경기 캐시 초기화 완료'
+    });
+  } else {
+    try { sessionStorage.removeItem('cached_fixture_data'); } catch {}
+    try { localStorage.removeItem('cached_fixture_data'); } catch {}
+  }
+
+  try { localStorage.removeItem('last_fixture_id'); } catch {}
+
+  if (typeof showToast === 'function') showToast('캐시를 초기화했습니다');
 }
 
 // 라인업 관련 CSS 변수를 document root에 일괄 반영.
@@ -126,6 +203,15 @@ function applyLayoutSettings() {
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
+  // Iter 5-3: per-feature 토글 → body 클래스. CSS에서 .layout-big에서만 적용해 큰 캠 숨김.
+  const body = document.body;
+  if (body) {
+    body.classList.toggle('no-fan-reaction', getSetting('fanReaction') !== 'on');
+    body.classList.toggle('no-lineup-goals',   getSetting('lineupShowGoals')   !== 'on');
+    body.classList.toggle('no-lineup-cards',   getSetting('lineupShowCards')   !== 'on');
+    body.classList.toggle('no-lineup-rating',  getSetting('lineupShowRating')  !== 'on');
+    body.classList.toggle('no-lineup-subtime', getSetting('lineupShowSubTime') !== 'on');
+  }
   // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-panel.js의 fit 함수)
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
@@ -184,6 +270,14 @@ function getSwitchSides(category) {
   if (category === 'teamLogo') return { off: 'logo', on: 'fa' };
   if (category === 'mainPage') return { off: 'big', on: 'small' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
+  if (category === 'subReflect'
+    || category === 'fanReaction'
+    || category === 'lineupShowGoals'
+    || category === 'lineupShowCards'
+    || category === 'lineupShowRating'
+    || category === 'lineupShowSubTime') {
+    return { off: 'off', on: 'on' };
+  }
   return { off: 'short', on: 'long' };
 }
 
@@ -283,6 +377,8 @@ function initSettingsPopup() {
   const gearBtn = document.getElementById('settingsGearBtn');
   const closeBtn = document.getElementById('settingsCloseBtn');
   const backdrop = document.getElementById('settingsBackdrop');
+  const settingsResetBtn = document.getElementById('settingsResetBtn');
+  const cacheResetBtn = document.getElementById('cacheResetBtn');
 
   initSettingsTabs();
   syncSettingsTabSectionHeights();
@@ -335,6 +431,20 @@ function initSettingsPopup() {
     input.addEventListener('change', handler);
     input.addEventListener('input', handler);
   });
+
+  if (settingsResetBtn) {
+    settingsResetBtn.addEventListener('click', () => {
+      if (!confirm('저장된 설정을 기본값으로 초기화할까요?')) return;
+      resetSettingsToDefaults();
+    });
+  }
+
+  if (cacheResetBtn) {
+    cacheResetBtn.addEventListener('click', () => {
+      if (!confirm('경기 캐시와 최근 경기 ID를 초기화할까요?')) return;
+      clearAppCaches();
+    });
+  }
 }
 
 // 스크립트 로드 시 즉시 settingsState를 채워둔다. fixture.js가 sessionStorage에서 데이터

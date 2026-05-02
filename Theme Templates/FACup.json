@@ -1,5 +1,6 @@
 {
   "name": "FA Cup",
+  "leagueId": 45,
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#e81b24",

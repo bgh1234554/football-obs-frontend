@@ -64,6 +64,23 @@
     const useLong = (typeof isLongName === 'function') && isLongName('teamName');
     return useLong ? (longName || shortName) : (shortName || longName);
   }
+  function toFixtureLeagueId(value) {
+    const leagueId = Number(value);
+    return Number.isFinite(leagueId) ? leagueId : null;
+  }
+  function extractLeagueIdFromFixtureData(data) {
+    const candidates = [
+      data?.matchInfo?.leagueId,
+      data?.matchInfo?.league?.id,
+      data?.leagueId,
+      data?.league?.id,
+    ];
+    for (const candidate of candidates) {
+      const leagueId = toFixtureLeagueId(candidate);
+      if (leagueId != null) return leagueId;
+    }
+    return null;
+  }
   /** 경기 상태 텍스트를 statusEl에 표시 */
   function setStatus(msg){ if(!statusEl) return; statusEl.textContent=msg?`(${msg})`:''; }
   /** 컨테이너 엘리먼트에서 api-sports-widget의 data-game-id 속성을 읽어 반환 */
@@ -295,7 +312,7 @@
     };
 
     if (_flashSnapshot) {
-      // 변경된 항목만 깜빡임. 점수/득점자 박스 단위.
+      // 변경된 항목만 깜빡임. 점수는 숫자, 득점자는 변경된 쪽 텍스트 박스만 반응.
       if (_flashSnapshot.homeScore !== next.homeScore && typeof window.flashScore === 'function') window.flashScore('home');
       if (_flashSnapshot.awayScore !== next.awayScore && typeof window.flashScore === 'function') window.flashScore('away');
       if (_flashSnapshot.homeNote  !== next.homeNote  && typeof window.flashNote  === 'function') window.flashNote('home');
@@ -374,30 +391,32 @@
     // 2) 비정상 상태면 폴링 중단
     if (ABNORMAL_STATUSES.has(status)) return;
 
+    const scheduleRetryFromLastFixture = () => {
+      if (!_lastFixtureData) return;
+      const lastStatus = String(_lastFixtureData?.matchInfo?.status || '');
+      if (ABNORMAL_STATUSES.has(lastStatus)) return;
+      if (FT_LIKE_STATUSES.has(lastStatus)) {
+        _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
+        return;
+      }
+      if (LIVE_STATUSES_POLL.has(lastStatus) || lastStatus === 'NS') {
+        _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
+      }
+    };
+
     const wakeAndFetch = async () => {
       // 폴링 진행 중에 사용자가 다른 ID로 바꾸거나 reset한 경우 폐기
       if (_lastFetchId !== fixtureId) return;
       // silent=true → 풀스크린 로딩 오버레이 안 띄움 (시청자 화면 깜빡임 방지)
       try {
-        await fetchAndApplyFixtureData(fixtureId, { silent: true });
+        const data = await fetchAndApplyFixtureData(fixtureId, { silent: true });
+        // 성공 시에는 fetchAndApplyFixtureData 내부의 schedulePoll(data)가 다음 폴을 예약한다.
+        // 여기서 또 setTimeout을 잡으면 동일 시점에 타이머가 2개 생긴다.
+        if (!data) scheduleRetryFromLastFixture();
       } catch (e) {
         console.error('Silent poll error:', e);
-        // 오류 발생했어도 다음 폴 타이머는 반드시 재스케줄
-      } finally {
-        // 폴링 실패해도 다음 폴 재예약: wakeAndFetch 마지막에 재귀적으로 schedulePoll 호출
-        // 단, 첫 응답을 받지 못한 경우라면 _lastFixtureData가 없으므로 재스케줄 불가
-        // → 이 경우 사용자가 다시 선택하거나 마지막 성공한 응답 데이터로 이용
-        if (_lastFixtureData) {
-          // _lastFixtureData 존재 = 이전에 성공한 응답이 있음 → 그 데이터로 다음 폴 스케줄
-          const status = String(_lastFixtureData?.matchInfo?.status || '');
-          if (!ABNORMAL_STATUSES.has(status) && !FT_LIKE_STATUSES.has(status)) {
-            _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-          } else if (FT_LIKE_STATUSES.has(status)) {
-            _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
-          } else if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
-            _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-          }
-        }
+        // fetchAndApplyFixtureData가 내부에서 잡지 못한 예외만 여기로 온다.
+        scheduleRetryFromLastFixture();
       }
     };
 
@@ -488,9 +507,9 @@
         clearCache: true,
         statusMessage: '경기 선택 대기'
       });
-      return;
+      return null;
     }
-    if(state.manualMode){ setApiStatus('idle', '수동 모드 ON — API 적용 건너뜀'); return; }
+    if(state.manualMode){ setApiStatus('idle', '수동 모드 ON — API 적용 건너뜀'); return null; }
     // silent=true (폴링 등 자동 갱신) 시 어떤 시각적 피드백도 주지 않음 — 시청자 화면 그대로.
     //   - loading 상태 : setApiStatus 호출 스킵 (배지/오버레이 둘 다 안 바뀜)
     //   - ok 상태      : 호출하되 noOverlay — 'ok' 텍스트는 그대로 유지되고 타임스탬프만 갱신
@@ -502,14 +521,14 @@
     if (!silent) setApiStatus('loading');
     try{
       const data = await fetchFixture(normalizedFixtureId, { silent });
-      if(_lastFetchId !== requestId) return;
+      if(_lastFetchId !== requestId) return null;
       if(!data){
         resetFixtureDrivenState({
           clearFixtureId: true,
           clearCache: true,
           statusMessage: '경기 데이터 없음'
         });
-        return;
+        return null;
       }
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
@@ -529,6 +548,14 @@
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
       setFixtureId(normalizedFixtureId);
+      const leagueId = extractLeagueIdFromFixtureData(data);
+      if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
+        try {
+          await window.autoApplyTemplateByLeagueId(leagueId);
+        } catch (templateErr) {
+          console.warn('Auto template apply failed:', templateErr);
+        }
+      }
       // 벤치/부상 패널 채우기 (lineup-panel.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
@@ -548,6 +575,7 @@
       try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
       try { localStorage.removeItem('cached_fixture_data'); } catch {}  // 구버전 잔여물 정리
       try { localStorage.setItem('last_fixture_id', normalizedFixtureId); } catch {}
+      return data;
     }catch(e){
       console.error('API 오류:', e);
       // silent(폴링) 에러는 배지 그대로 두고 콘솔에만 — 시청자 화면 그대로 유지
@@ -555,6 +583,7 @@
         const msg = (e && e.code) ? `${e.code}: ${e.message}` : (e?.message || '데이터 가져오기 실패');
         setApiStatus('idle', msg);
       }
+      return null;
     }
   }
 
@@ -656,26 +685,69 @@
 
   /**
    * 득점자 텍스트 한 팀치를 만들어 반환 (\n으로 구분된 줄들).
-   * 'Missed Penalty'는 제외, 'Own Goal'/'Penalty'는 표기 추가.
+   * 'Missed Penalty'는 제외, 같은 선수가 여러 골을 넣으면 한 줄로 묶는다.
+   * 예) "24', 56' 흐비차 크바라츠헬리아", "45' (PK), 58' 우스만 뎀벨레"
    * 이름은 scorer 토글 (long/short)에 따라 선택.
    */
+  function buildScorerGroupKey(event, fallbackIndex) {
+    if (event?.playerId != null && String(event.playerId).trim() !== '') {
+      return `pid:${String(event.playerId).trim()}`;
+    }
+
+    const stableName = String(
+      event?.playerNameKoLong
+      || event?.playerName
+      || event?.nameKoLong
+      || event?.name
+      || ''
+    ).trim().toLowerCase();
+    if (stableName) return `name:${stableName}`;
+
+    return `event:${fallbackIndex}`;
+  }
+
+  function formatScorerMinute(event) {
+    const min = event?.extra ? `${event.elapsed}+${event.extra}'` : `${event.elapsed}'`;
+    if (event?.detail === 'Own Goal') return `${min} (OG)`;
+    if (event?.detail === 'Penalty') return `${min} (PK)`;
+    return min;
+  }
+
+  function normalizeScorerDisplayName(value, fallback = '') {
+    const trimmed = String(value ?? '').trim();
+    if (!trimmed || /^(null|undefined|-)$/i.test(trimmed)) return fallback;
+    return trimmed;
+  }
+
   function buildScorers(events, side){
-    return events
+    const scorerEvents = events
       .filter(e =>
         e.side === side &&
         e.type === 'Goal' &&
         e.comments !== 'Penalty Shootout' &&
-        e.detail !== 'Missed Penalty')
-      .map(e => {
-        const min = e.extra ? `${e.elapsed}+${e.extra}'` : `${e.elapsed}'`;
+        e.detail !== 'Missed Penalty');
+    const groups = [];
+    const groupMap = new Map();
+
+    scorerEvents.forEach((event, index) => {
+      const key = buildScorerGroupKey(event, index);
+      let group = groupMap.get(key);
+      if (!group) {
         // pickName은 settings-popup.js의 헬퍼 — playerName/playerNameKoLong 양쪽 지원
-        const rawName = (typeof pickName === 'function') ? pickName(e, 'scorer') : (e.playerName || '');
-        const name = String(rawName ?? '').trim() || '골';
-        // 자책골/페널티 모두 이름 뒤에 표기. 일반골은 이름만.
-        if (e.detail === 'Own Goal') return `${min} ${name} (OG)`;
-        if (e.detail === 'Penalty')  return `${min} ${name} (PK)`;
-        return `${min} ${name}`;
-      })
+        const rawName = (typeof pickName === 'function') ? pickName(event, 'scorer') : (event.playerName || '');
+        group = {
+          name: normalizeScorerDisplayName(rawName, '득점'),
+          minutes: [],
+        };
+        groupMap.set(key, group);
+        groups.push(group);
+      }
+
+      group.minutes.push(formatScorerMinute(event));
+    });
+
+    return groups
+      .map(group => `${group.minutes.join(', ')} ${group.name}`.trim())
       .join('\n');
   }
 

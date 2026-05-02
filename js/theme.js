@@ -163,6 +163,54 @@
     return mergedTemplateCache.find(t => t && t.name === name) || null;
   }
 
+  function normalizeTemplateLeagueId(value){
+    const leagueId = Number(value);
+    return Number.isFinite(leagueId) ? leagueId : null;
+  }
+
+  function templateMatchesLeagueId(templateMaybe, leagueIdMaybe){
+    if(!templateMaybe || typeof templateMaybe !== 'object') return false;
+    const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
+    if(targetLeagueId == null) return false;
+    const rawLeagueIds = Array.isArray(templateMaybe.leagueId)
+      ? templateMaybe.leagueId
+      : [templateMaybe.leagueId];
+    return rawLeagueIds.some(id => normalizeTemplateLeagueId(id) === targetLeagueId);
+  }
+
+  async function getTemplateByLeagueId(leagueIdMaybe){
+    const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
+    if(targetLeagueId == null) return null;
+
+    await loadDefaultTemplates();
+    const defaultMatch = defaultTemplateCache.find(t => templateMatchesLeagueId(t, targetLeagueId));
+    if(!defaultMatch) return null;
+
+    const mergedList = await getMergedTemplates();
+    const matchedName = String(defaultMatch?.name || '').trim();
+    if(!matchedName) return null;
+    return mergedList.find(t => t && t.name === matchedName) || defaultMatch;
+  }
+
+  async function autoApplyTemplateByLeagueId(leagueIdMaybe, options = {}){
+    const template = await getTemplateByLeagueId(leagueIdMaybe);
+    if(!template) return null;
+
+    const currentName = String(el.templateSelect?.value || '').trim();
+    if(!options.force && currentName === template.name) return template;
+
+    await loadTemplates(template.name);
+    if(el.templateSelect) el.templateSelect.value = template.name;
+    setLastSelectedTemplateName(template.name);
+    applyTemplate(template);
+    render();
+    persist();
+    return template;
+  }
+
+  window.getTemplateByLeagueId = getTemplateByLeagueId;
+  window.autoApplyTemplateByLeagueId = autoApplyTemplateByLeagueId;
+
   function resolveTemplateSaveName(nameMaybe){
     const typed = (nameMaybe||'').trim();
     if(typed) return typed;

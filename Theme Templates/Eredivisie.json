@@ -1,5 +1,6 @@
 {
   "name": "Eredivisie",
+  "leagueId": 88,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#271d67",

@@ -1,5 +1,6 @@
 {
   "name": "UEFA Champions League",
+  "leagueId": 2,
   "colors": {
     "bg": "#ff0000",
     "boardA": "#010059",

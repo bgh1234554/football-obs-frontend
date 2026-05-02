@@ -177,7 +177,7 @@
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="event" /><span class="sp-switch-slider"></span></label>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="event" checked/><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="long">ON</span>
             </div>
           </div>
@@ -207,6 +207,65 @@
               <span class="sp-slider-value">12px</span>
             </div>
           </div>
+
+          <div class="sp-section-title">교체 반영</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">교체 선수 라인업에 반영</span>
+              <span class="sp-label-sub">ON: 교체 IN 선수가 선발 자리로 올라옴 / OFF: 원래 선발 유지 + 빨강↔초록 화살표 표시</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="subReflect" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+
+          <div class="sp-section-title">캠 큼 라인업 표시 항목</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">골 / 어시스트 이모티콘</span>
+              <span class="sp-label-sub">선수 노드 옆 골/어시스트 표시 (캠 큼 페이지)</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="lineupShowGoals" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">카드</span>
+              <span class="sp-label-sub">옐로/레드 카드 마커 (캠 큼 페이지)</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="lineupShowCards" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">평점</span>
+              <span class="sp-label-sub">선수 평점 박스 (캠 큼 페이지)</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="lineupShowRating" /><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">교체 투입 시간</span>
+              <span class="sp-label-sub">교체 IN 선수의 진입 시간 표시 (캠 큼 페이지)</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="lineupShowSubTime" /><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
@@ -214,7 +273,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">이벤트 이름 크기</span>
-              <span class="sp-label-sub">이벤트 텍스트 폰트 크기 (px). 잘리면 자동으로 줄 wrap → px 축소.</span>
+              <span class="sp-label-sub">이벤트 텍스트 폰트 크기 (px). 기본 크기는 15px</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="10" max="22" step="1" data-settings-slider="eventNameSize" />
@@ -260,6 +319,19 @@
             </div>
           </div>
 
+          <div class="sp-section-title">칼럼 표시</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">팬 반응 칼럼</span>
+              <span class="sp-label-sub">팬 반응 패널 표시 여부. OFF면 큰 캠은 패널만 숨기고, 작은 캠은 칼럼을 숨김</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+
           <div class="sp-section-title">메인 페이지 이동</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -271,6 +343,11 @@
               <label class="sp-switch"><input type="checkbox" data-settings-cat="mainPage" /><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="small">캠 작음</span>
             </div>
+          </div>
+          <div class="sp-section-title">초기화</div>
+          <div class="sp-danger-actions">
+            <button type="button" class="sp-danger-btn" id="settingsResetBtn">설정 초기화</button>
+            <button type="button" class="sp-danger-btn" id="cacheResetBtn">캐시 초기화</button>
           </div>
         </div>
 
@@ -662,6 +739,7 @@
 <script src="js/tactics.js"></script>
 <script src="js/injury-reason.js"></script>
 <script src="js/settings-popup.js"></script>
+<script src="js/lineup-events.js"></script>
 <script src="js/lineup-panel.js"></script>
 <script src="js/lineup-resize.js"></script>
 <script src="js/stats-config.js"></script>

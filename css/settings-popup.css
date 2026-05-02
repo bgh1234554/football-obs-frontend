@@ -159,6 +159,40 @@
 }
 
 /* ----- iOS 스타일 토글 스위치 ----- */
+.sp-danger-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sp-danger-btn {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #c62828;
+  border-radius: 10px;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .15s, transform .15s, box-shadow .15s;
+}
+
+.sp-danger-btn:hover {
+  background: #e53935;
+  box-shadow: 0 6px 18px rgba(211,47,47,.28);
+}
+
+.sp-danger-btn:active {
+  transform: translateY(1px);
+}
+
+.sp-danger-btn:focus-visible {
+  outline: 2px solid rgba(255,255,255,.55);
+  outline-offset: 2px;
+}
+
 .sp-switch {
   flex: 0 0 auto;
   position: relative;

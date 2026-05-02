@@ -1,6 +1,7 @@
 [
   {
     "name": "2. Bundesliga",
+    "leagueId": 79,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#bbbcbe",
@@ -37,6 +38,7 @@
   },
   {
     "name": "ACL 2",
+    "leagueId": 18,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#01022d",
@@ -71,6 +73,7 @@
   },
   {
     "name": "ACL Elite",
+    "leagueId": 17,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#1b0733",
@@ -111,6 +114,7 @@
   },
   {
     "name": "AFC Challenge League",
+    "leagueId": 1132,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#f4704a",
@@ -147,6 +151,7 @@
   },
   {
     "name": "Bundesliga",
+    "leagueId": 218,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#d20514",
@@ -183,6 +188,7 @@
   },
   {
     "name": "Carabao Cup",
+    "leagueId": 48,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#218757",
@@ -219,6 +225,7 @@
   },
   {
     "name": "Copa Del Rey",
+    "leagueId": 143,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#1b1629",
@@ -255,6 +262,7 @@
   },
   {
     "name": "DFB Pokal",
+    "leagueId": 81,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#03c18c",
@@ -291,6 +299,7 @@
   },
   {
     "name": "EFL Championship",
+    "leagueId": 40,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ffffff",
@@ -331,6 +340,7 @@
   },
   {
     "name": "EFL League One",
+    "leagueId": 41,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ffffff",
@@ -371,6 +381,7 @@
   },
   {
     "name": "EPL",
+    "leagueId": 39,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#38003d",
@@ -407,6 +418,7 @@
   },
   {
     "name": "Eredivisie",
+    "leagueId": 88,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#271d67",
@@ -443,6 +455,7 @@
   },
   {
     "name": "FA Cup",
+    "leagueId": 45,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#e81b24",
@@ -479,6 +492,7 @@
   },
   {
     "name": "FNL",
+    "leagueId": 236,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#000000",
@@ -515,6 +529,10 @@
   },
   {
     "name": "FNL2A",
+    "leagueId": [
+      1025,
+      1026
+    ],
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#000000",
@@ -555,6 +573,12 @@
   },
   {
     "name": "FNL2B",
+    "leagueId": [
+      650,
+      651,
+      652,
+      653
+    ],
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#eb0029",
@@ -595,6 +619,7 @@
   },
   {
     "name": "Jupiler Pro League",
+    "leagueId": 144,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#15012a",
@@ -635,6 +660,10 @@
   },
   {
     "name": "K League",
+    "leagueId": [
+      292,
+      293
+    ],
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#011d45",
@@ -671,6 +700,7 @@
   },
   {
     "name": "Korean Cup",
+    "leagueId": 294,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#02115e",
@@ -707,6 +737,7 @@
   },
   {
     "name": "La Liga",
+    "leagueId": 140,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ff4b44",
@@ -746,7 +777,49 @@
     "noteFontSize": 20
   },
   {
+    "name": "La Liga 2",
+    "leagueId": 141,
+    "colors": {
+      "boardA": "#00d4d6",
+      "boardB": "#00d4d6",
+      "scoreBg": "#ffffff",
+      "digits": "#000000",
+      "meta": "#00d4d6",
+      "extra": "#00d4d6",
+      "halfBg": "#00d4d6",
+      "halfText": "#ffffff",
+      "homeBg": "#0e5ca6",
+      "homeText": "#fdbf09",
+      "awayBg": "#ee1338",
+      "awayText": "#322917",
+      "outline": "#ffffff",
+      "pkBase": "#334155",
+      "homeOutline": "#ffffff",
+      "awayOutline": "#ffffff",
+      "noteText": "#e5e7eb",
+      "noteStroke": "#000000",
+      "bg": "#ff00e1"
+    },
+    "fontFamily": "'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 1,
+    "awayOutlineWidth": 1,
+    "boardOutlineEnabled": true,
+    "scoreOutlineEnabled": false,
+    "boardOutlineWidth": 2,
+    "scoreOutlineWidth": 1,
+    "noteEnabled": true,
+    "noteFontSize": 20
+  },
+  {
     "name": "Ligue 1",
+    "leagueId": 61,
     "colors": {
       "bg": "#00ff00",
       "boardA": "#085fff",
@@ -782,7 +855,49 @@
     "scoreOutlineWidth": 2
   },
   {
+    "name": "MLS",
+    "leagueId": 253,
+    "colors": {
+      "boardA": "#e22221",
+      "boardB": "#132356",
+      "scoreBg": "#ffffff",
+      "digits": "#132356",
+      "meta": "#132356",
+      "extra": "#e22221",
+      "halfBg": "#132356",
+      "halfText": "#ffffff",
+      "homeBg": "#ff0000",
+      "homeText": "#ffffff",
+      "awayBg": "#0a0a0a",
+      "awayText": "#ffffff",
+      "outline": "#132356",
+      "pkBase": "#273549",
+      "homeOutline": "#132356",
+      "awayOutline": "#132356",
+      "noteText": "#e5e7eb",
+      "noteStroke": "#000000",
+      "bg": "#ff00ff"
+    },
+    "fontFamily": "'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif",
+    "logoAlign": "hybrid",
+    "radiusMode": "round",
+    "boardWidth": 1080,
+    "homeLogoScale": 1,
+    "awayLogoScale": 1,
+    "homeOutlineEnabled": true,
+    "awayOutlineEnabled": true,
+    "homeOutlineWidth": 1,
+    "awayOutlineWidth": 1,
+    "boardOutlineEnabled": true,
+    "scoreOutlineEnabled": true,
+    "boardOutlineWidth": 2,
+    "scoreOutlineWidth": 1,
+    "noteEnabled": true,
+    "noteFontSize": 20
+  },
+  {
     "name": "Romania Liga I",
+    "leagueId": 283,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#ffffff",
@@ -799,8 +914,8 @@
       "awayText": "#ffffff",
       "outline": "#ffffff",
       "pkBase": "#334155",
-      "homeOutline": "#ffffff",
-      "awayOutline": "#ffffff",
+      "homeOutline": "#e1081f",
+      "awayOutline": "#e1081f",
       "noteText": "#e5e7eb",
       "noteStroke": "#000000"
     },
@@ -823,6 +938,7 @@
   },
   {
     "name": "Russian Premier League",
+    "leagueId": 235,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#03194b",
@@ -863,6 +979,12 @@
   },
   {
     "name": "Scottish Premiership",
+    "leagueId": [
+      79,
+      80,
+      83,
+      84
+    ],
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#ffffff",
@@ -903,6 +1025,7 @@
   },
   {
     "name": "Serie A",
+    "leagueId": 135,
     "colors": {
       "bg": "#ff00e1",
       "boardA": "#18208c",
@@ -939,6 +1062,11 @@
   },
   {
     "name": "Turkish Super Lig",
+    "leagueId": [
+      203,
+      206,
+      551
+    ],
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#fc0305",
@@ -980,6 +1108,7 @@
   },
   {
     "name": "U-23 Asian Cup",
+    "leagueId": 532,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#14713d",
@@ -1021,6 +1150,7 @@
   },
   {
     "name": "UEFA Champions League",
+    "leagueId": 2,
     "colors": {
       "bg": "#ff0000",
       "boardA": "#010059",
@@ -1057,6 +1187,7 @@
   },
   {
     "name": "UEFA Conference League",
+    "leagueId": 848,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#000000",
@@ -1093,6 +1224,7 @@
   },
   {
     "name": "UEFA Europa League",
+    "leagueId": 3,
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#000000",
@@ -1129,6 +1261,10 @@
   },
   {
     "name": "Women's Asian Cup",
+    "leagueId": [
+      894,
+      897
+    ],
     "colors": {
       "bg": "#ff00ff",
       "boardA": "#511ea0",

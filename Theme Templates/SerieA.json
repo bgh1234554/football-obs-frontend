@@ -1,5 +1,6 @@
 {
   "name": "Serie A",
+  "leagueId": 135,
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#18208c",

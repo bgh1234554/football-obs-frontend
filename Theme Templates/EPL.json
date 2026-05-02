@@ -1,5 +1,6 @@
 {
   "name": "EPL",
+  "leagueId": 39,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#38003d",

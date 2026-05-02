@@ -128,6 +128,87 @@
   line-height: 1.35;
 }
 
+/* ===== Iter 5-3: 벤치/선발 리스트 행에 카드/교체/골/어시/평점 표시 ===== */
+/* 행 레이아웃: [num] [content (이름/카드/교체/골·어시 — wrap 가능)] [rating(항상 우측)]
+   content는 내부 flex-wrap으로 한 줄에 시도하다 못 들어가면 둘째 줄로 내림. */
+.dp-item-content {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  line-height: 1.35;
+}
+/* 벤치/부상 패널의 .dp-item-name이 flex:1 1 120px라 content를 가득 채우는데,
+   content 내부에서는 이름이 다른 마커들과 같은 줄에 들어가야 자연스럽다. */
+#benchPanel .dp-item-content .dp-item-name,
+#injuryPanel .dp-item-content .dp-item-name,
+.dp-item-content .dp-item-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+/* 교체 IN/OUT 마커 — 화살표 + 시간을 inline으로 묶음 */
+.dp-sub-marker {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 4px;
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dp-sub-marker.is-out {
+  color: #ff8a8a;
+  background: rgba(255,59,48,.18);
+}
+.dp-sub-marker.is-in {
+  color: #7CFC8E;
+  background: rgba(124,252,142,.18);
+}
+.dp-sub-time-text { font-weight: 700; }
+
+/* 골 / 어시 이모티콘 — 횟수만큼 반복 (한 줄 안에서 자연스럽게 wrap 가능) */
+.dp-event-icon {
+  flex: 0 0 auto;
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1;
+}
+.dp-event-icon.dp-event-assist { font-size: 11px; }
+
+/* 평점 박스 — 행의 우측 끝. flex outer에 있어 content가 wrap돼도 첫 줄 유지. */
+.dp-rating {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  margin-left: auto;
+}
+
+/* 퇴장당한 선수 — 이름은 빨간색 + 행 전체 어둡게 */
+.dp-item.is-sent-off {
+  opacity: .6;
+}
+.dp-item.is-sent-off .dp-item-name {
+  text-decoration: line-through;
+  text-decoration-color: rgba(255,107,107,.55);
+}
+
 /* ===== 선수 이름 상태별 색상 (교체/카드) ===== */
 /* 교체 들어온 선수 — 연두색 */
 .dp-item-name.is-sub-in   { color: #7CFC8E; }
@@ -465,6 +546,46 @@
   justify-content: stretch;
 }
 
+body.no-fan-reaction .layout-big .lp-chat-big,
+body.no-fan-reaction .layout-small .lp-cam-chat {
+  pointer-events: none;
+  opacity: .34;
+  filter: grayscale(1) saturate(.18);
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big .dp-panel,
+body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel {
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,.035) 0 10px,
+      rgba(255,255,255,0) 10px 20px
+    );
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big .dp-title,
+body.no-fan-reaction .layout-small .lp-cam-chat .dp-title {
+  color: rgba(255,255,255,.42);
+  border-bottom-color: rgba(255,255,255,.08);
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big .dp-panel::after,
+body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel::after {
+  content: 'OFF';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(8, 12, 18, .66);
+  color: rgba(255,255,255,.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
 /* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.
    --lp-lineup-scale: 0.5~1.0 (default 1). 비율 유지하며 height만 축소 → cam-big(flex:1)이 남는 폭 흡수.
    align-self: flex-end → 축소 시 컬럼이 아래로 정렬되어 윗 모서리에 위치한 resize handle을 위로 끌어 확장하기 자연스럽게.
@@ -721,6 +842,40 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   z-index: 1;
 }
 /* 마킹 그룹은 잔디 위, 토큰 아래 */
+.dp-lineup-league-wash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 18.18%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+}
+.dp-lineup-league-wash::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: 14px;
+  background: radial-gradient(circle at center,
+    rgba(255,255,255,.08) 0%,
+    rgba(255,255,255,.035) 38%,
+    rgba(255,255,255,0) 72%);
+  opacity: .9;
+}
+.dp-lineup-league-wash-logo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: .26;
+  filter: grayscale(.35) saturate(.9) contrast(1.12) brightness(1.08);
+}
 .dp-lineup-markings { z-index: 2; }
 /* 전체 외곽 라인 */
 .dp-lineup-markings::before {
@@ -893,6 +1048,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   display: flex;
   justify-content: center;
   width: 90px;
+  /* 원래 위치 유지 (24px). 평점 chip은 원 하단 안쪽에 걸쳐 오버랩 (이름과 안 겹침). */
   transform: translate(-50%, 24px);
   z-index: 4;
   pointer-events: none;
@@ -911,6 +1067,175 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   border: 2px solid var(--dp-node-border, rgba(255,255,255,.55));
   box-shadow: 0 2px 8px rgba(0,0,0,.5);
   font-variant-numeric: tabular-nums;
+  position: relative;
+}
+
+/* Iter 5-3: 노드 위 badge (sub-in / 골 / 어시 / 카드 / 평점) — 모두 노드 기준 absolute.
+   .dp-lineup-node 자체는 transform: translate(-50%, -50%)이므로, badge는 노드 내부의
+   상대 위치 기준이 아니라 circle/avatar의 가장자리에 맞춰 픽셀 오프셋으로 배치. */
+.dp-node-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 4;
+  white-space: nowrap;
+}
+/* 좌상단 — 교체 IN 시간 (초록). chip 중심이 원의 좌상단 corner에 위치해 원을 살짝 덮음. */
+.dp-node-sub-in {
+  top: 50%;
+  left: 0;
+  transform: translate(-75%, -50%);
+  padding: 1px 4px;
+  background: rgba(21, 83, 52, 0.95);
+  color: #33C771;
+  font-weight: 800;
+  border-radius: 6px;
+  font-size: 10px;
+  gap: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+/* 좌상단 — 교체 OUT 시간 (빨강). subReflect=OFF에서 선발 노드에 남은 OUT 선수 표시. */
+.dp-node-sub-out {
+  top: 50%;
+  left: 0;
+  transform: translate(-75%, -50%);
+  padding: 1px 4px;
+  background: rgba(255, 189, 189, 0.95);
+  color: #FF3030;
+  font-weight: 800;
+  border-radius: 6px;
+  font-size: 10px;
+  gap: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+.dp-node-sub-time { font-variant-numeric: tabular-nums; }
+/* 작은 캠 라인업은 이름 pill이 노드 바로 아래에 붙으므로,
+   교체 IN/OUT 칩을 좌상단 대신 노드의 좌측 중앙으로 빼서 겹침 방지. */
+/* 우상단 — 어시스트. badge 중심이 원의 우상단 corner 위에 오도록 (반쯤 겹침). */
+.dp-node-assist {
+  top: 50%;
+  right: 0;
+  transform: translate(35%, -50%);
+  width: 16px;
+  height: 16px;
+  font-size: 13px;
+  line-height: 1;
+  text-shadow: 0 0 2px #000, 0 0 1px #000;
+}
+.dp-node-assist .dp-node-count {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  background: #1c1d22;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  min-width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  border: 1px solid #fff;
+  text-shadow: none;
+}
+/* 우하단 — 골. 평점 chip의 하한선과 같은 높이(node_bottom - 1px)에 정렬. */
+.dp-node-goal {
+  bottom: 1px;
+  right: 0;
+  transform: translateX(35%);
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 2px #000, 0 0 1px #000;
+}
+.dp-node-goal .dp-node-count {
+  position: absolute;
+  bottom: -4px;
+  right: -6px;
+  background: #1c1d22;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  min-width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  border: 1px solid #fff;
+  text-shadow: none;
+}
+/* 좌하단 — 카드 (yellow / red / cumulative 두 장). 평점 chip의 하한선과 같은 높이(node_bottom - 1px)에 정렬. */
+.dp-node-card {
+  bottom: 1px;
+  left: 0;
+  transform: translateX(-35%);
+  display: inline-flex;
+  gap: 1px;
+  padding: 1px 2px;
+  background: rgba(0,0,0,.4);
+  border-radius: 3px;
+}
+.dp-node-card .dp-card { display: inline-block; width: 8px; height: 11px; border-radius: 1px; }
+
+/* 평점 박스 — 노드(원) 하단에 살짝 걸쳐 부착 (SofaScore 스타일 — 원의 "턱").
+   이름 라벨은 원래 위치(translateY +24px)를 유지 → 평점이 원 하단 안쪽~경계에만 머물러
+   이름과 겹치지 않게 한다.
+   - bottom: 1px → chip 하단이 원 하단 안쪽 1px (즉 원 안에 살짝 들어감)
+   - translateX(-50%) → 가로만 가운데, 세로는 원 안에 걸침
+   - z-index 5 → 노드보다 위, 이름 wrap(z 4)보다도 위 (혹시 모를 겹침에서 평점 우선) */
+.dp-node-rating {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 26px;
+  padding: 0 4px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,.55);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 1px 2px rgba(0,0,0,.55);
+  white-space: nowrap;
+}
+
+/* 퇴장 — 원/아바타 어둡게 */
+.dp-lineup-node.is-sent-off .dp-lineup-circle,
+.dp-lineup-node.is-sent-off .dp-lineup-avatar {
+  filter: brightness(.55) saturate(.6);
+}
+
+/* Iter 5-3: 캠 큼에서만 per-feature 토글로 노드 badge 숨김.
+   작은 캠(.layout-small .lp-lineup-s)은 body 클래스 무시 → 항상 표시. */
+body.no-lineup-goals   .layout-big .lp-lineup .dp-node-goal,
+body.no-lineup-goals   .layout-big .lp-lineup .dp-node-assist { display: none; }
+body.no-lineup-cards   .layout-big .lp-lineup .dp-node-card { display: none; }
+body.no-lineup-rating  .layout-big .lp-lineup .dp-node-rating { display: none; }
+body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-in,
+body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; }
+.dp-lineup-name.is-yellow {
+  color: #FFD93D;
+}
+.dp-lineup-name.is-red {
+  color: #FF6B6B;
 }
 .dp-lineup-avatar {
   width: 46px;

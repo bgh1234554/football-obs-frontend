@@ -14,6 +14,8 @@
 
 const EVENTS_PANEL_FONT_DEFAULT = 15;
 const EVENTS_PANEL_FONT_MIN = 10;
+const EVENTS_PANEL_ROW_ANIM_MS = 340;
+const EVENTS_PANEL_ROW_ENTER_OFFSET_PX = 16;
 
 function evTypeIs(ev, type) {
   return String(ev?.type || '').toLowerCase() === String(type || '').toLowerCase();
@@ -100,16 +102,22 @@ function evStyle(ev) {
 }
 
 /** 'event' 설정에 따라 풀네임/단축명 선택. assist도 동일 규칙. */
-function evPickPlayerName(ev, kind /* 'player'|'assist' */) {
+function evNormalizeDisplayName(value, fallback = '') {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed || /^(null|undefined|-)$/i.test(trimmed)) return fallback;
+  return trimmed;
+}
+
+function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
   const useLong = (typeof getSetting === 'function') && getSetting('event') === 'long';
   if (kind === 'assist') {
-    const long = ev.assistNameKoLong || '';
-    const short = ev.assistName || '';
-    return useLong ? (long || short) : (short || long);
+    const long = evNormalizeDisplayName(ev.assistNameKoLong || '');
+    const short = evNormalizeDisplayName(ev.assistName || '');
+    return evNormalizeDisplayName(useLong ? (long || short) : (short || long), fallback);
   }
-  const long = ev.playerNameKoLong || '';
-  const short = ev.playerName || '';
-  return useLong ? (long || short) : (short || long);
+  const long = evNormalizeDisplayName(ev.playerNameKoLong || '');
+  const short = evNormalizeDisplayName(ev.playerName || '');
+  return evNormalizeDisplayName(useLong ? (long || short) : (short || long), fallback);
 }
 
 /**
@@ -117,7 +125,9 @@ function evPickPlayerName(ev, kind /* 'player'|'assist' */) {
  * 교체 케이스는 evCreateRow에서 IN/OUT 두 줄로 별도 렌더(여기서 처리 X).
  */
 function evMainText(ev) {
-  const name = evPickPlayerName(ev, 'player');
+  const name = evTypeIs(ev, 'Goal')
+    ? evPickPlayerName(ev, 'player', '득점')
+    : evPickPlayerName(ev, 'player');
   if (ev.type === 'Goal') {
     const assist = evPickPlayerName(ev, 'assist');
     return assist ? `${name} (어시스트: ${assist})` : name;
@@ -188,6 +198,84 @@ function evProcess(rawEvents) {
 }
 
 /** 이벤트 종류별 placeholder 아이콘 SVG/HTML. 추후 사용자 커스텀 아이콘으로 교체 가능. */
+function evBaseEventKey(ev) {
+  const playerToken = ev?.playerId != null && String(ev.playerId).trim() !== ''
+    ? `pid:${String(ev.playerId).trim()}`
+    : `pn:${evNormalizeDisplayName(ev?.playerNameKoLong || ev?.playerName || '', '-')}`;
+  const assistToken = evNormalizeDisplayName(ev?.assistNameKoLong || ev?.assistName || '', '-');
+  return [
+    String(ev?.side || ''),
+    String(ev?.type || ''),
+    String(ev?._displayDetail || ev?.detail || ''),
+    String(ev?.comments || ''),
+    Number(ev?.elapsed ?? -1),
+    Number(ev?.extra ?? 0),
+    playerToken,
+    `assist:${assistToken}`,
+  ].join('|');
+}
+
+function evBuildRenderKeys(events) {
+  const seen = new Map();
+  return events.map(ev => {
+    const base = evBaseEventKey(ev);
+    const count = (seen.get(base) || 0) + 1;
+    seen.set(base, count);
+    return `${base}#${count}`;
+  });
+}
+
+function evCaptureRowRects(list) {
+  const rects = new Map();
+  if (!list) return rects;
+  list.querySelectorAll('.ev-row[data-ev-key]').forEach(row => {
+    rects.set(row.dataset.evKey, row.getBoundingClientRect());
+  });
+  return rects;
+}
+
+function evAnimateListInsertion(list, previousRects) {
+  if (!list || !previousRects?.size) return;
+  const rows = Array.from(list.querySelectorAll('.ev-row[data-ev-key]'));
+  const insertedRows = rows.filter(row => !previousRects.has(row.dataset.evKey));
+  if (!insertedRows.length) return;
+
+  rows.forEach(row => {
+    const prevRect = previousRects.get(row.dataset.evKey);
+    if (prevRect) {
+      const nextRect = row.getBoundingClientRect();
+      const deltaY = prevRect.top - nextRect.top;
+      if (Math.abs(deltaY) < 0.5) return;
+
+      row.style.transition = 'none';
+      row.style.transform = `translateY(${deltaY}px)`;
+      row.getBoundingClientRect();
+      row.style.transition = `transform ${EVENTS_PANEL_ROW_ANIM_MS}ms cubic-bezier(.22,.78,.2,1)`;
+      row.style.transform = 'translateY(0)';
+      setTimeout(() => {
+        row.style.transition = '';
+        row.style.transform = '';
+      }, EVENTS_PANEL_ROW_ANIM_MS + 40);
+      return;
+    }
+
+    row.classList.add('ev-row-new');
+    row.style.transition = 'none';
+    row.style.opacity = '0';
+    row.style.transform = `translateY(-${EVENTS_PANEL_ROW_ENTER_OFFSET_PX}px) scale(.985)`;
+    row.getBoundingClientRect();
+    row.style.transition = `transform ${EVENTS_PANEL_ROW_ANIM_MS}ms cubic-bezier(.22,.78,.2,1), opacity 220ms ease`;
+    row.style.opacity = '1';
+    row.style.transform = 'translateY(0) scale(1)';
+    setTimeout(() => {
+      row.style.transition = '';
+      row.style.transform = '';
+      row.style.opacity = '';
+      row.classList.remove('ev-row-new');
+    }, EVENTS_PANEL_ROW_ANIM_MS + 220);
+  });
+}
+
 function evIconHtml(iconKey) {
   // 기본 placeholder — 단순한 도형/유니코드. 추후 .ev-icon-{key} 클래스에 background-image로 커스텀 가능.
   switch (iconKey) {
@@ -206,10 +294,11 @@ function evIconHtml(iconKey) {
 }
 
 /** 한 이벤트 row의 DOM 생성. fixtureData에서 팀 로고 URL 가져옴. */
-function evCreateRow(ev, fixtureData) {
+function evCreateRow(ev, fixtureData, renderKey = '') {
   const style = evStyle(ev);
   const row = document.createElement('div');
   row.className = `ev-row ev-bar-${style.color}`;
+  if (renderKey) row.dataset.evKey = renderKey;
   if (evTypeIs(ev, 'subst')) row.classList.add('ev-row-subst');
 
   // 좌측 컬러 막대
@@ -286,7 +375,7 @@ function evCreateRow(ev, fixtureData) {
     if (assistName) {
       const primary = document.createElement('span');
       primary.className = 'ev-text-line ev-text-primary';
-      appendName(primary, evPickPlayerName(ev, 'player'));
+      appendName(primary, evPickPlayerName(ev, 'player', '득점'));
       appendInlineComment(primary);
 
       const assistLine = document.createElement('span');
@@ -297,7 +386,7 @@ function evCreateRow(ev, fixtureData) {
       stack.appendChild(assistLine);
     } else {
       // 어시스트 없는 골 — 단일 라인. 코멘트는 인라인.
-      appendName(stack, evPickPlayerName(ev, 'player'));
+      appendName(stack, evPickPlayerName(ev, 'player', '득점'));
       appendInlineComment(stack);
     }
     main.appendChild(stack);
@@ -396,12 +485,20 @@ function evFitText(row) {
  * fixture data를 받아서 이벤트 패널을 렌더링. data가 null이면 비움.
  * 호출 위치: fixture.js의 fetchAndApplyFixtureData 성공 시.
  */
-function applyEventsPanel(fixtureData) {
+function applyEventsPanel(fixtureData, options = {}) {
   // 설정 변경 시 즉시 재렌더용 캐시 (settings:change 핸들러에서 사용).
   window._eventsLastData = fixtureData;
 
   const container = document.querySelector('[data-events-panel]');
   if (!container) return;
+  const nextFixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
+  const previousFixtureId = String(container.dataset.evFixtureId || '').trim();
+  const shouldAnimate = options.animate !== false
+    && !!nextFixtureId
+    && previousFixtureId === nextFixtureId;
+  const previousRects = shouldAnimate
+    ? evCaptureRowRects(container.querySelector('.ev-list'))
+    : new Map();
 
   // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
   const title = document.createElement('div');
@@ -411,6 +508,7 @@ function applyEventsPanel(fixtureData) {
   const events = evProcess(fixtureData?.events);
   if (!events.length) {
     container.replaceChildren(title);
+    container.dataset.evFixtureId = nextFixtureId;
     const empty = document.createElement('div');
     empty.className = 'ev-empty';
     empty.textContent = '이벤트가 없습니다';
@@ -420,12 +518,17 @@ function applyEventsPanel(fixtureData) {
 
   const list = document.createElement('div');
   list.className = 'ev-list';
-  events.forEach(ev => list.appendChild(evCreateRow(ev, fixtureData)));
+  const renderKeys = evBuildRenderKeys(events);
+  events.forEach((ev, index) => list.appendChild(evCreateRow(ev, fixtureData, renderKeys[index])));
   container.replaceChildren(title, list);
+  container.dataset.evFixtureId = nextFixtureId;
 
   // 레이아웃 후 폰트 자동 축소 — getBoundingClientRect 사용 가능 시점에 호출
   requestAnimationFrame(() => {
     list.querySelectorAll('.ev-row').forEach(evFitText);
+    requestAnimationFrame(() => {
+      if (shouldAnimate) evAnimateListInsertion(list, previousRects);
+    });
   });
 }
 
@@ -438,6 +541,6 @@ document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
   if (cat !== 'event' && cat !== 'eventNameSize' && cat !== 'teamLogo') return;
   if (window._eventsLastData) {
-    window.applyEventsPanel(window._eventsLastData);
+    window.applyEventsPanel(window._eventsLastData, { animate: false });
   }
 });

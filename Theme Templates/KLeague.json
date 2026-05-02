@@ -1,5 +1,6 @@
 {
   "name": "K League",
+  "leagueId": [292,293],
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#011d45",

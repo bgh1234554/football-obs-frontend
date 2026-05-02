@@ -1,5 +1,6 @@
 {
   "name": "Women's Asian Cup",
+  "leagueId": [894,897],
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#511ea0",

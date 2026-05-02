@@ -1,5 +1,6 @@
 {
   "name": "Copa Del Rey",
+  "leagueId": 143,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#1b1629",

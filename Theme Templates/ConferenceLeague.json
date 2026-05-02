@@ -1,5 +1,6 @@
 {
   "name": "UEFA Conference League",
+  "leagueId": 848,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#000000",
