@@ -823,6 +823,20 @@ function getActiveLineupNodeMode() {
   return 'number';
 }
 
+function shouldShowLineupNameNumber() {
+  return getActiveLineupNodeMode() === 'photo';
+}
+
+function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
+  const safeName = dpEscape(name || '');
+  const rawNumber = String(player?.number ?? '').trim();
+  const showNumber = shouldShowLineupNameNumber() && rawNumber !== '';
+  const numberHtml = showNumber
+    ? `<span class="dp-lineup-name-num">${dpEscape(rawNumber)}</span>`
+    : '';
+  return `<span class="${nameClass}"${title}>${numberHtml}<span class="dp-lineup-name-text">${safeName}</span></span>`;
+}
+
 // 두 패스 렌더링 — 원/아바타와 이름 라벨을 분리해 HTML 두 덩어리로 반환.
 // 호출 측에서 모든 원을 먼저, 모든 이름을 나중에 DOM 삽입 → DOM 순서상 이름이 항상 위에 그려짐.
 // 결과: 홈/원정 양쪽 모두 이름이 인접 팀 얼굴 위로 나옴 (이전엔 home은 가려지고 away는 안 가림).
@@ -857,7 +871,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side) {
 
     // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
     circles.push(`<div class="${nodeClass}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
-    names.push(`<div class="dp-lineup-name-wrap is-${side}" style="${posStyle}"><span class="${nameClass}"${title}>${dpEscape(name)}</span></div>`);
+    names.push(`<div class="dp-lineup-name-wrap is-${side}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
   });
 
   return { circles: circles.join(''), names: names.join('') };
@@ -1165,11 +1179,41 @@ function getTextLineRects(el) {
   }
 }
 
+function getMergedTextLines(el) {
+  const rects = getTextLineRects(el)
+    .sort((a, b) => (a.top - b.top) || (a.left - b.left));
+  const lines = [];
+
+  rects.forEach(rect => {
+    const centerY = rect.top + (rect.height / 2);
+    const tolerance = Math.max(1, rect.height * 0.35);
+    const line = lines.find(item => Math.abs(item.centerY - centerY) <= tolerance);
+    if (!line) {
+      lines.push({
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+        centerY,
+      });
+      return;
+    }
+    line.top = Math.min(line.top, rect.top);
+    line.bottom = Math.max(line.bottom, rect.bottom);
+    line.left = Math.min(line.left, rect.left);
+    line.right = Math.max(line.right, rect.right);
+    line.centerY = line.top + ((line.bottom - line.top) / 2);
+  });
+
+  return lines;
+}
+
 function measureMaxTextLineWidth(el) {
-  const rects = getTextLineRects(el);
+  const rects = getMergedTextLines(el);
   let maxLineWidth = 0;
   rects.forEach(rect => {
-    if (rect.width > maxLineWidth) maxLineWidth = rect.width;
+    const width = rect.right - rect.left;
+    if (width > maxLineWidth) maxLineWidth = width;
   });
   return maxLineWidth;
 }
@@ -1196,7 +1240,7 @@ function canStayWithinTwoLineClamp(nameEl) {
 }
 
 function getRenderedTextLineCount(el) {
-  const rects = getTextLineRects(el);
+  const rects = getMergedTextLines(el);
   return rects.length || 1;
 }
 
@@ -1668,7 +1712,19 @@ function nudgeTeamChipTowardEdge(chipEl, collisionEls) {
   return changed;
 }
 
-function fitTeamChip(chipEl, collisionEls) {
+function shrinkTeamChipMainText(nameEl, formationEl) {
+  let changed = false;
+  if (shrinkTextElement(nameEl, TEAM_CHIP_NAME_MIN_FONT_PX)) changed = true;
+  if (formationEl && shrinkTextElement(formationEl, TEAM_CHIP_META_MIN_FONT_PX)) changed = true;
+  if (changed) {
+    nameEl.style.width = '';
+    if (formationEl) formationEl.style.width = '';
+  }
+  return changed;
+}
+
+function fitTeamChip(chipEl, collisionEls, options = {}) {
+  const preferShrink = options?.preferShrink === true;
   const mainEl = chipEl?.querySelector('.dp-lineup-team-main');
   const nameEl = mainEl?.querySelector('.dp-lineup-team-name');
   const formationEl = mainEl?.querySelector('.dp-lineup-team-fm');
@@ -1681,7 +1737,18 @@ function fitTeamChip(chipEl, collisionEls) {
     const buttonOverlaps = elementOverlapsAny(buttonEl, collisionEls);
     if (!mainOverlaps && !buttonOverlaps) break;
 
-    if (mainOverlaps && formationEl && !mainEl.classList.contains('is-stacked')) {
+    if (preferShrink && mainOverlaps) {
+      if (shrinkTeamChipMainText(nameEl, formationEl)) {
+        safety += 1;
+        continue;
+      }
+      if (tightenTextElementWidth(nameEl, TEAM_CHIP_NAME_MIN_WIDTH_PX, canStayWithinTwoTextLines)) {
+        safety += 1;
+        continue;
+      }
+    }
+
+    if (!preferShrink && mainOverlaps && formationEl && !mainEl.classList.contains('is-stacked')) {
       mainEl.classList.add('is-stacked');
       safety += 1;
       continue;
@@ -1698,17 +1765,16 @@ function fitTeamChip(chipEl, collisionEls) {
       continue;
     }
 
-    if (mainOverlaps && tightenTextElementWidth(nameEl, TEAM_CHIP_NAME_MIN_WIDTH_PX, canStayWithinTwoTextLines)) {
+    let changed = false;
+    if (mainOverlaps) {
+      changed = shrinkTeamChipMainText(nameEl, formationEl);
+    }
+    if (changed) {
       safety += 1;
       continue;
     }
 
-    let changed = false;
-    if (mainOverlaps) {
-      if (shrinkTextElement(nameEl, TEAM_CHIP_NAME_MIN_FONT_PX)) changed = true;
-      if (formationEl && shrinkTextElement(formationEl, TEAM_CHIP_META_MIN_FONT_PX)) changed = true;
-    }
-    if (changed) {
+    if (mainOverlaps && tightenTextElementWidth(nameEl, TEAM_CHIP_NAME_MIN_WIDTH_PX, canStayWithinTwoTextLines)) {
       safety += 1;
       continue;
     }
@@ -1730,7 +1796,9 @@ function fitBigLineupTeamChips(root) {
     : Array.from(scope.querySelectorAll('[data-dp-role="lineup"]'));
 
   panels.forEach(panel => {
-    if (!panel.closest('.layout-big .lp-lineup')) return;
+    const isBigLayout = !!panel.closest('.layout-big .lp-lineup');
+    const isSmallLayout = !!panel.closest('.layout-small .lp-lineup-s');
+    if (!isBigLayout && !isSmallLayout) return;
 
     const pitch = panel.querySelector('.dp-lineup-vertical-pitch');
     if (!pitch) return;
@@ -1754,7 +1822,7 @@ function fitBigLineupTeamChips(root) {
       const collisionEls = Array.from(
         pitch.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap')
       ).filter(target => target !== chip && !chip.contains(target));
-      fitTeamChip(chip, collisionEls);
+      fitTeamChip(chip, collisionEls, { preferShrink: isSmallLayout });
     });
   });
 }

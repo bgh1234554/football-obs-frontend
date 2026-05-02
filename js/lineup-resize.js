@@ -9,6 +9,14 @@
 
 const LINEUP_RESIZE_MIN = 50;
 const LINEUP_RESIZE_MAX = 100;
+const SMALL_LAYOUT_RESIZE_STORAGE_KEY = 'obs.smallLayout.eventsStatRatio.v1';
+const SMALL_LAYOUT_RATIO_MIN = 0.2;
+const SMALL_LAYOUT_RATIO_MAX = 0.8;
+const SMALL_LAYOUT_LEFT_MIN_PX = 220;
+const SMALL_LAYOUT_RIGHT_MIN_PX = 220;
+
+let smallLayoutResizeObserver = null;
+let smallLayoutResizeFallbackBound = false;
 
 /** 큰 캠 라인업 패널마다 우하단 리사이즈 핸들을 한 번만 생성한다. */
 function ensureLineupResizeHandles() {
@@ -21,6 +29,197 @@ function ensureLineupResizeHandles() {
     handle.addEventListener('pointerdown', startLineupResize);
     panel.appendChild(handle);
   });
+}
+
+function loadSmallLayoutResizeRatio() {
+  try {
+    const raw = localStorage.getItem(SMALL_LAYOUT_RESIZE_STORAGE_KEY);
+    if (raw == null || raw === '') return null;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return null;
+    return Math.max(SMALL_LAYOUT_RATIO_MIN, Math.min(SMALL_LAYOUT_RATIO_MAX, value));
+  } catch {
+    return null;
+  }
+}
+
+function saveSmallLayoutResizeRatio(ratio) {
+  try {
+    localStorage.setItem(SMALL_LAYOUT_RESIZE_STORAGE_KEY, String(ratio));
+  } catch {}
+}
+
+function clearSmallLayoutResizeRatio() {
+  try {
+    localStorage.removeItem(SMALL_LAYOUT_RESIZE_STORAGE_KEY);
+  } catch {}
+}
+
+function getSmallLayoutResizeMetrics(layout) {
+  if (!layout) return null;
+  const eventsCol = layout.querySelector('.lp-col-events-stat');
+  const lineup = layout.querySelector('.lp-lineup-s');
+  const bench = layout.querySelector('.lp-col-bench');
+  const chat = layout.querySelector('.lp-cam-chat');
+  if (!eventsCol || !lineup || !bench || !chat) return null;
+
+  const style = window.getComputedStyle(layout);
+  const gapPx = parseFloat(style.columnGap || style.gap || '0') || 0;
+  const paddingLeft = parseFloat(style.paddingLeft || '0') || 0;
+  const paddingRight = parseFloat(style.paddingRight || '0') || 0;
+  const innerWidth = layout.clientWidth - paddingLeft - paddingRight;
+  if (innerWidth <= 0) return null;
+
+  const lineupWidth = lineup.getBoundingClientRect().width;
+  const benchWidth = bench.getBoundingClientRect().width;
+  const sideWidth = innerWidth - lineupWidth - benchWidth - (gapPx * 3);
+  if (sideWidth <= 0) return null;
+
+  const leftMin = Math.min(SMALL_LAYOUT_LEFT_MIN_PX, Math.max(140, sideWidth - SMALL_LAYOUT_RIGHT_MIN_PX));
+  const rightMin = Math.min(SMALL_LAYOUT_RIGHT_MIN_PX, Math.max(140, sideWidth - leftMin));
+  if (sideWidth <= leftMin + rightMin) return null;
+
+  return {
+    chat,
+    eventsCol,
+    gapPx,
+    layout,
+    leftMin,
+    rightMin,
+    sideWidth
+  };
+}
+
+function clampSmallLayoutResizeRatio(metrics, ratio) {
+  if (!metrics) return null;
+  const minRatio = Math.max(SMALL_LAYOUT_RATIO_MIN, metrics.leftMin / metrics.sideWidth);
+  const maxRatio = Math.min(SMALL_LAYOUT_RATIO_MAX, (metrics.sideWidth - metrics.rightMin) / metrics.sideWidth);
+  return Math.max(minRatio, Math.min(maxRatio, ratio));
+}
+
+function applySmallLayoutResizeRatio(layout, ratio) {
+  const metrics = getSmallLayoutResizeMetrics(layout);
+  if (!metrics) return null;
+  const safeRatio = clampSmallLayoutResizeRatio(metrics, ratio);
+  if (safeRatio == null) return null;
+  const leftWidth = Math.round(metrics.sideWidth * safeRatio);
+  const rightWidth = Math.round(metrics.sideWidth - leftWidth);
+  layout.style.setProperty('--lp-small-events-width', `${leftWidth}px`);
+  layout.style.setProperty('--lp-small-chat-width', `${rightWidth}px`);
+  layout.classList.add('lp-small-columns-custom');
+  return safeRatio;
+}
+
+function applyStoredSmallLayoutResize() {
+  const ratio = loadSmallLayoutResizeRatio();
+  document.querySelectorAll('.layout-small').forEach(layout => {
+    if (ratio == null) {
+      resetSmallLayoutResize(layout);
+      return;
+    }
+    applySmallLayoutResizeRatio(layout, ratio);
+  });
+}
+
+function resetSmallLayoutResize(layout = null) {
+  const targets = layout ? [layout] : Array.from(document.querySelectorAll('.layout-small'));
+  targets.forEach(node => {
+    if (!node) return;
+    node.classList.remove('lp-small-columns-custom');
+    node.style.removeProperty('--lp-small-events-width');
+    node.style.removeProperty('--lp-small-chat-width');
+  });
+}
+
+function ensureSmallLayoutResizeHandles() {
+  document.querySelectorAll('.layout-small .lp-col-events-stat').forEach(panel => {
+    if (panel.querySelector(':scope > .lp-small-col-resize')) return;
+    const handle = document.createElement('div');
+    handle.className = 'lp-small-col-resize';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.title = '칼럼 크기 조정';
+    handle.addEventListener('pointerdown', startSmallLayoutResize);
+    handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
+    panel.appendChild(handle);
+  });
+}
+
+function resetSmallLayoutResizeFromHandle(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const handle = event.currentTarget;
+  const eventsCol = handle.closest('.lp-col-events-stat');
+  const layout = eventsCol?.closest('.layout-small');
+  clearSmallLayoutResizeRatio();
+  resetSmallLayoutResize(layout);
+}
+
+function startSmallLayoutResize(event) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+
+  const handle = event.currentTarget;
+  const eventsCol = handle.closest('.lp-col-events-stat');
+  const layout = eventsCol?.closest('.layout-small');
+  const metrics = getSmallLayoutResizeMetrics(layout);
+  if (!handle || !eventsCol || !layout || !metrics) return;
+
+  const startLeft = eventsCol.getBoundingClientRect().width;
+  const startX = event.clientX;
+  let lastRatio = clampSmallLayoutResizeRatio(metrics, startLeft / metrics.sideWidth);
+  if (lastRatio == null) return;
+
+  document.body.classList.add('lp-small-resizing');
+  layout.classList.add('is-resizing');
+  handle.setPointerCapture?.(event.pointerId);
+
+  const onMove = (e) => {
+    const nextMetrics = getSmallLayoutResizeMetrics(layout);
+    if (!nextMetrics) return;
+    const deltaX = e.clientX - startX;
+    const nextLeft = Math.max(
+      nextMetrics.leftMin,
+      Math.min(nextMetrics.sideWidth - nextMetrics.rightMin, startLeft + deltaX)
+    );
+    const nextRatio = applySmallLayoutResizeRatio(layout, nextLeft / nextMetrics.sideWidth);
+    if (nextRatio != null) lastRatio = nextRatio;
+  };
+
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    document.body.classList.remove('lp-small-resizing');
+    layout.classList.remove('is-resizing');
+    handle.releasePointerCapture?.(event.pointerId);
+    saveSmallLayoutResizeRatio(lastRatio);
+  };
+
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+function observeSmallLayoutResize() {
+  if (typeof ResizeObserver === 'function') {
+    if (!smallLayoutResizeObserver) {
+      smallLayoutResizeObserver = new ResizeObserver(() => {
+        if (loadSmallLayoutResizeRatio() != null) applyStoredSmallLayoutResize();
+      });
+    } else {
+      smallLayoutResizeObserver.disconnect();
+    }
+    document.querySelectorAll('.layout-small').forEach(layout => smallLayoutResizeObserver.observe(layout));
+    return;
+  }
+
+  if (!smallLayoutResizeFallbackBound) {
+    smallLayoutResizeFallbackBound = true;
+    window.addEventListener('resize', () => {
+      if (loadSmallLayoutResizeRatio() != null) applyStoredSmallLayoutResize();
+    });
+  }
 }
 
 /**
@@ -88,3 +287,8 @@ function startLineupResize(event) {
 }
 
 document.addEventListener('DOMContentLoaded', ensureLineupResizeHandles);
+document.addEventListener('DOMContentLoaded', () => {
+  ensureSmallLayoutResizeHandles();
+  applyStoredSmallLayoutResize();
+  observeSmallLayoutResize();
+});

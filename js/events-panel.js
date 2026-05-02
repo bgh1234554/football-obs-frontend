@@ -25,13 +25,36 @@ function evDetailIs(detail, target) {
   return String(detail || '').trim().toLowerCase() === String(target || '').trim().toLowerCase();
 }
 
+function evParseVarDetail(detail) {
+  const raw = String(detail || '').trim();
+  if (!raw) return { key: '', displayDetail: '', displayComment: '' };
+
+  const match = raw.match(/^([^-]+?)(?:\s*-\s*(.+))?$/);
+  const head = String(match?.[1] || raw).trim();
+  const reason = String(match?.[2] || '').trim();
+  const normalizedHead = head.toLowerCase();
+
+  if (normalizedHead === 'goal disallowed'
+    || normalizedHead === 'goal cancelled'
+    || normalizedHead === 'goal canceled') {
+    return { key: 'goal-cancel', displayDetail: 'Goal cancelled', displayComment: reason };
+  }
+  if (normalizedHead === 'penalty disallowed'
+    || normalizedHead === 'penalty cancelled'
+    || normalizedHead === 'penalty canceled') {
+    return { key: 'penalty-cancel', displayDetail: 'Penalty cancelled', displayComment: reason };
+  }
+  if (normalizedHead === 'goal confirmed') {
+    return { key: 'goal-confirm', displayDetail: 'Goal Confirmed', displayComment: reason };
+  }
+  if (normalizedHead === 'penalty confirmed') {
+    return { key: 'penalty-confirm', displayDetail: 'Penalty confirmed', displayComment: reason };
+  }
+  return { key: '', displayDetail: raw, displayComment: '' };
+}
+
 function evVarDetailKey(detail) {
-  const normalized = String(detail || '').trim().toLowerCase();
-  if (normalized === 'goal cancelled' || normalized === 'goal canceled') return 'goal-cancel';
-  if (normalized === 'penalty cancelled' || normalized === 'penalty canceled') return 'penalty-cancel';
-  if (normalized === 'goal confirmed') return 'goal-confirm';
-  if (normalized === 'penalty confirmed') return 'penalty-confirm';
-  return '';
+  return evParseVarDetail(detail).key;
 }
 
 /** 이벤트 표시 시간 — extra가 있으면 "{elapsed}+{extra}'", 없으면 "{elapsed}'". */
@@ -150,6 +173,13 @@ function evProcess(rawEvents) {
   const yellows = new Map(); // playerId -> count
   const processed = rawEvents.map(ev => {
     const out = { ...ev };
+    if (evTypeIs(out, 'Var')) {
+      const parsedVar = evParseVarDetail(out.detail);
+      if (parsedVar.key) {
+        out._displayDetail = parsedVar.displayDetail;
+        if (!out.comments && parsedVar.displayComment) out._displayComment = parsedVar.displayComment;
+      }
+    }
     const isYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card');
     const isRed = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Red Card');
     const isSecondYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Second Yellow Card');
@@ -207,7 +237,7 @@ function evBaseEventKey(ev) {
     String(ev?.side || ''),
     String(ev?.type || ''),
     String(ev?._displayDetail || ev?.detail || ''),
-    String(ev?.comments || ''),
+    String(ev?._displayComment || ev?.comments || ''),
     Number(ev?.elapsed ?? -1),
     Number(ev?.extra ?? 0),
     playerToken,
@@ -331,9 +361,10 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   //   Goal  : 1줄 = playerName, 2줄 = "어시스트: assistName" (회색, 작게). 어시스트 없으면 1줄.
   //   기타  : 단일 라인 = playerName.
   // 코멘트(ev.comments)는 별도 flex 아이템이 아닌, 첫 라인의 인라인 자식으로 붙여 선수 이름 바로 옆에 위치.
-  const translatedComment = (ev.comments && window.translateEventComment)
-    ? window.translateEventComment(ev.comments)
-    : (ev.comments ? String(ev.comments).trim() : '');
+  const rawComment = String(ev._displayComment || ev.comments || '').trim();
+  const translatedComment = (rawComment && window.translateEventComment)
+    ? window.translateEventComment(rawComment)
+    : rawComment;
 
   function appendName(parent, name) {
     const nameEl = document.createElement('span');

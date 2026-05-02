@@ -122,7 +122,6 @@
   min-width: 0;
   overflow: visible;
   text-overflow: clip;
-  white-space: normal;
   word-break: keep-all;
   overflow-wrap: anywhere;
   line-height: 1.35;
@@ -484,6 +483,10 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  position: relative;
+}
+.layout-small.lp-small-columns-custom .lp-col-events-stat {
+  flex: 0 0 var(--lp-small-events-width);
 }
 .layout-small .lp-col-events-stat .lp-events-s,
 .layout-small .lp-col-events-stat .lp-stat-s { flex: 1; }
@@ -508,6 +511,27 @@
 [data-dp-role="lineup"] { padding: 0; }
 .layout-small .lp-cam-chat {
   flex: 0 0 19.2%;
+}
+.layout-small.lp-small-columns-custom .lp-cam-chat {
+  flex: 0 0 var(--lp-small-chat-width);
+}
+
+.layout-small .lp-small-col-resize {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  z-index: 8;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+body.lp-small-resizing,
+body.lp-small-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 /* ===== 후보 명단 인원수 기반 폰트 조정 ===== */
@@ -636,7 +660,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 /* node는 원/아바타만 담음. translate(-50%, -50%)는 element 크기 비례라 별도 스케일 불필요. */
 .layout-big .lp-lineup .dp-lineup-name-wrap {
-  width: calc(90px * var(--lp-node-scale, 1));
+  width: calc(113px * var(--lp-node-scale, 1));
   transform: translate(-50%, calc(24px * var(--lp-node-scale, 1)));
 }
 .layout-big .lp-lineup .dp-mode-long .dp-lineup-name-wrap {
@@ -709,9 +733,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   padding: calc(2px * var(--lp-node-scale, 1)) calc(8px * var(--lp-node-scale, 1));
   font-size: calc(10px * var(--lp-node-scale, 1));
   line-height: 1.15;
-  white-space: normal;
   word-break: keep-all;
-  overflow-wrap: anywhere;
   text-align: center;
 }
 
@@ -1047,7 +1069,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   position: absolute;
   display: flex;
   justify-content: center;
-  width: 90px;
+  width: 113px;
   /* 원래 위치 유지 (24px). 평점 chip은 원 하단 안쪽에 걸쳐 오버랩 (이름과 안 겹침). */
   transform: translate(-50%, 24px);
   z-index: 4;
@@ -1231,12 +1253,6 @@ body.no-lineup-cards   .layout-big .lp-lineup .dp-node-card { display: none; }
 body.no-lineup-rating  .layout-big .lp-lineup .dp-node-rating { display: none; }
 body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-in,
 body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; }
-.dp-lineup-name.is-yellow {
-  color: #FFD93D;
-}
-.dp-lineup-name.is-red {
-  color: #FF6B6B;
-}
 .dp-lineup-avatar {
   width: 46px;
   height: 46px;
@@ -1271,6 +1287,22 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   line-clamp: 2;
   overflow: hidden;
   box-sizing: border-box;
+}
+.dp-lineup-name-num {
+  display: inline-block;
+  margin-right: 4px;
+  color: rgba(255,255,255,.55);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.dp-lineup-name-text {
+  color: inherit;
+}
+.dp-lineup-name.is-yellow {
+  color: #FFD93D;
+}
+.dp-lineup-name.is-red {
+  color: #FF6B6B;
 }
 .dp-mode-long .dp-lineup-name-wrap {
   width: 113px;
