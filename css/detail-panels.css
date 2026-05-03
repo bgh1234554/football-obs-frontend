@@ -404,6 +404,32 @@
   -webkit-line-clamp: 2;
 }
 
+.dp-bench-kickoff {
+  flex: 0 0 auto;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 4px 0;
+  font-size: 11px;
+  line-height: 1.2;
+  color: rgba(255,255,255,.55);
+  text-align: center;
+}
+.dp-bench-kickoff .dp-label {
+  color: rgba(255,255,255,.45);
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.dp-kickoff-time {
+  color: rgba(255,255,255,.78);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== 빈 상태 (데이터 없음) ===== */
 .dp-empty {
   flex: 1 1 auto;
@@ -495,8 +521,8 @@
    부상 컬럼에서 한 줄 정도 가져옴. 1.2 → 1.45. */
 /* 벤치 15명일 때 미세하게 스크롤바가 생기는 문제 — 부상 컬럼에서 몇 px 가져와 해소.
    1.45 → 1.55 (벤치 +)/ 1 → 0.95 (부상 -). 부상은 보통 3-5명이라 줄어들어도 영향 적음. */
-.layout-small .lp-col-bench .lp-bench  { flex: 1.5; }
-.layout-small .lp-col-bench .lp-injury { flex: 1; }
+.layout-small .lp-col-bench .lp-bench  { flex: 1.62; }
+.layout-small .lp-col-bench .lp-injury { flex: 0.88; }
 /* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
    컬럼 = 피치 가득 채움 → 옆에 빈 공간 안 생김. */
 .layout-small .lp-lineup-s {
@@ -844,8 +870,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
-  background: linear-gradient(135deg, #1a7a3a 0%, #15662f 25%, #1a7a3a 50%, #15662f 75%, #1a7a3a 100%);
-  border: 1px solid rgba(255,255,255,.12);
+  background: var(--lp-pitch-bg, linear-gradient(135deg, #1a7a3a 0%, #15662f 25%, #1a7a3a 50%, #15662f 75%, #1a7a3a 100%));
+  border: 1px solid var(--lp-pitch-border-color, rgba(255,255,255,.12));
 }
 /* 잔디 줄무늬 오버레이 — 가로 줄(전술판 90deg → 세로 피치에서 0deg) */
 .dp-lineup-vertical-pitch::before {
@@ -858,8 +884,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
     0deg,
     transparent,
     transparent 4.54%,
-    rgba(255,255,255,.5) 4.54%,
-    rgba(255,255,255,.5) 9.09%
+    var(--lp-pitch-stripe-color, rgba(255,255,255,.5)) 4.54%,
+    var(--lp-pitch-stripe-color, rgba(255,255,255,.5)) 9.09%
   );
   z-index: 1;
 }
@@ -883,8 +909,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   inset: -8%;
   border-radius: 14px;
   background: radial-gradient(circle at center,
-    rgba(255,255,255,.08) 0%,
-    rgba(255,255,255,.035) 38%,
+    var(--lp-pitch-wash-a, rgba(255,255,255,.08)) 0%,
+    var(--lp-pitch-wash-b, rgba(255,255,255,.035)) 38%,
     rgba(255,255,255,0) 72%);
   opacity: .9;
 }
@@ -904,7 +930,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   content: '';
   position: absolute;
   inset: 1.5% 3%;
-  border: 2px solid rgba(255,255,255,.55);
+  border: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-radius: 0;
   pointer-events: none;
 }
@@ -918,7 +944,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   right: 3%;
   top: 50%;
   height: 2px;
-  background: rgba(255,255,255,.55);
+  background: var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   transform: translateY(-1px);
 }
 /* 센터 서클 */
@@ -928,7 +954,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   width: 22%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
-  border: 2px solid rgba(255,255,255,.55);
+  border: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-radius: 50%;
 }
 /* 페널티 박스 */
@@ -937,13 +963,13 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   left: 19%;
   right: 19%;
   height: 13%;
-  border: 2px solid rgba(255,255,255,.55);
+  border: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-top: none;
 }
 .dp-lineup-marking-top-box  { top: 1.5%; }
 .dp-lineup-marking-bottom-box {
   bottom: 1.5%;
-  border-top: 2px solid rgba(255,255,255,.55);
+  border-top: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-bottom: none;
 }
 /* 골 박스 */
@@ -952,13 +978,13 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   left: 33%;
   right: 33%;
   height: 5.5%;
-  border: 2px solid rgba(255,255,255,.55);
+  border: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-top: none;
 }
 .dp-lineup-marking-top-goal  { top: 1.5%; }
 .dp-lineup-marking-bottom-goal {
   bottom: 1.5%;
-  border-top: 2px solid rgba(255,255,255,.55);
+  border-top: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-bottom: none;
 }
 /* 페널티 아크 */
@@ -968,7 +994,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   width: 17%;
   height: 4.5%;
   transform: translateX(-50%);
-  border: 2px solid rgba(255,255,255,.55);
+  border: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   border-radius: 0 0 999px 999px;
   border-top: none;
 }
@@ -977,7 +1003,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   bottom: 14.5%;
   border-radius: 999px 999px 0 0;
   border-bottom: none;
-  border-top: 2px solid rgba(255,255,255,.55);
+  border-top: 2px solid var(--lp-pitch-marking-color, rgba(255,255,255,.55));
 }
 .dp-lineup-team-chip {
   position: absolute;
@@ -1560,4 +1586,66 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   .dp-slot-label {
     text-align: left;
   }
+}
+
+/* ─── 라인업 분할 모드 (캠 큼 + splitLineup=on) ───────────────────────────
+   .dp-mode-split: 패널이 두 풀 피치를 세로(위:홈, 아래:원정)로 쌓음.
+   각 피치는 풀 62/105 비율, 두 개 stack → 전체 비율 62/210 (얇고 길게).
+   결과적으로 패널 폭이 combined(62/105) 대비 약 절반으로 줄어 cam이 더 넓어짐. */
+.layout-big .lp-lineup.dp-mode-split {
+  aspect-ratio: 62 / 210;
+}
+.dp-lineup-pitch.is-split {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.dp-lineup-vertical-pitch.is-split {
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 62 / 105;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* ─── 리그 로고 워시 위치 (leagueLogoPos: center / left / right) ─────────
+   center(default)는 기존 dp-lineup-league-wash 스타일 그대로 (left:50% top:50%).
+   left/right는 센터 서클이 라인업에 가려질때 사이드로 회피해서 보이게 함.
+   transform: translate(-50%, -50%)는 base에서 이미 적용되어 있어 left/top만 override. */
+.dp-lineup-league-wash.is-left  { left: 22%; }
+.dp-lineup-league-wash.is-right { left: 78%; }
+
+/* ─── 라디오 클러스터 (3-state 설정 — leagueLogoPos 등) ─────────────────
+   sp-toggle-cluster와 시각적으로 같은 톤의 segmented 버튼 그룹.
+   .is-active 가 들어간 버튼이 현재 선택값. */
+.sp-radio-cluster {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  padding: 2px;
+  gap: 2px;
+}
+.sp-radio-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.65);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  font-family: inherit;
+}
+.sp-radio-btn:hover { color: #fff; }
+.sp-radio-btn.is-active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(37,99,235,.4);
 }

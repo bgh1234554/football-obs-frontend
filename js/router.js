@@ -74,6 +74,7 @@
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     const el2=document.getElementById(`page-${nextPage}`);
     if(el2) el2.classList.add('active');
+    document.body.classList.toggle('tactics-active', nextPage === 'tactics');
     // 테마 탭일 때만 수동 모드 토글 표시
     if(manualToggleTabbar) manualToggleTabbar.style.display = nextPage==='theme' ? 'flex' : 'none';
     if(syncRoute) syncRouteForPage(nextPage, historyMode);

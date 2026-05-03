@@ -7,6 +7,7 @@ const DETAIL_DEFAULT_FORMATION = '4-3-3';
 const DETAIL_BENCH_ROWS = 18;
 const DETAIL_INJURY_ROWS = 12;
 const DETAIL_SIDE_TITLES = { home: '홈', away: '원정' };
+const DETAIL_PANEL_BALANCE_EPSILON_PX = 1;
 
 const lineupPanelState = {
   lastFixture: null,
@@ -15,6 +16,9 @@ const lineupPanelState = {
   //   { side, formation, slotPlayerIds: [11 players], players: { [pid]: playerInfo } }
   gridState: null,
 };
+
+let detailBenchBalanceRaf = 0;
+let detailBenchResizeObserver = null;
 
 function dpEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -743,6 +747,53 @@ function setRefereeElement(el, effectiveData, rawData) {
   el.title = editable ? '더블클릭해서 주심 이름 입력' : '';
 }
 
+function formatBenchKickoffLocal(matchInfo) {
+  const kickoffRaw = matchInfo?.kickoffAt || matchInfo?.kickoffUtc;
+  if (!kickoffRaw) return '-';
+
+  const kickoff = new Date(kickoffRaw);
+  if (Number.isNaN(kickoff.getTime())) return '-';
+
+  const parts = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short',
+  }).formatToParts(kickoff);
+
+  const pick = type => parts.find(part => part.type === type)?.value?.trim() || '';
+  const year = pick('year');
+  const month = pick('month');
+  const day = pick('day');
+  const weekday = pick('weekday').replace(/\.$/, '');
+  const hour = pick('hour');
+  const minute = pick('minute');
+  const rawTimeZoneName = pick('timeZoneName');
+
+  const offsetMinutes = -kickoff.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+  const offsetAbs = Math.abs(offsetMinutes);
+  const offsetHours = Math.floor(offsetAbs / 60);
+  const offsetRemainder = offsetAbs % 60;
+  const offsetText = offsetRemainder === 0
+    ? `UTC${offsetSign}${offsetHours}`
+    : `UTC${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetRemainder).padStart(2, '0')}`;
+
+  const resolvedZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'LOCAL';
+  const normalizedTzLabel = (!rawTimeZoneName || /^(GMT|UTC)/i.test(rawTimeZoneName))
+    ? resolvedZone
+    : rawTimeZoneName;
+  const timeZone = `${normalizedTzLabel}:${offsetText}`;
+
+  if (!year || !month || !day || !hour || !minute) return '-';
+
+  return `${year}.${month}.${day} ${hour}:${minute} (${weekday}) (${timeZone})`;
+}
+
 function applyBenchCountClass(listEl) {
   if (!listEl) return;
   listEl.classList.remove('dp-count-md');
@@ -796,6 +847,22 @@ function buildInjuryListHtml(injuries, provided) {
  *       · home: y → 100 - rawY (작은 y가 화면 오른쪽 = RW/RB 자연스럽게 위치)
  *       · away: 전술판에서 이미 (100-y)로 반전된 좌표를 받으므로 화면에서는 rawY 그대로 사용
  */
+/**
+ * 분할 모드 (캠 큼 + splitLineup=on) 전용 좌표 매핑.
+ * 한 피치에 한 팀만 들어가므로 자기 진영 절반만 쓰지 않고 풀 피치를 사용.
+ *   - 세로: GK top 92% (피치 아래쪽) → FW top 8% (피치 위쪽). 둘 다 원정팀 같은 자세.
+ *   - 가로: yLocal = rawY (홈 스타일) → LB/LW가 화면 왼쪽.
+ */
+function mapFormationSlotToSplitPitchPosition(slot) {
+  const rawX = Number(slot?.coord?.x) || 5;
+  const rawY = Number(slot?.coord?.y) || 50;
+  const depth = Math.max(0, Math.min(1, (rawX - 5) / 39));
+  let top = 92 - depth * 84;
+  if (depth === 0) top -= 0.5; // GK 이름 pill 살짝 안쪽으로 (combined away와 동일 정책)
+  const left = 5 + (rawY / 100) * 90;
+  return { left, top };
+}
+
 function mapFormationSlotToPitchPosition(slot, side) {
   const rawX = Number(slot?.coord?.x) || 5;
   const rawY = Number(slot?.coord?.y) || 50;
@@ -840,7 +907,10 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
 // 두 패스 렌더링 — 원/아바타와 이름 라벨을 분리해 HTML 두 덩어리로 반환.
 // 호출 측에서 모든 원을 먼저, 모든 이름을 나중에 DOM 삽입 → DOM 순서상 이름이 항상 위에 그려짐.
 // 결과: 홈/원정 양쪽 모두 이름이 인접 팀 얼굴 위로 나옴 (이전엔 home은 가려지고 away는 안 가림).
-function buildVerticalPitchNodesHtml(lineup, effectiveData, side) {
+//
+// pitchMode: 'combined' (default) — 양 팀 한 피치, 자기 진영만 사용
+//            'split'    — 한 팀이 풀 피치 사용 (캠 큼 splitLineup=on 전용)
+function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode) {
   const nodeMode = getActiveLineupNodeMode();
   const colors = getLineupSideColors(effectiveData, side);
   const circles = [];
@@ -853,7 +923,9 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side) {
     const title = player.nameKoLong && player.nameKoLong !== player.name
       ? ` title="${dpEscape(player.nameKoLong)}"`
       : '';
-    const position = mapFormationSlotToPitchPosition(slot, side);
+    const position = pitchMode === 'split'
+      ? mapFormationSlotToSplitPitchPosition(slot)
+      : mapFormationSlotToPitchPosition(slot, side);
     const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
     const posStyle = `left:${position.left}%;top:${position.top}%;`;
 
@@ -897,14 +969,45 @@ function buildLineupPitchLeagueWashHtml(effectiveData, rawData) {
   ).trim();
   if (!leagueLogoUrl) return '';
 
-  return `<div class="dp-lineup-league-wash" aria-hidden="true">
+  // leagueLogoPos: 'center'(default) / 'left' / 'right' — 센터 서클이 라인업에 가려질때 사이드로 회피.
+  const pos = (typeof getSetting === 'function' && getSetting('leagueLogoPos')) || 'center';
+  return `<div class="dp-lineup-league-wash is-${pos}" aria-hidden="true">
     <span class="dp-lineup-league-wash-logo" style="background-image:url('${dpEscape(leagueLogoUrl)}')"></span>
   </div>`;
 }
 
+// Iter 5-X: 분할 모드 한 팀 풀 피치 마크업. 마킹/리그 로고/팀 chip은 combined와 공유.
+function buildSingleSidePitchHtml(side, effectiveData, rawData) {
+  const lineup = effectiveData?.[`${side}Lineup`];
+  const nodes = buildVerticalPitchNodesHtml(lineup, effectiveData, side, 'split');
+  return `<div class="dp-lineup-vertical-pitch is-split is-${side}">
+    ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
+    <div class="dp-lineup-markings">
+      <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-midline"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-center-circle"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-bottom-box"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-bottom-arc"></div>
+    </div>
+    ${buildLineupPitchTeamChipHtml(side, effectiveData, rawData)}
+    ${nodes.circles}
+    ${nodes.names}
+  </div>`;
+}
+
+function buildLineupSplitPitchModeHtml(effectiveData, rawData) {
+  return `<div class="dp-lineup-pitch is-split">
+    ${buildSingleSidePitchHtml('home', effectiveData, rawData)}
+    ${buildSingleSidePitchHtml('away', effectiveData, rawData)}
+  </div>`;
+}
+
 function buildLineupPitchModeHtml(effectiveData, rawData) {
-  const homeNodes = buildVerticalPitchNodesHtml(effectiveData?.homeLineup, effectiveData, 'home');
-  const awayNodes = buildVerticalPitchNodesHtml(effectiveData?.awayLineup, effectiveData, 'away');
+  const homeNodes = buildVerticalPitchNodesHtml(effectiveData?.homeLineup, effectiveData, 'home', 'combined');
+  const awayNodes = buildVerticalPitchNodesHtml(effectiveData?.awayLineup, effectiveData, 'away', 'combined');
   return `<div class="dp-lineup-pitch">
     <div class="dp-lineup-vertical-pitch">
       ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
@@ -1006,7 +1109,8 @@ function renderBenchPanel(effectiveData, rawData) {
   // 경기장 이름 — venueName + venueCity (도시 있으면 ", 도시" 형태로 붙임)
   const leagueEl = panel.querySelector('[data-bench-venue] .dp-league-name');
   const venueEl = panel.querySelector('[data-bench-venue] .dp-venue-name');
-  if (leagueEl || venueEl) {
+  const kickoffEl = panel.querySelector('[data-bench-kickoff] .dp-kickoff-time');
+  if (leagueEl || venueEl || kickoffEl) {
     const matchInfo = effectiveData?.matchInfo || {};
     const leagueName = String(matchInfo.leagueName || '').trim();
     const leagueRound = String(matchInfo.leagueRound || '').trim();
@@ -1019,6 +1123,7 @@ function renderBenchPanel(effectiveData, rawData) {
     else if (venueCity) venueText = venueCity;
     if (leagueEl) leagueEl.textContent = leagueText || '-';
     if (venueEl) venueEl.textContent = venueText;
+    if (kickoffEl) kickoffEl.textContent = formatBenchKickoffLocal(matchInfo);
   }
 }
 
@@ -1064,9 +1169,14 @@ function renderLineupGrid(effectiveData, rawData) {
     canRenderPitchMode(effectiveData?.awayLineup);
 
   // 2) 사용할 마크업(pitch/list)과 이름 길이 모드를 고른다.
-  const html = usePitchMode
+  // splitLineup 설정이 ON이면 layout-big에서만 두 피치로 분리 — layout-small은 항상 combined 모드.
+  const splitOn = typeof getSetting === 'function' && getSetting('splitLineup') === 'on';
+  const combinedHtml = usePitchMode
     ? buildLineupPitchModeHtml(effectiveData, rawData)
     : buildLineupListModeHtml(effectiveData, rawData);
+  const splitHtml = (usePitchMode && splitOn)
+    ? buildLineupSplitPitchModeHtml(effectiveData, rawData)
+    : combinedHtml;
 
   const longMode = typeof isLongName === 'function' && isLongName('lineup');
 
@@ -1074,9 +1184,15 @@ function renderLineupGrid(effectiveData, rawData) {
   panels.forEach(panel => {
     const body = ensureLineupPanelScaffold(panel);
     if (!body) return;
+    const isBig = !!panel.closest('.layout-big');
+    const splitActive = isBig && splitOn && usePitchMode;
     panel.classList.toggle('dp-mode-long', longMode);
+    panel.classList.toggle('dp-mode-split', splitActive);
+    // outer .lp-lineup wrapper — aspect-ratio 변경을 위해 같은 클래스 미러.
+    const wrap = panel.closest('.lp-lineup, .lp-lineup-s');
+    if (wrap) wrap.classList.toggle('dp-mode-split', splitActive);
     setPanelTitle(panel, '선발 라인업', '');
-    body.innerHTML = html;
+    body.innerHTML = isBig ? splitHtml : combinedHtml;
   });
 }
 
@@ -1678,6 +1794,154 @@ function fitBenchFooterNames(root) {
       safety += 1;
     }
   });
+
+  scope.querySelectorAll('.dp-bench-kickoff .dp-kickoff-time').forEach(nameEl => {
+    if (!nameEl) return;
+    nameEl.style.fontSize = '';
+    if (!canMeasureTextElement(nameEl)) return;
+    let safety = 0;
+    while (safety < 12) {
+      const overflow = nameEl.scrollWidth > nameEl.clientWidth + 0.5;
+      if (!overflow) break;
+      if (!shrinkTextElement(nameEl, BENCH_FOOTER_MIN_FONT_PX)) break;
+      safety += 1;
+    }
+  });
+}
+
+function getPanelOuterHeight(el) {
+  if (!el) return 0;
+  const style = getComputedStyle(el);
+  return el.getBoundingClientRect().height
+    + (parseFloat(style.marginTop) || 0)
+    + (parseFloat(style.marginBottom) || 0);
+}
+
+function getPanelPaddingY(el) {
+  if (!el) return 0;
+  const style = getComputedStyle(el);
+  return (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+}
+
+function getListContentHeight(list) {
+  if (!list) return 0;
+  const style = getComputedStyle(list);
+  const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+  const children = Array.from(list.children);
+  if (!children.length) return paddingY;
+  const listRect = list.getBoundingClientRect();
+  const measuredBottom = children.reduce((maxBottom, child) => (
+    Math.max(
+      maxBottom,
+      (child.getBoundingClientRect().bottom - listRect.top) + list.scrollTop
+    )
+  ), 0);
+  return Math.max(paddingY, measuredBottom + (parseFloat(style.paddingBottom) || 0));
+}
+
+function getPanelSplitMinHeight(splitEl) {
+  if (!splitEl) return 0;
+  const columns = Array.from(splitEl.children).filter(child => child.classList.contains('dp-col'));
+  if (!columns.length) return 0;
+
+  return Math.max(...columns.map(column => {
+    const header = column.querySelector('.dp-side-header');
+    const list = column.querySelector('.dp-list');
+    return getPanelOuterHeight(header) + getListContentHeight(list);
+  }));
+}
+
+function getPanelSplitMetrics(panel) {
+  const split = panel?.querySelector('.dp-split');
+  if (!split) return { current: 0, required: 0, spare: 0, deficit: 0 };
+  const current = split.getBoundingClientRect().height;
+  const required = getPanelSplitMinHeight(split);
+  return {
+    current,
+    required,
+    spare: Math.max(0, current - required),
+    deficit: Math.max(0, required - current),
+  };
+}
+
+function getBenchPanelSections() {
+  const benchPanel = document.getElementById('benchPanel');
+  const injuryPanel = document.getElementById('injuryPanel');
+  const benchSection = benchPanel?.closest('.lp-bench') || null;
+  const injurySection = injuryPanel?.closest('.lp-injury') || null;
+  const benchColumn = benchSection?.closest('.lp-col-bench') || null;
+  return { benchPanel, injuryPanel, benchSection, injurySection, benchColumn };
+}
+
+function resetBenchInjuryPanelHeights() {
+  const { benchSection, injurySection } = getBenchPanelSections();
+  if (benchSection) {
+    benchSection.style.flex = '';
+    benchSection.style.height = '';
+  }
+  if (injurySection) {
+    injurySection.style.flex = '';
+    injurySection.style.height = '';
+  }
+}
+
+function balanceBenchInjuryPanelHeights() {
+  const {
+    benchPanel,
+    injuryPanel,
+    benchSection,
+    injurySection,
+    benchColumn,
+  } = getBenchPanelSections();
+
+  if (!benchPanel || !injuryPanel || !benchSection || !injurySection || !benchColumn) return;
+
+  resetBenchInjuryPanelHeights();
+
+  const page = benchColumn.closest('.page');
+  if (page && !page.classList.contains('active')) return;
+
+  const benchRect = benchSection.getBoundingClientRect();
+  const injuryRect = injurySection.getBoundingClientRect();
+  if (benchRect.height <= DETAIL_PANEL_BALANCE_EPSILON_PX
+    || injuryRect.height <= DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    return;
+  }
+
+  const benchMetrics = getPanelSplitMetrics(benchPanel);
+  const injuryMetrics = getPanelSplitMetrics(injuryPanel);
+  const transfer = Math.min(
+    Math.floor(benchMetrics.spare),
+    Math.ceil(injuryMetrics.deficit)
+  );
+  if (transfer <= DETAIL_PANEL_BALANCE_EPSILON_PX) return;
+
+  const nextBenchHeight = benchRect.height - transfer;
+  const appliedInjuryHeight = injuryRect.height + transfer;
+
+  benchSection.style.flex = `0 0 ${nextBenchHeight}px`;
+  benchSection.style.height = `${nextBenchHeight}px`;
+  injurySection.style.flex = `0 0 ${appliedInjuryHeight}px`;
+  injurySection.style.height = `${appliedInjuryHeight}px`;
+}
+
+function scheduleBenchInjuryPanelBalance() {
+  if (detailBenchBalanceRaf) cancelAnimationFrame(detailBenchBalanceRaf);
+  detailBenchBalanceRaf = requestAnimationFrame(() => {
+    detailBenchBalanceRaf = 0;
+    balanceBenchInjuryPanelHeights();
+  });
+}
+
+function initBenchInjuryPanelObserver() {
+  if (detailBenchResizeObserver || !window.ResizeObserver) return;
+  const { benchColumn } = getBenchPanelSections();
+  if (!benchColumn) return;
+
+  detailBenchResizeObserver = new ResizeObserver(() => {
+    scheduleBenchInjuryPanelBalance();
+  });
+  detailBenchResizeObserver.observe(benchColumn);
 }
 
 /**
@@ -1980,6 +2244,7 @@ document.addEventListener('page:activated', () => {
   requestAnimationFrame(() => {
     document.querySelectorAll('.page.active [data-dp-role="lineup"]').forEach(panel => fitLineupNamePills(panel));
     fitBenchFooterNames(document.querySelector('.page.active #benchPanel') || document.getElementById('benchPanel'));
+    balanceBenchInjuryPanelHeights();
   });
 });
 
@@ -1990,6 +2255,8 @@ function rerenderLineupPanels() {
     clearLineupPanels();
     return;
   }
+
+  initBenchInjuryPanelObserver();
 
   // 1) raw fixture + 수동 override를 합성한 표시용 데이터를 만든다.
   // (a) manual override 합성 → (b) subReflect ON이면 교체 이벤트로 startXi/벤치 자동 swap
@@ -2019,6 +2286,7 @@ function rerenderLineupPanels() {
   requestAnimationFrame(() => {
     document.querySelectorAll('[data-dp-role="lineup"]').forEach(p => fitLineupNamePills(p));
     fitBenchFooterNames(document.getElementById('benchPanel'));
+    balanceBenchInjuryPanelHeights();
   });
 }
 
@@ -2037,6 +2305,7 @@ function clearLineupPanels() {
   lineupPanelState.lastFixture = null;
   lineupPanelState.manualModal = null;
   closeManualPanel();
+  resetBenchInjuryPanelHeights();
 
   const benchPanel = document.getElementById('benchPanel');
   if (benchPanel) {
@@ -2052,8 +2321,10 @@ function clearLineupPanels() {
     });
     const leagueEl = benchPanel.querySelector('[data-bench-venue] .dp-league-name');
     const venueEl = benchPanel.querySelector('[data-bench-venue] .dp-venue-name');
+    const kickoffEl = benchPanel.querySelector('[data-bench-kickoff] .dp-kickoff-time');
     if (leagueEl) leagueEl.textContent = '-';
     if (venueEl) venueEl.textContent = '-';
+    if (kickoffEl) kickoffEl.textContent = '-';
   }
 
   const injuryPanel = document.getElementById('injuryPanel');
@@ -2091,8 +2362,12 @@ function isQuestionableInjuryReason(reason, type) {
 }
 
 function getInjuryReasonDisplayText(reason, type) {
-  if (isQuestionableInjuryReason(reason, type)) return '출전 여부 미정';
   const raw = String(reason || '').trim();
+  if (isQuestionableInjuryReason(reason, type)) {
+    if (!raw || raw === 'Questionable') return '출전 여부 미정';
+    const translated = typeof getInjuryReasonKo === 'function' ? getInjuryReasonKo(raw) : raw;
+    return `출전 여부 미정 - ${translated}`;
+  }
   if (!raw) return '';
   return typeof getInjuryReasonKo === 'function' ? getInjuryReasonKo(raw) : raw;
 }
@@ -2728,7 +3003,9 @@ document.addEventListener('settings:change', event => {
   if (!lineupPanelState.lastFixture) return;
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
-    'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime'];
+    'lineupHideInitial',
+    'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
+    'splitLineup', 'leagueLogoPos'];
   if (!re.includes(event.detail?.category)) return;
   rerenderLineupPanels();
 });

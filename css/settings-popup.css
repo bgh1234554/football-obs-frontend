@@ -253,6 +253,15 @@
   color: #fff;
 }
 
+.sp-radio-cluster-wrap {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 220px;
+}
+.sp-radio-cluster-wrap .sp-radio-btn {
+  padding-inline: 10px;
+}
+
 /* ----- 슬라이더 (range) ----- */
 .sp-slider-cluster {
   display: inline-flex;

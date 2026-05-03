@@ -477,7 +477,8 @@
     state.redHome = 0;
     state.redAway = 0;
     state.notes = { home: '', away: '' };
-    state.running = false;
+    if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
+    else state.running = false;
     state.pk = { home: [], away: [] };
     state.pkScore = { home: null, away: null };
     state.pkLastExitedAt = 0;
@@ -532,6 +533,9 @@
       }
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
+      const preserveRunningOnRefresh = !!silent
+        && !!previousFixtureId
+        && previousFixtureId === normalizedFixtureId;
       if (previousFixtureId && previousFixtureId !== normalizedFixtureId) {
         state.teamColorOverride = false;
         state.teamColorOverrideFixtureId = null;
@@ -543,7 +547,8 @@
       }
 
       _lastFixtureData = data;
-      applyFixtureToState(data);
+      // 자동 폴링으로 같은 경기를 다시 반영할 때는 사용자가 직접 켠 타이머를 멈추지 않는다.
+      applyFixtureToState(data, { resetRunning: !preserveRunningOnRefresh });
       // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
@@ -666,7 +671,10 @@
     //   덮어쓰지 않도록 호출자가 options.resetRunning=false로 끌 수 있음.
     if (options?.resetRunning !== false) {
       const LIVE_STATUSES = new Set(['1H','2H','ET1','ET2','PSO']);
-      if (m.status && !LIVE_STATUSES.has(String(m.status))) state.running = false;
+      if (m.status && !LIVE_STATUSES.has(String(m.status))) {
+        if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
+        else state.running = false;
+      }
     }
 
     render();
@@ -831,7 +839,8 @@
       _lastFixtureData = data;
       // init.js의 첫 render() 다음 사이클에서 적용 — 레이아웃 안정화 후
       requestAnimationFrame(() => {
-        applyFixtureToState(data);
+        // restore()가 이미 running 타이머를 복원했으면, 캐시 재적용으로 다시 멈추지 않는다.
+        applyFixtureToState(data, { resetRunning: !state.running });
         // 캐시 복원 직후 깜빡임 스냅샷 초기화 — 다음 폴링 응답이 캐시 대비 점수/득점자 변화가
         // 있으면 자연스럽게 깜빡임이 발동되도록. 복원 자체로는 깜빡임 발동 안 함 (값 동일).
         _flashSnapshot = {

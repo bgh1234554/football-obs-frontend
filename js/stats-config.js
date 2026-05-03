@@ -42,5 +42,5 @@ window.STATS_CONFIG = {
   ],
 
   itemsPerPage: 6,
-  autoSwipeIntervalMs: 5000,
+  autoSwipeIntervalMs: 10000,
 };

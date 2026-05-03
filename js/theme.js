@@ -368,6 +368,7 @@
 
   // [색상 id, state.colors 키, CSS 변수명] 매핑 테이블
   window.colorMap = [
+    ['inUiBg','uiBg','--bg-ui'],
     ['inBoardA','boardA','--board-a'],
     ['inBoardB','boardB','--board-b'],
     ['inScoreBg','scoreBg','--score-bg'],

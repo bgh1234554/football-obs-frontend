@@ -197,6 +197,7 @@
     else { el.awayLogo.removeAttribute('src'); el.awayLogo.classList.add('hidden'); }
 
     // 4. 색상 CSS 변수 일괄 적용
+    setCSS('--bg-ui', state.colors.uiBg);
     setCSS('--board-a', state.colors.boardA);
     setCSS('--board-b', state.colors.boardB);
     setCSS('--score-bg', state.colors.scoreBg);
@@ -310,6 +311,7 @@
     el.startPause.textContent = state.running ? '일시정지 (Space)' : '시작 (Space)';
 
     // 12. 색상 피커 input 값을 state와 동기화
+    if(el.inUiBg) el.inUiBg.value = state.colors.uiBg;
     if(el.inBoardA) el.inBoardA.value = state.colors.boardA;
     if(el.inBoardB) el.inBoardB.value = state.colors.boardB;
     if(el.inScoreBg) el.inScoreBg.value = state.colors.scoreBg;
@@ -581,10 +583,40 @@
   el.halfSelect?.addEventListener('change', e=>{ setMatchHalf(e.target.value); render(); persist(); });
   el.prevHalf?.addEventListener('click', ()=>{ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); });
   el.nextHalf?.addEventListener('click', ()=>{ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); });
-  el.startPause?.addEventListener('click', ()=>{ state.running=!state.running; render(); persist(); });
-  el.resetTime?.addEventListener('click', ()=>{ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); });
-  el.secPerTick?.addEventListener('input', e=>{ state.secPerTick=Math.max(0.1,Number(e.target.value)||1); render(); persist(); });
-  el.applyStartAt?.addEventListener('click', ()=>{ const sec=parseStartTime(el.startAt?.value); if(sec==null){ alert('형식은 mm:ss입니다. 예: 45:00'); return; } state.running=false; state.seconds=sec; el.clock.textContent=fmtClock(state.seconds); render(); persist(); });
+  el.startPause?.addEventListener('click', ()=>{
+    if (typeof window.toggleClockRunning === 'function') window.toggleClockRunning();
+    else state.running = !state.running;
+    render();
+    persist();
+  });
+  el.resetTime?.addEventListener('click', ()=>{
+    if (typeof window.setClockSeconds === 'function') window.setClockSeconds(0);
+    else {
+      state.seconds = 0;
+      state.running = false;
+      el.clock.textContent = '00:00';
+    }
+    render();
+    persist();
+  });
+  el.secPerTick?.addEventListener('input', e=>{
+    if (state.running && typeof window.syncRunningClockToNow === 'function') window.syncRunningClockToNow();
+    state.secPerTick = Math.max(0.1, Number(e.target.value) || 1);
+    render();
+    persist();
+  });
+  el.applyStartAt?.addEventListener('click', ()=>{
+    const sec = parseStartTime(el.startAt?.value);
+    if(sec==null){ alert('형식은 mm:ss입니다. 예: 45:00'); return; }
+    if (typeof window.setClockSeconds === 'function') window.setClockSeconds(sec);
+    else {
+      state.running = false;
+      state.seconds = sec;
+      el.clock.textContent = fmtClock(state.seconds);
+    }
+    render();
+    persist();
+  });
   el.quick45?.addEventListener('click', ()=>{ el.startAt.value='45:00'; el.applyStartAt.click(); });
   el.quick90?.addEventListener('click', ()=>{ el.startAt.value='90:00'; el.applyStartAt.click(); });
 

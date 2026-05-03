@@ -247,7 +247,7 @@ function stIsAutoSwipeEnabled() {
 
 /**
  * 자동 스와이프 ON 시 일정 간격으로 페이지 advance.
- * - settings에서 statsAutoSwipe='on' + statsAutoSwipeMs 읽음.
+ * - settings에서 statsAutoSwipe='on' + statsAutoSwipeSec 읽음.
  * - 없으면 STATS_CONFIG.autoSwipeIntervalMs 기본값.
  * - state.paused가 true이면 ON이어도 타이머 시작 안 함 (사용자가 일시정지 누른 상태).
  */
@@ -256,7 +256,7 @@ function stSetupAutoSwipe(panel, state, totalPages) {
   if (totalPages < 2) return;
   if (!stIsAutoSwipeEnabled()) return;
   if (state.paused) return;
-  const cfgInterval = window.STATS_CONFIG?.autoSwipeIntervalMs || 5000;
+  const cfgInterval = window.STATS_CONFIG?.autoSwipeIntervalMs || 10000;
   // settings는 초 단위로 저장됨(0.5초 단위 입력). ms로 변환.
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
   const intervalMs = Number.isFinite(userSec) && userSec >= 0.5 ? Math.round(userSec * 1000) : cfgInterval;

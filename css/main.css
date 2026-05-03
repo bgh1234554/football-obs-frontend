@@ -76,12 +76,15 @@
 
     /* ========== 보드 스테이지 (상단 고정) ========== */
     .board-stage-wrap {
-      background: #0f172a;
-      border-bottom: 1px solid var(--line);
+      background: var(--bg-ui);
+      border-bottom: none;
       overflow: visible; /* rc-rail이 위로 삐져나오므로 */
       position: relative;
       flex-shrink: 0;
       /* 높이는 JS로 동적 조정 */
+    }
+    body.tactics-active .board-stage-wrap {
+      border-bottom: 1px solid var(--line);
     }
     .board-stage-inner {
       position: relative;
@@ -430,7 +433,7 @@
       gap: 10px;
       border-bottom: 1px solid var(--line);
       padding: 10px 12px;
-      background: #0f172a;
+      background: var(--bg-ui);
       flex-shrink: 0;
     }
     .tab-group { display: flex; gap: 10px; align-items: center; }
@@ -500,7 +503,7 @@
     .page.active { display: block; }
     #page-tactics.active { display: flex; flex-direction: column; }
     /* 전술판 전체화면 — :fullscreen 상태에서 배경 보정 */
-    #page-tactics:fullscreen { background: #0f172a; }
+    #page-tactics:fullscreen { background: var(--bg-ui); }
     .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
@@ -770,7 +773,7 @@
       border-color: transparent;
       background: transparent;
     }
-    .layout-big .lp-cam-big .lp-label { visibility: hidden; }
+    .layout-big .lp-cam-big .lp-label { display: none; }
 
     /* ── 캠 작은 버전 5열 ── */
     /* events / stat 각각 독립 컬럼, 위아래 꽉 채움 */

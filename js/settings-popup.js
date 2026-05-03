@@ -5,7 +5,8 @@
 // 설정은 localStorage에 저장하고, 변경 시 'settings:change' 이벤트를 보낸다.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const SETTINGS_STORAGE_KEY = 'obs.settings.v2';
+const SETTINGS_STORAGE_KEY = 'obs.settings.v3';
+const SETTINGS_LEGACY_STORAGE_KEYS = ['obs.settings.v2'];
 
 const SETTINGS_DEFAULTS = {
   teamName: 'long',   // 라인업 chip + 벤치/부상 컬럼 헤더의 팀명 표시 (default 풀네임)
@@ -13,10 +14,20 @@ const SETTINGS_DEFAULTS = {
   scorer: 'long',
   roster: 'short',
   lineupNode: 'photo',
+  lineupHideInitial: 'off',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
                       // long 모드(풀네임)는 CSS에서 0.875× 비율 유지.
+  // 라인업 분할 (캠 큼 전용) — ON시 양 팀을 한 피치에 합쳐서 그리지 않고
+  // 위(홈)/아래(원정) 두 개의 풀 피치(각 62:105 비율, 패널 전체는 62:210)로 분리.
+  // 패널 폭이 줄어 cam이 더 넓어지고 각 팀 가독성 향상. 작은 캠 패널은 영향 없음.
+  splitLineup: 'off',
+  // 라인업 피치 안의 리그 로고 워시 위치. 센터 서클(default)/왼쪽 사이드라인/오른쪽 사이드라인.
+  // 분할 모드에서는 각 피치마다 똑같이 적용된다.
+  leagueLogoPos: 'center',
+  // 크로마키 대응용 라인업 피치 톤 프리셋.
+  lineupPitchTone: 'green',
   // 'logo' = matchInfo.homeTeamLogo (default. 클럽=팀 로고, 국대=국기)
   // 'fa'   = matchInfo.homeTeamFaUrl (협회 로고. URL 없으면 logo로 자동 폴백 — fixture.js)
   teamLogo: 'logo',
@@ -25,7 +36,7 @@ const SETTINGS_DEFAULTS = {
   fanReaction: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'off',
-  statsAutoSwipeSec: 5,
+  statsAutoSwipeSec: 10,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
@@ -49,6 +60,97 @@ const LINEUP_SCALE_MIN = 50;
 const LINEUP_SCALE_MAX = 100;
 const LINEUP_NAME_SIZE_MIN = 9;
 const LINEUP_NAME_SIZE_MAX = 16;
+const LINEUP_PITCH_TONE_STYLES = {
+  green: {
+    background: 'linear-gradient(135deg, #1a7a3a 0%, #15662f 25%, #1a7a3a 50%, #15662f 75%, #1a7a3a 100%)',
+    stripe: 'rgba(255,255,255,.5)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.55)',
+    tacticsMarking: 'rgba(255,255,255,.4)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.3)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.25)',
+    washA: 'rgba(255,255,255,.08)',
+    washB: 'rgba(255,255,255,.035)',
+  },
+  black: {
+    background: 'linear-gradient(135deg, #20242c 0%, #13171d 25%, #20242c 50%, #13171d 75%, #20242c 100%)',
+    stripe: 'rgba(255,255,255,.34)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.5)',
+    tacticsMarking: 'rgba(255,255,255,.44)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.32)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.26)',
+    washA: 'rgba(255,255,255,.055)',
+    washB: 'rgba(255,255,255,.022)',
+  },
+  blue: {
+    background: 'linear-gradient(135deg, #12649f 0%, #0c4f82 25%, #12649f 50%, #0c4f82 75%, #12649f 100%)',
+    stripe: 'rgba(255,255,255,.52)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.52)',
+    tacticsMarking: 'rgba(255,255,255,.42)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.31)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.25)',
+    washA: 'rgba(255,255,255,.075)',
+    washB: 'rgba(255,255,255,.03)',
+  },
+  white: {
+    background: 'linear-gradient(135deg, #f7f9fc 0%, #e9edf2 25%, #f7f9fc 50%, #e9edf2 75%, #f7f9fc 100%)',
+    stripe: 'rgba(15,23,42,.4)',
+    border: 'rgba(15,23,42,.12)',
+    marking: 'rgba(15,23,42,.34)',
+    tacticsMarking: 'rgba(15,23,42,.34)',
+    tacticsMarkingSoft: 'rgba(15,23,42,.26)',
+    tacticsMarkingFaint: 'rgba(15,23,42,.2)',
+    washA: 'rgba(15,23,42,.08)',
+    washB: 'rgba(15,23,42,.03)',
+  },
+  red: {
+    background: 'linear-gradient(135deg, #9f1d34 0%, #7f172a 25%, #9f1d34 50%, #7f172a 75%, #9f1d34 100%)',
+    stripe: 'rgba(255,255,255,.44)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.5)',
+    tacticsMarking: 'rgba(255,255,255,.4)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.3)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.25)',
+    washA: 'rgba(255,255,255,.07)',
+    washB: 'rgba(255,255,255,.028)',
+  },
+  purple: {
+    background: 'linear-gradient(135deg, #6d28d9 0%, #581c87 25%, #6d28d9 50%, #581c87 75%, #6d28d9 100%)',
+    stripe: 'rgba(255,255,255,.46)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.52)',
+    tacticsMarking: 'rgba(255,255,255,.42)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.31)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.25)',
+    washA: 'rgba(255,255,255,.075)',
+    washB: 'rgba(255,255,255,.03)',
+  },
+  mint: {
+    background: 'linear-gradient(135deg, #49b39a 0%, #2f8f7b 25%, #49b39a 50%, #2f8f7b 75%, #49b39a 100%)',
+    stripe: 'rgba(255,255,255,.48)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.5)',
+    tacticsMarking: 'rgba(255,255,255,.4)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.3)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.25)',
+    washA: 'rgba(255,255,255,.07)',
+    washB: 'rgba(255,255,255,.028)',
+  },
+  brown: {
+    background: 'linear-gradient(135deg, #714a24 0%, #5a3917 25%, #714a24 50%, #5a3917 75%, #714a24 100%)',
+    stripe: 'rgba(255,255,255,.42)',
+    border: 'rgba(255,255,255,.12)',
+    marking: 'rgba(255,255,255,.48)',
+    tacticsMarking: 'rgba(255,255,255,.4)',
+    tacticsMarkingSoft: 'rgba(255,255,255,.3)',
+    tacticsMarkingFaint: 'rgba(255,255,255,.24)',
+    washA: 'rgba(255,255,255,.065)',
+    washB: 'rgba(255,255,255,.026)',
+  },
+};
+const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 
 const settingsState = { ...SETTINGS_DEFAULTS };
 
@@ -57,6 +159,18 @@ function syncAllSettingsUi() {
     syncSwitchUi(category);
     syncSliderUi(category);
     syncNumberUi(category);
+    syncRadioUi(category);
+  });
+}
+
+// 3-state 라디오 클러스터 동기화 — leagueLogoPos 같은 다항 설정 전용.
+function syncRadioUi(category) {
+  const buttons = document.querySelectorAll(`[data-settings-radio="${category}"]`);
+  if (!buttons.length) return;
+  const value = getSetting(category);
+  buttons.forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.settingsRadioValue === value);
+    btn.setAttribute('aria-pressed', btn.dataset.settingsRadioValue === value ? 'true' : 'false');
   });
 }
 
@@ -71,9 +185,13 @@ function isValidSetting(category, value) {
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
   if (category === 'teamLogo') return value === 'logo' || value === 'fa';
   if (category === 'mainPage') return value === 'big' || value === 'small';
+  if (category === 'leagueLogoPos') return value === 'center' || value === 'left' || value === 'right';
+  if (category === 'lineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'subReflect'
     || category === 'fanReaction'
+    || category === 'lineupHideInitial'
+    || category === 'splitLineup'
     || category === 'lineupShowGoals'
     || category === 'lineupShowCards'
     || category === 'lineupShowRating'
@@ -97,15 +215,41 @@ function isValidSetting(category, value) {
 
 function loadSettings() {
   try {
-    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return;
+    const storageKeys = [SETTINGS_STORAGE_KEY, ...SETTINGS_LEGACY_STORAGE_KEYS];
+    let parsed = null;
+    let loadedKey = '';
+    for (const key of storageKeys) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const candidate = JSON.parse(raw);
+        if (!candidate || typeof candidate !== 'object') continue;
+        parsed = candidate;
+        loadedKey = key;
+        break;
+      } catch {}
+    }
+    if (!parsed) return;
+
+    const isLegacyPayload = loadedKey !== SETTINGS_STORAGE_KEY;
 
     Object.keys(SETTINGS_DEFAULTS).forEach(category => {
-      const value = parsed[category];
+      let value = parsed[category];
+      if (isLegacyPayload && category === 'statsAutoSwipeSec') {
+        const legacySec = Number(value);
+        if (!Number.isFinite(legacySec) || legacySec === 5) {
+          value = SETTINGS_DEFAULTS.statsAutoSwipeSec;
+        }
+      }
       if (isValidSetting(category, value)) settingsState[category] = value;
     });
+
+    if (isLegacyPayload) {
+      saveSettings();
+      SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
+        try { localStorage.removeItem(key); } catch {}
+      });
+    }
   } catch {}
   applyLayoutSettings();
 }
@@ -141,7 +285,8 @@ function setSetting(category, value) {
   saveSettings();
   syncSwitchUi(category);
   syncSliderUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize') applyLayoutSettings();
+  syncRadioUi(category);
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -166,6 +311,9 @@ function resetSettingsToDefaults() {
   Object.assign(settingsState, SETTINGS_DEFAULTS);
 
   try { localStorage.removeItem(SETTINGS_STORAGE_KEY); } catch {}
+  SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
+    try { localStorage.removeItem(key); } catch {}
+  });
 
   syncAllSettingsUi();
   applyLayoutSettings();
@@ -199,10 +347,23 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
+  const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')] || LINEUP_PITCH_TONE_STYLES.green;
   const root = document.documentElement;
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
+  root.style.setProperty('--lp-pitch-bg', pitchTone.background);
+  root.style.setProperty('--lp-pitch-stripe-color', pitchTone.stripe);
+  root.style.setProperty('--lp-pitch-border-color', pitchTone.border);
+  root.style.setProperty('--lp-pitch-marking-color', pitchTone.marking);
+  root.style.setProperty('--lp-pitch-wash-a', pitchTone.washA);
+  root.style.setProperty('--lp-pitch-wash-b', pitchTone.washB);
+  root.style.setProperty('--td-pitch-bg', pitchTone.background);
+  root.style.setProperty('--td-pitch-stripe-color', pitchTone.stripe);
+  root.style.setProperty('--td-pitch-border-color', pitchTone.border);
+  root.style.setProperty('--td-pitch-marking-color', pitchTone.tacticsMarking || pitchTone.marking);
+  root.style.setProperty('--td-pitch-marking-soft', pitchTone.tacticsMarkingSoft || pitchTone.tacticsMarking || pitchTone.marking);
+  root.style.setProperty('--td-pitch-marking-faint', pitchTone.tacticsMarkingFaint || pitchTone.tacticsMarkingSoft || pitchTone.tacticsMarking || pitchTone.marking);
   // Iter 5-3: per-feature 토글 → body 클래스. CSS에서 .layout-big에서만 적용해 큰 캠 숨김.
   const body = document.body;
   if (body) {
@@ -244,8 +405,24 @@ function pickName(player, category) {
   if (!player) return '';
   const shortName = player.name || player.playerName || '';
   const longName = player.nameKoLong || player.playerNameKoLong || '';
+  const shouldHideInitial = category === 'lineup'
+    && !isLongName('lineup')
+    && getSetting('lineupHideInitial') === 'on';
+  const displayShortName = shouldHideInitial
+    ? stripLeadingLineupInitial(shortName) || shortName
+    : shortName;
   if (isLongName(category) && longName) return longName;
-  return shortName || longName || '';
+  return displayShortName || longName || shortName || '';
+}
+
+function stripLeadingLineupInitial(name) {
+  const text = String(name || '').trim();
+  if (!text) return '';
+  const stripped = text
+    // 앞쪽의 이니셜 블록(J. / M. / J.-P. / Á. 등)을 점 기준으로 제거
+    .replace(/^\s*(?:[^\s.．｡。]+[.．｡。]\s*)+/u, '')
+    .trim();
+  return stripped || text;
 }
 
 function openSettingsPopup() {
@@ -271,7 +448,9 @@ function getSwitchSides(category) {
   if (category === 'mainPage') return { off: 'big', on: 'small' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
   if (category === 'subReflect'
+    || category === 'lineupHideInitial'
     || category === 'fanReaction'
+    || category === 'splitLineup'
     || category === 'lineupShowGoals'
     || category === 'lineupShowCards'
     || category === 'lineupShowRating'
@@ -401,6 +580,17 @@ function initSettingsPopup() {
       closeSettingsPopup();
     }
   });
+
+  // 3-state 라디오 (leagueLogoPos 등) — 버튼 클릭 시 data-settings-radio-value를 setSetting에 전달.
+  document.querySelectorAll('[data-settings-radio]').forEach(btn => {
+    const category = btn.dataset.settingsRadio;
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.settingsRadioValue;
+      if (value) setSetting(category, value);
+    });
+  });
+  Array.from(new Set(Array.from(document.querySelectorAll('[data-settings-radio]')).map(btn => btn.dataset.settingsRadio)))
+    .forEach(category => syncRadioUi(category));
 
   document.querySelectorAll('input[data-settings-cat]').forEach(input => {
     const category = input.dataset.settingsCat;
