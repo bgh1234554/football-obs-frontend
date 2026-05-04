@@ -63,8 +63,9 @@
     'Fever':             '발열',
     'Fitness':           '몸상태 문제',
     'Personal Reasons':  '개인 사정',
-    'Coach Decision':    '감독 결정',
+    'Coach\'s Decision': '감독 결정',
     'National Team':     '국가대표 차출',
+    'Loan agreement':    '임대 조항',
     'Rest':              '휴식',
     'Inactive':          '출전 불가',
     'Unknown':           '미상',
@@ -78,6 +79,18 @@
     'Yellow Card Accumulation':     '경고 누적',
   };
 
+  function normalizeInjuryReasonKey(reason) {
+    return String(reason || '')
+      .trim()
+      .replace(/[‘’`´]/g, '\'')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+  }
+
+  const INJURY_REASON_KO_NORMALIZED = Object.fromEntries(
+    Object.entries(INJURY_REASON_KO).map(([key, value]) => [normalizeInjuryReasonKey(key), value])
+  );
+
   /**
    * reason 영문 → 한글. 매핑 없으면 원문 반환.
    * @param {string|null|undefined} reason
@@ -85,7 +98,10 @@
    */
   function getInjuryReasonKo(reason) {
     if (!reason) return '';
-    return INJURY_REASON_KO[reason] || reason;
+    const raw = String(reason).trim();
+    return INJURY_REASON_KO[raw]
+      || INJURY_REASON_KO_NORMALIZED[normalizeInjuryReasonKey(raw)]
+      || raw;
   }
 
   /**
