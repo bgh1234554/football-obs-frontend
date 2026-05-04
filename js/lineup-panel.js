@@ -1864,6 +1864,14 @@ function getPanelSplitMetrics(panel) {
   };
 }
 
+function getPanelChromeHeight(panel) {
+  if (!panel) return 0;
+  const split = panel.querySelector('.dp-split');
+  const panelHeight = panel.getBoundingClientRect().height;
+  const splitHeight = split ? split.getBoundingClientRect().height : 0;
+  return Math.max(0, panelHeight - splitHeight);
+}
+
 function getBenchPanelSections() {
   const benchPanel = document.getElementById('benchPanel');
   const injuryPanel = document.getElementById('injuryPanel');
@@ -1910,19 +1918,59 @@ function balanceBenchInjuryPanelHeights() {
 
   const benchMetrics = getPanelSplitMetrics(benchPanel);
   const injuryMetrics = getPanelSplitMetrics(injuryPanel);
+  let transferTarget = null;
+  let sourceSpare = 0;
+  let targetDeficit = 0;
+
+  if (injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
+    && benchMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    transferTarget = 'injury';
+    sourceSpare = benchMetrics.spare;
+    targetDeficit = injuryMetrics.deficit;
+  } else if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
+    && injuryMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    transferTarget = 'bench';
+    sourceSpare = injuryMetrics.spare;
+    targetDeficit = benchMetrics.deficit;
+  } else if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
+    && injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    const minInjuryHeight = getPanelChromeHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
+    const maxTransferFromInjury = Math.max(0, injuryRect.height - minInjuryHeight);
+    const transfer = Math.min(
+      Math.floor(maxTransferFromInjury),
+      Math.ceil(benchMetrics.deficit)
+    );
+    if (transfer <= DETAIL_PANEL_BALANCE_EPSILON_PX) return;
+
+    const nextBenchHeight = benchRect.height + transfer;
+    const nextInjuryHeight = injuryRect.height - transfer;
+
+    benchSection.style.flex = `0 0 ${nextBenchHeight}px`;
+    benchSection.style.height = `${nextBenchHeight}px`;
+    injurySection.style.flex = `0 0 ${nextInjuryHeight}px`;
+    injurySection.style.height = `${nextInjuryHeight}px`;
+    return;
+  } else {
+    return;
+  }
+
   const transfer = Math.min(
-    Math.floor(benchMetrics.spare),
-    Math.ceil(injuryMetrics.deficit)
+    Math.floor(sourceSpare),
+    Math.ceil(targetDeficit)
   );
   if (transfer <= DETAIL_PANEL_BALANCE_EPSILON_PX) return;
 
-  const nextBenchHeight = benchRect.height - transfer;
-  const appliedInjuryHeight = injuryRect.height + transfer;
+  const nextBenchHeight = transferTarget === 'bench'
+    ? benchRect.height + transfer
+    : benchRect.height - transfer;
+  const nextInjuryHeight = transferTarget === 'injury'
+    ? injuryRect.height + transfer
+    : injuryRect.height - transfer;
 
   benchSection.style.flex = `0 0 ${nextBenchHeight}px`;
   benchSection.style.height = `${nextBenchHeight}px`;
-  injurySection.style.flex = `0 0 ${appliedInjuryHeight}px`;
-  injurySection.style.height = `${appliedInjuryHeight}px`;
+  injurySection.style.flex = `0 0 ${nextInjuryHeight}px`;
+  injurySection.style.height = `${nextInjuryHeight}px`;
 }
 
 function scheduleBenchInjuryPanelBalance() {
