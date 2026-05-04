@@ -852,8 +852,15 @@
       overflow: hidden;
     }
     /* 패널 제목 줄 — 교체명단/부상 패널 .dp-title 톤 유지 */
-    .ev-title {
+    .ev-title-bar {
       flex: 0 0 auto;
+      position: relative;
+      padding: 4px 0 6px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      margin-bottom: 6px;
+      z-index: 4;
+    }
+    .ev-title {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -861,9 +868,155 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       color: rgba(255,255,255,.70);
-      padding: 4px 0 6px;
-      border-bottom: 1px solid rgba(255,255,255,.12);
-      margin-bottom: 6px;
+    }
+    .ev-filter-shell {
+      position: absolute;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+    }
+    .ev-filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.82);
+      padding: 4px 8px;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .ev-filter-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,.11);
+      border-color: rgba(255,255,255,.22);
+    }
+    .ev-filter-btn:disabled {
+      opacity: .45;
+      cursor: default;
+    }
+    .ev-filter-btn.is-open {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.24);
+    }
+    .ev-filter-btn.is-active {
+      color: #dcfce7;
+      background: rgba(34,197,94,.14);
+      border-color: rgba(34,197,94,.4);
+    }
+    .ev-filter-btn svg {
+      width: 11px;
+      height: 11px;
+      display: block;
+    }
+    .ev-filter-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      color: inherit;
+      font-size: 9px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .ev-filter-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 196px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      background: rgba(11,16,27,.96);
+      box-shadow: 0 14px 28px rgba(0,0,0,.34);
+      backdrop-filter: blur(10px);
+    }
+    .ev-filter-popover[hidden] { display: none !important; }
+    .ev-filter-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .ev-filter-heading-text {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255,255,255,.84);
+    }
+    .ev-filter-reset {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: #93c5fd;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ev-filter-reset:disabled {
+      color: rgba(255,255,255,.34);
+      cursor: default;
+    }
+    .ev-filter-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.2) transparent;
+    }
+    .ev-filter-options::-webkit-scrollbar { width: 5px; }
+    .ev-filter-options::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
+    .ev-filter-options::-webkit-scrollbar-track { background: transparent; }
+    .ev-filter-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: #f0f0f0;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .ev-filter-option input {
+      margin: 0;
+      accent-color: #22c55e;
+      cursor: pointer;
+    }
+    .ev-filter-swatch {
+      flex: 0 0 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+    }
+    .ev-filter-swatch-blue { background: #3b82f6; }
+    .ev-filter-swatch-yellow { background: #f5c518; }
+    .ev-filter-swatch-red { background: #ef4444; }
+    .ev-filter-swatch-green { background: #22c55e; }
+    .ev-filter-swatch-orange { background: #f97316; }
+    .ev-filter-swatch-white { background: rgba(255,255,255,.92); }
+    .ev-filter-option-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ev-filter-count {
+      flex: 0 0 auto;
+      color: rgba(255,255,255,.45);
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
     }
     .ev-list {
       flex: 1 1 0;

@@ -921,8 +921,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  opacity: .26;
-  filter: grayscale(.35) saturate(.9) contrast(1.12) brightness(1.08);
+  opacity: var(--lp-pitch-logo-opacity, .26);
+  filter: var(--lp-pitch-logo-filter, grayscale(.35) saturate(.9) contrast(1.12) brightness(1.08));
 }
 .dp-lineup-markings { z-index: 2; }
 /* 전체 외곽 라인 */

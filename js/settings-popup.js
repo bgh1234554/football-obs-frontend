@@ -66,6 +66,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.5)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.55)',
+    logoOpacity: '.26',
+    logoFilter: 'grayscale(.35) saturate(.9) contrast(1.12) brightness(1.08)',
     tacticsMarking: 'rgba(255,255,255,.4)',
     tacticsMarkingSoft: 'rgba(255,255,255,.3)',
     tacticsMarkingFaint: 'rgba(255,255,255,.25)',
@@ -77,6 +79,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.34)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.5)',
+    logoOpacity: '.36',
+    logoFilter: 'grayscale(.18) saturate(1.02) contrast(1.18) brightness(1.32)',
     tacticsMarking: 'rgba(255,255,255,.44)',
     tacticsMarkingSoft: 'rgba(255,255,255,.32)',
     tacticsMarkingFaint: 'rgba(255,255,255,.26)',
@@ -88,6 +92,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.52)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.52)',
+    logoOpacity: '.31',
+    logoFilter: 'grayscale(.26) saturate(.96) contrast(1.16) brightness(1.18)',
     tacticsMarking: 'rgba(255,255,255,.42)',
     tacticsMarkingSoft: 'rgba(255,255,255,.31)',
     tacticsMarkingFaint: 'rgba(255,255,255,.25)',
@@ -99,6 +105,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(15,23,42,.4)',
     border: 'rgba(15,23,42,.12)',
     marking: 'rgba(15,23,42,.34)',
+    logoOpacity: '.28',
+    logoFilter: 'grayscale(.5) saturate(.78) contrast(1.2) brightness(.82)',
     tacticsMarking: 'rgba(15,23,42,.34)',
     tacticsMarkingSoft: 'rgba(15,23,42,.26)',
     tacticsMarkingFaint: 'rgba(15,23,42,.2)',
@@ -110,6 +118,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.44)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.5)',
+    logoOpacity: '.31',
+    logoFilter: 'grayscale(.24) saturate(.94) contrast(1.16) brightness(1.16)',
     tacticsMarking: 'rgba(255,255,255,.4)',
     tacticsMarkingSoft: 'rgba(255,255,255,.3)',
     tacticsMarkingFaint: 'rgba(255,255,255,.25)',
@@ -121,6 +131,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.46)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.52)',
+    logoOpacity: '.33',
+    logoFilter: 'grayscale(.22) saturate(.98) contrast(1.18) brightness(1.24)',
     tacticsMarking: 'rgba(255,255,255,.42)',
     tacticsMarkingSoft: 'rgba(255,255,255,.31)',
     tacticsMarkingFaint: 'rgba(255,255,255,.25)',
@@ -132,6 +144,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.48)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.5)',
+    logoOpacity: '.28',
+    logoFilter: 'grayscale(.32) saturate(.88) contrast(1.14) brightness(1.08)',
     tacticsMarking: 'rgba(255,255,255,.4)',
     tacticsMarkingSoft: 'rgba(255,255,255,.3)',
     tacticsMarkingFaint: 'rgba(255,255,255,.25)',
@@ -143,6 +157,8 @@ const LINEUP_PITCH_TONE_STYLES = {
     stripe: 'rgba(255,255,255,.42)',
     border: 'rgba(255,255,255,.12)',
     marking: 'rgba(255,255,255,.48)',
+    logoOpacity: '.3',
+    logoFilter: 'grayscale(.24) saturate(.95) contrast(1.18) brightness(1.2)',
     tacticsMarking: 'rgba(255,255,255,.4)',
     tacticsMarkingSoft: 'rgba(255,255,255,.3)',
     tacticsMarkingFaint: 'rgba(255,255,255,.24)',
@@ -358,6 +374,8 @@ function applyLayoutSettings() {
   root.style.setProperty('--lp-pitch-marking-color', pitchTone.marking);
   root.style.setProperty('--lp-pitch-wash-a', pitchTone.washA);
   root.style.setProperty('--lp-pitch-wash-b', pitchTone.washB);
+  root.style.setProperty('--lp-pitch-logo-opacity', pitchTone.logoOpacity || '.26');
+  root.style.setProperty('--lp-pitch-logo-filter', pitchTone.logoFilter || 'grayscale(.35) saturate(.9) contrast(1.12) brightness(1.08)');
   root.style.setProperty('--td-pitch-bg', pitchTone.background);
   root.style.setProperty('--td-pitch-stripe-color', pitchTone.stripe);
   root.style.setProperty('--td-pitch-border-color', pitchTone.border);

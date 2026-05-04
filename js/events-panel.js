@@ -16,6 +16,68 @@ const EVENTS_PANEL_FONT_DEFAULT = 15;
 const EVENTS_PANEL_FONT_MIN = 10;
 const EVENTS_PANEL_ROW_ANIM_MS = 340;
 const EVENTS_PANEL_ROW_ENTER_OFFSET_PX = 16;
+const EVENTS_PANEL_FILTER_STORAGE_KEY = 'obs.eventsPanel.filters.v1';
+const EVENTS_PANEL_FILTER_ORDER = [
+  'goal',
+  'pk-goal',
+  'own-goal',
+  'pk-miss',
+  'yellow-card',
+  'red-card',
+  'cumulative-red',
+  'subst',
+  'var',
+  'var-goal-cancel',
+  'var-penalty-cancel',
+  'var-goal-confirm',
+  'var-penalty-confirm',
+];
+const eventsPanelFilterState = {
+  isOpen: false,
+  disabledKeys: evLoadDisabledFilterKeys(),
+};
+
+function evLoadDisabledFilterKeys() {
+  try {
+    const raw = localStorage.getItem(EVENTS_PANEL_FILTER_STORAGE_KEY);
+    const parsed = JSON.parse(raw || '[]');
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.map(value => String(value || '').trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function evSaveDisabledFilterKeys() {
+  try {
+    localStorage.setItem(
+      EVENTS_PANEL_FILTER_STORAGE_KEY,
+      JSON.stringify(Array.from(eventsPanelFilterState.disabledKeys))
+    );
+  } catch {}
+}
+
+function evIsFilterEnabled(key) {
+  return !eventsPanelFilterState.disabledKeys.has(key);
+}
+
+function evSetFilterEnabled(key, enabled) {
+  const normalized = String(key || '').trim();
+  if (!normalized) return;
+  if (enabled) eventsPanelFilterState.disabledKeys.delete(normalized);
+  else eventsPanelFilterState.disabledKeys.add(normalized);
+  evSaveDisabledFilterKeys();
+}
+
+function evSetAllFilters(filterKeys, enabled) {
+  Array.from(new Set((Array.isArray(filterKeys) ? filterKeys : []).map(key => String(key || '').trim()).filter(Boolean)))
+    .forEach(key => evSetFilterEnabled(key, enabled));
+}
+
+function evFilterSortWeight(key) {
+  const index = EVENTS_PANEL_FILTER_ORDER.indexOf(String(key || ''));
+  return index >= 0 ? index : EVENTS_PANEL_FILTER_ORDER.length + 100;
+}
 
 function evTypeIs(ev, type) {
   return String(ev?.type || '').toLowerCase() === String(type || '').toLowerCase();
@@ -124,7 +186,71 @@ function evStyle(ev) {
   return { color: 'white', icon: 'default' };
 }
 
-/** 'event' 설정에 따라 풀네임/단축명 선택. assist도 동일 규칙. */
+/** 이벤트를 필터 UI에서 다룰 카테고리 키로 정규화. */
+function evFilterKey(ev) {
+  const detail = ev._displayDetail || ev.detail || '';
+  const varDetailKey = evTypeIs(ev, 'Var') ? evVarDetailKey(detail) : '';
+
+  if (varDetailKey === 'goal-cancel') return 'var-goal-cancel';
+  if (varDetailKey === 'penalty-cancel') return 'var-penalty-cancel';
+  if (varDetailKey === 'goal-confirm') return 'var-goal-confirm';
+  if (varDetailKey === 'penalty-confirm') return 'var-penalty-confirm';
+
+  if (evTypeIs(ev, 'Goal')) {
+    if (evDetailIs(detail, 'Missed Penalty')) return 'pk-miss';
+    if (evDetailIs(detail, 'Own Goal')) return 'own-goal';
+    if (evDetailIs(detail, 'Penalty')) return 'pk-goal';
+    return 'goal';
+  }
+  if (evTypeIs(ev, 'Card')) {
+    if (evDetailIs(detail, 'Yellow Card')) return 'yellow-card';
+    if (ev._isCumulativeRed) return 'cumulative-red';
+    return 'red-card';
+  }
+  if (evTypeIs(ev, 'subst')) return 'subst';
+  if (evTypeIs(ev, 'Var')) return 'var';
+  return `other:${String(ev?.type || 'event').trim().toLowerCase() || 'event'}`;
+}
+
+function evGetFilterMeta(ev) {
+  const style = evStyle(ev);
+  return {
+    key: evFilterKey(ev),
+    label: evLabelKo(ev) || '기타',
+    color: String(style.color || 'white'),
+  };
+}
+
+function evBuildFilterOptions(events) {
+  const optionMap = new Map();
+  (Array.isArray(events) ? events : []).forEach(ev => {
+    const meta = evGetFilterMeta(ev);
+    const current = optionMap.get(meta.key);
+    if (current) {
+      current.count += 1;
+      return;
+    }
+    optionMap.set(meta.key, { ...meta, count: 1 });
+  });
+
+  return Array.from(optionMap.values()).sort((left, right) => {
+    const orderDiff = evFilterSortWeight(left.key) - evFilterSortWeight(right.key);
+    if (orderDiff) return orderDiff;
+    return String(left.label || '').localeCompare(String(right.label || ''), 'ko');
+  });
+}
+
+function evFilterEvents(events) {
+  return (Array.isArray(events) ? events : []).filter(ev => evIsFilterEnabled(evGetFilterMeta(ev).key));
+}
+
+function evHasActiveFilter(filterOptions) {
+  const options = Array.isArray(filterOptions) ? filterOptions : [];
+  if (!options.length) return false;
+  const enabledCount = options.filter(option => evIsFilterEnabled(option.key)).length;
+  return enabledCount !== options.length;
+}
+
 function evNormalizeDisplayName(value, fallback = '') {
   const trimmed = String(value ?? '').trim();
   if (!trimmed || /^(null|undefined|-)$/i.test(trimmed)) return fallback;
@@ -512,12 +638,137 @@ function evFitText(row) {
   }
 }
 
-/**
- * fixture data를 받아서 이벤트 패널을 렌더링. data가 null이면 비움.
- * 호출 위치: fixture.js의 fetchAndApplyFixtureData 성공 시.
- */
+/** 현재 fixture 데이터로 이벤트 패널을 즉시 다시 그린다. */
+function evRerenderCurrentPanel() {
+  if (window._eventsLastData) {
+    window.applyEventsPanel(window._eventsLastData, { animate: false });
+  }
+}
+
+function evCloseFilterPopover() {
+  if (!eventsPanelFilterState.isOpen) return;
+  eventsPanelFilterState.isOpen = false;
+  evRerenderCurrentPanel();
+}
+
+function evCreateTitleBar(filterOptions) {
+  const titleBar = document.createElement('div');
+  titleBar.className = 'ev-title-bar';
+
+  const title = document.createElement('div');
+  title.className = 'ev-title';
+  title.textContent = '이벤트';
+  titleBar.appendChild(title);
+
+  titleBar.appendChild(evCreateFilterUi(filterOptions));
+  return titleBar;
+}
+
+function evCreateFilterUi(filterOptions) {
+  const options = Array.isArray(filterOptions) ? filterOptions : [];
+  const totalCount = options.length;
+  const enabledCount = options.filter(option => evIsFilterEnabled(option.key)).length;
+  const isFiltered = evHasActiveFilter(options);
+
+  const shell = document.createElement('div');
+  shell.className = 'ev-filter-shell';
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'ev-filter-btn';
+  if (isFiltered) button.classList.add('is-active');
+  if (eventsPanelFilterState.isOpen) button.classList.add('is-open');
+  button.disabled = !totalCount;
+  button.setAttribute('aria-haspopup', 'dialog');
+  button.setAttribute('aria-expanded', eventsPanelFilterState.isOpen ? 'true' : 'false');
+  button.title = totalCount ? '이벤트 필터' : '필터할 이벤트가 없습니다';
+  button.innerHTML = [
+    '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">',
+    '<path d="M2 3.25C2 2.56 2.56 2 3.25 2h9.5C13.44 2 14 2.56 14 3.25c0 .3-.11.59-.31.82L10 8.08v4.17c0 .25-.12.49-.32.64l-1.75 1.25A.75.75 0 0 1 6.75 13.5V8.08L2.31 4.07A1.25 1.25 0 0 1 2 3.25Z" fill="currentColor"></path>',
+    '</svg>',
+    '<span class="ev-filter-btn-label">필터</span>',
+  ].join('');
+  if (isFiltered) {
+    const badge = document.createElement('span');
+    badge.className = 'ev-filter-badge';
+    badge.textContent = `${enabledCount}/${totalCount}`;
+    button.appendChild(badge);
+  }
+  button.addEventListener('click', event => {
+    event.preventDefault();
+    if (!totalCount) return;
+    eventsPanelFilterState.isOpen = !eventsPanelFilterState.isOpen;
+    evRerenderCurrentPanel();
+  });
+  shell.appendChild(button);
+
+  const popover = document.createElement('div');
+  popover.className = 'ev-filter-popover';
+  popover.hidden = !eventsPanelFilterState.isOpen || !totalCount;
+  popover.setAttribute('role', 'dialog');
+  popover.setAttribute('aria-label', '이벤트 필터');
+  if (!popover.hidden) {
+    const heading = document.createElement('div');
+    heading.className = 'ev-filter-heading';
+
+    const headingText = document.createElement('div');
+    headingText.className = 'ev-filter-heading-text';
+    headingText.textContent = '표시할 이벤트';
+    heading.appendChild(headingText);
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'ev-filter-reset';
+    resetBtn.textContent = '전체 표시';
+    resetBtn.disabled = !isFiltered;
+    resetBtn.addEventListener('click', event => {
+      event.preventDefault();
+      evSetAllFilters(options.map(option => option.key), true);
+      eventsPanelFilterState.isOpen = true;
+      evRerenderCurrentPanel();
+    });
+    heading.appendChild(resetBtn);
+
+    const optionList = document.createElement('div');
+    optionList.className = 'ev-filter-options';
+
+    options.forEach(option => {
+      const item = document.createElement('label');
+      item.className = 'ev-filter-option';
+
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = evIsFilterEnabled(option.key);
+      input.addEventListener('change', () => {
+        evSetFilterEnabled(option.key, input.checked);
+        eventsPanelFilterState.isOpen = true;
+        evRerenderCurrentPanel();
+      });
+
+      const swatch = document.createElement('span');
+      swatch.className = `ev-filter-swatch ev-filter-swatch-${option.color}`;
+
+      const text = document.createElement('span');
+      text.className = 'ev-filter-option-text';
+      text.textContent = option.label;
+
+      const count = document.createElement('span');
+      count.className = 'ev-filter-count';
+      count.textContent = String(option.count);
+
+      item.append(input, swatch, text, count);
+      optionList.appendChild(item);
+    });
+
+    popover.append(heading, optionList);
+  }
+  shell.appendChild(popover);
+  return shell;
+}
+
+/** fixture data를 받아 이벤트 패널을 렌더링한다. data가 null이면 비운다. */
 function applyEventsPanel(fixtureData, options = {}) {
-  // 설정 변경 시 즉시 재렌더용 캐시 (settings:change 핸들러에서 사용).
+  // settings:change에서 재사용할 마지막 fixture 캐시
   window._eventsLastData = fixtureData;
 
   const container = document.querySelector('[data-events-panel]');
@@ -530,15 +781,15 @@ function applyEventsPanel(fixtureData, options = {}) {
   const previousRects = shouldAnimate
     ? evCaptureRowRects(container.querySelector('.ev-list'))
     : new Map();
+  const processedEvents = evProcess(fixtureData?.events);
+  const filterOptions = evBuildFilterOptions(processedEvents);
+  if (!filterOptions.length) eventsPanelFilterState.isOpen = false;
+  const titleBar = evCreateTitleBar(filterOptions);
+  const events = evFilterEvents(processedEvents);
 
   // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
-  const title = document.createElement('div');
-  title.className = 'ev-title';
-  title.textContent = '이벤트';
-
-  const events = evProcess(fixtureData?.events);
-  if (!events.length) {
-    container.replaceChildren(title);
+  if (!processedEvents.length) {
+    container.replaceChildren(titleBar);
     container.dataset.evFixtureId = nextFixtureId;
     const empty = document.createElement('div');
     empty.className = 'ev-empty';
@@ -547,11 +798,21 @@ function applyEventsPanel(fixtureData, options = {}) {
     return;
   }
 
+  if (!events.length) {
+    container.replaceChildren(titleBar);
+    container.dataset.evFixtureId = nextFixtureId;
+    const empty = document.createElement('div');
+    empty.className = 'ev-empty';
+    empty.textContent = '선택한 필터에 맞는 이벤트가 없습니다';
+    container.appendChild(empty);
+    return;
+  }
+
   const list = document.createElement('div');
   list.className = 'ev-list';
   const renderKeys = evBuildRenderKeys(events);
   events.forEach((ev, index) => list.appendChild(evCreateRow(ev, fixtureData, renderKeys[index])));
-  container.replaceChildren(title, list);
+  container.replaceChildren(titleBar, list);
   container.dataset.evFixtureId = nextFixtureId;
 
   // 레이아웃 후 폰트 자동 축소 — getBoundingClientRect 사용 가능 시점에 호출
@@ -574,4 +835,21 @@ document.addEventListener('settings:change', e => {
   if (window._eventsLastData) {
     window.applyEventsPanel(window._eventsLastData, { animate: false });
   }
+});
+
+document.addEventListener('pointerdown', event => {
+  if (!eventsPanelFilterState.isOpen) return;
+  const shell = document.querySelector('.ev-filter-shell');
+  if (!shell) {
+    eventsPanelFilterState.isOpen = false;
+    return;
+  }
+  if (shell.contains(event.target)) return;
+  evCloseFilterPopover();
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !eventsPanelFilterState.isOpen) return;
+  event.preventDefault();
+  evCloseFilterPopover();
 });

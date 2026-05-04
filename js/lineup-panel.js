@@ -877,7 +877,7 @@ function mapFormationSlotToPitchPosition(slot, side) {
   //           위로 가려지는 케이스 방지.
   //   - away: -0.5% (≈  4px on 470px pitch) — 이름 pill이 원 아래로 그려져 피치 밖으로 잘리지
   //           않을 정도로만 살짝 올림. 너무 올리면 미드필더와 겹치므로 조금만.
-  if (depth === 0) top -= isHome ? 3.5 : -0.5;
+  if (depth === 0) top -= isHome ? 3.5 : 0.5;
   // 홈팀은 rawY 그대로, 원정팀은 100 - rawY를 써서 서로 마주보는 방향으로 배치한다.
   const yLocal = isHome ? rawY : (100 - rawY);
   // 가로는 5~95% (90% 폭)
