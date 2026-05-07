@@ -673,6 +673,9 @@
     .md-body h1 { font-size: 24px; font-weight: 900; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
     .md-body h2 { font-size: 18px; font-weight: 800; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
     .md-body h3 { font-size: 15px; font-weight: 800; margin: 20px 0 8px; color: var(--muted); }
+    .md-body h4 { font-size: 14px; font-weight: 700; margin: 16px 0 6px; color: var(--text); }
+    .md-body h5 { font-size: 13px; font-weight: 700; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .md-body h6 { font-size: 12px; font-weight: 700; margin: 12px 0 4px; color: var(--muted); }
     .md-body p  { margin: 0 0 12px; }
     .md-body ul, .md-body ol { margin: 0 0 12px 20px; }
     .md-body li { margin-bottom: 4px; }
@@ -686,6 +689,58 @@
     .md-body table { border-collapse: collapse; width: 100%; margin-bottom: 14px; font-size: 13px; }
     .md-body th, .md-body td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
     .md-body th { background: rgba(255,255,255,.05); font-weight: 800; }
+
+    /* ── markdown-it-mark — ==형광펜 강조== */
+    .md-body mark {
+      background: rgba(250, 204, 21, .25);
+      color: #fde68a;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    /* ── markdown-it-abbr — 약어 hover 툴팁 (대시보드 다크 테마용) */
+    .md-body abbr[title] {
+      text-decoration: underline dotted rgba(255, 255, 255, .35);
+      text-underline-offset: 3px;
+      cursor: help;
+    }
+
+    /* ── markdown-it-container — 콜아웃 박스 (tip / warning / danger / info) */
+    .md-body .custom-block {
+      margin: 14px 0;
+      padding: 12px 16px 12px 18px;
+      border-radius: 8px;
+      border-left: 4px solid;
+      background: rgba(255, 255, 255, .04);
+    }
+    .md-body .custom-block > p { margin: 0; }
+    .md-body .custom-block > p + p { margin-top: 8px; }
+    .md-body .custom-block-title {
+      font-weight: 800;
+      margin-bottom: 6px;
+      font-size: 13px;
+      letter-spacing: .02em;
+    }
+    .md-body .custom-block.tip {
+      border-left-color: #60a5fa;
+      background: rgba(96, 165, 250, .08);
+    }
+    .md-body .custom-block.tip .custom-block-title { color: #93c5fd; }
+    .md-body .custom-block.info {
+      border-left-color: #a78bfa;
+      background: rgba(167, 139, 250, .08);
+    }
+    .md-body .custom-block.info .custom-block-title { color: #c4b5fd; }
+    .md-body .custom-block.warning {
+      border-left-color: #facc15;
+      background: rgba(250, 204, 21, .08);
+    }
+    .md-body .custom-block.warning .custom-block-title { color: #fde68a; }
+    .md-body .custom-block.danger {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, .08);
+    }
+    .md-body .custom-block.danger .custom-block-title { color: #fca5a5; }
 
     /* API 데이터 상태 배지 */
     .api-badge {

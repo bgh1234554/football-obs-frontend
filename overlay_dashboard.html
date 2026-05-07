@@ -17,8 +17,14 @@
   <link rel="stylesheet" href="css/hamburger-nav.css"/>
   <link rel="stylesheet" href="css/detail-panels.css"/>
   <link rel="stylesheet" href="css/settings-popup.css"/>
-  <!-- 마크다운을 HTML에 자동 렌더링 해주는 라이브러리 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <!-- 마크다운 렌더링: markdown-it (CommonMark + GFM) + 헤딩 anchor 자동 생성 + XSS sanitize -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-anchor@9.2.0/dist/markdownItAnchor.umd.js"></script>
+  <!-- markdown-it 플러그인: 콜아웃 박스(::: tip), 약어 툴팁(*[ABBR]: ...), 형광펜(==text==) -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-container@4.0.0/dist/markdown-it-container.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-abbr@2.0.0/dist/markdown-it-abbr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-mark@4.0.0/dist/markdown-it-mark.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
 </head>
 <body>
   <!-- ========== 보드 스테이지 (항상 표시) ========== -->
