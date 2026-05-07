@@ -349,6 +349,48 @@
   letter-spacing: .02em;
 }
 
+/* ━━━ 평점 색상 그리드 ━━━
+   7개 구간을 2~3열로 깔끔하게 배치. 각 항목에 라벨과 color picker가 한 쌍.
+   sp-row-rating-colors는 row-label과 grid를 세로 stack으로 배치(가로 폭 절약). */
+.sp-row-rating-colors {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.sp-rating-color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px 10px;
+}
+.sp-rating-color-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: rgba(0,0,0,.22);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255,255,255,.85);
+  cursor: pointer;
+}
+.sp-rating-color-item input[type="color"] {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.sp-rating-color-item input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.sp-rating-color-item input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+.sp-rating-color-item input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }
+
 /* ━━━ 카테고리 탭 — 설정 종류 그룹 전환 ━━━
    sp-body 최상단에 가로로 배치. 클릭 시 data-sp-tab과 일치하는 data-sp-tab-section 만 표시. */
 .sp-tabs {

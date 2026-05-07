@@ -179,27 +179,46 @@ function lpBuildRatingMap(players) {
   return map;
 }
 
+// 평점 색상 기본 팔레트. settings에 사용자 override가 없을 때만 사용.
+// 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 변경 가능.
+// settings-popup.js의 SETTINGS_DEFAULTS와 같은 값(소문자)으로 유지 — color input 호환성.
+const LP_RATING_COLOR_DEFAULTS = {
+  ratingColorBelow6: '#cd0b00', // < 6.0 (red)
+  ratingColor6:      '#ed7e07', // 6.0~6.4 (orange)
+  ratingColor65:     '#d9af00', // 6.5~6.9 (yellow)
+  ratingColor7:      '#00c424', // 7.0~7.9 (green)
+  ratingColor8:      '#00adc4', // 8.0~8.9 (cyan)
+  ratingColor9:      '#374df5', // 9.0~9.4 (blue)
+  ratingColor95:     '#7f1d6d', // ≥9.5 (purple)
+};
+
+/** 사용자 설정값 우선, 없으면 기본 팔레트로 폴백. */
+function lpGetRatingColor(key) {
+  const fromSetting = (typeof getSetting === 'function') ? getSetting(key) : null;
+  return fromSetting || LP_RATING_COLOR_DEFAULTS[key] || '#666';
+}
+
 /**
- * 평점 → 배경 색상 (CLAUDE 명세).
- * 9.5는 양 범위에 걸치는데 사용자 지정대로 보라(9.5~10.0).
- *   <6.0       : #CD0B00 (red)
- *   6.0~6.4    : #ED7E07 (orange)
- *   6.5~6.9    : #D9AF00 (yellow)
- *   7.0~7.9    : #00C424 (green)
- *   8.0~8.9    : #00ADC4 (cyan)
- *   9.0~9.4    : #374DF5 (blue)
- *   ≥9.5       : #7F1D6D (purple)
+ * 평점 → 배경 색상.
+ * 7구간으로 분기. 각 구간 색은 LP_RATING_COLOR_DEFAULTS 또는 사용자 설정으로 결정.
+ *   <6.0      : ratingColorBelow6
+ *   6.0~6.4   : ratingColor6
+ *   6.5~6.9   : ratingColor65
+ *   7.0~7.9   : ratingColor7
+ *   8.0~8.9   : ratingColor8
+ *   9.0~9.4   : ratingColor9
+ *   ≥9.5      : ratingColor95
  */
 function lpRatingColor(ratingNum) {
   const r = Number(ratingNum);
   if (!Number.isFinite(r)) return '#666';
-  if (r < 6.0) return '#CD0B00';
-  if (r < 6.5) return '#ED7E07';
-  if (r < 7.0) return '#D9AF00';
-  if (r < 8.0) return '#00C424';
-  if (r < 9.0) return '#00ADC4';
-  if (r < 9.5) return '#374DF5';
-  return '#7F1D6D';
+  if (r < 6.0) return lpGetRatingColor('ratingColorBelow6');
+  if (r < 6.5) return lpGetRatingColor('ratingColor6');
+  if (r < 7.0) return lpGetRatingColor('ratingColor65');
+  if (r < 8.0) return lpGetRatingColor('ratingColor7');
+  if (r < 9.0) return lpGetRatingColor('ratingColor8');
+  if (r < 9.5) return lpGetRatingColor('ratingColor9');
+  return lpGetRatingColor('ratingColor95');
 }
 
 /**

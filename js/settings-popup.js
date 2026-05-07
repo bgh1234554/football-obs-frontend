@@ -49,6 +49,16 @@ const SETTINGS_DEFAULTS = {
   lineupShowCards: 'on',     // 옐로/레드 카드
   lineupShowRating: 'off',   // 평점 박스
   lineupShowSubTime: 'off',  // 교체 IN 시간(72' 등)
+  // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
+  // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
+  // color input은 항상 소문자 hex를 반환하므로 default도 소문자로 통일 — 비교/리셋 일관성.
+  ratingColorBelow6:    '#cd0b00',  // < 6.0
+  ratingColor6:         '#ed7e07',  // 6.0 ~ 6.4
+  ratingColor65:        '#d9af00',  // 6.5 ~ 6.9
+  ratingColor7:         '#00c424',  // 7.0 ~ 7.9
+  ratingColor8:         '#00adc4',  // 8.0 ~ 8.9
+  ratingColor9:         '#374df5',  // 9.0 ~ 9.4
+  ratingColor95:        '#7f1d6d',  // ≥ 9.5
 };
 
 const EVENT_NAME_SIZE_MIN = 10;
@@ -173,7 +183,7 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 const settingsState = { ...SETTINGS_DEFAULTS };
 
 /**
- * 모든 설정 카테고리의 UI(스위치/슬라이더/숫자입력/라디오)를 settingsState 기준으로 일괄 동기화.
+ * 모든 설정 카테고리의 UI(스위치/슬라이더/숫자입력/라디오/색상)를 settingsState 기준으로 일괄 동기화.
  * 설정 초기화나 탭 전환처럼 "현재 상태를 통째로 화면에 반영"해야 할 때 호출.
  */
 function syncAllSettingsUi() {
@@ -182,6 +192,7 @@ function syncAllSettingsUi() {
     syncSliderUi(category);
     syncNumberUi(category);
     syncRadioUi(category);
+    syncColorUi(category);
   });
 }
 
@@ -220,7 +231,14 @@ function emitSettingsChange(category) {
  * - 숫자 카테고리(slider/number)는 범위(min/max) 안 finite 숫자만 허용.
  * - 그 외(scorer/lineup/roster/teamName/event)는 'short' | 'long'만 허용.
  */
+const RATING_COLOR_KEYS = new Set([
+  'ratingColorBelow6', 'ratingColor6', 'ratingColor65',
+  'ratingColor7', 'ratingColor8', 'ratingColor9', 'ratingColor95',
+]);
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
 function isValidSetting(category, value) {
+  if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
   if (category === 'teamLogo') return value === 'logo' || value === 'fa';
   if (category === 'mainPage') return value === 'big' || value === 'small';
@@ -351,6 +369,7 @@ function setSetting(category, value) {
   syncSwitchUi(category);
   syncSliderUi(category);
   syncRadioUi(category);
+  syncColorUi(category);
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
@@ -496,6 +515,14 @@ function syncNumberUi(category) {
   if (!input) return;
   const value = Number(getSetting(category));
   if (Number.isFinite(value) && input.value !== String(value)) input.value = String(value);
+}
+
+/** 색상 input(<input type="color">) UI 동기화. 평점 색상 7구간 등에 사용. */
+function syncColorUi(category) {
+  const input = document.querySelector(`input[data-settings-color="${category}"]`);
+  if (!input) return;
+  const value = String(getSetting(category) || '').toLowerCase();
+  if (HEX_COLOR_RE.test(value) && input.value.toLowerCase() !== value) input.value = value;
 }
 
 /** legacy alias — 기존 외부 호출 호환용. setSetting의 wrapper. */
@@ -781,6 +808,19 @@ function initSettingsPopup() {
     };
     input.addEventListener('change', handler);
     input.addEventListener('input', handler);
+  });
+
+  // 색상 input (평점 색상 등). 드래그 중에는 setSetting을 호출하지 않고 change에서만 commit
+  // — theme.js의 색상 lag 방지 패턴과 동일. setSetting 자체에서 settings:change 이벤트가
+  // 발행되므로 라인업 패널이 알아서 재렌더한다.
+  document.querySelectorAll('input[data-settings-color]').forEach(input => {
+    const category = input.dataset.settingsColor;
+    syncColorUi(category);
+    // input 이벤트는 무시 — 드래그마다 commit하면 patch 재계산 + render 트리거로 lag 발생.
+    input.addEventListener('change', () => {
+      const v = String(input.value || '').toLowerCase();
+      if (HEX_COLOR_RE.test(v)) setSetting(category, v);
+    });
   });
 
   if (settingsResetBtn) {

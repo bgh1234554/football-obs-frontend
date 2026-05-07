@@ -499,26 +499,63 @@
   // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
   const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
+  /**
+   * 색상 피커와 HEX 텍스트 입력 필드를 양방향으로 연결.
+   *
+   * 드래그 lag 방지 정책:
+   *   - input(드래그 중): CSS 변수 + hex 표시만 즉시 갱신 → 라이브 프리뷰. 무거운 작업 X.
+   *   - change(피커 닫힘): state 저장 + persist + render + 라인업/스탯 패널 dispatch 한 번만 실행.
+   * 결과: 60fps로 점수판이 즉시 반영되면서도 드래그 도중 lag 없음.
+   */
   function bindColorWithHex(colorId, key, cssVar){
     const colorInput=$(colorId); if(!colorInput) return;
     const hexInput=document.createElement('input'); hexInput.type='text'; hexInput.id=colorId+'Hex'; hexInput.placeholder='#RRGGBB'; hexInput.style.width='92px'; hexInput.style.marginLeft='6px'; hexInput.value=state.colors[key]||colorInput.value||'#000000';
     // bootstrap 스타일 적용
     hexInput.style.background='#0b1220'; hexInput.style.color='#e5e7eb'; hexInput.style.border='1px solid #ffffff20'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
     colorInput.insertAdjacentElement('afterend', hexInput);
-    // 'theme:colors-changed' 이벤트 — 라인업 패널 등 점수판 외 영역도 새 컬러로 재렌더할 수 있게 신호
+    // 'theme:colors-changed' 이벤트 — 라인업/스탯 패널이 받아 재렌더(commit 시점에만 호출).
     const dispatchThemeChange = () => document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key } }));
     const markOverride = () => {
       if (!TEAM_COLOR_KEYS.has(key)) return;
       state.teamColorOverride = true;
       state.teamColorOverrideFixtureId = (typeof getLastFixtureId === 'function') ? getLastFixtureId() : null;
     };
-    const commitThemeColor = value => { state.colors[key]=value; setCSS(cssVar,value); hexInput.value=value; markOverride(); persist(); render(); dispatchThemeChange(); };
-    const deferUntilChange = key === 'homeBg' || key === 'homeText' || key === 'awayBg' || key === 'awayText';
-    colorInput.addEventListener('input', e=>{ const val=e.target.value; if(deferUntilChange){ hexInput.value=val; return; } commitThemeColor(val); });
-    if(deferUntilChange){
-      colorInput.addEventListener('change', e=>commitThemeColor(e.target.value));
-    }
-    hexInput.addEventListener('change', e=>{ const nv=normalizeHex(e.target.value); if(!nv){ hexInput.value=state.colors[key]; alert('HEX 형식은 #RRGGBB 또는 #RGB입니다.'); return; } state.colors[key]=nv; setCSS(cssVar,nv); colorInput.value=nv; markOverride(); persist(); render(); dispatchThemeChange(); });
+
+    /** 드래그 중 가벼운 라이브 프리뷰 — CSS 변수와 hex 표시만 갱신. state/persist/render/dispatch 안 함. */
+    const previewThemeColor = value => {
+      setCSS(cssVar, value);
+      hexInput.value = value;
+    };
+
+    /** 피커 닫힘/HEX 입력 확정 시 한 번만 실행되는 무거운 commit. */
+    const commitThemeColor = (value, syncColorInput = false) => {
+      // 동일 값이면 dispatch/render 생략 — 사용자가 피커 열었다 그냥 닫은 경우 효율화.
+      const same = state.colors[key] === value;
+      state.colors[key] = value;
+      setCSS(cssVar, value);
+      hexInput.value = value;
+      if (syncColorInput) colorInput.value = value;
+      markOverride();
+      if (same) return;
+      persist();
+      render();
+      dispatchThemeChange();
+    };
+
+    // input(드래그): 라이브 프리뷰만. change(피커 닫힘): 최종 commit.
+    colorInput.addEventListener('input', e => previewThemeColor(e.target.value));
+    colorInput.addEventListener('change', e => commitThemeColor(e.target.value));
+
+    // hex 입력 직접 변경은 피커 드래그가 아니므로 즉시 commit. colorInput.value도 같이 동기화.
+    hexInput.addEventListener('change', e => {
+      const nv = normalizeHex(e.target.value);
+      if (!nv) {
+        hexInput.value = state.colors[key];
+        alert('HEX 형식은 #RRGGBB 또는 #RGB입니다.');
+        return;
+      }
+      commitThemeColor(nv, true);
+    });
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
 

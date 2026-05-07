@@ -3146,10 +3146,13 @@ document.addEventListener('theme:colors-changed', () => {
 document.addEventListener('settings:change', event => {
   if (!lineupPanelState.lastFixture) return;
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
+  // 평점 색상 7구간(ratingColor*)도 변경 시 노드 평점 박스 즉시 갱신.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
     'lineupHideInitial',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
-    'splitLineup', 'leagueLogoPos'];
+    'splitLineup', 'leagueLogoPos',
+    'ratingColorBelow6', 'ratingColor6', 'ratingColor65',
+    'ratingColor7', 'ratingColor8', 'ratingColor9', 'ratingColor95'];
   if (!re.includes(event.detail?.category)) return;
   rerenderLineupPanels();
 });
