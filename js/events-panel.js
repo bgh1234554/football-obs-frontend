@@ -37,6 +37,7 @@ const eventsPanelFilterState = {
   disabledKeys: evLoadDisabledFilterKeys(),
 };
 
+/** localStorage(필터 키)에서 비활성 카테고리 Set 복원. 손상되면 빈 Set. */
 function evLoadDisabledFilterKeys() {
   try {
     const raw = localStorage.getItem(EVENTS_PANEL_FILTER_STORAGE_KEY);
@@ -48,6 +49,7 @@ function evLoadDisabledFilterKeys() {
   }
 }
 
+/** 현재 비활성 카테고리 Set을 localStorage에 직렬화 저장. */
 function evSaveDisabledFilterKeys() {
   try {
     localStorage.setItem(
@@ -57,10 +59,12 @@ function evSaveDisabledFilterKeys() {
   } catch {}
 }
 
+/** 카테고리 키가 활성 상태인지 — disabledKeys Set에 없으면 true. */
 function evIsFilterEnabled(key) {
   return !eventsPanelFilterState.disabledKeys.has(key);
 }
 
+/** 카테고리 단일 토글. enabled=true면 Set에서 제거, false면 추가. 직후 영속화. */
 function evSetFilterEnabled(key, enabled) {
   const normalized = String(key || '').trim();
   if (!normalized) return;
@@ -69,24 +73,33 @@ function evSetFilterEnabled(key, enabled) {
   evSaveDisabledFilterKeys();
 }
 
+/** 여러 카테고리를 한 번에 같은 상태로 토글. "전체 표시"/"전체 숨김" 버튼용. */
 function evSetAllFilters(filterKeys, enabled) {
   Array.from(new Set((Array.isArray(filterKeys) ? filterKeys : []).map(key => String(key || '').trim()).filter(Boolean)))
     .forEach(key => evSetFilterEnabled(key, enabled));
 }
 
+/** 필터 옵션 정렬용 가중치 — EVENTS_PANEL_FILTER_ORDER의 인덱스, 누락이면 큰 값. */
 function evFilterSortWeight(key) {
   const index = EVENTS_PANEL_FILTER_ORDER.indexOf(String(key || ''));
   return index >= 0 ? index : EVENTS_PANEL_FILTER_ORDER.length + 100;
 }
 
+/** 이벤트 type이 target과 case-insensitive 일치하는지. */
 function evTypeIs(ev, type) {
   return String(ev?.type || '').toLowerCase() === String(type || '').toLowerCase();
 }
 
+/** detail이 target과 case-insensitive + trim 일치하는지. API 데이터 잡음 흡수. */
 function evDetailIs(detail, target) {
   return String(detail || '').trim().toLowerCase() === String(target || '').trim().toLowerCase();
 }
 
+/**
+ * VAR detail 문자열을 파싱해 4종 필터 키 + 표시용 텍스트로 분리.
+ * "Goal cancelled - Offside" → { key: 'goal-cancel', displayDetail: 'Goal cancelled', displayComment: 'Offside' }
+ * 매칭 안 되는 detail이면 key는 빈 값.
+ */
 function evParseVarDetail(detail) {
   const raw = String(detail || '').trim();
   if (!raw) return { key: '', displayDetail: '', displayComment: '' };
@@ -115,6 +128,7 @@ function evParseVarDetail(detail) {
   return { key: '', displayDetail: raw, displayComment: '' };
 }
 
+/** VAR detail에서 4종 필터 키만 빠르게 꺼내는 헬퍼. evParseVarDetail의 1-필드 shortcut. */
 function evVarDetailKey(detail) {
   return evParseVarDetail(detail).key;
 }
@@ -212,6 +226,7 @@ function evFilterKey(ev) {
   return `other:${String(ev?.type || 'event').trim().toLowerCase() || 'event'}`;
 }
 
+/** 이벤트 → 필터 메타데이터(카테고리 키 + 라벨 + 색상). 필터 popover 옵션 빌드용. */
 function evGetFilterMeta(ev) {
   const style = evStyle(ev);
   return {
@@ -221,6 +236,11 @@ function evGetFilterMeta(ev) {
   };
 }
 
+/**
+ * 이벤트 배열 → 필터 popover 옵션 배열.
+ * 1) 카테고리 키별 카운트 집계.
+ * 2) EVENTS_PANEL_FILTER_ORDER 가중치 + 라벨 한글 정렬로 정돈된 옵션 목록 반환.
+ */
 function evBuildFilterOptions(events) {
   const optionMap = new Map();
   (Array.isArray(events) ? events : []).forEach(ev => {
@@ -240,10 +260,12 @@ function evBuildFilterOptions(events) {
   });
 }
 
+/** 활성 카테고리만 통과시키는 필터. evIsFilterEnabled 사용. */
 function evFilterEvents(events) {
   return (Array.isArray(events) ? events : []).filter(ev => evIsFilterEnabled(evGetFilterMeta(ev).key));
 }
 
+/** 옵션 중 비활성이 하나라도 있으면 true — 필터 버튼에 활성 표시(badge)할지 결정. */
 function evHasActiveFilter(filterOptions) {
   const options = Array.isArray(filterOptions) ? filterOptions : [];
   if (!options.length) return false;
@@ -251,12 +273,17 @@ function evHasActiveFilter(filterOptions) {
   return enabledCount !== options.length;
 }
 
+/** 표시명 sanitize — 빈/null/undefined/하이픈 단독은 fallback으로 대체. */
 function evNormalizeDisplayName(value, fallback = '') {
   const trimmed = String(value ?? '').trim();
   if (!trimmed || /^(null|undefined|-)$/i.test(trimmed)) return fallback;
   return trimmed;
 }
 
+/**
+ * 이벤트의 선수명 또는 어시스트명 선택 — 'event' 설정(long/short)에 따라 분기.
+ * long 모드면 한글 풀네임(KoLong) 우선, 없으면 short fallback.
+ */
 function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
   const useLong = (typeof getSetting === 'function') && getSetting('event') === 'long';
   if (kind === 'assist') {
@@ -353,7 +380,10 @@ function evProcess(rawEvents) {
   return processed.reverse();
 }
 
-/** 이벤트 종류별 placeholder 아이콘 SVG/HTML. 추후 사용자 커스텀 아이콘으로 교체 가능. */
+/**
+ * 한 이벤트의 base 키 — side/type/detail/comments/시간/선수/어시스트 조합.
+ * 같은 이벤트가 폴링 응답에서 반복 등장해도 동일 키로 식별돼 DOM 재생성 대신 위치만 보정.
+ */
 function evBaseEventKey(ev) {
   const playerToken = ev?.playerId != null && String(ev.playerId).trim() !== ''
     ? `pid:${String(ev.playerId).trim()}`
@@ -371,6 +401,10 @@ function evBaseEventKey(ev) {
   ].join('|');
 }
 
+/**
+ * 이벤트 배열 → 고유 renderKey 배열.
+ * 같은 base 키가 반복되면 #1/#2/...로 disambiguate (드물게 동시각 중복 이벤트 대응).
+ */
 function evBuildRenderKeys(events) {
   const seen = new Map();
   return events.map(ev => {
@@ -381,6 +415,10 @@ function evBuildRenderKeys(events) {
   });
 }
 
+/**
+ * 재렌더 직전에 현재 row들의 화면 위치를 evKey 기준으로 캡처.
+ * FLIP 애니메이션의 First 단계 — 이후 새 DOM과 비교해 deltaY 계산.
+ */
 function evCaptureRowRects(list) {
   const rects = new Map();
   if (!list) return rects;
@@ -390,6 +428,14 @@ function evCaptureRowRects(list) {
   return rects;
 }
 
+/**
+ * FLIP 애니메이션 — 새로 렌더된 row 목록을 이전 위치(previousRects) 기준으로 부드럽게 이동.
+ *
+ * 1) 모든 row 순회.
+ * 2) 이전에 있던 row면 deltaY 계산 → translateY로 이전 위치로 보낸 뒤 0으로 transition.
+ * 3) 새로 들어온 row면 위에서 살짝 떨어뜨리며 fade-in.
+ * 4) 애니메이션 종료 후 inline style 정리.
+ */
 function evAnimateListInsertion(list, previousRects) {
   if (!list || !previousRects?.size) return;
   const rows = Array.from(list.querySelectorAll('.ev-row[data-ev-key]'));
@@ -645,12 +691,14 @@ function evRerenderCurrentPanel() {
   }
 }
 
+/** 필터 popover 닫고 패널 즉시 재렌더 (ESC/외부 클릭 핸들러). */
 function evCloseFilterPopover() {
   if (!eventsPanelFilterState.isOpen) return;
   eventsPanelFilterState.isOpen = false;
   evRerenderCurrentPanel();
 }
 
+/** 패널 상단 제목 줄 ('이벤트' 라벨 + 우측 필터 버튼) DOM 빌드. */
 function evCreateTitleBar(filterOptions) {
   const titleBar = document.createElement('div');
   titleBar.className = 'ev-title-bar';
@@ -664,6 +712,15 @@ function evCreateTitleBar(filterOptions) {
   return titleBar;
 }
 
+/**
+ * 필터 버튼 + popover UI 빌드.
+ *
+ * 1) 가용한 필터 카테고리 수와 활성/비활성 카운트로 버튼 라벨/뱃지 결정.
+ * 2) 버튼 클릭 → popover open/close 토글.
+ * 3) popover가 열린 상태일 때만 내부(헤딩/리셋 버튼/옵션 체크박스 목록) 빌드.
+ * 4) 각 옵션 체크박스 change → evSetFilterEnabled로 localStorage 영속화 + 재렌더.
+ * 5) "전체 표시" 버튼 → 모든 카테고리 enable + 재렌더.
+ */
 function evCreateFilterUi(filterOptions) {
   const options = Array.isArray(filterOptions) ? filterOptions : [];
   const totalCount = options.length;
@@ -766,7 +823,18 @@ function evCreateFilterUi(filterOptions) {
   return shell;
 }
 
-/** fixture data를 받아 이벤트 패널을 렌더링한다. data가 null이면 비운다. */
+/**
+ * fixture data를 받아 이벤트 패널을 렌더링하는 외부 진입점.
+ *
+ * 1) fixtureData를 캐시(window._eventsLastData) — 설정 변경 시 즉시 재사용.
+ * 2) 컨테이너([data-events-panel]) 못 찾으면 종료.
+ * 3) data null이면 패널 비우기.
+ * 4) evProcess로 이벤트 가공(누적 레드 분류) + 필터링 → renderKey 빌드.
+ * 5) 기존 row의 위치 캡처(FLIP First) → 새 DOM 그림 → evAnimateListInsertion으로 부드럽게 이동/insertion.
+ * 6) 폰트 자동 축소(evFitText) 한 row씩 적용.
+ *
+ * options.animate=false면 FLIP 애니메이션 건너뜀 (필터 토글 등 즉각적 변경용).
+ */
 function applyEventsPanel(fixtureData, options = {}) {
   // settings:change에서 재사용할 마지막 fixture 캐시
   window._eventsLastData = fixtureData;

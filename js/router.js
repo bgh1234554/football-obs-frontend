@@ -27,11 +27,21 @@
   const ROUTE_TO_PAGE = Object.freeze(Object.fromEntries(
     Object.entries(PAGE_TO_ROUTE).map(([page, route]) => [route, page])
   ));
+  // 로컬 개발 환경(127.0.0.1, localhost)이나 file:// 프로토콜은 path-based 라우팅을 못 쓰므로 hash 모드로 fallback.
+  // 배포 환경(http(s) + 외부 호스트)에서만 깔끔한 path-based 라우팅 사용.
   const LOCAL_ROUTE_HOSTS = new Set(['127.0.0.1', 'localhost']);
   const ROUTING_MODE = ((window.location.protocol === 'http:' || window.location.protocol === 'https:')
     && !LOCAL_ROUTE_HOSTS.has(window.location.hostname))
     ? 'path'
     : 'hash';
+
+  /**
+   * 경로 문자열 정규화 — 라우팅 비교용 단일 키 형식.
+   * 1) 빈/falsy → "/".
+   * 2) 앞에 "/" 자동 부착, 끝의 "/" 제거.
+   * 3) 소문자화.
+   * 4) HTML 진입 경로(index.html, overlay_dashboard_*)는 모두 "/"로 매핑.
+   */
   function normalizeRoutePath(pathname){
     let path = String(pathname || '/').trim() || '/';
     if(!path.startsWith('/')) path = `/${path}`;
@@ -43,6 +53,7 @@
     return path;
   }
 
+  /** 현재 라우팅 모드(path/hash)에 맞춰 active route 정규화 후 반환. */
   function getActiveRoutePath(){
     if(ROUTING_MODE === 'hash'){
       return normalizeRoutePath((window.location.hash || '').replace(/^#/, '') || '/');
@@ -50,11 +61,19 @@
     return normalizeRoutePath(window.location.pathname);
   }
 
+  /** path → page id 매핑. 알 수 없는 path면 'main-big' 기본 반환. */
   function resolvePageFromPath(pathname = null){
     if(pathname != null) return ROUTE_TO_PAGE[normalizeRoutePath(pathname)] || 'main-big';
     return ROUTE_TO_PAGE[getActiveRoutePath()] || 'main-big';
   }
 
+  /**
+   * page id에 맞는 URL로 history 동기화.
+   * 1) 매핑 없는 page → '/'.
+   * 2) 이미 같은 route면 no-op.
+   * 3) historyMode가 'replace'면 replaceState, 'push'면 pushState 사용.
+   * 4) hash 모드에선 pathname+search를 base로 두고 # 뒤 route만 변경.
+   */
   function syncRouteForPage(page, historyMode = 'push'){
     const route = PAGE_TO_ROUTE[page] || '/';
     if(getActiveRoutePath() === route) return;
@@ -67,6 +86,16 @@
     }
     window.history[fn]({ page }, '', route);
   }
+
+  /**
+   * 페이지 활성화 단일 진입점.
+   * 1) 매핑 없는 page는 'main-big'으로 폴백.
+   * 2) 탭 버튼 active 상태 + .page 콘텐츠 visibility 갱신.
+   * 3) tactics-active body 클래스 토글(전술판 전용 글로벌 CSS).
+   * 4) 테마 탭에서만 수동 모드 토글 표시.
+   * 5) syncRoute=true(default)면 history 갱신.
+   * 6) 'page:activated' 이벤트 dispatch — events/stats 패널 등이 받아 재렌더.
+   */
   function activatePage(page, options = {}){
     const nextPage = PAGE_TO_ROUTE[page] ? page : 'main-big';
     const { syncRoute = true, historyMode = 'push' } = options;

@@ -168,8 +168,14 @@ const LINEUP_PITCH_TONE_STYLES = {
 };
 const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 
+// 현재 설정값을 보관하는 단일 객체. loadSettings()가 localStorage에서 채우고,
+// setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
 
+/**
+ * 모든 설정 카테고리의 UI(스위치/슬라이더/숫자입력/라디오)를 settingsState 기준으로 일괄 동기화.
+ * 설정 초기화나 탭 전환처럼 "현재 상태를 통째로 화면에 반영"해야 할 때 호출.
+ */
 function syncAllSettingsUi() {
   Object.keys(SETTINGS_DEFAULTS).forEach(category => {
     syncSwitchUi(category);
@@ -179,7 +185,10 @@ function syncAllSettingsUi() {
   });
 }
 
-// 3-state 라디오 클러스터 동기화 — leagueLogoPos 같은 다항 설정 전용.
+/**
+ * 3-state 라디오 클러스터 동기화 — leagueLogoPos(center/left/right), lineupPitchTone(8종) 같은
+ * 다항 설정 전용. 같은 category를 공유하는 버튼 그룹에서 현재 값과 일치하는 버튼만 is-active.
+ */
 function syncRadioUi(category) {
   const buttons = document.querySelectorAll(`[data-settings-radio="${category}"]`);
   if (!buttons.length) return;
@@ -190,6 +199,11 @@ function syncRadioUi(category) {
   });
 }
 
+/**
+ * 'settings:change' 커스텀 이벤트를 보낸다.
+ * events-panel/stats-panel 등 외부 모듈이 캐시된 마지막 fixture로 재렌더 트리거할 때 사용.
+ * detail.mode는 legacy 호환용(과거 코드가 mode 키만 읽는 경우 대비).
+ */
 function emitSettingsChange(category) {
   const value = getSetting(category);
   document.dispatchEvent(new CustomEvent('settings:change', {
@@ -197,6 +211,15 @@ function emitSettingsChange(category) {
   }));
 }
 
+/**
+ * 카테고리별 값 유효성 검사. localStorage에서 손상된/구버전 값이 들어와도
+ * 잘못된 값이 settingsState에 들어가지 않도록 가드 역할.
+ *
+ * - enum 카테고리(lineupNode, teamLogo, mainPage, leagueLogoPos, lineupPitchTone)는 후보 비교.
+ * - on/off 토글 카테고리는 'on' | 'off' 문자열만 허용.
+ * - 숫자 카테고리(slider/number)는 범위(min/max) 안 finite 숫자만 허용.
+ * - 그 외(scorer/lineup/roster/teamName/event)는 'short' | 'long'만 허용.
+ */
 function isValidSetting(category, value) {
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
   if (category === 'teamLogo') return value === 'logo' || value === 'fa';
@@ -229,8 +252,17 @@ function isValidSetting(category, value) {
   return value === 'short' || value === 'long';
 }
 
+/**
+ * localStorage에서 설정값 복원. v3 우선, 없으면 legacy v2도 시도.
+ * 1) 현재 키와 legacy 키들을 순서대로 훑어 첫 번째로 파싱 가능한 것을 채택.
+ * 2) legacy payload면 마이그레이션 — statsAutoSwipeSec의 옛 default(5초)를 새 default(10초)로 승격.
+ * 3) 카테고리별로 isValidSetting 통과한 값만 settingsState에 반영(잘못된 값은 default 유지).
+ * 4) legacy를 읽었으면 v3 키로 재저장 후 legacy 키 정리.
+ * 5) layout 관련 CSS 변수도 같이 적용.
+ */
 function loadSettings() {
   try {
+    // 1) v3 → v2 순서로 첫 valid payload 탐색.
     const storageKeys = [SETTINGS_STORAGE_KEY, ...SETTINGS_LEGACY_STORAGE_KEYS];
     let parsed = null;
     let loadedKey = '';
@@ -249,9 +281,11 @@ function loadSettings() {
 
     const isLegacyPayload = loadedKey !== SETTINGS_STORAGE_KEY;
 
+    // 2) 카테고리별 적용 + legacy 마이그레이션 보정.
     Object.keys(SETTINGS_DEFAULTS).forEach(category => {
       let value = parsed[category];
       if (isLegacyPayload && category === 'statsAutoSwipeSec') {
+        // v2의 default 5초였던 사용자는 v3 default 10초로 승격(명시적으로 5초로 둔 사용자도 동일하게 끌어올림).
         const legacySec = Number(value);
         if (!Number.isFinite(legacySec) || legacySec === 5) {
           value = SETTINGS_DEFAULTS.statsAutoSwipeSec;
@@ -260,6 +294,7 @@ function loadSettings() {
       if (isValidSetting(category, value)) settingsState[category] = value;
     });
 
+    // 3) v2에서 읽은 경우 v3로 즉시 재저장 후 legacy 정리.
     if (isLegacyPayload) {
       saveSettings();
       SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
@@ -267,31 +302,45 @@ function loadSettings() {
       });
     }
   } catch {}
+  // 4) layout(CSS 변수) 즉시 반영. (script 로드 시점에 호출되므로 body 클래스도 같이 세팅됨.)
   applyLayoutSettings();
 }
 
+/** 현재 settingsState를 v3 키에 JSON으로 저장. localStorage 풀이면 무시. */
 function saveSettings() {
   try {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsState));
   } catch {}
 }
 
+/** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */
 function getSetting(category) {
   return settingsState[category] ?? SETTINGS_DEFAULTS[category];
 }
 
+/** 'short' | 'long' 카테고리(scorer/lineup/roster/teamName/event)의 현재 모드 반환. */
 function getNameMode(category) {
   return getSetting(category);
 }
 
+/** 'short' | 'long' 카테고리가 'long'인지 boolean으로 변환. 표시 분기 헬퍼. */
 function isLongName(category) {
   return getNameMode(category) === 'long';
 }
 
+/** 라인업 노드 표시 모드. 'photo'(default) 또는 'number'(팀 컬러 등번호). */
 function getLineupNodeMode() {
   return getSetting('lineupNode') === 'photo' ? 'photo' : 'number';
 }
 
+/**
+ * 설정값 변경 단일 진입점.
+ * 1) 알 수 없는 카테고리 / 잘못된 값 / 변경 없음(no-op)이면 즉시 return.
+ * 2) settingsState 업데이트 + 즉시 localStorage 저장.
+ * 3) 연관된 모든 UI(스위치/슬라이더/라디오) 동기화.
+ * 4) layout/CSS 변수에 영향 주는 카테고리는 applyLayoutSettings()로 root 변수 갱신.
+ * 5) 'settings:change' 이벤트로 외부 모듈(events-panel/stats-panel/lineup-panel)에 통지.
+ */
 function setSetting(category, value) {
   if (!(category in SETTINGS_DEFAULTS)) return;
   if (!isValidSetting(category, value)) return;
@@ -314,7 +363,15 @@ function setSetting(category, value) {
   }));
 }
 
+/**
+ * 설정값 전체 초기화. 사이드바 "설정 초기화" 버튼이 호출.
+ * 1) 변경된 카테고리만 추려둔다(이벤트 emit 대상 + "변경된 게 없으면 토스트만").
+ * 2) settingsState를 비우고 default로 재할당(레퍼런스는 유지 — 외부 캡처 의존성 보호).
+ * 3) v3 + legacy storage 키 모두 제거.
+ * 4) UI 동기화 + layout 갱신 + 변경 있던 카테고리만 'settings:change' 이벤트 발행.
+ */
 function resetSettingsToDefaults() {
+  // 1) 실제로 default와 다른 값이 있던 카테고리만 모은다.
   const changedCategories = Object.keys(SETTINGS_DEFAULTS)
     .filter(category => settingsState[category] !== SETTINGS_DEFAULTS[category]);
 
@@ -323,14 +380,17 @@ function resetSettingsToDefaults() {
     return;
   }
 
+  // 2) settingsState 객체 자체는 유지하되 키만 제거 후 default 재할당(레퍼런스 보존).
   Object.keys(settingsState).forEach(category => { delete settingsState[category]; });
   Object.assign(settingsState, SETTINGS_DEFAULTS);
 
+  // 3) v3 + legacy 키 모두 정리 — 다음 페이지 로드에서도 default가 나오도록.
   try { localStorage.removeItem(SETTINGS_STORAGE_KEY); } catch {}
   SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
     try { localStorage.removeItem(key); } catch {}
   });
 
+  // 4) UI/layout 동기화 + 외부 모듈 통지(변경 있던 카테고리만).
   syncAllSettingsUi();
   applyLayoutSettings();
   changedCategories.forEach(emitSettingsChange);
@@ -338,6 +398,11 @@ function resetSettingsToDefaults() {
   if (typeof showToast === 'function') showToast('설정을 기본값으로 초기화했습니다');
 }
 
+/**
+ * 경기 캐시 + 마지막 fixture id 초기화. 사이드바 "캐시 초기화" 버튼이 호출.
+ * resetFixtureDrivenState가 있으면 그쪽에 위임(상태/배지/패널까지 정리),
+ * 없으면 sessionStorage/localStorage만 직접 청소(fallback).
+ */
 function clearAppCaches() {
   if (typeof resetFixtureDrivenState === 'function') {
     resetFixtureDrivenState({
@@ -355,10 +420,23 @@ function clearAppCaches() {
   if (typeof showToast === 'function') showToast('캐시를 초기화했습니다');
 }
 
-// 라인업 관련 CSS 변수를 document root에 일괄 반영.
-//   --lp-lineup-scale  : 캠 큼 페이지 라인업 패널 크기 배율 (.layout-big .lp-lineup만 사용)
-//   --lp-name-base-size: 라인업 노드 이름 base 글자 크기 (모든 layout 공통)
-// 두 값 다 root에 두면 inheritance로 모든 layout에서 자연스럽게 적용된다.
+/**
+ * 라인업/피치/이벤트 폰트 등 설정값 → CSS 변수와 body 클래스 일괄 반영.
+ *
+ * CSS 변수(:root에 등록):
+ *   --lp-lineup-scale       : 캠 큼 페이지 라인업 패널 크기 배율 (.layout-big .lp-lineup 전용)
+ *   --lp-name-base-size     : 라인업 노드 이름 base 글자 크기 (모든 layout 공통)
+ *   --ev-name-base-size     : 이벤트 패널 base 글자 크기
+ *   --lp-pitch-*            : 라인업 패널 피치 색감 (background/stripe/border/marking/wash/logo)
+ *   --td-pitch-*            : 전술판 피치 색감 (라인업과 같은 톤 프리셋 사용)
+ *
+ * body 클래스(Iter 5-3 per-feature 토글):
+ *   .no-fan-reaction / .no-lineup-goals / .no-lineup-cards
+ *   .no-lineup-rating / .no-lineup-subtime
+ *   → CSS에서 .layout-big 하위에서만 매칭해 큰 캠 표시 토글.
+ *
+ * 마지막에 fitLineupNamePills로 이름 잘림 보정 재호출(이름 폰트 크기 변경 영향).
+ */
 function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
@@ -397,6 +475,10 @@ function applyLayoutSettings() {
   }
 }
 
+/**
+ * 슬라이더 UI 동기화 + 옆에 붙은 .sp-slider-value 라벨도 같이 갱신.
+ * lineupNameSize / eventNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
+ */
 function syncSliderUi(category) {
   const input = document.querySelector(`input[data-settings-slider="${category}"]`);
   if (!input) return;
@@ -408,6 +490,7 @@ function syncSliderUi(category) {
   else label.textContent = `${value}%`;
 }
 
+/** 숫자 input(<input type="number">) UI 동기화. statsAutoSwipeSec처럼 0.5 step 허용 카테고리에 사용. */
 function syncNumberUi(category) {
   const input = document.querySelector(`input[data-settings-number="${category}"]`);
   if (!input) return;
@@ -415,10 +498,18 @@ function syncNumberUi(category) {
   if (Number.isFinite(value) && input.value !== String(value)) input.value = String(value);
 }
 
+/** legacy alias — 기존 외부 호출 호환용. setSetting의 wrapper. */
 function setNameMode(category, mode) {
   setSetting(category, mode);
 }
 
+/**
+ * 선수 표시명 선택 헬퍼.
+ * 1) long 모드면 한글 풀네임(nameKoLong/playerNameKoLong) 우선, 없으면 short fallback.
+ * 2) short 모드면 표준 short(name/playerName)를 사용.
+ * 3) lineup 카테고리에서 short + lineupHideInitial=on이면 앞쪽 이니셜 블록 제거(예: "J. Mateta" → "Mateta").
+ *    long 모드에선 hideInitial 무시(풀네임 형식이 깨짐).
+ */
 function pickName(player, category) {
   if (!player) return '';
   const shortName = player.name || player.playerName || '';
@@ -433,6 +524,10 @@ function pickName(player, category) {
   return displayShortName || longName || shortName || '';
 }
 
+/**
+ * "J. Mateta" / "J.-P. Mateta" / "Á. Bastoni" 같은 앞쪽 이니셜 블록을 제거한다.
+ * 점 기반 토큰을 반복 매칭해 모두 떼어낸 뒤 trim. 결과가 비면 원본 반환(안전 fallback).
+ */
 function stripLeadingLineupInitial(name) {
   const text = String(name || '').trim();
   if (!text) return '';
@@ -443,6 +538,7 @@ function stripLeadingLineupInitial(name) {
   return stripped || text;
 }
 
+/** 설정 팝업 오픈. 사이드바가 열려있으면 먼저 닫고, 백드롭에 .open 추가. 탭 섹션 높이 일괄화도 같이 호출. */
 function openSettingsPopup() {
   if (typeof closeSidebar === 'function') closeSidebar();
   const backdrop = document.getElementById('settingsBackdrop');
@@ -450,16 +546,23 @@ function openSettingsPopup() {
   syncSettingsTabSectionHeights();
 }
 
+/** 설정 팝업 닫기. 백드롭의 .open 제거만 하면 CSS transition으로 사라짐. */
 function closeSettingsPopup() {
   const backdrop = document.getElementById('settingsBackdrop');
   if (backdrop) backdrop.classList.remove('open');
 }
 
+/** 백드롭에 .open이 붙어있는지로 팝업 오픈 여부 판단. Esc 키 핸들러 가드용. */
 function isSettingsOpen() {
   const backdrop = document.getElementById('settingsBackdrop');
   return !!(backdrop && backdrop.classList.contains('open'));
 }
 
+/**
+ * 카테고리별 토글 스위치의 off/on 사이드 라벨 매핑.
+ * 'short'/'long' 카테고리는 default short=off, long=on. enum 카테고리는 자체 매핑.
+ * syncSwitchUi가 cluster 안에 [data-side="..."] 텍스트 라벨도 is-active 토글하는 데 사용.
+ */
 function getSwitchSides(category) {
   if (category === 'lineupNode') return { off: 'number', on: 'photo' };
   if (category === 'teamLogo') return { off: 'logo', on: 'fa' };
@@ -478,6 +581,11 @@ function getSwitchSides(category) {
   return { off: 'short', on: 'long' };
 }
 
+/**
+ * 토글 스위치(checkbox) UI 동기화.
+ * 1) input.checked는 value === on 여부.
+ * 2) cluster 안의 좌/우 텍스트 라벨도 is-active 토글해 시각적으로 어느 쪽인지 표시.
+ */
 function syncSwitchUi(category) {
   const input = document.querySelector(`input[data-settings-cat="${category}"]`);
   if (!input) return;
@@ -501,11 +609,21 @@ function syncSwitchUi(category) {
  */
 const SETTINGS_TAB_KEY = 'obs.settings.activeTab.v1';
 
+/**
+ * 모든 탭 섹션의 minHeight를 가장 큰 섹션 높이로 통일.
+ * 탭 전환 시 모달 높이가 출렁이는 것을 방지하기 위한 작업.
+ *
+ * 1) sp-body 폭에서 좌우 padding 빼서 availableWidth 산출.
+ * 2) 각 섹션을 임시로 absolute + hidden 해제 + width 고정 → 자연 높이 측정.
+ * 3) 측정 후 inline style 원복(`prevCssText`로 통째 되돌림). hidden 상태도 복구.
+ * 4) 최대 높이 찾으면 모든 섹션의 minHeight 적용.
+ */
 function syncSettingsTabSectionHeights() {
   const body = document.querySelector('.sp-body');
   const sections = Array.from(document.querySelectorAll('[data-sp-tab-section]'));
   if (!body || !sections.length) return;
 
+  // 1) 측정용 width — sp-body의 content area 폭 (padding 제외).
   const bodyRect = body.getBoundingClientRect();
   const bodyStyles = getComputedStyle(body);
   const availableWidth = Math.max(
@@ -518,6 +636,7 @@ function syncSettingsTabSectionHeights() {
     const wasHidden = section.hasAttribute('hidden');
     const prevCssText = section.style.cssText;
 
+    // 2) 임시로 화면 밖에 놓고 자연 높이 측정 (visibility:hidden + left:-99999px).
     if (wasHidden) section.removeAttribute('hidden');
     section.style.position = 'absolute';
     section.style.visibility = 'hidden';
@@ -530,16 +649,22 @@ function syncSettingsTabSectionHeights() {
     const height = Math.ceil(section.getBoundingClientRect().height || section.scrollHeight || 0);
     if (height > maxHeight) maxHeight = height;
 
+    // 3) 측정용 inline style 원복 + hidden 상태 복구.
     section.style.cssText = prevCssText;
     if (wasHidden) section.setAttribute('hidden', '');
   });
 
+  // 4) 모든 섹션에 max 높이 적용 → 탭 전환 시 모달 점프 방지.
   if (!maxHeight) return;
   sections.forEach(section => {
     section.style.minHeight = `${maxHeight}px`;
   });
 }
 
+/**
+ * 탭 활성화 — sp-tab 버튼 is-active 상태 + 매칭하는 섹션만 표시.
+ * 마지막 활성 탭은 localStorage(SETTINGS_TAB_KEY)에 저장해 다음 진입 시 복원.
+ */
 function applySettingsTab(tabName) {
   document.querySelectorAll('.sp-tab').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.spTab === tabName);
@@ -552,6 +677,11 @@ function applySettingsTab(tabName) {
   try { localStorage.setItem(SETTINGS_TAB_KEY, tabName); } catch {}
 }
 
+/**
+ * 설정 팝업 탭 시스템 초기화.
+ * 1) localStorage에서 마지막 활성 탭 복원 (없으면 'names' default).
+ * 2) 각 탭 버튼에 click 핸들러 등록 → applySettingsTab 호출.
+ */
 function initSettingsTabs() {
   const tabButtons = document.querySelectorAll('.sp-tab');
   if (!tabButtons.length) return;
@@ -569,6 +699,19 @@ function initSettingsTabs() {
   });
 }
 
+/**
+ * 설정 팝업 전체 와이어업. DOMContentLoaded에서 한 번 호출.
+ *
+ * 1) 톱니바퀴/닫기/백드롭/Esc → open/close 핸들러.
+ * 2) 탭 시스템 초기화 + 윈도우 리사이즈 시 섹션 높이 재계산.
+ * 3) 3-state 라디오 버튼들에 click 핸들러 (data-settings-radio-value 적용).
+ * 4) 토글 스위치(input[data-settings-cat])에 change 핸들러 + 초기 sync.
+ * 5) 슬라이더(input[data-settings-slider])에 input 핸들러 + 초기 sync.
+ * 6) 숫자 입력(input[data-settings-number])에 change/input 핸들러 + 초기 sync.
+ * 7) "설정 초기화" / "캐시 초기화" 버튼 — confirm 후 각각 reset/clear 실행.
+ *
+ * loadSettings는 모듈 로드 시 즉시 한 번 실행되고, 여기서는 UI만 와이어업한다.
+ */
 function initSettingsPopup() {
   // loadSettings는 모듈 로드 시 이미 한 번 실행됨 (아래 즉시 호출). 여기서는 UI 와이어업만.
   const gearBtn = document.getElementById('settingsGearBtn');

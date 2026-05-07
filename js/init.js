@@ -32,12 +32,15 @@
     if (board) new ResizeObserver(() => autoLayoutNotes()).observe(board);
   }
 
-  /** about.md 파일을 fetch하여 marked.js로 파싱 후 about-rendered 요소에 삽입 */
+  /** about.md 파일을 fetch하여 markdown-it으로 파싱 + DOMPurify로 sanitize 후 about-rendered에 삽입 */
   const aboutEl = document.getElementById('about-rendered');
 
-  /** 헤딩 텍스트를 앵커 id로 변환 (한글 포함, 공백→하이픈, 특수문자 제거) */
+  /**
+   * 한글 포함 헤딩 텍스트를 anchor id로 변환.
+   * markdown-it-anchor의 slugify 옵션으로 주입 — 영어 lowercase + 공백→하이픈 + 한글 보존.
+   */
   function aboutSlug(raw) {
-    return raw
+    return String(raw)
       .toLowerCase()
       .replace(/[^\p{L}\p{N}\s-]/gu, '')
       .replace(/\s+/g, '-')
@@ -45,10 +48,26 @@
       .replace(/^-|-$/g, '');
   }
 
+  /**
+   * about.md 페이지 로드 + 렌더링.
+   *
+   * 1) markdown-it / markdown-it-anchor / DOMPurify 모두 로드됐는지 가드.
+   * 2) markdown-it 인스턴스 생성: HTML 허용 + 자동 링크 + 줄바꿈 변환 활성화.
+   *    markdown-it-anchor 플러그인으로 헤딩 id 자동 생성 (aboutSlug 사용).
+   * 3) about.md fetch → md.render로 파싱 → DOMPurify.sanitize로 XSS 차단 → innerHTML 주입.
+   * 4) 내부 앵커(#section) 클릭은 hash routing과 충돌하지 않게 직접 가로채서 panelBody scrollTop 조정.
+   * 5) fetch 실패(보통 file:// 환경)면 안내 문구를 textContent로 안전하게 삽입.
+   */
   async function loadAbout(){
     if(!aboutEl) return;
-    if(typeof marked === 'undefined'){
-      aboutEl.innerHTML = '<p style="color:var(--muted)">marked.js 로드 실패</p>';
+    // markdown-it 글로벌은 'markdownit', markdown-it-anchor의 UMD 글로벌은 'markdownItAnchor' (camelCase).
+    const mdAnchorGlobal = window.markdownItAnchor || window.markdownitAnchor;
+    if(typeof window.markdownit === 'undefined' || !mdAnchorGlobal || typeof window.DOMPurify === 'undefined'){
+      aboutEl.innerHTML = '';
+      const p = document.createElement('p');
+      p.style.color = 'var(--muted)';
+      p.textContent = '마크다운 렌더링 라이브러리(markdown-it / markdown-it-anchor / DOMPurify) 로드 실패';
+      aboutEl.appendChild(p);
       return;
     }
     try {
@@ -56,14 +75,45 @@
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
 
-      // marked v9은 기본적으로 헤딩 id를 생성하지 않으므로 파싱 후 DOM에서 직접 주입
-      // TODO: marked v9은 HTML을 sanitize하지 않으므로 about.md가 외부 소스로 교체될 경우 DOMPurify 적용 필요
-      aboutEl.innerHTML = marked.parse(text);
-      aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h => {
-        h.id = aboutSlug(h.textContent);
-      });
+      // 1) markdown-it 인스턴스 + 플러그인 체인.
+      //    html: about.md 안에 HTML 태그(예: <small>, <br>) 허용 — DOMPurify가 뒤에서 정화.
+      //    linkify: 평문 URL 자동 링크화. breaks: 단일 줄바꿈을 <br>로 변환.
+      const md = window.markdownit({ html: true, linkify: true, breaks: false });
+      md.use(mdAnchorGlobal, { slugify: aboutSlug });
 
-      // hash 라우팅 충돌 방지: 앵커 클릭을 가로채 panelBody scrollTop 직접 조정
+      // 2) ==형광펜== 강조 (markdown-it-mark) → <mark> 태그.
+      if (window.markdownitMark) md.use(window.markdownitMark);
+
+      // 3) 약어 정의(*[OBS]: ...) → <abbr> 자동 변환 (markdown-it-abbr).
+      if (window.markdownitAbbr) md.use(window.markdownitAbbr);
+
+      // 4) ::: tip / warning / danger / info ::: 콜아웃 박스 (markdown-it-container).
+      //    각 종류마다 use() 한 번씩 등록해야 인식된다. validate/render 옵션으로 제목 추출 처리.
+      const containerPlugin = window.markdownitContainer;
+      if (containerPlugin) {
+        ['tip', 'info', 'warning', 'danger'].forEach(name => {
+          md.use(containerPlugin, name, {
+            validate(params) {
+              return params.trim().match(new RegExp('^' + name + '(?:\\s+(.*))?$'));
+            },
+            render(tokens, idx) {
+              const token = tokens[idx];
+              const m = token.info.trim().match(new RegExp('^' + name + '(?:\\s+(.*))?$'));
+              if (token.nesting === 1) {
+                const title = (m && m[1]) ? md.utils.escapeHtml(m[1]) : name.toUpperCase();
+                return `<div class="custom-block ${name}"><p class="custom-block-title">${title}</p>\n`;
+              }
+              return '</div>\n';
+            },
+          });
+        });
+      }
+
+      // 5) 마크다운 → HTML → DOMPurify 정화 (custom-block 클래스 등은 ALLOWED_ATTR로 보존).
+      const rawHtml = md.render(text);
+      aboutEl.innerHTML = window.DOMPurify.sanitize(rawHtml);
+
+      // 3) 내부 앵커(#section) 클릭은 hash routing과 충돌하지 않게 직접 가로채 scroll.
       const pageAbout = document.getElementById('page-about');
       const scrollPane = pageAbout?.querySelector('.panelBody');
       const allHeadings = Array.from(aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6'));
@@ -80,7 +130,7 @@
         });
       });
     } catch(e) {
-      // e.message를 innerHTML에 직접 넣으면 XSS 위험이 있으므로 DOM API로 삽입
+      // e.message를 innerHTML에 직접 넣으면 XSS 위험이 있으므로 DOM API로 안전 삽입.
       const p = document.createElement('p');
       p.style.color = 'var(--muted)';
       const msg = document.createElement('span');

@@ -904,6 +904,10 @@
     };
   }
 
+  /**
+   * 연필(자유선) 도형의 점 배열에 새 점 추가.
+   * 직전 점과의 거리가 minDistance 미만이면 skip — 점 수 폭증 방지(Bezier 매끄럽게 유지).
+   */
   function tdAppendPencilPoint(pt, minDistance = TD_PENCIL_POINT_STEP) {
     if (!pt) return;
     const last = tdPencilPoints[tdPencilPoints.length - 1];
@@ -912,6 +916,10 @@
     }
   }
 
+  /**
+   * 점 배열이 시각적으로 그릴 만한 stroke인지 — 점 사이 0.5%px 이상 이동이 한 번이라도 있어야 true.
+   * 한 점만 찍힌 잘못된 스트로크를 commit 안 하기 위한 가드.
+   */
   function tdHasVisiblePencilStroke(points) {
     if (!points || points.length < 2) return false;
     for (let i = 1; i < points.length; i++) {
@@ -1065,6 +1073,14 @@
   /**
    * 클릭 위치(viewBox %)에서 가장 위에 그려진 도형의 인덱스를 반환.
    * 없으면 -1 반환. 각 도형 타입별로 최근접 거리를 픽셀 단위로 계산한다.
+   *
+   * 도형별 hit-test:
+   *   curve-arrow / curve-dashed-arrow : Bezier 곡선 위 샘플 t=0..1을 0.04 step으로 훑어 거리 비교.
+   *   line / dashed / arrow / dashed-arrow : 점-선분 최근접 거리.
+   *   box : 4개 변 각각에 대해 거리 비교 (내부는 hit 아님).
+   *   circle : 타원 경계까지의 근사 거리.
+   *   polygon / line-connect / pencil : 모든 변(edge)을 점-선분 거리로 비교.
+   * THRESH(14px) 이내면 hit으로 간주.
    */
   function tdHitTestAny(px, py) {
     const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();

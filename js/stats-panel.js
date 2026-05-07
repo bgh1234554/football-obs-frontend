@@ -17,9 +17,15 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 // 패널별 상태(페이지 인덱스, 자동 스와이프 타이머) 보관 — 두 패널 독립.
+// WeakMap을 쓰는 이유: panel DOM이 사라지면 state도 자동 GC.
 const statsPanelStates = new WeakMap();
+// 마지막 fixture 데이터 캐시 — settings 변경 / page 활성화 / resize 이벤트에서 재렌더 시 사용.
 let statsLastFixtureData = null;
 
+/**
+ * 현재 활성 페이지(.page.active) 안의 stat 패널만 재렌더.
+ * page activated / window resize / settings 변경 시 호출 — 비활성 페이지의 패널은 다음 활성화 시 자연 갱신.
+ */
 function stRerenderActivePanels() {
   if (statsLastFixtureData == null) return;
   document.querySelectorAll('.page.active [data-stat-panel]').forEach(panel => {
@@ -154,7 +160,15 @@ function stComputeBar(homeVal, awayVal) {
   return { homePct, awayPct, emphasize, zeroTotal: false };
 }
 
-/** 한 stat row의 DOM 생성. fixtureData → matchInfo → state.colors 순으로 팀 컬러 fallback. */
+/**
+ * 한 stat row의 DOM을 빌드.
+ *
+ * 1) 팀 컬러 결정 — state.colors(사용자 override) → matchInfo(API) → 하드코딩 default 순.
+ * 2) stComputeBar로 막대 비율과 강조 사이드 계산.
+ * 3) 상단(.st-top) — 홈 값, 가운데 라벨, 원정 값. 강조 사이드는 팀 컬러 원으로 표시.
+ * 4) 하단(.st-bar) — 비율 막대 두 개. 0:0이면 회색 50/50.
+ * 5) 팀 컬러 RGB 거리 < 80이면 막대 경계에 보색 구분선 1.5px 자동 삽입.
+ */
 function stCreateRow(row, fixtureData) {
   const m = fixtureData?.matchInfo || {};
   // 우선순위: API matchInfo 컬러 → state.colors(사용자 override 반영) → 하드코딩 default
@@ -289,7 +303,18 @@ function stComputeItemsPerPage(panel) {
   return Math.max(1, fits);
 }
 
-/** 한 패널 렌더 (재진입 가능 — page state 변경 후 다시 호출). */
+/**
+ * 한 stat 패널 렌더. 재진입 가능 — 페이지 변경/페이지네이션 클릭 시마다 다시 호출됨.
+ *
+ * 1) 패널별 state(page/autoTimer/paused) 가져오거나 신규 생성.
+ * 2) stCollectRows로 표시할 row 추출 후 panel.innerHTML 비움.
+ * 3) 제목 줄 .st-title-bar 추가.
+ * 4) row가 없으면 "데이터 없음" 표시 + 자동 스와이프 정리 후 종료.
+ * 5) 동적 itemsPerPage(컨테이너 높이 기준) 계산 + chunk → state.page 클램프.
+ * 6) 현재 페이지 row들로 .st-page 빌드.
+ * 7) 페이지 2개 이상이면 좌우 화살표/dot 인디케이터/일시정지(자동 스와이프 ON일 때만) 추가.
+ * 8) stSetupAutoSwipe로 자동 스와이프 타이머 재설정(paused면 idle).
+ */
 function stRenderPanel(panel, fixtureData) {
   if (!panel) return;
   let state = statsPanelStates.get(panel);
@@ -418,6 +443,8 @@ document.addEventListener('settings:change', e => {
   }
 });
 
+// 팀 컬러가 사용자 의해 변경되면 막대/강조 색을 즉시 갱신.
+// theme.js가 컬러 input 핸들러에서 dispatch — homeBg/Text/awayBg/Text 4종만 반영.
 document.addEventListener('theme:colors-changed', e => {
   if (statsLastFixtureData == null) return;
   const key = e.detail?.key;
@@ -425,12 +452,15 @@ document.addEventListener('theme:colors-changed', e => {
   applyStatsPanel(statsLastFixtureData);
 });
 
+// 페이지 활성화 시점에 비활성이었던 패널의 컨테이너 높이가 0에서 실제 값으로 바뀌므로
+// itemsPerPage가 다시 계산돼야 함. RAF로 layout 안정화 한 사이클 미루기.
 document.addEventListener('page:activated', () => {
   requestAnimationFrame(() => {
     stRerenderActivePanels();
   });
 });
 
+// 윈도우 리사이즈 시에도 itemsPerPage가 바뀔 수 있어 활성 패널 재렌더.
 window.addEventListener('resize', () => {
   requestAnimationFrame(() => {
     stRerenderActivePanels();

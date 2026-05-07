@@ -20,6 +20,10 @@ function lpFormatEventTime(time) {
   return Number.isFinite(extra) && extra > 0 ? `${elapsed}+${extra}'` : `${elapsed}'`;
 }
 
+/**
+ * 선수 이름을 비교용으로 정규화. 공백/하이픈/점/따옴표를 제거하고 소문자화.
+ * "J. Mateta" / "J. Mateta " / "j.mateta"가 모두 같은 키로 매칭되도록.
+ */
 function lpNormalizePlayerName(value) {
   return String(value || '')
     .trim()
@@ -27,6 +31,10 @@ function lpNormalizePlayerName(value) {
     .replace(/[\s\-.'"]/g, '');
 }
 
+/**
+ * 한 선수 객체에서 이름 후보(short/long, 영/한)를 모두 모아 정규화 배열로 반환.
+ * 백엔드 응답이 일관되지 않은 키(name/playerName/nameKoLong/playerNameKoLong)를 흡수.
+ */
 function lpCollectPlayerNames(player) {
   if (!player || typeof player !== 'object') return [];
   return [
@@ -39,15 +47,23 @@ function lpCollectPlayerNames(player) {
     .filter(Boolean);
 }
 
+/**
+ * 라인업/벤치 배열에서 matcher와 매칭되는 선수의 인덱스를 찾는다.
+ * 1) playerId가 있으면 그것을 1순위로 시도(가장 안정적).
+ * 2) 못 찾으면 정규화 이름으로 fallback — 이벤트의 playerName과 라인업 데이터의 이름 키들 교집합 검색.
+ * 3) 둘 다 실패 시 -1 반환 (호출자가 swap 스킵 + 경고 로그).
+ */
 function lpFindLineupPlayerIndex(players, matcher) {
   if (!Array.isArray(players) || !matcher || typeof matcher !== 'object') return -1;
 
+  // 1) playerId 우선 매칭.
   const targetId = matcher.playerId == null ? null : String(matcher.playerId);
   if (targetId) {
     const byId = players.findIndex(player => String(player?.playerId) === targetId);
     if (byId !== -1) return byId;
   }
 
+  // 2) 이름 fallback — 이벤트 측 이름 후보 정규화.
   const targetNames = [
     matcher.playerName,
     matcher.playerNameKoLong,
@@ -56,6 +72,7 @@ function lpFindLineupPlayerIndex(players, matcher) {
     .filter(Boolean);
   if (!targetNames.length) return -1;
 
+  // 3) 라인업 측 이름 후보군과 교집합 있는 첫 인덱스.
   return players.findIndex(player => {
     const candidateNames = lpCollectPlayerNames(player);
     return candidateNames.some(name => targetNames.includes(name));

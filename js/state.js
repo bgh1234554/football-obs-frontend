@@ -7,6 +7,7 @@
   const TKEY = 'obs-scoreboard-templates-v1';
   const TLASTKEY = 'obs-scoreboard-selected-template-v1';
   const SKEY = 'obs-scoreboard-state-v2';
+  /** 폰트 패밀리 문자열을 정규화 — 콤마로 split, 각 부분 trim, 빈 항목 제거 후 ", "로 join. */
   function normalizeFontFamilySpec(fontMaybe){
     return String(fontMaybe || '')
       .split(',')
@@ -14,15 +15,27 @@
       .filter(Boolean)
       .join(', ');
   }
+  // 기본 + 옛 default 폰트 spec — restore() 시 legacy 값을 새 default로 자동 마이그레이션.
   const DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif");
   const LEGACY_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'NanumSquareRound', sans-serif");
   const LEGACY_NANUM_GOTHIC_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
+  // PK 하프에서 잠시 다른 하프로 이탈했다 돌아왔을 때 시퀀스를 보존하는 retention 시간 (30초).
   const PK_RETENTION_MS = 30 * 1000;
+
+  /** PK 점수 정규화 — null은 그대로, 음수/NaN은 0으로 클램프. */
   function normalizePenaltyScore(scoreMaybe){
     if(scoreMaybe == null) return null;
     return Math.max(0, Number(scoreMaybe) || 0);
   }
 
+  /**
+   * 폰트 패밀리 spec sanitize.
+   * 1) 빈 입력은 빈 문자열.
+   * 2) legacy default 두 종류는 새 DEFAULT로 치환.
+   * 3) NanumSquareRound / Nanum Gothic은 'Nanum Barun Gothic'으로 정규화.
+   * 4) HUMidnight140은 폰트 목록에서 제거 (지원 폰트 변경).
+   * 5) 'Ubuntu' 단독 + 원본에 HUMidnight140 흔적 → 안전한 default 폰트로 복귀.
+   */
   function sanitizeFontFamily(fontMaybe){
     const raw = (typeof fontMaybe === 'string') ? fontMaybe.trim() : '';
     if(!raw) return '';
@@ -168,7 +181,18 @@
       }
     }catch(e){ console.warn('저장 실패 (' + SKEY + '):', e); }
   }
-  /** LocalStorage에서 저장된 state를 불러와 현재 state에 병합 (running은 항상 false로 초기화) */
+  /**
+   * LocalStorage에서 저장된 state를 불러와 현재 state에 병합.
+   *
+   * 1) saved를 Object.assign으로 병합 — running 상태도 보존(이전엔 항상 false 리셋했음).
+   * 2) running + lastRunningTickMs 있으면 (Date.now - lastRunningTickMs)만큼 seconds에 더해 시계 끊김 보정.
+   *    하루(24h) 이상 차이는 stale로 보고 적용 안 함 (브라우저 재시작 등).
+   * 3) colors / pk / pkScore / notes 같은 중첩 객체는 default와 shallow merge — 누락 키 보완.
+   * 4) PK retention 만료 체크(expireStalePkState).
+   * 5) legacy 키(homeLogoManualOverride 등) → 새 키(homeLogoManual)로 마이그레이션.
+   * 6) 폰트/노트 폰트 사이즈 sanitize.
+   * 7) teamColorOverride 플래그 정규화 (boolean + fixtureId 문자열).
+   */
   function restore(){
     try{
       const saved = JSON.parse(localStorage.getItem(SKEY)||'null');

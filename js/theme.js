@@ -78,15 +78,26 @@
   }
   window.exportTemplatesFileImpl = exportTemplatesFileImpl;
 
+  // ━━━ [기본 + 로컬 템플릿 머지 시스템] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // defaultTemplateCache: Theme Templates/Lists.json fetch 결과 캐시 (한 번만 로드).
+  // defaultTemplateLoadPromise: in-flight fetch 공유용 — 동시 호출 시 중복 fetch 방지.
+  // mergedTemplateCache: default 위에 local override 적용한 최종 목록 (UI 조회 캐시).
   let defaultTemplateCache = null;
   let defaultTemplateLoadPromise = null;
   let mergedTemplateCache = [];
 
+  /** 템플릿 객체에서 폰트 패밀리를 정규화 후 반환. legacy 키(_fontFamily)도 fallback으로 인식. */
   function resolveTemplateFontFamily(t){
     const font = sanitizeFontFamily(t?.fontFamily ?? t?._fontFamily);
     return font || DEFAULT_FONT_FAMILY;
   }
 
+  /**
+   * 템플릿 객체를 깊은 복사(colors는 1-depth, 나머지는 spread).
+   * - name이 비었거나 잘못된 객체면 null 반환.
+   * - fontFamily 정규화 + legacy _fontFamily 키는 정리.
+   * 외부 입력(import JSON, 메모리 캐시 분리)을 안전히 다루기 위한 단일 진입점.
+   */
   function cloneTemplateRecord(templateMaybe){
     if(!templateMaybe || typeof templateMaybe !== 'object') return null;
     const name = String(templateMaybe.name || '').trim();
@@ -98,6 +109,7 @@
     return next;
   }
 
+  /** localStorage(TKEY)의 사용자 로컬 템플릿 목록을 깊은 복사된 배열로 반환. 손상 시 빈 배열. */
   function readLocalTemplates(){
     try{
       const list = JSON.parse(localStorage.getItem(TKEY) || '[]');
@@ -107,10 +119,12 @@
     }
   }
 
+  /** 로컬 템플릿 목록을 TKEY에 직렬화 저장. quota 초과 시 호출자가 catch. */
   function writeLocalTemplates(list){
     localStorage.setItem(TKEY, JSON.stringify(list));
   }
 
+  /** 사용자가 마지막으로 선택한 템플릿 이름을 TLASTKEY에 저장. 빈 값이면 키 제거. */
   function setLastSelectedTemplateName(nameMaybe){
     const name = String(nameMaybe || '').trim();
     try{
@@ -119,6 +133,7 @@
     }catch{}
   }
 
+  /** TLASTKEY에서 마지막 선택 템플릿 이름 조회. 없거나 손상되면 빈 문자열. */
   function getLastSelectedTemplateName(){
     try{
       return String(localStorage.getItem(TLASTKEY) || '').trim();
@@ -127,6 +142,13 @@
     }
   }
 
+  /**
+   * Theme Templates/Lists.json을 fetch해 defaultTemplateCache에 채움.
+   * 1) 이미 캐시에 배열 있으면 즉시 반환.
+   * 2) in-flight Promise 있으면 그것 반환 — 동시 호출이 중복 fetch 방지.
+   * 3) 처음 호출이면 fetch 시작 → 응답을 cloneTemplateRecord로 sanitize.
+   * 4) 실패 시 빈 배열 캐시(이후 재시도 안 함, 사용자 로컬 템플릿만 사용).
+   */
   async function loadDefaultTemplates(){
     if(Array.isArray(defaultTemplateCache)) return defaultTemplateCache;
     if(!defaultTemplateLoadPromise){
@@ -148,6 +170,11 @@
     return defaultTemplateLoadPromise;
   }
 
+  /**
+   * default 템플릿 위에 local 템플릿을 override 한 최종 목록 반환.
+   * Map으로 name 중복 제거 — 같은 이름의 local이 있으면 default를 덮어씀.
+   * mergedTemplateCache에도 저장 — getTemplateByName이 동기 조회 가능하게.
+   */
   async function getMergedTemplates(){
     const defaults = await loadDefaultTemplates();
     const locals = readLocalTemplates();
@@ -157,17 +184,23 @@
     return mergedTemplateCache;
   }
 
+  /** mergedTemplateCache에서 이름으로 템플릿 동기 조회. 캐시 비었으면 null. */
   function getTemplateByName(nameMaybe){
     const name = String(nameMaybe || '').trim();
     if(!name) return null;
     return mergedTemplateCache.find(t => t && t.name === name) || null;
   }
 
+  /** 입력값을 finite leagueId로 정규화. NaN/undefined는 null. */
   function normalizeTemplateLeagueId(value){
     const leagueId = Number(value);
     return Number.isFinite(leagueId) ? leagueId : null;
   }
 
+  /**
+   * 템플릿이 주어진 leagueId와 매칭되는지 판정.
+   * 템플릿의 leagueId는 단일값 또는 배열(여러 리그 공유 시) 모두 허용.
+   */
   function templateMatchesLeagueId(templateMaybe, leagueIdMaybe){
     if(!templateMaybe || typeof templateMaybe !== 'object') return false;
     const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
@@ -178,6 +211,12 @@
     return rawLeagueIds.some(id => normalizeTemplateLeagueId(id) === targetLeagueId);
   }
 
+  /**
+   * leagueId로 매칭되는 템플릿 1개 반환.
+   * 1) default 캐시에서 leagueId 매칭 시도(기준).
+   * 2) 매칭 시 같은 이름의 local override가 있으면 그쪽 우선 반환.
+   * 3) 매칭 없거나 캐시 비면 null.
+   */
   async function getTemplateByLeagueId(leagueIdMaybe){
     const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
     if(targetLeagueId == null) return null;
@@ -192,6 +231,17 @@
     return mergedList.find(t => t && t.name === matchedName) || defaultMatch;
   }
 
+  /**
+   * leagueId 기반 템플릿 자동 적용 (Iter 5-5).
+   *
+   * 1) leagueId 매칭 템플릿 검색. 없으면 null.
+   * 2) 이미 동일 템플릿이 활성이면 force가 아닌 한 no-op (불필요 깜빡임 방지).
+   * 3) loadTemplates로 select 옵션 갱신 + 새 템플릿을 선택값으로 set.
+   * 4) TLASTKEY에 영속화 + applyTemplate으로 색상/폰트/레이아웃 적용 + render+persist.
+   *
+   * fixture.js가 silent=false인 fetch 성공 시에만 호출 — 자동 폴링 중에는
+   * 사용자가 직접 변경한 컬러를 보호하기 위해 호출하지 않는다.
+   */
   async function autoApplyTemplateByLeagueId(leagueIdMaybe, options = {}){
     const template = await getTemplateByLeagueId(leagueIdMaybe);
     if(!template) return null;
@@ -217,6 +267,16 @@
     return (el.templateSelect?.value||'').trim();
   }
 
+  /**
+   * 템플릿 select 요소를 merged 목록으로 다시 채움.
+   *
+   * 1) getMergedTemplates로 default + local 병합 목록 확보.
+   * 2) 기존 선택값 보존(stillExists면 유지, 없어졌으면 빈 값으로).
+   * 3) "로드된 템플릿" 플레이스홀더 + 각 템플릿 option 추가.
+   * 4) TLASTKEY 동기화 — 선택 살아있으면 그 이름으로, 사라졌으면 비움.
+   *
+   * @param {string=} selectedName - 명시적으로 선택할 템플릿 이름. undefined면 현재 select 값 유지.
+   */
   async function loadTemplates(selectedName){
     const list = await getMergedTemplates();
     const prevValue = (selectedName!==undefined) ? selectedName : (el.templateSelect?.value||'');
@@ -241,6 +301,15 @@
     return list;
   }
 
+  /**
+   * 현재 state를 이름 붙여 로컬 템플릿으로 저장.
+   *
+   * 1) default 캐시 미리 로드 후 이름 결정(입력값 > select 선택값).
+   * 2) merged 목록에 같은 이름이 있는지 확인 — 있으면 confirm 창으로 덮어쓰기 의사 묻기.
+   *    default와 동명인데 local에 없으면 "기본 템플릿을 로컬 override로 저장" 메시지 분기.
+   * 3) 기존 동명 항목 제거 후 새 템플릿 push → writeLocalTemplates로 영속화.
+   * 4) loadTemplates로 select 갱신 + 새 이름 선택 + TLASTKEY 영속화.
+   */
   async function saveTemplate(name){
     await loadDefaultTemplates();
     name = resolveTemplateSaveName(name);
@@ -269,6 +338,15 @@
     alert('저장되었습니다.');
   }
 
+  /**
+   * 템플릿 삭제. 이름 입력란 > 인자 > select 선택값 순으로 대상 결정.
+   *
+   * 1) 이름이 없으면 alert 후 종료.
+   * 2) local에도 default에도 없으면 "찾을 수 없음" alert 후 종료.
+   * 3) default에만 있으면 — 기본 템플릿 자체는 삭제 불가 (alert).
+   * 4) local에서만 제거. default와 동명이고 현재 선택돼 있으면 → default fallback으로 자동 적용.
+   * 5) loadTemplates 후 TLASTKEY 갱신.
+   */
   async function deleteTemplate(nameMaybe){
     await loadDefaultTemplates();
     const typed=(el.templateName?.value||'').trim();
@@ -298,6 +376,14 @@
     alert(defaultExists ? `"${name}" 로컬 저장본을 지우고 기본 템플릿으로 되돌렸습니다.` : `"${name}" 삭제 완료.`);
   }
 
+  /**
+   * 로컬 템플릿 일괄 초기화. "리셋" 버튼 핸들러.
+   *
+   * 1) 로컬이 비어있으면 alert 후 종료.
+   * 2) confirm으로 사용자 의사 확인.
+   * 3) TKEY 제거 → loadTemplates로 default만 남은 select 재구성.
+   * 4) 현재 선택값이 default에도 있으면 그쪽으로 자동 적용, 없으면 빈 선택.
+   */
   async function resetTemplates(){
     await loadDefaultTemplates();
     const localList = readLocalTemplates();
@@ -326,6 +412,15 @@
     alert('기본 템플릿만 남기고 로컬 템플릿을 초기화했습니다.');
   }
 
+  /**
+   * 외부 템플릿 객체 t를 로컬에 upsert (import JSON에서 호출).
+   *
+   * 1) 이름 정규화(없으면 'Imported').
+   * 2) merged 목록에 같은 이름 있으면 askOnDuplicate=true일 때 confirm. 거절하면 saved:false 반환.
+   * 3) 현재 state 기반 base 템플릿에 t 키들 덮어쓰기 → 누락된 필드는 현재 state로 보강.
+   * 4) 동명 항목 제거 후 cloneTemplateRecord로 sanitize 한 객체 push.
+   * 5) 결과 객체 { saved, replaced, name } 반환.
+   */
   async function upsertTemplateToLocal(t, askOnDuplicate=true){
     await loadDefaultTemplates();
     const list = readLocalTemplates();
@@ -346,6 +441,10 @@
     return{saved:true,replaced:exists,name};
   }
 
+  /**
+   * 템플릿 JSON 파일 다운로드. 이름 입력란이 있으면 현재 state 기반 단일 템플릿,
+   * 없으면 merged 전체 목록을 한 파일로 묶어 내보낸다.
+   */
   async function exportTemplatesFileImpl(){
     const nameInput=(el.templateName?.value||'').trim();
     let dataStr,filename;

@@ -20,6 +20,7 @@ const lineupPanelState = {
 let detailBenchBalanceRaf = 0;
 let detailBenchResizeObserver = null;
 
+/** HTML에 안전하게 삽입하기 위해 `& < > " '`를 entity로 escape. innerHTML 합성 시 사용. */
 function dpEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
@@ -30,22 +31,27 @@ function dpEscape(value) {
   }[char]));
 }
 
+/** tactics.js의 포메이션 좌표 map(TACTICS_FM)을 안전하게 반환. 없으면 빈 객체. */
 function getTacticsFormationMap() {
   return typeof TACTICS_FM !== 'undefined' && TACTICS_FM ? TACTICS_FM : {};
 }
 
+/** tactics.js의 포지션 라벨 map(TACTICS_LABELS) 안전 반환. */
 function getTacticsLabelMap() {
   return typeof TACTICS_LABELS !== 'undefined' && TACTICS_LABELS ? TACTICS_LABELS : {};
 }
 
+/** 선수 배열 깊은 복사 (1-depth). null 항목 제거. 입력이 배열 아니면 빈 배열. */
 function clonePlayers(players) {
   return Array.isArray(players) ? players.filter(Boolean).map(player => ({ ...player })) : [];
 }
 
+/** 부상자 배열 깊은 복사 (1-depth). null 제거. */
 function cloneInjuries(injuries) {
   return Array.isArray(injuries) ? injuries.filter(Boolean).map(injury => ({ ...injury })) : [];
 }
 
+/** lineup 객체 + 내부 startXi/substitutes/coach까지 1-depth 복사. effectiveData 합성 시 사용. */
 function cloneLineup(lineup) {
   if (!lineup) return lineup;
   return {
@@ -56,14 +62,17 @@ function cloneLineup(lineup) {
   };
 }
 
+/** fixture 응답에서 fixtureId 문자열 추출. 없거나 공백이면 빈 문자열. */
 function getFixtureIdFromData(data) {
   return String(data?.matchInfo?.fixtureId ?? '').trim();
 }
 
+/** 현재 패널이 표시 중인 fixtureId. 모달의 저장 키 / 수동 store 키로 사용. */
 function getActiveFixtureId() {
   return getFixtureIdFromData(lineupPanelState.lastFixture);
 }
 
+/** 감독 이름 sanitize. 빈 값/null/undefined/하이픈 단독은 빈 문자열 반환 (UI에서 placeholder). */
 function normalizeCoachName(name) {
   const value = String(name ?? '').trim();
   if (!value) return '';
@@ -72,7 +81,15 @@ function normalizeCoachName(name) {
 }
 
 // ─── 수동 입력 저장소 (fixture 단위) ──────────────────────────────────────
-// localStorage에 fixtureId 기준 override를 보관하고, API 응답에 얹어서 실제 렌더 데이터로 사용.
+// localStorage(DETAIL_MANUAL_STORAGE_KEY)에 fixtureId 기준으로 override를 보관하고,
+// API 응답에 얹어서 실제 렌더 데이터로 사용. TTL은 7일.
+
+/**
+ * 저장소 raw 읽고 만료/빈 entry 정리 후 반환.
+ * 1) JSON 파싱 실패 시 빈 객체.
+ * 2) expiresAt 지났거나 sanitize 결과 빈 entry는 제거.
+ * 3) 정리된 결과가 있으면 즉시 다시 저장.
+ */
 function readManualStore() {
   let parsed = {};
   try {
@@ -93,12 +110,22 @@ function readManualStore() {
   return parsed;
 }
 
+/** 수동 store 직렬화 저장. quota 초과 등 에러는 silent. */
 function writeManualStore(store) {
   try {
     localStorage.setItem(DETAIL_MANUAL_STORAGE_KEY, JSON.stringify(store));
   } catch {}
 }
 
+/**
+ * 한 side의 수동 입력 데이터를 저장 형식으로 정규화.
+ *
+ * - lineup: startXi 풀폼(11명+포메이션) 또는 grid-only(formation+gridByPlayerId) 두 모드 지원.
+ * - bench / injuries: 빈 배열은 키 자체 제외(저장 공간 절약).
+ * - coachName: 공백 trim 후 빈 값이면 키 제외.
+ *
+ * 결과가 빈 객체면 null 반환 — 호출자가 store에서 키를 지울지 판단.
+ */
 function sanitizeManualSideData(sideData) {
   const next = {};
 
@@ -135,6 +162,7 @@ function sanitizeManualSideData(sideData) {
   return Object.keys(next).length ? next : null;
 }
 
+/** entry가 사용자 입력이 하나도 없는지 — 주심+양 사이드 모두 비면 true. store 정리 판단용. */
 function isManualEntryEmpty(entry) {
   const refereeEmpty = !String(entry?.refereeName || '').trim();
   return refereeEmpty && !sanitizeManualSideData(entry?.home) && !sanitizeManualSideData(entry?.away);
@@ -165,15 +193,26 @@ function setManualReferee(fixtureId, value) {
   writeManualStore(store);
 }
 
+/** fixtureId의 수동 entry 전체 반환 (home/away/refereeName 포함). 없으면 null. */
 function getManualEntry(fixtureId) {
   if (!fixtureId) return null;
   return readManualStore()[fixtureId] || null;
 }
 
+/** fixtureId+side의 수동 데이터 부분만 반환. 모달 진입 시 기존 값 미리 채우는 용도. */
 function getManualSideData(fixtureId, side) {
   return getManualEntry(fixtureId)?.[side] || null;
 }
 
+/**
+ * 한 side의 수동 데이터를 updater 함수로 변형 후 저장.
+ *
+ * 1) store에서 현재 entry draft 만들기(home/away 분리 복사).
+ * 2) updater(현재 side draft) → 결과를 sanitize.
+ * 3) sanitize 결과가 있으면 draft에 반영, 없으면 해당 side 키 제거.
+ * 4) entry가 완전히 비면 store에서 fixtureId 자체 제거, 아니면 savedAt/expiresAt 갱신해 저장.
+ * 5) refereeName 등 top-level 필드는 보존하면서 home/away만 교체.
+ */
 function updateManualEntry(fixtureId, side, updater) {
   if (!fixtureId || !side || typeof updater !== 'function') return null;
 
@@ -209,6 +248,10 @@ function updateManualEntry(fixtureId, side, updater) {
   return store[fixtureId] || null;
 }
 
+/**
+ * 수동 entry에서 특정 종류(lineup/bench/injury/coach)만 골라 삭제.
+ * 패널 내 "수동값 삭제" 버튼이 호출. 다른 종류 입력은 그대로 유지.
+ */
 function deleteManualKind(fixtureId, side, kind) {
   updateManualEntry(fixtureId, side, sideData => {
     if (kind === 'lineup') delete sideData.lineup;
@@ -336,6 +379,7 @@ function applySubReflectToFixture(data) {
   };
 }
 
+/** 한 사이드의 표시용 팀명. teamName 토글에 따라 long/short 선택, 빈 값은 다른 쪽 또는 기본 라벨로 폴백. */
 function getTeamName(data, side) {
   const matchInfo = data?.matchInfo || {};
   const shortName = side === 'home'
@@ -351,12 +395,18 @@ function getTeamName(data, side) {
   return shortName || longName || fallback;
 }
 
+/** API의 grid 값("X:Y") → {line, col} 객체. 잘못된 형식이면 null. */
 function parseGridValue(value) {
   const match = String(value || '').match(/^(\d+):(\d+)$/);
   if (!match) return null;
   return { line: Number(match[1]), col: Number(match[2]) };
 }
 
+/**
+ * grid 비교자. line(수비라인부터 1) 오름차순 + col 내림차순으로 정렬.
+ * (col 내림차순: API의 col은 오른쪽에서 1부터인데 화면에선 왼쪽이 1번 슬롯이라 뒤집음.)
+ * null grid는 항상 뒤로 보냄.
+ */
 function compareParsedGrid(left, right) {
   if (!left && !right) return 0;
   if (!left) return 1;
@@ -365,6 +415,7 @@ function compareParsedGrid(left, right) {
   return right.col - left.col;
 }
 
+/** startXi를 grid 순서로 정렬한 새 배열 반환. 원본 보존. */
 function getOrderedLineupPlayers(players) {
   return clonePlayers(players).sort((a, b) => {
     const left = parseGridValue(a.grid);
@@ -373,10 +424,12 @@ function getOrderedLineupPlayers(players) {
   });
 }
 
+/** lineup에 선발 11명(또는 그 이상)이 들어있는지. 빈 배열/null은 false. */
 function hasStartXi(lineup) {
   return Array.isArray(lineup?.startXi) && lineup.startXi.length > 0;
 }
 
+/** lineup의 formation이 TACTICS_FM에 등록된 알려진 포메이션인지. */
 function hasValidFormation(lineup) {
   const formation = String(lineup?.formation || '').trim();
   return !!(formation && getTacticsFormationMap()[formation]);
@@ -390,12 +443,14 @@ function isGridMode(rawData, side) {
   return !!lineup && hasStartXi(lineup);
 }
 
+/** 포메이션의 슬롯별 포지션 라벨(GK/CB/RB/...). 알 수 없는 포메이션이면 1~11 숫자 fallback. */
 function getFormationSlotLabels(formation) {
   const labels = getTacticsLabelMap()[formation];
   if (Array.isArray(labels) && labels.length) return labels;
   return Array.from({ length: 11 }, (_, index) => `${index + 1}`);
 }
 
+/** 라벨 텍스트(GK/CB/CDM 등)에서 G/D/M/F 큰 분류 추출. 노드 색/그룹화 등 폴백 사용. */
 function inferBasePos(label) {
   const upper = String(label || '').toUpperCase();
   if (upper.includes('GK')) return 'G';
@@ -404,6 +459,10 @@ function inferBasePos(label) {
   return 'F';
 }
 
+/**
+ * 포메이션 슬롯을 grid 순서(x → y 오름차순)로 정렬해서 반환.
+ * 각 슬롯은 { coord, originalIndex } — originalIndex로 라벨/좌표 매핑 보존.
+ */
 function getFormationSlotsByGridOrder(formation) {
   return (getTacticsFormationMap()[formation] || [])
     .map((coord, originalIndex) => ({ coord: { ...coord }, originalIndex }))
@@ -413,6 +472,10 @@ function getFormationSlotsByGridOrder(formation) {
     });
 }
 
+/**
+ * 슬롯 ↔ 선수 매핑을 grid 순서대로 짝지어 반환.
+ * 선수가 없는 슬롯은 결과에서 제외 (포메이션 11개 < startXi 11명일 수도 있는 잡음 방어).
+ */
 function getFormationAssignments(lineup) {
   const slots = getFormationSlotsByGridOrder(lineup?.formation);
   const players = getOrderedLineupPlayers(lineup?.startXi || []);
@@ -1196,6 +1259,12 @@ function renderLineupGrid(effectiveData, rawData) {
   });
 }
 
+/**
+ * 라인업 1팀치를 전술판(tactics.js)이 기대하는 player 객체 배열로 변환.
+ * - 11개 슬롯을 포메이션 grid 순서대로 정렬해 originalIndex 자리에 player 정보 삽입.
+ * - _isReal=true 마킹 — tactics 렌더가 포지션 라벨 대신 nameKo를 표시하게 함.
+ * - 누락된 슬롯은 null (전술판에서 빈 자리 그대로 표시).
+ */
 function buildTacticsPlayers(lineup) {
   const labels = getFormationSlotLabels(lineup.formation);
   const slots = getFormationSlotsByGridOrder(lineup.formation);
@@ -1214,6 +1283,10 @@ function buildTacticsPlayers(lineup) {
   return players;
 }
 
+/**
+ * 양 팀 모두 포메이션 + startXi가 있을 때만 전술판 연동용 payload 생성.
+ * 한쪽이라도 부족하면 null — 전술판은 기본 포메이션으로 대기.
+ */
 function buildTacticsPayload(effectiveData) {
   if (!hasValidFormation(effectiveData?.homeLineup) || !hasValidFormation(effectiveData?.awayLineup)) return null;
   if (!hasStartXi(effectiveData?.homeLineup) || !hasStartXi(effectiveData?.awayLineup)) return null;
@@ -1232,6 +1305,10 @@ function buildTacticsPayload(effectiveData) {
   };
 }
 
+/**
+ * 전술판에서 fixture 기반 라인업 토큰을 떼어내고 팀명만 갱신.
+ * 라인업이 더 이상 유효하지 않거나(수동 모드 토글 등) clear 동작에서 호출.
+ */
 function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
   const pitch = document.getElementById('tactics-pitch');
   if (pitch) pitch.querySelectorAll('.tactics-token, .tactics-ball-token').forEach(node => node.remove());
@@ -1248,6 +1325,7 @@ function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
   if (awayLabel) awayLabel.textContent = getTeamName(data, 'away');
 }
 
+/** 전술판에 effectiveData 기반 라인업 적용 시도. payload 만들기 실패면 false. */
 function syncTacticsBoard(effectiveData) {
   const payload = buildTacticsPayload(effectiveData);
   if (payload && typeof tacticsApplyLineup === 'function') {
@@ -2298,6 +2376,16 @@ document.addEventListener('page:activated', () => {
 
 // ─── 라인업 패널 재렌더 진입점 ──────────────────────────────────────────
 // fixture 재적용, 수동 저장/초기화, 페이지 재활성화 시 모두 이 경로로 들어온다.
+/**
+ * 상세 패널(라인업/벤치/부상) + 전술판 일괄 재렌더.
+ *
+ * 1) lastFixture 없으면 패널 비우고 종료.
+ * 2) buildEffectiveFixtureData로 raw + 수동 override 합성 (mergedData).
+ * 3) applySubReflectToFixture로 subReflect=on이면 교체 이벤트 기반 startXi/벤치 swap.
+ * 4) 이벤트/평점 lookup 캐시 생성(lineupPanelState.context) — 렌더 헬퍼들이 매 row마다 read.
+ * 5) 벤치/부상/라인업 그리드 + 전술판 4개 패널 동시 갱신.
+ * 6) 다음 frame(layout 안정화 후)에 fitLineupNamePills/fitBenchFooterNames/balanceBenchInjuryPanelHeights 호출.
+ */
 function rerenderLineupPanels() {
   if (!lineupPanelState.lastFixture) {
     clearLineupPanels();
@@ -2714,6 +2802,12 @@ function renderManualPanelForm(kind, side) {
   }
 }
 
+/**
+ * 수동 입력 모달 오픈.
+ * 1) 활성 fixtureId 없으면 alert 후 종료 — 수동 데이터는 fixture별로 묶이므로 fixture 필수.
+ * 2) 모달 상태 저장 + renderManualPanelForm으로 kind/side 맞는 폼 렌더.
+ * 3) 백드롭에 .open 추가 → CSS transition으로 표시.
+ */
 function openManualPanel(kind, side) {
   const fixtureId = getActiveFixtureId();
   if (!fixtureId || !lineupPanelState.lastFixture) {
@@ -2731,6 +2825,7 @@ function openManualPanel(kind, side) {
   }
 }
 
+/** 수동 입력 모달 닫기. 모달 상태 + 그리드 편집 상태 모두 비우고 백드롭의 .open 제거. */
 function closeManualPanel() {
   lineupPanelState.manualModal = null;
   lineupPanelState.gridState = null;
@@ -2741,6 +2836,7 @@ function closeManualPanel() {
   }
 }
 
+/** 백드롭 .open 클래스로 모달 오픈 여부 판정. ESC 핸들러 가드용. */
 function isManualPanelOpen() {
   const backdrop = document.getElementById('manualPanelBackdrop');
   return !!(backdrop && backdrop.classList.contains('open'));
