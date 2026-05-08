@@ -85,6 +85,7 @@
   let defaultTemplateCache = null;
   let defaultTemplateLoadPromise = null;
   let mergedTemplateCache = [];
+  const TEMPLATE_FALLBACK_LEAGUE_ID = 1;
 
   /** 템플릿 객체에서 폰트 패밀리를 정규화 후 반환. legacy 키(_fontFamily)도 fallback으로 인식. */
   function resolveTemplateFontFamily(t){
@@ -227,7 +228,15 @@
 
     await loadDefaultTemplates();
     const defaultMatch = defaultTemplateCache.find(t => templateMatchesLeagueId(t, targetLeagueId));
-    if(!defaultMatch) return null;
+    if(!defaultMatch){
+      const fallbackMatch = mergedList.find(t => templateMatchesLeagueId(t, TEMPLATE_FALLBACK_LEAGUE_ID))
+        || defaultTemplateCache.find(t => templateMatchesLeagueId(t, TEMPLATE_FALLBACK_LEAGUE_ID))
+        || null;
+      if(!fallbackMatch) return null;
+      const fallbackName = String(fallbackMatch?.name || '').trim();
+      if(!fallbackName) return fallbackMatch;
+      return mergedList.find(t => t && String(t.name || '').trim() === fallbackName) || fallbackMatch;
+    }
 
     const matchedName = String(defaultMatch?.name || '').trim();
     if(!matchedName) return null;

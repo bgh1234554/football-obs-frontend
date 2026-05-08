@@ -361,6 +361,10 @@ function applyTacticsTimeline(fixtureData) {
   ttUpdateTimeLabel();
   ttRenderMarkers();
   ttApplyTimelineToTactics(tacticsTimelineState.currentElapsed);
+  const tacticsPage = document.getElementById('page-tactics');
+  if (tacticsPage?.classList.contains('active')) {
+    requestAnimationFrame(() => ttEnsureTacticsTimelineReady({ rerenderEvents: true }));
+  }
 }
 
 /**
@@ -431,18 +435,18 @@ function ttBindFullscreenToggle() {
 }
 
 /**
- * 전술판 이벤트 패널이 (재)렌더될 때마다 #tactics-timeline-bar를 패널 내부 .ev-title-bar 바로 아래로 이동.
- * events-panel.js가 'events-panel:rendered' 이벤트를 dispatch — 그때마다 끼워넣어야 replaceChildren에 의해
- * 사라지지 않는다. data-events-panel-source="tactics"인 패널만 대상.
+ * 전술판 타임라인 바를 전술판 패널의 고정 위치(이벤트 패널 위)로 되돌린다.
+ * events-panel.js의 replaceChildren가 [data-events-panel] 내부를 갈아끼워도 영향을 받지 않도록
+ * timeline bar는 #tactics-events-host 바깥 형제 노드로 유지한다.
  */
 function ttInjectTimelineIntoEventsPanel(panel) {
   if (!panel || panel.dataset.eventsPanelSource !== 'tactics') return;
   const timeline = document.getElementById('tactics-timeline-bar');
-  const titleBar = panel.querySelector('.ev-title-bar');
-  if (!timeline || !titleBar) return;
-  // 이미 올바른 위치에 있으면 no-op
-  if (timeline.previousElementSibling === titleBar) return;
-  titleBar.insertAdjacentElement('afterend', timeline);
+  const timelinePanel = document.getElementById('tactics-timeline-panel');
+  const eventsHost = document.getElementById('tactics-events-host');
+  if (!timeline || !timelinePanel || !eventsHost) return;
+  if (timeline.parentElement === timelinePanel && timeline.nextElementSibling === eventsHost) return;
+  timelinePanel.insertBefore(timeline, eventsHost);
 }
 
 document.addEventListener('events-panel:rendered', (e) => {
@@ -459,4 +463,34 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 외부에 노출 — fixture.js와 lineup-panel.js에서 호출
+function ttEnsureTacticsTimelineReady(options = {}) {
+  const rerenderEvents = options.rerenderEvents === true;
+  const panel = document.querySelector('#tactics-events-host [data-events-panel]');
+  const fixtureData = tacticsTimelineState.fixture || window._eventsLastData || null;
+
+  if (!tacticsTimelineState.fixture && fixtureData) {
+    applyTacticsTimeline(fixtureData);
+  }
+
+  if (panel && fixtureData && (rerenderEvents || !panel.querySelector('.ev-title-bar')) && typeof window.applyEventsPanel === 'function') {
+    window.applyEventsPanel(fixtureData, { animate: false });
+  }
+
+  requestAnimationFrame(() => {
+    const activePanel = document.querySelector('#tactics-events-host [data-events-panel]');
+    if (activePanel) ttInjectTimelineIntoEventsPanel(activePanel);
+    ttUpdateTimeLabel();
+    ttRenderMarkers();
+  });
+}
+
+document.addEventListener('page:activated', (e) => {
+  if (e.detail?.page !== 'tactics') return;
+  ttEnsureTacticsTimelineReady({ rerenderEvents: true });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  ttEnsureTacticsTimelineReady();
+});
+
 window.applyTacticsTimeline = applyTacticsTimeline;
