@@ -337,8 +337,12 @@ function applyTacticsTimeline(fixtureData) {
     tacticsTimelineState.maxElapsed = 90;
     tacticsTimelineState.currentElapsed = 0;
     ttUpdateTimeLabel();
-    const host = document.getElementById('tactics-timeline-markers');
-    if (host) host.innerHTML = '';
+    const homeHost = document.getElementById('tactics-timeline-events-home');
+    const awayHost = document.getElementById('tactics-timeline-events-away');
+    const markerHost = document.getElementById('tactics-timeline-markers');
+    if (homeHost) homeHost.innerHTML = '';
+    if (awayHost) awayHost.innerHTML = '';
+    if (markerHost) markerHost.innerHTML = '';
     const slider = document.getElementById('tactics-time-slider');
     if (slider) slider.value = '0';
     return;

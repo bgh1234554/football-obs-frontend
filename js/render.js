@@ -757,6 +757,13 @@
       ? Object.fromEntries(Object.entries(incoming).filter(([k]) => !TEAM_COLOR_KEYS.includes(k)))
       : incoming;
     state.colors={...state.colors,...colorsToApply};
+    const templateBgColor = String(t.bgColor || incoming.bg || incoming.uiBg || '').trim();
+    if (/^#?[0-9a-fA-F]{6}$/.test(templateBgColor) && typeof setSetting === 'function') {
+      const normalizedBgColor = templateBgColor.startsWith('#')
+        ? templateBgColor.toLowerCase()
+        : `#${templateBgColor.toLowerCase()}`;
+      setSetting('bgColor', normalizedBgColor);
+    }
     state.fontFamily=resolveTemplateFontFamily(t);
     if(t.logoAlign) state.logoAlign=t.logoAlign;
     if(t.radiusMode) state.radiusMode=t.radiusMode;

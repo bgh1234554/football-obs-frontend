@@ -191,18 +191,18 @@
   function injectWidgetCSS() {
     document.querySelectorAll('api-sports-widget').forEach(widget => {
       // Shadow DOM에 주입 후 위젯 엘리먼트에 플래그 설정
-      if (widget.shadowRoot && !widget.shadowRoot._cssInjected) {
+      if (widget.shadowRoot && !widget._shadowCssInjected) {
         injectCSS(widget.shadowRoot);
-        widget._cssInjected = true;
+        if (widget.shadowRoot._cssInjected) widget._shadowCssInjected = true;
       }
       // iframe — 크로스오리진 접근은 SecurityError를 던질 수 있으므로 try-catch로 감쌈
       const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
-      if (iframe && !widget._cssInjected) {
+      if (iframe && !widget._iframeCssInjected) {
         try {
           const doc = iframe.contentDocument || iframe.contentWindow?.document;
           if (doc?.head) {
             injectCSS(doc);
-            if (doc._cssInjected) widget._cssInjected = true;
+            if (doc._cssInjected) widget._iframeCssInjected = true;
           }
         } catch(e) { /* cross-origin: 무시 */ }
       }
@@ -213,7 +213,12 @@
     injectWidgetCSS();
     // 모든 위젯에 주입 완료 시 인터벌 종료
     const widgets = document.querySelectorAll('api-sports-widget');
-    if (widgets.length > 0 && Array.from(widgets).every(w => w._cssInjected)) {
+    if (widgets.length > 0 && Array.from(widgets).every(widget => {
+      const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
+      const shadowReady = !widget.shadowRoot || !!widget._shadowCssInjected;
+      const iframeReady = !iframe || !!widget._iframeCssInjected;
+      return shadowReady && iframeReady;
+    })) {
       clearInterval(injectWidgetCSSInterval);
     }
   }, 1000);

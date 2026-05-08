@@ -1204,6 +1204,12 @@ body.greenscreen-mode .dp-node-sub-in {
   gap: 2px;
   box-shadow: 0 1px 2px rgba(0,0,0,.4);
 }
+.dp-node-sub-in.dp-node-sub-stacked {
+  transform: translate(-75%, -118%);
+}
+.dp-node-sub-out.dp-node-sub-stacked {
+  transform: translate(-75%, 18%);
+}
 .dp-node-sub-time { font-variant-numeric: tabular-nums; }
 /* 작은 캠 라인업은 이름 pill이 노드 바로 아래에 붙으므로,
    교체 IN/OUT 칩을 좌상단 대신 노드의 좌측 중앙으로 빼서 겹침 방지. */

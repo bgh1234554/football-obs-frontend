@@ -492,23 +492,6 @@ function canRenderPitchMode(lineup) {
 function buildManualGridValues(formation) {
   const slots = getFormationSlotsByGridOrder(formation);
   if (!slots.length) return Array.from({ length: 11 }, (_, index) => index === 0 ? '1:1' : null);
-  return slots.map((slot, index) => {
-    const grid = parseGridValue(`${index + 1}:1`);
-    void grid;
-    return null;
-  }).map((_, index) => {
-    const slot = slots[index];
-    const line = slots
-      .filter(other => other.coord.x < slot.coord.x)
-      .reduce((count, other) => count + (other.coord.x !== slot.coord.x ? 0 : 0), 0);
-    void line;
-    return '';
-  });
-}
-
-function buildManualGridValues(formation) {
-  const slots = getFormationSlotsByGridOrder(formation);
-  if (!slots.length) return Array.from({ length: 11 }, (_, index) => index === 0 ? '1:1' : null);
 
   const uniqueLines = [...new Set(slots.map(slot => slot.coord.x))].sort((a, b) => a - b);
   return slots.map(slot => {
@@ -681,13 +664,14 @@ function lpBuildNodeBadgesHtml(events) {
   if (!events) return '';
   let html = '';
   const fmt = typeof lpFormatEventTime === 'function' ? lpFormatEventTime : () => '';
+  const hasBothSubBadges = !!(events.subIn && events.subOut);
   // top-left: 교체 IN 시간 — 진입한 선수 (subReflect=ON에서 선발 자리로 올라온 선수)
   if (events.subIn) {
-    html += `<span class="dp-node-badge dp-node-sub-in" title="교체 IN">→<span class="dp-node-sub-time">${dpEscape(fmt(events.subIn.time))}</span></span>`;
+    html += `<span class="dp-node-badge dp-node-sub-in${hasBothSubBadges ? ' dp-node-sub-stacked' : ''}" title="교체 IN">→<span class="dp-node-sub-time">${dpEscape(fmt(events.subIn.time))}</span></span>`;
   }
   // top-left: 교체 OUT 시간 — subReflect=OFF에서 선발에 남아있는 OUT 선수에게 표시. 빨간 chip.
   if (events.subOut) {
-    html += `<span class="dp-node-badge dp-node-sub-out" title="교체 OUT">→<span class="dp-node-sub-time">${dpEscape(fmt(events.subOut.time))}</span></span>`;
+    html += `<span class="dp-node-badge dp-node-sub-out${hasBothSubBadges ? ' dp-node-sub-stacked' : ''}" title="교체 OUT">→<span class="dp-node-sub-time">${dpEscape(fmt(events.subOut.time))}</span></span>`;
   }
   // top-right: 어시스트
   if (events.assists?.length) {

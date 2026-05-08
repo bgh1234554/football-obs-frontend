@@ -323,29 +323,73 @@ function evMainText(ev) {
  */
 function evProcess(rawEvents) {
   if (!Array.isArray(rawEvents)) return [];
-  const yellows = new Map(); // playerId -> count
-  const processed = rawEvents.map(ev => {
-    const out = { ...ev };
-    if (evTypeIs(out, 'Var')) {
-      const parsedVar = evParseVarDetail(out.detail);
-      if (parsedVar.key) {
-        out._displayDetail = parsedVar.displayDetail;
-        if (!out.comments && parsedVar.displayComment) out._displayComment = parsedVar.displayComment;
+  const orderedEvents = rawEvents
+    .map((ev, index) => ({ ev, index }))
+    .sort((a, b) => {
+      const elapsedDiff = Number(a.ev?.elapsed ?? 0) - Number(b.ev?.elapsed ?? 0);
+      if (elapsedDiff !== 0) return elapsedDiff;
+      const extraDiff = Number(a.ev?.extra ?? 0) - Number(b.ev?.extra ?? 0);
+      if (extraDiff !== 0) return extraDiff;
+      return a.index - b.index;
+    });
+  const yellows = new Map(); // playerId -> count (이전 시점까지의 경고 수)
+  const processed = [];
+
+  for (let index = 0; index < orderedEvents.length; ) {
+    const current = orderedEvents[index];
+    const elapsed = Number(current.ev?.elapsed ?? 0);
+    const extra = Number(current.ev?.extra ?? 0);
+    const group = [];
+
+    while (index < orderedEvents.length) {
+      const candidate = orderedEvents[index];
+      if (Number(candidate.ev?.elapsed ?? 0) !== elapsed || Number(candidate.ev?.extra ?? 0) !== extra) break;
+      group.push(candidate);
+      index += 1;
+    }
+
+    const sameMomentYellowPlayers = new Set(
+      group
+        .filter(({ ev }) => evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card') && ev.playerId != null)
+        .map(({ ev }) => String(ev.playerId))
+    );
+
+    group.forEach(({ ev }) => {
+      const out = { ...ev };
+      if (evTypeIs(out, 'Var')) {
+        const parsedVar = evParseVarDetail(out.detail);
+        if (parsedVar.key) {
+          out._displayDetail = parsedVar.displayDetail;
+          if (!out.comments && parsedVar.displayComment) out._displayComment = parsedVar.displayComment;
+        }
       }
-    }
-    const isYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card');
-    const isRed = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Red Card');
-    const isSecondYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Second Yellow Card');
-    if (isYellow) {
-      yellows.set(ev.playerId, (yellows.get(ev.playerId) || 0) + 1);
-    }
-    if (isSecondYellow || (isRed && (yellows.get(ev.playerId) || 0) > 0)) {
-      out._isCumulativeRed = true;
-      out._displayDetail = 'Red Card';
-      if (!out.comments) out.comments = '경고 누적 퇴장';
-    }
-    return out;
-  });
+
+      const isYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card');
+      const isRed = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Red Card');
+      const isSecondYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Second Yellow Card');
+      const playerKey = ev.playerId == null ? '' : String(ev.playerId);
+      const priorYellowCount = playerKey ? (yellows.get(playerKey) || 0) : 0;
+
+      if (
+        isSecondYellow
+        || (isRed && playerKey && sameMomentYellowPlayers.has(playerKey) && priorYellowCount > 0)
+      ) {
+        out._isCumulativeRed = true;
+        out._displayDetail = 'Red Card';
+        if (!out.comments) out.comments = '경고 누적 퇴장';
+      }
+
+      processed.push(out);
+    });
+
+    group.forEach(({ ev }) => {
+      if (ev.playerId == null) return;
+      if (evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card')) {
+        const playerKey = String(ev.playerId);
+        yellows.set(playerKey, (yellows.get(playerKey) || 0) + 1);
+      }
+    });
+  }
   const hiddenIndexes = new Set();
 
   processed.forEach((ev, idx) => {
@@ -376,8 +420,6 @@ function evProcess(rawEvents) {
   });
 
   return processed.filter((_, idx) => !hiddenIndexes.has(idx)).reverse();
-  // 표시: 최신이 위
-  return processed.reverse();
 }
 
 /**
@@ -660,7 +702,7 @@ function evFitText(row) {
 
   const textTargets = isSubst
     ? [...row.querySelectorAll('.ev-text-line')]
-    : [...row.querySelectorAll('.ev-text:not(.ev-text-stack)')];
+    : [...row.querySelectorAll('.ev-text')];
   const comment = row.querySelector('.ev-comment');
 
   /** scrollHeight > clientHeight면 line-clamp로 잘렸다는 뜻 → 넘침. */
@@ -922,12 +964,14 @@ document.addEventListener('settings:change', e => {
 
 document.addEventListener('pointerdown', event => {
   if (!eventsPanelFilterState.isOpen) return;
-  const shell = document.querySelector('.ev-filter-shell');
-  if (!shell) {
+  const shell = typeof event.target?.closest === 'function'
+    ? event.target.closest('.ev-filter-shell')
+    : null;
+  if (shell) return;
+  if (!document.querySelector('.ev-filter-shell')) {
     eventsPanelFilterState.isOpen = false;
     return;
   }
-  if (shell.contains(event.target)) return;
   evCloseFilterPopover();
 });
 

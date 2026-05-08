@@ -355,10 +355,11 @@ function loadSettings() {
 
     // 3) v2에서 읽은 경우 v3로 즉시 재저장 후 legacy 정리.
     if (isLegacyPayload) {
-      saveSettings();
-      SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
-        try { localStorage.removeItem(key); } catch {}
-      });
+      if (saveSettings()) {
+        SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
+          try { localStorage.removeItem(key); } catch {}
+        });
+      }
     }
   } catch {}
   // 4) layout(CSS 변수) 즉시 반영. (script 로드 시점에 호출되므로 body 클래스도 같이 세팅됨.)
@@ -369,7 +370,11 @@ function loadSettings() {
 function saveSettings() {
   try {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsState));
-  } catch {}
+    return true;
+  } catch (error) {
+    console.warn('설정 저장 실패:', error);
+    return false;
+  }
 }
 
 /** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */

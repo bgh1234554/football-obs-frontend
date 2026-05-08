@@ -345,7 +345,7 @@
 .sp-num-input::-webkit-outer-spin-button,
 .sp-num-input::-webkit-inner-spin-button {
   /* 기본 spinner 비표시 — 깔끔한 룩. 사용자는 직접 입력 또는 step 변경 가능. */
-  -webkit-appearance: auto;
+  -webkit-appearance: none;
   opacity: .7;
 }
 .sp-num-input:focus {

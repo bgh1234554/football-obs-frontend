@@ -125,7 +125,7 @@ function lpAggregatePlayerEvents(events) {
       if (!isOwn) {
         ensure(ev.playerId).goals.push({ time, isPenalty, isOwnGoal: false });
       }
-      // 어시스트는 모든 골 종류에서 가능 (페널티는 보통 X, Own Goal은 X).
+      // 어시스트는 Own Goal만 제외. 페널티는 보통 assistId가 없어 기록되지 않지만, 있으면 그대로 반영.
       if (ev.assistId != null && !isOwn) {
         ensure(ev.assistId).assists.push({ time });
       }

@@ -221,14 +221,17 @@
     const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
     if(targetLeagueId == null) return null;
 
+    const mergedList = await getMergedTemplates();
+    const mergedMatch = mergedList.find(t => templateMatchesLeagueId(t, targetLeagueId));
+    if(mergedMatch) return mergedMatch;
+
     await loadDefaultTemplates();
     const defaultMatch = defaultTemplateCache.find(t => templateMatchesLeagueId(t, targetLeagueId));
     if(!defaultMatch) return null;
 
-    const mergedList = await getMergedTemplates();
     const matchedName = String(defaultMatch?.name || '').trim();
     if(!matchedName) return null;
-    return mergedList.find(t => t && t.name === matchedName) || defaultMatch;
+    return mergedList.find(t => t && String(t.name || '').trim() === matchedName) || defaultMatch;
   }
 
   /**
