@@ -1,27 +1,28 @@
 {
-  "name": "EFL챔피언십",
+  "name": "EFL League Two",
+  "leagueId": 42,
   "colors": {
-    "bg": "#ff00e1",
     "boardA": "#ffffff",
     "boardB": "#ffffff",
-    "scoreBg": "#baa045",
+    "scoreBg": "#bc102d",
     "digits": "#ffffff",
     "meta": "#ffffff",
     "extra": "#ffffff",
     "halfBg": "#ffffff",
-    "halfText": "#b79c3e",
-    "homeBg": "#0e5ca6",
-    "homeText": "#fdbf09",
-    "awayBg": "#ee1338",
-    "awayText": "#322917",
-    "outline": "#b79c3e",
+    "halfText": "#bc102d",
+    "homeBg": "#ffffff",
+    "homeText": "#000000",
+    "awayBg": "#dc2c36",
+    "awayText": "#ffffff",
+    "outline": "#bc102d",
     "pkBase": "#334155",
-    "homeOutline": "#b79c3e",
-    "awayOutline": "#b79c3e",
+    "homeOutline": "#bc102d",
+    "awayOutline": "#bc102d",
     "noteText": "#e5e7eb",
-    "noteStroke": "#000000"
+    "noteStroke": "#000000",
+    "bg": "#ff00e1"
   },
-  "_fontFamily": "Ubuntu, HUMidnight140",
+  "fontFamily": "'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif",
   "logoAlign": "hybrid",
   "radiusMode": "round",
   "boardWidth": 1080,
@@ -36,5 +37,5 @@
   "boardOutlineWidth": 2,
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }

@@ -2,7 +2,8 @@
   // [전역 키보드 단축키]
   // - Ctrl+Z/Y: Undo/Redo (전술판)
   // - Space: 타이머 시작/정지
-  // - R: 타이머 리셋
+  // - R / Shift+R: 타이머 00:00 / 90:00 리셋
+  // - E / Shift+E: 타이머 45:00 / 105:00 리셋
   // - [ / ]: 전/후반 이동
   // - PK 하프 중 q/a (홈 골/미스), w/s (어웨이 골/미스), z Undo, x 초기화
   // - 수동 모드: q/a 홈 +/-, w/s 어웨이 +/-, F 점수 초기화, T 추가시간 토글
@@ -16,8 +17,35 @@
     // Ctrl+Z/Y: 전술판 탭이 활성화된 경우에만 undo/redo 실행
     if(e.ctrlKey && (e.key==='z'||e.key==='Z')){ if(document.getElementById('page-tactics')?.classList.contains('active')){ e.preventDefault(); tdUndo(); } return; }
     if(e.ctrlKey && (e.key==='y'||e.key==='Y')){ if(document.getElementById('page-tactics')?.classList.contains('active')){ e.preventDefault(); tdRedo(); } return; }
-    if(e.code==='Space'){ e.preventDefault(); state.running=!state.running; render(); persist(); }
-    if(e.key==='r'||e.key==='R'){ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); }
+    if(e.code==='Space'){
+      e.preventDefault();
+      if (typeof window.toggleClockRunning === 'function') window.toggleClockRunning();
+      else state.running = !state.running;
+      render();
+      persist();
+    }
+    if(e.key==='r'||e.key==='R'){
+      const nextSeconds = e.shiftKey ? 90 * 60 : 0;
+      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(nextSeconds);
+      else {
+        state.seconds = nextSeconds;
+        state.running = false;
+        el.clock.textContent = fmtClock(state.seconds);
+      }
+      render();
+      persist();
+    }
+    if(e.key==='e'||e.key==='E'){
+      const nextSeconds = e.shiftKey ? 105 * 60 : 45 * 60;
+      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(nextSeconds);
+      else {
+        state.seconds = nextSeconds;
+        state.running = false;
+        el.clock.textContent = fmtClock(state.seconds);
+      }
+      render();
+      persist();
+    }
     if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
     if(e.key==='t'||e.key==='T'){ toggleManualExtra(); }
     if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); }

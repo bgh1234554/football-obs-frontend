@@ -20,17 +20,29 @@
   }
 
   /** PK 하프 여부에 따라 PK 패널 토글 및 PK 결과 도트(G/M) 렌더링 */
+  // 현재 인라인 편집 중인 득점자 박스. 동시에 둘 이상 못 열게 단일 reference로 관리.
   let activeNoteEditor = null;
 
+  /** 인라인 득점자 편집이 가능한 모드인지 — 수동 모드 ON + 득점자 표시 ON일 때만. */
   function canEditNotesInline() {
     return !!(state.manualMode && state.noteEnabled);
   }
 
+  /** side('home'|'away')에 따른 note/noteSide DOM 페어 반환. 편집기 위치/사이즈 계산에 사용. */
   function getNoteTargets(side) {
     if (side === 'home') return { note: el.homeNote, noteSide: el.homeNoteSide };
     return { note: el.awayNote, noteSide: el.awayNoteSide };
   }
 
+  /**
+   * 현재 활성 득점자 인라인 편집기를 닫는다.
+   *
+   * 1) activeNoteEditor 없으면 no-op.
+   * 2) options.save=true면 textarea 값을 state.notes에 반영(\r\n 정규화) + persist + render.
+   * 3) editorWrap DOM 제거 + note 표시 복원 + noteSide의 임시 width/editing 클래스 제거.
+   * 4) outside-click 리스너 정리(cleanup).
+   * 5) save가 아니면 autoLayoutNotes로 폭/폰트 재계산.
+   */
   function closeNoteEditor(options = {}) {
     if (!activeNoteEditor) return;
 
@@ -59,6 +71,16 @@
     autoLayoutNotes();
   }
 
+  /**
+   * 득점자 텍스트 박스를 더블클릭 시 호출 — 그 자리에 textarea + ✓ 버튼 인라인 편집기 띄움.
+   *
+   * 1) 편집 가능 모드 가드(수동 + noteEnabled). 같은 side 재오픈은 focus만 다시.
+   * 2) 다른 side가 열려있으면 save하며 닫고 새 편집기 열기.
+   * 3) 현재 noteSide 폭을 고정(최소 220px) → 편집 중 너비 출렁임 방지.
+   * 4) textarea(value=현재 notes, rows=줄 수) + ✓ 버튼을 wrap에 담아 noteSide에 삽입.
+   * 5) 외부 클릭 시 cancel(close), Ctrl/Cmd+Enter면 save+close, Escape면 cancel.
+   * 6) RAF로 textarea focus + select.
+   */
   function openNoteEditor(side) {
     if (!canEditNotesInline()) return;
 
@@ -128,16 +150,26 @@
   el.homeNoteSide?.addEventListener('dblclick', () => openNoteEditor('home'));
   el.awayNoteSide?.addEventListener('dblclick', () => openNoteEditor('away'));
 
+  /** state.pk[team] 배열에서 'G'(득점) 개수 카운트. PK 점수판 표시용. */
   function countPkGoals(arr) {
     return (Array.isArray(arr) ? arr : []).filter(v => v === 'G').length;
   }
 
+  /**
+   * PK 점수판에 표시할 숫자 결정 — 자동 모드면 API 값 우선, 수동/없으면 시퀀스 'G' 개수로 폴백.
+   * (Iter 4-3: PK 시퀀스 누락 시에도 점수판 숫자는 정확하게 표시되도록.)
+   */
   function getPkDisplayScore(team) {
     const apiScore = state.pkScore?.[team];
     if (!state.manualMode && apiScore != null) return Math.max(0, Number(apiScore) || 0);
     return countPkGoals(state.pk?.[team]);
   }
 
+  /**
+   * PK 패널 토글 + PK 점수/시퀀스 도트 렌더링.
+   * isPK=false면 패널 숨김으로 끝. isPK=true면 점수 텍스트 + 양 팀 dot 행 그림.
+   * dot은 최소 5개부터 시작, 시퀀스가 길어지면 그만큼 늘림. 'G'=득점 원, 'M'=실축 ×.
+   */
   function renderPK(){
     const isPK = state.half === 'PK';
     el.pkWrap.classList.toggle('show', isPK);
@@ -196,31 +228,32 @@
     if(state.awayLogo){ el.awayLogo.src=state.awayLogo; el.awayLogo.classList.remove('hidden'); }
     else { el.awayLogo.removeAttribute('src'); el.awayLogo.classList.add('hidden'); }
 
-    // 4. 색상 CSS 변수 일괄 적용
-    setCSS('--board-a', state.colors.boardA);
-    setCSS('--board-b', state.colors.boardB);
-    setCSS('--score-bg', state.colors.scoreBg);
-    setCSS('--digits-color', state.colors.digits);
-    setCSS('--meta-color', state.colors.meta);
-    setCSS('--extra-color', state.colors.extra);
-    setCSS('--half-bg', state.colors.halfBg);
-    setCSS('--half-text', state.colors.halfText);
-    setCSS('--home-bg', state.colors.homeBg);
-    setCSS('--home-text', state.colors.homeText);
-    setCSS('--away-bg', state.colors.awayBg);
-    setCSS('--away-text', state.colors.awayText);
-    setCSS('--card-outline', state.colors.outline);
-    setCSS('--pk-base', state.colors.pkBase);
-    setCSS('--home-outline', state.colors.homeOutline);
-    setCSS('--away-outline', state.colors.awayOutline);
+    // 4. 색상 CSS 변수 일괄 적용. greenscreen ON일 때는 chromaSafe()로 초록 계열만 시안으로 치환.
+    //    --bg-ui는 settings-popup.js의 applyBackgroundSettings가 별도 관리하므로 여기선 건너뜀.
+    setCSS('--board-a',     chromaSafe(state.colors.boardA));
+    setCSS('--board-b',     chromaSafe(state.colors.boardB));
+    setCSS('--score-bg',    chromaSafe(state.colors.scoreBg));
+    setCSS('--digits-color',chromaSafe(state.colors.digits));
+    setCSS('--meta-color',  chromaSafe(state.colors.meta));
+    setCSS('--extra-color', chromaSafe(state.colors.extra));
+    setCSS('--half-bg',     chromaSafe(state.colors.halfBg));
+    setCSS('--half-text',   chromaSafe(state.colors.halfText));
+    setCSS('--home-bg',     chromaSafe(state.colors.homeBg));
+    setCSS('--home-text',   chromaSafe(state.colors.homeText));
+    setCSS('--away-bg',     chromaSafe(state.colors.awayBg));
+    setCSS('--away-text',   chromaSafe(state.colors.awayText));
+    setCSS('--card-outline',chromaSafe(state.colors.outline));
+    setCSS('--pk-base',     chromaSafe(state.colors.pkBase));
+    setCSS('--home-outline',chromaSafe(state.colors.homeOutline));
+    setCSS('--away-outline',chromaSafe(state.colors.awayOutline));
     setCSS('--home-outline-w', (state.homeOutlineWidth??1)+'px');
     setCSS('--away-outline-w', (state.awayOutlineWidth??1)+'px');
     setCSS('--board-outline-w', (state.boardOutlineWidth??1)+'px');
     setCSS('--score-outline-w', (state.scoreOutlineWidth??1)+'px');
     setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
     setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
-    setCSS('--note-stroke', state.colors.noteStroke);
-    setCSS('--note-text', state.colors.noteText);
+    setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
+    setCSS('--note-text', chromaSafe(state.colors.noteText));
     setCSS('--home-logo-x', (state.homeLogoX??0)+'px');
     setCSS('--home-logo-y', (state.homeLogoY??0)+'px');
     setCSS('--away-logo-x', (state.awayLogoX??0)+'px');
@@ -269,6 +302,8 @@
 
     el.homeCard.classList.toggle('outline-on', !!state.homeOutlineEnabled);
     el.awayCard.classList.toggle('outline-on', !!state.awayOutlineEnabled);
+    if(el.homeOutlineOn) el.homeOutlineOn.checked = !!state.homeOutlineEnabled;
+    if(el.awayOutlineOn) el.awayOutlineOn.checked = !!state.awayOutlineEnabled;
     if(el.inHomeOutline) el.inHomeOutline.value = state.colors.homeOutline;
     if(el.inAwayOutline) el.inAwayOutline.value = state.colors.awayOutline;
     if(el.homeOutlineWidth) el.homeOutlineWidth.value = state.homeOutlineWidth??1;
@@ -308,6 +343,7 @@
     el.startPause.textContent = state.running ? '일시정지 (Space)' : '시작 (Space)';
 
     // 12. 색상 피커 input 값을 state와 동기화
+    // uiBg는 설정 팝업으로 이전됨 (Iter 5-7) — el.inUiBg/state.colors.uiBg 동기화 라인 제거.
     if(el.inBoardA) el.inBoardA.value = state.colors.boardA;
     if(el.inBoardB) el.inBoardB.value = state.colors.boardB;
     if(el.inScoreBg) el.inScoreBg.value = state.colors.scoreBg;
@@ -341,9 +377,14 @@
     }
   }
 
-  // 점수판/득점자 박스 깜빡임 — fixture.js의 폴링 응답 처리에서 호출.
-  // render() 안에서 자동 비교하지 않음 (render는 색상/폰트 등 다른 사유로도 호출되므로
-  // 깜빡임이 무관한 시점에 발동되는 문제 방지).
+  /**
+   * 점수판/득점자 박스 깜빡임 효과(.flash-update 클래스).
+   * 이미 적용 중이면 강제 reflow(offsetWidth read)로 애니메이션 재시작.
+   * animationend에서 클래스 자동 제거 — 다음 호출 때 다시 적용 가능하게.
+   *
+   * fixture.js의 폴링 응답 처리에서 호출. render() 안에서 자동 비교하지 않음
+   * (render는 색상/폰트 등 다른 사유로도 호출되므로 깜빡임이 무관한 시점에 발동되는 문제 방지).
+   */
   function flashElement(target) {
     if (!target) return;
     target.classList.remove('flash-update');
@@ -353,15 +394,23 @@
     target.addEventListener('animationend', () => target.classList.remove('flash-update'), { once: true });
   }
   // 외부(fixture.js)에서 호출용. side: 'home'|'away'
-  window.flashScore = side => flashElement(side === 'home' ? el.homeScore : el.awayScore);
+  window.flashScore = side => flashElement(side === 'away' ? el.awayScore : el.homeScore);
   window.flashNote  = side => flashElement(side === 'home' ? el.homeNoteSide : el.awayNoteSide);
 
+  /** state.pk 시퀀스를 양 팀 모두 빈 배열로 리셋. PK 종료 후 retention 만료 등에서 호출. */
   function clearPkState() {
     if(!state.pk) state.pk = { home: [], away: [] };
     state.pk.home = [];
     state.pk.away = [];
   }
 
+  /**
+   * PK 빠져나간 시점(pkLastExitedAt)으로부터 retention 시간이 지났으면 PK 시퀀스 자동 폐기.
+   * - PK 하프 진행 중이거나 lastExitedAt가 없으면 no-op.
+   * - retention 안이면 보존, 지났으면 clear.
+   * 반환값: 실제 만료 처리했는지 boolean.
+   * (PK 하프에서 잠깐 다른 하프로 전환했다 돌아와도 시퀀스를 일정 시간 보존하기 위함.)
+   */
   function expireStalePkState(now = Date.now()) {
     const lastExitedAt = Number(state.pkLastExitedAt) || 0;
     if (state.half === 'PK' || !lastExitedAt) return false;
@@ -371,6 +420,15 @@
     return true;
   }
 
+  /**
+   * 하프(전후반) 변경 단일 진입점. halfOrder 안 값만 허용.
+   *
+   * 1) 같은 값으로 변경하려 하거나 알 수 없는 값이면 no-op.
+   * 2) PK → 다른 하프 전환: pkLastExitedAt 기록(시퀀스 보존 retention 시작).
+   * 3) 다른 하프 → PK 진입: lastExitedAt 확인 → retention 지났으면 clear, 안 지났으면 보존.
+   *    (다시 들어왔으니 lastExitedAt은 0으로.)
+   * 4) state.half 갱신.
+   */
   function setMatchHalf(nextHalf) {
     if (!halfOrder.includes(nextHalf) || nextHalf === state.half) return;
     const now = Date.now();
@@ -579,14 +637,48 @@
   el.halfSelect?.addEventListener('change', e=>{ setMatchHalf(e.target.value); render(); persist(); });
   el.prevHalf?.addEventListener('click', ()=>{ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); });
   el.nextHalf?.addEventListener('click', ()=>{ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); });
-  el.startPause?.addEventListener('click', ()=>{ state.running=!state.running; render(); persist(); });
-  el.resetTime?.addEventListener('click', ()=>{ state.seconds=0; state.running=false; el.clock.textContent='00:00'; render(); persist(); });
-  el.secPerTick?.addEventListener('input', e=>{ state.secPerTick=Math.max(0.1,Number(e.target.value)||1); render(); persist(); });
-  el.applyStartAt?.addEventListener('click', ()=>{ const sec=parseStartTime(el.startAt?.value); if(sec==null){ alert('형식은 mm:ss입니다. 예: 45:00'); return; } state.running=false; state.seconds=sec; el.clock.textContent=fmtClock(state.seconds); render(); persist(); });
+  el.startPause?.addEventListener('click', ()=>{
+    if (typeof window.toggleClockRunning === 'function') window.toggleClockRunning();
+    else state.running = !state.running;
+    render();
+    persist();
+  });
+  el.resetTime?.addEventListener('click', ()=>{
+    if (typeof window.setClockSeconds === 'function') window.setClockSeconds(0);
+    else {
+      state.seconds = 0;
+      state.running = false;
+      el.clock.textContent = '00:00';
+    }
+    render();
+    persist();
+  });
+  el.secPerTick?.addEventListener('input', e=>{
+    if (state.running && typeof window.syncRunningClockToNow === 'function') window.syncRunningClockToNow();
+    state.secPerTick = Math.max(0.1, Number(e.target.value) || 1);
+    render();
+    persist();
+  });
+  el.applyStartAt?.addEventListener('click', ()=>{
+    const sec = parseStartTime(el.startAt?.value);
+    if(sec==null){ alert('형식은 mm:ss입니다. 예: 45:00'); return; }
+    if (typeof window.setClockSeconds === 'function') window.setClockSeconds(sec);
+    else {
+      state.running = false;
+      state.seconds = sec;
+      el.clock.textContent = fmtClock(state.seconds);
+    }
+    render();
+    persist();
+  });
   el.quick45?.addEventListener('click', ()=>{ el.startAt.value='45:00'; el.applyStartAt.click(); });
   el.quick90?.addEventListener('click', ()=>{ el.startAt.value='90:00'; el.applyStartAt.click(); });
 
   // [이벤트 등록] 추가 시간 표시/숨김 및 값 조정
+  /**
+   * 추가시간 분 수동 설정. 0 미만은 클램프, 0보다 크면 자동 표시 ON.
+   * extraManualOverride 플래그를 set해 자동 폴링이 API extra로 덮어쓰지 못하게 보호.
+   */
   function setManualExtra(nextValue){
     state.extra = Math.max(0, Number(nextValue) || 0);
     state.extraShown = state.extra > 0;
@@ -594,6 +686,11 @@
     render();
     persist();
   }
+
+  /**
+   * 추가시간 표시 ON/OFF 토글 (T 키 / 토글 버튼).
+   * extra 값 자체는 유지하고 extraShown만 반전. extraManualOverride로 자동 갱신 가드.
+   */
   function toggleManualExtra(){
     state.extraShown = !state.extraShown;
     state.extraManualOverride = true; // 수동 토글 후엔 API 자동 갱신 건너뜀
@@ -655,11 +752,18 @@
     // (보드 배경/스코어/디지트/메타 등 비-팀 컬러는 템플릿대로 적용)
     const incoming = (t.colors || {});
     const fixtureLoaded = (typeof currentFixtureId !== 'undefined') && !!currentFixtureId;
-    const TEAM_COLOR_KEYS = ['homeBg','homeText','awayBg','awayText','homeOutline','awayOutline'];
+    const TEAM_COLOR_KEYS = ['homeBg','homeText','awayBg','awayText'];
     const colorsToApply = fixtureLoaded
       ? Object.fromEntries(Object.entries(incoming).filter(([k]) => !TEAM_COLOR_KEYS.includes(k)))
       : incoming;
     state.colors={...state.colors,...colorsToApply};
+    const templateBgColor = String(t.bgColor || incoming.bg || incoming.uiBg || '').trim();
+    if (/^#?[0-9a-fA-F]{6}$/.test(templateBgColor) && typeof setSetting === 'function') {
+      const normalizedBgColor = templateBgColor.startsWith('#')
+        ? templateBgColor.toLowerCase()
+        : `#${templateBgColor.toLowerCase()}`;
+      setSetting('bgColor', normalizedBgColor);
+    }
     state.fontFamily=resolveTemplateFontFamily(t);
     if(t.logoAlign) state.logoAlign=t.logoAlign;
     if(t.radiusMode) state.radiusMode=t.radiusMode;
@@ -683,13 +787,15 @@
     return window.exportTemplatesFileImpl?.();
   }
 
-  el.saveTemplate?.addEventListener('click', ()=>saveTemplate(el.templateName.value.trim()));
-  el.deleteTemplate?.addEventListener('click', ()=>{ const typed=(el.templateName?.value||'').trim(); const selected=el.templateSelect?.value||''; deleteTemplate(typed||selected); });
+  el.saveTemplate?.addEventListener('click', async ()=>{ await saveTemplate(el.templateName.value.trim()); });
+  el.deleteTemplate?.addEventListener('click', async ()=>{ const typed=(el.templateName?.value||'').trim(); const selected=el.templateSelect?.value||''; await deleteTemplate(typed||selected); });
+  el.resetTemplates?.addEventListener('click', async ()=>{ await resetTemplates(); });
   el.exportTemplates?.addEventListener('click', exportTemplatesFile);
   el.templateSelect?.addEventListener('change', ()=>{
-    const name=el.templateSelect.value; if(!name) return;
-    const t=loadTemplates().find(x=>x&&x.name===name); if(!t) return;
+    const name=(el.templateSelect.value||'').trim(); if(!name){ setLastSelectedTemplateName(''); return; }
+    const t=getTemplateByName(name); if(!t) return;
     applyTemplate(t);
+    setLastSelectedTemplateName(name);
     render(); persist();
   });
   el.importTemplates?.addEventListener('change', async e=>{
@@ -703,3 +809,49 @@
     }catch{ alert('JSON 형식이 아닙니다.'); }
     finally{ e.target.value=''; }
   });
+  if(el.importTemplates){
+    const replacement = el.importTemplates.cloneNode(true);
+    el.importTemplates.replaceWith(replacement);
+    el.importTemplates = replacement;
+    el.importTemplates.addEventListener('change', async e=>{
+      const f=e.target.files?.[0]; if(!f) return;
+      const fallbackName=f.name.replace(/\.json$/i,'');
+      try{
+        const text=await f.text();
+        const parsed=JSON.parse(text);
+        if(Array.isArray(parsed)){
+          let added=0,replaced=0,skipped=0;
+          for(let i=0;i<parsed.length;i++){
+            const raw=parsed[i];
+            if(!raw||typeof raw!=='object'){ skipped++; continue; }
+            if(!raw.name) raw.name=`${fallbackName||'Imported'}-${i+1}`;
+            const res=await upsertTemplateToLocal(raw,true);
+            if(!res.saved){ skipped++; continue; }
+            if(res.replaced) replaced++;
+            else added++;
+          }
+          await loadTemplates();
+          alert(`추가 ${added}, 덮어쓰기 ${replaced}, 건너뜀 ${skipped}`);
+        }else if(parsed&&typeof parsed==='object'){
+          const t={...parsed};
+          if(!t.name) t.name=fallbackName||'Imported';
+          applyTemplate(t);
+          render();
+          persist();
+          const{saved,name}=await upsertTemplateToLocal(t,true);
+          await loadTemplates(name);
+          if(saved){
+            el.templateSelect.value=name;
+            setLastSelectedTemplateName(name);
+          }
+          alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':''));
+        }else{
+          alert('지원되지 않는 템플릿 형식입니다.');
+        }
+      }catch{
+        alert('JSON 형식이 올바르지 않습니다.');
+      }finally{
+        e.target.value='';
+      }
+    });
+  }

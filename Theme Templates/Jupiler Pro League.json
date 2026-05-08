@@ -1,5 +1,6 @@
 {
   "name": "Jupiler Pro League",
+  "leagueId": 144,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#15012a",
@@ -36,5 +37,5 @@
   "boardOutlineWidth": 2,
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }

@@ -1,5 +1,6 @@
 {
-  "name": "DFBPokal",
+  "name": "DFB Pokal",
+  "leagueId": 81,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#03c18c",

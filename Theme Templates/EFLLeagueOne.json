@@ -1,22 +1,26 @@
 {
-  "name": "ACL 2",
-  "leagueId": 18,
+  "name": "EFL League One",
+  "leagueId": 41,
   "colors": {
     "bg": "#ff00e1",
-    "boardA": "#01022d",
-    "boardB": "#01022d",
-    "scoreBg": "#2d54e0",
+    "boardA": "#ffffff",
+    "boardB": "#ffffff",
+    "scoreBg": "#8e8f8f",
     "digits": "#ffffff",
     "meta": "#ffffff",
-    "extra": "#01022d",
-    "halfBg": "#1b0733",
-    "halfText": "#ffffff",
+    "extra": "#ffffff",
+    "halfBg": "#ffffff",
+    "halfText": "#8e8f8f",
     "homeBg": "#0e5ca6",
     "homeText": "#fdbf09",
     "awayBg": "#ee1338",
     "awayText": "#322917",
-    "outline": "#2d54e0",
-    "pkBase": "#334155"
+    "outline": "#8e8f8f",
+    "pkBase": "#334155",
+    "homeOutline": "#8e8f8f",
+    "awayOutline": "#8e8f8f",
+    "noteText": "#e5e7eb",
+    "noteStroke": "#000000"
   },
   "_fontFamily": "Ubuntu, HUMidnight140",
   "logoAlign": "hybrid",
@@ -31,5 +35,7 @@
   "boardOutlineEnabled": true,
   "scoreOutlineEnabled": false,
   "boardOutlineWidth": 2,
-  "scoreOutlineWidth": 1
+  "scoreOutlineWidth": 1,
+  "noteEnabled": true,
+  "noteFontSize": 20
 }

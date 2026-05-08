@@ -2,21 +2,61 @@
   // [타이머] 200ms 인터벌로 경기 시간을 증가시키고 시계 텍스트를 갱신
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  let _lastTick = null; // performance.now() 기반 drift 방지용 — running 중단 시 null로 리셋
+  /**
+   * running 중인 시계를 "현재 벽시계 시각"까지 한 번 당겨온다.
+   * - background 탭에서도 Date.now() 기준 실제 경과 시간이 보존되도록 wall clock을 기준으로 계산
+   * - tick 주기가 늦어져도 다음 sync에서 누락분을 한 번에 따라잡는다
+   */
+  function syncRunningClockToNow(nowWall = Date.now()) {
+    if (!state.running) return;
+    const lastWall = Number(state.lastRunningTickMs) || nowWall;
+    const deltaSec = Math.max(0, nowWall - lastWall) / 1000;
+    if (deltaSec > 0) state.seconds += deltaSec * state.secPerTick;
+    el.clock.textContent = fmtClock(state.seconds);
+    // 새로고침 시 끊김 없이 이어가기 위해 매 틱마다 wallclock 시각 기록.
+    // (persist는 매 틱마다 안 함 — beforeunload + visibilitychange에서 한꺼번에 저장)
+    state.lastRunningTickMs = nowWall;
+  }
+
+  function startClockTimer() {
+    if (state.running) return;
+    state.running = true;
+    state.lastRunningTickMs = Date.now();
+    el.clock.textContent = fmtClock(state.seconds);
+  }
+
+  function pauseClockTimer() {
+    if (state.running) syncRunningClockToNow();
+    state.running = false;
+    state.lastRunningTickMs = 0;
+    el.clock.textContent = fmtClock(state.seconds);
+  }
+
+  function toggleClockRunning() {
+    if (state.running) pauseClockTimer();
+    else startClockTimer();
+  }
+
+  function setClockSeconds(nextSeconds, { autoStart = false } = {}) {
+    if (state.running) syncRunningClockToNow();
+    state.seconds = Math.max(0, Number(nextSeconds) || 0);
+    if (autoStart) startClockTimer();
+    else {
+      state.running = false;
+      state.lastRunningTickMs = 0;
+      el.clock.textContent = fmtClock(state.seconds);
+    }
+  }
+
+  window.syncRunningClockToNow = syncRunningClockToNow;
+  window.startClockTimer = startClockTimer;
+  window.pauseClockTimer = pauseClockTimer;
+  window.toggleClockRunning = toggleClockRunning;
+  window.setClockSeconds = setClockSeconds;
 
   /** 200ms마다 호출되는 타이머 틱 — 실제 경과 시간(delta)을 계산해 seconds에 반영 */
   function tick(){
-    const now = performance.now();
-    if(!state.running){ _lastTick = null; return; }
-    if(_lastTick !== null){
-      const delta = (now - _lastTick) / 1000;
-      state.seconds += delta * state.secPerTick;
-      el.clock.textContent = fmtClock(state.seconds);
-    }
-    _lastTick = now;
-    // 새로고침 시 끊김 없이 이어가기 위해 매 틱마다 wallclock 시각 기록.
-    // (persist는 매 틱마다 안 함 — beforeunload + visibilitychange에서 한꺼번에 저장)
-    state.lastRunningTickMs = Date.now();
+    syncRunningClockToNow();
   }
   // 200ms 인터벌로 tick 호출 (1초당 5회 → secPerTick 배율로 속도 조절)
   let timer = setInterval(tick, 200);
@@ -25,7 +65,7 @@
   // restore에서 이 값과 현재 Date.now() 차이만큼 state.seconds에 더해줘서 끊김 없이 이어감.
   function _saveTimerCheckpoint() {
     if (state.running) {
-      state.lastRunningTickMs = Date.now();
+      syncRunningClockToNow();
       try { persist(); } catch {}
     }
   }
@@ -35,14 +75,10 @@
     if (document.visibilityState === 'hidden') _saveTimerCheckpoint();
   });
 
-  // 브라우저 탭이 background로 갔다가 visible 복귀 시 setInterval throttle/freeze 영향으로
-  // 표시 시계가 stale할 수 있음. 즉시 1회 sync해서 사용자가 "탭 돌아오니 시간 멈춤"으로
-  // 인지하지 않도록 보정. (delta 누적은 performance.now 기반이라 자동 정확)
+  // 브라우저 탭이 background로 갔다가 visible 복귀 시 표시 시계를 즉시 현재 시각까지 당겨온다.
+  // 이전 구현처럼 _lastTick을 null로 리셋하면 background 동안 누적돼야 할 delta가 통째로 사라질 수 있다.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      _lastTick = null;  // delta 0부터 다시 시작
-      tick();
-    }
+    if (document.visibilityState === 'visible') tick();
   });
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -61,7 +97,7 @@
   function openClockEditor() {
     // 1. 타이머 정지 및 현재 시간 분/초 분해
     const wasRunning = state.running;
-    state.running = false;
+    pauseClockTimer();
 
     const totalSec = Math.floor(state.seconds);
     const m = Math.floor(totalSec / 60);
@@ -79,12 +115,9 @@
     function applyTime() {
       const mm = Math.max(0, parseInt(ceMin.value, 10) || 0);
       const ss = Math.min(59, Math.max(0, parseInt(ceSec.value, 10) || 0));
-      state.seconds = mm * 60 + ss;
       // 편집 확정 시 항상 재생 시작. (이전엔 wasRunning 복원이라 00:00 정지 상태에서
       // 편집 후 체크 눌러도 멈춰있었음 — '시간을 정했으니 돌리자'가 자연스러움)
-      state.running = true;
-      _lastTick = null; // delta 누적 초기화 — 다음 tick부터 정확히 시작
-      clockEl.textContent = fmtClock(state.seconds);
+      setClockSeconds(mm * 60 + ss, { autoStart: true });
       closeClockEditor();
       cleanup();
       render();
@@ -104,13 +137,19 @@
     // 4. Enter로 확인, Escape로 취소 (편집 세션 키보드 이벤트)
     function onKeyDown(e) {
       if (e.key === 'Enter') { e.preventDefault(); applyTime(); cleanup(); }
-      if (e.key === 'Escape') { state.running = wasRunning; closeClockEditor(); cleanup(); }
+      if (e.key === 'Escape') {
+        if (wasRunning) startClockTimer();
+        else pauseClockTimer();
+        closeClockEditor();
+        cleanup();
+      }
     }
 
     // 5. 편집기 외부 클릭 시 취소
     function onOutsideClick(e) {
       if (!clockEditor.contains(e.target) && e.target !== clockEl) {
-        state.running = wasRunning;
+        if (wasRunning) startClockTimer();
+        else pauseClockTimer();
         closeClockEditor();
         cleanup();
       }

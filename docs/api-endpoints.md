@@ -46,6 +46,24 @@
 
 > 구현 주의: `GET /api/fixtures/{fixtureId}`는 현재 서비스에서 원본 fixture가 없을 때 `null`을 반환할 수 있다. 코드 주석과 `FIXTURE_NOT_FOUND` 에러 코드는 404 의도로 보이지만, 컨트롤러 구현상 `200 null` 가능성이 있으므로 프런트에서는 `data === null`도 방어한다.
 
+### Rate limit (429) 응답 헤더
+
+429 응답에는 다음 헤더 중 하나가 함께 내려올 수 있다. 프런트(`js/api.js`의 `apiFetch`)는 두 헤더를 모두 인식해 자동 재시도(최대 2회) 시 대기시간을 결정한다.
+
+| Header | 단위 | 설명 |
+| --- | --- | --- |
+| `X-Retry-After-Millis` | 밀리초 | 백엔드 커스텀 헤더. 토큰 버킷의 다음 충전까지 남은 시간을 ms로 내린다 |
+| `Retry-After` | 초 또는 HTTP-date | RFC 7231 표준 헤더. 정수면 초, 그 외엔 ISO 날짜 |
+
+> CORS 주의: 위 두 헤더는 백엔드 `Access-Control-Expose-Headers`에 노출돼 있어야 브라우저 fetch에서 읽을 수 있다. 노출되지 않은 경우 프런트는 5초 fallback으로 재시도한다.
+
+대기시간 결정 우선순위 (api.js 기준):
+1. `X-Retry-After-Millis` 값(ms)
+2. `Retry-After` (초 또는 HTTP-date)
+3. fallback `5000ms`
+
+경계 타이밍 회피용으로 응답값에 추가 `+300ms` 버퍼를 더한다.
+
 ## 엔드포인트 요약
 
 | Method | Endpoint | 설명 | 주요 사용처 |
@@ -105,9 +123,10 @@ API-Football 문서상 `/fixtures?id={id}` 요청은 이벤트, 라인업, 팀 �
 | key | 설명 | value 타입 | 옵션 | Nullable | 예시 |
 | --- | --- | --- | --- | --- | --- |
 | fixtureId | 경기 ID | Long |  | X | `215662` |
+| leagueId | 리그 ID | Integer | API-Football 기준 | O | `39` |
 | leagueName | 리그명. 한글 우선, 없으면 API-Football 영문 | String |  | X | `Premier League` |
 | leagueRound | 라운드명 | String | API 원문 | O | `Regular Season - 19` |
-| kickoffAt | 경기 시작 시각 | String | UTC 기준 시각 | X | `2026-04-25T23:30:00+00:00` |
+| kickoffAt | 경기 시작 시각 | String | ISO 8601 (UTC offset 포함). 프런트는 `kickoffAt` 우선, 없으면 legacy `kickoffUtc`로 fallback. NS 상태에서 폴링 시작 시각 결정에 사용 | O | `2026-04-25T23:30:00+00:00` |
 | leagueLogoUrl | 리그 로고 URL | String | CDN/CSV 적용 | O | `https://.../leagues/39.png` |
 | venueName | 경기장명. 한글 우선 | String |  | O | `Old Trafford` |
 | venueCity | 도시명. 한글 우선 | String |  | O | `Manchester` |
@@ -165,7 +184,21 @@ API-Football 문서상 `/fixtures?id={id}` 요청은 이벤트, 라인업, 팀 �
 | detail | 이벤트 상세 | String | API 원문 | X | `Normal Goal`, `Penalty`, `Yellow Card`, `Substitution 1` |
 | comments | 이벤트 부연 설명 | String | 일반 이벤트/null/PSO | O | `Penalty Shootout` |
 
-API-Football 문서상 `Goal`은 `Normal Goal`, `Own Goal`, `Penalty`, `Missed Penalty`, `Card`는 `Yellow Card`, `Red Card`, `Subst`는 `Substitution n`, `Var`는 `Goal cancelled`, `Penalty confirmed` 같은 상세값을 가질 수 있다.
+API-Football 문서상 `Goal`은 `Normal Goal`, `Own Goal`, `Penalty`, `Missed Penalty`, `Card`는 `Yellow Card`, `Red Card`, `Subst`는 `Substitution n`, `Var`는 `Goal cancelled`, `Goal confirmed`, `Penalty confirmed`, `Penalty cancelled` 같은 상세값을 가질 수 있다.
+
+##### `type === "Var"` 세부 사유 처리
+
+이벤트 패널(`js/events-panel.js`)은 `Var` 이벤트를 4종으로 분기해 별도 색상/라벨/필터 키로 표시한다.
+
+| `detail` | 내부 필터 키 | 라벨 | 의미 |
+| --- | --- | --- | --- |
+| `Goal cancelled` | `var-goal-cancel` | VAR 골 취소 | 주심 판정으로 골 무효 |
+| `Goal confirmed` | `var-goal-confirm` | VAR 골 인정 | VAR 검토 후 골 인정 |
+| `Penalty cancelled` | `var-penalty-cancel` | VAR PK 취소 | VAR 검토 후 PK 취소 |
+| `Penalty confirmed` | `var-penalty-confirm` | VAR PK 인정 | VAR 검토 후 PK 인정 |
+| 그 외 | `var` | VAR | 일반 VAR 검토 |
+
+비활성화한 필터 키는 프런트 localStorage(`obs.eventsPanel.filters.v1`)에 영속화된다.
 
 ##### 승부차기(Penalty Shootout) 이벤트 식별
 
@@ -196,6 +229,8 @@ const regularGoals = events.filter(e =>
 > ⚠️ **주의: 승부차기 이벤트는 응답에 항상 포함되지 않는다.**
 >
 > API Football의 `/fixtures?id={id}` 응답에 들어 있는 `events` 배열은 **경기 종료 직후에는 승부차기 시퀀스를 포함**하지만, 시간이 지나면 PK 시도 이벤트가 응답에서 사라지는 현상이 관찰됐다. 즉 같은 경기라도 조회 시점에 따라 PK 이벤트가 있을 수도, 없을 수도 있다.
+>
+> API 제공사 support 설명 기준, 이 현상은 원본 데이터 공급처가 **안정적인 event id를 제공하지 않기 때문**에 발생할 수 있다. 경기 종료 후 선수명/시간 보정 같은 post-match adjustment가 들어가면 기존 이벤트가 수정·교체되거나 제거될 수 있어, 동일 fixture라도 사후 조회 시 PK 이벤트 추적이 안정적으로 보장되지 않는다.
 >
 > 따라서 프런트엔드는 다음 원칙으로 처리해야 한다:
 >
@@ -256,6 +291,8 @@ API-Football 문서상 `grid`는 `X:Y` 형식이다. `X`는 골키퍼 라인에�
 | coachId | 감독 ID | Long |  | X | `1234` |
 | name | 감독 표시명 | String | 한글 우선 | X | `Pep Guardiola` |
 | nameKoLong | 감독 한글 풀네임 | String | CSV에 있을 때만 | O | `펩 과르디올라` |
+
+> 주의: 감독 정보는 일부 경기에서 `coach: null`일 수 있다. API 제공사 support 기준 Everton 사례처럼 공급자 원본에 감독 데이터 자체가 빠지는 경우가 있으며, 이 경우 프런트는 감독 UI를 null-safe 하게 처리해야 한다.
 
 #### `playerStats[]`
 

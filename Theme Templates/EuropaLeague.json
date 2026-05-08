@@ -1,5 +1,6 @@
 {
-  "name": "유로파리그",
+  "name": "UEFA Europa League",
+  "leagueId": 3,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#000000",

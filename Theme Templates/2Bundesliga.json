@@ -1,5 +1,6 @@
 {
-  "name": "2Bundesliga",
+  "name": "2. Bundesliga",
+  "leagueId": 79,
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#bbbcbe",

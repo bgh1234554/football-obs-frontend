@@ -48,12 +48,21 @@
   });
 
   /** 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신 */
+  /**
+   * 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신.
+   * id가 truthy면 last_fixture_id로 영속화 → 다음 세션 "최근값 불러오기" 버튼에서 사용.
+   */
   function setFixtureId(id) {
     currentFixtureId = id || null;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
     fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
     if (currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
   }
+  /**
+   * matchInfo에서 한 팀의 표시명 선택 — 설정의 'teamName' 토글에 따라 long/short 분기.
+   * long 모드: 한글 풀네임(homeTeamName) 우선, 없으면 short fallback.
+   * short 모드: 한글 단축명(homeTeamNameShort) 우선, 없으면 long fallback.
+   */
   function pickMatchTeamName(matchInfo, side) {
     const shortName = side === 'home'
       ? (matchInfo?.homeTeamNameShort || '')
@@ -63,6 +72,31 @@
       : (matchInfo?.awayTeamName || '');
     const useLong = (typeof isLongName === 'function') && isLongName('teamName');
     return useLong ? (longName || shortName) : (shortName || longName);
+  }
+
+  /** 입력값을 finite 숫자로 변환. NaN/undefined는 null 반환. 템플릿 leagueId 비교용. */
+  function toFixtureLeagueId(value) {
+    const leagueId = Number(value);
+    return Number.isFinite(leagueId) ? leagueId : null;
+  }
+
+  /**
+   * 응답 객체에서 leagueId를 우선순위에 따라 추출.
+   * matchInfo.leagueId (현재 백엔드 표준) > matchInfo.league.id (legacy) > 최상위 leagueId/league.id 순.
+   * 첫 번째로 finite 정수가 나오는 값을 반환. 모두 실패 시 null.
+   */
+  function extractLeagueIdFromFixtureData(data) {
+    const candidates = [
+      data?.matchInfo?.leagueId,
+      data?.matchInfo?.league?.id,
+      data?.leagueId,
+      data?.league?.id,
+    ];
+    for (const candidate of candidates) {
+      const leagueId = toFixtureLeagueId(candidate);
+      if (leagueId != null) return leagueId;
+    }
+    return null;
   }
   /** 경기 상태 텍스트를 statusEl에 표시 */
   function setStatus(msg){ if(!statusEl) return; statusEl.textContent=msg?`(${msg})`:''; }
@@ -123,12 +157,15 @@
 
   /** API-Sports 위젯의 Shadow DOM 또는 iframe에 커스텀 CSS를 주입 */
   const WIDGET_CSS = `
+    :host, body {
+      font-family: var(--font-family, 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif) !important;
+    }
     /* Details 점수 가운데 정렬 */
     .game-detail { display: flex !important; align-items: center !important; justify-content: center !important; }
     .game-center { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
     /* Lineups 선수명 작게 */
-    .group-title, .lineup-section h3 {
-      font-family: Poppins, sans-serif !important;
+    .lineup-section .group-title,
+    .lineup-section h3 {
       font-weight: 700 !important;
       letter-spacing: normal !important;
     }
@@ -141,9 +178,9 @@
   function injectCSS(root) {
     if (!root || root._cssInjected) return;
     try {
-      const style = root.ownerDocument
-        ? root.ownerDocument.createElement('style')
-        : document.createElement('style');
+      const style = root.createElement
+        ? root.createElement('style')
+        : (root.ownerDocument || document).createElement('style');
       style.textContent = WIDGET_CSS;
       (root.head || root).appendChild(style);
       root._cssInjected = true;
@@ -154,18 +191,18 @@
   function injectWidgetCSS() {
     document.querySelectorAll('api-sports-widget').forEach(widget => {
       // Shadow DOM에 주입 후 위젯 엘리먼트에 플래그 설정
-      if (widget.shadowRoot && !widget.shadowRoot._cssInjected) {
+      if (widget.shadowRoot && !widget._shadowCssInjected) {
         injectCSS(widget.shadowRoot);
-        if (widget.shadowRoot._cssInjected) widget._cssInjected = true;
+        if (widget.shadowRoot._cssInjected) widget._shadowCssInjected = true;
       }
       // iframe — 크로스오리진 접근은 SecurityError를 던질 수 있으므로 try-catch로 감쌈
       const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
-      if (iframe && !widget._cssInjected) {
+      if (iframe && !widget._iframeCssInjected) {
         try {
           const doc = iframe.contentDocument || iframe.contentWindow?.document;
           if (doc?.head) {
             injectCSS(doc);
-            if (doc._cssInjected) widget._cssInjected = true;
+            if (doc._cssInjected) widget._iframeCssInjected = true;
           }
         } catch(e) { /* cross-origin: 무시 */ }
       }
@@ -176,7 +213,12 @@
     injectWidgetCSS();
     // 모든 위젯에 주입 완료 시 인터벌 종료
     const widgets = document.querySelectorAll('api-sports-widget');
-    if (widgets.length > 0 && Array.from(widgets).every(w => w._cssInjected)) {
+    if (widgets.length > 0 && Array.from(widgets).every(widget => {
+      const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
+      const shadowReady = !widget.shadowRoot || !!widget._shadowCssInjected;
+      const iframeReady = !iframe || !!widget._iframeCssInjected;
+      return shadowReady && iframeReady;
+    })) {
       clearInterval(injectWidgetCSSInterval);
     }
   }, 1000);
@@ -281,6 +323,13 @@
   // null이면 첫 fetch라는 뜻 → 깜빡임 없이 스냅샷만 초기화.
   let _flashSnapshot = null;
 
+  /**
+   * 폴링 응답으로 점수/득점자가 바뀐 부분만 깜빡임 효과 발동.
+   * 1) 현재 state에서 비교 키(score/note 4종) 추출.
+   * 2) 직전 스냅샷이 있으면 키별 비교 → 변경된 박스만 flashScore/flashNote 호출.
+   * 3) 새 스냅샷으로 갱신.
+   * 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
+   */
   function maybeTriggerFixtureFlash() {
     const homeNote = state.notes?.home ?? '';
     const awayNote = state.notes?.away ?? '';
@@ -292,7 +341,7 @@
     };
 
     if (_flashSnapshot) {
-      // 변경된 항목만 깜빡임. 점수/득점자 박스 단위.
+      // 변경된 항목만 깜빡임. 점수는 숫자, 득점자는 변경된 쪽 텍스트 박스만 반응.
       if (_flashSnapshot.homeScore !== next.homeScore && typeof window.flashScore === 'function') window.flashScore('home');
       if (_flashSnapshot.awayScore !== next.awayScore && typeof window.flashScore === 'function') window.flashScore('away');
       if (_flashSnapshot.homeNote  !== next.homeNote  && typeof window.flashNote  === 'function') window.flashNote('home');
@@ -345,6 +394,17 @@
   /**
    * 다음 호출을 적절한 시점에 예약. 응답 받은 직후 호출하면 됨.
    * 사용자가 다른 fixtureId로 바꾸면 _lastFetchId 비교로 자동 폐기됨.
+   *
+   * 1) FT 도달 — 킥오프 후 4시간 이상 경과면 폴링 종료. 그 외엔 3분 윈도우 내에서만 1분 간격 유지.
+   * 2) 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO) — 폴링 중단.
+   * 3) NS + kickoffUtc 알면 — 킥오프 30초 전까지 대기 후 wakeAndFetch.
+   * 4) FT-like — 1분 간격.
+   * 5) LIVE/NS — 30초 간격.
+   * 6) 그 외 미지의 status — 안전하게 폴링 안 함.
+   *
+   * wakeAndFetch는 fetchAndApplyFixtureData를 silent=true로 호출하고,
+   * 성공 시 fetchAndApplyFixtureData가 내부에서 다시 schedulePoll을 부르며 체인이 이어진다.
+   * 실패 시에만 scheduleRetryFromLastFixture로 재예약(타이머 중복 생성 방지).
    */
   function schedulePoll(data) {
     clearPolling(false);
@@ -371,30 +431,32 @@
     // 2) 비정상 상태면 폴링 중단
     if (ABNORMAL_STATUSES.has(status)) return;
 
+    const scheduleRetryFromLastFixture = () => {
+      if (!_lastFixtureData) return;
+      const lastStatus = String(_lastFixtureData?.matchInfo?.status || '');
+      if (ABNORMAL_STATUSES.has(lastStatus)) return;
+      if (FT_LIKE_STATUSES.has(lastStatus)) {
+        _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
+        return;
+      }
+      if (LIVE_STATUSES_POLL.has(lastStatus) || lastStatus === 'NS') {
+        _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
+      }
+    };
+
     const wakeAndFetch = async () => {
       // 폴링 진행 중에 사용자가 다른 ID로 바꾸거나 reset한 경우 폐기
       if (_lastFetchId !== fixtureId) return;
       // silent=true → 풀스크린 로딩 오버레이 안 띄움 (시청자 화면 깜빡임 방지)
       try {
-        await fetchAndApplyFixtureData(fixtureId, { silent: true });
+        const data = await fetchAndApplyFixtureData(fixtureId, { silent: true });
+        // 성공 시에는 fetchAndApplyFixtureData 내부의 schedulePoll(data)가 다음 폴을 예약한다.
+        // 여기서 또 setTimeout을 잡으면 동일 시점에 타이머가 2개 생긴다.
+        if (!data) scheduleRetryFromLastFixture();
       } catch (e) {
         console.error('Silent poll error:', e);
-        // 오류 발생했어도 다음 폴 타이머는 반드시 재스케줄
-      } finally {
-        // 폴링 실패해도 다음 폴 재예약: wakeAndFetch 마지막에 재귀적으로 schedulePoll 호출
-        // 단, 첫 응답을 받지 못한 경우라면 _lastFixtureData가 없으므로 재스케줄 불가
-        // → 이 경우 사용자가 다시 선택하거나 마지막 성공한 응답 데이터로 이용
-        if (_lastFixtureData) {
-          // _lastFixtureData 존재 = 이전에 성공한 응답이 있음 → 그 데이터로 다음 폴 스케줄
-          const status = String(_lastFixtureData?.matchInfo?.status || '');
-          if (!ABNORMAL_STATUSES.has(status) && !FT_LIKE_STATUSES.has(status)) {
-            _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-          } else if (FT_LIKE_STATUSES.has(status)) {
-            _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
-          } else if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
-            _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-          }
-        }
+        // fetchAndApplyFixtureData가 내부에서 잡지 못한 예외만 여기로 온다.
+        scheduleRetryFromLastFixture();
       }
     };
 
@@ -419,11 +481,21 @@
     // 그 외(미지의 status)는 안전하게 폴링하지 않음
   }
 
+  /** sessionStorage + localStorage(legacy)에 저장된 fixture 캐시 모두 제거. */
   function clearCachedFixtureData() {
     try { sessionStorage.removeItem('cached_fixture_data'); } catch {}
     try { localStorage.removeItem('cached_fixture_data'); } catch {}
   }
 
+  /**
+   * 경기 ID 변경/취소 시 fixture에서 파생된 모든 state를 초기 상태로 되돌린다.
+   *
+   * 1) 폴링 타이머 정리 + 마지막 fetch id/스냅샷/팀컬러 override 리셋.
+   * 2) 옵션에 따라 경기 캐시 + fixtureId 제거.
+   * 3) 수동 모드면 패널만 비우고 종료(state는 사용자 입력 유지).
+   * 4) 자동 모드면 점수/이름/하프/추가시간/PK까지 모두 default로 초기화 + 타이머 정지.
+   * 5) 라인업/이벤트/스탯 패널 비우고 render+persist+상태 배지 갱신.
+   */
   function resetFixtureDrivenState({ clearFixtureId = false, clearCache = false, statusMessage = '' } = {}) {
     clearPolling();
     _lastFetchId = null;
@@ -437,6 +509,9 @@
 
     if (state.manualMode) {
       if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
+    if (typeof applyEventsPanel === 'function') applyEventsPanel(null);
+    if (typeof applyStatsPanel === 'function') applyStatsPanel(null);
+    if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(null);
       setApiStatus('idle', statusMessage);
       return;
     }
@@ -453,13 +528,17 @@
     state.redHome = 0;
     state.redAway = 0;
     state.notes = { home: '', away: '' };
-    state.running = false;
+    if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
+    else state.running = false;
     state.pk = { home: [], away: [] };
     state.pkScore = { home: null, away: null };
     state.pkLastExitedAt = 0;
     setMatchHalf('1');
 
     if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
+    if (typeof applyEventsPanel === 'function') applyEventsPanel(null);
+    if (typeof applyStatsPanel === 'function') applyStatsPanel(null);
+    if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(null);
 
     render();
     persist();
@@ -467,11 +546,20 @@
   }
 
   /**
-   * 경기 ID로 백엔드 API를 호출해 FixtureResponseDto를 받고, state + 패널에 적용.
-   * - 점수판/색상/하프/추가시간/PK는 state 업데이트 → render()
-   * - 득점자(notes)와 레드카드 카운트는 events 배열을 가공해 state에 반영
-   * - 벤치/부상 패널은 applyLineupPanels(data)로 위임 (lineup-panel.js)
-   * - scorer 토글 변경 시 이름 다시 골라 notes 재구성 (하단 'settings:change' 리스너)
+   * 경기 ID로 백엔드 API 호출 → FixtureResponseDto를 state + 패널에 일괄 적용.
+   *
+   * 처리 단계:
+   * 1) 입력 정규화 — 빈 ID면 reset 후 종료. 수동 모드면 적용 건너뜀.
+   * 2) silent 옵션 분기 — 폴링용 갱신은 로딩 오버레이/배지 안 띄움.
+   * 3) fetchFixture로 데이터 조회. _lastFetchId 비교로 stale 응답 폐기.
+   * 4) fixture 전환 감지 — 이전 ID와 다르면 팀컬러 override / PK / flash 스냅샷 리셋.
+   *    같은 ID면 사용자가 켠 타이머를 보존하는 preserveRunningOnRefresh 플래그 set.
+   * 5) applyFixtureToState로 state 매핑 + maybeTriggerFixtureFlash로 변경 부위 깜빡임.
+   * 6) leagueId 매칭되는 템플릿이 있으면 자동 적용(silent=false일 때만 — 폴링 중 컬러 보호).
+   * 7) 라인업/이벤트/스탯 패널 채움 + API 상태 배지 갱신 + schedulePoll로 다음 폴 예약.
+   * 8) 캐시 영속화 — sessionStorage(데이터) + localStorage(last_fixture_id).
+   *
+   * 반환: 성공 시 fixture data, 실패/스킵 시 null.
    */
   async function fetchAndApplyFixtureData(fixtureId, options){
     const normalizedFixtureId = String(fixtureId || '').trim();
@@ -481,9 +569,9 @@
         clearCache: true,
         statusMessage: '경기 선택 대기'
       });
-      return;
+      return null;
     }
-    if(state.manualMode){ setApiStatus('idle', '수동 모드 ON — API 적용 건너뜀'); return; }
+    if(state.manualMode){ setApiStatus('idle', '수동 모드 ON — API 적용 건너뜀'); return null; }
     // silent=true (폴링 등 자동 갱신) 시 어떤 시각적 피드백도 주지 않음 — 시청자 화면 그대로.
     //   - loading 상태 : setApiStatus 호출 스킵 (배지/오버레이 둘 다 안 바뀜)
     //   - ok 상태      : 호출하되 noOverlay — 'ok' 텍스트는 그대로 유지되고 타임스탬프만 갱신
@@ -495,17 +583,20 @@
     if (!silent) setApiStatus('loading');
     try{
       const data = await fetchFixture(normalizedFixtureId, { silent });
-      if(_lastFetchId !== requestId) return;
+      if(_lastFetchId !== requestId) return null;
       if(!data){
         resetFixtureDrivenState({
           clearFixtureId: true,
           clearCache: true,
           statusMessage: '경기 데이터 없음'
         });
-        return;
+        return null;
       }
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
+      const preserveRunningOnRefresh = !!silent
+        && !!previousFixtureId
+        && previousFixtureId === normalizedFixtureId;
       if (previousFixtureId && previousFixtureId !== normalizedFixtureId) {
         state.teamColorOverride = false;
         state.teamColorOverrideFixtureId = null;
@@ -517,13 +608,26 @@
       }
 
       _lastFixtureData = data;
-      applyFixtureToState(data);
+      // 자동 폴링으로 같은 경기를 다시 반영할 때는 사용자가 직접 켠 타이머를 멈추지 않는다.
+      applyFixtureToState(data, { resetRunning: !preserveRunningOnRefresh });
       // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
       setFixtureId(normalizedFixtureId);
+      const leagueId = extractLeagueIdFromFixtureData(data);
+      if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
+        try {
+          await window.autoApplyTemplateByLeagueId(leagueId);
+        } catch (templateErr) {
+          console.warn('Auto template apply failed:', templateErr);
+        }
+      }
       // 벤치/부상 패널 채우기 (lineup-panel.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
+      // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
+      if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+      if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
+      if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
 
       const m = data.matchInfo || {};
       const homeName = pickMatchTeamName(m, 'home');
@@ -538,6 +642,7 @@
       try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
       try { localStorage.removeItem('cached_fixture_data'); } catch {}  // 구버전 잔여물 정리
       try { localStorage.setItem('last_fixture_id', normalizedFixtureId); } catch {}
+      return data;
     }catch(e){
       console.error('API 오류:', e);
       // silent(폴링) 에러는 배지 그대로 두고 콘솔에만 — 시청자 화면 그대로 유지
@@ -545,12 +650,25 @@
         const msg = (e && e.code) ? `${e.code}: ${e.message}` : (e?.message || '데이터 가져오기 실패');
         setApiStatus('idle', msg);
       }
+      return null;
     }
   }
 
   /**
    * FixtureResponseDto → state 매핑.
-   * matchInfo 기반 점수/색/하프/추가시간/PK + events 기반 득점자/레드카드.
+   *
+   * 1) teamColorOverride 가드 — 같은 fixture에서 사용자가 컬러 직접 수정한 적 있으면 API 컬러 보존.
+   *    다른 fixture로 바뀌면 override 해제.
+   * 2) 팀 이름 — 'teamName' 토글에 따라 long/short 선택.
+   * 3) 점수 — homeScore/awayScore 그대로 반영 (정규+연장 합산값).
+   * 4) 로고 — 'teamLogo' 토글에 따라 기본/협회 중 선택. 협회 URL 없으면 기본으로 폴백.
+   * 5) 팀 컬러 — preserveTeamColors가 false인 경우만 API 값(`#` prefix 추가)을 적용.
+   * 6) 하프 — mapApiStatusToHalf로 PSO만 PK 변환, 나머지는 status 그대로.
+   * 7) 추가시간 — extraManualOverride가 false일 때만 API extra로 갱신.
+   * 8) 페널티 슛아웃 — events에서 PK 시퀀스 재구성. 단, 새 시퀀스가 더 짧으면 기존 값 유지.
+   * 9) 득점자/레드카드 — applyScorersAndCards에서 events 가공.
+   * 10) 타이머 — resetRunning !== false 일 때 비-진행 status면 정지.
+   *     (silent 폴링 + 같은 fixture 케이스에선 호출자가 false로 끔.)
    */
   function applyFixtureToState(data, options){
     const m = data?.matchInfo || {};
@@ -627,7 +745,10 @@
     //   덮어쓰지 않도록 호출자가 options.resetRunning=false로 끌 수 있음.
     if (options?.resetRunning !== false) {
       const LIVE_STATUSES = new Set(['1H','2H','ET1','ET2','PSO']);
-      if (m.status && !LIVE_STATUSES.has(String(m.status))) state.running = false;
+      if (m.status && !LIVE_STATUSES.has(String(m.status))) {
+        if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
+        else state.running = false;
+      }
     }
 
     render();
@@ -644,28 +765,85 @@
     state.redAway = countRedCards(events, 'away');
   }
 
+  // ── 득점자 텍스트 빌드 헬퍼 ──────────────────────────────────────────
+  // buildScorers는 같은 선수가 여러 골을 넣었을 때 한 줄로 묶어준다.
+  // 예) "24', 56' 흐비차 크바라츠헬리아", "45' (PK), 58' 우스만 뎀벨레"
+  // 그룹화 기준은 playerId 우선, 없으면 정규화된 이름, 그것도 없으면 이벤트 인덱스.
+
   /**
-   * 득점자 텍스트 한 팀치를 만들어 반환 (\n으로 구분된 줄들).
-   * 'Missed Penalty'는 제외, 'Own Goal'/'Penalty'는 표기 추가.
-   * 이름은 scorer 토글 (long/short)에 따라 선택.
+   * 득점자 그룹화 키. 같은 선수의 다중 득점을 한 줄로 묶기 위해 사용.
+   * playerId(가장 안정) > 정규화 이름 > 인덱스(unique fallback).
+   */
+  function buildScorerGroupKey(event, fallbackIndex) {
+    if (event?.playerId != null && String(event.playerId).trim() !== '') {
+      return `pid:${String(event.playerId).trim()}`;
+    }
+
+    const stableName = String(
+      event?.playerNameKoLong
+      || event?.playerName
+      || event?.nameKoLong
+      || event?.name
+      || ''
+    ).trim().toLowerCase();
+    if (stableName) return `name:${stableName}`;
+
+    return `event:${fallbackIndex}`;
+  }
+
+  /**
+   * 골 시각 포맷 — "45'" 또는 "45+1'". detail 따라 (OG)/(PK) 접미.
+   * 일반골은 시간만, OG/PK는 시간 뒤 괄호 표기.
+   */
+  function formatScorerMinute(event) {
+    const min = event?.extra ? `${event.elapsed}+${event.extra}'` : `${event.elapsed}'`;
+    if (event?.detail === 'Own Goal') return `${min} (OG)`;
+    if (event?.detail === 'Penalty') return `${min} (PK)`;
+    return min;
+  }
+
+  /** 표시명 sanitize — 공백/null/undefined/하이픈 단독은 fallback으로 대체. */
+  function normalizeScorerDisplayName(value, fallback = '') {
+    const trimmed = String(value ?? '').trim();
+    if (!trimmed || /^(null|undefined|-)$/i.test(trimmed)) return fallback;
+    return trimmed;
+  }
+
+  /**
+   * 한 팀(side)의 득점자 텍스트를 \n 구분 문자열로 빌드.
+   * 1) PSO/Missed Penalty 제외하고 해당 팀 골 이벤트만 추림.
+   * 2) buildScorerGroupKey로 같은 선수 묶음. 첫 등장 시 그룹 생성, 이후엔 minutes에 추가.
+   * 3) 각 그룹을 "분, 분 이름" 형태로 join 후 줄바꿈으로 합침.
    */
   function buildScorers(events, side){
-    return events
+    const scorerEvents = events
       .filter(e =>
         e.side === side &&
         e.type === 'Goal' &&
         e.comments !== 'Penalty Shootout' &&
-        e.detail !== 'Missed Penalty')
-      .map(e => {
-        const min = e.extra ? `${e.elapsed}+${e.extra}'` : `${e.elapsed}'`;
+        e.detail !== 'Missed Penalty');
+    const groups = [];
+    const groupMap = new Map();
+
+    scorerEvents.forEach((event, index) => {
+      const key = buildScorerGroupKey(event, index);
+      let group = groupMap.get(key);
+      if (!group) {
         // pickName은 settings-popup.js의 헬퍼 — playerName/playerNameKoLong 양쪽 지원
-        const rawName = (typeof pickName === 'function') ? pickName(e, 'scorer') : (e.playerName || '');
-        const name = String(rawName ?? '').trim() || '골';
-        // 자책골/페널티 모두 이름 뒤에 표기. 일반골은 이름만.
-        if (e.detail === 'Own Goal') return `${min} ${name} (OG)`;
-        if (e.detail === 'Penalty')  return `${min} ${name} (PK)`;
-        return `${min} ${name}`;
-      })
+        const rawName = (typeof pickName === 'function') ? pickName(event, 'scorer') : (event.playerName || '');
+        group = {
+          name: normalizeScorerDisplayName(rawName, '득점'),
+          minutes: [],
+        };
+        groupMap.set(key, group);
+        groups.push(group);
+      }
+
+      group.minutes.push(formatScorerMinute(event));
+    });
+
+    return groups
+      .map(group => `${group.minutes.join(', ')} ${group.name}`.trim())
       .join('\n');
   }
 
@@ -716,9 +894,17 @@
   });
 
   /**
-   * 같은 탭 내 새로고침 시 sessionStorage 캐시에서 복원 (API 호출 없음).
-   * 탭/브라우저를 완전히 닫고 다시 열면 sessionStorage가 비어있어 자동 복원 안 됨 → 빈 화면.
-   * 수동 모드에서는 건너뜀.
+   * DOMContentLoaded 시 같은 탭 내 새로고침 캐시 복원 — API 호출 없이 즉시 표시.
+   *
+   * 1) 수동 모드면 즉시 종료.
+   * 2) sessionStorage 우선, 없으면 localStorage(legacy)에서 raw 읽고 sessionStorage로 마이그레이션.
+   * 3) 캐시가 비었거나 손상되면 reset 후 종료.
+   * 4) requestAnimationFrame 다음 사이클에서 applyFixtureToState 적용 — init.js의 첫 render 후 실행돼
+   *    layout 안정화된 상태에서 라인업/스탯 패널까지 채움. restore된 timer가 running이면 보존.
+   * 5) flash 스냅샷을 캐시 값으로 초기화 — 이후 폴링 응답에서 변화한 부분만 깜빡이도록.
+   * 6) schedulePoll로 폴링 시작 — 캐시가 stale일 가능성 대비.
+   *
+   * 탭/브라우저를 완전히 닫고 다시 열면 sessionStorage가 비어있어 빈 화면으로 시작한다.
    */
   document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -749,7 +935,8 @@
       _lastFixtureData = data;
       // init.js의 첫 render() 다음 사이클에서 적용 — 레이아웃 안정화 후
       requestAnimationFrame(() => {
-        applyFixtureToState(data);
+        // restore()가 이미 running 타이머를 복원했으면, 캐시 재적용으로 다시 멈추지 않는다.
+        applyFixtureToState(data, { resetRunning: !state.running });
         // 캐시 복원 직후 깜빡임 스냅샷 초기화 — 다음 폴링 응답이 캐시 대비 점수/득점자 변화가
         // 있으면 자연스럽게 깜빡임이 발동되도록. 복원 자체로는 깜빡임 발동 안 함 (값 동일).
         _flashSnapshot = {
@@ -764,6 +951,9 @@
           _lastFetchId = fixtureId; // 폴링 콜백의 _lastFetchId 비교용
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
+        if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+        if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
+        if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
         const m = data.matchInfo;
         const homeName = pickMatchTeamName(m, 'home');
         const awayName = pickMatchTeamName(m, 'away');

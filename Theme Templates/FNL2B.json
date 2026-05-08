@@ -1,5 +1,6 @@
 {
   "name": "FNL2B",
+  "leagueId": [650,651,652,653],
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#eb0029",
@@ -16,8 +17,8 @@
     "awayText": "#000000",
     "outline": "#eb0029",
     "pkBase": "#ffffff",
-    "homeOutline": "#ffffff",
-    "awayOutline": "#ffffff",
+    "homeOutline": "#000000",
+    "awayOutline": "#000000",
     "noteText": "#e5e7eb",
     "noteStroke": "#000000"
   },
@@ -36,5 +37,5 @@
   "boardOutlineWidth": 2,
   "scoreOutlineWidth": 9,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }

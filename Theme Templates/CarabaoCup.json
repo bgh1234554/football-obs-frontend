@@ -1,5 +1,6 @@
 {
-  "name": "CarabaoCup",
+  "name": "Carabao Cup",
+  "leagueId": 48,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#218757",

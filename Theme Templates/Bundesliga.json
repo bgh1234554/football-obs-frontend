@@ -1,5 +1,6 @@
 {
   "name": "Bundesliga",
+  "leagueId": [78,529],
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#d20514",

@@ -1,5 +1,6 @@
 {
   "name": "Turkish Super Lig",
+  "leagueId": [203,206,551],
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#fc0305",
@@ -36,6 +37,6 @@
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
   "noteBorderWidth": 1,
-  "noteFontSize": 15,
+  "noteFontSize": 20,
   "noteMinHeight": 56
 }

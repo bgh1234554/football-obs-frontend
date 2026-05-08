@@ -30,6 +30,7 @@
     'Knee Injury':       '무릎 부상',
     'Leg Injury':        '다리 부상',
     'Ankle Injury':      '발목 부상',
+    'Achilles Tendon Injury': '아킬레스건 부상',
     'Foot Injury':       '발 부상',
     'Toe Injury':        '발가락 부상',
     'Achilles Injury':   '아킬레스 부상',
@@ -41,6 +42,7 @@
     'Wrist Injury':      '손목 부상',
     'Hand Injury':       '손 부상',
     'Hip Injury':        '엉덩이 부상',
+    'Broken cheekbone':  '광대뼈 골절',
     'Head Injury':       '머리 부상',
     'Hernia':            '탈장',
     'Neck Injury':       '목 부상',
@@ -62,10 +64,12 @@
     'Fever':             '발열',
     'Fitness':           '몸상태 문제',
     'Personal Reasons':  '개인 사정',
-    'Coach Decision':    '감독 결정',
+    'Coach\'s Decision': '감독 결정',
     'National Team':     '국가대표 차출',
+    'Loan agreement':    '임대 조항',
     'Rest':              '휴식',
-    'Unknown':           '미상',
+    'Inactive':          '출전 불가',
+    'Unknown':           '원인 미상',
 
     // 출장 정지 카테고리
     'Suspended':                    '출장 정지',
@@ -76,6 +80,18 @@
     'Yellow Card Accumulation':     '경고 누적',
   };
 
+  function normalizeInjuryReasonKey(reason) {
+    return String(reason || '')
+      .trim()
+      .replace(/[‘’`´]/g, '\'')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+  }
+
+  const INJURY_REASON_KO_NORMALIZED = Object.fromEntries(
+    Object.entries(INJURY_REASON_KO).map(([key, value]) => [normalizeInjuryReasonKey(key), value])
+  );
+
   /**
    * reason 영문 → 한글. 매핑 없으면 원문 반환.
    * @param {string|null|undefined} reason
@@ -83,7 +99,10 @@
    */
   function getInjuryReasonKo(reason) {
     if (!reason) return '';
-    return INJURY_REASON_KO[reason] || reason;
+    const raw = String(reason).trim();
+    return INJURY_REASON_KO[raw]
+      || INJURY_REASON_KO_NORMALIZED[normalizeInjuryReasonKey(raw)]
+      || raw;
   }
 
   /**

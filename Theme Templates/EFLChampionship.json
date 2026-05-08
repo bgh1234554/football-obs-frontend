@@ -1,22 +1,26 @@
 {
-  "name": "ACL 2",
-  "leagueId": 18,
+  "name": "EFL Championship",
+  "leagueId": 40,
   "colors": {
     "bg": "#ff00e1",
-    "boardA": "#01022d",
-    "boardB": "#01022d",
-    "scoreBg": "#2d54e0",
+    "boardA": "#ffffff",
+    "boardB": "#ffffff",
+    "scoreBg": "#b79c3e",
     "digits": "#ffffff",
     "meta": "#ffffff",
-    "extra": "#01022d",
-    "halfBg": "#1b0733",
-    "halfText": "#ffffff",
+    "extra": "#ffffff",
+    "halfBg": "#ffffff",
+    "halfText": "#b79c3e",
     "homeBg": "#0e5ca6",
     "homeText": "#fdbf09",
     "awayBg": "#ee1338",
     "awayText": "#322917",
-    "outline": "#2d54e0",
-    "pkBase": "#334155"
+    "outline": "#b79c3e",
+    "pkBase": "#334155",
+    "homeOutline": "#b79c3e",
+    "awayOutline": "#b79c3e",
+    "noteText": "#e5e7eb",
+    "noteStroke": "#000000"
   },
   "_fontFamily": "Ubuntu, HUMidnight140",
   "logoAlign": "hybrid",
@@ -31,5 +35,7 @@
   "boardOutlineEnabled": true,
   "scoreOutlineEnabled": false,
   "boardOutlineWidth": 2,
-  "scoreOutlineWidth": 1
+  "scoreOutlineWidth": 1,
+  "noteEnabled": true,
+  "noteFontSize": 20
 }

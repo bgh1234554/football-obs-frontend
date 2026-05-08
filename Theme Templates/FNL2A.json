@@ -1,5 +1,6 @@
 {
   "name": "FNL2A",
+  "leagueId": [1025,1026],
   "colors": {
     "bg": "#ff00e1",
     "boardA": "#000000",
@@ -36,5 +37,5 @@
   "boardOutlineWidth": 2,
   "scoreOutlineWidth": 9,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }

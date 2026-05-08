@@ -1,5 +1,6 @@
 {
-  "name": "U23AsianCup",
+  "name": "U-23 Asian Cup",
+  "leagueId": 532,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#14713d",
@@ -36,6 +37,6 @@
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
   "noteBorderWidth": 1,
-  "noteFontSize": 16,
+  "noteFontSize": 20,
   "noteMinHeight": 56
 }

@@ -1,5 +1,6 @@
 {
   "name": "Women's Asian Cup",
+  "leagueId": [894,897],
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#511ea0",
@@ -36,6 +37,6 @@
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
   "noteBorderWidth": 1,
-  "noteFontSize": 15,
+  "noteFontSize": 20,
   "noteMinHeight": 56
 }

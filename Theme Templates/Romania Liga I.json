@@ -1,5 +1,6 @@
 {
   "name": "Romania Liga I",
+  "leagueId": 283,
   "colors": {
     "bg": "#ff00ff",
     "boardA": "#ffffff",
@@ -16,15 +17,15 @@
     "awayText": "#ffffff",
     "outline": "#ffffff",
     "pkBase": "#334155",
-    "homeOutline": "#ffffff",
-    "awayOutline": "#ffffff",
+    "homeOutline": "#e1081f",
+    "awayOutline": "#e1081f",
     "noteText": "#e5e7eb",
     "noteStroke": "#000000"
   },
   "_fontFamily": "'Ubuntu','HUMidnight140'",
   "logoAlign": "hybrid",
   "radiusMode": "round",
-  "boardWidth": 720,
+  "boardWidth": 1080,
   "homeLogoScale": 1,
   "awayLogoScale": 1,
   "homeOutlineEnabled": true,
@@ -36,5 +37,5 @@
   "boardOutlineWidth": 1,
   "scoreOutlineWidth": 1,
   "noteEnabled": true,
-  "noteFontSize": 15
+  "noteFontSize": 20
 }
