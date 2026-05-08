@@ -1,5 +1,6 @@
 {
   "name": "Asian Cup",
+  "leagueId": 7,
   "colors": {
     "uiBg": "#111827",
     "boardA": "#0b282e",
