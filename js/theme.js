@@ -4,7 +4,10 @@
 
   /** 현재 state에서 템플릿 객체를 생성 (이름 포함, 색상·폰트·레이아웃 설정 포함) */
   function buildCurrentTemplate(name){
-    return { name, colors:{...state.colors}, fontFamily:state.fontFamily, logoAlign:state.logoAlign, radiusMode:state.radiusMode, boardWidth:state.boardWidth, homeLogoScale:state.homeLogoScale, awayLogoScale:state.awayLogoScale, homeOutlineEnabled:state.homeOutlineEnabled, awayOutlineEnabled:state.awayOutlineEnabled, homeOutlineWidth:state.homeOutlineWidth, awayOutlineWidth:state.awayOutlineWidth, boardOutlineEnabled:state.boardOutlineEnabled, scoreOutlineEnabled:state.scoreOutlineEnabled, boardOutlineWidth:state.boardOutlineWidth, scoreOutlineWidth:state.scoreOutlineWidth, noteEnabled:state.noteEnabled, noteFontSize:state.noteFontSize };
+    const bgColor = (typeof getSetting === 'function')
+      ? String(getSetting('bgColor') || '').trim()
+      : '';
+    return { name, colors:{...state.colors}, bgColor, fontFamily:state.fontFamily, logoAlign:state.logoAlign, radiusMode:state.radiusMode, boardWidth:state.boardWidth, homeLogoScale:state.homeLogoScale, awayLogoScale:state.awayLogoScale, homeOutlineEnabled:state.homeOutlineEnabled, awayOutlineEnabled:state.awayOutlineEnabled, homeOutlineWidth:state.homeOutlineWidth, awayOutlineWidth:state.awayOutlineWidth, boardOutlineEnabled:state.boardOutlineEnabled, scoreOutlineEnabled:state.scoreOutlineEnabled, boardOutlineWidth:state.boardOutlineWidth, scoreOutlineWidth:state.scoreOutlineWidth, noteEnabled:state.noteEnabled, noteFontSize:state.noteFontSize };
   }
 
   function resolveTemplateFontFamily(t){

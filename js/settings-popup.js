@@ -380,6 +380,16 @@ function saveSettings() {
   }
 }
 
+function syncSettingUi(category) {
+  syncSwitchUi(category);
+  syncSliderUi(category);
+  syncNumberUi(category);
+  syncRadioUi(category);
+  syncColorUi(category);
+  syncTextUi(category);
+  syncSelectUi(category);
+}
+
 /** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */
 function getSetting(category) {
   return settingsState[category] ?? SETTINGS_DEFAULTS[category];
@@ -409,18 +419,24 @@ function getLineupNodeMode() {
  * 5) 'settings:change' 이벤트로 외부 모듈(events-panel/stats-panel/lineup-panel)에 통지.
  */
 function setSetting(category, value) {
-  if (!(category in SETTINGS_DEFAULTS)) return;
-  if (!isValidSetting(category, value)) return;
-  if (settingsState[category] === value) return;
+  if (!(category in SETTINGS_DEFAULTS)) return false;
+  if (!isValidSetting(category, value)) return false;
+  if (settingsState[category] === value) return true;
 
+  const hadOwnValue = Object.prototype.hasOwnProperty.call(settingsState, category);
+  const prevValue = settingsState[category];
   settingsState[category] = value;
-  saveSettings();
-  syncSwitchUi(category);
-  syncSliderUi(category);
-  syncRadioUi(category);
-  syncColorUi(category);
-  syncTextUi(category);
-  syncSelectUi(category);
+  if (!saveSettings()) {
+    if (hadOwnValue) settingsState[category] = prevValue;
+    else delete settingsState[category];
+    syncSettingUi(category);
+    if (typeof showToast === 'function') {
+      showToast('설정을 저장하지 못했습니다. 저장 공간을 확인하세요.');
+    }
+    return false;
+  }
+
+  syncSettingUi(category);
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
@@ -447,6 +463,7 @@ function setSetting(category, value) {
   document.dispatchEvent(new CustomEvent('settings:change', {
     detail: { category, value, mode: value }
   }));
+  return true;
 }
 
 /**
@@ -677,6 +694,22 @@ function syncSelectUi(category) {
   if (!select) return;
   const value = String(getSetting(category) || '');
   if (select.value !== value) select.value = value;
+}
+
+function handleBgImageFileLoad(reader) {
+  if (!setSetting('bgImageData', String(reader.result || ''))) {
+    if (typeof showToast === 'function') {
+      showToast('배경 이미지 저장 실패: 용량 초과 또는 저장 공간 부족');
+    }
+    return;
+  }
+  if (settingsState.bgImageUrl && !setSetting('bgImageUrl', '')) {
+    if (typeof showToast === 'function') {
+      showToast('배경 이미지 저장 실패: 용량 초과 또는 저장 공간 부족');
+    }
+    return;
+  }
+  if (typeof showToast === 'function') showToast('배경 이미지가 적용되었습니다');
 }
 
 /** legacy alias — 기존 외부 호출 호환용. setSetting의 wrapper. */
@@ -1020,15 +1053,7 @@ function initSettingsPopup() {
       }
       const reader = new FileReader();
       reader.onload = () => {
-        try {
-          setSetting('bgImageData', String(reader.result || ''));
-          // 파일을 첨부하면 URL은 비워서 우선순위 충돌 방지.
-          if (settingsState.bgImageUrl) setSetting('bgImageUrl', '');
-          if (typeof showToast === 'function') showToast('배경 이미지가 적용되었습니다');
-        } catch (err) {
-          // localStorage quota 초과 등.
-          if (typeof showToast === 'function') showToast('배경 이미지 저장 실패: 용량 초과 또는 저장 공간 부족');
-        }
+        handleBgImageFileLoad(reader);
       };
       reader.onerror = () => {
         if (typeof showToast === 'function') showToast('파일 읽기 실패');
@@ -1043,8 +1068,7 @@ function initSettingsPopup() {
       const kind = btn.dataset.bgClear;
       if (kind === 'url') setSetting('bgImageUrl', '');
       else if (kind === 'data') {
-        setSetting('bgImageData', '');
-        if (bgFileInput) bgFileInput.value = '';
+        if (setSetting('bgImageData', '') && bgFileInput) bgFileInput.value = '';
       }
       else if (kind === 'color') {
         // 단색 배경 초기화 — 기본값(#111827)으로 복귀.
