@@ -129,15 +129,7 @@
 
 body.low-panel-alpha #benchPanel :is(.dp-title, .dp-side-name, .dp-item-num, .dp-item-name, .dp-label, .dp-coach-name, .dp-referee-name, .dp-league-name, .dp-venue-name, .dp-kickoff-time),
 body.low-panel-alpha #injuryPanel :is(.dp-title, .dp-side-name, .dp-item-num, .dp-item-name, .dp-label) {
-  text-shadow:
-    -1px -1px 0 rgba(0,0,0,.9),
-     0   -1px 0 rgba(0,0,0,.9),
-     1px -1px 0 rgba(0,0,0,.9),
-    -1px  0   0 rgba(0,0,0,.9),
-     1px  0   0 rgba(0,0,0,.9),
-    -1px  1px 0 rgba(0,0,0,.9),
-     0    1px 0 rgba(0,0,0,.9),
-     1px  1px 0 rgba(0,0,0,.9);
+  text-shadow: var(--low-panel-text-outline);
 }
 
 /* ===== Iter 5-3: 벤치/선발 리스트 행에 카드/교체/골/어시/평점 표시 ===== */
@@ -1073,7 +1065,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   gap: 8px;
   padding: 5px 10px;
   border-radius: 12px;
-  background: rgba(10,15,23,.55);
+  background: rgb(10 15 23 / calc(.55 * var(--lp-pitch-alpha, 1)));
   border: 1px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 55%, transparent);
   backdrop-filter: blur(3px);
 }
@@ -1279,7 +1271,7 @@ body.greenscreen-mode .dp-node-sub-in {
   display: inline-flex;
   gap: 1px;
   padding: 1px 2px;
-  background: rgba(0,0,0,.4);
+  background: rgb(0 0 0 / calc(.4 * var(--lp-pitch-alpha, 1)));
   border-radius: 3px;
 }
 .dp-node-card .dp-card { display: inline-block; width: 8px; height: 11px; border-radius: 1px; }
@@ -1346,7 +1338,7 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   max-width: 100%;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(0,0,0,.72);
+  background: rgb(0 0 0 / calc(.72 * var(--lp-pitch-alpha, 1)));
   color: #fff;
   /* --lp-name-base-size: 설정 팝업의 "이름 글자 크기" 슬라이더로 조정. document root에 설정. */
   font-size: var(--lp-name-base-size, 12px);

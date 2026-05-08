@@ -163,7 +163,7 @@ function ttApplyTimelineToTactics(targetElapsed) {
   const reconstructed = ttBuildFixtureAtTime(targetElapsed);
   if (!reconstructed) return;
   if (typeof syncTacticsBoard === 'function') {
-    syncTacticsBoard(reconstructed);
+    syncTacticsBoard(reconstructed, { preservePositions: true });
   }
 }
 

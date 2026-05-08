@@ -12,6 +12,7 @@
       --panel-alpha: 1;
       --panel-bg: rgba(var(--panel-ui-rgb), var(--panel-alpha));
       --lp-pitch-alpha: 1;
+      --td-pitch-alpha: 1;
       --lineup-panel-bg: rgba(var(--panel-ui-rgb), var(--lp-pitch-alpha));
       --api-widget-surface-rgb: 43, 44, 47;
       --api-widget-hover-alpha: .22;
@@ -19,6 +20,15 @@
       --text: rgba(255,255,255,.92);
       --muted: rgba(255,255,255,.55);
       --chip: rgba(255,255,255,.08);
+      --low-panel-text-outline:
+        -1px -1px 0 rgba(0,0,0,.9),
+         0   -1px 0 rgba(0,0,0,.9),
+         1px -1px 0 rgba(0,0,0,.9),
+        -1px  0   0 rgba(0,0,0,.9),
+         1px  0   0 rgba(0,0,0,.9),
+        -1px  1px 0 rgba(0,0,0,.9),
+         0    1px 0 rgba(0,0,0,.9),
+         1px  1px 0 rgba(0,0,0,.9);
 
       /* Board */
       --board-a: #000000;
@@ -523,11 +533,49 @@
     .page.active { display: block; }
     #page-tactics.active { display: flex; flex-direction: column; }
     /* 전술판 전체화면 — :fullscreen 상태에서 배경 보정 */
-    #page-tactics:fullscreen { background: var(--bg-ui); }
+    #page-tactics:fullscreen {
+      background-color: var(--bg-ui);
+      background-image: var(--bg-image, none);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
 
     /* ━━━ 전술판 타임라인 + 이벤트 패널 (Iter 5-8) ━━━
        일반 모드: 피치와 도구 사이 가운데 컬럼 (3열 레이아웃의 중앙).
        풀스크린 모드: position:fixed로 우측에 슬라이드 인 (.is-open 토글). */
+    #tactics-topbar {
+      background: var(--panel-bg);
+    }
+    .td-alpha-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      order: 99;
+      margin-left: auto;
+      min-width: 0;
+      padding-left: 8px;
+    }
+    .td-alpha-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .td-alpha-slider {
+      width: 120px;
+      accent-color: #60a5fa;
+      cursor: pointer;
+    }
+    .td-alpha-value {
+      min-width: 40px;
+      text-align: right;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,.72);
+      font-variant-numeric: tabular-nums;
+    }
     #tactics-timeline-panel {
       flex: 1 1 auto;
       min-width: 240px;
@@ -536,7 +584,7 @@
       gap: 8px;
       padding: 10px 12px;
       border-left: 1px solid rgba(255,255,255,.08);
-      background: rgba(0,0,0,.18);
+      background: var(--panel-bg);
       overflow: hidden;
     }
     /* 타임라인 박스 (전술판 전용) — 제목 + 이벤트 칩 + 슬라이더를 카드 형태로 묶음 */
@@ -547,9 +595,24 @@
       flex-direction: column;
       gap: 8px;
       padding: 12px 14px 10px;
-      background: rgba(255,255,255,.03);
+      background: rgba(var(--panel-ui-rgb), calc(var(--panel-alpha) * .38));
       border: 1px solid rgba(255,255,255,.07);
       border-radius: 10px;
+    }
+    #tactics-pitch {
+      background: transparent !important;
+      isolation: isolate;
+    }
+    #tactics-pitch::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: var(--td-pitch-bg, var(--lp-pitch-bg, linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%)));
+      box-shadow: inset 0 0 0 1px var(--td-pitch-border-color, var(--lp-pitch-border-color, rgba(255,255,255,.12)));
+      opacity: var(--td-pitch-alpha, 1);
+      z-index: 0;
     }
     /* 타임라인 제목 행 — 좌측 "타임라인" + 우측 현재 시각 */
     .td-tl-title-row {
@@ -762,7 +825,7 @@
     /* 풀스크린 토글 버튼 — 일반 모드에서는 숨김. 도구 사이드바 하단에 배치됨. */
     #td-timeline-toggle {
       display: none;
-      margin-top: auto;
+      margin-top: 4px;
       background: #1e40af;
       color: #fff;
       border: none;
@@ -821,7 +884,7 @@
       z-index: 100;
       transform: translateX(100%);
       transition: transform .22s ease;
-      background: rgba(11, 18, 32, 0.96);
+      background: var(--panel-bg);
       box-shadow: -4px 0 20px rgba(0,0,0,.45);
       border-left: 1px solid rgba(255,255,255,.12);
       border-top: none;
@@ -840,6 +903,7 @@
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
     }
     #tactics-draw-toolbar {
+      background: var(--panel-bg);
       padding: 8px 7px 6px !important;
       gap: 4px !important;
     }
@@ -1661,6 +1725,12 @@
       box-sizing: border-box;
       color: #f0f0f0;
       font-family: var(--font-family);
+    }
+    body.low-panel-alpha :is(.lp-events-s [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
+      text-shadow: var(--low-panel-text-outline);
+    }
+    body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-val, .st-empty) {
+      text-shadow: var(--low-panel-text-outline);
     }
     /* 패널 제목 — 교체명단/부상 톤과 동일 (.dp-title 참조) */
     .st-title-bar {

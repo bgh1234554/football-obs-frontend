@@ -69,6 +69,9 @@ const SETTINGS_DEFAULTS = {
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
   // 선수 노드/이름은 CSS에서 별도 레이어로 유지한다.
   pitchAlpha:     100,
+  // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
+  // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
+  tacticsAlpha:   100,
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
   // OBS 크로마키와 충돌 방지용.
   // 카테고리별 분리 정책:
@@ -305,7 +308,7 @@ function isValidSetting(category, value) {
   if (category === 'eventNameSize') {
     return Number.isFinite(value) && value >= EVENT_NAME_SIZE_MIN && value <= EVENT_NAME_SIZE_MAX;
   }
-  if (category === 'panelAlpha' || category === 'pitchAlpha') {
+  if (category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
     return Number.isFinite(value) && value >= 0 && value <= 100;
   }
   return value === 'short' || value === 'long';
@@ -430,7 +433,8 @@ function setSetting(category, value) {
     || category === 'bgImageUrl'
     || category === 'bgImageData'
     || category === 'panelAlpha'
-    || category === 'pitchAlpha') {
+    || category === 'pitchAlpha'
+    || category === 'tacticsAlpha') {
     applyBackgroundSettings();
   }
   // Iter 5-7: 그린스크린 토글 또는 강도 변경 → 모든 색상(피치 톤/배경/팀컬러/평점) 일괄 재적용.
@@ -614,7 +618,17 @@ function applyBackgroundSettings() {
   // 라인업 투명도 — 라인업 칼럼 배경과 피치 배경/라인 레이어가 이 값을 공유한다.
   const rawPitchAlpha = Number(getSetting('pitchAlpha'));
   const pitchAlphaPct = Math.max(0, Math.min(100, Number.isFinite(rawPitchAlpha) ? rawPitchAlpha : 100));
-  root.style.setProperty('--lp-pitch-alpha', String(pitchAlphaPct / 100));
+  const pitchAlpha = pitchAlphaPct / 100;
+  root.style.setProperty('--lp-pitch-alpha', String(pitchAlpha));
+
+  // 전술판 투명도 — 피치 + 우측 타임라인/이벤트 패널 배경을 별도 조절.
+  const rawTacticsAlpha = Number(getSetting('tacticsAlpha'));
+  const tacticsAlphaPct = Math.max(0, Math.min(100, Number.isFinite(rawTacticsAlpha) ? rawTacticsAlpha : 100));
+  const tacticsAlpha = tacticsAlphaPct / 100;
+  root.style.setProperty('--td-pitch-alpha', String(tacticsAlpha));
+  if (body) {
+    body.classList.remove('low-tactics-alpha');
+  }
 }
 
 /**
@@ -626,7 +640,8 @@ function syncSliderUi(category) {
   if (!input) return;
   const value = Number(getSetting(category));
   if (input.value !== String(value)) input.value = String(value);
-  const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value');
+  const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
+    || document.querySelector(`[data-settings-slider-value="${category}"]`);
   if (!label) return;
   if (category === 'lineupNameSize' || category === 'eventNameSize') label.textContent = `${value}px`;
   else label.textContent = `${value}%`;

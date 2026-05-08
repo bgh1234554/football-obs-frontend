@@ -1313,10 +1313,10 @@ function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
 }
 
 /** 전술판에 effectiveData 기반 라인업 적용 시도. payload 만들기 실패면 false. */
-function syncTacticsBoard(effectiveData) {
+function syncTacticsBoard(effectiveData, options = {}) {
   const payload = buildTacticsPayload(effectiveData);
   if (payload && typeof tacticsApplyLineup === 'function') {
-    tacticsApplyLineup(payload);
+    tacticsApplyLineup(payload, options);
     return true;
   }
   return false;

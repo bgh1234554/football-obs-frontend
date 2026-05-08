@@ -122,11 +122,51 @@
     return coords.map(({x, y}) => ({ x: 100 - x, y: 100 - y }));
   }
 
+  function tacticsNormalizePosition(pos, fallback) {
+    const x = Number(pos?.x);
+    const y = Number(pos?.y);
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      return {
+        x: Math.max(0, Math.min(100, x)),
+        y: Math.max(0, Math.min(100, y)),
+      };
+    }
+    return { ...fallback };
+  }
+
+  function tacticsSyncPitchLayout() {
+    const main = document.getElementById('tactics-main-area');
+    const wrap = document.getElementById('tactics-pitch-wrap');
+    const pitch = document.getElementById('tactics-pitch');
+    if (!main || !wrap || !pitch) return;
+
+    const styles = window.getComputedStyle(wrap);
+    const padLeft = parseFloat(styles.paddingLeft) || 0;
+    const padRight = parseFloat(styles.paddingRight) || 0;
+    const padTop = parseFloat(styles.paddingTop) || 0;
+    const padBottom = parseFloat(styles.paddingBottom) || 0;
+    const availableHeight = Math.max(0, main.clientHeight - padTop - padBottom);
+    const toolbar = document.getElementById('tactics-draw-toolbar');
+    const toolbarWidth = toolbar ? Math.ceil(toolbar.getBoundingClientRect().width) : 0;
+    const reservedPanelWidth = document.fullscreenElement ? 0 : 240;
+    const maxPitchWidth = Math.max(0, main.clientWidth - toolbarWidth - reservedPanelWidth - padLeft - padRight);
+    const pitchWidthByHeight = availableHeight * (105 / 68);
+    const pitchWidth = maxPitchWidth > 0 ? Math.min(pitchWidthByHeight, maxPitchWidth) : pitchWidthByHeight;
+    const pitchHeight = pitchWidth * (68 / 105);
+
+    wrap.style.flex = '0 0 auto';
+    wrap.style.width = `${Math.max(0, Math.round(pitchWidth + padLeft + padRight))}px`;
+    pitch.style.width = `${Math.max(0, Math.round(pitchWidth))}px`;
+    pitch.style.height = `${Math.max(0, Math.round(pitchHeight))}px`;
+  }
+
   /**
    * 라인업 데이터(홈/어웨이 포메이션, 선수 목록)를 받아 전술판에 적용.
    * 백엔드 연동 시에도 이 함수만 호출하면 된다.
    */
-  function tacticsApplyLineup(data) {
+  function tacticsApplyLineup(data, options = {}) {
+    const preservePositions = !!options.preservePositions;
+    const previousLineup = tacticsState.lineup;
     // 1. 포메이션 select UI 동기화
     const homeFm = data.home.formation || '4-3-3';
     const awayFm = data.away.formation || '4-3-3';
@@ -139,8 +179,22 @@
     // 2. 포메이션 좌표 계산 (어웨이는 미러링)
     const homeCoords = TACTICS_FM[homeFm] || TACTICS_FM['4-3-3'];
     const awayCoords = tacticsMirror(TACTICS_FM[awayFm] || TACTICS_FM['4-3-3']);
-    tacticsState.homePositions = homeCoords.map(p => ({...p}));
-    tacticsState.awayPositions = awayCoords.map(p => ({...p}));
+    const nextHomePositions = homeCoords.map(p => ({ ...p }));
+    const nextAwayPositions = awayCoords.map(p => ({ ...p }));
+    const shouldResetHomePositions = !preservePositions
+      || !Array.isArray(tacticsState.homePositions)
+      || tacticsState.homePositions.length !== nextHomePositions.length
+      || String(previousLineup?.home?.formation || '') !== String(homeFm);
+    const shouldResetAwayPositions = !preservePositions
+      || !Array.isArray(tacticsState.awayPositions)
+      || tacticsState.awayPositions.length !== nextAwayPositions.length
+      || String(previousLineup?.away?.formation || '') !== String(awayFm);
+    tacticsState.homePositions = shouldResetHomePositions
+      ? nextHomePositions
+      : nextHomePositions.map((fallback, index) => tacticsNormalizePosition(tacticsState.homePositions[index], fallback));
+    tacticsState.awayPositions = shouldResetAwayPositions
+      ? nextAwayPositions
+      : nextAwayPositions.map((fallback, index) => tacticsNormalizePosition(tacticsState.awayPositions[index], fallback));
     tacticsState.lineup = data;
 
     // 3. 팀 레이블 — 점수판 팀명과 연동
@@ -149,6 +203,7 @@
     if (homeLabel) homeLabel.textContent = state.homeName || data.home.teamName || '홈팀';
     if (awayLabel) awayLabel.textContent = state.awayName || data.away.teamName || '어웨이팀';
 
+    tacticsSyncPitchLayout();
     tacticsRenderTokens();
   }
 
@@ -572,8 +627,13 @@
   // [이벤트 등록] 전체화면 상태 변경 시 버튼 텍스트 동기화
   document.addEventListener('fullscreenchange', () => {
     syncTacticsFullscreenButtonLabel();
+    tacticsSyncPitchLayout();
   });
-  document.addEventListener('DOMContentLoaded', syncTacticsFullscreenButtonLabel);
+  document.addEventListener('DOMContentLoaded', () => {
+    syncTacticsFullscreenButtonLabel();
+    tacticsSyncPitchLayout();
+  });
+  window.addEventListener('resize', tacticsSyncPitchLayout);
 
   /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 드로잉 초기화, 라인업 재렌더 */
   function tacticsReset() {
@@ -618,6 +678,13 @@
     });
     const pitchEl = document.getElementById('tactics-pitch');
     if (pitchEl) tdPitchObserver.observe(pitchEl);
+  }
+  {
+    const mainObserver = new ResizeObserver(() => {
+      tacticsSyncPitchLayout();
+    });
+    const mainEl = document.getElementById('tactics-main-area');
+    if (mainEl) mainObserver.observe(mainEl);
   }
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [전술판 - 레이저 포인터] 굿노트 방식의 레이저 포인터 — 드래그 시 획 생성, 손을 떼면 서서히 소멸
