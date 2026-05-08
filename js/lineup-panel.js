@@ -541,18 +541,19 @@ function withAlpha(hexColor, alphaHex) {
  * 라인업 토큰/팀 chip 색상 — state.colors를 우선 사용.
  *   applyFixtureToState가 API의 homePrimaryColor를 state.colors.homeBg에 동기화하고,
  *   사용자가 테마 탭에서 직접 바꾸면 거기서도 state.colors가 갱신됨 → 한 곳만 보면 일관됨.
- *   (이전엔 matchInfo.homePrimaryColor를 우선해서 테마 변경이 라인업에 반영 안 됐음)
+ *   greenscreen ON일 때는 chromaSafe()로 초록 계열 → 시안 자동 치환.
  */
 function getLineupSideColors(data, side) {
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
   if (side === 'home') {
     return {
-      bg: normalizeHexColor(state?.colors?.homeBg, '#2563eb'),
-      text: normalizeHexColor(state?.colors?.homeText, '#ffffff'),
+      bg: cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')),
+      text: cs(normalizeHexColor(state?.colors?.homeText, '#ffffff')),
     };
   }
   return {
-    bg: normalizeHexColor(state?.colors?.awayBg, '#ef4444'),
-    text: normalizeHexColor(state?.colors?.awayText, '#ffffff'),
+    bg: cs(normalizeHexColor(state?.colors?.awayBg, '#ef4444')),
+    text: cs(normalizeHexColor(state?.colors?.awayText, '#ffffff')),
   };
 }
 
@@ -1271,6 +1272,8 @@ function buildTacticsPlayers(lineup) {
   const players = Array.from({ length: Math.max(slots.length, labels.length, 11) }, () => null);
 
   getFormationAssignments(lineup).forEach(({ slot, player }) => {
+    // Iter 5-8: tactics-timeline.js의 빈 자리 마커는 토큰 렌더 X (퇴장 선수의 빈 자리).
+    if (player?._emptySlot) return;
     players[slot.originalIndex] = {
       number: player.number ?? '',
       nameKo: pickName(player, 'lineup') || player.name || '',
@@ -1859,15 +1862,27 @@ function fitBenchFooterNames(root) {
     }
   });
 
+  // 경기장 이름은 'overflow-wrap: anywhere' + 'line-clamp: 2'라 자연스럽게 줄바꿈되며
+  // scrollWidth ≤ clientWidth가 되어 일반적인 overflow 검사로는 줄바꿈을 못 잡는다.
+  // → 단일 줄(white-space:nowrap) 자연 폭을 측정해 컨테이너 폭과 비교, 가능한 한 1줄에
+  // 맞도록 폰트를 점진 축소. 최소 폰트(8px)에 도달했는데도 1줄에 못 들어가면 그대로 wrap 허용.
   scope.querySelectorAll('.dp-bench-venue .dp-venue-name').forEach(nameEl => {
     if (!nameEl) return;
     nameEl.style.fontSize = '';
     if (!canMeasureTextElement(nameEl)) return;
     let safety = 0;
-    while (safety < 12) {
-      const overflow = nameEl.scrollHeight > nameEl.clientHeight + 0.5
-        || nameEl.scrollWidth > nameEl.clientWidth + 0.5;
-      if (!overflow) break;
+    while (safety < 16) {
+      const containerWidth = nameEl.clientWidth;
+      if (!containerWidth) break;
+      // 임시로 nowrap 적용해 단일 줄 자연 폭 측정.
+      const prevWhiteSpace = nameEl.style.whiteSpace;
+      nameEl.style.whiteSpace = 'nowrap';
+      const naturalWidth = nameEl.scrollWidth;
+      nameEl.style.whiteSpace = prevWhiteSpace;
+      // 1줄에 들어가거나 추가 오버플로우 없으면 종료.
+      const wrapNeeded = naturalWidth > containerWidth + 0.5;
+      const heightOverflow = nameEl.scrollHeight > nameEl.clientHeight + 0.5;
+      if (!wrapNeeded && !heightOverflow) break;
       if (!shrinkTextElement(nameEl, BENCH_FOOTER_MIN_FONT_PX)) break;
       safety += 1;
     }

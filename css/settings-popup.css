@@ -49,8 +49,8 @@
 
 /* ===== 모달 카드 ===== */
 .sp-modal {
-  width: min(380px, 100%);
-  max-height: calc(100vh - 32px);
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(820px, calc(100vh - 24px));
   background: #1c1d22;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 14px;
@@ -68,7 +68,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 14px 18px 12px;
   border-bottom: 1px solid rgba(255,255,255,.10);
 }
 .sp-header-title {
@@ -100,7 +100,7 @@
 .sp-body {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 8px 16px 16px;
+  padding: 10px 18px 14px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,.25) transparent;
 }
@@ -109,8 +109,8 @@
 
 /* ----- 섹션 (확장 가능) ----- */
 .sp-section + .sp-section {
-  margin-top: 14px;
-  padding-top: 14px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px dashed rgba(255,255,255,.10);
 }
 [data-sp-tab-section].sp-section {
@@ -127,7 +127,7 @@
   letter-spacing: .08em;
   text-transform: uppercase;
   color: rgba(255,255,255,.45);
-  margin: 8px 0 8px;
+  margin: 6px 0;
 }
 
 /* ----- 토글 행 (라벨 + 스위치) ----- */
@@ -135,9 +135,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 4px;
+  padding: 7px 2px;
   font-size: 13px;
-  gap: 12px;
+  gap: 18px;
 }
 .sp-row + .sp-row {
   border-top: 1px solid rgba(255,255,255,.06);
@@ -145,6 +145,7 @@
 .sp-row-label {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 430px;
 }
 .sp-row-label .sp-label-main {
   display: block;
@@ -156,6 +157,7 @@
   font-size: 11px;
   color: rgba(255,255,255,.45);
   margin-top: 2px;
+  line-height: 1.45;
 }
 
 /* ----- iOS 스타일 토글 스위치 ----- */
@@ -240,7 +242,7 @@
 .sp-toggle-cluster {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 0 0 auto;
 }
 .sp-toggle-cluster .sp-toggle-side {
@@ -256,10 +258,19 @@
 .sp-radio-cluster-wrap {
   flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: 220px;
+  max-width: 340px;
 }
 .sp-radio-cluster-wrap .sp-radio-btn {
   padding-inline: 10px;
+}
+.sp-pitch-tone-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(340px, 100%);
+}
+.sp-pitch-tone-grid .sp-radio-btn {
+  width: 100%;
+  padding-inline: 8px;
 }
 
 /* ----- 슬라이더 (range) ----- */
@@ -270,7 +281,7 @@
   flex: 0 0 auto;
 }
 .sp-slider-cluster input[type="range"] {
-  width: 140px;
+  width: 180px;
   height: 4px;
   background: rgba(255,255,255,.18);
   border-radius: 999px;
@@ -318,7 +329,7 @@
   flex: 0 0 auto;
 }
 .sp-num-input {
-  width: 64px;
+  width: 72px;
   height: 30px;
   padding: 4px 8px;
   border: 1px solid rgba(255,255,255,.18);
@@ -359,8 +370,12 @@
 }
 .sp-rating-color-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px 10px;
+}
+.sp-rating-color-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .sp-rating-color-item {
   display: flex;
@@ -391,25 +406,129 @@
 .sp-rating-color-item input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
 .sp-rating-color-item input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }
 
+/* ━━━ 배경 설정 (Iter 5-7) — 넓은 모달에선 입력부를 우측에 정렬하고,
+   좁은 화면에선 media query에서 다시 세로 stack으로 전환한다. */
+.sp-row:has(.sp-bg-input-cluster) {
+  align-items: flex-start;
+  gap: 14px;
+}
+.sp-bg-input-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 360px;
+}
+.sp-text-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(0,0,0,.28);
+  color: #f0f0f0;
+  font-size: 12px;
+  font-family: var(--font-family);
+}
+.sp-text-input:focus {
+  outline: none;
+  border-color: rgba(76,217,100,.55);
+  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+}
+.sp-file-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 320px;
+  font-size: 11px;
+  color: rgba(255,255,255,.7);
+}
+.sp-file-input::-webkit-file-upload-button {
+  background: rgba(76,217,100,.18);
+  border: 1px solid rgba(76,217,100,.4);
+  color: #d4ffd9;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.sp-secondary-btn {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.85);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sp-secondary-btn:hover {
+  background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.3);
+}
+
+/* ━━━ select 드롭다운 (Iter 5-7) — greenscreenIntensity 등 enum 카테고리에 사용 ━━━ */
+.sp-select {
+  flex: 0 0 auto;
+  min-width: 210px;
+  height: 32px;
+  padding: 4px 28px 4px 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(0,0,0,.28);
+  color: #f0f0f0;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-family);
+  cursor: pointer;
+  /* 기본 화살표 제거 + 커스텀 셰브론 */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f0f0f0' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+}
+.sp-select:focus {
+  outline: none;
+  border-color: rgba(76,217,100,.55);
+  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+}
+.sp-select option {
+  background: #1a1f2c;
+  color: #f0f0f0;
+}
+
 /* ━━━ 카테고리 탭 — 설정 종류 그룹 전환 ━━━
    sp-body 최상단에 가로로 배치. 클릭 시 data-sp-tab과 일치하는 data-sp-tab-section 만 표시. */
 .sp-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 0 0 4px;
-  margin: 0 0 10px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 0 6px;
+  margin: 0 0 12px;
   border-bottom: none;
-  flex-wrap: wrap;
 }
 .sp-tab {
-  flex: 0 0 auto;
-  padding: 6px 14px;
+  min-width: 0;
+  width: 100%;
+  padding: 8px 10px;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 999px;
   background: rgba(255,255,255,.04);
   color: rgba(255,255,255,.62);
   font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
+  text-align: center;
   cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
 }
@@ -424,4 +543,63 @@
 }
 .sp-tab.is-active:hover {
   background: rgba(76,217,100,.30);
+}
+
+@media (max-width: 740px) {
+  .sp-modal {
+    width: min(560px, calc(100vw - 20px));
+    max-height: calc(100vh - 20px);
+  }
+
+  .sp-row,
+  .sp-row:has(.sp-bg-input-cluster) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sp-row-label {
+    max-width: none;
+  }
+
+  .sp-toggle-cluster,
+  .sp-slider-cluster,
+  .sp-num-cluster,
+  .sp-radio-cluster,
+  .sp-bg-input-cluster {
+    width: 100%;
+  }
+
+  .sp-toggle-cluster,
+  .sp-num-cluster {
+    justify-content: flex-end;
+  }
+
+  .sp-slider-cluster {
+    justify-content: space-between;
+  }
+
+  .sp-file-input {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .sp-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sp-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sp-tab {
+    flex: 0 0 auto;
+    width: auto;
+    padding-inline: 12px;
+  }
 }

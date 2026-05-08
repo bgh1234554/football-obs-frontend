@@ -127,6 +127,7 @@
           <button class="sp-tab is-active" type="button" data-sp-tab="names" role="tab">이름</button>
           <button class="sp-tab"            type="button" data-sp-tab="lineup" role="tab">라인업</button>
           <button class="sp-tab"            type="button" data-sp-tab="events" role="tab">이벤트/스탯</button>
+          <button class="sp-tab"            type="button" data-sp-tab="background" role="tab">배경</button>
           <button class="sp-tab"            type="button" data-sp-tab="general" role="tab">일반</button>
         </div>
 
@@ -135,7 +136,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">라인업 이름 풀네임</span>
-              <span class="sp-label-sub">선발 라인업 이름 표시 방법</span>
+              <span class="sp-label-sub">선발 이름을 풀네임으로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -146,7 +147,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">라인업 이니셜 제거</span>
-              <span class="sp-label-sub">짧은 이름일 때 M. 같은 앞 이니셜 숨기기</span>
+              <span class="sp-label-sub">짧은 이름 앞 이니셜을 숨깁니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -156,8 +157,8 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">팀 이름 길게</span>
-              <span class="sp-label-sub">점수판 홈 / 원정 팀명 표시 방법</span>
+              <span class="sp-label-main">점수판 팀명 풀네임</span>
+              <span class="sp-label-sub">점수판 팀명을 길게 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -168,7 +169,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">득점자 이름 풀네임</span>
-              <span class="sp-label-sub">점수판 좌우 득점자 표기 방법</span>
+              <span class="sp-label-sub">득점자 이름을 풀네임으로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -179,7 +180,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">벤치/부상자 이름 풀네임</span>
-              <span class="sp-label-sub">교체 명단 + 부상 정보 표기 방법</span>
+              <span class="sp-label-sub">벤치·부상자 이름을 풀네임으로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -190,7 +191,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">이벤트 이름 풀네임</span>
-              <span class="sp-label-sub">이벤트 패널(문자중계) 선수명 표기 방법</span>
+              <span class="sp-label-sub">이벤트 패널 이름을 풀네임으로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -205,7 +206,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">선수 얼굴 표시</span>
-              <span class="sp-label-sub">OFF시 팀컬러로 등번호 표기</span>
+              <span class="sp-label-sub">OFF면 얼굴 대신 등번호가 나옵니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="number">OFF</span>
@@ -217,7 +218,7 @@
             <div class="sp-row-label">
               <span class="sp-label-main">선발 라인업 이름 크기</span>
               <!-- <span class="sp-label-sub">라인업 노드 이름 (px).</span> -->
-              <span class="sp-label-sub">기본 12px</span>
+              <span class="sp-label-sub">선발 이름 크기입니다. 기본 12px.</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="9" max="16" step="1" data-settings-slider="lineupNameSize" />
@@ -227,7 +228,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">라인업 분할 (캠 큼)</span>
-              <span class="sp-label-sub">ON시 위(홈)/아래(원정) 두 피치로 분리</span>
+              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -238,7 +239,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">리그 로고 위치</span>
-              <span class="sp-label-sub">센터 서클 가운데/왼쪽/오른쪽</span>
+              <span class="sp-label-sub">센터 서클 안 로고 위치입니다.</span>
             </div>
             <div class="sp-radio-cluster">
               <button type="button" class="sp-radio-btn" data-settings-radio="leagueLogoPos" data-settings-radio-value="center">가운데</button>
@@ -251,7 +252,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">교체 선수 라인업에 반영</span>
-              <span class="sp-label-sub">ON: 교체 IN 선수가 선발 자리로 올라옴 / OFF: 원래 선발 유지 + 빨강↔초록 화살표 표시</span>
+              <span class="sp-label-sub">ON이면 교체 선수가 선발 위치에 반영됩니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -264,7 +265,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">골 / 어시스트 이모티콘</span>
-              <span class="sp-label-sub">선수 노드 옆 골/어시스트 표시</span>
+              <span class="sp-label-sub">골·도움 아이콘을 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -275,7 +276,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">카드</span>
-              <span class="sp-label-sub">옐로/레드 카드 마커</span>
+              <span class="sp-label-sub">옐로·레드 카드를 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -286,7 +287,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">평점</span>
-              <span class="sp-label-sub">선수 평점 박스</span>
+              <span class="sp-label-sub">선수 평점 박스를 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -297,7 +298,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">교체 투입 시간</span>
-              <span class="sp-label-sub">교체 IN 선수의 진입 시간 표시</span>
+              <span class="sp-label-sub">교체 투입 시간을 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -312,7 +313,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">이벤트 이름 크기</span>
-              <span class="sp-label-sub">이벤트 텍스트 폰트 크기 (px). 기본 크기는 15px</span>
+              <span class="sp-label-sub">이벤트 텍스트 크기입니다. 기본 15px.</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="10" max="22" step="1" data-settings-slider="eventNameSize" />
@@ -324,7 +325,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">자동 스와이프</span>
-              <span class="sp-label-sub">경기 스탯 패널이 일정 간격으로 다음 페이지로 자동 이동</span>
+              <span class="sp-label-sub">경기 스탯 페이지를 자동으로 넘깁니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -335,7 +336,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">전환 간격</span>
-              <span class="sp-label-sub">자동 스와이프 ON 시 한 페이지에 머무는 시간. 기본값 10초, 0.5초 단위로 수정 가능</span>
+              <span class="sp-label-sub">페이지가 바뀌기 전 대기 시간입니다.</span>
             </div>
             <div class="sp-num-cluster">
               <input type="number" class="sp-num-input" min="1" max="60" step="0.5" data-settings-number="statsAutoSwipeSec" />
@@ -347,7 +348,7 @@
           <div class="sp-row sp-row-rating-colors">
             <div class="sp-row-label">
               <span class="sp-label-main">구간별 색상</span>
-              <span class="sp-label-sub">라인업 평점 박스의 배경 색을 7구간별로 직접 지정. 설정 초기화 버튼으로 기본 팔레트 복원.</span>
+              <span class="sp-label-sub">평점 구간별 색상을 직접 정합니다.</span>
             </div>
             <div class="sp-rating-color-grid">
               <label class="sp-rating-color-item"><span>&lt; 6.0</span><input type="color" data-settings-color="ratingColorBelow6" /></label>
@@ -358,6 +359,92 @@
               <label class="sp-rating-color-item"><span>9.0~9.4</span><input type="color" data-settings-color="ratingColor9" /></label>
               <label class="sp-rating-color-item"><span>≥ 9.5</span><input type="color" data-settings-color="ratingColor95" /></label>
             </div>
+            <div class="sp-rating-color-actions">
+              <button type="button" class="sp-secondary-btn" id="ratingColorsResetBtn">색상 초기화</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sp-section" data-sp-tab-section="background" hidden>
+          <div class="sp-section-title">배경 색</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">배경 색</span>
+              <span class="sp-label-sub">점수판 바깥 배경색입니다. 초기화로 기본값을 복원합니다.</span>
+            </div>
+            <div class="sp-bg-input-cluster">
+              <label class="sp-rating-color-item" style="flex:0 0 auto;"><span>색상</span><input type="color" data-settings-color="bgColor" /></label>
+              <button type="button" class="sp-secondary-btn" data-bg-clear="color">초기화</button>
+            </div>
+          </div>
+
+          <div class="sp-section-title">패널 투명도</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">데이터 패널 투명도</span>
+              <span class="sp-label-sub">이벤트·스탯·교체·부상자 명단 배경 투명도입니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="0" max="100" step="5" data-settings-slider="panelAlpha" />
+              <span class="sp-slider-value">100%</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">라인업 투명도</span>
+              <span class="sp-label-sub">라인업 칼럼과 피치 배경 투명도입니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="0" max="100" step="5" data-settings-slider="pitchAlpha" />
+              <span class="sp-slider-value">100%</span>
+            </div>
+          </div>
+
+          <div class="sp-section-title">배경 이미지</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">URL</span>
+              <span class="sp-label-sub">배경 이미지 주소를 저장합니다.</span>
+            </div>
+            <div class="sp-bg-input-cluster">
+              <input type="text" class="sp-text-input" data-settings-text="bgImageUrl" placeholder="https://example.com/bg.jpg" />
+              <button type="button" class="sp-secondary-btn" data-bg-clear="url">지우기</button>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">파일 첨부</span>
+              <span class="sp-label-sub">배경 이미지를 직접 업로드합니다. 3MB 이하 권장.</span>
+            </div>
+            <div class="sp-bg-input-cluster">
+              <input type="file" id="settingsBgImageFile" accept="image/*" class="sp-file-input" />
+              <button type="button" class="sp-secondary-btn" data-bg-clear="data">지우기</button>
+            </div>
+          </div>
+
+          <div class="sp-section-title">크로마키 호환</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">그린스크린 모드</span>
+              <span class="sp-label-sub">크로마키에서 초록 계열이 빠지지 않게 색을 바꿉니다.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="greenscreen" /><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">크로마키 안전도</span>
+              <span class="sp-label-sub">강할수록 크로마키에 안전합니다.</span>
+            </div>
+            <select class="sp-select" data-settings-select="greenscreenIntensity">
+              <option value="strong">마젠타 (가장 안전)</option>
+              <option value="moderate">파랑</option>
+              <option value="mild">어두운 시안</option>
+              <option value="natural">어두운 초록 (키잉 위험)</option>
+            </select>
           </div>
         </div>
 
@@ -366,9 +453,9 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">피치 톤</span>
-              <span class="sp-label-sub">크로마키 대응용 프리셋. 기본값은 초록</span>
+              <span class="sp-label-sub">라인업 피치 색상입니다.</span>
             </div>
-            <div class="sp-radio-cluster sp-radio-cluster-wrap">
+            <div class="sp-radio-cluster sp-radio-cluster-wrap sp-pitch-tone-grid">
               <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="green">초록</button>
               <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="black">검정</button>
               <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="blue">파랑</button>
@@ -383,8 +470,8 @@
           <div class="sp-section-title">팀 로고</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">국대 경기 로고</span>
-              <span class="sp-label-sub">국기로 표시 vs 유니폼/협회 로고로 표시</span>
+              <span class="sp-label-main">국대 로고 형식</span>
+              <span class="sp-label-sub">국기와 협회 로고 중에서 선택합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="logo">국기</span>
@@ -397,7 +484,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">팬 반응 칼럼</span>
-              <span class="sp-label-sub">팬 반응 패널 표시 여부. OFF면 큰 캠은 패널만 숨기고, 작은 캠은 칼럼을 숨김</span>
+              <span class="sp-label-sub">팬 반응 칼럼 표시 여부입니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -409,8 +496,8 @@
           <div class="sp-section-title">메인 페이지 이동</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">불러오기 후 이동</span>
-              <span class="sp-label-sub">경기 ID 입력 후 '불러오기' 버튼을 누르면 어느 페이지로 자동 이동할지 정하기</span>
+              <span class="sp-label-main">기본 메인 화면</span>
+              <span class="sp-label-sub">불러오기 후 자동으로 열릴 메인 화면입니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="big">캠 큼</span>
@@ -614,7 +701,7 @@
       </div>
 
       <!-- ─── 색상 ─── -->
-      <div><div class="section-title">색상</div><div class="prow"><div class="pgroup"><label>보드 A</label><input id="inBoardA" type="color" value="#0b1220"></div><div class="pgroup"><label>보드 B</label><input id="inBoardB" type="color" value="#141b2b"></div><div class="pgroup"><label>공통 배경</label><input id="inUiBg" type="color" value="#111827"></div><div class="pgroup"><label>스코어 배경</label><input id="inScoreBg" type="color" value="#0b1220"></div><div class="pgroup"><label>숫자 색</label><input id="inDigitsColor" type="color" value="#e5e7eb"></div><div class="pgroup"><label>메타/타이머 색</label><input id="inMetaColor" type="color" value="#e5e7eb"></div><div class="pgroup"><label>추가시간 색</label><input id="inExtraColor" type="color" value="#22c55e"></div><div class="pgroup"><label>Half 배경</label><input id="inHalfBg" type="color" value="#16a34a"></div><div class="pgroup"><label>Half 글자</label><input id="inHalfText" type="color" value="#052e16"></div><div class="pgroup"><label>PK 기본 색</label><input id="pkBaseColor" type="color" value="#334155"></div><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div><div class="pgroup"><label>외곽선(보드)</label><input id="inOutline" type="color" value="#2f3b52"></div><div class="pgroup"><label>홈 외곽선 색</label><input id="inHomeOutline" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 외곽선 색</label><input id="inAwayOutline" type="color" value="#ffffff"></div></div></div>
+      <div><div class="section-title">색상</div><div class="prow"><div class="pgroup"><label>보드 A</label><input id="inBoardA" type="color" value="#0b1220"></div><div class="pgroup"><label>보드 B</label><input id="inBoardB" type="color" value="#141b2b"></div><div class="pgroup"><label>스코어 배경</label><input id="inScoreBg" type="color" value="#0b1220"></div><div class="pgroup"><label>숫자 색</label><input id="inDigitsColor" type="color" value="#e5e7eb"></div><div class="pgroup"><label>메타/타이머 색</label><input id="inMetaColor" type="color" value="#e5e7eb"></div><div class="pgroup"><label>추가시간 색</label><input id="inExtraColor" type="color" value="#22c55e"></div><div class="pgroup"><label>Half 배경</label><input id="inHalfBg" type="color" value="#16a34a"></div><div class="pgroup"><label>Half 글자</label><input id="inHalfText" type="color" value="#052e16"></div><div class="pgroup"><label>PK 기본 색</label><input id="pkBaseColor" type="color" value="#334155"></div><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div><div class="pgroup"><label>외곽선(보드)</label><input id="inOutline" type="color" value="#2f3b52"></div><div class="pgroup"><label>홈 외곽선 색</label><input id="inHomeOutline" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 외곽선 색</label><input id="inAwayOutline" type="color" value="#ffffff"></div></div></div>
       <div class="theme-inline-sections">
         <!-- ─── 득점자 메모 스타일 ─── -->
         <div class="theme-inline-section"><div class="section-title">득점자 표시</div><div class="prow"><div class="pgroup"><label>득점자 표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div><div class="pgroup"><label>글자 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div><div class="pgroup"><label>글자 크기(px)</label><input id="noteFontSize" type="number" min="10" step="1" value="20"></div><div class="pgroup"><label>글자 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div></div></div>
@@ -659,10 +746,11 @@
     <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 같은 라인에 묶인 선수들이 함께 이동합니다."><input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지</label>
     <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⤢ 전체화면 (\)</button>
   </div>
-  <!-- 메인 영역: 피치(좌) + 드로잉 패널(우) -->
-  <div style="flex:1;min-height:0;display:flex;gap:0;overflow:hidden;">
-    <!-- 피치 래퍼 -->
-    <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:flex-start;padding:8px 6px 8px 8px;overflow:hidden;">
+  <!-- 메인 영역: 피치(좌) + 타임라인&이벤트(가운데) + 드로잉 도구(우) 3열 -->
+  <div id="tactics-main-area" style="flex:1;min-height:0;display:flex;gap:0;overflow:hidden;">
+    <!-- 피치 래퍼 — 피치 자연 폭(아래 #tactics-pitch의 aspect-ratio 105/68)만큼만 차지.
+         flex:0 0 auto + 컨텐츠 폭으로 자동 계산 → 나머지 가로 공간은 타임라인 패널이 채움. -->
+    <div id="tactics-pitch-wrap" style="flex:0 0 auto;min-height:0;display:flex;align-items:stretch;justify-content:flex-start;padding:8px 0 8px 8px;overflow:hidden;">
       <div id="tactics-pitch" style="position:relative;height:100%;aspect-ratio:105/68;max-width:100%;border-radius:10px;overflow:hidden;background:var(--td-pitch-bg, var(--lp-pitch-bg, linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%)));box-shadow:inset 0 0 0 1px var(--td-pitch-border-color, var(--lp-pitch-border-color, rgba(255,255,255,.12)));">
         <div style="position:absolute;inset:0;pointer-events:none;opacity:.08;background-image:repeating-linear-gradient(90deg,transparent,transparent 4.54%,var(--td-pitch-stripe-color, var(--lp-pitch-stripe-color, rgba(255,255,255,.5))) 4.54%,var(--td-pitch-stripe-color, var(--lp-pitch-stripe-color, rgba(255,255,255,.5))) 9.09%);"></div>
         <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 150 100" preserveAspectRatio="none">
@@ -699,6 +787,32 @@
         </div>
       </div>
     </div>
+    <!-- 타임라인 + 이벤트 패널 (Iter 5-8) — 피치와 도구 사이 가운데 컬럼.
+         일반 모드에선 인라인 표시, 풀스크린에선 우측 슬라이드 인 패널로 전환. -->
+    <div id="tactics-timeline-panel">
+      <!-- 풀스크린 모드 전용 닫기 버튼 — 패널 우상단 absolute 위치. 일반 모드에선 CSS로 숨김. -->
+      <button id="td-timeline-close" type="button" title="타임라인 닫기" aria-label="닫기">×</button>
+      <!-- 1) 위쪽: 타임라인 (전술판 전용). 제목 + 이벤트 칩(겹침 시 아래로 stacking) + 슬라이더 + 경계 라벨 -->
+      <div id="tactics-timeline-bar">
+        <div class="td-tl-title-row">
+          <span class="td-tl-title">타임라인</span>
+          <span class="td-tl-current" id="tactics-time-current">0'</span>
+        </div>
+        <!-- 홈팀 이벤트 칩 — 슬라이더 위쪽. 겹치는 칩은 아래쪽 lane으로 stacking. -->
+        <div id="tactics-timeline-events-home" class="td-tl-events td-tl-events-home"></div>
+        <!-- 슬라이더 (수평 진행 바) -->
+        <input type="range" id="tactics-time-slider" min="0" max="120" step="1" value="0" />
+        <!-- 원정팀 이벤트 칩 — 슬라이더 아래쪽. 겹치는 칩은 위쪽 lane으로 stacking. -->
+        <div id="tactics-timeline-events-away" class="td-tl-events td-tl-events-away"></div>
+        <!-- 0'/max 경계 라벨 -->
+        <div id="tactics-timeline-bounds">
+          <span>KO</span>
+          <span id="tactics-time-max">FT</span>
+        </div>
+      </div>
+      <!-- 2) 아래쪽: 이벤트 패널(이벤트 제목 + 필터 + 리스트). -->
+      <div id="tactics-events-host"><div data-events-panel data-events-panel-source="tactics"></div></div>
+    </div>
     <!-- 우측 드로잉 도구 패널 -->
     <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
       <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
@@ -733,6 +847,8 @@
       <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
       <button onclick="tacticsDrawUndo()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">되돌리기</button>
       <button onclick="tacticsDrawClear()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">전체 지우기</button>
+      <!-- 풀스크린 모드 전용: 타임라인/이벤트 패널 슬라이드 토글 (Iter 5-8) -->
+      <button id="td-timeline-toggle" type="button" title="타임라인 / 이벤트 열기/닫기">‹‹ 타임라인</button>
     </div>
   </div>
 </div>
@@ -824,6 +940,7 @@
 <script src="js/event-comments.js"></script>
 <script src="js/events-panel.js"></script>
 <script src="js/stats-panel.js"></script>
+<script src="js/tactics-timeline.js"></script>
 <script src="js/init.js"></script>
 <script src="js/sidebar.js"></script>
 <!--

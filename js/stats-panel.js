@@ -171,12 +171,14 @@ function stComputeBar(homeVal, awayVal) {
  */
 function stCreateRow(row, fixtureData) {
   const m = fixtureData?.matchInfo || {};
-  // 우선순위: API matchInfo 컬러 → state.colors(사용자 override 반영) → 하드코딩 default
+  // 우선순위: API matchInfo 컬러 → state.colors(사용자 override 반영) → 하드코딩 default.
+  // greenscreen ON일 때는 chromaSafe()를 거쳐 초록 계열 → 시안 자동 치환.
   const stateCol = (typeof state !== 'undefined' && state?.colors) ? state.colors : {};
-  const homeBg = stEnsureHashColor(stateCol.homeBg) || stEnsureHashColor(m.homePrimaryColor) || '#1d4ed8';
-  const homeText = stEnsureHashColor(stateCol.homeText) || stEnsureHashColor(m.homeNumberColor) || '#ffffff';
-  const awayBg = stEnsureHashColor(stateCol.awayBg) || stEnsureHashColor(m.awayPrimaryColor) || '#ef4444';
-  const awayText = stEnsureHashColor(stateCol.awayText) || stEnsureHashColor(m.awayNumberColor) || '#ffffff';
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  const homeBg = cs(stEnsureHashColor(stateCol.homeBg) || stEnsureHashColor(m.homePrimaryColor) || '#1d4ed8');
+  const homeText = cs(stEnsureHashColor(stateCol.homeText) || stEnsureHashColor(m.homeNumberColor) || '#ffffff');
+  const awayBg = cs(stEnsureHashColor(stateCol.awayBg) || stEnsureHashColor(m.awayPrimaryColor) || '#ef4444');
+  const awayText = cs(stEnsureHashColor(stateCol.awayText) || stEnsureHashColor(m.awayNumberColor) || '#ffffff');
 
   const { homePct, awayPct, emphasize, zeroTotal } = stComputeBar(row.homeVal, row.awayVal);
 
@@ -448,7 +450,8 @@ document.addEventListener('settings:change', e => {
 document.addEventListener('theme:colors-changed', e => {
   if (statsLastFixtureData == null) return;
   const key = e.detail?.key;
-  if (!['homeBg', 'homeText', 'awayBg', 'awayText'].includes(key)) return;
+  // 팀 컬러 4종 + greenscreen / 강도 변경 시 재렌더.
+  if (!['homeBg', 'homeText', 'awayBg', 'awayText', 'greenscreen', 'greenscreenIntensity'].includes(key)) return;
   applyStatsPanel(statsLastFixtureData);
 });
 

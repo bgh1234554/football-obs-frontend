@@ -180,15 +180,17 @@
     if (awayLabel) awayLabel.textContent = (typeof state !== 'undefined' && state.awayName) || lineup.away.teamName || '어웨이팀';
 
     // 5. 점수판 state.colors에서 팀 색상 동기화
+    // greenscreen 모드 ON일 때 초록 계열 팀 컬러를 시안으로 자동 치환 (Iter 5-7).
+    const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
     const homeColor = {
-      bg:     state.colors.homeBg   || '#3B82F6',
-      border: state.colors.homeBg   || '#3B82F6',
-      text:   state.colors.homeText || '#ffffff',
+      bg:     cs(state.colors.homeBg   || '#3B82F6'),
+      border: cs(state.colors.homeBg   || '#3B82F6'),
+      text:   cs(state.colors.homeText || '#ffffff'),
     };
     const awayColor = {
-      bg:     state.colors.awayBg   || '#EF4444',
-      border: state.colors.awayBg   || '#EF4444',
-      text:   state.colors.awayText || '#ffffff',
+      bg:     cs(state.colors.awayBg   || '#EF4444'),
+      border: cs(state.colors.awayBg   || '#EF4444'),
+      text:   cs(state.colors.awayText || '#ffffff'),
     };
 
     // 6. 홈팀 토큰 생성 — 포지션 레이블은 현재 포메이션 기준으로 덮어씀

@@ -68,7 +68,7 @@
     homeLogoX: 0, homeLogoY: 0,
     awayLogoX: 0, awayLogoY: 0,
     colors: {
-      uiBg: '#111827',
+      // uiBg는 Iter 5-7에서 설정 팝업의 'bgColor'로 이전됨 — state.colors에서 제거.
       boardA: '#000000', boardB: '#000000',
       scoreBg: '#0b1220', digits: '#e5e7eb', meta: '#e5e7eb',
       extra: '#22c55e', halfBg: '#a70e80', halfText: '#f6fd8e',
@@ -123,7 +123,7 @@
     startAt: $('startAt'), applyStartAt: $('applyStartAt'),
     quick45: $('quick45'), quick90: $('quick90'),
     // inHomeLogo: $('inHomeLogo'), inAwayLogo: $('inAwayLogo'),
-    inUiBg: $('inUiBg'),
+    // inUiBg 제거 — 설정 팝업의 bgColor로 이전.
     inBoardA: $('inBoardA'), inBoardB: $('inBoardB'),
     inScoreBg: $('inScoreBg'), inDigitsColor: $('inDigitsColor'), inMetaColor: $('inMetaColor'), inExtraColor: $('inExtraColor'),
     inHalfBg: $('inHalfBg'), inHalfText: $('inHalfText'),

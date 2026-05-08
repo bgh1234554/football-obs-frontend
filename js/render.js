@@ -228,32 +228,32 @@
     if(state.awayLogo){ el.awayLogo.src=state.awayLogo; el.awayLogo.classList.remove('hidden'); }
     else { el.awayLogo.removeAttribute('src'); el.awayLogo.classList.add('hidden'); }
 
-    // 4. 색상 CSS 변수 일괄 적용
-    setCSS('--bg-ui', state.colors.uiBg);
-    setCSS('--board-a', state.colors.boardA);
-    setCSS('--board-b', state.colors.boardB);
-    setCSS('--score-bg', state.colors.scoreBg);
-    setCSS('--digits-color', state.colors.digits);
-    setCSS('--meta-color', state.colors.meta);
-    setCSS('--extra-color', state.colors.extra);
-    setCSS('--half-bg', state.colors.halfBg);
-    setCSS('--half-text', state.colors.halfText);
-    setCSS('--home-bg', state.colors.homeBg);
-    setCSS('--home-text', state.colors.homeText);
-    setCSS('--away-bg', state.colors.awayBg);
-    setCSS('--away-text', state.colors.awayText);
-    setCSS('--card-outline', state.colors.outline);
-    setCSS('--pk-base', state.colors.pkBase);
-    setCSS('--home-outline', state.colors.homeOutline);
-    setCSS('--away-outline', state.colors.awayOutline);
+    // 4. 색상 CSS 변수 일괄 적용. greenscreen ON일 때는 chromaSafe()로 초록 계열만 시안으로 치환.
+    //    --bg-ui는 settings-popup.js의 applyBackgroundSettings가 별도 관리하므로 여기선 건너뜀.
+    setCSS('--board-a',     chromaSafe(state.colors.boardA));
+    setCSS('--board-b',     chromaSafe(state.colors.boardB));
+    setCSS('--score-bg',    chromaSafe(state.colors.scoreBg));
+    setCSS('--digits-color',chromaSafe(state.colors.digits));
+    setCSS('--meta-color',  chromaSafe(state.colors.meta));
+    setCSS('--extra-color', chromaSafe(state.colors.extra));
+    setCSS('--half-bg',     chromaSafe(state.colors.halfBg));
+    setCSS('--half-text',   chromaSafe(state.colors.halfText));
+    setCSS('--home-bg',     chromaSafe(state.colors.homeBg));
+    setCSS('--home-text',   chromaSafe(state.colors.homeText));
+    setCSS('--away-bg',     chromaSafe(state.colors.awayBg));
+    setCSS('--away-text',   chromaSafe(state.colors.awayText));
+    setCSS('--card-outline',chromaSafe(state.colors.outline));
+    setCSS('--pk-base',     chromaSafe(state.colors.pkBase));
+    setCSS('--home-outline',chromaSafe(state.colors.homeOutline));
+    setCSS('--away-outline',chromaSafe(state.colors.awayOutline));
     setCSS('--home-outline-w', (state.homeOutlineWidth??1)+'px');
     setCSS('--away-outline-w', (state.awayOutlineWidth??1)+'px');
     setCSS('--board-outline-w', (state.boardOutlineWidth??1)+'px');
     setCSS('--score-outline-w', (state.scoreOutlineWidth??1)+'px');
     setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
     setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
-    setCSS('--note-stroke', state.colors.noteStroke);
-    setCSS('--note-text', state.colors.noteText);
+    setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
+    setCSS('--note-text', chromaSafe(state.colors.noteText));
     setCSS('--home-logo-x', (state.homeLogoX??0)+'px');
     setCSS('--home-logo-y', (state.homeLogoY??0)+'px');
     setCSS('--away-logo-x', (state.awayLogoX??0)+'px');
@@ -343,7 +343,7 @@
     el.startPause.textContent = state.running ? '일시정지 (Space)' : '시작 (Space)';
 
     // 12. 색상 피커 input 값을 state와 동기화
-    if(el.inUiBg) el.inUiBg.value = state.colors.uiBg;
+    // uiBg는 설정 팝업으로 이전됨 (Iter 5-7) — el.inUiBg/state.colors.uiBg 동기화 라인 제거.
     if(el.inBoardA) el.inBoardA.value = state.colors.boardA;
     if(el.inBoardB) el.inBoardB.value = state.colors.boardB;
     if(el.inScoreBg) el.inScoreBg.value = state.colors.scoreBg;
