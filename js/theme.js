@@ -465,9 +465,9 @@
   // [색상/폰트 바인딩] 색상 피커와 HEX 텍스트 입력을 양방향으로 연결하고 폰트 변경 처리
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  // [색상 id, state.colors 키, CSS 변수명] 매핑 테이블
+  // [색상 id, state.colors 키, CSS 변수명] 매핑 테이블.
+  // 'uiBg'는 Iter 5-7에서 설정 팝업으로 이전 — colorMap에서 제거됨.
   window.colorMap = [
-    ['inUiBg','uiBg','--bg-ui'],
     ['inBoardA','boardA','--board-a'],
     ['inBoardB','boardB','--board-b'],
     ['inScoreBg','scoreBg','--score-bg'],

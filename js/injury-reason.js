@@ -42,6 +42,7 @@
     'Wrist Injury':      '손목 부상',
     'Hand Injury':       '손 부상',
     'Hip Injury':        '엉덩이 부상',
+    'Broken cheekbone':  '광대뼈 골절',
     'Head Injury':       '머리 부상',
     'Hernia':            '탈장',
     'Neck Injury':       '목 부상',
@@ -68,7 +69,7 @@
     'Loan agreement':    '임대 조항',
     'Rest':              '휴식',
     'Inactive':          '출전 불가',
-    'Unknown':           '미상',
+    'Unknown':           '원인 미상',
 
     // 출장 정지 카테고리
     'Suspended':                    '출장 정지',
