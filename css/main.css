@@ -1729,7 +1729,7 @@
     body.low-panel-alpha :is(.lp-events-s [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
       text-shadow: var(--low-panel-text-outline);
     }
-    body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-val, .st-empty) {
+    body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-empty, .st-val:not(.is-emphasized)) {
       text-shadow: var(--low-panel-text-outline);
     }
     /* 패널 제목 — 교체명단/부상 톤과 동일 (.dp-title 참조) */
