@@ -835,59 +835,74 @@ function evCreateFilterUi(filterOptions) {
  *
  * options.animate=false면 FLIP 애니메이션 건너뜀 (필터 토글 등 즉각적 변경용).
  */
+/**
+ * 모든 [data-events-panel] 인스턴스에 같은 데이터/렌더 적용.
+ * 캠 작은 페이지(메인 이벤트 패널) + 전술판 페이지(타임라인 호스트) 등 여러 곳에 동시 노출.
+ */
 function applyEventsPanel(fixtureData, options = {}) {
   // settings:change에서 재사용할 마지막 fixture 캐시
   window._eventsLastData = fixtureData;
 
-  const container = document.querySelector('[data-events-panel]');
-  if (!container) return;
+  const containers = document.querySelectorAll('[data-events-panel]');
+  if (!containers.length) return;
+
   const nextFixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
-  const previousFixtureId = String(container.dataset.evFixtureId || '').trim();
-  const shouldAnimate = options.animate !== false
-    && !!nextFixtureId
-    && previousFixtureId === nextFixtureId;
-  const previousRects = shouldAnimate
-    ? evCaptureRowRects(container.querySelector('.ev-list'))
-    : new Map();
   const processedEvents = evProcess(fixtureData?.events);
   const filterOptions = evBuildFilterOptions(processedEvents);
   if (!filterOptions.length) eventsPanelFilterState.isOpen = false;
-  const titleBar = evCreateTitleBar(filterOptions);
   const events = evFilterEvents(processedEvents);
 
-  // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
-  if (!processedEvents.length) {
-    container.replaceChildren(titleBar);
+  containers.forEach(container => {
+    const previousFixtureId = String(container.dataset.evFixtureId || '').trim();
+    const shouldAnimate = options.animate !== false
+      && !!nextFixtureId
+      && previousFixtureId === nextFixtureId;
+    const previousRects = shouldAnimate
+      ? evCaptureRowRects(container.querySelector('.ev-list'))
+      : new Map();
+    // 각 컨테이너마다 별도의 titleBar 인스턴스 (DOM 노드는 공유 불가).
+    const titleBar = evCreateTitleBar(filterOptions);
+
+    // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
+    if (!processedEvents.length) {
+      container.replaceChildren(titleBar);
+      container.dataset.evFixtureId = nextFixtureId;
+      const empty = document.createElement('div');
+      empty.className = 'ev-empty';
+      empty.textContent = '이벤트가 없습니다';
+      container.appendChild(empty);
+      container.dispatchEvent(new CustomEvent('events-panel:rendered', { bubbles: true }));
+      return;
+    }
+
+    if (!events.length) {
+      container.replaceChildren(titleBar);
+      container.dataset.evFixtureId = nextFixtureId;
+      const empty = document.createElement('div');
+      empty.className = 'ev-empty';
+      empty.textContent = '선택한 필터에 맞는 이벤트가 없습니다';
+      container.appendChild(empty);
+      container.dispatchEvent(new CustomEvent('events-panel:rendered', { bubbles: true }));
+      return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'ev-list';
+    const renderKeys = evBuildRenderKeys(events);
+    events.forEach((ev, index) => list.appendChild(evCreateRow(ev, fixtureData, renderKeys[index])));
+    container.replaceChildren(titleBar, list);
     container.dataset.evFixtureId = nextFixtureId;
-    const empty = document.createElement('div');
-    empty.className = 'ev-empty';
-    empty.textContent = '이벤트가 없습니다';
-    container.appendChild(empty);
-    return;
-  }
 
-  if (!events.length) {
-    container.replaceChildren(titleBar);
-    container.dataset.evFixtureId = nextFixtureId;
-    const empty = document.createElement('div');
-    empty.className = 'ev-empty';
-    empty.textContent = '선택한 필터에 맞는 이벤트가 없습니다';
-    container.appendChild(empty);
-    return;
-  }
+    // 외부 모듈(예: tactics-timeline.js)이 렌더 후 추가 DOM을 끼워넣을 수 있도록 알림.
+    // bubbles:true로 document-level 리스너가 받을 수 있게.
+    container.dispatchEvent(new CustomEvent('events-panel:rendered', { bubbles: true }));
 
-  const list = document.createElement('div');
-  list.className = 'ev-list';
-  const renderKeys = evBuildRenderKeys(events);
-  events.forEach((ev, index) => list.appendChild(evCreateRow(ev, fixtureData, renderKeys[index])));
-  container.replaceChildren(titleBar, list);
-  container.dataset.evFixtureId = nextFixtureId;
-
-  // 레이아웃 후 폰트 자동 축소 — getBoundingClientRect 사용 가능 시점에 호출
-  requestAnimationFrame(() => {
-    list.querySelectorAll('.ev-row').forEach(evFitText);
+    // 레이아웃 후 폰트 자동 축소 — getBoundingClientRect 사용 가능 시점에 호출
     requestAnimationFrame(() => {
-      if (shouldAnimate) evAnimateListInsertion(list, previousRects);
+      list.querySelectorAll('.ev-row').forEach(evFitText);
+      requestAnimationFrame(() => {
+        if (shouldAnimate) evAnimateListInsertion(list, previousRects);
+      });
     });
   });
 }

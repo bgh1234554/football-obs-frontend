@@ -178,9 +178,9 @@
   function injectCSS(root) {
     if (!root || root._cssInjected) return;
     try {
-      const style = root.ownerDocument
-        ? root.ownerDocument.createElement('style')
-        : document.createElement('style');
+      const style = root.createElement
+        ? root.createElement('style')
+        : (root.ownerDocument || document).createElement('style');
       style.textContent = WIDGET_CSS;
       (root.head || root).appendChild(style);
       root._cssInjected = true;
@@ -193,7 +193,7 @@
       // Shadow DOM에 주입 후 위젯 엘리먼트에 플래그 설정
       if (widget.shadowRoot && !widget.shadowRoot._cssInjected) {
         injectCSS(widget.shadowRoot);
-        if (widget.shadowRoot._cssInjected) widget._cssInjected = true;
+        widget._cssInjected = true;
       }
       // iframe — 크로스오리진 접근은 SecurityError를 던질 수 있으므로 try-catch로 감쌈
       const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
@@ -506,6 +506,7 @@
       if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
     if (typeof applyEventsPanel === 'function') applyEventsPanel(null);
     if (typeof applyStatsPanel === 'function') applyStatsPanel(null);
+    if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(null);
       setApiStatus('idle', statusMessage);
       return;
     }
@@ -532,6 +533,7 @@
     if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
     if (typeof applyEventsPanel === 'function') applyEventsPanel(null);
     if (typeof applyStatsPanel === 'function') applyStatsPanel(null);
+    if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(null);
 
     render();
     persist();
@@ -620,6 +622,7 @@
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
       if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
       if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
+      if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
 
       const m = data.matchInfo || {};
       const homeName = pickMatchTeamName(m, 'home');
@@ -945,6 +948,7 @@
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
         if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
         if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
+        if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
         const m = data.matchInfo;
         const homeName = pickMatchTeamName(m, 'home');
         const awayName = pickMatchTeamName(m, 'away');
