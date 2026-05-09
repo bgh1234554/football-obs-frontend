@@ -4,10 +4,9 @@
 
   /** 현재 state에서 템플릿 객체를 생성 (이름 포함, 색상·폰트·레이아웃 설정 포함) */
   function buildCurrentTemplate(name){
-    const bgColor = (typeof getSetting === 'function')
-      ? String(getSetting('bgColor') || '').trim()
-      : '';
-    return { name, colors:{...state.colors}, bgColor, fontFamily:state.fontFamily, logoAlign:state.logoAlign, radiusMode:state.radiusMode, boardWidth:state.boardWidth, homeLogoScale:state.homeLogoScale, awayLogoScale:state.awayLogoScale, homeOutlineEnabled:state.homeOutlineEnabled, awayOutlineEnabled:state.awayOutlineEnabled, homeOutlineWidth:state.homeOutlineWidth, awayOutlineWidth:state.awayOutlineWidth, boardOutlineEnabled:state.boardOutlineEnabled, scoreOutlineEnabled:state.scoreOutlineEnabled, boardOutlineWidth:state.boardOutlineWidth, scoreOutlineWidth:state.scoreOutlineWidth, noteEnabled:state.noteEnabled, noteFontSize:state.noteFontSize };
+    // 배경색(bgColor)은 설정 팝업 전용 상태다.
+    // 템플릿 저장/로딩으로 바뀌지 않게 템플릿 payload에는 포함하지 않는다.
+    return { name, colors:{...state.colors}, fontFamily:state.fontFamily, logoAlign:state.logoAlign, radiusMode:state.radiusMode, boardWidth:state.boardWidth, homeLogoScale:state.homeLogoScale, awayLogoScale:state.awayLogoScale, homeOutlineEnabled:state.homeOutlineEnabled, awayOutlineEnabled:state.awayOutlineEnabled, homeOutlineWidth:state.homeOutlineWidth, awayOutlineWidth:state.awayOutlineWidth, boardOutlineEnabled:state.boardOutlineEnabled, scoreOutlineEnabled:state.scoreOutlineEnabled, boardOutlineWidth:state.boardOutlineWidth, scoreOutlineWidth:state.scoreOutlineWidth, noteEnabled:state.noteEnabled, noteFontSize:state.noteFontSize };
   }
 
   function resolveTemplateFontFamily(t){
@@ -66,7 +65,8 @@
     if(idx!==-1&&askOnDuplicate){ const ok=confirm(`"${name}" 이미 있음. 덮어쓸까요?`); if(!ok) return{saved:false,replaced:false,name}; }
     const toSave=buildCurrentTemplate(name); Object.assign(toSave, t);
     toSave.fontFamily = resolveTemplateFontFamily(t);
-    if(idx!==-1) list[idx]=toSave; else list.push(toSave);
+    const normalized = cloneTemplateRecord(toSave);
+    if(idx!==-1) list[idx]=normalized; else list.push(normalized);
     localStorage.setItem(TKEY, JSON.stringify(list));
     return{saved:true,replaced:(idx!==-1),name};
   }
@@ -108,6 +108,11 @@
     if(!name) return null;
     const next = { ...templateMaybe, name };
     next.colors = (templateMaybe.colors && typeof templateMaybe.colors === 'object') ? { ...templateMaybe.colors } : {};
+    // 배경색은 더 이상 템플릿 스코프가 아니다.
+    // 예전 템플릿의 top-level bgColor / legacy colors.bg, colors.uiBg도 여기서 제거한다.
+    delete next.bgColor;
+    delete next.colors.bg;
+    delete next.colors.uiBg;
     next.fontFamily = resolveTemplateFontFamily(templateMaybe);
     delete next._fontFamily;
     return next;

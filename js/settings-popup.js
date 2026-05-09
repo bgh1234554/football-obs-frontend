@@ -91,8 +91,11 @@ const SETTINGS_DEFAULTS = {
   greenscreenIntensity: 'mild',
 };
 
-// 배경 이미지 파일 크기 제한 (Iter 5-7). 3MB — 1080p JPEG/WebP 충분히 수용.
+// 배경 이미지 파일 크기 제한.
+// 파일 업로드는 base64로 localStorage에 저장되므로 원본보다 훨씬 커진다.
+// 3MB 미만이어도 저장 한도를 넘길 수 있어, 실제로는 약 1.8MB 안팎만 안정적으로 허용한다.
 const BG_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+const BG_IMAGE_SAFE_PERSIST_BYTES = Math.floor(1.8 * 1024 * 1024);
 
 const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
@@ -215,6 +218,25 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // 현재 설정값을 보관하는 단일 객체. loadSettings()가 localStorage에서 채우고,
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
+
+function normalizeBackgroundImageUrl(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return '';
+  if (/^(?:https?:|data:|blob:)/i.test(raw)) return raw;
+  if (/^file:/i.test(raw)) return encodeURI(raw.replace(/\\/g, '/'));
+  if (/^[a-zA-Z]:[\\/]/.test(raw)) {
+    return encodeURI(`file:///${raw.replace(/\\/g, '/')}`);
+  }
+  if (/^\\\\/.test(raw)) {
+    return encodeURI(`file://${raw.replace(/^\\\\/, '').replace(/\\/g, '/')}`);
+  }
+  return raw;
+}
+
+function isLikelyLocalFilePath(input) {
+  const raw = String(input || '').trim();
+  return /^file:/i.test(raw) || /^[a-zA-Z]:[\\/]/.test(raw) || /^\\\\/.test(raw);
+}
 
 /**
  * 모든 설정 카테고리의 UI(스위치/슬라이더/숫자입력/라디오/색상)를 settingsState 기준으로 일괄 동기화.
@@ -580,7 +602,8 @@ function applyLayoutSettings() {
   root.style.setProperty('--td-pitch-marking-soft',  chromaSafe(pitchTone.tacticsMarkingSoft || pitchTone.tacticsMarking || pitchTone.marking));
   root.style.setProperty('--td-pitch-marking-faint', chromaSafe(pitchTone.tacticsMarkingFaint || pitchTone.tacticsMarkingSoft || pitchTone.tacticsMarking || pitchTone.marking));
 
-  // Iter 5-7: 배경 색 + 배경 이미지 적용. greenscreen 모드면 배경색도 자동 치환.
+  // Iter 5-7: 배경 색 + 배경 이미지 적용.
+  // greenscreen 모드는 오버레이 요소 색만 바꾸고, 크로마키용 단색 배경은 그대로 둔다.
   applyBackgroundSettings();
 
   // Iter 5-3: per-feature 토글 → body 클래스. CSS에서 .layout-big에서만 적용해 큰 캠 숨김.
@@ -601,14 +624,14 @@ function applyLayoutSettings() {
 
 /**
  * 배경 색 + 배경 이미지를 :root에 CSS 변수로 반영.
- * - bgColor: greenscreen ON시 chromaSafe 변환됨
+ * - bgColor: greenscreen ON이어도 그대로 유지 (크로마키용 단색 배경 보호)
  * - bgImageUrl 우선, 없으면 bgImageData (file 첨부 base64)
  * - 둘 다 비어있으면 이미지 없이 색만 적용
  */
 function applyBackgroundSettings() {
   const root = document.documentElement;
-  const bgColor = chromaSafe(getSetting('bgColor') || '#111827');
-  const url = String(getSetting('bgImageUrl') || '').trim();
+  const bgColor = getSetting('bgColor') || '#111827';
+  const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl') || '');
   const data = String(getSetting('bgImageData') || '').trim();
   const imgSrc = url || data;
 
@@ -696,16 +719,17 @@ function syncSelectUi(category) {
   if (select.value !== value) select.value = value;
 }
 
-function handleBgImageFileLoad(reader) {
+function handleBgImageFileLoad(reader, file) {
   if (!setSetting('bgImageData', String(reader.result || ''))) {
+    const mb = file ? (file.size / 1024 / 1024).toFixed(1) : '?';
     if (typeof showToast === 'function') {
-      showToast('배경 이미지 저장 실패: 용량 초과 또는 저장 공간 부족');
+      showToast(`배경 이미지 저장 실패. ${mb}MB 파일은 첨부로 저장하기 큽니다. 이미지 URL을 사용하세요.`);
     }
     return;
   }
   if (settingsState.bgImageUrl && !setSetting('bgImageUrl', '')) {
     if (typeof showToast === 'function') {
-      showToast('배경 이미지 저장 실패: 용량 초과 또는 저장 공간 부족');
+      showToast('배경 이미지 저장 실패. 첨부 저장 공간이 부족합니다. 이미지 URL을 사용하세요.');
     }
     return;
   }
@@ -1017,7 +1041,18 @@ function initSettingsPopup() {
     const category = input.dataset.settingsText;
     syncTextUi(category);
     input.addEventListener('change', () => {
-      setSetting(category, String(input.value || '').trim());
+      const rawValue = String(input.value || '').trim();
+      if (category === 'bgImageUrl'
+        && rawValue
+        && isLikelyLocalFilePath(rawValue)
+        && window.location.protocol !== 'file:'
+        && typeof showToast === 'function') {
+        showToast('로컬 파일 경로는 여기서 안 열릴 수 있습니다. 이미지 URL을 사용하세요.');
+      }
+      const nextValue = category === 'bgImageUrl'
+        ? normalizeBackgroundImageUrl(rawValue)
+        : rawValue;
+      setSetting(category, nextValue);
     });
   });
 
@@ -1046,14 +1081,22 @@ function initSettingsPopup() {
       if (file.size > BG_IMAGE_MAX_BYTES) {
         const mb = (file.size / 1024 / 1024).toFixed(1);
         if (typeof showToast === 'function') {
-          showToast(`파일이 너무 큽니다 (${mb}MB). 3MB 이하 JPEG/WebP로 변환하거나 URL을 사용하세요.`);
+          showToast(`파일이 너무 큽니다 (${mb}MB). 3MB 이하 파일만 첨부할 수 있습니다.`);
+        }
+        bgFileInput.value = '';
+        return;
+      }
+      if (file.size > BG_IMAGE_SAFE_PERSIST_BYTES) {
+        const mb = (file.size / 1024 / 1024).toFixed(1);
+        if (typeof showToast === 'function') {
+          showToast(`파일이 커서 저장하기 어렵습니다 (${mb}MB). 이미지 URL을 사용하세요.`);
         }
         bgFileInput.value = '';
         return;
       }
       const reader = new FileReader();
       reader.onload = () => {
-        handleBgImageFileLoad(reader);
+        handleBgImageFileLoad(reader, file);
       };
       reader.onerror = () => {
         if (typeof showToast === 'function') showToast('파일 읽기 실패');

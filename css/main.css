@@ -91,15 +91,23 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      /* 배경 이미지가 있으면 색 위에 이미지 — 둘 다 --bg-ui/--bg-image CSS 변수로 제어. */
+      position: relative;
+      isolation: isolate;
       background-color: var(--bg-ui);
-      background-image: var(--bg-image, none);
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
       color: var(--text);
       font-family: var(--font-family);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-color: var(--bg-ui);
+      background-image: var(--bg-image, none);
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      pointer-events: none;
     }
 
     /* ========== 보드 스테이지 (상단 고정) ==========
@@ -536,7 +544,7 @@
     #page-tactics:fullscreen {
       background-color: var(--bg-ui);
       background-image: var(--bg-image, none);
-      background-size: cover;
+      background-size: 100% 100%;
       background-position: center;
       background-repeat: no-repeat;
       background-attachment: fixed;
@@ -979,7 +987,6 @@
 
     /* ── 점수판 CSS 변수가 위젯에 새어들어가지 않도록 격리 ── */
     #game-content, #standings-content, #team-content, #games-list {
-      font-family: var(--font-family) !important;
       --home-bg: initial;
       --away-bg: initial;
       --home-text: initial;
@@ -992,19 +999,6 @@
       --half-bg: initial;
       --half-text: initial;
     }
-
-    /* ── Games: 패딩 제거해서 견본처럼 컴팩트하게 ── */
-    #games-list .game-list-header { padding: 6px 10px !important; font-size: 12px !important; }
-    #games-list game-item { display: flex !important; align-items: stretch !important; min-height: 0 !important; }
-    #games-list .game-infos { padding: 0 6px !important; font-size: 11px !important; min-width: 30px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-    #games-list .game-teams { flex: 1 !important; padding: 0 !important; gap: 0 !important; }
-    #games-list .team-info { padding: 0 8px !important; gap: 6px !important; }
-    #games-list .team-logo { width: 16px !important; height: 16px !important; }
-    #games-list .team-name { font-size: 12px !important; line-height: 1.4 !important; }
-    #games-list .game-score { display: flex !important; flex-direction: column !important; align-items: flex-end !important; justify-content: center !important; padding: 0 8px !important; gap: 0 !important; }
-    #games-list .score-home, #games-list .score-away { display: flex !important; align-items: center !important; gap: 4px !important; line-height: 1.4 !important; }
-    #games-list .score-home .score, #games-list .score-away .score { background: none !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; width: auto !important; height: auto !important; font-size: 12px !important; font-weight: 700 !important; }
-    #games-list .score-home-half, #games-list .score-away-half { font-size: 10px !important; opacity: 0.5 !important; }
 
     /* API Sports 위젯은 글자/크기/레이아웃은 유지하고 회색 테마 배경 토큰만 알파 처리. */
     #page-schedule :where(.panelBody, #games-list, #standings-content, #team-content, #game-content, api-sports-widget.initialized:not([data-type="config"])) {

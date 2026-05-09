@@ -753,17 +753,13 @@
     const incoming = (t.colors || {});
     const fixtureLoaded = (typeof currentFixtureId !== 'undefined') && !!currentFixtureId;
     const TEAM_COLOR_KEYS = ['homeBg','homeText','awayBg','awayText'];
+    const TEMPLATE_IGNORED_COLOR_KEYS = ['bg', 'uiBg'];
+    const normalizedEntries = Object.entries(incoming).filter(([k]) => !TEMPLATE_IGNORED_COLOR_KEYS.includes(k));
     const colorsToApply = fixtureLoaded
-      ? Object.fromEntries(Object.entries(incoming).filter(([k]) => !TEAM_COLOR_KEYS.includes(k)))
-      : incoming;
+      ? Object.fromEntries(normalizedEntries.filter(([k]) => !TEAM_COLOR_KEYS.includes(k)))
+      : Object.fromEntries(normalizedEntries);
     state.colors={...state.colors,...colorsToApply};
-    const templateBgColor = String(t.bgColor || incoming.bg || incoming.uiBg || '').trim();
-    if (/^#?[0-9a-fA-F]{6}$/.test(templateBgColor) && typeof setSetting === 'function') {
-      const normalizedBgColor = templateBgColor.startsWith('#')
-        ? templateBgColor.toLowerCase()
-        : `#${templateBgColor.toLowerCase()}`;
-      setSetting('bgColor', normalizedBgColor);
-    }
+    // 배경색(bgColor / legacy bg, uiBg)은 설정 팝업 소유 값이라 템플릿 로딩 시 무시한다.
     state.fontFamily=resolveTemplateFontFamily(t);
     if(t.logoAlign) state.logoAlign=t.logoAlign;
     if(t.radiusMode) state.radiusMode=t.radiusMode;
