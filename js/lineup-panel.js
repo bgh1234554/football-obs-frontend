@@ -281,6 +281,10 @@ function buildEffectiveFixtureData(data) {
     homeInjuries: cloneInjuries(data.homeInjuries),
     awayInjuries: cloneInjuries(data.awayInjuries),
   };
+  // 교체 선수 수동 연동 override(events-panel.js) 적용 — subReflect swap이 이를 반영하도록.
+  if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
+    next.events = window.evPatchSubstEvents(next.events, fixtureId);
+  }
   if (!entry) return next;
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
@@ -571,30 +575,32 @@ function lpBuildCardMarkersHtml(events) {
   return '';
 }
 
-/** subOut/subIn 마커 HTML — kind('bench'|'starter') 기반으로 화살표 색상/방향 결정 */
+/** subOut/subIn 마커 HTML — kind('bench'|'starter') 기반으로 화살표 색상/방향 결정.
+ *  subIn + subOut 둘 다 있는 경우(재교체 선수): 두 마커를 모두 렌더. */
 function lpBuildSubMarkerHtml(events, kind) {
   if (!events) return '';
   const fmt = typeof lpFormatEventTime === 'function' ? lpFormatEventTime : () => '';
-  // bench: subOut 우선 (선발이었던 사람이 내려옴) → 빨간 →
-  //        없고 subIn만 있으면 (subReflect=OFF에서 IN 선수가 벤치에 있음) → 초록 ↑
-  // starter: subIn 우선 (교체로 들어옴) → 초록 ↑
-  //        없고 subOut만 있으면 (subReflect=OFF에서 OUT 선수가 선발에 남음) → 빨간 →
-  // 화살표는 IN/OUT 모두 → (사용자 요청 — 색깔로 구분: 빨강=OUT, 초록=IN).
+  const mkIn  = t => `<span class="dp-sub-marker is-in"  title="교체 IN" >→ <span class="dp-sub-time-text">${dpEscape(fmt(t))}</span></span>`;
+  const mkOut = t => `<span class="dp-sub-marker is-out" title="교체 OUT">→ <span class="dp-sub-time-text">${dpEscape(fmt(t))}</span></span>`;
+
+  const hasIn  = !!events.subIn;
+  const hasOut = !!events.subOut;
+
+  // 재교체 선수(subIn + subOut 모두): 시간 오름차순으로 두 마커 표시
+  if (hasIn && hasOut) {
+    const inFirst = Number(events.subIn.time?.elapsed ?? 0) <= Number(events.subOut.time?.elapsed ?? 0);
+    return inFirst
+      ? mkIn(events.subIn.time) + mkOut(events.subOut.time)
+      : mkOut(events.subOut.time) + mkIn(events.subIn.time);
+  }
+
   if (kind === 'bench') {
-    if (events.subOut) {
-      return `<span class="dp-sub-marker is-out" title="교체 OUT">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subOut.time))}</span></span>`;
-    }
-    if (events.subIn) {
-      return `<span class="dp-sub-marker is-in" title="교체 IN">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subIn.time))}</span></span>`;
-    }
+    if (hasOut) return mkOut(events.subOut.time);
+    if (hasIn)  return mkIn(events.subIn.time);
   }
   if (kind === 'starter') {
-    if (events.subIn) {
-      return `<span class="dp-sub-marker is-in" title="교체 IN">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subIn.time))}</span></span>`;
-    }
-    if (events.subOut) {
-      return `<span class="dp-sub-marker is-out" title="교체 OUT">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subOut.time))}</span></span>`;
-    }
+    if (hasIn)  return mkIn(events.subIn.time);
+    if (hasOut) return mkOut(events.subOut.time);
   }
   return '';
 }
@@ -990,8 +996,8 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode) {
     const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
 
     // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
-    circles.push(`<div class="${nodeClass}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
-    names.push(`<div class="dp-lineup-name-wrap is-${side}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
+    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
+    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
   });
 
   return { circles: circles.join(''), names: names.join('') };
@@ -2400,7 +2406,9 @@ function rerenderLineupPanels() {
 
   // Iter 5-3: 라인업 노드/벤치 행에서 사용할 이벤트/평점 lookup을 한 번만 계산해 캐시.
   // 렌더 헬퍼들이 lineupPanelState.context에서 읽어 쓰도록 한다.
-  const rawEvents = Array.isArray(lineupPanelState.lastFixture?.events) ? lineupPanelState.lastFixture.events : [];
+  // mergedData.events는 evPatchSubstEvents를 거쳐 null playerId override가 반영됐으므로,
+  // rawEvents 대신 mergedData.events를 사용해 재교체 선수 subOut이 올바르게 집계되도록 한다.
+  const rawEvents = Array.isArray(mergedData?.events) ? mergedData.events : [];
   // 응답 필드명은 'playerStats' (FixtureResponseDto.playerStats — PlayerStatsDto 리스트).
   // 'players'가 아니므로 주의 (CLAUDE.md 표기가 과거에 'players'로 적혀있었지만 실제 backend는 playerStats).
   const rawPlayerStats = Array.isArray(lineupPanelState.lastFixture?.playerStats) ? lineupPanelState.lastFixture.playerStats : [];

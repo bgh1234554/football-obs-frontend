@@ -514,7 +514,8 @@
     _lastFetchId = requestId;
     if (!silent) setApiStatus('loading');
     try{
-      const data = await fetchFixture(normalizedFixtureId, { silent });
+      // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
+      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000 });
       if(_lastFetchId !== requestId) return null;
       if(!data){
         resetFixtureDrivenState({

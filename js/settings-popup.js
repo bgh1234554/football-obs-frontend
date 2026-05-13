@@ -750,6 +750,12 @@ function setNameMode(category, mode) {
  */
 function pickName(player, category) {
   if (!player) return '';
+  // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
+  const pid = player.playerId || player.id;
+  if (pid && Number(pid) !== 0 && typeof getPlayerNickname === 'function') {
+    const nick = getPlayerNickname(pid);
+    if (nick) return nick;
+  }
   const shortName = player.name || player.playerName || '';
   const longName = player.nameKoLong || player.playerNameKoLong || '';
   const shouldHideInitial = category === 'lineup'

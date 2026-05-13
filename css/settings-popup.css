@@ -603,3 +603,25 @@
     padding-inline: 12px;
   }
 }
+
+/* ── 설정 팝업 액션 버튼 (초기화 등) ── */
+.sp-action-btn {
+  flex: 0 0 auto;
+  padding: 5px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 6px;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.sp-action-btn:hover { background: rgba(255,255,255,.16); }
+.sp-action-btn-danger {
+  background: rgba(185,28,28,.45);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+.sp-action-btn-danger:hover { background: rgba(220,38,38,.65); }

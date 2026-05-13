@@ -13,6 +13,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const EVENTS_PANEL_FONT_DEFAULT = 15;
+const SUBST_OVERRIDE_STORAGE_KEY = 'obs.subst.override.v1';
 const EVENTS_PANEL_FONT_MIN = 10;
 const EVENTS_PANEL_ROW_ANIM_MS = 340;
 const EVENTS_PANEL_ROW_ENTER_OFFSET_PX = 16;
@@ -131,6 +132,215 @@ function evParseVarDetail(detail) {
 /** VAR detail에서 4종 필터 키만 빠르게 꺼내는 헬퍼. evParseVarDetail의 1-필드 shortcut. */
 function evVarDetailKey(detail) {
   return evParseVarDetail(detail).key;
+}
+
+// ─── 교체 선수 수동 연동 저장소 ───────────────────────────────────────────────
+// API에서 OUT/IN 선수 정보가 null인 경우, 사용자가 직접 선택한 선수를
+// fixtureId + 이벤트 복합키 기준으로 저장.
+// 복합키: side|elapsed|extra|playerId|assistId — 이벤트 패널·라인업 패널 양쪽에서 동일하게 생성 가능.
+
+function evSubstEventKey(ev) {
+  return [
+    ev?.side || '',
+    Number(ev?.elapsed ?? 0),
+    Number(ev?.extra ?? 0),
+    Number(ev?.playerId ?? 0),
+    Number(ev?.assistId ?? 0),
+  ].join('|');
+}
+
+function evLoadSubstOverrides() {
+  try { return JSON.parse(localStorage.getItem(SUBST_OVERRIDE_STORAGE_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+
+function evSaveSubstOverrides(data) {
+  try { localStorage.setItem(SUBST_OVERRIDE_STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function evGetSubstOverride(fixtureId, ev, field) {
+  if (!fixtureId) return null;
+  const key = evSubstEventKey(ev);
+  return evLoadSubstOverrides()[fixtureId]?.[key]?.[field] || null;
+}
+
+function evSetSubstOverride(fixtureId, ev, field, playerInfo) {
+  if (!fixtureId) return;
+  const key = evSubstEventKey(ev);
+  const store = evLoadSubstOverrides();
+  if (!store[fixtureId]) store[fixtureId] = {};
+  if (!store[fixtureId][key]) store[fixtureId][key] = {};
+  store[fixtureId][key][field] = playerInfo;
+  evSaveSubstOverrides(store);
+}
+
+/**
+ * 교체 이벤트의 선수 이름을 반환. override가 있으면 그것을 우선.
+ * field: 'player'(OUT) or 'assist'(IN)
+ */
+function evGetSubstDisplayName(ev, field, fixtureId) {
+  const override = evGetSubstOverride(fixtureId, ev, field);
+  if (override) return override.name || '';
+  return evPickPlayerName(ev, field);
+}
+
+/**
+ * 선수명이 비어있을 때 표시하는 클릭 가능한 `?` 버튼.
+ * 클릭 시 evOpenSubstPicker 모달을 열어 팀 선수 명단에서 선택할 수 있게 함.
+ */
+function evCreateSubstFixBtn(ev, field, fixtureData) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ev-subst-fix-btn';
+  btn.title = field === 'player' ? 'OUT 선수 선택' : 'IN 선수 선택';
+  btn.textContent = '?';
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    evOpenSubstPicker(ev, field, fixtureData);
+  });
+  return btn;
+}
+
+/**
+ * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
+ * lineup-panel.js의 buildEffectiveFixtureData에서 호출해
+ * subReflect 교체 swap이 override를 반영하도록 함.
+ */
+function evPatchSubstEvents(events, fixtureId) {
+  if (!Array.isArray(events) || !fixtureId) return events;
+  const overrides = evLoadSubstOverrides()[fixtureId];
+  if (!overrides || !Object.keys(overrides).length) return events;
+
+  return events.map(ev => {
+    if (String(ev?.type || '').toLowerCase() !== 'subst') return ev;
+    const evOverride = overrides[evSubstEventKey(ev)];
+    if (!evOverride) return ev;
+    const patched = { ...ev };
+    if (evOverride.player) {
+      patched.playerId = evOverride.player.playerId;
+      patched.playerName = evOverride.player.name;
+    }
+    if (evOverride.assist) {
+      patched.assistId = evOverride.assist.playerId;
+      patched.assistName = evOverride.assist.name;
+    }
+    return patched;
+  });
+}
+window.evPatchSubstEvents = evPatchSubstEvents;
+
+/**
+ * 교체 선수 선택 모달.
+ * 해당 팀의 startXi + substitutes 전체를 목록으로 표시하고,
+ * 선택 확인 시 override 저장 + 이벤트 패널 + 라인업 패널 즉시 재렌더.
+ */
+function evOpenSubstPicker(ev, field, fixtureData) {
+  const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
+  const lineup = ev.side === 'home' ? fixtureData?.homeLineup : fixtureData?.awayLineup;
+  const allPlayers = [
+    ...(lineup?.startXi || []),
+    ...(lineup?.substitutes || []),
+  ].filter(Boolean);
+
+  document.querySelector('.ev-subst-picker-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'ev-subst-picker-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'ev-subst-picker-modal';
+  modal.addEventListener('click', e => e.stopPropagation());
+
+  const header = document.createElement('div');
+  header.className = 'ev-subst-picker-header';
+  const titleEl = document.createElement('span');
+  titleEl.className = 'ev-subst-picker-title';
+  titleEl.textContent = field === 'player' ? 'OUT 선수 선택' : 'IN 선수 선택';
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'ev-subst-picker-close';
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  header.append(titleEl, closeBtn);
+
+  const list = document.createElement('div');
+  list.className = 'ev-subst-picker-list';
+
+  let selectedPlayer = null;
+
+  if (!allPlayers.length) {
+    const empty = document.createElement('div');
+    empty.className = 'ev-subst-picker-empty';
+    empty.textContent = '선수 명단 데이터가 없습니다';
+    list.appendChild(empty);
+  } else {
+    const useLong = (typeof getSetting === 'function') && getSetting('lineup') === 'long';
+    allPlayers.forEach(player => {
+      const item = document.createElement('div');
+      item.className = 'ev-subst-picker-item';
+
+      const num = document.createElement('span');
+      num.className = 'ev-subst-picker-number';
+      num.textContent = player.number != null ? String(player.number) : '-';
+
+      const displayName = useLong
+        ? (player.nameKoLong || player.name || String(player.playerId ?? '-'))
+        : (player.name || player.nameKoLong || String(player.playerId ?? '-'));
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'ev-subst-picker-name';
+      nameEl.textContent = displayName;
+
+      const posEl = document.createElement('span');
+      posEl.className = 'ev-subst-picker-pos';
+      posEl.textContent = player.pos || '';
+
+      item.append(num, nameEl, posEl);
+      item.addEventListener('click', () => {
+        list.querySelectorAll('.ev-subst-picker-item.is-selected')
+          .forEach(el => el.classList.remove('is-selected'));
+        item.classList.add('is-selected');
+        selectedPlayer = { playerId: player.playerId, name: displayName };
+      });
+      list.appendChild(item);
+    });
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'ev-subst-picker-actions';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'ev-subst-picker-confirm';
+  confirmBtn.textContent = '확인';
+  confirmBtn.addEventListener('click', () => {
+    if (!selectedPlayer) return;
+    evSetSubstOverride(fixtureId, ev, field, selectedPlayer);
+    overlay.remove();
+    evRerenderCurrentPanel();
+    if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
+      applyLineupPanels(window._eventsLastData);
+    }
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'ev-subst-picker-cancel';
+  cancelBtn.textContent = '취소';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+
+  actions.append(confirmBtn, cancelBtn);
+  modal.append(header, list, actions);
+  overlay.appendChild(modal);
+
+  overlay.addEventListener('click', () => overlay.remove());
+  document.addEventListener('keydown', function onEsc(e) {
+    if (e.key !== 'Escape') return;
+    overlay.remove();
+    document.removeEventListener('keydown', onEsc);
+  });
+
+  document.body.appendChild(overlay);
 }
 
 /** 이벤트 표시 시간 — extra가 있으면 "{elapsed}+{extra}'", 없으면 "{elapsed}'". */
@@ -595,19 +805,24 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   }
 
   if (evTypeIs(ev, 'subst')) {
+    const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
     const stack = document.createElement('span');
     stack.className = 'ev-text ev-text-stack';
 
     const inLine = document.createElement('span');
     inLine.className = 'ev-text-line ev-text-in';
     inLine.append('IN: ');
-    appendName(inLine, evPickPlayerName(ev, 'assist') || '?');
+    const inName = evGetSubstDisplayName(ev, 'assist', fixtureId);
+    if (inName) appendName(inLine, inName);
+    else inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
     appendInlineComment(inLine); // subst의 코멘트는 IN 라인 옆에
 
     const outLine = document.createElement('span');
     outLine.className = 'ev-text-line ev-text-out';
     outLine.append('OUT: ');
-    appendName(outLine, evPickPlayerName(ev, 'player') || '?');
+    const outName = evGetSubstDisplayName(ev, 'player', fixtureId);
+    if (outName) appendName(outLine, outName);
+    else outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
 
     stack.appendChild(inLine);
     stack.appendChild(outLine);
