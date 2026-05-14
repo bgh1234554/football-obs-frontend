@@ -316,13 +316,17 @@ async function pmShowSeasonStats(playerId, player) {
 
   pmContainer().innerHTML = `
 <div class="pm-modal-backdrop" id="pmBackdrop">
-  <div class="pm-modal">
+  <div class="pm-modal pm-modal-szn">
     <div class="pm-modal-header">
       <span class="pm-modal-title">시즌 스탯 &mdash; ${pmEsc(displayName)}</span>
       <button class="pm-modal-close" id="pmModalClose">&#10005;</button>
     </div>
-    <div class="pm-modal-body" id="pmModalBody">
-      <div class="pm-loading">로딩 중...</div>
+    <div class="pm-modal-body pm-body-split">
+      <div class="pm-szn-profile" id="pmSznProfile"></div>
+      <div class="pm-szn-nav-fixed" id="pmSznNav"></div>
+      <div class="pm-szn-scroll" id="pmModalBody">
+        <div class="pm-loading">로딩 중...</div>
+      </div>
     </div>
   </div>
 </div>`;
@@ -337,16 +341,68 @@ async function pmShowSeasonStats(playerId, player) {
       ? fetchPlayerStats(playerId)
       : Promise.reject(new Error('fetchPlayerStats not available')));
 
-    if (!document.getElementById('pmBackdrop')) return; // closed while loading
+    if (!document.getElementById('pmBackdrop')) return;
 
     _pmSznData = data;
-    _pmSznKeys = Object.keys(data.statistics || {}).sort().reverse(); // newest first
+    _pmSznKeys = Object.keys(data.statistics || {}).sort().reverse();
     _pmSznIdx  = 0;
+    pmRenderSeasonProfile(data.player, player.number);
     pmRenderSeasonPage();
   } catch (err) {
     const body = document.getElementById('pmModalBody');
     if (body) body.innerHTML = `<div class="pm-error">스탯 로딩 실패<br><small>${pmEsc(err.message || '')}</small></div>`;
   }
+}
+
+function pmRenderSeasonProfile(p, number) {
+  const el = document.getElementById('pmSznProfile');
+  if (!el || !p) return;
+
+  const photoHtml = p.photoUrl
+    ? `<div class="pm-avatar pm-avatar-lg"><img src="${pmEsc(p.photoUrl)}" alt="" loading="lazy"></div>`
+    : `<div class="pm-avatar pm-avatar-lg pm-avatar-empty"></div>`;
+
+  const nick = getPlayerNickname(p.id);
+  const baseName   = nick || p.fullName || p.name || '';
+  const displayName = (number != null ? `${number} ` : '') + baseName;
+
+  const birthDate  = p.birth?.date ? p.birth.date.replace(/-/g, '.') : '';
+  const birthPlace = [p.birth?.place, p.birth?.country].filter(Boolean).join(' / ');
+
+  const chips = [
+    p.nationality ? pmEsc(p.nationality) : null,
+    p.age         ? `${p.age}세`         : null,
+    p.height      ? `${p.height}cm`      : null,
+    p.weight      ? `${p.weight}kg`      : null,
+  ].filter(Boolean).map(v => `<span class="pm-chip">${v}</span>`).join('');
+
+  el.innerHTML = `
+<div class="pm-profile-wrap">
+  ${photoHtml}
+  <div class="pm-profile-info">
+    <div class="pm-profile-name">${pmEsc(displayName)}</div>
+    ${chips      ? `<div class="pm-profile-chips">${chips}</div>` : ''}
+    ${birthDate  ? `<div class="pm-profile-birth">생일: ${pmEsc(birthDate)}</div>` : ''}
+    ${birthPlace ? `<div class="pm-profile-birth">출생지: ${pmEsc(birthPlace)}</div>` : ''}
+  </div>
+</div>`;
+}
+
+function _pmRatingHtml(r) {
+  if (r == null || r === '') return '-';
+  const n = Number(r);
+  if (isNaN(n)) return pmEsc(String(r));
+  const color = typeof getSetting === 'function' ? (
+    n >= 9.5 ? getSetting('ratingColor95') :
+    n >= 9.0 ? getSetting('ratingColor9')  :
+    n >= 8.0 ? getSetting('ratingColor8')  :
+    n >= 7.0 ? getSetting('ratingColor7')  :
+    n >= 6.5 ? getSetting('ratingColor65') :
+    n >= 6.0 ? getSetting('ratingColor6')  :
+               getSetting('ratingColorBelow6')
+  ) : null;
+  const bg = color ? ` style="background:#${pmEsc(color.replace(/^#/, ''))}"` : '';
+  return `<span class="pm-rating-badge"${bg}>${n.toFixed(1)}</span>`;
 }
 
 function pmRenderSeasonPage() {
@@ -360,51 +416,106 @@ function pmRenderSeasonPage() {
 
   const key  = _pmSznKeys[_pmSznIdx];
   const list = (_pmSznData.statistics || {})[key] || [];
+  const canOlder = _pmSznIdx < _pmSznKeys.length - 1;
+  const canNewer = _pmSznIdx > 0;
+
+  const v = (x, sfx = '') => (x != null) ? `${x}${sfx}` : '-';
 
   const tableRows = list.map(stat => {
-    const lg = stat.league || {};
-    const gm = stat.games  || {};
-    const gl = stat.goals  || {};
-    const logoHtml = lg.logo
-      ? `<img class="pm-lg-logo" src="${pmEsc(lg.logo)}" alt="" loading="lazy">`
-      : '';
-    const rating = gm.rating ? Number(gm.rating).toFixed(1) : '-';
+    const lg = stat.league   || {};
+    const tm = stat.team     || {};
+    const gm = stat.games    || {};
+    const sh = stat.shots    || {};
+    const gl = stat.goals    || {};
+    const ps = stat.passes   || {};
+    const tk = stat.tackles  || {};
+    const du = stat.duels    || {};
+    const dr = stat.dribbles || {};
+    const fo = stat.fouls    || {};
+    const cd = stat.cards    || {};
+
+    const lgLogo = lg.logo ? `<img class="pm-lg-logo" src="${pmEsc(lg.logo)}" alt="" loading="lazy">` : '';
+    const tmLogo = tm.logo ? `<img class="pm-lg-logo" src="${pmEsc(tm.logo)}" alt="" loading="lazy">` : '';
+
+    const yrHtml = (cd.yellowred > 0) ? `<span class="pm-card-yr">${cd.yellowred}</span>` : '';
+    const yHtml  = (cd.yellow > 0)    ? `<span class="pm-card-y">${cd.yellow}</span>${yrHtml}` : (yrHtml || '-');
+    const rHtml  = (cd.red > 0)       ? `<span class="pm-card-r">${cd.red}</span>` : '-';
+
     return `<tr>
-      <td class="pm-st-league">${logoHtml}<span>${pmEsc(lg.name || '-')}</span></td>
-      <td class="pm-st-num">${gm.appearences ?? '-'}</td>
-      <td class="pm-st-num">${gm.lineups ?? '-'}</td>
-      <td class="pm-st-num">${gm.minutes != null ? gm.minutes + "'" : '-'}</td>
-      <td class="pm-st-num">${gl.total ?? '-'}</td>
-      <td class="pm-st-num">${gl.assists ?? '-'}</td>
-      <td class="pm-st-num">${rating}</td>
-    </tr>`;
+  <td class="pm-st-sticky"><div class="pm-st-league">${lgLogo}<span>${pmEsc(lg.name || '-')}</span></div><div class="pm-st-team-row">${tmLogo}<span>${pmEsc(tm.name || '-')}</span></div></td>
+  <td class="pm-st-num">${v(gm.appearences)}</td>
+  <td class="pm-st-num">${v(gm.lineups)}</td>
+  <td class="pm-st-num">${gm.minutes != null ? gm.minutes + "'" : '-'}</td>
+  <td class="pm-st-num">${_pmRatingHtml(gm.rating)}</td>
+  <td class="pm-st-num">${v(sh.total)}</td>
+  <td class="pm-st-num">${v(sh.on)}</td>
+  <td class="pm-st-num">${v(gl.total)}</td>
+  <td class="pm-st-num">${v(gl.assists)}</td>
+  <td class="pm-st-num">${v(gl.saves)}</td>
+  <td class="pm-st-num">${v(ps.total)}</td>
+  <td class="pm-st-num">${v(ps.key)}</td>
+  <td class="pm-st-num">${ps.accuracy != null ? ps.accuracy + '%' : '-'}</td>
+  <td class="pm-st-num">${v(tk.total)}</td>
+  <td class="pm-st-num">${v(tk.blocks)}</td>
+  <td class="pm-st-num">${v(tk.interceptions)}</td>
+  <td class="pm-st-num">${v(dr.attempts)}</td>
+  <td class="pm-st-num">${v(dr.success)}</td>
+  <td class="pm-st-num">${v(du.total)}</td>
+  <td class="pm-st-num">${v(du.won)}</td>
+  <td class="pm-st-num">${v(fo.drawn)}</td>
+  <td class="pm-st-num">${v(fo.committed)}</td>
+  <td class="pm-st-num">${yHtml}</td>
+  <td class="pm-st-num">${rHtml}</td>
+</tr>`;
   }).join('');
 
-  // _pmSznKeys[0] = 가장 최신 시즌. ◀ = 구시즌(idx+1), ▶ = 신시즌(idx-1)
-  const canOlder  = _pmSznIdx < _pmSznKeys.length - 1;
-  const canNewer  = _pmSznIdx > 0;
+  const L = (typeof PLAYER_SZN_LABELS !== 'undefined') ? PLAYER_SZN_LABELS : {};
+  const sl = (k, fb) => L[k] != null ? L[k] : fb;
+
+  const nav = document.getElementById('pmSznNav');
+  if (nav) {
+    nav.innerHTML = `
+<div class="pm-szn-nav">
+  <button class="pm-nav-btn" id="pmNavOlder" ${canOlder ? '' : 'disabled'}>${sl('navOlder','&#9664; 구시즌')}</button>
+  <span class="pm-szn-key">${pmEsc(key)}</span>
+  <button class="pm-nav-btn" id="pmNavNewer" ${canNewer ? '' : 'disabled'}>${sl('navNewer','신시즌 &#9654;')}</button>
+</div>`;
+  }
 
   body.innerHTML = `
-<div class="pm-szn-nav">
-  <button class="pm-nav-btn" id="pmNavOlder" ${canOlder ? '' : 'disabled'}>&#9664; 구시즌</button>
-  <span class="pm-szn-key">${pmEsc(key)}</span>
-  <button class="pm-nav-btn" id="pmNavNewer" ${canNewer ? '' : 'disabled'}>신시즌 &#9654;</button>
-</div>
 <div class="pm-szn-table-wrap">
-  <table class="pm-szn-table">
+  <table class="pm-szn-table pm-szn-table-full" style="table-layout:fixed">
+    <colgroup>
+      <col style="width:150px">
+    </colgroup>
     <thead>
+      <tr class="pm-th-group-row">
+        <th rowspan="2" class="pm-th-league pm-th-sticky">${sl('colLeague','대회')}</th>
+        <th colspan="4" class="pm-th-group-cell">${sl('groupBasic','기본')}</th>
+        <th colspan="2" class="pm-th-group-cell">${sl('groupShots','슈팅')}</th>
+        <th colspan="3" class="pm-th-group-cell">${sl('groupAttack','공격')}</th>
+        <th colspan="3" class="pm-th-group-cell">${sl('groupPasses','패스')}</th>
+        <th colspan="3" class="pm-th-group-cell">${sl('groupDefense','수비')}</th>
+        <th colspan="2" class="pm-th-group-cell">${sl('groupDribbles','드리블')}</th>
+        <th colspan="2" class="pm-th-group-cell">${sl('groupDuels','결투')}</th>
+        <th colspan="2" class="pm-th-group-cell">${sl('groupFouls','파울')}</th>
+        <th colspan="2" class="pm-th-group-cell">${sl('groupCards','카드')}</th>
+      </tr>
       <tr>
-        <th class="pm-th-league">대회</th>
-        <th class="pm-th-num">출전</th>
-        <th class="pm-th-num">선발</th>
-        <th class="pm-th-num">시간</th>
-        <th class="pm-th-num">득점</th>
-        <th class="pm-th-num">어시</th>
-        <th class="pm-th-num">평점</th>
+        <th class="pm-th-num">${sl('appearances','출전')}</th><th class="pm-th-num">${sl('lineups','선발')}</th>
+        <th class="pm-th-num">${sl('minutes','시간')}</th><th class="pm-th-num">${sl('rating','평점')}</th>
+        <th class="pm-th-num">${sl('shotsTotal','슛')}</th><th class="pm-th-num">${sl('shotsOn','유효')}</th>
+        <th class="pm-th-num">${sl('goalsTotal','득점')}</th><th class="pm-th-num">${sl('assists','어시')}</th><th class="pm-th-num">${sl('saves','세이브')}</th>
+        <th class="pm-th-num">${sl('passesTotal','패스')}</th><th class="pm-th-num">${sl('passesKey','키패스')}</th><th class="pm-th-num">${sl('passesAccuracy','패스%')}</th>
+        <th class="pm-th-num">${sl('tacklesTotal','태클')}</th><th class="pm-th-num">${sl('tacklesBlocks','블록')}</th><th class="pm-th-num">${sl('interceptions','인터셉트')}</th>
+        <th class="pm-th-num">${sl('dribblesAttempts','시도')}</th><th class="pm-th-num">${sl('dribblesSuccess','성공')}</th>
+        <th class="pm-th-num">${sl('duelsTotal','총')}</th><th class="pm-th-num">${sl('duelsWon','승')}</th>
+        <th class="pm-th-num">${sl('foulsDrawn','받음')}</th><th class="pm-th-num">${sl('foulsCommitted','범함')}</th>
+        <th class="pm-th-num">${sl('yellowCards','황색')}</th><th class="pm-th-num">${sl('redCards','적색')}</th>
       </tr>
     </thead>
     <tbody>
-      ${tableRows || '<tr><td colspan="7" class="pm-empty">데이터 없음</td></tr>'}
+      ${tableRows || `<tr><td colspan="24" class="pm-empty">${sl('emptyData','데이터 없음')}</td></tr>`}
     </tbody>
   </table>
 </div>`;
