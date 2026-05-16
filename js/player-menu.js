@@ -486,10 +486,7 @@ function pmRenderSeasonPage() {
 
   body.innerHTML = `
 <div class="pm-szn-table-wrap">
-  <table class="pm-szn-table pm-szn-table-full" style="table-layout:fixed">
-    <colgroup>
-      <col style="width:150px">
-    </colgroup>
+  <table class="pm-szn-table pm-szn-table-full">
     <thead>
       <tr class="pm-th-group-row">
         <th rowspan="2" class="pm-th-league pm-th-sticky">${sl('colLeague','대회')}</th>

@@ -2197,8 +2197,7 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
 }
 
 /* ── sticky 열 (대회 = 1열, 팀 = 2열) ──
-   너비는 <colgroup> + table-layout:fixed 로 강제 지정.
-   min/max-width는 table 레이아웃 알고리즘이 무시하므로 사용 안 함. */
+   table-layout:auto — 대회명 너비를 콘텐츠에 맞춰 자동 결정. */
 .pm-th-sticky,
 .pm-st-sticky {
   position: sticky;
