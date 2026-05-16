@@ -281,6 +281,10 @@ function buildEffectiveFixtureData(data) {
     homeInjuries: cloneInjuries(data.homeInjuries),
     awayInjuries: cloneInjuries(data.awayInjuries),
   };
+  // 교체 선수 수동 연동 override(events-panel.js) 적용 — subReflect swap이 이를 반영하도록.
+  if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
+    next.events = window.evPatchSubstEvents(next.events, fixtureId);
+  }
   if (!entry) return next;
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
@@ -571,30 +575,32 @@ function lpBuildCardMarkersHtml(events) {
   return '';
 }
 
-/** subOut/subIn 마커 HTML — kind('bench'|'starter') 기반으로 화살표 색상/방향 결정 */
+/** subOut/subIn 마커 HTML — kind('bench'|'starter') 기반으로 화살표 색상/방향 결정.
+ *  subIn + subOut 둘 다 있는 경우(재교체 선수): 두 마커를 모두 렌더. */
 function lpBuildSubMarkerHtml(events, kind) {
   if (!events) return '';
   const fmt = typeof lpFormatEventTime === 'function' ? lpFormatEventTime : () => '';
-  // bench: subOut 우선 (선발이었던 사람이 내려옴) → 빨간 →
-  //        없고 subIn만 있으면 (subReflect=OFF에서 IN 선수가 벤치에 있음) → 초록 ↑
-  // starter: subIn 우선 (교체로 들어옴) → 초록 ↑
-  //        없고 subOut만 있으면 (subReflect=OFF에서 OUT 선수가 선발에 남음) → 빨간 →
-  // 화살표는 IN/OUT 모두 → (사용자 요청 — 색깔로 구분: 빨강=OUT, 초록=IN).
+  const mkIn  = t => `<span class="dp-sub-marker is-in"  title="교체 IN" >→ <span class="dp-sub-time-text">${dpEscape(fmt(t))}</span></span>`;
+  const mkOut = t => `<span class="dp-sub-marker is-out" title="교체 OUT">→ <span class="dp-sub-time-text">${dpEscape(fmt(t))}</span></span>`;
+
+  const hasIn  = !!events.subIn;
+  const hasOut = !!events.subOut;
+
+  // 재교체 선수(subIn + subOut 모두): 시간 오름차순으로 두 마커 표시
+  if (hasIn && hasOut) {
+    const inFirst = Number(events.subIn.time?.elapsed ?? 0) <= Number(events.subOut.time?.elapsed ?? 0);
+    return inFirst
+      ? mkIn(events.subIn.time) + mkOut(events.subOut.time)
+      : mkOut(events.subOut.time) + mkIn(events.subIn.time);
+  }
+
   if (kind === 'bench') {
-    if (events.subOut) {
-      return `<span class="dp-sub-marker is-out" title="교체 OUT">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subOut.time))}</span></span>`;
-    }
-    if (events.subIn) {
-      return `<span class="dp-sub-marker is-in" title="교체 IN">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subIn.time))}</span></span>`;
-    }
+    if (hasOut) return mkOut(events.subOut.time);
+    if (hasIn)  return mkIn(events.subIn.time);
   }
   if (kind === 'starter') {
-    if (events.subIn) {
-      return `<span class="dp-sub-marker is-in" title="교체 IN">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subIn.time))}</span></span>`;
-    }
-    if (events.subOut) {
-      return `<span class="dp-sub-marker is-out" title="교체 OUT">→ <span class="dp-sub-time-text">${dpEscape(fmt(events.subOut.time))}</span></span>`;
-    }
+    if (hasIn)  return mkIn(events.subIn.time);
+    if (hasOut) return mkOut(events.subOut.time);
   }
   return '';
 }
@@ -990,8 +996,8 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode) {
     const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
 
     // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
-    circles.push(`<div class="${nodeClass}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
-    names.push(`<div class="dp-lineup-name-wrap is-${side}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
+    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
+    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
   });
 
   return { circles: circles.join(''), names: names.join('') };
@@ -1293,10 +1299,19 @@ function buildTacticsPayload(effectiveData) {
 }
 
 /**
- * 전술판에서 fixture 기반 라인업 토큰을 떼어내고 팀명만 갱신.
- * 라인업이 더 이상 유효하지 않거나(수동 모드 토글 등) clear 동작에서 호출.
+ * fixture 기반 라인업이 사라졌을 때 전술판을 기본 토큰 상태로 되돌린다.
+ * 경기 데이터가 없어도 토큰은 유지하고, 이름만 포지션 폴백으로 표시한다.
  */
 function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
+  if (
+    typeof tacticsApplyLineup === 'function'
+    && typeof TACTICS_MOCK_LINEUP !== 'undefined'
+    && TACTICS_MOCK_LINEUP
+  ) {
+    tacticsApplyLineup(TACTICS_MOCK_LINEUP);
+    return;
+  }
+
   const pitch = document.getElementById('tactics-pitch');
   if (pitch) pitch.querySelectorAll('.tactics-token, .tactics-ball-token').forEach(node => node.remove());
 
@@ -2285,80 +2300,6 @@ function fitLineupNamePills(root) {
   fitBigLineupNameAgainstPriorityBadges(labels);
   fitBigLineupNameAgainstOpposingBadges(labels);
   fitBigLineupTeamChips(scope);
-  return;
-  {
-
-  labels.forEach(nameEl => {
-    if (!nameEl || !nameEl.firstChild) return;
-    // 측정 전 width / inline font-size 둘 다 reset → CSS 기반 base 크기로 복귀
-    nameEl.style.width = '';
-    nameEl.style.fontSize = '';
-
-    // [1] 잘림 감지 시 폰트 점진 축소 (라벨별 독립)
-    let safety = 0;
-    while (safety < 12 && nameEl.scrollHeight > nameEl.clientHeight + 0.5) {
-      const cur = parseFloat(getComputedStyle(nameEl).fontSize);
-      if (!Number.isFinite(cur) || cur <= 7) break;
-      const next = Math.max(7, cur - 0.5);
-      nameEl.style.fontSize = `${next}px`;
-      safety += 1;
-    }
-
-    // [2] 줄별 폭 측정 후 pill width 고정
-    const range = document.createRange();
-    try {
-      range.selectNodeContents(nameEl);
-      const rects = range.getClientRects();
-      if (!rects.length) return;
-      let maxLineWidth = 0;
-      for (const rect of rects) {
-        if (rect.width > maxLineWidth) maxLineWidth = rect.width;
-      }
-      if (maxLineWidth > 0) {
-        // +12px = 가로 padding(2 * 6px). +1px buffer로 sub-pixel 잘림 방지
-        nameEl.style.width = `${Math.ceil(maxLineWidth) + 13}px`;
-      }
-    } finally {
-      range.detach && range.detach();
-    }
-  });
-
-  labels.forEach(nameEl => {
-    nameEl.style.width = '';
-    nameEl.style.fontSize = '';
-    if (!canMeasureTextElement(nameEl)) return;
-    lockLineupNameWidth(nameEl);
-  });
-
-  let pass = 0;
-  while (pass < 24) {
-    let changed = false;
-
-    for (let i = 0; i < labels.length; i += 1) {
-      for (let j = i + 1; j < labels.length; j += 1) {
-        const leftEl = labels[i];
-        const rightEl = labels[j];
-        if (!canMeasureTextElement(leftEl) || !canMeasureTextElement(rightEl)) continue;
-        if (!wrapsOverlap(leftEl, rightEl)) continue;
-
-        const primaryEl = chooseWrapToShrink(leftEl, rightEl);
-        const secondaryEl = primaryEl === leftEl ? rightEl : leftEl;
-
-        if ((primaryEl && shrinkTextElement(primaryEl, LINEUP_NAME_MIN_FONT_PX))
-          || (secondaryEl && shrinkTextElement(secondaryEl, LINEUP_NAME_MIN_FONT_PX))) {
-          if (primaryEl) lockLineupNameWidth(primaryEl);
-          if (secondaryEl) lockLineupNameWidth(secondaryEl);
-          changed = true;
-          break;
-        }
-      }
-      if (changed) break;
-    }
-
-    if (!changed) break;
-    pass += 1;
-  }
-  }
 }
 
 // 라인업 리사이즈/설정 변경 후 외부에서 다시 fit을 호출할 수 있도록 노출
@@ -2400,7 +2341,9 @@ function rerenderLineupPanels() {
 
   // Iter 5-3: 라인업 노드/벤치 행에서 사용할 이벤트/평점 lookup을 한 번만 계산해 캐시.
   // 렌더 헬퍼들이 lineupPanelState.context에서 읽어 쓰도록 한다.
-  const rawEvents = Array.isArray(lineupPanelState.lastFixture?.events) ? lineupPanelState.lastFixture.events : [];
+  // mergedData.events는 evPatchSubstEvents를 거쳐 null playerId override가 반영됐으므로,
+  // rawEvents 대신 mergedData.events를 사용해 재교체 선수 subOut이 올바르게 집계되도록 한다.
+  const rawEvents = Array.isArray(mergedData?.events) ? mergedData.events : [];
   // 응답 필드명은 'playerStats' (FixtureResponseDto.playerStats — PlayerStatsDto 리스트).
   // 'players'가 아니므로 주의 (CLAUDE.md 표기가 과거에 'players'로 적혀있었지만 실제 backend는 playerStats).
   const rawPlayerStats = Array.isArray(lineupPanelState.lastFixture?.playerStats) ? lineupPanelState.lastFixture.playerStats : [];

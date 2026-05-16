@@ -63,6 +63,7 @@
     'Virus':             '바이러스',
     'Fever':             '발열',
     'Fitness':           '몸상태 문제',
+    'Health problems':   '건강 문제',
     'Personal Reasons':  '개인 사정',
     'Coach\'s Decision': '감독 결정',
     'National Team':     '국가대표 차출',

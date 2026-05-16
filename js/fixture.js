@@ -155,74 +155,6 @@
     }, 300);
   }
 
-  /** API-Sports 위젯의 Shadow DOM 또는 iframe에 커스텀 CSS를 주입 */
-  const WIDGET_CSS = `
-    :host, body {
-      font-family: var(--font-family, 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif) !important;
-    }
-    /* Details 점수 가운데 정렬 */
-    .game-detail { display: flex !important; align-items: center !important; justify-content: center !important; }
-    .game-center { flex: 1 !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; text-align: center !important; }
-    /* Lineups 선수명 작게 */
-    .lineup-section .group-title,
-    .lineup-section h3 {
-      font-weight: 700 !important;
-      letter-spacing: normal !important;
-    }
-    .lineup-player-name, .player-name, .player-item span, .player-item div { font-size: 11px !important; }
-    .lineup-player { font-size: 11px !important; }
-    .shirt-number { font-size: 10px !important; }
-  `;
-
-  /** 주어진 root(Shadow DOM 또는 document)에 WIDGET_CSS를 style 태그로 한 번만 주입 */
-  function injectCSS(root) {
-    if (!root || root._cssInjected) return;
-    try {
-      const style = root.createElement
-        ? root.createElement('style')
-        : (root.ownerDocument || document).createElement('style');
-      style.textContent = WIDGET_CSS;
-      (root.head || root).appendChild(style);
-      root._cssInjected = true;
-    } catch(e) {}
-  }
-
-  /** 페이지 내 모든 api-sports-widget 요소의 Shadow DOM과 iframe에 CSS를 주입 (1초마다 재시도) */
-  function injectWidgetCSS() {
-    document.querySelectorAll('api-sports-widget').forEach(widget => {
-      // Shadow DOM에 주입 후 위젯 엘리먼트에 플래그 설정
-      if (widget.shadowRoot && !widget._shadowCssInjected) {
-        injectCSS(widget.shadowRoot);
-        if (widget.shadowRoot._cssInjected) widget._shadowCssInjected = true;
-      }
-      // iframe — 크로스오리진 접근은 SecurityError를 던질 수 있으므로 try-catch로 감쌈
-      const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
-      if (iframe && !widget._iframeCssInjected) {
-        try {
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (doc?.head) {
-            injectCSS(doc);
-            if (doc._cssInjected) widget._iframeCssInjected = true;
-          }
-        } catch(e) { /* cross-origin: 무시 */ }
-      }
-    });
-  }
-
-  const injectWidgetCSSInterval = setInterval(() => {
-    injectWidgetCSS();
-    // 모든 위젯에 주입 완료 시 인터벌 종료
-    const widgets = document.querySelectorAll('api-sports-widget');
-    if (widgets.length > 0 && Array.from(widgets).every(widget => {
-      const iframe = widget.querySelector('iframe') || widget.shadowRoot?.querySelector('iframe');
-      const shadowReady = !widget.shadowRoot || !!widget._shadowCssInjected;
-      const iframeReady = !iframe || !!widget._iframeCssInjected;
-      return shadowReady && iframeReady;
-    })) {
-      clearInterval(injectWidgetCSSInterval);
-    }
-  }, 1000);
-
   /** 경기 ID 입력값으로 API 데이터를 가져와 스코어보드에 반영하는 메인 진입점 */
   const mainInput      = $('main-fixture-input');
   const mainShowBtn    = $('main-show-btn');
@@ -582,7 +514,8 @@
     _lastFetchId = requestId;
     if (!silent) setApiStatus('loading');
     try{
-      const data = await fetchFixture(normalizedFixtureId, { silent });
+      // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
+      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000 });
       if(_lastFetchId !== requestId) return null;
       if(!data){
         resetFixtureDrivenState({
@@ -605,6 +538,9 @@
         state.pkLastExitedAt = 0;
         // 다른 경기로 전환 — 깜빡임 비교용 스냅샷도 초기화 (이전 경기와 비교하면 의미 없음)
         _flashSnapshot = null;
+        // HTH 패널 초기화 (Iter 7)
+        if (typeof window.hthReset === 'function') window.hthReset();
+        if (typeof window.lpStatReset === 'function') window.lpStatReset();
       }
 
       _lastFixtureData = data;
@@ -626,8 +562,17 @@
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
       if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+      // HTH 자동 전환: 이벤트가 생기면 hth → events (Iter 7)
+      if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
       if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
       if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
+      // HTH는 lazy-load. 새 fixture에서 이벤트가 없을 때만 대체 메인 패널용으로 자동 조회한다.
+      const hasEvents = Array.isArray(data.events) && data.events.length > 0;
+      if (previousFixtureId !== normalizedFixtureId
+        && !hasEvents
+        && typeof window.hthShowForFixture === 'function') {
+        window.hthShowForFixture(data).catch(err => console.warn('HTH fetch failed:', err));
+      }
 
       const m = data.matchInfo || {};
       const homeName = pickMatchTeamName(m, 'home');
@@ -952,8 +897,14 @@
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
         if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+        if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
         if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
         if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
+        // 캐시 복원에서도 events가 없을 때만 HTH를 대체 메인 패널로 lazy-load한다.
+        if ((!Array.isArray(data.events) || data.events.length === 0)
+          && typeof window.hthShowForFixture === 'function') {
+          window.hthShowForFixture(data).catch(() => {});
+        }
         const m = data.matchInfo;
         const homeName = pickMatchTeamName(m, 'home');
         const awayName = pickMatchTeamName(m, 'away');

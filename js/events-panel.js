@@ -13,6 +13,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const EVENTS_PANEL_FONT_DEFAULT = 15;
+const SUBST_OVERRIDE_STORAGE_KEY = 'obs.subst.override.v1';
 const EVENTS_PANEL_FONT_MIN = 10;
 const EVENTS_PANEL_ROW_ANIM_MS = 340;
 const EVENTS_PANEL_ROW_ENTER_OFFSET_PX = 16;
@@ -131,6 +132,219 @@ function evParseVarDetail(detail) {
 /** VAR detail에서 4종 필터 키만 빠르게 꺼내는 헬퍼. evParseVarDetail의 1-필드 shortcut. */
 function evVarDetailKey(detail) {
   return evParseVarDetail(detail).key;
+}
+
+// ─── 교체 선수 수동 연동 저장소 ───────────────────────────────────────────────
+// API에서 OUT/IN 선수 정보가 null인 경우, 사용자가 직접 선택한 선수를
+// fixtureId + 이벤트 복합키 기준으로 저장.
+// 복합키: side|elapsed|extra|playerId|assistId — 이벤트 패널·라인업 패널 양쪽에서 동일하게 생성 가능.
+
+function evSubstEventKey(ev) {
+  return [
+    ev?.side || '',
+    Number(ev?.elapsed ?? 0),
+    Number(ev?.extra ?? 0),
+    Number(ev?.playerId ?? 0),
+    Number(ev?.assistId ?? 0),
+    ev?.id ?? ev?.origIndex ?? '',
+  ].join('|');
+}
+
+function evLoadSubstOverrides() {
+  try { return JSON.parse(localStorage.getItem(SUBST_OVERRIDE_STORAGE_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+
+function evSaveSubstOverrides(data) {
+  try { localStorage.setItem(SUBST_OVERRIDE_STORAGE_KEY, JSON.stringify(data)); } catch {}
+}
+
+function evGetSubstOverride(fixtureId, ev, field) {
+  if (!fixtureId) return null;
+  const key = evSubstEventKey(ev);
+  return evLoadSubstOverrides()[fixtureId]?.[key]?.[field] || null;
+}
+
+function evSetSubstOverride(fixtureId, ev, field, playerInfo) {
+  if (!fixtureId) return;
+  const key = evSubstEventKey(ev);
+  const store = evLoadSubstOverrides();
+  if (!store[fixtureId]) store[fixtureId] = {};
+  if (!store[fixtureId][key]) store[fixtureId][key] = {};
+  store[fixtureId][key][field] = playerInfo;
+  evSaveSubstOverrides(store);
+}
+
+/**
+ * 교체 이벤트의 선수 이름을 반환. override가 있으면 그것을 우선.
+ * field: 'player'(OUT) or 'assist'(IN)
+ */
+function evGetSubstDisplayName(ev, field, fixtureId) {
+  const override = evGetSubstOverride(fixtureId, ev, field);
+  if (override) return override.name || '';
+  return evPickPlayerName(ev, field);
+}
+
+/**
+ * 선수명이 비어있을 때 표시하는 클릭 가능한 `?` 버튼.
+ * 클릭 시 evOpenSubstPicker 모달을 열어 팀 선수 명단에서 선택할 수 있게 함.
+ */
+function evCreateSubstFixBtn(ev, field, fixtureData) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ev-subst-fix-btn';
+  btn.title = field === 'player' ? 'OUT 선수 선택' : 'IN 선수 선택';
+  btn.textContent = '?';
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    evOpenSubstPicker(ev, field, fixtureData);
+  });
+  return btn;
+}
+
+/**
+ * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
+ * lineup-panel.js의 buildEffectiveFixtureData에서 호출해
+ * subReflect 교체 swap이 override를 반영하도록 함.
+ */
+function evPatchSubstEvents(events, fixtureId) {
+  if (!Array.isArray(events) || !fixtureId) return events;
+  const overrides = evLoadSubstOverrides()[fixtureId];
+  if (!overrides || !Object.keys(overrides).length) return events;
+
+  return events.map(ev => {
+    if (String(ev?.type || '').toLowerCase() !== 'subst') return ev;
+    const evOverride = overrides[evSubstEventKey(ev)];
+    if (!evOverride) return ev;
+    const patched = { ...ev };
+    if (evOverride.player) {
+      patched.playerId = evOverride.player.playerId;
+      patched.playerName = evOverride.player.name;
+    }
+    if (evOverride.assist) {
+      patched.assistId = evOverride.assist.playerId;
+      patched.assistName = evOverride.assist.name;
+    }
+    return patched;
+  });
+}
+window.evPatchSubstEvents = evPatchSubstEvents;
+
+/**
+ * 교체 선수 선택 모달.
+ * 해당 팀의 startXi + substitutes 전체를 목록으로 표시하고,
+ * 선택 확인 시 override 저장 + 이벤트 패널 + 라인업 패널 즉시 재렌더.
+ */
+function evOpenSubstPicker(ev, field, fixtureData) {
+  const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
+  const lineup = ev.side === 'home' ? fixtureData?.homeLineup : fixtureData?.awayLineup;
+  const allPlayers = [
+    ...(lineup?.startXi || []),
+    ...(lineup?.substitutes || []),
+  ].filter(Boolean);
+
+  document.querySelector('.ev-subst-picker-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'ev-subst-picker-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'ev-subst-picker-modal';
+  modal.addEventListener('click', e => e.stopPropagation());
+
+  const header = document.createElement('div');
+  header.className = 'ev-subst-picker-header';
+  const titleEl = document.createElement('span');
+  titleEl.className = 'ev-subst-picker-title';
+  titleEl.textContent = field === 'player' ? 'OUT 선수 선택' : 'IN 선수 선택';
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'ev-subst-picker-close';
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', closeOverlay);
+  header.append(titleEl, closeBtn);
+
+  const list = document.createElement('div');
+  list.className = 'ev-subst-picker-list';
+
+  let selectedPlayer = null;
+
+  if (!allPlayers.length) {
+    const empty = document.createElement('div');
+    empty.className = 'ev-subst-picker-empty';
+    empty.textContent = '선수 명단 데이터가 없습니다';
+    list.appendChild(empty);
+  } else {
+    const useLong = (typeof getSetting === 'function') && getSetting('lineup') === 'long';
+    allPlayers.forEach(player => {
+      const item = document.createElement('div');
+      item.className = 'ev-subst-picker-item';
+
+      const num = document.createElement('span');
+      num.className = 'ev-subst-picker-number';
+      num.textContent = player.number != null ? String(player.number) : '-';
+
+      const displayName = useLong
+        ? (player.nameKoLong || player.name || String(player.playerId ?? '-'))
+        : (player.name || player.nameKoLong || String(player.playerId ?? '-'));
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'ev-subst-picker-name';
+      nameEl.textContent = displayName;
+
+      const posEl = document.createElement('span');
+      posEl.className = 'ev-subst-picker-pos';
+      posEl.textContent = player.pos || '';
+
+      item.append(num, nameEl, posEl);
+      item.addEventListener('click', () => {
+        list.querySelectorAll('.ev-subst-picker-item.is-selected')
+          .forEach(el => el.classList.remove('is-selected'));
+        item.classList.add('is-selected');
+        selectedPlayer = { playerId: player.playerId, name: displayName };
+      });
+      list.appendChild(item);
+    });
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'ev-subst-picker-actions';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'ev-subst-picker-confirm';
+  confirmBtn.textContent = '확인';
+  confirmBtn.addEventListener('click', () => {
+    if (!selectedPlayer) return;
+    evSetSubstOverride(fixtureId, ev, field, selectedPlayer);
+    closeOverlay();
+    evRerenderCurrentPanel();
+    if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
+      applyLineupPanels(window._eventsLastData);
+    }
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'ev-subst-picker-cancel';
+  cancelBtn.textContent = '취소';
+  cancelBtn.addEventListener('click', closeOverlay);
+
+  actions.append(confirmBtn, cancelBtn);
+  modal.append(header, list, actions);
+  overlay.appendChild(modal);
+
+  function closeOverlay() {
+    overlay.remove();
+    document.removeEventListener('keydown', onEsc);
+  }
+  function onEsc(e) {
+    if (e.key === 'Escape') closeOverlay();
+  }
+  overlay.addEventListener('click', closeOverlay);
+  document.addEventListener('keydown', onEsc);
+
+  document.body.appendChild(overlay);
 }
 
 /** 이벤트 표시 시간 — extra가 있으면 "{elapsed}+{extra}'", 없으면 "{elapsed}'". */
@@ -595,19 +809,24 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   }
 
   if (evTypeIs(ev, 'subst')) {
+    const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
     const stack = document.createElement('span');
     stack.className = 'ev-text ev-text-stack';
 
     const inLine = document.createElement('span');
     inLine.className = 'ev-text-line ev-text-in';
     inLine.append('IN: ');
-    appendName(inLine, evPickPlayerName(ev, 'assist') || '?');
+    const inName = evGetSubstDisplayName(ev, 'assist', fixtureId);
+    if (inName) appendName(inLine, inName);
+    else inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
     appendInlineComment(inLine); // subst의 코멘트는 IN 라인 옆에
 
     const outLine = document.createElement('span');
     outLine.className = 'ev-text-line ev-text-out';
     outLine.append('OUT: ');
-    appendName(outLine, evPickPlayerName(ev, 'player') || '?');
+    const outName = evGetSubstDisplayName(ev, 'player', fixtureId);
+    if (outName) appendName(outLine, outName);
+    else outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
 
     stack.appendChild(inLine);
     stack.appendChild(outLine);
@@ -726,6 +945,12 @@ function evFitText(row) {
   }
 }
 
+/** 패널이 실제로 보이는 시점에 row 텍스트 피팅을 다시 계산한다. */
+function evRefitPanelRows(container) {
+  if (!container) return;
+  container.querySelectorAll('.ev-row').forEach(evFitText);
+}
+
 /** 현재 fixture 데이터로 이벤트 패널을 즉시 다시 그린다. */
 function evRerenderCurrentPanel() {
   if (window._eventsLastData) {
@@ -741,9 +966,29 @@ function evCloseFilterPopover() {
 }
 
 /** 패널 상단 제목 줄 ('이벤트' 라벨 + 우측 필터 버튼) DOM 빌드. */
-function evCreateTitleBar(filterOptions) {
+function evCreateTitleBar(filterOptions, container) {
   const titleBar = document.createElement('div');
   titleBar.className = 'ev-title-bar';
+
+  // lp-stat 컨텍스트에서는 cycle 버튼이 내비게이션을 담당 — HTH 토글 불필요
+  const isStatPanel = container?.closest?.('.lp-stat');
+
+  // 작은 메뉴는 HTH를 lazy-load하므로, 팀 ID만 있으면 전환 버튼을 먼저 노출한다.
+  const canLoadHth = typeof window.hthCanLoadForFixture === 'function'
+    && window.hthCanLoadForFixture(window._eventsLastData);
+  if (canLoadHth && !isStatPanel) {
+    const hthBtn = document.createElement('button');
+    hthBtn.type = 'button';
+    hthBtn.className = 'hth-ev-toggle-btn';
+    hthBtn.title = '상대 전적 보기';
+    hthBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>`;
+    hthBtn.addEventListener('click', () => {
+      if (typeof window.hthShowForFixture === 'function') {
+        window.hthShowForFixture(window._eventsLastData).catch(err => console.warn('HTH fetch failed:', err));
+      }
+    });
+    titleBar.appendChild(hthBtn);
+  }
 
   const title = document.createElement('div');
   title.className = 'ev-title';
@@ -903,7 +1148,7 @@ function applyEventsPanel(fixtureData, options = {}) {
       ? evCaptureRowRects(container.querySelector('.ev-list'))
       : new Map();
     // 각 컨테이너마다 별도의 titleBar 인스턴스 (DOM 노드는 공유 불가).
-    const titleBar = evCreateTitleBar(filterOptions);
+    const titleBar = evCreateTitleBar(filterOptions, container);
 
     // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
     if (!processedEvents.length) {
@@ -941,16 +1186,20 @@ function applyEventsPanel(fixtureData, options = {}) {
 
     // 레이아웃 후 폰트 자동 축소 — getBoundingClientRect 사용 가능 시점에 호출
     requestAnimationFrame(() => {
-      list.querySelectorAll('.ev-row').forEach(evFitText);
+      evRefitPanelRows(container);
       requestAnimationFrame(() => {
         if (shouldAnimate) evAnimateListInsertion(list, previousRects);
       });
     });
   });
+
+  // lp-stat cycle 버튼 상태 갱신 (Iter 7)
+  if (typeof window.lpStatUpdateBtn === 'function') window.lpStatUpdateBtn();
 }
 
 // 전역 노출 (fixture.js에서 호출)
 window.applyEventsPanel = applyEventsPanel;
+window.evRefitPanelRows = evRefitPanelRows;
 
 // settings 변경(이벤트 풀네임 토글 + 폰트 크기 + 팀 로고 모드) 시 즉시 다시 그림.
 // applyEventsPanel 호출 시 window._eventsLastData에 fixtureData 캐시됨.

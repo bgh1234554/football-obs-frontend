@@ -260,6 +260,8 @@ const regularGoals = events.filter(e =>
 | totalPasses | 총 패스 | Integer |  | O | `242` |
 | passesAccurate | 성공 패스 | Integer |  | O | `121` |
 | passesPercent | 패스 성공률 | String | `%` 포함 | O | `60%` |
+| expectedGoals | 기대 골 | String |  | O | `0.75` |
+| goalsPrevented | 막은 골 | String | | O | `-0.8` |
 
 #### `homeLineup`, `awayLineup`
 

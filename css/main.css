@@ -60,6 +60,8 @@
       --board-radius: 18px;
       --team-radius: 14px;
       --score-radius: 14px;
+      --panel-title-bar-height: 33px;
+      --panel-title-control-size: 22px;
       --home-logo-scale: 1;
       --away-logo-scale: 1;
       --home-logo-over: 36px;
@@ -91,15 +93,23 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      /* 배경 이미지가 있으면 색 위에 이미지 — 둘 다 --bg-ui/--bg-image CSS 변수로 제어. */
+      position: relative;
+      isolation: isolate;
       background-color: var(--bg-ui);
-      background-image: var(--bg-image, none);
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
       color: var(--text);
       font-family: var(--font-family);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-color: var(--bg-ui);
+      background-image: var(--bg-image, none);
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      pointer-events: none;
     }
 
     /* ========== 보드 스테이지 (상단 고정) ==========
@@ -536,7 +546,7 @@
     #page-tactics:fullscreen {
       background-color: var(--bg-ui);
       background-image: var(--bg-image, none);
-      background-size: cover;
+      background-size: 100% 100%;
       background-position: center;
       background-repeat: no-repeat;
       background-attachment: fixed;
@@ -896,7 +906,7 @@
        우상단 닫기(×) 버튼(top:6 right:8 / 26x26)과 겹치는 문제 해결.
        닫기 버튼 폭(26) + 여유(10) = 36px 만큼 필터 버튼을 왼쪽으로 밀어 클릭 가능하게.
        동시에 필터 popover도 같은 양만큼 좌측으로 이동해 화면 밖으로 빠지지 않도록 보정. */
-    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { right: 36px; }
+    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
     .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
@@ -979,7 +989,6 @@
 
     /* ── 점수판 CSS 변수가 위젯에 새어들어가지 않도록 격리 ── */
     #game-content, #standings-content, #team-content, #games-list {
-      font-family: var(--font-family) !important;
       --home-bg: initial;
       --away-bg: initial;
       --home-text: initial;
@@ -992,19 +1001,6 @@
       --half-bg: initial;
       --half-text: initial;
     }
-
-    /* ── Games: 패딩 제거해서 견본처럼 컴팩트하게 ── */
-    #games-list .game-list-header { padding: 6px 10px !important; font-size: 12px !important; }
-    #games-list game-item { display: flex !important; align-items: stretch !important; min-height: 0 !important; }
-    #games-list .game-infos { padding: 0 6px !important; font-size: 11px !important; min-width: 30px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-    #games-list .game-teams { flex: 1 !important; padding: 0 !important; gap: 0 !important; }
-    #games-list .team-info { padding: 0 8px !important; gap: 6px !important; }
-    #games-list .team-logo { width: 16px !important; height: 16px !important; }
-    #games-list .team-name { font-size: 12px !important; line-height: 1.4 !important; }
-    #games-list .game-score { display: flex !important; flex-direction: column !important; align-items: flex-end !important; justify-content: center !important; padding: 0 8px !important; gap: 0 !important; }
-    #games-list .score-home, #games-list .score-away { display: flex !important; align-items: center !important; gap: 4px !important; line-height: 1.4 !important; }
-    #games-list .score-home .score, #games-list .score-away .score { background: none !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; width: auto !important; height: auto !important; font-size: 12px !important; font-weight: 700 !important; }
-    #games-list .score-home-half, #games-list .score-away-half { font-size: 10px !important; opacity: 0.5 !important; }
 
     /* API Sports 위젯은 글자/크기/레이아웃은 유지하고 회색 테마 배경 토큰만 알파 처리. */
     #page-schedule :where(.panelBody, #games-list, #standings-content, #team-content, #game-content, api-sports-widget.initialized:not([data-type="config"])) {
@@ -1300,7 +1296,8 @@
        events-panel.js의 applyEventsPanel(fixture)이 .ev-list 트리를 [data-events-panel]에 주입.
        lp-events-s 안에서만 사용 (캠 작음 페이지). 캠 큼 페이지에는 안 표시 (사용자 요청).
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    .lp-events-s [data-events-panel] {
+    .lp-events-s [data-events-panel],
+    .lp-stat [data-events-panel] {
       width: 100%;
       height: 100%;
       min-height: 0;
@@ -1316,12 +1313,20 @@
     .ev-title-bar {
       flex: 0 0 auto;
       position: relative;
+      display: flex;
+      align-items: center;
+      height: var(--panel-title-bar-height);
+      min-height: var(--panel-title-bar-height);
+      box-sizing: border-box;
       padding: 4px 0 6px;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
       z-index: 4;
     }
+    /* ev-title-bar 전체 기준 정중앙 — 왼쪽 토글 버튼/오른쪽 필터와 무관하게 항상 중앙 */
     .ev-title {
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1329,17 +1334,18 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       color: rgba(255,255,255,.70);
+      pointer-events: none;
     }
     .ev-filter-shell {
-      position: absolute;
-      top: 50%;
-      right: 0;
-      transform: translateY(-50%);
+      flex: 0 0 auto;
+      position: relative;
+      margin-left: auto;
     }
     .ev-filter-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-height: var(--panel-title-control-size);
       border: 1px solid rgba(255,255,255,.12);
       border-radius: 999px;
       background: rgba(255,255,255,.06);
@@ -1479,6 +1485,166 @@
       font-size: 10px;
       font-variant-numeric: tabular-nums;
     }
+
+    /* 교체 OUT/IN 선수 null 시 표시되는 클릭 가능 버튼 */
+    .ev-subst-fix-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(249,115,22,.18);
+      border: 1px solid rgba(249,115,22,.5);
+      color: #fb923c;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 0 6px;
+      height: 18px;
+      cursor: pointer;
+      line-height: 1;
+      transition: background .14s ease, border-color .14s ease;
+      vertical-align: middle;
+    }
+    .ev-subst-fix-btn:hover {
+      background: rgba(249,115,22,.32);
+      border-color: rgba(249,115,22,.75);
+    }
+
+    /* 교체 선수 선택 모달 */
+    .ev-subst-picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 9200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ev-subst-picker-modal {
+      background: #1e1e2a;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      width: 320px;
+      max-width: calc(100vw - 32px);
+      height: clamp(260px, 55vh, 480px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.55);
+    }
+    .ev-subst-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.09);
+    }
+    .ev-subst-picker-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,255,255,.9);
+    }
+    .ev-subst-picker-close {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,.5);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .ev-subst-picker-close:hover { color: rgba(255,255,255,.9); background: rgba(255,255,255,.08); }
+    .ev-subst-picker-list {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.2) transparent;
+    }
+    .ev-subst-picker-list::-webkit-scrollbar { width: 5px; }
+    .ev-subst-picker-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+    .ev-subst-picker-empty {
+      padding: 20px;
+      text-align: center;
+      color: rgba(255,255,255,.35);
+      font-size: 12px;
+    }
+    .ev-subst-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .ev-subst-picker-item:hover {
+      background: rgba(255,255,255,.07);
+    }
+    .ev-subst-picker-item.is-selected {
+      background: rgba(34,197,94,.14);
+      border-color: rgba(34,197,94,.4);
+    }
+    .ev-subst-picker-number {
+      flex: 0 0 26px;
+      text-align: right;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,.5);
+      font-variant-numeric: tabular-nums;
+    }
+    .ev-subst-picker-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 13px;
+      color: rgba(255,255,255,.9);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ev-subst-picker-pos {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,.35);
+    }
+    .ev-subst-picker-actions {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px 12px;
+      border-top: 1px solid rgba(255,255,255,.09);
+    }
+    .ev-subst-picker-confirm {
+      flex: 1 1 auto;
+      background: rgba(34,197,94,.22);
+      border: 1px solid rgba(34,197,94,.45);
+      color: #86efac;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 7px 0;
+      cursor: pointer;
+      transition: background .14s ease;
+    }
+    .ev-subst-picker-confirm:hover { background: rgba(34,197,94,.35); }
+    .ev-subst-picker-cancel {
+      flex: 0 0 auto;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.65);
+      font-size: 13px;
+      border-radius: 6px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background .14s ease;
+    }
+    .ev-subst-picker-cancel:hover { background: rgba(255,255,255,.12); }
+
     .ev-list {
       flex: 1 1 0;
       min-height: 0;
@@ -1505,6 +1671,7 @@
     }
 
     .ev-row {
+      flex: 0 0 auto;
       display: flex;
       align-items: stretch;
       background: rgba(255,255,255,.04);
@@ -1714,6 +1881,31 @@
        stats-panel.js가 [data-stat-panel] 컨테이너에 .st-wrap 트리 주입.
        lp-stat(캠 큼) + lp-stat-s(캠 작음) 두 곳 동일 데이터, 독립 페이지 상태.
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* lp-stat: cycle 버튼 position:absolute 기준점 */
+    .lp-stat { position: relative; }
+    /* lp-stat 패널 순환 버튼 — 세 패널(스탯/이벤트/상대전적) 사이 전환 */
+    .lp-stat-cycle-btn {
+      position: absolute;
+      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      left: 8px;
+      z-index: 20;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,.72);
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      transition: background 120ms;
+    }
+    .lp-stat-cycle-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+    .lp-stat-cycle-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+
     .lp-stat [data-stat-panel],
     .lp-stat-s [data-stat-panel] {
       width: 100%;
@@ -1726,7 +1918,10 @@
       color: #f0f0f0;
       font-family: var(--font-family);
     }
-    body.low-panel-alpha :is(.lp-events-s [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
+    body.low-panel-alpha :is(.lp-events-s [data-events-panel], .lp-stat [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
+      text-shadow: var(--low-panel-text-outline);
+    }
+    body.low-panel-alpha :is(.lp-events-s [data-hth-panel], .lp-stat [data-hth-panel]) :is(.ev-title, .hth-team-name, .hth-score-main, .hth-meta) {
       text-shadow: var(--low-panel-text-outline);
     }
     body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-empty, .st-val:not(.is-emphasized)) {
@@ -1738,11 +1933,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      height: var(--panel-title-bar-height);
+      min-height: var(--panel-title-bar-height);
+      box-sizing: border-box;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
       color: rgba(255,255,255,.70);
-      padding: 4px 0 6px;
+      padding: 0;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
     }
