@@ -146,6 +146,7 @@ function evSubstEventKey(ev) {
     Number(ev?.extra ?? 0),
     Number(ev?.playerId ?? 0),
     Number(ev?.assistId ?? 0),
+    ev?.id ?? ev?.origIndex ?? '',
   ].join('|');
 }
 
@@ -260,7 +261,7 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   closeBtn.type = 'button';
   closeBtn.className = 'ev-subst-picker-close';
   closeBtn.textContent = '✕';
-  closeBtn.addEventListener('click', () => overlay.remove());
+  closeBtn.addEventListener('click', closeOverlay);
   header.append(titleEl, closeBtn);
 
   const list = document.createElement('div');
@@ -316,7 +317,7 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   confirmBtn.addEventListener('click', () => {
     if (!selectedPlayer) return;
     evSetSubstOverride(fixtureId, ev, field, selectedPlayer);
-    overlay.remove();
+    closeOverlay();
     evRerenderCurrentPanel();
     if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
       applyLineupPanels(window._eventsLastData);
@@ -327,18 +328,21 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   cancelBtn.type = 'button';
   cancelBtn.className = 'ev-subst-picker-cancel';
   cancelBtn.textContent = '취소';
-  cancelBtn.addEventListener('click', () => overlay.remove());
+  cancelBtn.addEventListener('click', closeOverlay);
 
   actions.append(confirmBtn, cancelBtn);
   modal.append(header, list, actions);
   overlay.appendChild(modal);
 
-  overlay.addEventListener('click', () => overlay.remove());
-  document.addEventListener('keydown', function onEsc(e) {
-    if (e.key !== 'Escape') return;
+  function closeOverlay() {
     overlay.remove();
     document.removeEventListener('keydown', onEsc);
-  });
+  }
+  function onEsc(e) {
+    if (e.key === 'Escape') closeOverlay();
+  }
+  overlay.addEventListener('click', closeOverlay);
+  document.addEventListener('keydown', onEsc);
 
   document.body.appendChild(overlay);
 }

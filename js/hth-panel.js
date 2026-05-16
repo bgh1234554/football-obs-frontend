@@ -16,6 +16,7 @@ const _hthState = {
   fetchedAt: 0,
   expiresAt: 0,
   fetchPromise: null,
+  requestSeq: 0,       // 요청마다 증가 — in-flight 구 응답 식별용
 };
 window._hthState = _hthState;
 
@@ -375,6 +376,7 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
 
   const fetchedAt = Date.now();
   _hthState.cacheKey = cacheKey;
+  const mySeq = ++_hthState.requestSeq;
   const requestPromise = fetchHeadToHead(ids.homeTeamId, ids.awayTeamId, { silent: true })
     .then(hthData => {
       const entry = {
@@ -386,13 +388,13 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
       _hthCache.set(cacheKey, entry);
       hthPersistCache();
 
-      if (hthGetCacheKey() === cacheKey) {
+      if (_hthState.requestSeq === mySeq && hthGetCacheKey() === cacheKey) {
         applyHthPanel(hthData, data, entry);
       }
       return hthData;
     })
     .catch(err => {
-      if (hthGetCacheKey() === cacheKey && options.renderLoading) {
+      if (_hthState.requestSeq === mySeq && hthGetCacheKey() === cacheKey && options.renderLoading) {
         hthRenderStatus('상대 전적을 불러오지 못했습니다');
       }
       throw err;
@@ -455,6 +457,7 @@ function hthReset() {
   _hthState.fetchedAt = 0;
   _hthState.expiresAt = 0;
   _hthState.fetchPromise = null;
+  _hthState.requestSeq++;
   _hthState.mode = 'events';
   hthUpdateVisibility();
   document.querySelectorAll('[data-hth-panel]').forEach(el => { el.replaceChildren(); });

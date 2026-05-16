@@ -309,6 +309,7 @@ function pmBuildMatchStatRows(s) {
 let _pmSznData = null;
 let _pmSznKeys = [];
 let _pmSznIdx  = 0;
+let _pmSznRequestId = 0;
 
 async function pmShowSeasonStats(playerId, player) {
   const displayName = getPlayerNickname(playerId)
@@ -336,12 +337,13 @@ async function pmShowSeasonStats(playerId, player) {
     if (e.target === e.currentTarget) pmHideAll();
   });
 
+  const myReqId = ++_pmSznRequestId;
   try {
     const data = await (typeof fetchPlayerStats === 'function'
       ? fetchPlayerStats(playerId)
       : Promise.reject(new Error('fetchPlayerStats not available')));
 
-    if (!document.getElementById('pmBackdrop')) return;
+    if (!document.getElementById('pmBackdrop') || myReqId !== _pmSznRequestId) return;
 
     _pmSznData = data;
     _pmSznKeys = Object.keys(data.statistics || {}).sort().reverse();
