@@ -941,6 +941,12 @@ function evFitText(row) {
   }
 }
 
+/** 패널이 실제로 보이는 시점에 row 텍스트 피팅을 다시 계산한다. */
+function evRefitPanelRows(container) {
+  if (!container) return;
+  container.querySelectorAll('.ev-row').forEach(evFitText);
+}
+
 /** 현재 fixture 데이터로 이벤트 패널을 즉시 다시 그린다. */
 function evRerenderCurrentPanel() {
   if (window._eventsLastData) {
@@ -956,9 +962,29 @@ function evCloseFilterPopover() {
 }
 
 /** 패널 상단 제목 줄 ('이벤트' 라벨 + 우측 필터 버튼) DOM 빌드. */
-function evCreateTitleBar(filterOptions) {
+function evCreateTitleBar(filterOptions, container) {
   const titleBar = document.createElement('div');
   titleBar.className = 'ev-title-bar';
+
+  // lp-stat 컨텍스트에서는 cycle 버튼이 내비게이션을 담당 — HTH 토글 불필요
+  const isStatPanel = container?.closest?.('.lp-stat');
+
+  // 작은 메뉴는 HTH를 lazy-load하므로, 팀 ID만 있으면 전환 버튼을 먼저 노출한다.
+  const canLoadHth = typeof window.hthCanLoadForFixture === 'function'
+    && window.hthCanLoadForFixture(window._eventsLastData);
+  if (canLoadHth && !isStatPanel) {
+    const hthBtn = document.createElement('button');
+    hthBtn.type = 'button';
+    hthBtn.className = 'hth-ev-toggle-btn';
+    hthBtn.title = '상대 전적 보기';
+    hthBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>`;
+    hthBtn.addEventListener('click', () => {
+      if (typeof window.hthShowForFixture === 'function') {
+        window.hthShowForFixture(window._eventsLastData).catch(err => console.warn('HTH fetch failed:', err));
+      }
+    });
+    titleBar.appendChild(hthBtn);
+  }
 
   const title = document.createElement('div');
   title.className = 'ev-title';
@@ -1118,7 +1144,7 @@ function applyEventsPanel(fixtureData, options = {}) {
       ? evCaptureRowRects(container.querySelector('.ev-list'))
       : new Map();
     // 각 컨테이너마다 별도의 titleBar 인스턴스 (DOM 노드는 공유 불가).
-    const titleBar = evCreateTitleBar(filterOptions);
+    const titleBar = evCreateTitleBar(filterOptions, container);
 
     // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
     if (!processedEvents.length) {
@@ -1156,16 +1182,20 @@ function applyEventsPanel(fixtureData, options = {}) {
 
     // 레이아웃 후 폰트 자동 축소 — getBoundingClientRect 사용 가능 시점에 호출
     requestAnimationFrame(() => {
-      list.querySelectorAll('.ev-row').forEach(evFitText);
+      evRefitPanelRows(container);
       requestAnimationFrame(() => {
         if (shouldAnimate) evAnimateListInsertion(list, previousRects);
       });
     });
   });
+
+  // lp-stat cycle 버튼 상태 갱신 (Iter 7)
+  if (typeof window.lpStatUpdateBtn === 'function') window.lpStatUpdateBtn();
 }
 
 // 전역 노출 (fixture.js에서 호출)
 window.applyEventsPanel = applyEventsPanel;
+window.evRefitPanelRows = evRefitPanelRows;
 
 // settings 변경(이벤트 풀네임 토글 + 폰트 크기 + 팀 로고 모드) 시 즉시 다시 그림.
 // applyEventsPanel 호출 시 window._eventsLastData에 fixtureData 캐시됨.

@@ -497,7 +497,7 @@ function pmRenderSeasonPage() {
         <th colspan="3" class="pm-th-group-cell">${sl('groupPasses','패스')}</th>
         <th colspan="3" class="pm-th-group-cell">${sl('groupDefense','수비')}</th>
         <th colspan="2" class="pm-th-group-cell">${sl('groupDribbles','드리블')}</th>
-        <th colspan="2" class="pm-th-group-cell">${sl('groupDuels','결투')}</th>
+        <th colspan="2" class="pm-th-group-cell">${sl('groupDuels','경합')}</th>
         <th colspan="2" class="pm-th-group-cell">${sl('groupFouls','파울')}</th>
         <th colspan="2" class="pm-th-group-cell">${sl('groupCards','카드')}</th>
       </tr>

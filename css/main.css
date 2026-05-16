@@ -60,6 +60,8 @@
       --board-radius: 18px;
       --team-radius: 14px;
       --score-radius: 14px;
+      --panel-title-bar-height: 33px;
+      --panel-title-control-size: 22px;
       --home-logo-scale: 1;
       --away-logo-scale: 1;
       --home-logo-over: 36px;
@@ -904,7 +906,7 @@
        우상단 닫기(×) 버튼(top:6 right:8 / 26x26)과 겹치는 문제 해결.
        닫기 버튼 폭(26) + 여유(10) = 36px 만큼 필터 버튼을 왼쪽으로 밀어 클릭 가능하게.
        동시에 필터 popover도 같은 양만큼 좌측으로 이동해 화면 밖으로 빠지지 않도록 보정. */
-    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { right: 36px; }
+    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
     .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
@@ -1294,7 +1296,8 @@
        events-panel.js의 applyEventsPanel(fixture)이 .ev-list 트리를 [data-events-panel]에 주입.
        lp-events-s 안에서만 사용 (캠 작음 페이지). 캠 큼 페이지에는 안 표시 (사용자 요청).
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-    .lp-events-s [data-events-panel] {
+    .lp-events-s [data-events-panel],
+    .lp-stat [data-events-panel] {
       width: 100%;
       height: 100%;
       min-height: 0;
@@ -1310,12 +1313,20 @@
     .ev-title-bar {
       flex: 0 0 auto;
       position: relative;
+      display: flex;
+      align-items: center;
+      height: var(--panel-title-bar-height);
+      min-height: var(--panel-title-bar-height);
+      box-sizing: border-box;
       padding: 4px 0 6px;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
       z-index: 4;
     }
+    /* ev-title-bar 전체 기준 정중앙 — 왼쪽 토글 버튼/오른쪽 필터와 무관하게 항상 중앙 */
     .ev-title {
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1323,17 +1334,18 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       color: rgba(255,255,255,.70);
+      pointer-events: none;
     }
     .ev-filter-shell {
-      position: absolute;
-      top: 50%;
-      right: 0;
-      transform: translateY(-50%);
+      flex: 0 0 auto;
+      position: relative;
+      margin-left: auto;
     }
     .ev-filter-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      min-height: var(--panel-title-control-size);
       border: 1px solid rgba(255,255,255,.12);
       border-radius: 999px;
       background: rgba(255,255,255,.06);
@@ -1659,6 +1671,7 @@
     }
 
     .ev-row {
+      flex: 0 0 auto;
       display: flex;
       align-items: stretch;
       background: rgba(255,255,255,.04);
@@ -1868,6 +1881,31 @@
        stats-panel.js가 [data-stat-panel] 컨테이너에 .st-wrap 트리 주입.
        lp-stat(캠 큼) + lp-stat-s(캠 작음) 두 곳 동일 데이터, 독립 페이지 상태.
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    /* lp-stat: cycle 버튼 position:absolute 기준점 */
+    .lp-stat { position: relative; }
+    /* lp-stat 패널 순환 버튼 — 세 패널(스탯/이벤트/상대전적) 사이 전환 */
+    .lp-stat-cycle-btn {
+      position: absolute;
+      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      left: 8px;
+      z-index: 20;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,.72);
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      transition: background 120ms;
+    }
+    .lp-stat-cycle-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+    .lp-stat-cycle-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+
     .lp-stat [data-stat-panel],
     .lp-stat-s [data-stat-panel] {
       width: 100%;
@@ -1880,7 +1918,10 @@
       color: #f0f0f0;
       font-family: var(--font-family);
     }
-    body.low-panel-alpha :is(.lp-events-s [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
+    body.low-panel-alpha :is(.lp-events-s [data-events-panel], .lp-stat [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
+      text-shadow: var(--low-panel-text-outline);
+    }
+    body.low-panel-alpha :is(.lp-events-s [data-hth-panel], .lp-stat [data-hth-panel]) :is(.ev-title, .hth-team-name, .hth-score-main, .hth-meta) {
       text-shadow: var(--low-panel-text-outline);
     }
     body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-empty, .st-val:not(.is-emphasized)) {
@@ -1892,11 +1933,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      height: var(--panel-title-bar-height);
+      min-height: var(--panel-title-bar-height);
+      box-sizing: border-box;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
       color: rgba(255,255,255,.70);
-      padding: 4px 0 6px;
+      padding: 0;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
     }

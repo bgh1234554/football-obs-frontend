@@ -1,6 +1,57 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [탭/페이지 전환] 탭바 숨기기(H키)와 탭 클릭·단축키 페이지 전환
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  // --- schedule 탭 위젯 API 호출 차단 (비활성 시 쿼터 낭비 방지) ---
+  // 위젯은 DOM 제거 후 재삽입 시 재초기화가 안 되므로, DOM은 유지하되
+  // 비활성 탭에서의 fetch 호출을 빈 응답으로 가로채 폴링을 실질적으로 중단시킨다.
+  const _WIDGET_API_HOST = 'obs-scoreline-overlay.b-cdn.net';
+  let _widgetBlocked = false;
+
+  (function () {
+    const _origFetch = window.fetch.bind(window);
+    window.fetch = function (resource, init) {
+      if (_widgetBlocked) {
+        const url = resource instanceof Request ? resource.url : String(resource);
+        if (url.includes(_WIDGET_API_HOST)) {
+          return Promise.resolve(new Response('{"results":0,"response":[]}', {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }));
+        }
+      }
+      return _origFetch(resource, init);
+    };
+  })();
+
+  // --- schedule 탭 위젯 lazy mount (첫 방문 시 한 번만 삽입, 이후 유지) ---
+  let _scheduleWidgetMounted = false;
+
+  function _scheduleWidgetMount() {
+    if (_scheduleWidgetMounted) return;
+    _scheduleWidgetMounted = true;
+
+    const leaguesBody = document.getElementById('widget-leagues-body');
+    if (leaguesBody) {
+      const w = document.createElement('api-sports-widget');
+      w.setAttribute('data-type', 'leagues');
+      leaguesBody.appendChild(w);
+    }
+
+    const gamesList = document.getElementById('games-list');
+    if (gamesList) {
+      const w = document.createElement('api-sports-widget');
+      w.setAttribute('data-type', 'games');
+      gamesList.appendChild(w);
+    }
+
+    const standingsContent = document.getElementById('standings-content');
+    if (standingsContent) {
+      const w = document.createElement('api-sports-widget');
+      w.setAttribute('data-type', 'standings');
+      standingsContent.appendChild(w);
+    }
+  }
   const tabsEl = document.getElementById('tabsBar');
   const pagesEl = document.querySelector('.pages');
   let tabsHidden = false;
@@ -99,6 +150,12 @@
   function activatePage(page, options = {}){
     const nextPage = PAGE_TO_ROUTE[page] ? page : 'main-big';
     const { syncRoute = true, historyMode = 'push' } = options;
+    if (nextPage === 'schedule') {
+      _widgetBlocked = false;
+      _scheduleWidgetMount();
+    } else {
+      _widgetBlocked = true;
+    }
     tabButtons.forEach(b=>b.classList.toggle('active', b.dataset.page===nextPage));
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     const el2=document.getElementById(`page-${nextPage}`);

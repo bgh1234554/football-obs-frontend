@@ -538,6 +538,9 @@
         state.pkLastExitedAt = 0;
         // 다른 경기로 전환 — 깜빡임 비교용 스냅샷도 초기화 (이전 경기와 비교하면 의미 없음)
         _flashSnapshot = null;
+        // HTH 패널 초기화 (Iter 7)
+        if (typeof window.hthReset === 'function') window.hthReset();
+        if (typeof window.lpStatReset === 'function') window.lpStatReset();
       }
 
       _lastFixtureData = data;
@@ -559,8 +562,17 @@
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
       if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+      // HTH 자동 전환: 이벤트가 생기면 hth → events (Iter 7)
+      if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
       if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
       if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
+      // HTH는 lazy-load. 새 fixture에서 이벤트가 없을 때만 대체 메인 패널용으로 자동 조회한다.
+      const hasEvents = Array.isArray(data.events) && data.events.length > 0;
+      if (previousFixtureId !== normalizedFixtureId
+        && !hasEvents
+        && typeof window.hthShowForFixture === 'function') {
+        window.hthShowForFixture(data).catch(err => console.warn('HTH fetch failed:', err));
+      }
 
       const m = data.matchInfo || {};
       const homeName = pickMatchTeamName(m, 'home');
@@ -885,8 +897,14 @@
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
         if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+        if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
         if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
         if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
+        // 캐시 복원에서도 events가 없을 때만 HTH를 대체 메인 패널로 lazy-load한다.
+        if ((!Array.isArray(data.events) || data.events.length === 0)
+          && typeof window.hthShowForFixture === 'function') {
+          window.hthShowForFixture(data).catch(() => {});
+        }
         const m = data.matchInfo;
         const homeName = pickMatchTeamName(m, 'home');
         const awayName = pickMatchTeamName(m, 'away');

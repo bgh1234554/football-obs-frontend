@@ -1299,10 +1299,19 @@ function buildTacticsPayload(effectiveData) {
 }
 
 /**
- * 전술판에서 fixture 기반 라인업 토큰을 떼어내고 팀명만 갱신.
- * 라인업이 더 이상 유효하지 않거나(수동 모드 토글 등) clear 동작에서 호출.
+ * fixture 기반 라인업이 사라졌을 때 전술판을 기본 토큰 상태로 되돌린다.
+ * 경기 데이터가 없어도 토큰은 유지하고, 이름만 포지션 폴백으로 표시한다.
  */
 function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
+  if (
+    typeof tacticsApplyLineup === 'function'
+    && typeof TACTICS_MOCK_LINEUP !== 'undefined'
+    && TACTICS_MOCK_LINEUP
+  ) {
+    tacticsApplyLineup(TACTICS_MOCK_LINEUP);
+    return;
+  }
+
   const pitch = document.getElementById('tactics-pitch');
   if (pitch) pitch.querySelectorAll('.tactics-token, .tactics-ball-token').forEach(node => node.remove());
 

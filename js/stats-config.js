@@ -29,7 +29,7 @@ window.STATS_CONFIG = {
     shotsInsidebox:   '박스 안 슈팅',
     shotsOutsidebox:  '박스 바깥 슈팅',
     goalkeeperSaves:  '세이브 수',
-    goalsPrevented:   '막은 골 수',
+    goalsPrevented:   '기대 실점 대비 선방',
   },
 
   // 표시 순서 — 사용자 지정 순서 그대로
