@@ -239,11 +239,11 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">라인업 분할 (캠 큼)</span>
-              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다.</span>
+              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다. OFF면 캠 작음과 같은 한 피치로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="splitLineup" /><span class="sp-switch-slider"></span></label>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="splitLineup" checked/><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
@@ -317,9 +317,33 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">등번호</span>
+              <span class="sp-label-sub">라인업에 선수 사진이 보일 경우, 이름 라벨 앞 등번호를 표시합니다.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="lineupShowNumber" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
+          <div class="sp-section-title">캠 큼 우측 패널</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">팬 반응·스탯 패널 연결</span>
+              <span class="sp-label-sub">ON이면 두 패널이 칼럼을 꽉 채워 함께 리사이즈됩니다. OFF면 각각 독립.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="bigPanelLinked" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+
           <div class="sp-section-title">이벤트 패널</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -340,7 +364,7 @@
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="statsAutoSwipe" /><span class="sp-switch-slider"></span></label>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="statsAutoSwipe" checked/><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>

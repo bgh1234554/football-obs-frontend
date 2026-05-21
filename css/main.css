@@ -1217,7 +1217,7 @@
       background: var(--lineup-panel-bg);
     }
     .layout-big .lp-cam-big { flex: 1; }
-    .layout-big .lp-col     { flex: 0 0 18%; }
+    .layout-big .lp-col     { flex: 0 0 var(--lp-big-col-width, 18%); position: relative; overflow: hidden; }
     .layout-big .lp-events,
     .layout-big .lp-chat-big,
     .layout-big .lp-stat    { flex: 1; }

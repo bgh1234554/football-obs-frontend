@@ -20,9 +20,9 @@ const SETTINGS_DEFAULTS = {
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
                       // long 모드(풀네임)는 CSS에서 0.875× 비율 유지.
   // 라인업 분할 (캠 큼 전용) — ON시 양 팀을 한 피치에 합쳐서 그리지 않고
-  // 위(홈)/아래(원정) 두 개의 풀 피치(각 62:105 비율, 패널 전체는 62:210)로 분리.
-  // 패널 폭이 줄어 cam이 더 넓어지고 각 팀 가독성 향상. 작은 캠 패널은 영향 없음.
-  splitLineup: 'off',
+  // 위(홈)/아래(원정) 두 개의 풀 피치로 분리. OFF면 캠 작음과 같은 combined 피치를 사용.
+  // 작은 캠 패널은 영향 없음.
+  splitLineup: 'on',
   // 라인업 피치 안의 리그 로고 워시 위치. 센터 서클(default)/왼쪽 사이드라인/오른쪽 사이드라인.
   // 분할 모드에서는 각 피치마다 똑같이 적용된다.
   leagueLogoPos: 'center',
@@ -35,7 +35,7 @@ const SETTINGS_DEFAULTS = {
   mainPage: 'big',
   fanReaction: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
-  statsAutoSwipe: 'off',
+  statsAutoSwipe: 'on',
   statsAutoSwipeSec: 10,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
@@ -49,6 +49,7 @@ const SETTINGS_DEFAULTS = {
   lineupShowCards: 'on',     // 옐로/레드 카드
   lineupShowRating: 'off',   // 평점 박스
   lineupShowSubTime: 'off',  // 교체 IN 시간(72' 등)
+  lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
   // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
   // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
   // color input은 항상 소문자 hex를 반환하므로 default도 소문자로 통일 — 비교/리셋 일관성.
@@ -89,6 +90,8 @@ const SETTINGS_DEFAULTS = {
   // 평점은 항상 마젠타 고정(lineup-events.js), 이벤트 라벨/막대는 항상 마젠타 고정(CSS),
   // 교체 IN 마커는 항상 파랑 고정(CSS).
   greenscreenIntensity: 'mild',
+  // 캠 큰 우측 패널 연결. on=두 패널 합계가 칼럼 높이를 꽉 채움, off=각 패널 독립 리사이즈.
+  bigPanelLinked: 'on',
 };
 
 // 배경 이미지 파일 크기 제한.
@@ -315,7 +318,9 @@ function isValidSetting(category, value) {
     || category === 'lineupShowCards'
     || category === 'lineupShowRating'
     || category === 'lineupShowSubTime'
-    || category === 'greenscreen') {
+    || category === 'lineupShowNumber'
+    || category === 'greenscreen'
+    || category === 'bigPanelLinked') {
     return value === 'on' || value === 'off';
   }
   if (category === 'statsAutoSwipeSec') {
@@ -463,7 +468,8 @@ function setSetting(category, value) {
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
-    || category === 'lineupShowRating' || category === 'lineupShowSubTime') {
+    || category === 'lineupShowRating' || category === 'lineupShowSubTime'
+    || category === 'lineupShowNumber') {
     applyLayoutSettings();
   }
   // Iter 5-7: 배경 색/이미지 변경 → 즉시 :root CSS 변수 갱신.
@@ -474,6 +480,9 @@ function setSetting(category, value) {
     || category === 'pitchAlpha'
     || category === 'tacticsAlpha') {
     applyBackgroundSettings();
+  }
+  if (category === 'bigPanelLinked') {
+    window.applyStoredBigPanelHeights?.();
   }
   // Iter 5-7: 그린스크린 토글 또는 강도 변경 → 모든 색상(피치 톤/배경/팀컬러/평점) 일괄 재적용.
   if (category === 'greenscreen' || category === 'greenscreenIntensity') {
@@ -820,7 +829,9 @@ function getSwitchSides(category) {
     || category === 'lineupShowCards'
     || category === 'lineupShowRating'
     || category === 'lineupShowSubTime'
-    || category === 'greenscreen') {
+    || category === 'lineupShowNumber'
+    || category === 'greenscreen'
+    || category === 'bigPanelLinked') {
     return { off: 'off', on: 'on' };
   }
   return { off: 'short', on: 'long' };

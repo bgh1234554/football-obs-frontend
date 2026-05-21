@@ -1,7 +1,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [라인업/칼럼 마우스 드래그 리사이즈]
 //
-// 두 종류의 리사이즈를 한 파일에서 관리한다.
+// 세 종류의 리사이즈를 한 파일에서 관리한다.
 //
 // (1) 캠 큼 페이지 라인업 패널 (.layout-big .lp-lineup)
 //   - 우상단 핸들(.lp-lineup-resize)을 위/아래로 드래그.
@@ -14,6 +14,14 @@
 //   - 좌(events-stat)와 우(cam-chat) 폭 비율을 동시에 조정. 라인업/벤치는 영향 없음.
 //   - 더블클릭 시 기본 비율로 복원.
 //   - 비율은 별도 키(obs.smallLayout.eventsStatRatio.v1)에 영속화.
+//
+// (3) 캠 큼 페이지 우측 칼럼(lp-col) — 너비 + 내부 패널 세로 분할
+//   (a) 왼쪽 경계 핸들(.lp-big-col-resize): 드래그로 칼럼 폭 자유 조정.
+//       --lp-big-col-width CSS 변수(px)로 .layout-big에 적용.
+//       더블클릭 → 18% 기본값 복원.  obs.bigLayout.colWidth.v1 에 영속화.
+//   (b) 패널별 개별 핸들: lp-chat-big 하단(.lp-big-chat-resize) + lp-stat 상단(.lp-big-stat-resize).
+//       각 패널에서 독립적으로 높이 조정. 상대 패널은 남은 공간을 자동 흡수(겹침 불가).
+//       더블클릭 → 50/50 기본값 복원.  obs.bigLayout.colSplit.v1 에 영속화.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const LINEUP_RESIZE_MIN = 50;
@@ -38,6 +46,7 @@ function ensureLineupResizeHandles() {
     handle.setAttribute('aria-hidden', 'true');
     handle.title = '드래그하여 라인업 크기 조정';
     handle.addEventListener('pointerdown', startLineupResize);
+    handle.addEventListener('dblclick', e => resetLineupAllSizes(e, panel));
     panel.appendChild(handle);
   });
 }
@@ -300,7 +309,16 @@ function startLineupResize(event) {
   const layoutHeight = layout.clientHeight;
   if (!layoutHeight) return;
 
-  const startScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
+  const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
+  const hasEdgeOverride = panel.classList.contains('has-w-override')
+    || panel.classList.contains('has-h-override');
+  const currentHeightPct = Math.round((panel.getBoundingClientRect().height / layoutHeight) * 100);
+  const startScalePct = hasEdgeOverride
+    ? Math.max(
+      LINEUP_RESIZE_MIN,
+      Math.min(LINEUP_RESIZE_MAX, currentHeightPct || storedScalePct),
+    )
+    : storedScalePct;
   const startY = event.clientY;
 
   panel.classList.add('is-resizing');
@@ -308,6 +326,7 @@ function startLineupResize(event) {
   handle.setPointerCapture?.(event.pointerId);
 
   let lastPct = startScalePct;
+  let releasedEdgeOverrides = false;
 
   const onMove = (e) => {
     // 1) 포인터 이동량을 layout 높이 기준 백분율로 환산한다.
@@ -317,6 +336,18 @@ function startLineupResize(event) {
     let next = startScalePct + deltaPct;
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
     if (next === lastPct) return;
+
+    // 엣지 리사이즈 뒤 남은 개별 width/height override가 있으면
+    // 첫 대각선 드래그 순간에 해제해 비율 스케일이 다시 주도권을 갖게 한다.
+    if (!releasedEdgeOverrides && hasEdgeOverride) {
+      _lineupEdgeClear(LINEUP_EDGE_W_KEY);
+      _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+      _lineupClearWidthOverride(panel);
+      _lineupClearHeightOverride(panel);
+      document.documentElement.style.setProperty('--lp-lineup-scale', String(startScalePct / 100));
+      releasedEdgeOverrides = true;
+    }
+
     lastPct = next;
 
     // 2) 드래그 중에는 root CSS 변수만 바꿔 미리보기를 즉시 반영한다.
@@ -333,7 +364,7 @@ function startLineupResize(event) {
     panel.classList.remove('is-resizing');
     document.body.classList.remove('lp-lineup-resizing');
     handle.releasePointerCapture?.(event.pointerId);
-    if (typeof setSetting === 'function' && lastPct !== startScalePct) {
+    if (typeof setSetting === 'function' && (lastPct !== storedScalePct || releasedEdgeOverrides)) {
       // setSetting 내부에서 applyLayoutSettings → fitLineupNamePills 호출되므로 별도 호출 불필요.
       setSetting('lineupScale', lastPct);
     } else if (typeof window.fitLineupNamePills === 'function') {
@@ -347,9 +378,764 @@ function startLineupResize(event) {
   document.addEventListener('pointercancel', onUp);
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// (3) 캠 큰 우측 패널(팬 반응 / 경기 스탯) 독립 엣지 리사이즈
+//   - bigPanelLinked=on (ON):  두 패널 칼럼 꽉 채움, 너비 공유, 높이 연동
+//   - bigPanelLinked=off (OFF): 각 패널 높이·너비 독립, 사이 빈 공간 가능
+//   - 오른쪽 변은 항상 고정 (right: 0)
+//   - 스탯 패널 하단은 항상 칼럼 바닥 고정
+//   - 더블클릭: 초기화
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const BIG_COL_WIDTH_KEY = 'obs.bigLayout.colWidth.v1';
+const BIG_CHAT_H_KEY    = 'obs.bigLayout.chatH.v1';
+const BIG_STAT_H_KEY    = 'obs.bigLayout.statH.v1';
+const BIG_CHAT_W_KEY    = 'obs.bigLayout.chatW.v1';
+const BIG_STAT_W_KEY    = 'obs.bigLayout.statW.v1';
+const BIG_PANEL_MIN_H   = 60;
+const BIG_PANEL_MIN_W   = 100;
+const BIG_COL_GAP       = 6; // .lp-col { gap: 6px } — ON 모드 높이 계산 시 차감
+
+function isBigPanelLinked() {
+  return typeof getSetting === 'function' ? getSetting('bigPanelLinked') !== 'off' : false;
+}
+
+// ── localStorage 헬퍼 ──
+function _bigLoad(key, min) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null || raw === '') return null;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= min ? v : null;
+  } catch { return null; }
+}
+function _bigSave(key, px) {
+  try { localStorage.setItem(key, String(Math.round(px))); } catch {}
+}
+function _bigClear(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
+// ── CSS 변수로 칼럼 너비 적용 ──
+function applyBigColWidth(layout, px) {
+  if (!layout) return;
+  layout.style.setProperty('--lp-big-col-width', `${Math.round(px)}px`);
+}
+function resetBigColWidth(layout) {
+  if (!layout) return;
+  layout.style.removeProperty('--lp-big-col-width');
+}
+function applyStoredBigColWidth() {
+  const px = _bigLoad(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W);
+  document.querySelectorAll('.layout-big').forEach(layout => {
+    if (px != null) applyBigColWidth(layout, px);
+    else resetBigColWidth(layout);
+  });
+}
+
+// ── 패널 absolute 스타일 초기화 ──
+function _clearPanelAbsolute(panel) {
+  ['position','top','bottom','left','right','width','height','marginTop'].forEach(p => {
+    panel.style.removeProperty(p);
+  });
+}
+
+// ── ON 모드: flex 기반 연동 레이아웃 ──
+function _applyLinkedMode(col) {
+  const chatPanel = col.querySelector('.lp-chat-big');
+  const statPanel = col.querySelector('.lp-stat');
+  if (!chatPanel || !statPanel) return;
+  col.classList.add('is-big-linked');
+  _clearPanelAbsolute(chatPanel);
+  _clearPanelAbsolute(statPanel);
+  const colH = col.getBoundingClientRect().height;
+  let chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);
+  const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
+  if (colH > 0) {
+    if (chatH == null) chatH = Math.floor(usable / 2);
+    chatH = Math.max(BIG_PANEL_MIN_H, Math.min(usable - BIG_PANEL_MIN_H, chatH));
+    const statH = usable - chatH;
+    chatPanel.style.flex = `0 0 ${chatH}px`;
+    chatPanel.style.height = `${chatH}px`;
+    statPanel.style.flex = `0 0 ${statH}px`;
+    statPanel.style.height = `${statH}px`;
+  } else {
+    chatPanel.style.removeProperty('flex');
+    chatPanel.style.removeProperty('height');
+    statPanel.style.removeProperty('flex');
+    statPanel.style.removeProperty('height');
+  }
+}
+
+// ── OFF 모드: absolute 독립 레이아웃 ──
+function _applyIndependentMode(col) {
+  const chatPanel = col.querySelector('.lp-chat-big');
+  const statPanel = col.querySelector('.lp-stat');
+  if (!chatPanel || !statPanel) return;
+  col.classList.remove('is-big-linked');
+  chatPanel.style.removeProperty('flex');
+  statPanel.style.removeProperty('flex');
+
+  const colH   = col.getBoundingClientRect().height;
+  const colRect = col.getBoundingClientRect();
+  const defaultH = colH > 0 ? Math.max(BIG_PANEL_MIN_H, Math.floor(colH / 2)) : 200;
+  const defaultW = (() => {
+    const stored = _bigLoad(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W);
+    if (stored) return stored;
+    return colRect.width > 0 ? colRect.width : 250;
+  })();
+
+  const chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H) ?? defaultH;
+  const statH = _bigLoad(BIG_STAT_H_KEY, BIG_PANEL_MIN_H) ?? defaultH;
+  const chatW = _bigLoad(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W) ?? defaultW;
+  const statW = _bigLoad(BIG_STAT_W_KEY, BIG_PANEL_MIN_W) ?? defaultW;
+
+  Object.assign(chatPanel.style, {
+    position: 'absolute', top: '0', right: '0', bottom: '', left: '',
+    width: `${Math.round(chatW)}px`, height: `${Math.round(chatH)}px`,
+  });
+  Object.assign(statPanel.style, {
+    position: 'absolute', bottom: '0', right: '0', top: '', left: '',
+    width: `${Math.round(statW)}px`, height: `${Math.round(statH)}px`,
+  });
+
+  // 칼럼 너비 = 두 패널 중 넓은 것
+  const layout = col.closest('.layout-big');
+  if (layout) applyBigColWidth(layout, Math.max(chatW, statW));
+}
+
+// ── 통합 적용 함수 (mode 전환 포함) ──
+function applyStoredBigPanelHeights() {
+  const linked = isBigPanelLinked();
+  document.querySelectorAll('.layout-big .lp-col').forEach(col => {
+    const chatPanel = col.querySelector('.lp-chat-big');
+    const statPanel = col.querySelector('.lp-stat');
+    if (!chatPanel || !statPanel) return;
+
+    // OFF → ON 전환: 너비는 둘 중 좁은 것 기준, 높이는 반반
+    if (linked && !col.classList.contains('is-big-linked')) {
+      const chatW = _bigLoad(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W);
+      const statW = _bigLoad(BIG_STAT_W_KEY, BIG_PANEL_MIN_W);
+      if (chatW != null && statW != null) {
+        const newColW = Math.max(BIG_PANEL_MIN_W, Math.min(chatW, statW));
+        const layout = col.closest('.layout-big');
+        if (layout) applyBigColWidth(layout, newColW);
+        _bigSave(BIG_COL_WIDTH_KEY, newColW);
+      }
+      const colH = col.getBoundingClientRect().height;
+      if (colH > 0) _bigSave(BIG_CHAT_H_KEY, Math.floor((colH - BIG_COL_GAP) / 2));
+    }
+
+    if (linked) _applyLinkedMode(col);
+    else _applyIndependentMode(col);
+  });
+}
+window.applyStoredBigPanelHeights = applyStoredBigPanelHeights;
+
+// ── 드래그: 칼럼 너비 (ON 모드 — lp-col 왼쪽 엣지) ──
+function startBigColWidthDrag(event, col) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  const layout = col.closest('.layout-big');
+  if (!layout) return;
+  const startX = event.clientX;
+  const startW = col.getBoundingClientRect().width;
+  const maxW   = layout.clientWidth * 0.65;
+  let lastW = startW;
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('lp-big-col-resizing');
+  const onMove = (e) => {
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - e.clientX)));
+    lastW = newW;
+    applyBigColWidth(layout, newW);
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    handle.releasePointerCapture?.(event.pointerId);
+    document.body.classList.remove('lp-big-col-resizing');
+    _bigSave(BIG_COL_WIDTH_KEY, lastW);
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+// ── 드래그: 패널 너비 (OFF 모드 — 각 패널 왼쪽 엣지) ──
+function startBigPanelWidthDrag(event, col, which) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  const chatPanel = col.querySelector('.lp-chat-big');
+  const statPanel = col.querySelector('.lp-stat');
+  if (!chatPanel || !statPanel) return;
+  const panel  = which === 'chat' ? chatPanel : statPanel;
+  const wKey   = which === 'chat' ? BIG_CHAT_W_KEY : BIG_STAT_W_KEY;
+  const layout = col.closest('.layout-big');
+  if (!layout) return;
+  const startX = event.clientX;
+  const startW = panel.getBoundingClientRect().width;
+  const maxW   = layout.clientWidth * 0.9;
+  let lastW = startW;
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('lp-big-col-resizing');
+  const otherPanel = which === 'chat' ? statPanel : chatPanel;
+  const onMove = (e) => {
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - e.clientX)));
+    lastW = newW;
+    panel.style.width = `${Math.round(newW)}px`;
+    applyBigColWidth(layout, Math.max(newW, otherPanel.getBoundingClientRect().width));
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    handle.releasePointerCapture?.(event.pointerId);
+    document.body.classList.remove('lp-big-col-resizing');
+    _bigSave(wKey, lastW);
+    _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+// ── 공유 헬퍼: 패널에 높이 적용 ──
+function _bigSetH(panel, px, linked) {
+  const v = `${Math.round(px)}px`;
+  if (linked) panel.style.flex = `0 0 ${v}`;
+  else panel.style.removeProperty('flex');
+  panel.style.height = v;
+}
+
+// ── 드래그: 패널 높이 (수직 엣지) origin: 'chatBottom' | 'statTop' ──
+function startBigPanelHeightDrag(event, col, origin) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  const chatPanel = col.querySelector('.lp-chat-big');
+  const statPanel = col.querySelector('.lp-stat');
+  if (!chatPanel || !statPanel) return;
+  const linked     = isBigPanelLinked();
+  const startY     = event.clientY;
+  const startChatH = chatPanel.getBoundingClientRect().height;
+  const startStatH = statPanel.getBoundingClientRect().height;
+  const colH       = col.getBoundingClientRect().height;
+  const usable     = colH - BIG_COL_GAP;
+  let lastChatH = startChatH;
+  let lastStatH = startStatH;
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('lp-big-h-resizing');
+
+  const onMove = (e) => {
+    const delta = e.clientY - startY;
+    if (origin === 'chatBottom') {
+      const maxChat = linked ? usable - BIG_PANEL_MIN_H : colH - startStatH;
+      const newChatH = Math.max(BIG_PANEL_MIN_H, Math.min(maxChat, startChatH + delta));
+      lastChatH = newChatH;
+      _bigSetH(chatPanel, newChatH, linked);
+      if (linked) {
+        const newStatH = Math.max(BIG_PANEL_MIN_H, usable - newChatH);
+        lastStatH = newStatH;
+        _bigSetH(statPanel, newStatH, linked);
+      }
+    } else {
+      // statTop: 위로 드래그(delta < 0) = stat 확장 (하단 고정, 위로 성장)
+      const maxStat = linked ? usable - BIG_PANEL_MIN_H : colH - startChatH;
+      const newStatH = Math.max(BIG_PANEL_MIN_H, Math.min(maxStat, startStatH - delta));
+      lastStatH = newStatH;
+      _bigSetH(statPanel, newStatH, linked);
+      if (linked) {
+        const newChatH = Math.max(BIG_PANEL_MIN_H, usable - newStatH);
+        lastChatH = newChatH;
+        _bigSetH(chatPanel, newChatH, linked);
+      }
+    }
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    handle.releasePointerCapture?.(event.pointerId);
+    document.body.classList.remove('lp-big-h-resizing');
+    _bigSave(BIG_CHAT_H_KEY, lastChatH);
+    _bigSave(BIG_STAT_H_KEY, lastStatH);
+    requestAnimationFrame(() => window.stRerenderActivePanels?.());
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+// ── 드래그: 대각선 코너 (너비 + 높이 동시 조절) ──
+// panelSide: 'chat' → chat 하단-왼쪽 코너 / 'stat' → stat 상단-왼쪽 코너
+function startBigCornerDrag(event, col, panelSide) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  const chatPanel  = col.querySelector('.lp-chat-big');
+  const statPanel  = col.querySelector('.lp-stat');
+  if (!chatPanel || !statPanel) return;
+  const linked     = isBigPanelLinked();
+  const layout     = col.closest('.layout-big');
+  const startX     = event.clientX;
+  const startY     = event.clientY;
+  const panel      = panelSide === 'chat' ? chatPanel : statPanel;
+  const otherPanel = panelSide === 'chat' ? statPanel : chatPanel;
+  const startW     = linked ? col.getBoundingClientRect().width : panel.getBoundingClientRect().width;
+  const startChatH = chatPanel.getBoundingClientRect().height;
+  const startStatH = statPanel.getBoundingClientRect().height;
+  const colH       = col.getBoundingClientRect().height;
+  const usable     = colH - BIG_COL_GAP;
+  const maxW       = layout ? layout.clientWidth * 0.9 : window.innerWidth;
+  let lastW = startW, lastChatH = startChatH, lastStatH = startStatH;
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('lp-big-col-resizing', 'lp-big-h-resizing');
+
+  const onMove = (e) => {
+    const dx = startX - e.clientX; // 왼쪽 드래그 = 너비 증가
+    const dy = e.clientY - startY; // 아래 드래그 = 양수
+
+    // 너비
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + dx));
+    lastW = newW;
+    if (linked) {
+      if (layout) applyBigColWidth(layout, newW);
+    } else {
+      panel.style.width = `${Math.round(newW)}px`;
+      if (layout) applyBigColWidth(layout, Math.max(newW, otherPanel.getBoundingClientRect().width));
+    }
+
+    // 높이
+    if (panelSide === 'chat') {
+      // chat BL 코너: 아래로 드래그 = chat 높이 증가
+      const maxChat = linked ? usable - BIG_PANEL_MIN_H : colH - startStatH;
+      const newChatH = Math.max(BIG_PANEL_MIN_H, Math.min(maxChat, startChatH + dy));
+      lastChatH = newChatH;
+      _bigSetH(chatPanel, newChatH, linked);
+      if (linked) {
+        const newStatH = Math.max(BIG_PANEL_MIN_H, usable - newChatH);
+        lastStatH = newStatH;
+        _bigSetH(statPanel, newStatH, linked);
+      }
+    } else {
+      // stat TL 코너: 위로 드래그(dy<0) = stat 높이 증가
+      const maxStat = linked ? usable - BIG_PANEL_MIN_H : colH - startChatH;
+      const newStatH = Math.max(BIG_PANEL_MIN_H, Math.min(maxStat, startStatH - dy));
+      lastStatH = newStatH;
+      _bigSetH(statPanel, newStatH, linked);
+      if (linked) {
+        const newChatH = Math.max(BIG_PANEL_MIN_H, usable - newStatH);
+        lastChatH = newChatH;
+        _bigSetH(chatPanel, newChatH, linked);
+      }
+    }
+
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    handle.releasePointerCapture?.(event.pointerId);
+    document.body.classList.remove('lp-big-col-resizing', 'lp-big-h-resizing');
+    if (linked) {
+      _bigSave(BIG_COL_WIDTH_KEY, lastW);
+    } else {
+      _bigSave(panelSide === 'chat' ? BIG_CHAT_W_KEY : BIG_STAT_W_KEY, lastW);
+      _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+    }
+    _bigSave(BIG_CHAT_H_KEY, lastChatH);
+    _bigSave(BIG_STAT_H_KEY, lastStatH);
+    requestAnimationFrame(() => window.stRerenderActivePanels?.());
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+// ── 핸들 삽입 ──
+function ensureBigPanelHandles() {
+  document.querySelectorAll('.layout-big .lp-col').forEach(col => {
+    const chatPanel = col.querySelector('.lp-chat-big');
+    const statPanel = col.querySelector('.lp-stat');
+    if (!chatPanel || !statPanel) return;
+
+    const resetAll = (e) => {
+      e.preventDefault();
+      [BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY, BIG_CHAT_W_KEY, BIG_STAT_W_KEY].forEach(_bigClear);
+      resetBigColWidth(col.closest('.layout-big'));
+      requestAnimationFrame(() => {
+        applyStoredBigPanelHeights();
+        requestAnimationFrame(() => window.stRerenderActivePanels?.());
+      });
+    };
+
+    // ON 모드 전용: lp-col 왼쪽 엣지 (공유 너비)
+    if (!col.querySelector(':scope > .lp-big-col-left-handle')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-col-left-handle';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '칼럼 너비 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startBigColWidthDrag(e, col));
+      el.addEventListener('dblclick', resetAll);
+      col.appendChild(el);
+    }
+
+    // chat: 왼쪽 엣지 (OFF 모드 전용 — chat 너비 독립)
+    if (!chatPanel.querySelector(':scope > .lp-big-edge-left')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-edge-left';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '팬 반응 패널 너비 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startBigPanelWidthDrag(e, col, 'chat'));
+      el.addEventListener('dblclick', resetAll);
+      chatPanel.appendChild(el);
+    }
+
+    // chat: 하단-왼쪽 코너 (너비 + chat 높이 동시)
+    if (!chatPanel.querySelector(':scope > .lp-big-corner-bl')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-corner-bl';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '너비·높이 동시 조절';
+      el.addEventListener('pointerdown', e => startBigCornerDrag(e, col, 'chat'));
+      el.addEventListener('dblclick', resetAll);
+      chatPanel.appendChild(el);
+    }
+
+    // chat: 아래쪽 엣지 (chat 높이)
+    if (!chatPanel.querySelector(':scope > .lp-big-chat-edge-bottom')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-chat-edge-bottom';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '팬 반응 높이 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'chatBottom'));
+      el.addEventListener('dblclick', resetAll);
+      chatPanel.appendChild(el);
+    }
+
+    // stat: 위쪽 엣지 (stat 높이)
+    if (!statPanel.querySelector(':scope > .lp-big-stat-edge-top')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-stat-edge-top';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '경기 스탯 높이 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'statTop'));
+      el.addEventListener('dblclick', resetAll);
+      statPanel.appendChild(el);
+    }
+
+    // stat: 상단-왼쪽 코너 (너비 + stat 높이 동시)
+    if (!statPanel.querySelector(':scope > .lp-big-corner-tl')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-corner-tl';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '너비·높이 동시 조절';
+      el.addEventListener('pointerdown', e => startBigCornerDrag(e, col, 'stat'));
+      el.addEventListener('dblclick', resetAll);
+      statPanel.appendChild(el);
+    }
+
+    // stat: 왼쪽 엣지 (OFF 모드 전용 — stat 너비 독립)
+    if (!statPanel.querySelector(':scope > .lp-big-edge-left')) {
+      const el = document.createElement('div');
+      el.className = 'lp-big-edge-left';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '경기 스탯 패널 너비 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startBigPanelWidthDrag(e, col, 'stat'));
+      el.addEventListener('dblclick', resetAll);
+      statPanel.appendChild(el);
+    }
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// (4) 캠 큰 라인업 패널 독립 엣지 리사이즈 (오른쪽=너비 / 위쪽=높이)
+//   - 기존 우상단 핸들: 비율 고정 축소 (--lp-lineup-scale)
+//   - 오른쪽 엣지:  너비만 독립 조절 → .has-w-override + --lp-lineup-x-scale (이름 라벨 비례 확장)
+//   - 위쪽 엣지:    높이만 독립 조절 (aspect-ratio 무효화 없이 height inline 덮어씌움)
+//   - 더블클릭: 두 override 모두 초기화 (비율 고정 핸들은 별도 유지)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const LINEUP_EDGE_W_KEY = 'obs.lineup.edgeWidthPx.v1';
+const LINEUP_EDGE_H_KEY = 'obs.lineup.edgeHeightPx.v1';
+const LINEUP_EDGE_MIN_W = 80;
+const LINEUP_EDGE_MIN_H = 80;
+const LINEUP_RESET_SCALE_SPLIT_PCT = 100;
+const LINEUP_RESET_SCALE_COMBINED_PCT = 85;
+
+function _lineupEdgeLoad(key, min) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null || raw === '') return null;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= min ? v : null;
+  } catch { return null; }
+}
+function _lineupEdgeSave(key, px) {
+  try { localStorage.setItem(key, String(Math.round(px))); } catch {}
+}
+function _lineupEdgeClear(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
+function _lineupNaturalAspectRatio(panel) {
+  return panel?.classList.contains('dp-mode-split') ? (94 / 210) : (62 / 105);
+}
+
+function _lineupResetScalePct(panel) {
+  // split OFF combined 피치는 전체 높이 100%로 돌아가면 캠 영역을 너무 많이 먹는다.
+  // 보내준 기준 화면에 맞춰 기본 축구장 비율은 유지하되, 전체 리셋 높이만 조금 낮춘다.
+  return panel?.classList.contains('dp-mode-split')
+    ? LINEUP_RESET_SCALE_SPLIT_PCT
+    : LINEUP_RESET_SCALE_COMBINED_PCT;
+}
+
+function _lineupGetMaxHeight(panel) {
+  const layout = panel?.closest('.layout-wrap') || document.body;
+  return Math.max(
+    LINEUP_EDGE_MIN_H,
+    layout?.clientHeight || document.body?.clientHeight || window.innerHeight || LINEUP_EDGE_MIN_H
+  );
+}
+
+function _lineupApplyWidthOverride(panel, px, knownHeight = null) {
+  panel.style.width = `${Math.round(px)}px`;
+  panel.classList.add('has-w-override');
+  panel.classList.add('has-edge-override');
+  // --lp-lineup-x-scale: 너비/자연너비 비율 → 이름 라벨 폭 비례 확장
+  const h = Number(knownHeight) || panel.getBoundingClientRect().height;
+  const naturalW = h > 0 ? h * _lineupNaturalAspectRatio(panel) : px;
+  // 높이를 크게 늘렸다고 이름 pill 기본 폭까지 같이 줄어들면,
+  // 실제로는 공간이 충분한 라벨도 억지로 두 줄이 된다. 기본 폭(1)보다 작게는 줄이지 않는다.
+  const xScale = Math.max(1, Math.min(4, px / naturalW));
+  panel.style.setProperty('--lp-lineup-x-scale', xScale.toFixed(3));
+}
+
+function _lineupSyncEdgeOverrideClass(panel) {
+  const hasWidthOverride = panel.classList.contains('has-w-override');
+  const hasHeightOverride = panel.classList.contains('has-h-override');
+  panel.classList.toggle('has-edge-override', hasWidthOverride || hasHeightOverride);
+}
+
+function _lineupClearWidthOverride(panel) {
+  panel.style.removeProperty('width');
+  panel.style.removeProperty('--lp-lineup-x-scale');
+  panel.classList.remove('has-w-override');
+  if (panel.classList.contains('has-h-frozen-width')) {
+    panel.style.width = panel.dataset.lineupFrozenWidth || panel.style.width;
+  }
+  _lineupSyncEdgeOverrideClass(panel);
+}
+
+function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
+  // 위쪽 엣지는 높이 전용이다. 기존 aspect-ratio가 너비까지 끌고 가지 않게
+  // 사용자가 너비를 따로 조절하지 않은 상태라면 현재 너비를 임시로 고정한다.
+  if (!panel.classList.contains('has-w-override') && !panel.classList.contains('has-h-frozen-width')) {
+    const frozenWidth = Number(knownWidth) || panel.getBoundingClientRect().width;
+    if (frozenWidth > 0) {
+      panel.style.width = `${Math.round(frozenWidth)}px`;
+      panel.dataset.lineupFrozenWidth = `${Math.round(frozenWidth)}px`;
+      panel.classList.add('has-h-frozen-width');
+    }
+  }
+  panel.style.height = `${Math.round(px)}px`;
+  panel.classList.add('has-h-override');
+  panel.classList.add('has-edge-override');
+}
+
+function _lineupClearHeightOverride(panel) {
+  panel.style.removeProperty('height');
+  panel.classList.remove('has-h-override');
+  if (panel.classList.contains('has-h-frozen-width') && !panel.classList.contains('has-w-override')) {
+    panel.style.removeProperty('width');
+  }
+  panel.classList.remove('has-h-frozen-width');
+  delete panel.dataset.lineupFrozenWidth;
+  _lineupSyncEdgeOverrideClass(panel);
+}
+
+function applyStoredLineupEdgeOverrides() {
+  document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
+    const storedH = _lineupEdgeLoad(LINEUP_EDGE_H_KEY, LINEUP_EDGE_MIN_H);
+    if (storedH != null) _lineupApplyHeightOverride(panel, Math.min(storedH, _lineupGetMaxHeight(panel)));
+    const storedW = _lineupEdgeLoad(LINEUP_EDGE_W_KEY, LINEUP_EDGE_MIN_W);
+    if (storedW != null) _lineupApplyWidthOverride(panel, storedW);
+  });
+}
+
+// ── 드래그: 오른쪽 엣지 → 너비 ──
+function startLineupWidthDrag(event, panel) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const startX  = event.clientX;
+  const startW  = panel.getBoundingClientRect().width;
+  const startH  = panel.getBoundingClientRect().height;
+  const layoutW = (panel.closest('.layout-wrap') || document.body).clientWidth;
+  const maxW    = layoutW * 0.8;
+  let lastW = startW;
+  let pendingW = startW;
+  let rafId = 0;
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('lp-lineup-w-resizing');
+
+  const onMove = (e) => {
+    const newW = Math.max(LINEUP_EDGE_MIN_W, Math.min(maxW, startW + (e.clientX - startX)));
+    lastW = newW;
+    pendingW = newW;
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      _lineupApplyWidthOverride(panel, pendingW, startH);
+    });
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    handle.releasePointerCapture?.(event.pointerId);
+    document.body.classList.remove('lp-lineup-w-resizing');
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+      _lineupApplyWidthOverride(panel, lastW, startH);
+    }
+    _lineupEdgeSave(LINEUP_EDGE_W_KEY, lastW);
+    requestAnimationFrame(() => window.fitLineupNamePills?.());
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+// ── 드래그: 위쪽 엣지 → 높이 (align-self:flex-end이므로 위로 드래그 = 높이 증가) ──
+function startLineupHeightDrag(event, panel) {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const startY  = event.clientY;
+  const startH  = panel.getBoundingClientRect().height;
+  const startW  = panel.getBoundingClientRect().width;
+  const maxH    = _lineupGetMaxHeight(panel);
+  let lastH = startH;
+  let pendingH = startH;
+  let rafId = 0;
+  const handle = event.currentTarget;
+  handle.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('lp-lineup-h-resizing');
+
+  const onMove = (e) => {
+    // 위로 드래그(dy < 0) = 높이 증가
+    const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (e.clientY - startY)));
+    lastH = newH;
+    pendingH = newH;
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = 0;
+      _lineupApplyHeightOverride(panel, pendingH, startW);
+      // 너비 override 중이면 x-scale도 재계산
+      if (panel.classList.contains('has-w-override')) {
+        const naturalW = pendingH * _lineupNaturalAspectRatio(panel);
+        const xScale = Math.max(1, Math.min(4, startW / naturalW));
+        panel.style.setProperty('--lp-lineup-x-scale', xScale.toFixed(3));
+      }
+    });
+  };
+  const onUp = () => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    handle.releasePointerCapture?.(event.pointerId);
+    document.body.classList.remove('lp-lineup-h-resizing');
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+      _lineupApplyHeightOverride(panel, lastH, startW);
+      if (panel.classList.contains('has-w-override')) {
+        const naturalW = lastH * _lineupNaturalAspectRatio(panel);
+        const xScale = Math.max(1, Math.min(4, startW / naturalW));
+        panel.style.setProperty('--lp-lineup-x-scale', xScale.toFixed(3));
+      }
+    }
+    _lineupEdgeSave(LINEUP_EDGE_H_KEY, lastH);
+    requestAnimationFrame(() => window.fitLineupNamePills?.());
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
+// ── 핸들 삽입 ──
+function ensureLineupEdgeHandles() {
+  document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
+    if (!panel.querySelector(':scope > .lp-lineup-right-edge')) {
+      const el = document.createElement('div');
+      el.className = 'lp-lineup-right-edge';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '라인업 너비 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startLineupWidthDrag(e, panel));
+      el.addEventListener('dblclick', e => resetLineupWidthOnly(e, panel));
+      panel.appendChild(el);
+    }
+
+    if (!panel.querySelector(':scope > .lp-lineup-top-edge')) {
+      const el = document.createElement('div');
+      el.className = 'lp-lineup-top-edge';
+      el.setAttribute('aria-hidden', 'true');
+      el.title = '라인업 높이 조절 (더블클릭: 초기화)';
+      el.addEventListener('pointerdown', e => startLineupHeightDrag(e, panel));
+      el.addEventListener('dblclick', e => resetLineupHeightOnly(e, panel));
+      panel.appendChild(el);
+    }
+  });
+}
+
+function resetLineupWidthOnly(event, panel) {
+  event.preventDefault();
+  event.stopPropagation();
+  _lineupEdgeClear(LINEUP_EDGE_W_KEY);
+  _lineupClearWidthOverride(panel);
+  requestAnimationFrame(() => window.fitLineupNamePills?.());
+}
+
+function resetLineupHeightOnly(event, panel) {
+  event.preventDefault();
+  event.stopPropagation();
+  _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+  _lineupClearHeightOverride(panel);
+  requestAnimationFrame(() => window.fitLineupNamePills?.());
+}
+
+function resetLineupAllSizes(event, panel) {
+  event.preventDefault();
+  event.stopPropagation();
+  _lineupEdgeClear(LINEUP_EDGE_W_KEY);
+  _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+  _lineupClearWidthOverride(panel);
+  _lineupClearHeightOverride(panel);
+  const resetScalePct = _lineupResetScalePct(panel);
+  if (typeof setSetting === 'function') setSetting('lineupScale', resetScalePct);
+  else document.documentElement.style.setProperty('--lp-lineup-scale', String(resetScalePct / 100));
+  requestAnimationFrame(() => window.fitLineupNamePills?.());
+}
+
 document.addEventListener('DOMContentLoaded', ensureLineupResizeHandles);
 document.addEventListener('DOMContentLoaded', () => {
+  // 캠 작음 리사이즈
   ensureSmallLayoutResizeHandles();
   applyStoredSmallLayoutResize();
   observeSmallLayoutResize();
+
+  // 캠 큰 우측 패널 독립 엣지 리사이즈
+  ensureBigPanelHandles();
+  applyStoredBigColWidth();
+  requestAnimationFrame(() => applyStoredBigPanelHeights());
+
+  // 캠 큰 라인업 독립 엣지 리사이즈
+  ensureLineupEdgeHandles();
+  requestAnimationFrame(() => applyStoredLineupEdgeOverrides());
 });

@@ -287,22 +287,63 @@ function stSetupAutoSwipe(panel, state, totalPages) {
  * 화면이 클수록 더 많은 항목이 한 페이지에 들어가서 페이지 수 자동으로 줄어듦.
  * 측정 못하면 STATS_CONFIG.itemsPerPage 기본값.
  */
-function stComputeItemsPerPage(panel) {
+function stCreateControlsProbe() {
+  const controls = document.createElement('div');
+  controls.className = 'st-controls';
+
+  const prev = document.createElement('button');
+  prev.className = 'st-arrow st-arrow-prev';
+  prev.type = 'button';
+
+  const dots = document.createElement('div');
+  dots.className = 'st-dots';
+  const dot = document.createElement('span');
+  dot.className = 'st-dot is-active';
+  dots.appendChild(dot);
+
+  const next = document.createElement('button');
+  next.className = 'st-arrow st-arrow-next';
+  next.type = 'button';
+
+  controls.appendChild(prev);
+  controls.appendChild(dots);
+  controls.appendChild(next);
+  return controls;
+}
+
+function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
   const cfg = window.STATS_CONFIG;
   const fallback = cfg?.itemsPerPage || 6;
-  const titleBar = panel.querySelector('.st-title-bar');
-  const controls = panel.querySelector('.st-controls');
-  const titleH = titleBar ? titleBar.getBoundingClientRect().height : 24;
-  const controlsH = controls ? controls.getBoundingClientRect().height : 28;
-  const totalH = panel.clientHeight;
-  if (!totalH) return fallback;
-  const rowH = 30; // st-row 평균 높이 (제목 줄 + 4px 막대 + 4px gap)
-  const gap = 4;
-  const padding = 16; // panel 위아래 padding 합계
-  const avail = totalH - titleH - controlsH - padding;
-  if (avail <= 0) return fallback;
-  const fits = Math.floor((avail + gap) / (rowH + gap))-1;
-  return Math.max(1, fits);
+  if (!panel?.clientHeight || !Array.isArray(rows) || !rows.length) return fallback;
+
+  // 고정 rowH 추정으로는 브라우저별 line-height 반올림을 못 따라가 마지막 행이 반쯤 보일 수 있다.
+  // 실제 렌더 트리를 숨겨서 한 행씩 넣어 보고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
+  const wrap = document.createElement('div');
+  wrap.className = 'st-wrap';
+  Object.assign(wrap.style, {
+    visibility: 'hidden',
+    pointerEvents: 'none',
+  });
+
+  const page = document.createElement('div');
+  page.className = 'st-page';
+  wrap.appendChild(page);
+  if (options.reserveControls === true) wrap.appendChild(stCreateControlsProbe());
+
+  panel.appendChild(wrap);
+
+  let fits = 0;
+  for (const row of rows) {
+    page.appendChild(stCreateRow(row, fixtureData));
+    if (page.scrollHeight > page.clientHeight + 0.5) {
+      page.lastElementChild?.remove();
+      break;
+    }
+    fits += 1;
+  }
+
+  wrap.remove();
+  return Math.max(1, fits || fallback);
 }
 
 /**
@@ -344,8 +385,12 @@ function stRenderPanel(panel, fixtureData) {
     return;
   }
 
-  // 동적 itemsPerPage — 사용자 화면 크기에 맞춰 한 페이지에 가능한 한 많이 표시
-  const itemsPerPage = stComputeItemsPerPage(panel);
+  // 먼저 단일 페이지 기준으로 계산하고, 실제로 2페이지 이상 필요하면
+  // 페이지 컨트롤 높이까지 예약해서 다시 계산한다.
+  const itemsWithoutControls = stComputeItemsPerPage(panel, rows, fixtureData);
+  const itemsPerPage = rows.length > itemsWithoutControls
+    ? stComputeItemsPerPage(panel, rows, fixtureData, { reserveControls: true })
+    : itemsWithoutControls;
   const pages = stChunk(rows, itemsPerPage);
   if (state.page >= pages.length) state.page = pages.length - 1;
   if (state.page < 0) state.page = 0;
@@ -471,3 +516,4 @@ window.addEventListener('resize', () => {
 });
 
 window.applyStatsPanel = applyStatsPanel;
+window.stRerenderActivePanels = stRerenderActivePanels;

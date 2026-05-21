@@ -35,7 +35,7 @@ window.STATS_CONFIG = {
   // 표시 순서 — 사용자 지정 순서 그대로
   order: [
     'expectedGoals', 'ballPossession', 'totalShots', 'shotsOnGoal',
-    'fouls', 'cornerKicks', 'offsides', 'yellowCards', 'redCards',
+    'yellowCards', 'redCards', 'fouls', 'cornerKicks', 'offsides',
     'totalPasses', 'passesPercent', 'passesAccurate',
     'shotsOffGoal', 'blockedShots', 'shotsInsidebox', 'shotsOutsidebox',
     'goalkeeperSaves', 'goalsPrevented',

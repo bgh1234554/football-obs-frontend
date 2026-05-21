@@ -543,11 +543,12 @@ function pmShowNicknameList() {
   };
 
   const rows = entries.length === 0
-    ? '<tr><td colspan="3" class="pm-empty">저장된 닉네임 없음</td></tr>'
+    ? '<tr><td colspan="4" class="pm-empty">저장된 닉네임 없음</td></tr>'
     : entries.map(([pid, nick]) => {
         const origName = getName(pid) || `선수 #${pid}`;
         return `<tr>
           <td class="pm-nick-list-name">${pmEsc(origName)}</td>
+          <td class="pm-nick-list-id">${pmEsc(pid)}</td>
           <td class="pm-nick-list-nick">${pmEsc(nick)}</td>
           <td class="pm-nick-list-action">
             <button class="pm-btn pm-btn-danger pm-nick-del" data-pid="${pmEsc(pid)}">삭제</button>
@@ -568,6 +569,7 @@ function pmShowNicknameList() {
         <thead>
           <tr>
             <th class="pm-th-league">원래 이름</th>
+            <th class="pm-th-num">playerId</th>
             <th class="pm-th-league">닉네임</th>
             <th class="pm-th-num" style="width:60px"></th>
           </tr>
