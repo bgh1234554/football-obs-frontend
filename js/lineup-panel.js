@@ -905,6 +905,8 @@ function buildInjuryListHtml(injuries, provided) {
  * 캠 큰 split 전용 좌표 매핑.
  * 한 피치에 한 팀만 들어가므로 자기 진영 절반만 쓰지 않고 풀 피치를 사용.
  *   - 세로: GK top 92% → FW top 8%를 기본으로 하되, split 전용으로 전체를 살짝 위로 올린다.
+ *           추가로 최전방 라인을 제외한 모든 줄은 이름 라벨 한 줄 정도 더 위로 올려
+ *           GK/수비 라벨이 패널 하단에 걸리지 않게 한다.
  *   - 가로: 홈/원정 모두 같은 좌우 기준을 써야 하므로 100-rawY를 공통 적용한다.
  */
 function mapFormationSlotToBigSplitPitchPosition(slot, side) {
@@ -916,6 +918,10 @@ function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   // - 두 팀 모두 바둑알+라벨 전체를 살짝 위로 올려, 하단 라벨이 쓸 여유 공간을 만든다.
   const SPLIT_NODE_LIFT_PCT = 4;
   let top = 92 - depth * 84 - SPLIT_NODE_LIFT_PCT;
+  // 이름 라벨 한 줄(12px * 1.2 + padding ≈ 18px)을 split 피치 높이 기준 %로 근사.
+  // 최전방 라인은 상단 팀 chip/피치 박스와 붙기 쉬워 제외하고, GK 포함 나머지 줄만 더 올린다.
+  const SPLIT_LABEL_LINE_LIFT_PCT = 4.75;
+  if (depth < 0.95) top -= SPLIT_LABEL_LINE_LIFT_PCT;
   if (depth === 0) top -= 0.5; // GK 이름 pill 살짝 안쪽으로 (combined away와 동일 정책)
   // split 원정은 센터백/미드필더 라벨이 하단에 더 촘촘하게 몰리므로,
   // GK(depth=0)와 최전방(depth≈1)은 그대로 두고 중간 라인만 조금 더 올린다.
@@ -2426,6 +2432,9 @@ function rerenderLineupPanels() {
   // (a) manual override 합성 → (b) subReflect ON이면 교체 이벤트로 startXi/벤치 자동 swap
   const mergedData = buildEffectiveFixtureData(lineupPanelState.lastFixture);
   const effectiveData = applySubReflectToFixture(mergedData);
+  if (typeof setLineupInitialCollisionContext === 'function') {
+    setLineupInitialCollisionContext(effectiveData);
+  }
 
   // Iter 5-3: 라인업 노드/벤치 행에서 사용할 이벤트/평점 lookup을 한 번만 계산해 캐시.
   // 렌더 헬퍼들이 lineupPanelState.context에서 읽어 쓰도록 한다.
@@ -2475,6 +2484,9 @@ function applyLineupPanels(fixtureData) {
 function clearLineupPanels() {
   lineupPanelState.lastFixture = null;
   lineupPanelState.manualModal = null;
+  if (typeof setLineupInitialCollisionContext === 'function') {
+    setLineupInitialCollisionContext(null);
+  }
   closeManualPanel();
   resetBenchInjuryPanelHeights();
 

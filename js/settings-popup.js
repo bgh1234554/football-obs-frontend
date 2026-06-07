@@ -750,11 +750,76 @@ function setNameMode(category, mode) {
   setSetting(category, mode);
 }
 
+let lineupInitialCollisionBaseNames = new Set();
+
+function getLineupShortName(player) {
+  return player?.name || player?.playerName || '';
+}
+
+function normalizeLineupInitialBaseName(name) {
+  const text = String(name || '').trim();
+  if (!text) return '';
+  const base = stripLeadingLineupInitial(text) || text;
+  return String(base || '')
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+}
+
+function hasLeadingLineupInitial(name) {
+  const text = String(name || '').trim();
+  if (!text) return false;
+  return stripLeadingLineupInitial(text) !== text;
+}
+
+/**
+ * lineupHideInitial=on일 때도 동명이인이 생기면 이니셜을 보존하기 위한 경기 단위 인덱스.
+ * 양 팀 선발+교체 전체를 기준으로 "J. Kim" → "Kim" 같은 base 이름을 세어 충돌 여부를 판단한다.
+ */
+function setLineupInitialCollisionContext(fixtureData) {
+  const counts = new Map();
+  const seenPlayerKeys = new Set();
+
+  ['home', 'away'].forEach(side => {
+    const lineup = fixtureData?.[`${side}Lineup`];
+    ['startXi', 'substitutes'].forEach(group => {
+      const players = Array.isArray(lineup?.[group]) ? lineup[group] : [];
+      players.forEach((player, idx) => {
+        const shortName = getLineupShortName(player);
+        const base = normalizeLineupInitialBaseName(shortName);
+        if (!base) return;
+
+        const pid = player?.playerId ?? player?.id;
+        const playerKey = pid && Number(pid) !== 0
+          ? `id:${pid}`
+          : `${side}:${group}:${idx}:${shortName}`;
+        if (seenPlayerKeys.has(playerKey)) return;
+        seenPlayerKeys.add(playerKey);
+
+        counts.set(base, (counts.get(base) || 0) + 1);
+      });
+    });
+  });
+
+  lineupInitialCollisionBaseNames = new Set(
+    Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([base]) => base)
+  );
+}
+
+function shouldKeepLineupInitial(shortName) {
+  return hasLeadingLineupInitial(shortName)
+    && lineupInitialCollisionBaseNames.has(normalizeLineupInitialBaseName(shortName));
+}
+
 /**
  * 선수 표시명 선택 헬퍼.
  * 1) long 모드면 한글 풀네임(nameKoLong/playerNameKoLong) 우선, 없으면 short fallback.
  * 2) short 모드면 표준 short(name/playerName)를 사용.
  * 3) lineup 카테고리에서 short + lineupHideInitial=on이면 앞쪽 이니셜 블록 제거(예: "J. Mateta" → "Mateta").
+ *    단, 양 팀 선발+교체 전체에서 이니셜을 제거했을 때 동명이인이 생기면 식별을 위해 이니셜을 유지.
  *    long 모드에선 hideInitial 무시(풀네임 형식이 깨짐).
  */
 function pickName(player, category) {
@@ -770,7 +835,7 @@ function pickName(player, category) {
   const shouldHideInitial = category === 'lineup'
     && !isLongName('lineup')
     && getSetting('lineupHideInitial') === 'on';
-  const displayShortName = shouldHideInitial
+  const displayShortName = shouldHideInitial && !shouldKeepLineupInitial(shortName)
     ? stripLeadingLineupInitial(shortName) || shortName
     : shortName;
   if (isLongName(category) && longName) return longName;
@@ -786,7 +851,7 @@ function stripLeadingLineupInitial(name) {
   if (!text) return '';
   const stripped = text
     // 앞쪽의 이니셜 블록(J. / M. / J.-P. / Á. 등)을 점 기준으로 제거
-    .replace(/^\s*(?:[^\s.．｡。]+[.．｡。]\s*)+/u, '')
+    .replace(/^\s*(?:[^\s.．｡。]+\s*[.．｡。]\s*)+/u, '')
     .trim();
   return stripped || text;
 }
