@@ -920,13 +920,17 @@ function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   let top = 92 - depth * 84 - SPLIT_NODE_LIFT_PCT;
   // 이름 라벨 한 줄(12px * 1.2 + padding ≈ 18px)을 split 피치 높이 기준 %로 근사.
   // 최전방 라인은 상단 팀 chip/피치 박스와 붙기 쉬워 제외하고, GK 포함 나머지 줄만 더 올린다.
+  // 최전방(depth≥0.82)은 상단 팀 chip과 붙기 쉬우므로 upward lift 제외하고 아래로 보정.
+  // 나머지 줄(GK 포함)은 하단 라벨이 잘릴 가능성 줄이도록 위로 올린다.
+  // TACTICS_FM 기준 최소 forward depth: 4-5-1 ST=0.846, 4-3-3 FW=0.897, 4-2-3-1 ST=0.949
   const SPLIT_LABEL_LINE_LIFT_PCT = 4.75;
-  if (depth < 0.95) top -= SPLIT_LABEL_LINE_LIFT_PCT;
+  if (depth < 0.82) top -= SPLIT_LABEL_LINE_LIFT_PCT;
   if (depth === 0) top -= 0.5; // GK 이름 pill 살짝 안쪽으로 (combined away와 동일 정책)
+  if (depth >= 0.82) top -= 0.5; // 최전방: 상단 chip 아래로 반지름 절반 보정
   // split 원정은 센터백/미드필더 라벨이 하단에 더 촘촘하게 몰리므로,
-  // GK(depth=0)와 최전방(depth≈1)은 그대로 두고 중간 라인만 조금 더 올린다.
+  // GK(depth=0)와 최전방(depth≥0.82)은 그대로 두고 중간 라인만 조금 더 올린다.
   const SPLIT_AWAY_SUPPORT_LIFT_PCT = 2.5;
-  if (side === 'away' && depth > 0 && depth < 0.85) {
+  if (side === 'away' && depth > 0 && depth < 0.82) {
     top -= SPLIT_AWAY_SUPPORT_LIFT_PCT;
   }
   const yLocal = 100 - rawY;
@@ -955,6 +959,11 @@ function mapFormationSlotToPitchPosition(slot, side, options = {}) {
   const awaySupportLiftPct = Number(options.awaySupportLiftPct) || 0;
   if (!isHome && depth > 0 && depth < 0.85 && awaySupportLiftPct > 0) {
     top -= awaySupportLiftPct;
+  }
+  // away 최전방(depth≥0.85): 수비/미드와 별도 lift — 미드라인 너머 상대 진영에 배치
+  const awayFwLiftPct = Number(options.awayFwLiftPct) || 0;
+  if (!isHome && depth >= 0.85 && awayFwLiftPct > 0) {
+    top -= awayFwLiftPct;
   }
   // 홈팀은 rawY 그대로, 원정팀은 100 - rawY를 써서 서로 마주보는 방향으로 배치한다.
   const yLocal = isHome ? rawY : (100 - rawY);
@@ -1267,12 +1276,12 @@ function renderLineupGrid(effectiveData, rawData) {
   // 2) 사용할 마크업(pitch/list)과 이름 길이 모드를 고른다.
   // splitLineup 설정이 ON이면 layout-big에서만 두 피치로 분리 — layout-small은 항상 combined 모드.
   const splitOn = typeof getSetting === 'function' && getSetting('splitLineup') === 'on';
-  const bigPitchOptions = { awaySupportLiftPct: 3.5, formationOnly: true };
+  const bigPitchOptions = { awaySupportLiftPct: 3.5, awayFwLiftPct: 3, formationOnly: true };
   const bigCombinedHtml = usePitchMode
     ? buildLineupPitchModeHtml(effectiveData, rawData, bigPitchOptions)
     : buildLineupListModeHtml(effectiveData, rawData);
   const smallCombinedHtml = usePitchMode
-    ? buildLineupPitchModeHtml(effectiveData, rawData, { awaySupportLiftPct: 2 })
+    ? buildLineupPitchModeHtml(effectiveData, rawData, { awaySupportLiftPct: 2, awayFwLiftPct: 3 })
     : buildLineupListModeHtml(effectiveData, rawData);
   const splitHtml = (usePitchMode && splitOn)
     ? buildLineupSplitPitchModeHtml(effectiveData, rawData, { formationOnly: true })

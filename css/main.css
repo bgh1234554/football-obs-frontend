@@ -1921,7 +1921,7 @@
     body.low-panel-alpha :is(.lp-events-s [data-events-panel], .lp-stat [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
       text-shadow: var(--low-panel-text-outline);
     }
-    body.low-panel-alpha :is(.lp-events-s [data-hth-panel], .lp-stat [data-hth-panel]) :is(.ev-title, .hth-team-name, .hth-score-main, .hth-meta) {
+    body.low-panel-alpha :is(.lp-events-s [data-hth-panel], .lp-stat [data-hth-panel]) :is(.ev-title, .hth-team-name, .hth-score-main, .hth-pk-score, .hth-meta) {
       text-shadow: var(--low-panel-text-outline);
     }
     body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-empty, .st-val:not(.is-emphasized)) {
