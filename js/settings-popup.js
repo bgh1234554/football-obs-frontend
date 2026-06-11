@@ -27,7 +27,7 @@ const SETTINGS_DEFAULTS = {
   // 분할 모드에서는 각 피치마다 똑같이 적용된다.
   leagueLogoPos: 'center',
   // 크로마키 대응용 라인업 피치 톤 프리셋.
-  lineupPitchTone: 'green',
+  lineupPitchTone: 'black',
   // 'logo' = matchInfo.homeTeamLogo (default. 클럽=팀 로고, 국대=국기)
   // 'fa'   = matchInfo.homeTeamFaUrl (협회 로고. URL 없으면 logo로 자동 폴백 — fixture.js)
   teamLogo: 'logo',
@@ -47,8 +47,8 @@ const SETTINGS_DEFAULTS = {
   // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
   lineupShowGoals: 'on',     // 골/어시스트 이모티콘
   lineupShowCards: 'on',     // 옐로/레드 카드
-  lineupShowRating: 'off',   // 평점 박스
-  lineupShowSubTime: 'off',  // 교체 IN 시간(72' 등)
+  lineupShowRating: 'on',    // 평점 박스
+  lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
   // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
   // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
@@ -589,7 +589,8 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
-  const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')] || LINEUP_PITCH_TONE_STYLES.green;
+  const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
+    || LINEUP_PITCH_TONE_STYLES[SETTINGS_DEFAULTS.lineupPitchTone];
   const root = document.documentElement;
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);

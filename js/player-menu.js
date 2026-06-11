@@ -241,7 +241,7 @@ function pmRefreshAfterNickname() {
 
 // ── 경기 스탯 모달 ────────────────────────────────────────────────────────────
 
-function pmShowMatchStats(playerId, player, stats) {
+async function pmShowMatchStats(playerId, player, stats) {
   const displayName = getPlayerNickname(playerId)
     || (typeof pickName === 'function' ? pickName(player, 'roster') : player.name || player.playerName || '');
 
@@ -252,16 +252,61 @@ function pmShowMatchStats(playerId, player, stats) {
       <span class="pm-modal-title">경기 스탯 &mdash; ${pmEsc(displayName)}</span>
       <button class="pm-modal-close" id="pmModalClose">&#10005;</button>
     </div>
-    <div class="pm-modal-body">
-      <table class="pm-stat-table">${pmBuildMatchStatRows(stats)}</table>
+    <div class="pm-modal-body pm-body-split">
+      <div class="pm-szn-profile" id="pmSznProfile"></div>
+      <div class="pm-szn-scroll pm-match-stat-scroll">
+        <table class="pm-stat-table">${pmBuildMatchStatRows(stats)}</table>
+      </div>
     </div>
   </div>
 </div>`;
 
+  pmRenderMatchProfile(player, playerId);
   document.getElementById('pmModalClose').addEventListener('click', pmHideAll);
   document.getElementById('pmBackdrop').addEventListener('click', e => {
     if (e.target === e.currentTarget) pmHideAll();
   });
+
+  try {
+    const data = await (typeof fetchPlayerStats === 'function'
+      ? fetchPlayerStats(playerId)
+      : Promise.reject(new Error('fetchPlayerStats not available')));
+    if (!document.getElementById('pmBackdrop')) return;
+    if (data?.player) {
+      pmRenderSeasonProfile(data.player, player.number ?? '');
+      const nick = getPlayerNickname(playerId);
+      const fullName = nick || data.player.fullName || data.player.name || displayName;
+      const titleEl = document.querySelector('#pmBackdrop .pm-modal-title');
+      if (titleEl) titleEl.textContent = `경기 스탯 — ${fullName}`;
+    }
+  } catch (_) {
+    // fetchPlayerStats 실패 시 기본 프로필 유지
+  }
+}
+
+function pmRenderMatchProfile(player, playerId) {
+  const el = document.getElementById('pmSznProfile');
+  if (!el) return;
+
+  const photoUrl = player.photoUrl || player.playerPhotoUrl || '';
+  const photoHtml = photoUrl
+    ? `<div class="pm-avatar pm-avatar-lg"><img src="${pmEsc(photoUrl)}" alt="" loading="lazy"></div>`
+    : `<div class="pm-avatar pm-avatar-lg pm-avatar-empty"></div>`;
+
+  const nick = getPlayerNickname(playerId);
+  const baseName = nick || (typeof pickName === 'function' ? pickName(player, 'roster') : player.name || player.playerName || '');
+  const number = player.number ?? '';
+  const displayName = (number !== '' && number != null ? `${number} ` : '') + baseName;
+  const pos = pmPosKo(player.pos || player.position);
+
+  el.innerHTML = `
+<div class="pm-profile-wrap">
+  ${photoHtml}
+  <div class="pm-profile-info">
+    <div class="pm-profile-name">${pmEsc(displayName)}</div>
+    <div class="pm-profile-sub">${pmEsc(pos)}</div>
+  </div>
+</div>`;
 }
 
 function pmBuildMatchStatRows(s) {

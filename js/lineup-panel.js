@@ -926,7 +926,7 @@ function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   const SPLIT_LABEL_LINE_LIFT_PCT = 4.75;
   if (depth < 0.82) top -= SPLIT_LABEL_LINE_LIFT_PCT;
   if (depth === 0) top -= 0.5; // GK 이름 pill 살짝 안쪽으로 (combined away와 동일 정책)
-  if (depth >= 0.82) top -= 0.5; // 최전방: 상단 chip 아래로 반지름 절반 보정
+  if (depth >= 0.82) top -= 2.35; // 최전방: 상단 chip 아래로 반지름 절반 보정
   // split 원정은 센터백/미드필더 라벨이 하단에 더 촘촘하게 몰리므로,
   // GK(depth=0)와 최전방(depth≥0.82)은 그대로 두고 중간 라인만 조금 더 올린다.
   const SPLIT_AWAY_SUPPORT_LIFT_PCT = 2.5;

@@ -2147,6 +2147,9 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   overflow: auto;
   padding: 8px 12px 12px 0;
 }
+.pm-match-stat-scroll {
+  padding: 8px 14px 14px;
+}
 
 /* ── 선수 프로필 섹션 ── */
 .pm-avatar-lg {
