@@ -1002,6 +1002,20 @@
       --half-text: initial;
     }
 
+    /* api-sports-widget은 light DOM으로 렌더 — h2/h3 브라우저 기본 em 크기가 그대로 적용되어
+       위젯 base font(≈20px) × 1.17~1.5em = 23~30px로 과하게 커지는 문제를 리셋한다. */
+    #game-content h1, #game-content h2, #game-content h3,
+    #game-content h4, #game-content h5, #game-content h6,
+    #standings-content h1, #standings-content h2, #standings-content h3,
+    #standings-content h4, #standings-content h5, #standings-content h6,
+    #team-content h1, #team-content h2, #team-content h3,
+    #team-content h4, #team-content h5, #team-content h6,
+    #games-list h1, #games-list h2, #games-list h3,
+    #games-list h4, #games-list h5, #games-list h6 {
+      margin: 0;
+      font-size: inherit;
+    }
+
     /* API Sports 위젯은 글자/크기/레이아웃은 유지하고 회색 테마 배경 토큰만 알파 처리. */
     #page-schedule :where(.panelBody, #games-list, #standings-content, #team-content, #game-content, api-sports-widget.initialized:not([data-type="config"])) {
       --background-color: rgba(var(--api-widget-surface-rgb), var(--panel-alpha)) !important;
