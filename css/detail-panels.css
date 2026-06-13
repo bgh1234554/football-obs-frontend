@@ -1686,6 +1686,15 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   height: auto;
   aspect-ratio: auto;
 }
+/* split 모드에서는 양 팀 모두 GK가 피치 아래쪽에 있으므로 home chip도 아래로 내림 */
+.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+  top: auto;
+  bottom: 14px;
+}
+.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+  top: auto;
+  bottom: calc(14px * var(--lp-node-scale, 1));
+}
 
 /* ─── 리그 로고 워시 위치 (leagueLogoPos: center / left / right) ─────────
    center(default)는 기존 dp-lineup-league-wash 스타일 그대로 (left:50% top:50%).

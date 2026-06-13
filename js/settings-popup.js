@@ -66,10 +66,10 @@ const SETTINGS_DEFAULTS = {
   bgImageData:    '',        // 파일 첨부 base64 데이터 URL — 3MB까지만 허용
   // 패널 투명도 (0~100). 100=완전 불투명(기본), 낮을수록 배경 이미지가 비쳐 보임.
   // applyLayoutSettings에서 :root --panel-alpha CSS 변수에 0~1로 매핑돼 적용.
-  panelAlpha:     100,
+  panelAlpha:     75,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
   // 선수 노드/이름은 CSS에서 별도 레이어로 유지한다.
-  pitchAlpha:     100,
+  pitchAlpha:     75,
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   100,
