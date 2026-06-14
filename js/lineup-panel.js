@@ -918,23 +918,18 @@ function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   // - 두 팀 모두 바둑알+라벨 전체를 살짝 위로 올려, 하단 라벨이 쓸 여유 공간을 만든다.
   const SPLIT_NODE_LIFT_PCT = 4;
   let top = 92 - depth * 84 - SPLIT_NODE_LIFT_PCT;
-  // 이름 라벨 한 줄(12px * 1.2 + padding ≈ 18px)을 split 피치 높이 기준 %로 근사.
-  // 최전방 라인은 상단 팀 chip/피치 박스와 붙기 쉬워 제외하고, GK 포함 나머지 줄만 더 올린다.
-  // 최전방(depth≥0.82)은 상단 팀 chip과 붙기 쉬우므로 upward lift 제외하고 아래로 보정.
-  // 나머지 줄(GK 포함)은 하단 라벨이 잘릴 가능성 줄이도록 위로 올린다.
-  // TACTICS_FM 기준 최소 forward depth: 4-5-1 ST=0.846, 4-3-3 FW=0.897, 4-2-3-1 ST=0.949
+  // GK 포함 비최전방 라인은 이름 라벨이 하단으로 잘리지 않도록 위로 올린다.
   const SPLIT_LABEL_LINE_LIFT_PCT = 4.75;
   if (depth < 0.82) top -= SPLIT_LABEL_LINE_LIFT_PCT;
-  if (depth === 0) top += 1; // GK 이름 pill 살짝 안쪽으로 (combined away와 동일 정책)
-  if (depth >= 0.82) top -= 2.35; // 최전방: 상단 chip 아래로 반지름 절반 보정
-  // 홈팀 chip이 하단으로 이동한 이후, 홈 최전방은 상단 피치 경계 잘림 방지를 위해 아래로 보정.
-  if (side === 'home' && depth >= 0.82) top += 2.5;
-  // split 원정은 센터백/미드필더 라벨이 하단에 더 촘촘하게 몰리므로,
-  // GK(depth=0)와 최전방(depth≥0.82)은 그대로 두고 중간 라인만 조금 더 올린다.
+  if (depth === 0) top += 1; // GK: 이름 pill 살짝 안쪽으로
+  // split 원정은 수비/미드 라인이 하단에 촘촘하게 몰리므로 중간 라인만 추가 lift.
   const SPLIT_AWAY_SUPPORT_LIFT_PCT = 2.5;
   if (side === 'away' && depth > 0 && depth < 0.82) {
     top -= SPLIT_AWAY_SUPPORT_LIFT_PCT;
   }
+  // 바둑알(원) 반지름이 컨테이너 높이 대비 ~6%이므로, 포메이션에 관계없이 상단 잘림을 막는
+  // 보편적 하한선. 4-3-1-2처럼 x=44(depth=1.0)인 극단 포메이션에서도 안전하게 적용된다.
+  top = Math.max(8, top);
   const yLocal = 100 - rawY;
   const left = 5 + (yLocal / 100) * 90;
   return { left, top };
