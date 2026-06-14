@@ -1789,6 +1789,22 @@ function getOwnTeamChipTargetsForLineupName(nameEl) {
   ).filter(target => canMeasureTextElement(target));
 }
 
+// 동일 피치 안에서 이 라벨의 선수를 제외한 나머지 선수 원(node 자체)을 반환한다.
+// name-wrap과 node는 동일한 data-player-id를 가지므로 이것으로 자기 원을 구분한다.
+function getSiblingNodeCirclesForLabel(nameEl) {
+  const nameWrap = getLineupNameWrap(nameEl);
+  const playerId = nameWrap?.dataset?.playerId;
+  const pitch = nameWrap?.closest('.dp-lineup-vertical-pitch');
+  if (!pitch) return [];
+
+  return Array.from(pitch.querySelectorAll('.dp-lineup-node'))
+    .filter(node => {
+      if (!canMeasureTextElement(node)) return false;
+      if (playerId && node.dataset.playerId === playerId) return false;
+      return true;
+    });
+}
+
 function shrinkBigLineupNameForBadgeCollision(nameEl, badgeTargets) {
   let changed = false;
   let safety = 0;
@@ -1925,6 +1941,66 @@ function fitBigLineupNameAgainstOpposingBadges(labels) {
     if (!changed) break;
     pass += 1;
   }
+}
+
+// 이름 라벨이 다른 선수의 바둑알(원) 자체와 겹칠 때 감지·보정한다.
+// 기존 시스템이 라벨-라벨, 라벨-배지만 감지하고 라벨-원은 놓치던 gap을 메운다.
+//
+// 판정 기준: 이름 pill의 "텍스트 실제 표시 영역"이 바둑알(원)과 실제로 겹쳐야만 발동한다.
+//   - pill 좌우 패딩(6px) + 상하 패딩(2px)을 뺀 텍스트 내부 rect 사용
+//   - 원의 border-radius:50% 코너 빈 공간은 실제 원-사각형 충돌 알고리즘으로 제외
+//     (중심점에서 텍스트 rect 최근접점까지의 거리 < 반지름 → 실제 겹침)
+//   - AABB만 쓰면 코너 투명 공간 때문에 false positive가 발생하므로 이 방식이 정확함
+function nameOverlapsNodeCircleSignificantly(nameEl, nodeEl) {
+  if (!canMeasureTextElement(nameEl) || !canMeasureTextElement(nodeEl)) return false;
+  const nr = nameEl.getBoundingClientRect();
+  const cr = nodeEl.getBoundingClientRect();
+  // pill 패딩 제외한 텍스트 표시 영역
+  const tL = nr.left + 6, tR = nr.right - 6;
+  const tT = nr.top + 2,  tB = nr.bottom - 2;
+  if (tR <= tL + 0.5 || tB <= tT + 0.5) return false;
+  // 바둑알 중심 + 반지름 (getBoundingClientRect는 transform 적용 후 뷰포트 좌표)
+  const cX = (cr.left + cr.right) / 2;
+  const cY = (cr.top + cr.bottom) / 2;
+  const radius = (cr.right - cr.left) / 2;
+  // 텍스트 rect에서 원 중심까지의 최단 거리 (원-사각형 충돌 표준 알고리즘)
+  const nearX = Math.max(tL, Math.min(cX, tR));
+  const nearY = Math.max(tT, Math.min(cY, tB));
+  const dist = Math.sqrt((cX - nearX) ** 2 + (cY - nearY) ** 2);
+  // 원 반지름의 50% 이내까지 들어왔을 때만 발동.
+  // 라벨 테두리나 바둑알 테두리가 아주 살짝 닿는 수준은 무시하고,
+  // 이름 텍스트가 바둑알 안쪽 중심부에 확실히 겹칠 때만 축소한다.
+  return dist < radius * 0.5;
+}
+
+function nameOverlapsAnyNodeCircle(nameEl, circles) {
+  return circles.some(node => nameOverlapsNodeCircleSignificantly(nameEl, node));
+}
+
+function fitLineupNamesAgainstNodeCircles(labels) {
+  labels.forEach(nameEl => {
+    if (!canMeasureTextElement(nameEl)) return;
+    const circles = getSiblingNodeCirclesForLabel(nameEl);
+    if (!circles.length || !nameOverlapsAnyNodeCircle(nameEl, circles)) return;
+
+    let safety = 0;
+    while (safety < 8 && canMeasureTextElement(nameEl) && nameOverlapsAnyNodeCircle(nameEl, circles)) {
+      if (shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) {
+        fitLineupNameSelf(nameEl);
+        fitLineupNameWithinPitchBounds(nameEl);
+        safety++;
+        continue;
+      }
+      if (tightenLineupNameWidthForContext(nameEl)) {
+        fitLineupNameWithinPitchBounds(nameEl);
+        safety++;
+        continue;
+      }
+      // 위 두 방법이 모두 한계에 달하면 큰 캠에서만 수직 nudge를 마지막 수단으로 사용.
+      if (isBigLineupName(nameEl)) nudgeLineupNameWrapVerticallyWithinPitch(nameEl);
+      break;
+    }
+  });
 }
 
 function fitBenchFooterNames(root) {
@@ -2404,6 +2480,9 @@ function fitLineupNamePills(root) {
   fitBigLineupNameAgainstTeamChips(labels);
   fitBigLineupNameAgainstPriorityBadges(labels);
   fitBigLineupNameAgainstOpposingBadges(labels);
+  // 라벨이 다른 선수의 원 자체와 겹치는 경우 (기존 패스가 감지 못하는 gap 보완)
+  fitLineupNamesAgainstNodeCircles(labels);
+  labels.forEach(nameEl => { fitLineupNameWithinPitchBounds(nameEl); });
   fitBigLineupTeamChips(scope);
 }
 
