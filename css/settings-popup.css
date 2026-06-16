@@ -373,6 +373,26 @@
   border-color: rgba(76,217,100,.55);
   box-shadow: 0 0 0 2px rgba(76,217,100,.18);
 }
+.sp-num-step-btn {
+  width: 26px;
+  height: 30px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  color: #f0f0f0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.sp-num-step-btn:hover {
+  background: rgba(255,255,255,.14);
+  border-color: rgba(76,217,100,.45);
+}
+.sp-num-step-btn:active {
+  background: rgba(76,217,100,.22);
+}
 .sp-num-unit {
   font-size: 12px;
   font-weight: 600;

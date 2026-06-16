@@ -38,7 +38,7 @@ const SETTINGS_DEFAULTS = {
   statCycleAuto: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
-  statsAutoSwipeSec: 10,
+  statsAutoSwipeSec: 5,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
@@ -105,7 +105,7 @@ const BG_IMAGE_SAFE_PERSIST_BYTES = Math.floor(1.8 * 1024 * 1024);
 
 const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
-const STATS_SWIPE_SEC_MIN = 1;
+const STATS_SWIPE_SEC_MIN = 2.5;
 const STATS_SWIPE_SEC_MAX = 60;
 const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
 
@@ -1178,6 +1178,28 @@ function initSettingsPopup() {
     };
     input.addEventListener('change', handler);
     input.addEventListener('input', handler);
+  });
+
+  // 숫자 input 옆 +/- 스텝 버튼. 같은 sp-num-cluster 안의 input을 찾아 step만큼 가감 후 min/max로 clamp.
+  document.querySelectorAll('.sp-num-step-btn').forEach(btn => {
+    const input = btn.closest('.sp-num-cluster')?.querySelector('input[data-settings-number]');
+    if (!input) return;
+    const category = input.dataset.settingsNumber;
+    const step = Number(input.step) || 0.5;
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const dir = Number(btn.dataset.numStep) || 1;
+    btn.addEventListener('click', () => {
+      const current = Number(getSetting(category));
+      let next = (Number.isFinite(current) ? current : min) + dir * step;
+      // 부동소수 누적 오차(0.1+0.2 같은) 방지 — step 단위 소수점 자리수로 고정.
+      const decimals = (String(step).split('.')[1] || '').length;
+      next = Number(next.toFixed(decimals));
+      if (Number.isFinite(min)) next = Math.max(min, next);
+      if (Number.isFinite(max)) next = Math.min(max, next);
+      setSetting(category, next);
+      syncNumberUi(category);
+    });
   });
 
   // 색상 input (평점 색상 등). 드래그 중에는 setSetting을 호출하지 않고 change에서만 commit
