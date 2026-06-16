@@ -3,7 +3,7 @@
 // lp-stat 안에서 스탯/이벤트/상대전적/홈교체/원정교체를 하나의 버튼으로 순환.
 // 자동 사이클: statCycleAuto 설정 ON일 때 statsAutoSwipeSec 간격으로 자동 전환.
 //   - 스탯 패널: 모든 페이지가 다 보인 뒤(statspanel:cycle-done) 다음 패널로 이동.
-//   - 이벤트 패널: 맨 아래에서 시작 → 전체 슬라이드 시간의 75%에 걸쳐 위로 스크롤.
+//   - 이벤트 패널: 맨 아래에서 시작 → 75% 동안 위로 스크롤, 25% 동안 맨 위 유지.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const _lpStatCycle = { mode: 'stats' };
@@ -16,7 +16,13 @@ const _lpAuto = {
   listening: false,     // statspanel:cycle-done 대기 중 여부
   scrollRaf: null,      // 이벤트 패널 스크롤 rAF
   scrollTimer: null,    // 이벤트 패널 스크롤 end timer
+  scrollProgrammatic: false,
+  scrollProgrammaticTimer: null,
+  scrollExpectedTop: null,
+  scrollListeners: [],
 };
+
+const _LP_SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 
 const _STAT_CYCLE_LABELS = {
   stats: '스탯',
@@ -40,6 +46,10 @@ function _lpIsCycleAutoOn() {
   return (typeof getSetting === 'function') && getSetting('statCycleAuto') === 'on';
 }
 
+function _lpIsStatsAutoSwipeOn() {
+  return (typeof getSetting === 'function') && getSetting('statsAutoSwipe') === 'on';
+}
+
 function _lpGetIntervalMs() {
   const cfgMs = window.STATS_CONFIG?.autoSwipeIntervalMs || 10000;
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
@@ -56,49 +66,136 @@ function _lpStatPageCount() {
 
 /** lp-stat 안의 이벤트 패널 스크롤 컨테이너 */
 function _lpEventsScrollEl() {
-  return document.querySelector('.lp-stat [data-events-panel]');
+  const panel = document.querySelector('.lp-stat [data-events-panel]');
+  return panel?.querySelector('.ev-list') || panel;
 }
 
 // ─── 이벤트 패널 자동 스크롤 ─────────────────────────────────────────────────
 
+function _lpAddEventsScrollListener(el, type, handler, options) {
+  el.addEventListener(type, handler, options);
+  _lpAuto.scrollListeners.push({ el, type, handler, options });
+}
+
+function _lpClearEventsScrollListeners() {
+  _lpAuto.scrollListeners.forEach(({ el, type, handler, options }) => {
+    el.removeEventListener(type, handler, options);
+  });
+  _lpAuto.scrollListeners = [];
+}
+
+function _lpPointerLooksLikeScrollbarDrag(event, el) {
+  if (!event || !el || event.button !== 0) return false;
+  const rect = el.getBoundingClientRect();
+  const scrollbarWidth = Math.max(0, el.offsetWidth - el.clientWidth);
+  if (scrollbarWidth <= 0) return false;
+  const hitWidth = Math.max(10, scrollbarWidth + 2);
+  return event.clientX >= rect.right - hitWidth
+    && event.clientX <= rect.right
+    && event.clientY >= rect.top
+    && event.clientY <= rect.bottom;
+}
+
+function _lpSetEventsScrollTop(el, value) {
+  _lpAuto.scrollProgrammatic = true;
+  _lpAuto.scrollExpectedTop = value;
+  el.scrollTop = value;
+  if (_lpAuto.scrollProgrammaticTimer) clearTimeout(_lpAuto.scrollProgrammaticTimer);
+  _lpAuto.scrollProgrammaticTimer = setTimeout(() => {
+    _lpAuto.scrollProgrammatic = false;
+    _lpAuto.scrollProgrammaticTimer = null;
+  }, 0);
+}
+
 function _lpStopEventsScroll() {
   if (_lpAuto.scrollRaf) { cancelAnimationFrame(_lpAuto.scrollRaf); _lpAuto.scrollRaf = null; }
   if (_lpAuto.scrollTimer) { clearTimeout(_lpAuto.scrollTimer); _lpAuto.scrollTimer = null; }
+  if (_lpAuto.scrollProgrammaticTimer) {
+    clearTimeout(_lpAuto.scrollProgrammaticTimer);
+    _lpAuto.scrollProgrammaticTimer = null;
+  }
+  _lpAuto.scrollProgrammatic = false;
+  _lpAuto.scrollExpectedTop = null;
+  _lpClearEventsScrollListeners();
+}
+
+function _lpCancelEventsScrollByUser() {
+  if (_lpStatCycle.mode !== 'events') return;
+  _lpStopEventsScroll();
+}
+
+function _lpBindEventsScrollInterruption(el) {
+  _lpClearEventsScrollListeners();
+  const cancel = () => _lpCancelEventsScrollByUser();
+  const onPointerDown = event => {
+    if (_lpPointerLooksLikeScrollbarDrag(event, el)) cancel();
+  };
+  const onKeyDown = event => {
+    if (_LP_SCROLL_KEYS.has(event.key)) cancel();
+  };
+  const onScroll = () => {
+    if (_lpAuto.scrollProgrammatic) return;
+    if (_lpAuto.scrollExpectedTop != null
+      && Math.abs(el.scrollTop - _lpAuto.scrollExpectedTop) <= 1) {
+      return;
+    }
+    cancel();
+  };
+
+  _lpAddEventsScrollListener(el, 'wheel', cancel, { passive: true });
+  _lpAddEventsScrollListener(el, 'touchstart', cancel, { passive: true });
+  _lpAddEventsScrollListener(el, 'pointerdown', onPointerDown, { passive: true });
+  _lpAddEventsScrollListener(el, 'keydown', onKeyDown);
+  _lpAddEventsScrollListener(el, 'scroll', onScroll, { passive: true });
 }
 
 /**
- * 이벤트 패널을 맨 아래로 즉시 이동한 뒤,
- * intervalMs 의 75% 시간 동안 부드럽게 위로 스크롤.
- * 스크롤이 끝나면(= 나머지 25% 경과) 다음 패널로 자동 전환.
+ * 이벤트 패널에 스크롤이 있으면 맨 아래에서 시작해
+ * intervalMs의 75% 동안 등속도로 맨 위까지 스크롤한다.
+ * 이후 나머지 25% 동안 맨 위를 보여준 뒤 다음 패널로 자동 전환한다.
  */
 function _lpStartEventsScroll(intervalMs) {
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl();
-  if (!el) return;
-
-  // 즉시 맨 아래로
-  el.scrollTop = el.scrollHeight;
-
-  const scrollDuration = intervalMs * 0.75;
-  const waitAfter = intervalMs - scrollDuration;
-  const startTime = performance.now();
-  const startScroll = el.scrollTop;
-  const endScroll = 0;
-
-  function tick(now) {
-    const elapsed = now - startTime;
-    const t = Math.min(elapsed / scrollDuration, 1);
-    // easeInOutCubic
-    const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-    el.scrollTop = startScroll + (endScroll - startScroll) * ease;
-    if (t < 1) {
-      _lpAuto.scrollRaf = requestAnimationFrame(tick);
-    } else {
-      el.scrollTop = endScroll;
-      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
-    }
+  if (!el) {
+    _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+    return;
   }
-  _lpAuto.scrollRaf = requestAnimationFrame(tick);
+  _lpBindEventsScrollInterruption(el);
+
+  const scrollDuration = Math.max(0, intervalMs * 0.75);
+  const waitAfter = Math.max(0, intervalMs - scrollDuration);
+
+  const startAfterLayout = () => {
+    const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+    _lpSetEventsScrollTop(el, maxScroll);
+
+    if (maxScroll <= 0 || scrollDuration <= 0) {
+      _lpSetEventsScrollTop(el, 0);
+      _lpClearEventsScrollListeners();
+      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+      return;
+    }
+
+    const startTime = performance.now();
+    const tick = now => {
+      const progress = Math.min((now - startTime) / scrollDuration, 1);
+      _lpSetEventsScrollTop(el, maxScroll * (1 - progress));
+
+      if (progress < 1) {
+        _lpAuto.scrollRaf = requestAnimationFrame(tick);
+      } else {
+        _lpSetEventsScrollTop(el, 0);
+        _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
+      }
+    };
+
+    _lpAuto.scrollRaf = requestAnimationFrame(tick);
+  };
+
+  _lpAuto.scrollRaf = requestAnimationFrame(() => {
+    _lpAuto.scrollRaf = requestAnimationFrame(startAfterLayout);
+  });
 }
 
 // ─── 자동 사이클 제어 ────────────────────────────────────────────────────────
@@ -122,15 +219,15 @@ function _lpAutoStart() {
 
   if (mode === 'stats') {
     const pages = _lpStatPageCount();
-    if (pages <= 1) {
-      // 단일 페이지 → 고정 interval 후 전환
+    if (pages <= 1 || !_lpIsStatsAutoSwipeOn()) {
+      // 단일 페이지이거나 스탯 자동스와이프가 꺼진 경우도 현재 패널 기준 interval 후 전환
       _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     } else {
       // 다중 페이지 → statspanel:cycle-done 이벤트 대기 + safety fallback
       _lpAuto.listening = true;
       _lpAuto.fallback = setTimeout(() => {
         if (_lpAuto.listening) lpStatAutoAdvance();
-      }, intervalMs * pages * 1.5);
+      }, (intervalMs * pages) + 500);
     }
   } else if (mode === 'events') {
     _lpStartEventsScroll(intervalMs);
@@ -148,6 +245,7 @@ function lpStatAutoAdvance() {
   const idx = modes.indexOf(_lpStatCycle.mode);
   _lpStatCycle.mode = modes[(idx + 1) % modes.length];
   lpStatUpdateVisibility();
+  lpStatEnsureModeReady(_lpStatCycle.mode);
   // lpStatUpdateVisibility 내에서 _lpAutoStart() 호출됨
 }
 
@@ -166,6 +264,14 @@ function lpStatAvailableModes() {
   if (hasBenchHome) modes.push('bench_home');
   if (hasBenchAway) modes.push('bench_away');
   return modes;
+}
+
+function lpStatEnsureModeReady(mode) {
+  if (mode !== 'hth' || typeof window.hthEnsureLoadedForFixture !== 'function') return;
+  const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
+    && window.hthCurrentDataIsFresh(window._eventsLastData));
+  window.hthEnsureLoadedForFixture(window._eventsLastData, { renderLoading: needsLoading })
+    .catch(err => console.warn('HTH fetch failed:', err));
 }
 
 function lpStatUpdateVisibility() {
@@ -220,12 +326,7 @@ function lpStatCycleNext() {
   const idx = modes.indexOf(_lpStatCycle.mode);
   _lpStatCycle.mode = modes[(idx + 1) % modes.length];
   lpStatUpdateVisibility();
-  if (_lpStatCycle.mode === 'hth' && typeof window.hthEnsureLoadedForFixture === 'function') {
-    const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
-      && window.hthCurrentDataIsFresh(window._eventsLastData));
-    window.hthEnsureLoadedForFixture(window._eventsLastData, { renderLoading: needsLoading })
-      .catch(err => console.warn('HTH fetch failed:', err));
-  }
+  lpStatEnsureModeReady(_lpStatCycle.mode);
 }
 
 function lpStatReset() {
@@ -238,7 +339,10 @@ function lpStatReset() {
 // ─── 이벤트 리스너 ────────────────────────────────────────────────────────────
 
 // stats 패널이 마지막 페이지 자동 스와이프 후 발생시키는 이벤트
-document.addEventListener('statspanel:cycle-done', () => {
+document.addEventListener('statspanel:cycle-done', event => {
+  const fromBigStatPanel = typeof event.target?.closest === 'function'
+    && !!event.target.closest('.lp-stat');
+  if (!fromBigStatPanel) return;
   if (_lpAuto.listening && _lpStatCycle.mode === 'stats') {
     lpStatAutoAdvance();
   }
@@ -247,7 +351,7 @@ document.addEventListener('statspanel:cycle-done', () => {
 // 자동 사이클 설정 변경 시 즉시 반영
 document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
-  if (cat === 'statCycleAuto' || cat === 'statsAutoSwipeSec') {
+  if (cat === 'statCycleAuto' || cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec') {
     _lpAutoClear();
     _lpAutoStart();
     lpStatUpdateBtn();

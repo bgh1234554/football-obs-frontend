@@ -66,15 +66,16 @@ const SETTINGS_DEFAULTS = {
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
   bgImageData:    '',        // 파일 첨부 base64 데이터 URL — 3MB까지만 허용
-  // 패널 투명도 (0~100). 100=완전 불투명(기본), 낮을수록 배경 이미지가 비쳐 보임.
-  // applyLayoutSettings에서 :root --panel-alpha CSS 변수에 0~1로 매핑돼 적용.
-  panelAlpha:     75,
+  // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
+  panelAlpha:     25,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
   // 선수 노드/이름은 CSS에서 별도 레이어로 유지한다.
-  pitchAlpha:     75,
+  pitchAlpha:     25,
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
-  tacticsAlpha:   100,
+  tacticsAlpha:   0,
+  // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
+  alphaTransparencyMode: 'transparency',
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
   // OBS 크로마키와 충돌 방지용.
   // 카테고리별 분리 정책:
@@ -106,7 +107,7 @@ const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
 const STATS_SWIPE_SEC_MIN = 1;
 const STATS_SWIPE_SEC_MAX = 60;
-const LOW_PANEL_ALPHA_TEXT_OUTLINE_THRESHOLD = 70;
+const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
 
 const LINEUP_SCALE_MIN = 50;
 const LINEUP_SCALE_MAX = 100;
@@ -243,6 +244,12 @@ function isLikelyLocalFilePath(input) {
   return /^file:/i.test(raw) || /^[a-zA-Z]:[\\/]/.test(raw) || /^\\\\/.test(raw);
 }
 
+function clampPercent(value, fallback = 0) {
+  const numeric = Number(value);
+  const safe = Number.isFinite(numeric) ? numeric : fallback;
+  return Math.max(0, Math.min(100, safe));
+}
+
 /**
  * 모든 설정 카테고리의 UI(스위치/슬라이더/숫자입력/라디오/색상)를 settingsState 기준으로 일괄 동기화.
  * 설정 초기화나 탭 전환처럼 "현재 상태를 통째로 화면에 반영"해야 할 때 호출.
@@ -313,6 +320,7 @@ function isValidSetting(category, value) {
   if (category === 'statCycleAuto') return value === 'on' || value === 'off';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
+  if (category === 'alphaTransparencyMode') return value === 'transparency';
   if (category === 'subReflect'
     || category === 'fanReaction'
     || category === 'lineupHideInitial'
@@ -369,9 +377,15 @@ function loadSettings() {
         break;
       } catch {}
     }
-    if (!parsed) return;
+    if (!parsed) {
+      applyLayoutSettings();
+      return;
+    }
 
     const isLegacyPayload = loadedKey !== SETTINGS_STORAGE_KEY;
+    const shouldMigrateAlphaTransparency =
+      parsed.alphaTransparencyMode !== SETTINGS_DEFAULTS.alphaTransparencyMode;
+    let normalizedSettings = false;
 
     // 2) 카테고리별 적용 + legacy 마이그레이션 보정.
     Object.keys(SETTINGS_DEFAULTS).forEach(category => {
@@ -386,12 +400,30 @@ function loadSettings() {
       if (isValidSetting(category, value)) settingsState[category] = value;
     });
 
+    if (shouldMigrateAlphaTransparency) {
+      ['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].forEach(category => {
+        if (!Object.prototype.hasOwnProperty.call(parsed, category)) return;
+        const legacyOpacity = Number(parsed[category]);
+        if (!Number.isFinite(legacyOpacity)) return;
+        settingsState[category] = 100 - clampPercent(legacyOpacity, 100);
+      });
+      settingsState.alphaTransparencyMode = SETTINGS_DEFAULTS.alphaTransparencyMode;
+      normalizedSettings = true;
+    }
+
+    if (settingsState.statCycleAuto === 'on' && settingsState.statsAutoSwipe !== 'on') {
+      settingsState.statsAutoSwipe = 'on';
+      normalizedSettings = true;
+    }
+
     // 3) v2에서 읽은 경우 v3로 즉시 재저장 후 legacy 정리.
-    if (isLegacyPayload) {
+    if (isLegacyPayload || normalizedSettings) {
       if (saveSettings()) {
-        SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
-          try { localStorage.removeItem(key); } catch {}
-        });
+        if (isLegacyPayload) {
+          SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
+            try { localStorage.removeItem(key); } catch {}
+          });
+        }
       }
     }
   } catch {}
@@ -451,7 +483,12 @@ function getLineupNodeMode() {
 function setSetting(category, value) {
   if (!(category in SETTINGS_DEFAULTS)) return false;
   if (!isValidSetting(category, value)) return false;
-  if (settingsState[category] === value) return true;
+  if (settingsState[category] === value) {
+    if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+      return setSetting('statsAutoSwipe', 'on');
+    }
+    return true;
+  }
 
   const hadOwnValue = Object.prototype.hasOwnProperty.call(settingsState, category);
   const prevValue = settingsState[category];
@@ -493,6 +530,9 @@ function setSetting(category, value) {
     if (typeof render === 'function') render();
     // theme:colors-changed로 라인업/스탯 패널이 인라인 컬러를 다시 그리도록 신호.
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
+  }
+  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+    setSetting('statsAutoSwipe', 'on');
   }
   document.dispatchEvent(new CustomEvent('settings:change', {
     detail: { category, value, mode: value }
@@ -657,27 +697,24 @@ function applyBackgroundSettings() {
     root.style.setProperty('--bg-image', 'none');
   }
 
-  // 패널 투명도 — 0~100 → 0~1로 매핑. 0=완전 투명, 100=완전 불투명.
-  const rawPanelAlpha = Number(getSetting('panelAlpha'));
-  const alphaPct = Math.max(0, Math.min(100, Number.isFinite(rawPanelAlpha) ? rawPanelAlpha : 100));
-  const alpha = alphaPct / 100;
+  // 패널 투명도 — UI는 0=불투명, 100=완전 투명. CSS alpha에는 반전된 opacity를 넣는다.
+  const panelTransparencyPct = clampPercent(getSetting('panelAlpha'), SETTINGS_DEFAULTS.panelAlpha);
+  const alpha = (100 - panelTransparencyPct) / 100;
   root.style.setProperty('--panel-alpha', String(alpha));
   root.style.setProperty('--api-widget-hover-alpha', String(0.22 * alpha));
   const body = document.body;
   if (body) {
-    body.classList.toggle('low-panel-alpha', alphaPct <= LOW_PANEL_ALPHA_TEXT_OUTLINE_THRESHOLD);
+    body.classList.toggle('low-panel-alpha', panelTransparencyPct >= HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD);
   }
 
   // 라인업 투명도 — 라인업 칼럼 배경과 피치 배경/라인 레이어가 이 값을 공유한다.
-  const rawPitchAlpha = Number(getSetting('pitchAlpha'));
-  const pitchAlphaPct = Math.max(0, Math.min(100, Number.isFinite(rawPitchAlpha) ? rawPitchAlpha : 100));
-  const pitchAlpha = pitchAlphaPct / 100;
+  const pitchTransparencyPct = clampPercent(getSetting('pitchAlpha'), SETTINGS_DEFAULTS.pitchAlpha);
+  const pitchAlpha = (100 - pitchTransparencyPct) / 100;
   root.style.setProperty('--lp-pitch-alpha', String(pitchAlpha));
 
   // 전술판 투명도 — 피치 + 우측 타임라인/이벤트 패널 배경을 별도 조절.
-  const rawTacticsAlpha = Number(getSetting('tacticsAlpha'));
-  const tacticsAlphaPct = Math.max(0, Math.min(100, Number.isFinite(rawTacticsAlpha) ? rawTacticsAlpha : 100));
-  const tacticsAlpha = tacticsAlphaPct / 100;
+  const tacticsTransparencyPct = clampPercent(getSetting('tacticsAlpha'), SETTINGS_DEFAULTS.tacticsAlpha);
+  const tacticsAlpha = (100 - tacticsTransparencyPct) / 100;
   root.style.setProperty('--td-pitch-alpha', String(tacticsAlpha));
   if (body) {
     body.classList.remove('low-tactics-alpha');
@@ -889,6 +926,7 @@ function getSwitchSides(category) {
   if (category === 'lineupNode') return { off: 'number', on: 'photo' };
   if (category === 'teamLogo') return { off: 'logo', on: 'fa' };
   if (category === 'mainPage') return { off: 'big', on: 'small' };
+  if (category === 'statCycleAuto') return { off: 'off', on: 'on' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
   if (category === 'subReflect'
     || category === 'lineupHideInitial'

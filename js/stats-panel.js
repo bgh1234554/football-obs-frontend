@@ -482,6 +482,7 @@ function applyStatsPanel(fixtureData) {
   });
   requestAnimationFrame(() => {
     stRerenderActivePanels();
+    window.lpStatUpdateVisibility?.();
   });
 }
 
