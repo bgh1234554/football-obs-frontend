@@ -20,22 +20,24 @@ const SETTINGS_DEFAULTS = {
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
                       // long 모드(풀네임)는 CSS에서 0.875× 비율 유지.
   // 라인업 분할 (캠 큼 전용) — ON시 양 팀을 한 피치에 합쳐서 그리지 않고
-  // 위(홈)/아래(원정) 두 개의 풀 피치(각 62:105 비율, 패널 전체는 62:210)로 분리.
-  // 패널 폭이 줄어 cam이 더 넓어지고 각 팀 가독성 향상. 작은 캠 패널은 영향 없음.
-  splitLineup: 'off',
+  // 위(홈)/아래(원정) 두 개의 풀 피치로 분리. OFF면 캠 작음과 같은 combined 피치를 사용.
+  // 작은 캠 패널은 영향 없음.
+  splitLineup: 'on',
   // 라인업 피치 안의 리그 로고 워시 위치. 센터 서클(default)/왼쪽 사이드라인/오른쪽 사이드라인.
   // 분할 모드에서는 각 피치마다 똑같이 적용된다.
   leagueLogoPos: 'center',
   // 크로마키 대응용 라인업 피치 톤 프리셋.
-  lineupPitchTone: 'green',
+  lineupPitchTone: 'black',
   // 'logo' = matchInfo.homeTeamLogo (default. 클럽=팀 로고, 국대=국기)
   // 'fa'   = matchInfo.homeTeamFaUrl (협회 로고. URL 없으면 logo로 자동 폴백 — fixture.js)
   teamLogo: 'logo',
   // '메인에 표시' 버튼 클릭 시 자동 이동할 페이지: 'big'(캠 큼) / 'small'(캠 작음 = /detail).
   mainPage: 'big',
   fanReaction: 'on',
+  // 캠 큰 패널 자동 전환 (stat-cycle.js). off='off', on='on' 토글.
+  statCycleAuto: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
-  statsAutoSwipe: 'off',
+  statsAutoSwipe: 'on',
   statsAutoSwipeSec: 10,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
@@ -47,8 +49,9 @@ const SETTINGS_DEFAULTS = {
   // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
   lineupShowGoals: 'on',     // 골/어시스트 이모티콘
   lineupShowCards: 'on',     // 옐로/레드 카드
-  lineupShowRating: 'off',   // 평점 박스
-  lineupShowSubTime: 'off',  // 교체 IN 시간(72' 등)
+  lineupShowRating: 'on',    // 평점 박스
+  lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
+  lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
   // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
   // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
   // color input은 항상 소문자 hex를 반환하므로 default도 소문자로 통일 — 비교/리셋 일관성.
@@ -63,15 +66,16 @@ const SETTINGS_DEFAULTS = {
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
   bgImageData:    '',        // 파일 첨부 base64 데이터 URL — 3MB까지만 허용
-  // 패널 투명도 (0~100). 100=완전 불투명(기본), 낮을수록 배경 이미지가 비쳐 보임.
-  // applyLayoutSettings에서 :root --panel-alpha CSS 변수에 0~1로 매핑돼 적용.
-  panelAlpha:     100,
+  // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
+  panelAlpha:     25,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
   // 선수 노드/이름은 CSS에서 별도 레이어로 유지한다.
-  pitchAlpha:     100,
+  pitchAlpha:     25,
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
-  tacticsAlpha:   100,
+  tacticsAlpha:   0,
+  // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
+  alphaTransparencyMode: 'transparency',
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
   // OBS 크로마키와 충돌 방지용.
   // 카테고리별 분리 정책:
@@ -89,6 +93,8 @@ const SETTINGS_DEFAULTS = {
   // 평점은 항상 마젠타 고정(lineup-events.js), 이벤트 라벨/막대는 항상 마젠타 고정(CSS),
   // 교체 IN 마커는 항상 파랑 고정(CSS).
   greenscreenIntensity: 'mild',
+  // 캠 큰 우측 패널 연결. on=두 패널 합계가 칼럼 높이를 꽉 채움, off=각 패널 독립 리사이즈.
+  bigPanelLinked: 'on',
 };
 
 // 배경 이미지 파일 크기 제한.
@@ -101,7 +107,7 @@ const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
 const STATS_SWIPE_SEC_MIN = 1;
 const STATS_SWIPE_SEC_MAX = 60;
-const LOW_PANEL_ALPHA_TEXT_OUTLINE_THRESHOLD = 70;
+const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
 
 const LINEUP_SCALE_MIN = 50;
 const LINEUP_SCALE_MAX = 100;
@@ -238,6 +244,13 @@ function isLikelyLocalFilePath(input) {
   return /^file:/i.test(raw) || /^[a-zA-Z]:[\\/]/.test(raw) || /^\\\\/.test(raw);
 }
 
+/** 값을 0~100 범위로 클램핑. 숫자가 아니면 fallback을 사용. */
+function clampPercent(value, fallback = 0) {
+  const numeric = Number(value);
+  const safe = Number.isFinite(numeric) ? numeric : fallback;
+  return Math.max(0, Math.min(100, safe));
+}
+
 /**
  * 모든 설정 카테고리의 UI(스위치/슬라이더/숫자입력/라디오/색상)를 settingsState 기준으로 일괄 동기화.
  * 설정 초기화나 탭 전환처럼 "현재 상태를 통째로 화면에 반영"해야 할 때 호출.
@@ -305,8 +318,10 @@ function isValidSetting(category, value) {
   if (category === 'mainPage') return value === 'big' || value === 'small';
   if (category === 'leagueLogoPos') return value === 'center' || value === 'left' || value === 'right';
   if (category === 'lineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
+  if (category === 'statCycleAuto') return value === 'on' || value === 'off';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
+  if (category === 'alphaTransparencyMode') return value === 'transparency';
   if (category === 'subReflect'
     || category === 'fanReaction'
     || category === 'lineupHideInitial'
@@ -315,7 +330,9 @@ function isValidSetting(category, value) {
     || category === 'lineupShowCards'
     || category === 'lineupShowRating'
     || category === 'lineupShowSubTime'
-    || category === 'greenscreen') {
+    || category === 'lineupShowNumber'
+    || category === 'greenscreen'
+    || category === 'bigPanelLinked') {
     return value === 'on' || value === 'off';
   }
   if (category === 'statsAutoSwipeSec') {
@@ -361,9 +378,15 @@ function loadSettings() {
         break;
       } catch {}
     }
-    if (!parsed) return;
+    if (!parsed) {
+      applyLayoutSettings();
+      return;
+    }
 
     const isLegacyPayload = loadedKey !== SETTINGS_STORAGE_KEY;
+    const shouldMigrateAlphaTransparency =
+      parsed.alphaTransparencyMode !== SETTINGS_DEFAULTS.alphaTransparencyMode;
+    let normalizedSettings = false;
 
     // 2) 카테고리별 적용 + legacy 마이그레이션 보정.
     Object.keys(SETTINGS_DEFAULTS).forEach(category => {
@@ -378,12 +401,30 @@ function loadSettings() {
       if (isValidSetting(category, value)) settingsState[category] = value;
     });
 
+    if (shouldMigrateAlphaTransparency) {
+      ['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].forEach(category => {
+        if (!Object.prototype.hasOwnProperty.call(parsed, category)) return;
+        const legacyOpacity = Number(parsed[category]);
+        if (!Number.isFinite(legacyOpacity)) return;
+        settingsState[category] = 100 - clampPercent(legacyOpacity, 100);
+      });
+      settingsState.alphaTransparencyMode = SETTINGS_DEFAULTS.alphaTransparencyMode;
+      normalizedSettings = true;
+    }
+
+    if (settingsState.statCycleAuto === 'on' && settingsState.statsAutoSwipe !== 'on') {
+      settingsState.statsAutoSwipe = 'on';
+      normalizedSettings = true;
+    }
+
     // 3) v2에서 읽은 경우 v3로 즉시 재저장 후 legacy 정리.
-    if (isLegacyPayload) {
+    if (isLegacyPayload || normalizedSettings) {
       if (saveSettings()) {
-        SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
-          try { localStorage.removeItem(key); } catch {}
-        });
+        if (isLegacyPayload) {
+          SETTINGS_LEGACY_STORAGE_KEYS.forEach(key => {
+            try { localStorage.removeItem(key); } catch {}
+          });
+        }
       }
     }
   } catch {}
@@ -443,7 +484,24 @@ function getLineupNodeMode() {
 function setSetting(category, value) {
   if (!(category in SETTINGS_DEFAULTS)) return false;
   if (!isValidSetting(category, value)) return false;
-  if (settingsState[category] === value) return true;
+  if (category === 'statsAutoSwipe' && value !== 'on' && getSetting('statCycleAuto') === 'on') {
+    if (settingsState.statsAutoSwipe !== 'on') {
+      settingsState.statsAutoSwipe = 'on';
+      saveSettings();
+    }
+    syncSwitchUi('statsAutoSwipe');
+    syncStatsAutoSwipeLockUi();
+    if (typeof showToast === 'function') {
+      showToast('패널 자동 전환이 켜져 있어 자동 스와이프를 끌 수 없습니다.');
+    }
+    return false;
+  }
+  if (settingsState[category] === value) {
+    if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+      return setSetting('statsAutoSwipe', 'on');
+    }
+    return true;
+  }
 
   const hadOwnValue = Object.prototype.hasOwnProperty.call(settingsState, category);
   const prevValue = settingsState[category];
@@ -463,7 +521,8 @@ function setSetting(category, value) {
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
-    || category === 'lineupShowRating' || category === 'lineupShowSubTime') {
+    || category === 'lineupShowRating' || category === 'lineupShowSubTime'
+    || category === 'lineupShowNumber') {
     applyLayoutSettings();
   }
   // Iter 5-7: 배경 색/이미지 변경 → 즉시 :root CSS 변수 갱신.
@@ -475,12 +534,18 @@ function setSetting(category, value) {
     || category === 'tacticsAlpha') {
     applyBackgroundSettings();
   }
+  if (category === 'bigPanelLinked') {
+    window.applyStoredBigPanelHeights?.();
+  }
   // Iter 5-7: 그린스크린 토글 또는 강도 변경 → 모든 색상(피치 톤/배경/팀컬러/평점) 일괄 재적용.
   if (category === 'greenscreen' || category === 'greenscreenIntensity') {
     applyLayoutSettings();
     if (typeof render === 'function') render();
     // theme:colors-changed로 라인업/스탯 패널이 인라인 컬러를 다시 그리도록 신호.
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
+  }
+  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+    setSetting('statsAutoSwipe', 'on');
   }
   document.dispatchEvent(new CustomEvent('settings:change', {
     detail: { category, value, mode: value }
@@ -580,7 +645,8 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
-  const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')] || LINEUP_PITCH_TONE_STYLES.green;
+  const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
+    || LINEUP_PITCH_TONE_STYLES[SETTINGS_DEFAULTS.lineupPitchTone];
   const root = document.documentElement;
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
@@ -644,27 +710,24 @@ function applyBackgroundSettings() {
     root.style.setProperty('--bg-image', 'none');
   }
 
-  // 패널 투명도 — 0~100 → 0~1로 매핑. 0=완전 투명, 100=완전 불투명.
-  const rawPanelAlpha = Number(getSetting('panelAlpha'));
-  const alphaPct = Math.max(0, Math.min(100, Number.isFinite(rawPanelAlpha) ? rawPanelAlpha : 100));
-  const alpha = alphaPct / 100;
+  // 패널 투명도 — UI는 0=불투명, 100=완전 투명. CSS alpha에는 반전된 opacity를 넣는다.
+  const panelTransparencyPct = clampPercent(getSetting('panelAlpha'), SETTINGS_DEFAULTS.panelAlpha);
+  const alpha = (100 - panelTransparencyPct) / 100;
   root.style.setProperty('--panel-alpha', String(alpha));
   root.style.setProperty('--api-widget-hover-alpha', String(0.22 * alpha));
   const body = document.body;
   if (body) {
-    body.classList.toggle('low-panel-alpha', alphaPct <= LOW_PANEL_ALPHA_TEXT_OUTLINE_THRESHOLD);
+    body.classList.toggle('low-panel-alpha', panelTransparencyPct >= HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD);
   }
 
   // 라인업 투명도 — 라인업 칼럼 배경과 피치 배경/라인 레이어가 이 값을 공유한다.
-  const rawPitchAlpha = Number(getSetting('pitchAlpha'));
-  const pitchAlphaPct = Math.max(0, Math.min(100, Number.isFinite(rawPitchAlpha) ? rawPitchAlpha : 100));
-  const pitchAlpha = pitchAlphaPct / 100;
+  const pitchTransparencyPct = clampPercent(getSetting('pitchAlpha'), SETTINGS_DEFAULTS.pitchAlpha);
+  const pitchAlpha = (100 - pitchTransparencyPct) / 100;
   root.style.setProperty('--lp-pitch-alpha', String(pitchAlpha));
 
   // 전술판 투명도 — 피치 + 우측 타임라인/이벤트 패널 배경을 별도 조절.
-  const rawTacticsAlpha = Number(getSetting('tacticsAlpha'));
-  const tacticsAlphaPct = Math.max(0, Math.min(100, Number.isFinite(rawTacticsAlpha) ? rawTacticsAlpha : 100));
-  const tacticsAlpha = tacticsAlphaPct / 100;
+  const tacticsTransparencyPct = clampPercent(getSetting('tacticsAlpha'), SETTINGS_DEFAULTS.tacticsAlpha);
+  const tacticsAlpha = (100 - tacticsTransparencyPct) / 100;
   root.style.setProperty('--td-pitch-alpha', String(tacticsAlpha));
   if (body) {
     body.classList.remove('low-tactics-alpha');
@@ -741,11 +804,76 @@ function setNameMode(category, mode) {
   setSetting(category, mode);
 }
 
+let lineupInitialCollisionBaseNames = new Set();
+
+function getLineupShortName(player) {
+  return player?.name || player?.playerName || '';
+}
+
+function normalizeLineupInitialBaseName(name) {
+  const text = String(name || '').trim();
+  if (!text) return '';
+  const base = stripLeadingLineupInitial(text) || text;
+  return String(base || '')
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+}
+
+function hasLeadingLineupInitial(name) {
+  const text = String(name || '').trim();
+  if (!text) return false;
+  return stripLeadingLineupInitial(text) !== text;
+}
+
+/**
+ * lineupHideInitial=on일 때도 동명이인이 생기면 이니셜을 보존하기 위한 경기 단위 인덱스.
+ * 양 팀 선발+교체 전체를 기준으로 "J. Kim" → "Kim" 같은 base 이름을 세어 충돌 여부를 판단한다.
+ */
+function setLineupInitialCollisionContext(fixtureData) {
+  const counts = new Map();
+  const seenPlayerKeys = new Set();
+
+  ['home', 'away'].forEach(side => {
+    const lineup = fixtureData?.[`${side}Lineup`];
+    ['startXi', 'substitutes'].forEach(group => {
+      const players = Array.isArray(lineup?.[group]) ? lineup[group] : [];
+      players.forEach((player, idx) => {
+        const shortName = getLineupShortName(player);
+        const base = normalizeLineupInitialBaseName(shortName);
+        if (!base) return;
+
+        const pid = player?.playerId ?? player?.id;
+        const playerKey = pid && Number(pid) !== 0
+          ? `id:${pid}`
+          : `${side}:${group}:${idx}:${shortName}`;
+        if (seenPlayerKeys.has(playerKey)) return;
+        seenPlayerKeys.add(playerKey);
+
+        counts.set(base, (counts.get(base) || 0) + 1);
+      });
+    });
+  });
+
+  lineupInitialCollisionBaseNames = new Set(
+    Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([base]) => base)
+  );
+}
+
+function shouldKeepLineupInitial(shortName) {
+  return hasLeadingLineupInitial(shortName)
+    && lineupInitialCollisionBaseNames.has(normalizeLineupInitialBaseName(shortName));
+}
+
 /**
  * 선수 표시명 선택 헬퍼.
  * 1) long 모드면 한글 풀네임(nameKoLong/playerNameKoLong) 우선, 없으면 short fallback.
  * 2) short 모드면 표준 short(name/playerName)를 사용.
  * 3) lineup 카테고리에서 short + lineupHideInitial=on이면 앞쪽 이니셜 블록 제거(예: "J. Mateta" → "Mateta").
+ *    단, 양 팀 선발+교체 전체에서 이니셜을 제거했을 때 동명이인이 생기면 식별을 위해 이니셜을 유지.
  *    long 모드에선 hideInitial 무시(풀네임 형식이 깨짐).
  */
 function pickName(player, category) {
@@ -761,7 +889,7 @@ function pickName(player, category) {
   const shouldHideInitial = category === 'lineup'
     && !isLongName('lineup')
     && getSetting('lineupHideInitial') === 'on';
-  const displayShortName = shouldHideInitial
+  const displayShortName = shouldHideInitial && !shouldKeepLineupInitial(shortName)
     ? stripLeadingLineupInitial(shortName) || shortName
     : shortName;
   if (isLongName(category) && longName) return longName;
@@ -777,7 +905,7 @@ function stripLeadingLineupInitial(name) {
   if (!text) return '';
   const stripped = text
     // 앞쪽의 이니셜 블록(J. / M. / J.-P. / Á. 등)을 점 기준으로 제거
-    .replace(/^\s*(?:[^\s.．｡。]+[.．｡。]\s*)+/u, '')
+    .replace(/^\s*(?:[^\s.．｡。]+\s*[.．｡。]\s*)+/u, '')
     .trim();
   return stripped || text;
 }
@@ -811,6 +939,7 @@ function getSwitchSides(category) {
   if (category === 'lineupNode') return { off: 'number', on: 'photo' };
   if (category === 'teamLogo') return { off: 'logo', on: 'fa' };
   if (category === 'mainPage') return { off: 'big', on: 'small' };
+  if (category === 'statCycleAuto') return { off: 'off', on: 'on' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
   if (category === 'subReflect'
     || category === 'lineupHideInitial'
@@ -820,7 +949,9 @@ function getSwitchSides(category) {
     || category === 'lineupShowCards'
     || category === 'lineupShowRating'
     || category === 'lineupShowSubTime'
-    || category === 'greenscreen') {
+    || category === 'lineupShowNumber'
+    || category === 'greenscreen'
+    || category === 'bigPanelLinked') {
     return { off: 'off', on: 'on' };
   }
   return { off: 'short', on: 'long' };
@@ -846,6 +977,26 @@ function syncSwitchUi(category) {
   const onEl = cluster.querySelector(`[data-side="${on}"]`);
   if (offEl) offEl.classList.toggle('is-active', value === off);
   if (onEl) onEl.classList.toggle('is-active', value === on);
+  if (category === 'statCycleAuto' || category === 'statsAutoSwipe') {
+    syncStatsAutoSwipeLockUi();
+  }
+}
+
+/** statCycleAuto ON일 때 statsAutoSwipe 토글을 비활성화 + ON 고정하고 잠금 안내 문구를 표시. */
+function syncStatsAutoSwipeLockUi() {
+  const input = document.querySelector('input[data-settings-cat="statsAutoSwipe"]');
+  if (!input) return;
+  const locked = getSetting('statCycleAuto') === 'on';
+  const cluster = input.closest('.sp-toggle-cluster');
+  const note = document.querySelector('[data-stats-auto-swipe-lock]');
+  input.disabled = locked;
+  if (locked) {
+    input.checked = true;
+    cluster?.querySelector('[data-side="off"]')?.classList.remove('is-active');
+    cluster?.querySelector('[data-side="on"]')?.classList.add('is-active');
+  }
+  cluster?.classList.toggle('is-locked', locked);
+  if (note) note.hidden = !locked;
 }
 
 /**

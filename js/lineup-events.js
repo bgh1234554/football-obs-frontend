@@ -38,6 +38,9 @@ function lpNormalizePlayerName(value) {
 function lpCollectPlayerNames(player) {
   if (!player || typeof player !== 'object') return [];
   return [
+    typeof getPlayerNickname === 'function' && player.playerId != null
+      ? getPlayerNickname(player.playerId)
+      : null,
     player.name,
     player.nameKoLong,
     player.playerName,
@@ -162,6 +165,66 @@ function lpAggregatePlayerEvents(events) {
 }
 
 /**
+ * 교체 이벤트가 playerId는 틀렸지만 이름/닉네임으로는 실제 라인업 선수와 매칭되는 경우,
+ * 노드 마커 집계(subIn/subOut)도 "실제로 교체된 선수 ID"를 보도록 이벤트 사본을 보정한다.
+ *
+ * lpApplySubReflectToLineup과 같은 순서로 startXi/substitutes를 재구성하되,
+ * 이벤트 패널 표시용 원본은 건드리지 않고 aggregate 전용 배열만 반환한다.
+ */
+function lpResolveSubstEventIdsForAggregation(fixtureData) {
+  const events = Array.isArray(fixtureData?.events) ? fixtureData.events : [];
+  if (!events.length) return events;
+
+  const resolved = events.slice();
+
+  ['home', 'away'].forEach(side => {
+    const lineup = fixtureData?.[`${side}Lineup`];
+    if (!Array.isArray(lineup?.startXi) || !Array.isArray(lineup?.substitutes)) return;
+
+    const startXi = lineup.startXi.map(player => ({ ...player }));
+    const substitutes = lineup.substitutes.map(player => ({ ...player }));
+    const subEvents = events
+      .map((ev, index) => ({ ev, index }))
+      .filter(({ ev }) => ev && String(ev.type || '').toLowerCase() === 'subst' && ev.side === side)
+      .sort((a, b) => lpEventTimeKey(a.ev) - lpEventTimeKey(b.ev));
+
+    subEvents.forEach(({ ev, index }) => {
+      const outIdx = lpFindLineupPlayerIndex(startXi, {
+        playerId: ev.playerId,
+        playerName: ev.playerName,
+        playerNameKoLong: ev.playerNameKoLong,
+      });
+      const inIdx = lpFindLineupPlayerIndex(substitutes, {
+        playerId: ev.assistId,
+        playerName: ev.assistName,
+        playerNameKoLong: ev.assistNameKoLong,
+      });
+      if (outIdx === -1 || inIdx === -1) return;
+
+      const outPlayer = startXi[outIdx];
+      const inPlayer = substitutes[inIdx];
+      const resolvedOutId = Number(outPlayer?.playerId) > 0 ? outPlayer.playerId : ev.playerId;
+      const resolvedInId = Number(inPlayer?.playerId) > 0 ? inPlayer.playerId : ev.assistId;
+      if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId) {
+        resolved[index] = {
+          ...ev,
+          playerId: resolvedOutId,
+          assistId: resolvedInId,
+        };
+      }
+
+      const newStarter = { ...inPlayer, grid: outPlayer.grid || inPlayer.grid || null };
+      const benchPlayer = { ...outPlayer, grid: null };
+      startXi.splice(outIdx, 1, newStarter);
+      substitutes.splice(inIdx, 1);
+      substitutes.unshift(benchPlayer);
+    });
+  });
+
+  return resolved;
+}
+
+/**
  * fixtureData.players(PlayerStats)에서 playerId → rating(string) 맵.
  * rating이 없거나 빈 값/유효 범위 밖이면 그대로 (UI에서 null 처리).
  */
@@ -169,11 +232,11 @@ function lpBuildRatingMap(players) {
   const map = new Map();
   if (!Array.isArray(players)) return map;
   players.forEach(p => {
-    if (!p || p.playerId == null) return;
+    if (!p || p.playerId == null || Number(p.playerId) === 0) return;
     const raw = String(p.rating ?? '').trim();
     if (!raw) return;
     const num = Number(raw);
-    if (!Number.isFinite(num)) return;
+    if (!Number.isFinite(num) || num === 0) return;
     map.set(String(p.playerId), num);
   });
   return map;
@@ -308,6 +371,7 @@ function lpCardKind(eventInfo) {
 
 // 전역 노출 — lineup-panel.js에서 직접 호출
 window.lpAggregatePlayerEvents = lpAggregatePlayerEvents;
+window.lpResolveSubstEventIdsForAggregation = lpResolveSubstEventIdsForAggregation;
 window.lpBuildRatingMap = lpBuildRatingMap;
 window.lpRatingColor = lpRatingColor;
 window.lpApplySubReflectToLineup = lpApplySubReflectToLineup;

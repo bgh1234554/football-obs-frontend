@@ -4,7 +4,7 @@
   "colors": {
     "boardA": "#000000",
     "boardB": "#000000",
-    "scoreBg": "#ffffff",
+    "scoreBg": "#64ffda",
     "digits": "#000000",
     "meta": "#000000",
     "extra": "#ff3900",
@@ -14,14 +14,14 @@
     "homeText": "#ffffff",
     "awayBg": "#ff0000",
     "awayText": "#f8f6f6",
-    "outline": "#8ab6fd",
+    "outline": "#ffffff",
     "pkBase": "#334155",
-    "homeOutline": "#afe800",
-    "awayOutline": "#ff3900",
+    "homeOutline": "#ff9f81",
+    "awayOutline": "#b289ff",
     "noteText": "#e5e7eb",
     "noteStroke": "#000000",
     "uiBg": "#111827",
-    "bg": "#ff00ff"
+    "bg": "#ff00e1"
   },
   "fontFamily": "'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif",
   "logoAlign": "hybrid",

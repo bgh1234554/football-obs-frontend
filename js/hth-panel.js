@@ -151,6 +151,18 @@ function hthFormatRound(round) {
   return round;
 }
 
+/**
+ * state.homeLogo/awayLogo는 이미 teamLogo 설정(logo/fa)이 반영된 URL.
+ * match 팀 ID가 현재 fixture 팀과 일치하면 state 값을 사용하고, 아니면 fallbackLogo로 폴백.
+ */
+function hthResolveLogoUrl(teamId, fallbackLogo, fixtureData) {
+  const m = fixtureData?.matchInfo;
+  if (!m) return fallbackLogo;
+  if (Number(teamId) === Number(m.homeTeamId)) return (typeof state !== 'undefined' && state.homeLogo) || fallbackLogo;
+  if (Number(teamId) === Number(m.awayTeamId)) return (typeof state !== 'undefined' && state.awayLogo) || fallbackLogo;
+  return fallbackLogo;
+}
+
 /** HTH 경기 한 줄 row DOM 생성 */
 function hthCreateRow(match, fixtureData) {
   const winner = hthGetWinner(match);
@@ -173,9 +185,10 @@ function hthCreateRow(match, fixtureData) {
   // 홈팀
   const homeSide = document.createElement('div');
   homeSide.className = 'hth-team-side hth-team-home';
-  if (match.homeTeamLogo) {
+  const homeLogoUrl = hthResolveLogoUrl(match.homeTeamId, match.homeTeamLogo, fixtureData);
+  if (homeLogoUrl) {
     const img = document.createElement('img');
-    img.src = match.homeTeamLogo;
+    img.src = homeLogoUrl;
     img.alt = match.homeTeamName || 'HOME';
     img.className = 'hth-logo';
     homeSide.appendChild(img);
@@ -235,9 +248,10 @@ function hthCreateRow(match, fixtureData) {
   awayNameEl.className = 'hth-team-name';
   awayNameEl.textContent = match.awayTeamName || '';
   awaySide.appendChild(awayNameEl);
-  if (match.awayTeamLogo) {
+  const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
+  if (awayLogoUrl) {
     const img = document.createElement('img');
-    img.src = match.awayTeamLogo;
+    img.src = awayLogoUrl;
     img.alt = match.awayTeamName || 'AWAY';
     img.className = 'hth-logo';
     awaySide.appendChild(img);
@@ -462,6 +476,18 @@ function hthReset() {
   hthUpdateVisibility();
   document.querySelectorAll('[data-hth-panel]').forEach(el => { el.replaceChildren(); });
 }
+
+// teamLogo 설정 변경 시 HTH 패널 재렌더
+document.addEventListener('settings:change', e => {
+  if (e.detail?.category !== 'teamLogo') return;
+  if (_hthState.hthData && _hthState.fixtureData) {
+    applyHthPanel(_hthState.hthData, _hthState.fixtureData, {
+      cacheKey: _hthState.cacheKey,
+      fetchedAt: _hthState.fetchedAt,
+      expiresAt: _hthState.expiresAt,
+    });
+  }
+});
 
 window.applyHthPanel = applyHthPanel;
 window.hthCanLoadForFixture = hthCanLoadForFixture;

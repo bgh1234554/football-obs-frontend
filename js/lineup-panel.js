@@ -285,7 +285,13 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
     next.events = window.evPatchSubstEvents(next.events, fixtureId);
   }
-  if (!entry) return next;
+  if (!entry) {
+    // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
+    if (typeof window.applyZeroIdOverrides === 'function') {
+      window.applyZeroIdOverrides(next, fixtureId);
+    }
+    return next;
+  }
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
   ['home', 'away'].forEach(side => {
@@ -361,6 +367,12 @@ function buildEffectiveFixtureData(data) {
   const manualReferee = String(entry.refereeName || '').trim();
   if (manualReferee) {
     next.matchInfo = { ...(next.matchInfo || {}), refereeName: manualReferee };
+  }
+
+  // 5) 수동 라인업 적용 후 ID override 적용 — 수동 선수 데이터가 한글 이름을 덮어쓰지 않도록
+  //    항상 마지막에 실행한다.
+  if (typeof window.applyZeroIdOverrides === 'function') {
+    window.applyZeroIdOverrides(next, fixtureId);
   }
 
   return next;
@@ -649,7 +661,7 @@ function lpBuildRosterRowHtml(player, kind) {
   const goalsAssistsHtml = lpBuildGoalsAssistsHtml(events);
   const ratingHtml = lpBuildRatingHtml(player.playerId);
 
-  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}">
+  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
       <span class="${nameClass}"${title}>${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}</span>
@@ -758,11 +770,13 @@ function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
   </div>`;
 }
 
-function setSideName(panel, dataAttrPrefix, side, teamName) {
+function setSideName(panel, dataAttrPrefix, side, teamName, accentColor) {
   const nameEl = panel?.querySelector(`[data-${dataAttrPrefix}-side="${side}"] .dp-side-name`);
   if (!nameEl) return;
   nameEl.textContent = teamName;
   nameEl.title = teamName;
+  if (accentColor) nameEl.style.setProperty('--dp-team-accent', accentColor);
+  else nameEl.style.removeProperty('--dp-team-accent');
 }
 
 function getCoachName(lineupLike) {
@@ -877,7 +891,7 @@ function buildInjuryListHtml(injuries, provided) {
       iconHtml = '<span class="dp-icon dp-icon-redcard" aria-label="출장 정지"></span>';
     }
 
-    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}">
+    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || injury.playerName || '')}"` : ''}>
       ${iconHtml}
       <span class="dp-item-num">${dpEscape(injury.number ?? '')}</span>
       <span class="dp-item-name dp-injury-name"${tooltip}>${dpEscape(pickName(injury, 'roster') || '-')}</span>
@@ -902,22 +916,40 @@ function buildInjuryListHtml(injuries, provided) {
  *       · away: 전술판에서 이미 (100-y)로 반전된 좌표를 받으므로 화면에서는 rawY 그대로 사용
  */
 /**
- * 분할 모드 (캠 큼 + splitLineup=on) 전용 좌표 매핑.
+ * 캠 큰 split 전용 좌표 매핑.
  * 한 피치에 한 팀만 들어가므로 자기 진영 절반만 쓰지 않고 풀 피치를 사용.
- *   - 세로: GK top 92% (피치 아래쪽) → FW top 8% (피치 위쪽). 둘 다 원정팀 같은 자세.
- *   - 가로: yLocal = rawY (홈 스타일) → LB/LW가 화면 왼쪽.
+ *   - 세로: GK top 92% → FW top 8%를 기본으로 하되, split 전용으로 전체를 살짝 위로 올린다.
+ *           추가로 최전방 라인을 제외한 모든 줄은 이름 라벨 한 줄 정도 더 위로 올려
+ *           GK/수비 라벨이 패널 하단에 걸리지 않게 한다.
+ *   - 가로: 홈/원정 모두 같은 좌우 기준을 써야 하므로 100-rawY를 공통 적용한다.
  */
-function mapFormationSlotToSplitPitchPosition(slot) {
+function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   const rawX = Number(slot?.coord?.x) || 5;
   const rawY = Number(slot?.coord?.y) || 50;
   const depth = Math.max(0, Math.min(1, (rawX - 5) / 39));
-  let top = 92 - depth * 84;
-  if (depth === 0) top -= 0.5; // GK 이름 pill 살짝 안쪽으로 (combined away와 동일 정책)
-  const left = 5 + (rawY / 100) * 90;
+  // big split 전용:
+  // - 두 피치는 같은 방향의 독립 보드이므로 홈/원정 모두 같은 좌우 기준을 쓴다.
+  // - 두 팀 모두 바둑알+라벨 전체를 살짝 위로 올려, 하단 라벨이 쓸 여유 공간을 만든다.
+  const SPLIT_NODE_LIFT_PCT = 4;
+  let top = 92 - depth * 84 - SPLIT_NODE_LIFT_PCT;
+  // GK 포함 비최전방 라인은 이름 라벨이 하단으로 잘리지 않도록 위로 올린다.
+  const SPLIT_LABEL_LINE_LIFT_PCT = 4.75;
+  if (depth < 0.82) top -= SPLIT_LABEL_LINE_LIFT_PCT;
+  if (depth === 0) top += 1; // GK: 이름 pill 살짝 안쪽으로
+  // split 원정은 수비/미드 라인이 하단에 촘촘하게 몰리므로 중간 라인만 추가 lift.
+  const SPLIT_AWAY_SUPPORT_LIFT_PCT = 2.5;
+  if (side === 'away' && depth > 0 && depth < 0.82) {
+    top -= SPLIT_AWAY_SUPPORT_LIFT_PCT;
+  }
+  // 바둑알(원) 반지름이 컨테이너 높이 대비 ~6%이므로, 포메이션에 관계없이 상단 잘림을 막는
+  // 보편적 하한선. 4-3-1-2처럼 x=44(depth=1.0)인 극단 포메이션에서도 안전하게 적용된다.
+  top = Math.max(8, top);
+  const yLocal = 100 - rawY;
+  const left = 5 + (yLocal / 100) * 90;
   return { left, top };
 }
 
-function mapFormationSlotToPitchPosition(slot, side) {
+function mapFormationSlotToPitchPosition(slot, side, options = {}) {
   const rawX = Number(slot?.coord?.x) || 5;
   const rawY = Number(slot?.coord?.y) || 50;
   // tactics_x 정규화: 5(GK) → 0, 44(FW) → 1
@@ -932,6 +964,23 @@ function mapFormationSlotToPitchPosition(slot, side) {
   //   - away: -0.5% (≈  4px on 470px pitch) — 이름 pill이 원 아래로 그려져 피치 밖으로 잘리지
   //           않을 정도로만 살짝 올림. 너무 올리면 미드필더와 겹치므로 조금만.
   if (depth === 0) top -= isHome ? 3.5 : 0.5;
+  // combined 피치에서는 원정팀의 미드/수비 줄(GK·공격 최전방 제외)을 살짝 올려
+  // 이름 라벨이 패널 하단에서 잘릴 가능성을 줄인다.
+  // 캠 큰 화면은 여유 있게, 캠 작은 화면은 라벨 한 줄 정도만 가볍게 올리도록 호출부가 강도를 나눈다.
+  const awaySupportLiftPct = Number(options.awaySupportLiftPct) || 0;
+  if (!isHome && depth > 0 && depth < 0.85 && awaySupportLiftPct > 0) {
+    top -= awaySupportLiftPct;
+  }
+  // away 최전방(depth≥0.85): 수비/미드와 별도 lift — 미드라인 너머 상대 진영에 배치
+  const awayFwLiftPct = Number(options.awayFwLiftPct) || 0;
+  if (!isHome && depth >= 0.85 && awayFwLiftPct > 0) {
+    top -= awayFwLiftPct;
+  }
+  // home 최전방(depth≥0.85): 미드라인 쪽으로 올릴 때 사용 (양수면 위로)
+  const homeFwLiftPct = Number(options.homeFwLiftPct) || 0;
+  if (isHome && depth >= 0.85 && homeFwLiftPct !== 0) {
+    top -= homeFwLiftPct;
+  }
   // 홈팀은 rawY 그대로, 원정팀은 100 - rawY를 써서 서로 마주보는 방향으로 배치한다.
   const yLocal = isHome ? rawY : (100 - rawY);
   // 가로는 5~95% (90% 폭)
@@ -945,7 +994,8 @@ function getActiveLineupNodeMode() {
 }
 
 function shouldShowLineupNameNumber() {
-  return getActiveLineupNodeMode() === 'photo';
+  if (getActiveLineupNodeMode() !== 'photo') return false;
+  return typeof getSetting !== 'function' || getSetting('lineupShowNumber') !== 'off';
 }
 
 function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
@@ -964,7 +1014,7 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
 //
 // pitchMode: 'combined' (default) — 양 팀 한 피치, 자기 진영만 사용
 //            'split'    — 한 팀이 풀 피치 사용 (캠 큼 splitLineup=on 전용)
-function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode) {
+function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, options = {}) {
   const nodeMode = getActiveLineupNodeMode();
   const colors = getLineupSideColors(effectiveData, side);
   const circles = [];
@@ -978,8 +1028,8 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode) {
       ? ` title="${dpEscape(player.nameKoLong)}"`
       : '';
     const position = pitchMode === 'split'
-      ? mapFormationSlotToSplitPitchPosition(slot)
-      : mapFormationSlotToPitchPosition(slot, side);
+      ? mapFormationSlotToBigSplitPitchPosition(slot, side)
+      : mapFormationSlotToPitchPosition(slot, side, options);
     const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
     const posStyle = `left:${position.left}%;top:${position.top}%;`;
 
@@ -996,20 +1046,26 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode) {
     const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
 
     // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
-    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
-    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
+    const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : '';
+    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
+    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
   });
 
   return { circles: circles.join(''), names: names.join('') };
 }
 
-function buildLineupPitchTeamChipHtml(side, effectiveData, rawData) {
+function buildLineupPitchTeamChipHtml(side, effectiveData, rawData, options = {}) {
   const lineup = effectiveData?.[`${side}Lineup`];
   const colors = getLineupSideColors(effectiveData, side);
+  const formationOnly = options.formationOnly === true;
+  const primaryLabel = formationOnly
+    ? String(lineup?.formation || '').trim()
+    : getTeamName(effectiveData, side);
+  const primaryTitle = formationOnly ? primaryLabel : getTeamName(effectiveData, side);
   return `<div class="dp-lineup-team-chip is-${side}">
-    <div class="dp-lineup-team-main" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
-      <span class="dp-lineup-team-name" title="${dpEscape(getTeamName(effectiveData, side))}">${dpEscape(getTeamName(effectiveData, side))}</span>
-      ${lineup?.formation ? `<span class="dp-lineup-team-fm">${dpEscape(lineup.formation)}</span>` : ''}
+    <div class="dp-lineup-team-main${formationOnly ? ' is-formation-only' : ''}" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
+      <span class="dp-lineup-team-name" title="${dpEscape(primaryTitle)}">${dpEscape(primaryLabel)}</span>
+      ${!formationOnly && lineup?.formation ? `<span class="dp-lineup-team-fm">${dpEscape(lineup.formation)}</span>` : ''}
     </div>
     ${shouldShowLineupManualButton(rawData, side) ? buildTitleActionButton('lineup', side) : ''}
   </div>`;
@@ -1031,7 +1087,7 @@ function buildLineupPitchLeagueWashHtml(effectiveData, rawData) {
 }
 
 // Iter 5-X: 분할 모드 한 팀 풀 피치 마크업. 마킹/리그 로고/팀 chip은 combined와 공유.
-function buildSingleSidePitchHtml(side, effectiveData, rawData) {
+function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
   const lineup = effectiveData?.[`${side}Lineup`];
   const nodes = buildVerticalPitchNodesHtml(lineup, effectiveData, side, 'split');
   return `<div class="dp-lineup-vertical-pitch is-split is-${side}">
@@ -1046,22 +1102,34 @@ function buildSingleSidePitchHtml(side, effectiveData, rawData) {
       <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
       <div class="dp-lineup-marking dp-lineup-marking-bottom-arc"></div>
     </div>
-    ${buildLineupPitchTeamChipHtml(side, effectiveData, rawData)}
+    ${buildLineupPitchTeamChipHtml(side, effectiveData, rawData, options)}
     ${nodes.circles}
     ${nodes.names}
   </div>`;
 }
 
-function buildLineupSplitPitchModeHtml(effectiveData, rawData) {
+function buildLineupSplitPitchModeHtml(effectiveData, rawData, options = {}) {
   return `<div class="dp-lineup-pitch is-split">
-    ${buildSingleSidePitchHtml('home', effectiveData, rawData)}
-    ${buildSingleSidePitchHtml('away', effectiveData, rawData)}
+    ${buildSingleSidePitchHtml('home', effectiveData, rawData, options)}
+    ${buildSingleSidePitchHtml('away', effectiveData, rawData, options)}
   </div>`;
 }
 
-function buildLineupPitchModeHtml(effectiveData, rawData) {
-  const homeNodes = buildVerticalPitchNodesHtml(effectiveData?.homeLineup, effectiveData, 'home', 'combined');
-  const awayNodes = buildVerticalPitchNodesHtml(effectiveData?.awayLineup, effectiveData, 'away', 'combined');
+function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
+  const homeNodes = buildVerticalPitchNodesHtml(
+    effectiveData?.homeLineup,
+    effectiveData,
+    'home',
+    'combined',
+    options
+  );
+  const awayNodes = buildVerticalPitchNodesHtml(
+    effectiveData?.awayLineup,
+    effectiveData,
+    'away',
+    'combined',
+    options
+  );
   return `<div class="dp-lineup-pitch">
     <div class="dp-lineup-vertical-pitch">
       ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
@@ -1075,8 +1143,8 @@ function buildLineupPitchModeHtml(effectiveData, rawData) {
         <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
         <div class="dp-lineup-marking dp-lineup-marking-bottom-arc"></div>
       </div>
-      ${buildLineupPitchTeamChipHtml('home', effectiveData, rawData)}
-      ${buildLineupPitchTeamChipHtml('away', effectiveData, rawData)}
+      ${buildLineupPitchTeamChipHtml('home', effectiveData, rawData, options)}
+      ${buildLineupPitchTeamChipHtml('away', effectiveData, rawData, options)}
       ${homeNodes.circles}
       ${awayNodes.circles}
       ${homeNodes.names}
@@ -1135,9 +1203,10 @@ function renderBenchPanel(effectiveData, rawData) {
     shouldShowBenchManualButton(rawData, 'away') ? buildTitleActionButton('bench', 'away') : '',
   ].filter(Boolean).join(''));
 
-  // 2) 팀명과 양쪽 리스트를 채운다.
-  setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'));
-  setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'));
+  // 2) 팀명과 양쪽 리스트를 채운다 (팀 컬러는 chip 배경 accent에 사용).
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'), cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')));
+  setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'), cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626')));
 
   const homeLineupExists = !!effectiveData?.homeLineup;
   const awayLineupExists = !!effectiveData?.awayLineup;
@@ -1179,6 +1248,73 @@ function renderBenchPanel(effectiveData, rawData) {
     if (venueEl) venueEl.textContent = venueText;
     if (kickoffEl) kickoffEl.textContent = formatBenchKickoffLocal(matchInfo);
   }
+}
+
+// ─── lp-stat 안의 교체명단 사이클 패널 ──────────────────────────────────────
+
+let _benchCycleResizeObs = null;
+
+/** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
+function buildBenchCyclePanelHtml(players, teamName, accentColor) {
+  const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}>${dpEscape(teamName)} 교체명단</div>`;
+  if (!players || !players.length) {
+    return `${title}<div class="st-empty">교체 선수 없음</div>`;
+  }
+  // 모든 선수를 단일 리스트로 — CSS columns + JS 오버플로 감지가 2열 전환을 처리
+  return `${title}<div class="bc-body">${players.map(p => lpBuildRosterRowHtml(p, 'bench')).join('')}</div>`;
+}
+
+/**
+ * 교체명단 사이클 패널의 2열 전환 처리.
+ * 단일 컬럼에서 선수가 넘치면 bc-two-col 클래스를 붙여 CSS columns 활성화.
+ * columns: 2; column-fill: auto 로 왼쪽 먼저 꽉 채운 뒤 오른쪽으로 넘침.
+ * 높이가 늘어나면 자동으로 왼쪽으로 복귀.
+ */
+function lpBenchCycleRebalance(panel) {
+  const body = panel?.querySelector('.bc-body');
+  if (!body) return;
+  // 일시적으로 단일 컬럼으로 돌려서 실제 overflow 측정
+  body.classList.remove('bc-two-col');
+  const overflows = body.scrollHeight > body.clientHeight + 2;
+  body.classList.toggle('bc-two-col', overflows);
+}
+
+/** 홈/원정 교체명단 사이클 패널 렌더 + rebalance + ResizeObserver 등록, lp-stat 사이클 가시성 갱신. */
+function renderBenchCyclePanels(effectiveData) {
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  const homeColor = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));
+  const awayColor = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
+  const homeSubs = effectiveData?.homeLineup?.substitutes || [];
+  const awaySubs = effectiveData?.awayLineup?.substitutes || [];
+
+  window._lpStatBenchData = {
+    home: homeSubs.length > 0 ? homeSubs : null,
+    away: awaySubs.length > 0 ? awaySubs : null,
+  };
+
+  document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
+    el.innerHTML = buildBenchCyclePanelHtml(homeSubs, getTeamName(effectiveData, 'home'), homeColor);
+  });
+  document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
+    el.innerHTML = buildBenchCyclePanelHtml(awaySubs, getTeamName(effectiveData, 'away'), awayColor);
+  });
+
+  // 렌더 직후 rebalance
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]').forEach(lpBenchCycleRebalance);
+  });
+
+  // 패널 크기 변화(lineup-resize 등) 시 자동 재계산
+  if (_benchCycleResizeObs) _benchCycleResizeObs.disconnect();
+  if (typeof ResizeObserver !== 'undefined') {
+    _benchCycleResizeObs = new ResizeObserver(() => {
+      document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]').forEach(lpBenchCycleRebalance);
+    });
+    document.querySelectorAll('.lp-stat').forEach(el => _benchCycleResizeObs.observe(el));
+  }
+
+  window.lpStatUpdateVisibility?.();
 }
 
 function renderInjuryPanel(effectiveData, rawData) {
@@ -1225,12 +1361,16 @@ function renderLineupGrid(effectiveData, rawData) {
   // 2) 사용할 마크업(pitch/list)과 이름 길이 모드를 고른다.
   // splitLineup 설정이 ON이면 layout-big에서만 두 피치로 분리 — layout-small은 항상 combined 모드.
   const splitOn = typeof getSetting === 'function' && getSetting('splitLineup') === 'on';
-  const combinedHtml = usePitchMode
-    ? buildLineupPitchModeHtml(effectiveData, rawData)
+  const bigPitchOptions = { awaySupportLiftPct: 3.5, awayFwLiftPct: 3, formationOnly: true };
+  const bigCombinedHtml = usePitchMode
+    ? buildLineupPitchModeHtml(effectiveData, rawData, bigPitchOptions)
+    : buildLineupListModeHtml(effectiveData, rawData);
+  const smallCombinedHtml = usePitchMode
+    ? buildLineupPitchModeHtml(effectiveData, rawData, { awaySupportLiftPct: 2, awayFwLiftPct: 2, homeFwLiftPct: 1.5 })
     : buildLineupListModeHtml(effectiveData, rawData);
   const splitHtml = (usePitchMode && splitOn)
-    ? buildLineupSplitPitchModeHtml(effectiveData, rawData)
-    : combinedHtml;
+    ? buildLineupSplitPitchModeHtml(effectiveData, rawData, { formationOnly: true })
+    : bigCombinedHtml;
 
   const longMode = typeof isLongName === 'function' && isLongName('lineup');
 
@@ -1246,7 +1386,7 @@ function renderLineupGrid(effectiveData, rawData) {
     const wrap = panel.closest('.lp-lineup, .lp-lineup-s');
     if (wrap) wrap.classList.toggle('dp-mode-split', splitActive);
     setPanelTitle(panel, '선발 라인업', '');
-    body.innerHTML = isBig ? splitHtml : combinedHtml;
+    body.innerHTML = isBig ? splitHtml : smallCombinedHtml;
   });
 }
 
@@ -1560,6 +1700,23 @@ function nudgeLineupNameWrapVerticallyWithinPitch(nameEl, paddingPx = getLineupN
   return true;
 }
 
+function relaxLineupNameWrapVerticalOffsetIfPossible(nameEl, paddingPx = getLineupNamePitchPaddingPxForContext(nameEl)) {
+  const wrap = getLineupNameWrap(nameEl);
+  if (!wrap) return false;
+
+  const currentMarginTop = parseFloat(wrap.style.marginTop) || 0;
+  if (Math.abs(currentMarginTop) < 0.5) return false;
+
+  const previousMarginTop = wrap.style.marginTop;
+  wrap.style.marginTop = '';
+  const overflow = getLineupNamePitchOverflow(nameEl, paddingPx);
+  const baselineFits = !!overflow && overflow.top <= 0.5 && overflow.bottom <= 0.5;
+  if (baselineFits) return true;
+
+  wrap.style.marginTop = previousMarginTop;
+  return false;
+}
+
 function tightenLineupNameWidthForContext(nameEl) {
   return isBigLineupName(nameEl) ? tightenBigLineupNameWidth(nameEl) : tightenLineupNameWidth(nameEl);
 }
@@ -1590,6 +1747,12 @@ function fitLineupNameWithinPitchBounds(nameEl) {
     if (!shrinkLineupName(nameEl)) break;
     changed = true;
     safety += 1;
+  }
+
+  // 큰 화면에서 하단 GK 라벨이 두 줄→한 줄로 줄어든 뒤에도 이전의 위쪽 보정값이 남아
+  // 얼굴 위로 말려 올라오지 않게, 현재 크기에서 기본 위치가 다시 가능하면 되돌린다.
+  if (isBigLineupName(nameEl) && relaxLineupNameWrapVerticalOffsetIfPossible(nameEl, paddingPx)) {
+    changed = true;
   }
 
   return changed;
@@ -1699,6 +1862,43 @@ function getTeamChipTargetsForLineupName(nameEl) {
   ).filter(target => canMeasureTextElement(target));
 }
 
+function getOwnTeamChipTargetsForLineupName(nameEl) {
+  const side = getLineupNameSide(nameEl);
+  const pitch = nameEl?.closest('.dp-lineup-vertical-pitch');
+  if (!side || !pitch) return [];
+
+  return Array.from(
+    pitch.querySelectorAll(`.dp-lineup-team-chip.is-${side} .dp-lineup-team-main, .dp-lineup-team-chip.is-${side} .dp-side-edit-btn`)
+  ).filter(target => canMeasureTextElement(target));
+}
+
+// 동일 피치 안에서 이 라벨의 선수를 제외한 나머지 선수 원(node 자체)을 반환한다.
+// name-wrap과 node는 동일한 data-player-id를 가지므로 이것으로 자기 원을 구분한다.
+function getSiblingNodeCirclesForLabel(nameEl) {
+  const nameWrap = getLineupNameWrap(nameEl);
+  const playerId = nameWrap?.dataset?.playerId;
+  const playerOrigName = nameWrap?.dataset?.playerOrigName || '';
+  const playerSide = getLineupNameSide(nameEl);
+  const pitch = nameWrap?.closest('.dp-lineup-vertical-pitch');
+  if (!pitch) return [];
+
+  return Array.from(pitch.querySelectorAll('.dp-lineup-node'))
+    .filter(node => {
+      if (!canMeasureTextElement(node)) return false;
+      if (playerId && playerId !== '0' && node.dataset.playerId === playerId) return false;
+      if (playerId === '0' && playerOrigName && node.dataset.playerId === '0') {
+        const nodeSide = node.classList.contains('is-home')
+          ? 'home'
+          : node.classList.contains('is-away') ? 'away' : '';
+        if (node.dataset.playerOrigName === playerOrigName
+          && (!playerSide || !nodeSide || nodeSide === playerSide)) {
+          return false;
+        }
+      }
+      return true;
+    });
+}
+
 function shrinkBigLineupNameForBadgeCollision(nameEl, badgeTargets) {
   let changed = false;
   let safety = 0;
@@ -1792,6 +1992,15 @@ function fitBigLineupNameAgainstTeamChips(labels) {
       if (!chipTargets.length) continue;
       if (!elementOverlapsAny(nameEl, chipTargets)) continue;
 
+      const ownChipTargets = getOwnTeamChipTargetsForLineupName(nameEl);
+      const foreignChipTargets = chipTargets.filter(target => !ownChipTargets.includes(target));
+      const overlapsOwnChipOnly = elementOverlapsAny(nameEl, ownChipTargets)
+        && !elementOverlapsAny(nameEl, foreignChipTargets);
+      // 자기 팀 칩과의 충돌은 이름을 올리거나 줄이지 말고,
+      // 마지막 team-chip fitting 패스가 칩 쪽을 가장자리로 물리도록 맡긴다.
+      // 특히 하단 원정 GK는 이 편이 라벨 기준선을 안정적으로 지킨다.
+      if (overlapsOwnChipOnly) continue;
+
       if (shrinkBigLineupNameForBadgeCollision(nameEl, chipTargets)) {
         changed = true;
         break;
@@ -1826,6 +2035,66 @@ function fitBigLineupNameAgainstOpposingBadges(labels) {
     if (!changed) break;
     pass += 1;
   }
+}
+
+// 이름 라벨이 다른 선수의 바둑알(원) 자체와 겹칠 때 감지·보정한다.
+// 기존 시스템이 라벨-라벨, 라벨-배지만 감지하고 라벨-원은 놓치던 gap을 메운다.
+//
+// 판정 기준: 이름 pill의 "텍스트 실제 표시 영역"이 바둑알(원)과 실제로 겹쳐야만 발동한다.
+//   - pill 좌우 패딩(6px) + 상하 패딩(2px)을 뺀 텍스트 내부 rect 사용
+//   - 원의 border-radius:50% 코너 빈 공간은 실제 원-사각형 충돌 알고리즘으로 제외
+//     (중심점에서 텍스트 rect 최근접점까지의 거리 < 반지름 → 실제 겹침)
+//   - AABB만 쓰면 코너 투명 공간 때문에 false positive가 발생하므로 이 방식이 정확함
+function nameOverlapsNodeCircleSignificantly(nameEl, nodeEl) {
+  if (!canMeasureTextElement(nameEl) || !canMeasureTextElement(nodeEl)) return false;
+  const nr = nameEl.getBoundingClientRect();
+  const cr = nodeEl.getBoundingClientRect();
+  // pill 패딩 제외한 텍스트 표시 영역
+  const tL = nr.left + 6, tR = nr.right - 6;
+  const tT = nr.top + 2,  tB = nr.bottom - 2;
+  if (tR <= tL + 0.5 || tB <= tT + 0.5) return false;
+  // 바둑알 중심 + 반지름 (getBoundingClientRect는 transform 적용 후 뷰포트 좌표)
+  const cX = (cr.left + cr.right) / 2;
+  const cY = (cr.top + cr.bottom) / 2;
+  const radius = (cr.right - cr.left) / 2;
+  // 텍스트 rect에서 원 중심까지의 최단 거리 (원-사각형 충돌 표준 알고리즘)
+  const nearX = Math.max(tL, Math.min(cX, tR));
+  const nearY = Math.max(tT, Math.min(cY, tB));
+  const dist = Math.sqrt((cX - nearX) ** 2 + (cY - nearY) ** 2);
+  // 원 반지름의 50% 이내까지 들어왔을 때만 발동.
+  // 라벨 테두리나 바둑알 테두리가 아주 살짝 닿는 수준은 무시하고,
+  // 이름 텍스트가 바둑알 안쪽 중심부에 확실히 겹칠 때만 축소한다.
+  return dist < radius * 0.5;
+}
+
+function nameOverlapsAnyNodeCircle(nameEl, circles) {
+  return circles.some(node => nameOverlapsNodeCircleSignificantly(nameEl, node));
+}
+
+function fitLineupNamesAgainstNodeCircles(labels) {
+  labels.forEach(nameEl => {
+    if (!canMeasureTextElement(nameEl)) return;
+    const circles = getSiblingNodeCirclesForLabel(nameEl);
+    if (!circles.length || !nameOverlapsAnyNodeCircle(nameEl, circles)) return;
+
+    let safety = 0;
+    while (safety < 8 && canMeasureTextElement(nameEl) && nameOverlapsAnyNodeCircle(nameEl, circles)) {
+      if (shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) {
+        fitLineupNameSelf(nameEl);
+        fitLineupNameWithinPitchBounds(nameEl);
+        safety++;
+        continue;
+      }
+      if (tightenLineupNameWidthForContext(nameEl)) {
+        fitLineupNameWithinPitchBounds(nameEl);
+        safety++;
+        continue;
+      }
+      // 위 두 방법이 모두 한계에 달하면 큰 캠에서만 수직 nudge를 마지막 수단으로 사용.
+      if (isBigLineupName(nameEl)) nudgeLineupNameWrapVerticallyWithinPitch(nameEl);
+      break;
+    }
+  });
 }
 
 function fitBenchFooterNames(root) {
@@ -2133,6 +2402,10 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
   const nameEl = mainEl?.querySelector('.dp-lineup-team-name');
   const formationEl = mainEl?.querySelector('.dp-lineup-team-fm');
   const buttonEl = chipEl?.querySelector('.dp-side-edit-btn');
+  const preserveBigFormationButton = !!(
+    mainEl?.classList.contains('is-formation-only')
+    && chipEl?.closest('.layout-big .lp-lineup')
+  );
   if (!mainEl || !nameEl || !Array.isArray(collisionEls) || !collisionEls.length) return;
 
   let safety = 0;
@@ -2163,7 +2436,7 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
       continue;
     }
 
-    if (buttonOverlaps && buttonEl
+    if (!preserveBigFormationButton && buttonOverlaps && buttonEl
       && tightenTextElementWidth(buttonEl, TEAM_CHIP_BUTTON_MIN_WIDTH_PX, canStayWithinTwoTextLines)) {
       safety += 1;
       continue;
@@ -2183,7 +2456,7 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
       continue;
     }
 
-    if (buttonOverlaps && buttonEl && shrinkTextElement(buttonEl, TEAM_CHIP_BUTTON_MIN_FONT_PX)) {
+    if (!preserveBigFormationButton && buttonOverlaps && buttonEl && shrinkTextElement(buttonEl, TEAM_CHIP_BUTTON_MIN_FONT_PX)) {
       tightenTextElementWidth(buttonEl, TEAM_CHIP_BUTTON_MIN_WIDTH_PX, canStayWithinTwoTextLines);
       safety += 1;
       continue;
@@ -2204,29 +2477,31 @@ function fitBigLineupTeamChips(root) {
     const isSmallLayout = !!panel.closest('.layout-small .lp-lineup-s');
     if (!isBigLayout && !isSmallLayout) return;
 
-    const pitch = panel.querySelector('.dp-lineup-vertical-pitch');
-    if (!pitch) return;
+    const pitches = Array.from(panel.querySelectorAll('.dp-lineup-vertical-pitch'));
+    if (!pitches.length) return;
 
-    pitch.querySelectorAll('.dp-lineup-team-name, .dp-lineup-team-chip .dp-side-edit-btn').forEach(el => {
-      el.style.width = '';
-      el.style.fontSize = '';
-    });
-    pitch.querySelectorAll('.dp-lineup-team-fm').forEach(el => {
-      el.style.fontSize = '';
-    });
-    pitch.querySelectorAll('.dp-lineup-team-main').forEach(el => {
-      el.classList.remove('is-stacked');
-    });
-    pitch.querySelectorAll('.dp-lineup-team-chip').forEach(chip => {
-      chip.style.top = '';
-      chip.style.bottom = '';
-    });
+    pitches.forEach(pitch => {
+      pitch.querySelectorAll('.dp-lineup-team-name, .dp-lineup-team-chip .dp-side-edit-btn').forEach(el => {
+        el.style.width = '';
+        el.style.fontSize = '';
+      });
+      pitch.querySelectorAll('.dp-lineup-team-fm').forEach(el => {
+        el.style.fontSize = '';
+      });
+      pitch.querySelectorAll('.dp-lineup-team-main').forEach(el => {
+        el.classList.remove('is-stacked');
+      });
+      pitch.querySelectorAll('.dp-lineup-team-chip').forEach(chip => {
+        chip.style.top = '';
+        chip.style.bottom = '';
+      });
 
-    pitch.querySelectorAll('.dp-lineup-team-chip').forEach(chip => {
-      const collisionEls = Array.from(
-        pitch.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap')
-      ).filter(target => target !== chip && !chip.contains(target));
-      fitTeamChip(chip, collisionEls, { preferShrink: isSmallLayout });
+      pitch.querySelectorAll('.dp-lineup-team-chip').forEach(chip => {
+        const collisionEls = Array.from(
+          pitch.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap')
+        ).filter(target => target !== chip && !chip.contains(target));
+        fitTeamChip(chip, collisionEls, { preferShrink: isSmallLayout });
+      });
     });
   });
 }
@@ -2299,6 +2574,9 @@ function fitLineupNamePills(root) {
   fitBigLineupNameAgainstTeamChips(labels);
   fitBigLineupNameAgainstPriorityBadges(labels);
   fitBigLineupNameAgainstOpposingBadges(labels);
+  // 라벨이 다른 선수의 원 자체와 겹치는 경우 (기존 패스가 감지 못하는 gap 보완)
+  fitLineupNamesAgainstNodeCircles(labels);
+  labels.forEach(nameEl => { fitLineupNameWithinPitchBounds(nameEl); });
   fitBigLineupTeamChips(scope);
 }
 
@@ -2338,17 +2616,26 @@ function rerenderLineupPanels() {
   // (a) manual override 합성 → (b) subReflect ON이면 교체 이벤트로 startXi/벤치 자동 swap
   const mergedData = buildEffectiveFixtureData(lineupPanelState.lastFixture);
   const effectiveData = applySubReflectToFixture(mergedData);
+  lineupPanelState.lastEffectiveData = effectiveData;
+  if (typeof setLineupInitialCollisionContext === 'function') {
+    setLineupInitialCollisionContext(effectiveData);
+  }
 
   // Iter 5-3: 라인업 노드/벤치 행에서 사용할 이벤트/평점 lookup을 한 번만 계산해 캐시.
   // 렌더 헬퍼들이 lineupPanelState.context에서 읽어 쓰도록 한다.
   // mergedData.events는 evPatchSubstEvents를 거쳐 null playerId override가 반영됐으므로,
   // rawEvents 대신 mergedData.events를 사용해 재교체 선수 subOut이 올바르게 집계되도록 한다.
+  // 추가로 ID는 틀렸지만 이름/닉네임으로 교체가 해석된 경우엔,
+  // 마커 집계도 실제로 매칭된 선수 ID를 따라가야 들어온 선수에게 +분 마커가 붙는다.
   const rawEvents = Array.isArray(mergedData?.events) ? mergedData.events : [];
+  const markerEvents = typeof lpResolveSubstEventIdsForAggregation === 'function'
+    ? lpResolveSubstEventIdsForAggregation(mergedData)
+    : rawEvents;
   // 응답 필드명은 'playerStats' (FixtureResponseDto.playerStats — PlayerStatsDto 리스트).
   // 'players'가 아니므로 주의 (CLAUDE.md 표기가 과거에 'players'로 적혀있었지만 실제 backend는 playerStats).
-  const rawPlayerStats = Array.isArray(lineupPanelState.lastFixture?.playerStats) ? lineupPanelState.lastFixture.playerStats : [];
+  const rawPlayerStats = Array.isArray(effectiveData?.playerStats) ? effectiveData.playerStats : (Array.isArray(lineupPanelState.lastFixture?.playerStats) ? lineupPanelState.lastFixture.playerStats : []);
   lineupPanelState.context = {
-    eventsByPlayer: typeof lpAggregatePlayerEvents === 'function' ? lpAggregatePlayerEvents(rawEvents) : new Map(),
+    eventsByPlayer: typeof lpAggregatePlayerEvents === 'function' ? lpAggregatePlayerEvents(markerEvents) : new Map(),
     ratingByPlayer: typeof lpBuildRatingMap === 'function' ? lpBuildRatingMap(rawPlayerStats) : new Map(),
   };
 
@@ -2357,6 +2644,7 @@ function rerenderLineupPanels() {
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
   syncTacticsBoard(effectiveData);
+  renderBenchCyclePanels(effectiveData);
 
   // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
   // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).
@@ -2381,7 +2669,11 @@ function applyLineupPanels(fixtureData) {
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
 function clearLineupPanels() {
   lineupPanelState.lastFixture = null;
+  lineupPanelState.lastEffectiveData = null;
   lineupPanelState.manualModal = null;
+  if (typeof setLineupInitialCollisionContext === 'function') {
+    setLineupInitialCollisionContext(null);
+  }
   closeManualPanel();
   resetBenchInjuryPanelHeights();
 
@@ -2422,6 +2714,9 @@ function clearLineupPanels() {
   });
 
   clearTacticsLineupSync();
+
+  window._lpStatBenchData = null;
+  window.lpStatUpdateVisibility?.();
 }
 
 function buildFormationOptionsHtml(selected) {
@@ -3090,7 +3385,7 @@ document.addEventListener('settings:change', event => {
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
   // 평점 색상 7구간(ratingColor*)도 변경 시 노드 평점 박스 즉시 갱신.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
-    'lineupHideInitial',
+    'lineupHideInitial', 'lineupShowNumber',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
     'splitLineup', 'leagueLogoPos',
     'ratingColorBelow6', 'ratingColor6', 'ratingColor65',

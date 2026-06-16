@@ -46,6 +46,9 @@ window.EVENT_COMMENT_KO = {
   'misses next match':          '다음 경기 출장 정지',
   'Offside':                    '오프사이드',
 
+  // 페널티 슛아웃
+  'Penalty Shootout':             '승부차기',
+
   // 복합 사유 (콤마 분리된 그대로 매핑)
   'Not on pitch, Unsportsmanlike conduct': '그라운드 밖에서 비신사적 행위',
   'Not on pitch, Fighting':                '그라운드 밖에서 폭행',
