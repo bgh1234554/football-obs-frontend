@@ -89,9 +89,25 @@ function pmFindMatchStats(playerId) {
   return stats.find(s => s && Number(s.playerId) === id) || null;
 }
 
+function pmResolveLinkedProfileId(playerId, player) {
+  const originalId = Number(playerId);
+  if (!originalId || originalId <= 0) return playerId;
+  const fixtureId = String(
+    (typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture?.matchInfo?.fixtureId : '') ?? ''
+  ).trim();
+  const side = player?._side || '';
+  if (!fixtureId || !side || typeof window.pirGetByKey !== 'function') return playerId;
+  const key = typeof window.pirMakeIdKey === 'function'
+    ? window.pirMakeIdKey(fixtureId, side, originalId)
+    : `${fixtureId}:${side}:id:${originalId}`;
+  const linkedId = Number(window.pirGetByKey(key)?.playerId);
+  return linkedId > 0 ? linkedId : playerId;
+}
+
 // ── 팝업 컨테이너 ─────────────────────────────────────────────────────────────
 
 let _pmActiveId = null;
+let _pmMatchRequestId = 0;
 
 function pmContainer() {
   let c = document.getElementById('pmContainer');
@@ -217,11 +233,13 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     ? window.pirGetByKey(_pmIdKey) : null;
   // id=0 선수를 이름 키로 연결한 경우: id-key로 찾지 못했을 때 n: 키를 역탐색
   let _pmClearKey = _pmIdKey;
+  let _pmStoreKey = _pmIdKey;
   if (!existing && fixtureId && typeof window.pirFindNameKeyByEffectiveId === 'function') {
     const nameKey = window.pirFindNameKeyByEffectiveId(fixtureId, side, currentApiId);
     if (nameKey) {
       existing = window.pirGetByKey(nameKey);
       _pmClearKey = nameKey;
+      _pmStoreKey = nameKey;
     }
   }
 
@@ -260,6 +278,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   });
 
   let _fetched = null;
+  let _fetchedPid = null;
   let _useNewPhoto = true; // id≠0: 검색 결과 사진을 사용할지 여부
   const _origPhotoUrl = player.photoUrl || null; // 원본 선수 사진
   const input = document.getElementById('pmIdInput');
@@ -290,9 +309,10 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       const data = await (typeof fetchPlayerStats === 'function'
         ? fetchPlayerStats(newPid)
         : Promise.reject(new Error('fetchPlayerStats 없음')));
-      _fetched = data;
       const p = data?.player;
       if (p) {
+        _fetched = data;
+        _fetchedPid = newPid;
         const pname = p.fullName || p.name || '';
         const photoHtml = p.photoUrl ? `<img src="${pmEsc(p.photoUrl)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
         const nat = p.nationality ? ` · ${pmEsc(p.nationality)}` : '';
@@ -315,10 +335,12 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       } else {
         preview.innerHTML = '<span style="color:#f88">선수 정보를 찾을 수 없습니다</span>';
         _fetched = null;
+        _fetchedPid = null;
       }
     } catch (err) {
       preview.innerHTML = `<span style="color:#f88">로딩 실패: ${pmEsc(String(err?.message || ''))}</span>`;
       _fetched = null;
+      _fetchedPid = null;
     } finally {
       const fb = document.getElementById('pmIdFetch');
       if (fb) fb.disabled = false;
@@ -326,6 +348,10 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   }
 
   document.getElementById('pmIdFetch').addEventListener('click', doFetch);
+  input.addEventListener('input', () => {
+    _fetched = null;
+    _fetchedPid = null;
+  });
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); doFetch(); }
     if (e.key === 'Escape') { e.stopPropagation(); pmShowMenu(pid, clientX, clientY); }
@@ -333,23 +359,26 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
 
   document.getElementById('pmIdSave').addEventListener('click', () => {
     const newPid = parseInt(input.value, 10);
-    if (!newPid || !fixtureId) return;
-    if (typeof window.pirIsDuplicateAltId === 'function' && _pmIdKey &&
-        window.pirIsDuplicateAltId(fixtureId, _pmIdKey, newPid)) {
+    if (!newPid || newPid <= 0 || !fixtureId) return;
+    if (typeof window.pirIsDuplicateAltId === 'function' && _pmStoreKey &&
+        window.pirIsDuplicateAltId(fixtureId, _pmStoreKey, newPid)) {
       preview.innerHTML = '<span style="color:#f88">이미 다른 선수에 연결된 ID입니다</span>';
       return;
     }
-    const p = _fetched?.player;
-    // id≠0: 사진은 사용자가 선택한 경우에만 변경. 기본은 새 사진 사용.
-    const photoUrl = _useNewPhoto ? (p?.photoUrl || null) : _origPhotoUrl;
-    if (typeof window.pirSetByKey === 'function' && _pmIdKey) {
-      window.pirSetByKey(_pmIdKey, {
-        playerId: newPid,
-        name: p?.name || null,           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
-        nameKoLong: p?.fullName || null, // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)
-        photoUrl,
-        resolvedAt: Date.now(),
-      });
+    const fetchedMatches = _fetchedPid === newPid;
+    const p = fetchedMatches ? _fetched?.player : null;
+    const entry = {
+      playerId: newPid,
+      resolvedAt: Date.now(),
+    };
+    if (fetchedMatches) {
+      // id≠0: 사진은 사용자가 선택한 경우에만 변경. 기본은 새 사진 사용.
+      entry.name = p?.name || null;           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
+      entry.nameKoLong = p?.fullName || null; // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)
+      entry.photoUrl = _useNewPhoto ? (p?.photoUrl || null) : _origPhotoUrl;
+    }
+    if (typeof window.pirSetByKey === 'function' && _pmStoreKey) {
+      window.pirSetByKey(_pmStoreKey, entry);
     }
     pmHideAll();
     if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
@@ -451,11 +480,13 @@ async function pmShowMatchStats(playerId, player, stats) {
     if (e.target === e.currentTarget) pmHideAll();
   });
 
+  const profileId = pmResolveLinkedProfileId(playerId, player);
+  const myReqId = ++_pmMatchRequestId;
   try {
     const data = await (typeof fetchPlayerStats === 'function'
-      ? fetchPlayerStats(playerId)
+      ? fetchPlayerStats(profileId)
       : Promise.reject(new Error('fetchPlayerStats not available')));
-    if (!document.getElementById('pmBackdrop')) return;
+    if (!document.getElementById('pmBackdrop') || myReqId !== _pmMatchRequestId) return;
     if (data?.player) {
       pmRenderSeasonProfile(data.player, player.number ?? '');
       const nick = getPlayerNickname(playerId);
@@ -567,9 +598,10 @@ async function pmShowSeasonStats(playerId, player) {
   });
 
   const myReqId = ++_pmSznRequestId;
+  const profileId = pmResolveLinkedProfileId(playerId, player);
   try {
     const data = await (typeof fetchPlayerStats === 'function'
-      ? fetchPlayerStats(playerId)
+      ? fetchPlayerStats(profileId)
       : Promise.reject(new Error('fetchPlayerStats not available')));
 
     if (!document.getElementById('pmBackdrop') || myReqId !== _pmSznRequestId) return;

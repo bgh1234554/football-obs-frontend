@@ -319,6 +319,7 @@ function startLineupResize(event) {
       Math.min(LINEUP_RESIZE_MAX, currentHeightPct || storedScalePct),
     )
     : storedScalePct;
+  const saveBaselinePct = hasEdgeOverride ? startScalePct : storedScalePct;
   const startY = event.clientY;
 
   panel.classList.add('is-resizing');
@@ -364,7 +365,7 @@ function startLineupResize(event) {
     panel.classList.remove('is-resizing');
     document.body.classList.remove('lp-lineup-resizing');
     handle.releasePointerCapture?.(event.pointerId);
-    if (typeof setSetting === 'function' && (lastPct !== storedScalePct || releasedEdgeOverrides)) {
+    if (typeof setSetting === 'function' && (lastPct !== saveBaselinePct || releasedEdgeOverrides)) {
       // setSetting 내부에서 applyLayoutSettings → fitLineupNamePills 호출되므로 별도 호출 불필요.
       setSetting('lineupScale', lastPct);
     } else if (typeof window.fitLineupNamePills === 'function') {
@@ -415,6 +416,30 @@ function _bigSave(key, px) {
 function _bigClear(key) {
   try { localStorage.removeItem(key); } catch {}
 }
+function _clampPx(px, min, max) {
+  const n = Number(px);
+  if (!Number.isFinite(n)) return null;
+  const upper = Number.isFinite(max) ? Math.max(min, max) : n;
+  return Math.max(min, Math.min(upper, n));
+}
+function _bigLoadClamped(key, min, max) {
+  const px = _bigLoad(key, min);
+  if (px == null) return null;
+  const clamped = _clampPx(px, min, max);
+  if (clamped != null && Math.round(clamped) !== Math.round(px)) _bigSave(key, clamped);
+  return clamped;
+}
+function _bigColMaxWidth(layout) {
+  const width = Number(layout?.clientWidth) || 0;
+  return width > 0 ? width * 0.65 : Infinity;
+}
+function _bigPanelMaxWidth(layout) {
+  const width = Number(layout?.clientWidth) || 0;
+  return width > 0 ? width * 0.9 : Infinity;
+}
+function _bigStoredColMaxWidth(layout) {
+  return isBigPanelLinked() ? _bigColMaxWidth(layout) : _bigPanelMaxWidth(layout);
+}
 
 // ── CSS 변수로 칼럼 너비 적용 ──
 function applyBigColWidth(layout, px) {
@@ -426,8 +451,8 @@ function resetBigColWidth(layout) {
   layout.style.removeProperty('--lp-big-col-width');
 }
 function applyStoredBigColWidth() {
-  const px = _bigLoad(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W);
   document.querySelectorAll('.layout-big').forEach(layout => {
+    const px = _bigLoadClamped(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W, _bigStoredColMaxWidth(layout));
     if (px != null) applyBigColWidth(layout, px);
     else resetBigColWidth(layout);
   });
@@ -449,8 +474,10 @@ function _applyLinkedMode(col) {
   _clearPanelAbsolute(chatPanel);
   _clearPanelAbsolute(statPanel);
   const colH = col.getBoundingClientRect().height;
-  let chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);
   const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
+  let chatH = colH > 0
+    ? _bigLoadClamped(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H, usable - BIG_PANEL_MIN_H)
+    : _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);
   if (colH > 0) {
     if (chatH == null) chatH = Math.floor(usable / 2);
     chatH = Math.max(BIG_PANEL_MIN_H, Math.min(usable - BIG_PANEL_MIN_H, chatH));
@@ -478,17 +505,33 @@ function _applyIndependentMode(col) {
 
   const colH   = col.getBoundingClientRect().height;
   const colRect = col.getBoundingClientRect();
+  const layout = col.closest('.layout-big');
   const defaultH = colH > 0 ? Math.max(BIG_PANEL_MIN_H, Math.floor(colH / 2)) : 200;
   const defaultW = (() => {
-    const stored = _bigLoad(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W);
+    const stored = _bigLoadClamped(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W, _bigStoredColMaxWidth(layout));
     if (stored) return stored;
     return colRect.width > 0 ? colRect.width : 250;
   })();
 
-  const chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H) ?? defaultH;
-  const statH = _bigLoad(BIG_STAT_H_KEY, BIG_PANEL_MIN_H) ?? defaultH;
-  const chatW = _bigLoad(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W) ?? defaultW;
-  const statW = _bigLoad(BIG_STAT_W_KEY, BIG_PANEL_MIN_W) ?? defaultW;
+  const maxPanelW = _bigPanelMaxWidth(layout);
+  const storedChatH = _bigLoadClamped(
+    BIG_CHAT_H_KEY,
+    BIG_PANEL_MIN_H,
+    colH > 0 ? colH - BIG_PANEL_MIN_H : Infinity,
+  );
+  let chatH = storedChatH ?? defaultH;
+  const storedStatH = _bigLoadClamped(
+    BIG_STAT_H_KEY,
+    BIG_PANEL_MIN_H,
+    colH > 0 ? colH - chatH : Infinity,
+  );
+  let statH = storedStatH ?? defaultH;
+  let chatW = _bigLoadClamped(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW) ?? defaultW;
+  let statW = _bigLoadClamped(BIG_STAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW) ?? defaultW;
+  if (colH > 0 && chatH + statH > colH) {
+    statH = Math.max(BIG_PANEL_MIN_H, colH - chatH);
+    if (storedStatH != null) _bigSave(BIG_STAT_H_KEY, statH);
+  }
 
   Object.assign(chatPanel.style, {
     position: 'absolute', top: '0', right: '0', bottom: '', left: '',
@@ -500,7 +543,6 @@ function _applyIndependentMode(col) {
   });
 
   // 칼럼 너비 = 두 패널 중 넓은 것
-  const layout = col.closest('.layout-big');
   if (layout) applyBigColWidth(layout, Math.max(chatW, statW));
 }
 
@@ -514,11 +556,12 @@ function applyStoredBigPanelHeights() {
 
     // OFF → ON 전환: 너비는 둘 중 좁은 것 기준, 높이는 반반
     if (linked && !col.classList.contains('is-big-linked')) {
-      const chatW = _bigLoad(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W);
-      const statW = _bigLoad(BIG_STAT_W_KEY, BIG_PANEL_MIN_W);
+      const layout = col.closest('.layout-big');
+      const maxPanelW = _bigPanelMaxWidth(layout);
+      const chatW = _bigLoadClamped(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW);
+      const statW = _bigLoadClamped(BIG_STAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW);
       if (chatW != null && statW != null) {
-        const newColW = Math.max(BIG_PANEL_MIN_W, Math.min(chatW, statW));
-        const layout = col.closest('.layout-big');
+        const newColW = Math.max(BIG_PANEL_MIN_W, Math.min(_bigColMaxWidth(layout), chatW, statW));
         if (layout) applyBigColWidth(layout, newColW);
         _bigSave(BIG_COL_WIDTH_KEY, newColW);
       }
@@ -557,6 +600,7 @@ function startBigColWidthDrag(event, col) {
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-big-col-resizing');
     _bigSave(BIG_COL_WIDTH_KEY, lastW);
+    requestAnimationFrame(() => window.stRerenderActivePanels?.());
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
@@ -596,6 +640,7 @@ function startBigPanelWidthDrag(event, col, which) {
     document.body.classList.remove('lp-big-col-resizing');
     _bigSave(wKey, lastW);
     _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+    requestAnimationFrame(() => window.stRerenderActivePanels?.());
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
@@ -901,6 +946,12 @@ function _lineupGetMaxHeight(panel) {
   );
 }
 
+function _lineupGetMaxWidth(panel) {
+  const layout = panel?.closest('.layout-wrap') || document.body;
+  const width = layout?.clientWidth || document.body?.clientWidth || window.innerWidth || LINEUP_EDGE_MIN_W;
+  return Math.max(LINEUP_EDGE_MIN_W, width * 0.8);
+}
+
 function _lineupApplyWidthOverride(panel, px, knownHeight = null) {
   panel.style.width = `${Math.round(px)}px`;
   panel.classList.add('has-w-override');
@@ -960,9 +1011,21 @@ function _lineupClearHeightOverride(panel) {
 function applyStoredLineupEdgeOverrides() {
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
     const storedH = _lineupEdgeLoad(LINEUP_EDGE_H_KEY, LINEUP_EDGE_MIN_H);
-    if (storedH != null) _lineupApplyHeightOverride(panel, Math.min(storedH, _lineupGetMaxHeight(panel)));
+    if (storedH != null) {
+      const nextH = _clampPx(storedH, LINEUP_EDGE_MIN_H, _lineupGetMaxHeight(panel));
+      if (nextH != null) {
+        _lineupApplyHeightOverride(panel, nextH);
+        if (Math.round(nextH) !== Math.round(storedH)) _lineupEdgeSave(LINEUP_EDGE_H_KEY, nextH);
+      }
+    }
     const storedW = _lineupEdgeLoad(LINEUP_EDGE_W_KEY, LINEUP_EDGE_MIN_W);
-    if (storedW != null) _lineupApplyWidthOverride(panel, storedW);
+    if (storedW != null) {
+      const nextW = _clampPx(storedW, LINEUP_EDGE_MIN_W, _lineupGetMaxWidth(panel));
+      if (nextW != null) {
+        _lineupApplyWidthOverride(panel, nextW);
+        if (Math.round(nextW) !== Math.round(storedW)) _lineupEdgeSave(LINEUP_EDGE_W_KEY, nextW);
+      }
+    }
   });
 }
 

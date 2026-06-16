@@ -40,6 +40,65 @@ function pirSetByKey(key, data) {
   pirWriteStore(store);
 }
 
+function pirParseStoreKey(fixtureId, key) {
+  const prefix = `${fixtureId}:`;
+  if (!key || !String(key).startsWith(prefix)) return null;
+  const local = String(key).slice(prefix.length);
+  const sideEnd = local.indexOf(':');
+  if (sideEnd < 0) return null;
+  const side = local.slice(0, sideEnd);
+  const rest = local.slice(sideEnd + 1);
+  const kindEnd = rest.indexOf(':');
+  if (kindEnd < 0) return null;
+  return {
+    side,
+    kind: rest.slice(0, kindEnd),
+    value: rest.slice(kindEnd + 1),
+  };
+}
+
+function pirRosterBuckets(data) {
+  if (!data) return [];
+  return [
+    { side: 'home', list: data.homeLineup?.startXi },
+    { side: 'home', list: data.homeLineup?.substitutes },
+    { side: 'home', list: data.homeInjuries },
+    { side: 'away', list: data.awayLineup?.startXi },
+    { side: 'away', list: data.awayLineup?.substitutes },
+    { side: 'away', list: data.awayInjuries },
+  ];
+}
+
+function pirRosterName(player) {
+  return String(player?.name || player?.playerName || '').trim();
+}
+
+function pirIsCurrentRosterPlayer(player, side, current, currentEntry) {
+  if (!player || !current || side !== current.side) return false;
+  if (current.kind === 'id') return Number(player.playerId) === Number(current.value);
+  if (current.kind === 'n') {
+    if (pirRosterName(player) === current.value) return true;
+    const currentLinkedId = Number(currentEntry?.playerId);
+    return currentLinkedId > 0 && Number(player.playerId) === currentLinkedId;
+  }
+  return false;
+}
+
+function pirFixtureRosterHasPlayerId(data, fixtureId, current, currentEntry, newPid) {
+  const dataFixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
+  if (dataFixtureId && dataFixtureId !== String(fixtureId)) return false;
+  const targetId = Number(newPid);
+  for (const { side, list } of pirRosterBuckets(data)) {
+    if (!Array.isArray(list)) continue;
+    for (const player of list) {
+      if (!player || Number(player.playerId) !== targetId) continue;
+      if (pirIsCurrentRosterPlayer(player, side, current, currentEntry)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
 // 같은 fixtureId 내에서 newPid가 이미 다른 entry의 value.playerId로 쓰이는지 확인.
 // currentKey는 자기 자신 (수정 중인 entry) → 비교에서 제외.
 function pirIsDuplicateAltId(fixtureId, currentKey, newPid) {
@@ -50,6 +109,15 @@ function pirIsDuplicateAltId(fixtureId, currentKey, newPid) {
     if (!k.startsWith(prefix)) continue;
     if (k === currentKey) continue;
     if (Number(v.playerId) === Number(newPid)) return true;
+  }
+  const current = pirParseStoreKey(fixtureId, currentKey);
+  const currentEntry = pirGetByKey(currentKey);
+  const raw = typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture : null;
+  const effective = typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastEffectiveData : null;
+  if (pirFixtureRosterHasPlayerId(raw, fixtureId, current, currentEntry, newPid)) return true;
+  if (effective && effective !== raw
+    && pirFixtureRosterHasPlayerId(effective, fixtureId, current, currentEntry, newPid)) {
+    return true;
   }
   return false;
 }
@@ -297,6 +365,7 @@ function pirShowMenu(side, origName, clientX, clientY) {
   }
 
   let _fetched = null;
+  let _fetchedPid = null;
   const input = document.getElementById('pirIdInput');
   const preview = document.getElementById('pirPreview');
 
@@ -313,9 +382,10 @@ function pirShowMenu(side, origName, clientX, clientY) {
       const data = await (typeof fetchPlayerStats === 'function'
         ? fetchPlayerStats(pid)
         : Promise.reject(new Error('fetchPlayerStats 없음')));
-      _fetched = data;
       const p = data?.player;
       if (p) {
+        _fetched = data;
+        _fetchedPid = pid;
         const pname = p.fullName || p.name || '';
         const photoHtml = p.photoUrl
           ? `<img src="${pirEsc(p.photoUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px">`
@@ -326,10 +396,12 @@ function pirShowMenu(side, origName, clientX, clientY) {
       } else {
         preview.innerHTML = '<span style="color:#f88">선수 정보를 찾을 수 없습니다</span>';
         _fetched = null;
+        _fetchedPid = null;
       }
     } catch (err) {
       preview.innerHTML = `<span style="color:#f88">로딩 실패: ${pirEsc(String(err?.message || ''))}</span>`;
       _fetched = null;
+      _fetchedPid = null;
     } finally {
       const fb = document.getElementById('pirFetch');
       if (fb) fb.disabled = false;
@@ -337,6 +409,10 @@ function pirShowMenu(side, origName, clientX, clientY) {
   }
 
   document.getElementById('pirFetch').addEventListener('click', doFetch);
+  input.addEventListener('input', () => {
+    _fetched = null;
+    _fetchedPid = null;
+  });
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); doFetch(); }
     if (e.key === 'Escape') { e.stopPropagation(); pirHideAll(); }
@@ -352,14 +428,18 @@ function pirShowMenu(side, origName, clientX, clientY) {
       preview.innerHTML = '<span style="color:#f88">이미 다른 선수에 연결된 ID입니다</span>';
       return;
     }
-    const p = _fetched?.player;
-    pirSetByKey(storeKey, {
+    const fetchedMatches = _fetchedPid === pid;
+    const p = fetchedMatches ? _fetched?.player : null;
+    const entry = {
       playerId: pid,
-      name: p?.name || null,           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
-      nameKoLong: p?.fullName || null, // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)
-      photoUrl: p?.photoUrl || null,
       resolvedAt: Date.now(),
-    });
+    };
+    if (fetchedMatches) {
+      entry.name = p?.name || null;           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
+      entry.nameKoLong = p?.fullName || null; // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)
+      entry.photoUrl = p?.photoUrl || null;
+    }
+    pirSetByKey(storeKey, entry);
     pirHideAll();
     if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
   });

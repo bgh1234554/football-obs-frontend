@@ -1875,13 +1875,24 @@ function getOwnTeamChipTargetsForLineupName(nameEl) {
 function getSiblingNodeCirclesForLabel(nameEl) {
   const nameWrap = getLineupNameWrap(nameEl);
   const playerId = nameWrap?.dataset?.playerId;
+  const playerOrigName = nameWrap?.dataset?.playerOrigName || '';
+  const playerSide = getLineupNameSide(nameEl);
   const pitch = nameWrap?.closest('.dp-lineup-vertical-pitch');
   if (!pitch) return [];
 
   return Array.from(pitch.querySelectorAll('.dp-lineup-node'))
     .filter(node => {
       if (!canMeasureTextElement(node)) return false;
-      if (playerId && node.dataset.playerId === playerId) return false;
+      if (playerId && playerId !== '0' && node.dataset.playerId === playerId) return false;
+      if (playerId === '0' && playerOrigName && node.dataset.playerId === '0') {
+        const nodeSide = node.classList.contains('is-home')
+          ? 'home'
+          : node.classList.contains('is-away') ? 'away' : '';
+        if (node.dataset.playerOrigName === playerOrigName
+          && (!playerSide || !nodeSide || nodeSide === playerSide)) {
+          return false;
+        }
+      }
       return true;
     });
 }
@@ -2656,6 +2667,7 @@ function applyLineupPanels(fixtureData) {
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
 function clearLineupPanels() {
   lineupPanelState.lastFixture = null;
+  lineupPanelState.lastEffectiveData = null;
   lineupPanelState.manualModal = null;
   if (typeof setLineupInitialCollisionContext === 'function') {
     setLineupInitialCollisionContext(null);

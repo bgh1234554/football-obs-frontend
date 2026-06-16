@@ -203,8 +203,8 @@ function lpResolveSubstEventIdsForAggregation(fixtureData) {
 
       const outPlayer = startXi[outIdx];
       const inPlayer = substitutes[inIdx];
-      const resolvedOutId = outPlayer?.playerId ?? ev.playerId;
-      const resolvedInId = inPlayer?.playerId ?? ev.assistId;
+      const resolvedOutId = Number(outPlayer?.playerId) > 0 ? outPlayer.playerId : ev.playerId;
+      const resolvedInId = Number(inPlayer?.playerId) > 0 ? inPlayer.playerId : ev.assistId;
       if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId) {
         resolved[index] = {
           ...ev,

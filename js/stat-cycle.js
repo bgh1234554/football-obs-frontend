@@ -122,6 +122,9 @@ function _lpStopEventsScroll() {
 function _lpCancelEventsScrollByUser() {
   if (_lpStatCycle.mode !== 'events') return;
   _lpStopEventsScroll();
+  if (_lpIsCycleAutoOn()) {
+    _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), _lpGetIntervalMs());
+  }
 }
 
 function _lpBindEventsScrollInterruption(el) {
@@ -301,6 +304,7 @@ function lpStatUpdateVisibility() {
   document.querySelectorAll('.lp-stat [data-stat-panel]').forEach(el => {
     el.style.display = mode === 'stats' ? '' : 'none';
   });
+  if (mode === 'stats') window.stRerenderActivePanels?.();
   document.querySelectorAll('.lp-stat [data-hth-panel]').forEach(el => {
     el.style.display = mode === 'hth' ? '' : 'none';
     if (mode === 'hth') requestAnimationFrame(() => window.hthCheckMetaWrap?.());

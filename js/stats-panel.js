@@ -29,6 +29,7 @@ let statsLastFixtureData = null;
 function stRerenderActivePanels() {
   if (statsLastFixtureData == null) return;
   document.querySelectorAll('.page.active [data-stat-panel]').forEach(panel => {
+    if (getComputedStyle(panel).display === 'none' || panel.getClientRects().length === 0) return;
     stRenderPanel(panel, statsLastFixtureData);
   });
 }
