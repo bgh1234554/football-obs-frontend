@@ -149,7 +149,10 @@ function pmShowMenu(playerId, clientX, clientY) {
       <div class="pm-name"><span class="pm-num">${pmEsc(number)}</span>${pmEsc(displayName)}</div>
       ${subNameRow}
       ${nicknameRow}
-      <div class="pm-pos">포지션: ${pmEsc(pos)}</div>
+      <div class="pm-pos" style="display:flex;align-items:center;gap:5px">
+        <span>포지션: ${pmEsc(pos)}</span>
+        <button class="pm-btn" id="pmBtnIdLink" style="padding:1px 6px;font-size:10px;line-height:1.5;margin:0;opacity:.75">ID 입력</button>
+      </div>
     </div>
   </div>
   <div class="pm-btns">
@@ -175,6 +178,10 @@ function pmShowMenu(playerId, clientX, clientY) {
     pmHideAll();
     pmShowSeasonStats(pid, player);
   });
+  document.getElementById('pmBtnIdLink').addEventListener('click', e => {
+    e.stopPropagation();
+    pmShowIdInput(pid, player, displayName, clientX, clientY);
+  });
 }
 
 function pmPositionPopup(el, cx, cy) {
@@ -185,6 +192,126 @@ function pmPositionPopup(el, cx, cy) {
   if (top  + ph > H - 8) top  = Math.max(8, cy - ph - 12);
   el.style.left = left + 'px';
   el.style.top  = top  + 'px';
+}
+
+// ── 선수 ID 인라인 입력 뷰 (pm-popup 내부에서 전환, 뒤로가기 지원) ─────────────
+async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
+  const popup = document.getElementById('pmPopup');
+  if (!popup) return;
+
+  const fixtureId = String(
+    (typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture?.matchInfo?.fixtureId : '') ?? ''
+  ).trim();
+  const origApiName = player.name || player.playerName || '';
+  const side = player._side || '';
+  const currentApiId = Number(pid);
+  const existing = (typeof window.pirGetOverride === 'function' && fixtureId)
+    ? window.pirGetOverride(fixtureId, side, origApiName) : null;
+
+  popup.innerHTML = `
+<button class="pm-close" id="pmIdBack" aria-label="뒤로가기" style="left:10px;right:auto">&#8592;</button>
+<div class="pm-nick-wrap">
+  <div class="pm-nick-title">선수 ID 연결</div>
+  <div style="font-size:11px;color:#8af;margin-bottom:6px">
+    현재 API ID: ${pmEsc(String(currentApiId))}${existing ? ` &nbsp;·&nbsp; 연결됨: ${pmEsc(String(existing.playerId))}` : ''}
+  </div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <input class="pm-nick-input" id="pmIdInput" type="number" min="1"
+      placeholder="새 선수 ID"
+      value="${existing ? pmEsc(String(existing.playerId)) : pmEsc(String(currentApiId))}"
+      style="flex:1;min-width:0"/>
+    <button class="pm-btn pm-btn-primary" id="pmIdFetch" style="white-space:nowrap;padding:4px 8px">검색</button>
+  </div>
+  <div id="pmIdPreview" style="margin-top:6px;min-height:20px;font-size:11px;color:#aaa">
+    ${existing ? `연결됨${existing.name ? ' - ' + pmEsc(existing.name) : ''} · 새 ID 입력 시 덮어쓰기` : 'ID를 입력하고 검색하세요'}
+  </div>
+  <div class="pm-nick-btns">
+    <button class="pm-btn pm-btn-primary" id="pmIdSave">저장</button>
+    ${existing ? '<button class="pm-btn pm-btn-danger" id="pmIdClear">연결 해제</button>' : ''}
+    <button class="pm-btn" id="pmIdCancel">취소</button>
+  </div>
+</div>`;
+
+  document.getElementById('pmIdBack').addEventListener('click', e => {
+    e.stopPropagation();
+    _pmActiveId = null; // 토글 감지 리셋 — 재오픈 허용
+    pmShowMenu(pid, clientX, clientY);
+  });
+  document.getElementById('pmIdCancel').addEventListener('click', e => {
+    e.stopPropagation();
+    pmHideAll();
+  });
+
+  let _fetched = null;
+  const input = document.getElementById('pmIdInput');
+  const preview = document.getElementById('pmIdPreview');
+
+  async function doFetch() {
+    const newPid = parseInt(input.value, 10);
+    if (!newPid || newPid <= 0) { preview.innerHTML = '<span style="color:#f88">유효한 ID를 입력하세요</span>'; return; }
+    preview.innerHTML = '<span style="color:#aaa">로딩 중...</span>';
+    document.getElementById('pmIdFetch').disabled = true;
+    try {
+      const data = await (typeof fetchPlayerStats === 'function'
+        ? fetchPlayerStats(newPid)
+        : Promise.reject(new Error('fetchPlayerStats 없음')));
+      _fetched = data;
+      const p = data?.player;
+      if (p) {
+        const pname = p.fullName || p.name || '';
+        const photoHtml = p.photoUrl ? `<img src="${pmEsc(p.photoUrl)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
+        const nat = p.nationality ? ` · ${pmEsc(p.nationality)}` : '';
+        const age = p.age ? ` · ${p.age}세` : '';
+        preview.innerHTML = `${photoHtml}<span style="color:#fff">${pmEsc(pname)}</span><span style="color:#888">${nat}${age}</span>`;
+      } else {
+        preview.innerHTML = '<span style="color:#f88">선수 정보를 찾을 수 없습니다</span>';
+        _fetched = null;
+      }
+    } catch (err) {
+      preview.innerHTML = `<span style="color:#f88">로딩 실패: ${pmEsc(String(err?.message || ''))}</span>`;
+      _fetched = null;
+    } finally {
+      const fb = document.getElementById('pmIdFetch');
+      if (fb) fb.disabled = false;
+    }
+  }
+
+  document.getElementById('pmIdFetch').addEventListener('click', doFetch);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); doFetch(); }
+    if (e.key === 'Escape') { e.stopPropagation(); pmShowMenu(pid, clientX, clientY); }
+  });
+
+  document.getElementById('pmIdSave').addEventListener('click', () => {
+    const newPid = parseInt(input.value, 10);
+    if (!newPid || !fixtureId) return;
+    const p = _fetched?.player;
+    if (typeof window.pirSetOverride === 'function') {
+      window.pirSetOverride(fixtureId, side, origApiName, {
+        playerId: newPid,
+        name: p?.fullName || p?.name || null,
+        photoUrl: p?.photoUrl || null,
+        resolvedAt: Date.now(),
+      });
+    }
+    pmHideAll();
+    if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
+  });
+
+  const clearBtn = document.getElementById('pmIdClear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (!fixtureId) return;
+      if (typeof window.pirSetOverride === 'function') {
+        window.pirSetOverride(fixtureId, side, origApiName, null);
+      }
+      pmHideAll();
+      if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
+    });
+  }
+
+  input.focus();
+  input.select();
 }
 
 // ── 닉네임 편집 ──────────────────────────────────────────────────────────────

@@ -285,6 +285,10 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
     next.events = window.evPatchSubstEvents(next.events, fixtureId);
   }
+  // playerId=0 선수에 대한 수동 ID 연결 override 적용 (player-id-resolve.js)
+  if (typeof window.applyZeroIdOverrides === 'function') {
+    window.applyZeroIdOverrides(next, fixtureId);
+  }
   if (!entry) return next;
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
@@ -649,7 +653,7 @@ function lpBuildRosterRowHtml(player, kind) {
   const goalsAssistsHtml = lpBuildGoalsAssistsHtml(events);
   const ratingHtml = lpBuildRatingHtml(player.playerId);
 
-  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}">
+  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
       <span class="${nameClass}"${title}>${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}</span>
@@ -877,7 +881,7 @@ function buildInjuryListHtml(injuries, provided) {
       iconHtml = '<span class="dp-icon dp-icon-redcard" aria-label="출장 정지"></span>';
     }
 
-    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}">
+    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || '')}"` : ''}>
       ${iconHtml}
       <span class="dp-item-num">${dpEscape(injury.number ?? '')}</span>
       <span class="dp-item-name dp-injury-name"${tooltip}>${dpEscape(pickName(injury, 'roster') || '-')}</span>
@@ -1032,8 +1036,9 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
     const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
 
     // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
-    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
-    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}" style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
+    const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || '')}"` : '';
+    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
+    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
   });
 
   return { circles: circles.join(''), names: names.join('') };
