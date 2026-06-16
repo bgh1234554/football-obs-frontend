@@ -285,11 +285,13 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
     next.events = window.evPatchSubstEvents(next.events, fixtureId);
   }
-  // playerId=0 선수에 대한 수동 ID 연결 override 적용 (player-id-resolve.js)
-  if (typeof window.applyZeroIdOverrides === 'function') {
-    window.applyZeroIdOverrides(next, fixtureId);
+  if (!entry) {
+    // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
+    if (typeof window.applyZeroIdOverrides === 'function') {
+      window.applyZeroIdOverrides(next, fixtureId);
+    }
+    return next;
   }
-  if (!entry) return next;
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
   ['home', 'away'].forEach(side => {
@@ -365,6 +367,12 @@ function buildEffectiveFixtureData(data) {
   const manualReferee = String(entry.refereeName || '').trim();
   if (manualReferee) {
     next.matchInfo = { ...(next.matchInfo || {}), refereeName: manualReferee };
+  }
+
+  // 5) 수동 라인업 적용 후 ID override 적용 — 수동 선수 데이터가 한글 이름을 덮어쓰지 않도록
+  //    항상 마지막에 실행한다.
+  if (typeof window.applyZeroIdOverrides === 'function') {
+    window.applyZeroIdOverrides(next, fixtureId);
   }
 
   return next;

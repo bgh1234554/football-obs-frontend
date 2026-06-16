@@ -66,6 +66,19 @@ function pirFindOriginalIdKey(fixtureId, side, effectivePid) {
   return null;
 }
 
+// id=0 선수를 연결한 경우(이름 키), value.playerId === effectivePid 인 n: 키를 역탐색.
+// pmShowIdInput에서 연결 해제 버튼 렌더 및 clear 키로 사용.
+function pirFindNameKeyByEffectiveId(fixtureId, side, effectivePid) {
+  if (!fixtureId || !effectivePid) return null;
+  const store = pirReadStore();
+  const prefix = `${fixtureId}:${side}:n:`;
+  for (const [k, v] of Object.entries(store)) {
+    if (k.startsWith(prefix) && Number(v?.playerId) === Number(effectivePid)) return k;
+  }
+  return null;
+}
+window.pirFindNameKeyByEffectiveId = pirFindNameKeyByEffectiveId;
+
 // ── override 적용 ─────────────────────────────────────────────────────────────
 // lineup-panel.js의 buildEffectiveFixtureData에서 window hook으로 호출.
 // 복제된 next 객체를 직접 변경(in-place) — 반환값 없음.

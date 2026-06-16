@@ -213,8 +213,17 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
         ? window.pirMakeIdKey(fixtureId, side, currentApiId)
         : `${fixtureId}:${side}:id:${currentApiId}`)
     : null;
-  const existing = (typeof window.pirGetByKey === 'function' && _pmIdKey)
+  let existing = (typeof window.pirGetByKey === 'function' && _pmIdKey)
     ? window.pirGetByKey(_pmIdKey) : null;
+  // id=0 선수를 이름 키로 연결한 경우: id-key로 찾지 못했을 때 n: 키를 역탐색
+  let _pmClearKey = _pmIdKey;
+  if (!existing && fixtureId && typeof window.pirFindNameKeyByEffectiveId === 'function') {
+    const nameKey = window.pirFindNameKeyByEffectiveId(fixtureId, side, currentApiId);
+    if (nameKey) {
+      existing = window.pirGetByKey(nameKey);
+      _pmClearKey = nameKey;
+    }
+  }
 
   popup.innerHTML = `
 <button class="pm-close" id="pmIdBack" aria-label="뒤로가기" style="left:10px;right:auto">&#8592;</button>
@@ -251,8 +260,26 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   });
 
   let _fetched = null;
+  let _useNewPhoto = true; // id≠0: 검색 결과 사진을 사용할지 여부
+  const _origPhotoUrl = player.photoUrl || null; // 원본 선수 사진
   const input = document.getElementById('pmIdInput');
   const preview = document.getElementById('pmIdPreview');
+
+  function renderPhotoToggle(newPhotoUrl) {
+    // id≠0이고 양쪽 사진이 모두 있고 서로 다를 때만 before→after 비교 표시
+    if (!newPhotoUrl || !_origPhotoUrl || newPhotoUrl === _origPhotoUrl) return '';
+    const imgStyle = 'width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;border:1.5px solid #555';
+    const arrow = '<span style="font-size:14px;margin:0 4px;color:#888">&#8594;</span>';
+    const togBefore = _useNewPhoto ? '' : ' pm-btn-primary';
+    const togAfter  = _useNewPhoto ? ' pm-btn-primary' : '';
+    return `<div style="display:flex;align-items:center;margin-top:6px;gap:4px;flex-wrap:wrap">` +
+      `<img src="${pmEsc(_origPhotoUrl)}" style="${imgStyle}">` +
+      `${arrow}` +
+      `<img src="${pmEsc(newPhotoUrl)}" style="${imgStyle}">` +
+      `<button class="pm-btn${togBefore}" id="pmPhotoKeep" style="padding:2px 7px;font-size:10.5px;margin-left:6px">프로필 유지</button>` +
+      `<button class="pm-btn${togAfter}" id="pmPhotoChange" style="padding:2px 7px;font-size:10.5px">프로필 변경</button>` +
+      `</div>`;
+  }
 
   async function doFetch() {
     const newPid = parseInt(input.value, 10);
@@ -270,7 +297,21 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
         const photoHtml = p.photoUrl ? `<img src="${pmEsc(p.photoUrl)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
         const nat = p.nationality ? ` · ${pmEsc(p.nationality)}` : '';
         const age = p.age ? ` · ${p.age}세` : '';
-        preview.innerHTML = `${photoHtml}<span style="color:#fff">${pmEsc(pname)}</span><span style="color:#888">${nat}${age}</span>`;
+        const photoToggle = renderPhotoToggle(p.photoUrl);
+        preview.innerHTML = `<div>${photoHtml}<span style="color:#fff">${pmEsc(pname)}</span><span style="color:#888">${nat}${age}</span></div>${photoToggle}`;
+        // 사진 토글 버튼 이벤트
+        const keepBtn   = document.getElementById('pmPhotoKeep');
+        const changeBtn = document.getElementById('pmPhotoChange');
+        if (keepBtn) keepBtn.addEventListener('click', e => {
+          e.stopPropagation(); _useNewPhoto = false;
+          if (keepBtn)   keepBtn.className   = keepBtn.className.replace('pm-btn-primary', '').trim() + ' pm-btn-primary';
+          if (changeBtn) changeBtn.className = changeBtn.className.replace(' pm-btn-primary', '');
+        });
+        if (changeBtn) changeBtn.addEventListener('click', e => {
+          e.stopPropagation(); _useNewPhoto = true;
+          if (changeBtn) changeBtn.className = changeBtn.className.replace('pm-btn-primary', '').trim() + ' pm-btn-primary';
+          if (keepBtn)   keepBtn.className   = keepBtn.className.replace(' pm-btn-primary', '');
+        });
       } else {
         preview.innerHTML = '<span style="color:#f88">선수 정보를 찾을 수 없습니다</span>';
         _fetched = null;
@@ -299,11 +340,13 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       return;
     }
     const p = _fetched?.player;
+    // id≠0: 사진은 사용자가 선택한 경우에만 변경. 기본은 새 사진 사용.
+    const photoUrl = _useNewPhoto ? (p?.photoUrl || null) : _origPhotoUrl;
     if (typeof window.pirSetByKey === 'function' && _pmIdKey) {
       window.pirSetByKey(_pmIdKey, {
         playerId: newPid,
         name: p?.fullName || p?.name || null,
-        photoUrl: p?.photoUrl || null,
+        photoUrl,
         resolvedAt: Date.now(),
       });
     }
@@ -316,7 +359,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     clearBtn.addEventListener('click', () => {
       if (!fixtureId) return;
       if (typeof window.pirSetByKey === 'function') {
-        window.pirSetByKey(_pmIdKey, null);
+        window.pirSetByKey(_pmClearKey, null);
       }
       pmHideAll();
       if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
