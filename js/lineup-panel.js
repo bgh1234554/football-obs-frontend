@@ -2527,6 +2527,7 @@ function rerenderLineupPanels() {
   // (a) manual override 합성 → (b) subReflect ON이면 교체 이벤트로 startXi/벤치 자동 swap
   const mergedData = buildEffectiveFixtureData(lineupPanelState.lastFixture);
   const effectiveData = applySubReflectToFixture(mergedData);
+  lineupPanelState.lastEffectiveData = effectiveData;
   if (typeof setLineupInitialCollisionContext === 'function') {
     setLineupInitialCollisionContext(effectiveData);
   }
@@ -2543,7 +2544,7 @@ function rerenderLineupPanels() {
     : rawEvents;
   // 응답 필드명은 'playerStats' (FixtureResponseDto.playerStats — PlayerStatsDto 리스트).
   // 'players'가 아니므로 주의 (CLAUDE.md 표기가 과거에 'players'로 적혀있었지만 실제 backend는 playerStats).
-  const rawPlayerStats = Array.isArray(lineupPanelState.lastFixture?.playerStats) ? lineupPanelState.lastFixture.playerStats : [];
+  const rawPlayerStats = Array.isArray(effectiveData?.playerStats) ? effectiveData.playerStats : (Array.isArray(lineupPanelState.lastFixture?.playerStats) ? lineupPanelState.lastFixture.playerStats : []);
   lineupPanelState.context = {
     eventsByPlayer: typeof lpAggregatePlayerEvents === 'function' ? lpAggregatePlayerEvents(markerEvents) : new Map(),
     ratingByPlayer: typeof lpBuildRatingMap === 'function' ? lpBuildRatingMap(rawPlayerStats) : new Map(),

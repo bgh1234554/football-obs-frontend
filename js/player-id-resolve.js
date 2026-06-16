@@ -1,13 +1,16 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// [선수 ID 연결] playerId=0인 선수 클릭 → ID 입력 팝업
+// [선수 ID 연결] 클릭 → ID 입력 팝업
 // fetchPlayerStats로 프로필 가져와 이름/사진 덮어쓰기. 폴링 이벤트도 실 ID로 매칭됨.
 // lineup-panel.js의 buildEffectiveFixtureData에서 window.applyZeroIdOverrides를 호출해 적용.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const PIR_STORE_KEY = 'obs.player.id.resolve.v1';
+const PIR_STORE_KEY = 'obs.player.id.resolve.v2';
 
 // ── 저장소 ───────────────────────────────────────────────────────────────────
-// 형식: { "{fixtureId}:{side}:{origApiName}": { playerId, name, photoUrl, resolvedAt } }
+// 키 형식:
+//   id≠0 선수: "{fixtureId}:{side}:id:{originalPlayerId}"  — 이름 패치에 무관하게 안정적
+//   id=0  선수: "{fixtureId}:{side}:n:{origApiName}"       — id가 없으므로 이름이 유일 식별자
+// 값: { playerId, name, photoUrl, resolvedAt }
 
 function pirReadStore() {
   try { return JSON.parse(localStorage.getItem(PIR_STORE_KEY) || '{}') || {}; }
@@ -19,20 +22,48 @@ function pirWriteStore(store) {
   catch {}
 }
 
-function pirStoreKey(fixtureId, side, origName) {
-  return `${fixtureId}:${side}:${origName}`;
+function pirMakeIdKey(fixtureId, side, playerId) {
+  return `${fixtureId}:${side}:id:${playerId}`;
+}
+function pirMakeNameKey(fixtureId, side, name) {
+  return `${fixtureId}:${side}:n:${name}`;
 }
 
-function pirGetOverride(fixtureId, side, origName) {
-  return pirReadStore()[pirStoreKey(fixtureId, side, origName)] || null;
+function pirGetByKey(key) {
+  return key ? (pirReadStore()[key] || null) : null;
 }
-
-function pirSetOverride(fixtureId, side, origName, override) {
+function pirSetByKey(key, data) {
+  if (!key) return;
   const store = pirReadStore();
-  const k = pirStoreKey(fixtureId, side, origName);
-  if (override) store[k] = override;
-  else delete store[k];
+  if (data) store[key] = data;
+  else delete store[key];
   pirWriteStore(store);
+}
+
+// 같은 fixtureId 내에서 newPid가 이미 다른 entry의 value.playerId로 쓰이는지 확인.
+// currentKey는 자기 자신 (수정 중인 entry) → 비교에서 제외.
+function pirIsDuplicateAltId(fixtureId, currentKey, newPid) {
+  if (!fixtureId || !newPid) return false;
+  const store = pirReadStore();
+  const prefix = `${fixtureId}:`;
+  for (const [k, v] of Object.entries(store)) {
+    if (!k.startsWith(prefix)) continue;
+    if (k === currentKey) continue;
+    if (Number(v.playerId) === Number(newPid)) return true;
+  }
+  return false;
+}
+window.pirIsDuplicateAltId = pirIsDuplicateAltId;
+
+// override 적용 후 effective playerId로 원본 id 키를 역탐색.
+// 같은 선수를 두 번 수정할 때 사용 (effective pid → 원본 키).
+function pirFindOriginalIdKey(fixtureId, side, effectivePid) {
+  const store = pirReadStore();
+  const prefix = `${fixtureId}:${side}:id:`;
+  for (const [k, v] of Object.entries(store)) {
+    if (k.startsWith(prefix) && Number(v.playerId) === Number(effectivePid)) return k;
+  }
+  return null;
 }
 
 // ── override 적용 ─────────────────────────────────────────────────────────────
@@ -45,21 +76,39 @@ function applyZeroIdOverrides(next, fixtureId) {
   const store = pirReadStore();
   const prefix = `${fixtureId}:`;
   const relevant = {};
-  for (const k of Object.keys(store)) {
-    if (k.startsWith(prefix)) relevant[k.slice(prefix.length)] = store[k];
+  for (const [k, v] of Object.entries(store)) {
+    if (k.startsWith(prefix)) relevant[k.slice(prefix.length)] = v;
   }
   if (!Object.keys(relevant).length) return;
 
+  // altId → canonicalId 역방향 맵 구성 (id≠0 선수의 event/stats 리매핑용)
+  // 예: key "home:id:29809" + value.playerId=533035 → altToCanonical["home:533035"] = 29809
+  const altToCanonical = {};
+  for (const [localKey, ov] of Object.entries(relevant)) {
+    if (!localKey.includes(':id:')) continue;
+    const parts = localKey.split(':');          // [side, 'id', canonicalId]
+    const side = parts[0];
+    const canonicalId = Number(parts[2]);
+    const altId = Number(ov.playerId);
+    if (altId && altId !== canonicalId) {
+      altToCanonical[`${side}:${altId}`] = canonicalId;
+    }
+  }
+
+  // ── 라인업/부상자: id=0→playerId 교체+이름/사진, id≠0→이름/사진만 ────────────
   const applyToList = (list, side) => {
     if (!Array.isArray(list)) return list;
     return list.map(p => {
       if (!p) return p;
-      const origName = String(p.name || '').trim();
-      const ov = relevant[`${side}:${origName}`];
+      const pid = Number(p.playerId);
+      const isZero = pid === 0;
+      const ov = isZero
+        ? relevant[`${side}:n:${String(p.name || '').trim()}`]
+        : relevant[`${side}:id:${pid}`];
       if (!ov) return p;
       return {
         ...p,
-        playerId: ov.playerId,
+        ...(isZero ? { playerId: ov.playerId } : {}),
         ...(ov.name ? { name: ov.name } : {}),
         ...(ov.photoUrl ? { photoUrl: ov.photoUrl } : {}),
       };
@@ -78,11 +127,48 @@ function applyZeroIdOverrides(next, fixtureId) {
     const ik = `${side}Injuries`;
     if (next[ik]) next[ik] = applyToList(next[ik], side);
   }
+
+  // ── 이벤트: altId → canonicalId 리매핑 (교체/카드/골이 라인업 노드에 귀속) ──
+  if (Array.isArray(next.events) && Object.keys(altToCanonical).length) {
+    next.events = next.events.map(ev => {
+      if (!ev) return ev;
+      const side = ev.side || '';
+      const newPlayerId = altToCanonical[`${side}:${ev.playerId}`];
+      const newAssistId = ev.assistId != null ? altToCanonical[`${side}:${ev.assistId}`] : undefined;
+      if (!newPlayerId && newAssistId === undefined) return ev;
+      return {
+        ...ev,
+        ...(newPlayerId ? { playerId: newPlayerId } : {}),
+        ...(newAssistId !== undefined ? { assistId: newAssistId } : {}),
+      };
+    });
+  }
+
+  // ── playerStats: id=0→실ID 교체 / altId→canonicalId 귀속 ────────────────────
+  if (Array.isArray(next.playerStats)) {
+    next.playerStats = next.playerStats.map(p => {
+      if (!p) return p;
+      const pid = Number(p.playerId);
+      if (pid === 0) {
+        const name = String(p.name || p.playerName || '').trim();
+        const ov = relevant[`home:n:${name}`] || relevant[`away:n:${name}`];
+        if (!ov) return p;
+        return { ...p, playerId: ov.playerId, ...(ov.name ? { name: ov.name, playerName: ov.name } : {}) };
+      }
+      // altId가 canonicalId로 매핑된 경우 (stats가 altId 아래 있을 때)
+      const canonical = altToCanonical[`home:${pid}`] || altToCanonical[`away:${pid}`];
+      if (!canonical) return p;
+      return { ...p, playerId: canonical };
+    });
+  }
 }
 
 window.applyZeroIdOverrides = applyZeroIdOverrides;
-window.pirGetOverride = pirGetOverride;
-window.pirSetOverride = pirSetOverride;
+window.pirGetByKey = pirGetByKey;
+window.pirSetByKey = pirSetByKey;
+window.pirMakeIdKey = pirMakeIdKey;
+window.pirMakeNameKey = pirMakeNameKey;
+window.pirFindOriginalIdKey = pirFindOriginalIdKey;
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
 
@@ -116,7 +202,7 @@ function pirGetSide(el) {
   return null;
 }
 
-// ── fixture에서 원본 선수 조회 ─────────────────────────────────────────────────
+// ── raw fixture에서 선수 조회 (id=0 팝업 전용) ────────────────────────────────
 
 function pirFindPlayer(side, origName) {
   const data = (typeof lineupPanelState !== 'undefined') ? lineupPanelState.lastFixture : null;
@@ -142,22 +228,22 @@ function pirHideAll() {
   pirGetContainer().innerHTML = '';
 }
 
-// ── 팝업 표시 ─────────────────────────────────────────────────────────────────
+// ── 팝업 표시 (id=0 선수 전용) ───────────────────────────────────────────────
+// id≠0 선수의 ID 수정은 player-menu.js의 pmShowIdInput이 담당.
 
 function pirShowMenu(side, origName, clientX, clientY) {
   const c = pirGetContainer();
   const player = pirFindPlayer(side, origName);
   const fixtureId = pirGetCurrentFixtureId();
-  const existing = fixtureId ? pirGetOverride(fixtureId, side, origName) : null;
+  // id=0 선수는 name 키 사용
+  const storeKey = fixtureId ? pirMakeNameKey(fixtureId, side, origName) : null;
+  const existing = pirGetByKey(storeKey);
 
   const num = String(player?.number ?? '');
   const displayName = (typeof pickName === 'function' && player)
     ? (pickName(player, 'roster') || origName || '-')
     : (origName || '-');
-  const currentApiId = player ? Number(player.playerId) : 0;
-  const idStatusHtml = currentApiId
-    ? `<div class="pm-pos" style="color:#8af;font-size:11px">현재 API ID: ${pirEsc(String(currentApiId))}</div>`
-    : `<div class="pm-pos" style="color:#f88;font-size:11px">선수 ID 없음 (클릭해서 연결)</div>`;
+  const idStatusHtml = `<div class="pm-pos" style="color:#f88;font-size:11px">선수 ID 없음 (클릭해서 연결)</div>`;
 
   c.innerHTML = `
 <div class="pm-popup" id="pirPopup" role="dialog">
@@ -175,16 +261,14 @@ function pirShowMenu(side, origName, clientX, clientY) {
     <div style="display:flex;gap:6px;align-items:center">
       <input class="pm-nick-input" id="pirIdInput" type="number" min="1"
         placeholder="예) 154660"
-        value="${existing ? pirEsc(String(existing.playerId)) : (currentApiId ? pirEsc(String(currentApiId)) : '')}"
+        value="${existing ? pirEsc(String(existing.playerId)) : ''}"
         style="flex:1;min-width:0"/>
       <button class="pm-btn pm-btn-primary" id="pirFetch" style="white-space:nowrap;padding:4px 10px">검색</button>
     </div>
     <div id="pirPreview" style="margin-top:8px;min-height:22px;font-size:11.5px;color:#aaa">
       ${existing
         ? `연결됨${existing.name ? ' - ' + pirEsc(existing.name) : ''} · 새 ID 입력 시 덮어쓰기`
-        : currentApiId
-          ? '다른 ID로 연결하려면 새 ID를 입력하고 검색하세요'
-          : '선수 ID를 입력하고 검색하세요'}
+        : '선수 ID를 입력하고 검색하세요'}
     </div>
     <div class="pm-nick-btns">
       <button class="pm-btn pm-btn-primary" id="pirSave">저장</button>
@@ -199,7 +283,6 @@ function pirShowMenu(side, origName, clientX, clientY) {
   }
 
   let _fetched = null;
-
   const input = document.getElementById('pirIdInput');
   const preview = document.getElementById('pirPreview');
 
@@ -250,9 +333,13 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
   document.getElementById('pirSave').addEventListener('click', () => {
     const pid = parseInt(input.value, 10);
-    if (!pid || pid <= 0 || !fixtureId) return;
+    if (!pid || pid <= 0 || !storeKey) return;
+    if (pirIsDuplicateAltId(fixtureId, storeKey, pid)) {
+      preview.innerHTML = '<span style="color:#f88">이미 다른 선수에 연결된 ID입니다</span>';
+      return;
+    }
     const p = _fetched?.player;
-    pirSetOverride(fixtureId, side, origName, {
+    pirSetByKey(storeKey, {
       playerId: pid,
       name: p?.fullName || p?.name || null,
       photoUrl: p?.photoUrl || null,
@@ -265,8 +352,7 @@ function pirShowMenu(side, origName, clientX, clientY) {
   const clearBtn = document.getElementById('pirClear');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
-      if (!fixtureId) return;
-      pirSetOverride(fixtureId, side, origName, null);
+      pirSetByKey(storeKey, null);
       pirHideAll();
       if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
     });
@@ -279,7 +365,6 @@ function pirShowMenu(side, origName, clientX, clientY) {
 // ── 클릭 이벤트 핸들러 ─────────────────────────────────────────────────────────
 
 function pirInit() {
-  // bubble phase — pmInit의 capture phase가 pid=0일 때 이미 return하므로 충돌 없음.
   document.addEventListener('click', e => {
     const c = document.getElementById('pmContainer');
     if (c && c.contains(e.target)) return;
@@ -297,11 +382,10 @@ function pirInit() {
   });
 }
 
-// ── 외부 진입점 (player-menu.js에서 호출) ──────────────────────────────────────
-// pmShowMenu의 "ID 입력" 버튼 → 이 함수 → pirShowMenu 재사용.
-function pirShowMenuForPlayer(side, origApiName, clientX, clientY) {
+// pirShowMenuForPlayer — id≠0 선수용. pmShowIdInput을 직접 호출하도록 player-menu.js에서 처리.
+// 하위 호환을 위해 남겨두되 id=0 전용 pirShowMenu로 리다이렉트하지 않음.
+window.pirShowMenuForPlayer = function(side, origApiName, clientX, clientY) {
   pirShowMenu(side, String(origApiName || '').trim(), clientX, clientY);
-}
-window.pirShowMenuForPlayer = pirShowMenuForPlayer;
+};
 
 document.addEventListener('DOMContentLoaded', pirInit);

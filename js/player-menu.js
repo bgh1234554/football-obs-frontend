@@ -51,7 +51,10 @@ function pmPosKo(pos) {
 // ── 선수 데이터 조회 ──────────────────────────────────────────────────────────
 
 function pmFindPlayer(playerId) {
-  const data = typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture : null;
+  // override 적용 후 real ID가 부여된 선수를 찾으려면 effective data(override 반영본)를 우선 사용.
+  const data = typeof lineupPanelState !== 'undefined'
+    ? (lineupPanelState.lastEffectiveData || lineupPanelState.lastFixture)
+    : null;
   if (!data) return null;
   const id = Number(playerId);
   if (!id) return null;
@@ -80,7 +83,7 @@ function pmFindPlayer(playerId) {
 
 function pmFindMatchStats(playerId) {
   const stats = typeof lineupPanelState !== 'undefined'
-    ? lineupPanelState.lastFixture?.playerStats : null;
+    ? (lineupPanelState.lastEffectiveData?.playerStats || lineupPanelState.lastFixture?.playerStats) : null;
   if (!Array.isArray(stats)) return null;
   const id = Number(playerId);
   return stats.find(s => s && Number(s.playerId) === id) || null;
@@ -202,11 +205,16 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   const fixtureId = String(
     (typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture?.matchInfo?.fixtureId : '') ?? ''
   ).trim();
-  const origApiName = player.name || player.playerName || '';
   const side = player._side || '';
   const currentApiId = Number(pid);
-  const existing = (typeof window.pirGetOverride === 'function' && fixtureId)
-    ? window.pirGetOverride(fixtureId, side, origApiName) : null;
+  // id≠0 선수는 playerId를 바꾸지 않으므로 항상 원본 API ID로 키 구성
+  const _pmIdKey = fixtureId
+    ? (typeof window.pirMakeIdKey === 'function'
+        ? window.pirMakeIdKey(fixtureId, side, currentApiId)
+        : `${fixtureId}:${side}:id:${currentApiId}`)
+    : null;
+  const existing = (typeof window.pirGetByKey === 'function' && _pmIdKey)
+    ? window.pirGetByKey(_pmIdKey) : null;
 
   popup.innerHTML = `
 <button class="pm-close" id="pmIdBack" aria-label="뒤로가기" style="left:10px;right:auto">&#8592;</button>
@@ -285,9 +293,14 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   document.getElementById('pmIdSave').addEventListener('click', () => {
     const newPid = parseInt(input.value, 10);
     if (!newPid || !fixtureId) return;
+    if (typeof window.pirIsDuplicateAltId === 'function' && _pmIdKey &&
+        window.pirIsDuplicateAltId(fixtureId, _pmIdKey, newPid)) {
+      preview.innerHTML = '<span style="color:#f88">이미 다른 선수에 연결된 ID입니다</span>';
+      return;
+    }
     const p = _fetched?.player;
-    if (typeof window.pirSetOverride === 'function') {
-      window.pirSetOverride(fixtureId, side, origApiName, {
+    if (typeof window.pirSetByKey === 'function' && _pmIdKey) {
+      window.pirSetByKey(_pmIdKey, {
         playerId: newPid,
         name: p?.fullName || p?.name || null,
         photoUrl: p?.photoUrl || null,
@@ -302,8 +315,8 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       if (!fixtureId) return;
-      if (typeof window.pirSetOverride === 'function') {
-        window.pirSetOverride(fixtureId, side, origApiName, null);
+      if (typeof window.pirSetByKey === 'function') {
+        window.pirSetByKey(_pmIdKey, null);
       }
       pmHideAll();
       if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();

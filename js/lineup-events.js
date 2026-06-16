@@ -232,11 +232,11 @@ function lpBuildRatingMap(players) {
   const map = new Map();
   if (!Array.isArray(players)) return map;
   players.forEach(p => {
-    if (!p || p.playerId == null) return;
+    if (!p || p.playerId == null || Number(p.playerId) === 0) return;
     const raw = String(p.rating ?? '').trim();
     if (!raw) return;
     const num = Number(raw);
-    if (!Number.isFinite(num)) return;
+    if (!Number.isFinite(num) || num === 0) return;
     map.set(String(p.playerId), num);
   });
   return map;
