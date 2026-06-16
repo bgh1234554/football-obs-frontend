@@ -123,6 +123,7 @@ function applyZeroIdOverrides(next, fixtureId) {
         ...p,
         ...(isZero ? { playerId: ov.playerId } : {}),
         ...(ov.name ? { name: ov.name } : {}),
+        ...(ov.nameKoLong ? { nameKoLong: ov.nameKoLong } : {}),
         ...(ov.photoUrl ? { photoUrl: ov.photoUrl } : {}),
       };
     });

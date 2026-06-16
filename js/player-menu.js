@@ -276,8 +276,8 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       `<img src="${pmEsc(_origPhotoUrl)}" style="${imgStyle}">` +
       `${arrow}` +
       `<img src="${pmEsc(newPhotoUrl)}" style="${imgStyle}">` +
-      `<button class="pm-btn${togBefore}" id="pmPhotoKeep" style="padding:2px 7px;font-size:10.5px;margin-left:6px">프로필 유지</button>` +
-      `<button class="pm-btn${togAfter}" id="pmPhotoChange" style="padding:2px 7px;font-size:10.5px">프로필 변경</button>` +
+      `<button class="pm-btn${togBefore}" id="pmPhotoKeep" style="padding:2px 7px;font-size:10.5px;margin-left:6px">사진 유지</button>` +
+      `<button class="pm-btn${togAfter}" id="pmPhotoChange" style="padding:2px 7px;font-size:10.5px">사진 변경</button>` +
       `</div>`;
   }
 
@@ -345,7 +345,8 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     if (typeof window.pirSetByKey === 'function' && _pmIdKey) {
       window.pirSetByKey(_pmIdKey, {
         playerId: newPid,
-        name: p?.fullName || p?.name || null,
+        name: p?.name || null,           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
+        nameKoLong: p?.fullName || null, // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)
         photoUrl,
         resolvedAt: Date.now(),
       });
