@@ -254,6 +254,26 @@
 .sp-toggle-cluster .sp-toggle-side.is-active {
   color: #fff;
 }
+.sp-toggle-cluster.is-locked {
+  opacity: .88;
+}
+.sp-toggle-cluster.is-locked .sp-toggle-side[data-side="off"] {
+  color: rgba(255,255,255,.28);
+}
+.sp-toggle-lock-note {
+  max-width: 180px;
+  color: #ff4d4f;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: right;
+  word-break: keep-all;
+}
+.sp-switch input:disabled + .sp-switch-slider {
+  cursor: not-allowed;
+  filter: saturate(.8);
+  opacity: .75;
+}
 
 .sp-radio-cluster-wrap {
   flex-wrap: wrap;

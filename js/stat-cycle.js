@@ -3,7 +3,7 @@
 // lp-stat 안에서 스탯/이벤트/상대전적/홈교체/원정교체를 하나의 버튼으로 순환.
 // 자동 사이클: statCycleAuto 설정 ON일 때 statsAutoSwipeSec 간격으로 자동 전환.
 //   - 스탯 패널: 모든 페이지가 다 보인 뒤(statspanel:cycle-done) 다음 패널로 이동.
-//   - 이벤트 패널: 맨 아래에서 시작 → 75% 동안 위로 스크롤, 25% 동안 맨 위 유지.
+//   - 이벤트 패널: 맨 아래 10% 유지 → 65% 동안 위로 스크롤 → 25% 동안 맨 위 유지.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const _lpStatCycle = { mode: 'stats' };
@@ -151,7 +151,7 @@ function _lpBindEventsScrollInterruption(el) {
 
 /**
  * 이벤트 패널에 스크롤이 있으면 맨 아래에서 시작해
- * intervalMs의 75% 동안 등속도로 맨 위까지 스크롤한다.
+ * intervalMs의 10% 동안 맨 아래를 보여주고, 65% 동안 등속도로 맨 위까지 스크롤한다.
  * 이후 나머지 25% 동안 맨 위를 보여준 뒤 다음 패널로 자동 전환한다.
  */
 function _lpStartEventsScroll(intervalMs) {
@@ -163,8 +163,9 @@ function _lpStartEventsScroll(intervalMs) {
   }
   _lpBindEventsScrollInterruption(el);
 
-  const scrollDuration = Math.max(0, intervalMs * 0.75);
-  const waitAfter = Math.max(0, intervalMs - scrollDuration);
+  const holdBottom = Math.max(0, intervalMs * 0.10);
+  const scrollDuration = Math.max(0, intervalMs * 0.65);
+  const waitAfter = Math.max(0, intervalMs - holdBottom - scrollDuration);
 
   const startAfterLayout = () => {
     const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -177,20 +178,38 @@ function _lpStartEventsScroll(intervalMs) {
       return;
     }
 
-    const startTime = performance.now();
-    const tick = now => {
-      const progress = Math.min((now - startTime) / scrollDuration, 1);
-      _lpSetEventsScrollTop(el, maxScroll * (1 - progress));
-
-      if (progress < 1) {
-        _lpAuto.scrollRaf = requestAnimationFrame(tick);
-      } else {
-        _lpSetEventsScrollTop(el, 0);
-        _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
-      }
+    const finishAtTop = () => {
+      _lpSetEventsScrollTop(el, 0);
+      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
     };
 
-    _lpAuto.scrollRaf = requestAnimationFrame(tick);
+    const startScroll = () => {
+      _lpAuto.scrollTimer = null;
+      const startTime = performance.now();
+      const tick = now => {
+        const progress = Math.min((now - startTime) / scrollDuration, 1);
+        _lpSetEventsScrollTop(el, maxScroll * (1 - progress));
+
+        if (progress < 1) {
+          _lpAuto.scrollRaf = requestAnimationFrame(tick);
+        } else {
+          finishAtTop();
+        }
+      };
+
+      _lpAuto.scrollRaf = requestAnimationFrame(tick);
+    };
+
+    if (scrollDuration <= 0) {
+      _lpAuto.scrollTimer = setTimeout(() => {
+        _lpAuto.scrollTimer = null;
+        _lpSetEventsScrollTop(el, 0);
+        finishAtTop();
+      }, holdBottom);
+      return;
+    }
+
+    _lpAuto.scrollTimer = setTimeout(startScroll, holdBottom);
   };
 
   _lpAuto.scrollRaf = requestAnimationFrame(() => {

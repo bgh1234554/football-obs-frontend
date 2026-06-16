@@ -483,6 +483,18 @@ function getLineupNodeMode() {
 function setSetting(category, value) {
   if (!(category in SETTINGS_DEFAULTS)) return false;
   if (!isValidSetting(category, value)) return false;
+  if (category === 'statsAutoSwipe' && value !== 'on' && getSetting('statCycleAuto') === 'on') {
+    if (settingsState.statsAutoSwipe !== 'on') {
+      settingsState.statsAutoSwipe = 'on';
+      saveSettings();
+    }
+    syncSwitchUi('statsAutoSwipe');
+    syncStatsAutoSwipeLockUi();
+    if (typeof showToast === 'function') {
+      showToast('패널 자동 전환이 켜져 있어 자동 스와이프를 끌 수 없습니다.');
+    }
+    return false;
+  }
   if (settingsState[category] === value) {
     if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
       return setSetting('statsAutoSwipe', 'on');
@@ -964,6 +976,25 @@ function syncSwitchUi(category) {
   const onEl = cluster.querySelector(`[data-side="${on}"]`);
   if (offEl) offEl.classList.toggle('is-active', value === off);
   if (onEl) onEl.classList.toggle('is-active', value === on);
+  if (category === 'statCycleAuto' || category === 'statsAutoSwipe') {
+    syncStatsAutoSwipeLockUi();
+  }
+}
+
+function syncStatsAutoSwipeLockUi() {
+  const input = document.querySelector('input[data-settings-cat="statsAutoSwipe"]');
+  if (!input) return;
+  const locked = getSetting('statCycleAuto') === 'on';
+  const cluster = input.closest('.sp-toggle-cluster');
+  const note = document.querySelector('[data-stats-auto-swipe-lock]');
+  input.disabled = locked;
+  if (locked) {
+    input.checked = true;
+    cluster?.querySelector('[data-side="off"]')?.classList.remove('is-active');
+    cluster?.querySelector('[data-side="on"]')?.classList.add('is-active');
+  }
+  cluster?.classList.toggle('is-locked', locked);
+  if (note) note.hidden = !locked;
 }
 
 /**
