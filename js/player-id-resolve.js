@@ -184,7 +184,7 @@ function applyZeroIdOverrides(next, fixtureId) {
       const pid = Number(p.playerId);
       const isZero = pid === 0;
       const ov = isZero
-        ? relevant[`${side}:n:${String(p.name || '').trim()}`]
+        ? relevant[`${side}:n:${pirRosterName(p)}`]
         : relevant[`${side}:id:${pid}`];
       if (!ov) return p;
       return {
@@ -291,10 +291,10 @@ function pirFindPlayer(side, origName) {
   if (!data) return null;
   const lineup = data[`${side}Lineup`];
   const all = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
-  const fromLineup = all.find(p => p && String(p.name || '').trim() === origName);
+  const fromLineup = all.find(p => p && pirRosterName(p) === origName);
   if (fromLineup) return fromLineup;
   const injuries = data[`${side}Injuries`] || [];
-  return injuries.find(p => p && String(p.name || '').trim() === origName) || null;
+  return injuries.find(p => p && pirRosterName(p) === origName) || null;
 }
 
 // ── pmContainer 참조 (player-menu.js와 공유) ──────────────────────────────────
@@ -434,6 +434,12 @@ function pirShowMenu(side, origName, clientX, clientY) {
       playerId: pid,
       resolvedAt: Date.now(),
     };
+    // 같은 ID를 재저장(연결 해제/재검색 없이 그냥 저장)할 땐 기존에 저장된 이름/사진을 보존한다.
+    if (!fetchedMatches && existing && Number(existing.playerId) === pid) {
+      if (existing.name != null) entry.name = existing.name;
+      if (existing.nameKoLong != null) entry.nameKoLong = existing.nameKoLong;
+      if (existing.photoUrl != null) entry.photoUrl = existing.photoUrl;
+    }
     if (fetchedMatches) {
       entry.name = p?.name || null;           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
       entry.nameKoLong = p?.fullName || null; // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)

@@ -2603,6 +2603,9 @@ body.lp-big-col-resizing,
 body.lp-big-col-resizing * { cursor: ew-resize !important; user-select: none !important; }
 body.lp-big-h-resizing,
 body.lp-big-h-resizing * { cursor: ns-resize !important; user-select: none !important; }
+/* 코너 드래그(너비+높이 동시 조절)는 두 클래스가 함께 붙으므로 대각선 커서로 덮어쓴다. */
+body.lp-big-col-resizing.lp-big-h-resizing,
+body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
 
 /* ===== 라인업 패널 독립 엣지 리사이즈 (캠 큰 전용 — 오른쪽 너비 / 위쪽 높이) ===== */
 

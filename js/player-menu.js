@@ -371,6 +371,12 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       playerId: newPid,
       resolvedAt: Date.now(),
     };
+    // 같은 ID를 재저장(연결 해제/재검색 없이 그냥 저장)할 땐 기존에 저장된 이름/사진을 보존한다.
+    if (!fetchedMatches && existing && Number(existing.playerId) === newPid) {
+      if (existing.name != null) entry.name = existing.name;
+      if (existing.nameKoLong != null) entry.nameKoLong = existing.nameKoLong;
+      if (existing.photoUrl != null) entry.photoUrl = existing.photoUrl;
+    }
     if (fetchedMatches) {
       // id≠0: 사진은 사용자가 선택한 경우에만 변경. 기본은 새 사진 사용.
       entry.name = p?.name || null;           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)

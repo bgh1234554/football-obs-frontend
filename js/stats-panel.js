@@ -348,7 +348,9 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
   }
 
   wrap.remove();
-  return Math.max(1, fits || fallback);
+  // 이 지점에 도달했다면 panel.clientHeight와 rows.length는 이미 보장됨(위 가드) — 측정은 항상 시도된 상태.
+  // fits===0(첫 행부터 넘침)이어도 fallback으로 되돌리지 않고 최소 1행은 보여준다.
+  return Math.max(1, fits);
 }
 
 /**

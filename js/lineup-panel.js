@@ -661,7 +661,7 @@ function lpBuildRosterRowHtml(player, kind) {
   const goalsAssistsHtml = lpBuildGoalsAssistsHtml(events);
   const ratingHtml = lpBuildRatingHtml(player.playerId);
 
-  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || '')}"` : ''}>
+  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
       <span class="${nameClass}"${title}>${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}</span>
@@ -891,7 +891,7 @@ function buildInjuryListHtml(injuries, provided) {
       iconHtml = '<span class="dp-icon dp-icon-redcard" aria-label="출장 정지"></span>';
     }
 
-    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || '')}"` : ''}>
+    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || injury.playerName || '')}"` : ''}>
       ${iconHtml}
       <span class="dp-item-num">${dpEscape(injury.number ?? '')}</span>
       <span class="dp-item-name dp-injury-name"${tooltip}>${dpEscape(pickName(injury, 'roster') || '-')}</span>
@@ -1046,7 +1046,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
     const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
 
     // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
-    const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || '')}"` : '';
+    const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : '';
     circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
     names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
   });
@@ -1312,7 +1312,7 @@ function renderBenchCyclePanels(effectiveData) {
     document.querySelectorAll('.lp-stat').forEach(el => _benchCycleResizeObs.observe(el));
   }
 
-  window.lpStatUpdateBtn?.();
+  window.lpStatUpdateVisibility?.();
 }
 
 function renderInjuryPanel(effectiveData, rawData) {
@@ -2712,6 +2712,9 @@ function clearLineupPanels() {
   });
 
   clearTacticsLineupSync();
+
+  window._lpStatBenchData = null;
+  window.lpStatUpdateVisibility?.();
 }
 
 function buildFormationOptionsHtml(selected) {

@@ -733,7 +733,7 @@ function startBigCornerDrag(event, col, panelSide) {
   const startStatH = statPanel.getBoundingClientRect().height;
   const colH       = col.getBoundingClientRect().height;
   const usable     = colH - BIG_COL_GAP;
-  const maxW       = layout ? layout.clientWidth * 0.9 : window.innerWidth;
+  const maxW       = layout ? (linked ? _bigColMaxWidth(layout) : _bigPanelMaxWidth(layout)) : window.innerWidth;
   let lastW = startW, lastChatH = startChatH, lastStatH = startStatH;
   const handle = event.currentTarget;
   handle.setPointerCapture?.(event.pointerId);
