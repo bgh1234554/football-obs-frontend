@@ -1,0 +1,13 @@
+/json
+/csvExample
+.claude
+/screenshots
+/deprecated
+overlay_dashboard_five_cols.v2.html
+.vscode
+.editorconfig
+git-filter-repo.py
+docs/fsm-integration-guide.md
+/node_modules
+package-lock.json
+package.json
