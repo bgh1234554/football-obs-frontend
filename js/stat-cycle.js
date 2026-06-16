@@ -6,7 +6,7 @@
 //   - 이벤트 패널: 맨 아래 10% 유지 → 65% 동안 위로 스크롤 → 25% 동안 맨 위 유지.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const _lpStatCycle = { mode: 'stats' };
+const _lpStatCycle = { mode: 'stats', paused: false };
 window._lpStatCycle = _lpStatCycle;
 
 // 자동 사이클 내부 상태
@@ -38,6 +38,11 @@ const _STAT_CYCLE_ICONS = {
   hth:        `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>`,
   bench_home: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
   bench_away: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
+};
+
+const _STAT_PAUSE_ICONS = {
+  pause: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="3" y="2" width="3" height="10" rx="1"/><rect x="8" y="2" width="3" height="10" rx="1"/></svg>`,
+  play:  `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3.5 2.3v9.4a1 1 0 0 0 1.52.85l7.5-4.7a1 1 0 0 0 0-1.7l-7.5-4.7a1 1 0 0 0-1.52.85z"/></svg>`,
 };
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────────
@@ -243,7 +248,7 @@ function _lpAutoClear() {
 /** 현재 모드에 맞게 자동 사이클 타이머/리스너 셋업 */
 function _lpAutoStart() {
   _lpAutoClear();
-  if (!_lpIsCycleAutoOn()) return;
+  if (!_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
   const modes = lpStatAvailableModes();
   if (modes.length < 2) return;
 
@@ -327,12 +332,17 @@ function lpStatUpdateVisibility() {
   });
   document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
     el.style.display = mode === 'bench_home' ? '' : 'none';
+    // 숨겨진 동안 계산된 1열/2열 판정은 clientHeight=0이라 항상 부정확하므로,
+    // 보여지는 시점에 다시 계산한다 (hth/events 모드와 동일한 패턴).
+    if (mode === 'bench_home') requestAnimationFrame(() => window.lpBenchCycleRebalance?.(el));
   });
   document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
     el.style.display = mode === 'bench_away' ? '' : 'none';
+    if (mode === 'bench_away') requestAnimationFrame(() => window.lpBenchCycleRebalance?.(el));
   });
 
   lpStatUpdateBtn();
+  lpStatUpdatePauseBtn();
   _lpAutoStart();
 }
 
@@ -352,6 +362,27 @@ function lpStatUpdateBtn() {
   });
 }
 
+/** 자동 전환(statCycleAuto) ON일 때만 보이는 일시정지 버튼 상태 갱신. */
+function lpStatUpdatePauseBtn() {
+  const canCycle = lpStatAvailableModes().length > 1;
+  const show = _lpIsCycleAutoOn() && canCycle;
+  document.querySelectorAll('.lp-stat-pause-btn').forEach(btn => {
+    btn.style.display = show ? '' : 'none';
+    if (!show) return;
+    btn.innerHTML = _lpStatCycle.paused ? _STAT_PAUSE_ICONS.play : _STAT_PAUSE_ICONS.pause;
+    btn.title = _lpStatCycle.paused ? '자동 전환 다시 시작' : '자동 전환 일시정지';
+    btn.classList.toggle('is-paused', _lpStatCycle.paused);
+  });
+}
+
+/** 일시정지 버튼 클릭 — paused 토글 후 타이머 정리/재시작. */
+function lpStatTogglePause() {
+  _lpStatCycle.paused = !_lpStatCycle.paused;
+  if (_lpStatCycle.paused) _lpAutoClear();
+  else _lpAutoStart();
+  lpStatUpdatePauseBtn();
+}
+
 // ─── 공개 API ─────────────────────────────────────────────────────────────────
 
 function lpStatCycleNext() {
@@ -367,6 +398,7 @@ function lpStatCycleNext() {
 function lpStatReset() {
   _lpAutoClear();
   _lpStatCycle.mode = 'stats';
+  _lpStatCycle.paused = false;
   window._lpStatBenchData = null;
   lpStatUpdateVisibility();
 }
@@ -387,9 +419,11 @@ document.addEventListener('statspanel:cycle-done', event => {
 document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
   if (cat === 'statCycleAuto' || cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec') {
+    if (cat === 'statCycleAuto') _lpStatCycle.paused = false;
     _lpAutoClear();
     _lpAutoStart();
     lpStatUpdateBtn();
+    lpStatUpdatePauseBtn();
   }
 });
 
@@ -397,6 +431,8 @@ document.addEventListener('settings:change', e => {
 window.lpStatCycleNext = lpStatCycleNext;
 window.lpStatReset = lpStatReset;
 window.lpStatUpdateBtn = lpStatUpdateBtn;
+window.lpStatUpdatePauseBtn = lpStatUpdatePauseBtn;
+window.lpStatTogglePause = lpStatTogglePause;
 window.lpStatUpdateVisibility = lpStatUpdateVisibility;
 window.lpStatAutoAdvance = lpStatAutoAdvance;
 
@@ -404,5 +440,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.lp-stat-cycle-btn').forEach(btn => {
     btn.addEventListener('click', lpStatCycleNext);
   });
+  document.querySelectorAll('.lp-stat-pause-btn').forEach(btn => {
+    btn.addEventListener('click', lpStatTogglePause);
+  });
   lpStatUpdateBtn();
+  lpStatUpdatePauseBtn();
 });

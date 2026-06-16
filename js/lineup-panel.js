@@ -1286,18 +1286,32 @@ function buildBenchCyclePanelHtml(players, teamName, accentColor) {
 
 /**
  * 교체명단 사이클 패널의 2열 전환 처리.
- * 단일 컬럼에서 선수가 넘치면 bc-two-col 클래스를 붙여 CSS columns 활성화.
- * columns: 2; column-fill: auto 로 왼쪽 먼저 꽉 채운 뒤 오른쪽으로 넘침.
- * 높이가 늘어나면 자동으로 왼쪽으로 복귀.
+ * 패딩/폰트는 항상 고정값 그대로 두고(stats-panel의 itemsPerPage 계산과 같은 방식 —
+ * 정상 크기 기준으로 몇 줄이 들어가는지만 본다), 정상 크기로 1열에 다 안 들어가면(=마지막
+ * 행이 가려짐) bc-two-col로 2열 전환한다.
+ * columns: 2; column-fill: balance 로 양쪽 컬럼 높이를 최대한 균등하게 나눈다
+ * (auto로 두면 왼쪽을 끝까지 채우고 1명만 오른쪽에 남는 식으로 쏠릴 수 있다).
  */
 function lpBenchCycleRebalance(panel) {
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
   // 일시적으로 단일 컬럼으로 돌려서 실제 overflow 측정
   body.classList.remove('bc-two-col');
-  const overflows = body.scrollHeight > body.clientHeight + 2;
+  const overflows = body.scrollHeight > body.clientHeight + 0.5;
   body.classList.toggle('bc-two-col', overflows);
 }
+
+/**
+ * lineup-resize.js의 패널 너비/높이 드래그 종료 직후 호출용 — stRerenderActivePanels와 같은 시점에
+ * 보이는/숨겨진 교체명단 사이클 패널을 모두 재계산한다. ResizeObserver가 .lp-stat 자체의 크기 변화는
+ * 잡아내지만, 드래그 도중에는 .bc-body 안쪽 줄 수/줄바꿈이 같이 바뀌므로 드래그 종료 시점에 한 번 더
+ * 정확하게 재확인할 필요가 있다.
+ */
+function lpBenchCycleRebalanceAll() {
+  document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]')
+    .forEach(lpBenchCycleRebalance);
+}
+window.lpBenchCycleRebalanceAll = lpBenchCycleRebalanceAll;
 
 /** 홈/원정 교체명단 사이클 패널 렌더 + rebalance + ResizeObserver 등록, lp-stat 사이클 가시성 갱신. */
 function renderBenchCyclePanels(effectiveData) {
