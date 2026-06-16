@@ -34,6 +34,8 @@ const SETTINGS_DEFAULTS = {
   // '메인에 표시' 버튼 클릭 시 자동 이동할 페이지: 'big'(캠 큼) / 'small'(캠 작음 = /detail).
   mainPage: 'big',
   fanReaction: 'on',
+  // 캠 큰 패널 자동 전환 (stat-cycle.js). off='off', on='on' 토글.
+  statCycleAuto: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
   statsAutoSwipeSec: 10,
@@ -308,6 +310,7 @@ function isValidSetting(category, value) {
   if (category === 'mainPage') return value === 'big' || value === 'small';
   if (category === 'leagueLogoPos') return value === 'center' || value === 'left' || value === 'right';
   if (category === 'lineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
+  if (category === 'statCycleAuto') return value === 'on' || value === 'off';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'subReflect'

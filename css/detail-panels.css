@@ -835,6 +835,18 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 #injuryPanel .dp-side-header .dp-side-edit-btn {
   display: none;
 }
+#benchPanel .dp-side-name {
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgb(10 15 23 / .55);
+  border: 1px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 55%, transparent);
+  backdrop-filter: blur(3px);
+  color: rgba(255,255,255,.92);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 11px;
+  font-weight: 800;
+}
 .dp-coach-name.dp-coach-editable,
 .dp-referee-name.dp-referee-editable {
   cursor: text;

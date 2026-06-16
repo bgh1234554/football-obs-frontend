@@ -277,8 +277,12 @@ function stSetupAutoSwipe(panel, state, totalPages) {
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
   const intervalMs = Number.isFinite(userSec) && userSec >= 0.5 ? Math.round(userSec * 1000) : cfgInterval;
   state.autoTimer = setInterval(() => {
+    const isLastPage = state.page === totalPages - 1;
     state.page = (state.page + 1) % totalPages;
     stRenderPanel(panel, statsLastFixtureData);
+    if (isLastPage) {
+      panel.dispatchEvent(new CustomEvent('statspanel:cycle-done', { bubbles: true }));
+    }
   }, intervalMs);
 }
 

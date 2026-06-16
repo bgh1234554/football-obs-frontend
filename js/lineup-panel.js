@@ -770,11 +770,13 @@ function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
   </div>`;
 }
 
-function setSideName(panel, dataAttrPrefix, side, teamName) {
+function setSideName(panel, dataAttrPrefix, side, teamName, accentColor) {
   const nameEl = panel?.querySelector(`[data-${dataAttrPrefix}-side="${side}"] .dp-side-name`);
   if (!nameEl) return;
   nameEl.textContent = teamName;
   nameEl.title = teamName;
+  if (accentColor) nameEl.style.setProperty('--dp-team-accent', accentColor);
+  else nameEl.style.removeProperty('--dp-team-accent');
 }
 
 function getCoachName(lineupLike) {
@@ -1201,9 +1203,10 @@ function renderBenchPanel(effectiveData, rawData) {
     shouldShowBenchManualButton(rawData, 'away') ? buildTitleActionButton('bench', 'away') : '',
   ].filter(Boolean).join(''));
 
-  // 2) 팀명과 양쪽 리스트를 채운다.
-  setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'));
-  setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'));
+  // 2) 팀명과 양쪽 리스트를 채운다 (팀 컬러는 chip 배경 accent에 사용).
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'), cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')));
+  setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'), cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626')));
 
   const homeLineupExists = !!effectiveData?.homeLineup;
   const awayLineupExists = !!effectiveData?.awayLineup;
@@ -1245,6 +1248,71 @@ function renderBenchPanel(effectiveData, rawData) {
     if (venueEl) venueEl.textContent = venueText;
     if (kickoffEl) kickoffEl.textContent = formatBenchKickoffLocal(matchInfo);
   }
+}
+
+// ─── lp-stat 안의 교체명단 사이클 패널 ──────────────────────────────────────
+
+let _benchCycleResizeObs = null;
+
+function buildBenchCyclePanelHtml(players, teamName, accentColor) {
+  const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}>${dpEscape(teamName)} 교체명단</div>`;
+  if (!players || !players.length) {
+    return `${title}<div class="st-empty">교체 선수 없음</div>`;
+  }
+  // 모든 선수를 단일 리스트로 — CSS columns + JS 오버플로 감지가 2열 전환을 처리
+  return `${title}<div class="bc-body">${players.map(p => lpBuildRosterRowHtml(p, 'bench')).join('')}</div>`;
+}
+
+/**
+ * 교체명단 사이클 패널의 2열 전환 처리.
+ * 단일 컬럼에서 선수가 넘치면 bc-two-col 클래스를 붙여 CSS columns 활성화.
+ * columns: 2; column-fill: auto 로 왼쪽 먼저 꽉 채운 뒤 오른쪽으로 넘침.
+ * 높이가 늘어나면 자동으로 왼쪽으로 복귀.
+ */
+function lpBenchCycleRebalance(panel) {
+  const body = panel?.querySelector('.bc-body');
+  if (!body) return;
+  // 일시적으로 단일 컬럼으로 돌려서 실제 overflow 측정
+  body.classList.remove('bc-two-col');
+  const overflows = body.scrollHeight > body.clientHeight + 2;
+  body.classList.toggle('bc-two-col', overflows);
+}
+
+function renderBenchCyclePanels(effectiveData) {
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  const homeColor = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));
+  const awayColor = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
+  const homeSubs = effectiveData?.homeLineup?.substitutes || [];
+  const awaySubs = effectiveData?.awayLineup?.substitutes || [];
+
+  window._lpStatBenchData = {
+    home: homeSubs.length > 0 ? homeSubs : null,
+    away: awaySubs.length > 0 ? awaySubs : null,
+  };
+
+  document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
+    el.innerHTML = buildBenchCyclePanelHtml(homeSubs, getTeamName(effectiveData, 'home'), homeColor);
+  });
+  document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
+    el.innerHTML = buildBenchCyclePanelHtml(awaySubs, getTeamName(effectiveData, 'away'), awayColor);
+  });
+
+  // 렌더 직후 rebalance
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]').forEach(lpBenchCycleRebalance);
+  });
+
+  // 패널 크기 변화(lineup-resize 등) 시 자동 재계산
+  if (_benchCycleResizeObs) _benchCycleResizeObs.disconnect();
+  if (typeof ResizeObserver !== 'undefined') {
+    _benchCycleResizeObs = new ResizeObserver(() => {
+      document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]').forEach(lpBenchCycleRebalance);
+    });
+    document.querySelectorAll('.lp-stat').forEach(el => _benchCycleResizeObs.observe(el));
+  }
+
+  window.lpStatUpdateBtn?.();
 }
 
 function renderInjuryPanel(effectiveData, rawData) {
@@ -2563,6 +2631,7 @@ function rerenderLineupPanels() {
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
   syncTacticsBoard(effectiveData);
+  renderBenchCyclePanels(effectiveData);
 
   // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
   // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).

@@ -355,7 +355,8 @@ function pirShowMenu(side, origName, clientX, clientY) {
     const p = _fetched?.player;
     pirSetByKey(storeKey, {
       playerId: pid,
-      name: p?.fullName || p?.name || null,
+      name: p?.name || null,           // 단축명 (한글 단축 우선, 없으면 API 영문 단축)
+      nameKoLong: p?.fullName || null, // 풀네임 (한글 풀네임 우선, 없으면 API 영문 풀네임)
       photoUrl: p?.photoUrl || null,
       resolvedAt: Date.now(),
     });
@@ -402,4 +403,28 @@ window.pirShowMenuForPlayer = function(side, origApiName, clientX, clientY) {
   pirShowMenu(side, String(origApiName || '').trim(), clientX, clientY);
 };
 
-document.addEventListener('DOMContentLoaded', pirInit);
+// ── 구버전 항목 자동 마이그레이션 ────────────────────────────────────────────
+// name 필드만 있고 nameKoLong 프로퍼티가 없는 항목은 구버전 코드로 저장된 것.
+// (구버전: name = fullName || name → 한글 풀네임이 name에 저장됨)
+// name 필드를 제거해 백엔드가 내려주는 올바른 단축명이 그대로 사용되도록 함.
+// playerId/photoUrl은 유지해 ID 연결과 사진 선택 결과는 보존.
+function pirMigrateOldEntries() {
+  const store = pirReadStore();
+  let changed = false;
+  for (const key of Object.keys(store)) {
+    const entry = store[key];
+    if (!entry || typeof entry !== 'object') continue;
+    const hasNameKoLong = Object.prototype.hasOwnProperty.call(entry, 'nameKoLong');
+    if (entry.name && !hasNameKoLong) {
+      const { name: _removed, ...rest } = entry;
+      store[key] = rest;
+      changed = true;
+    }
+  }
+  if (changed) pirWriteStore(store);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  pirMigrateOldEntries();
+  pirInit();
+});
