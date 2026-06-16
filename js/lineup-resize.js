@@ -416,12 +416,14 @@ function _bigSave(key, px) {
 function _bigClear(key) {
   try { localStorage.removeItem(key); } catch {}
 }
+/** px 값을 [min, max] 범위로 클램핑. 숫자가 아니면 null, max가 min보다 작으면 min만 보장. */
 function _clampPx(px, min, max) {
   const n = Number(px);
   if (!Number.isFinite(n)) return null;
   const upper = Number.isFinite(max) ? Math.max(min, max) : n;
   return Math.max(min, Math.min(upper, n));
 }
+/** localStorage에서 px 값을 읽어 [min, max]로 클램핑. 보정이 발생하면 보정값을 다시 저장. */
 function _bigLoadClamped(key, min, max) {
   const px = _bigLoad(key, min);
   if (px == null) return null;
@@ -429,14 +431,17 @@ function _bigLoadClamped(key, min, max) {
   if (clamped != null && Math.round(clamped) !== Math.round(px)) _bigSave(key, clamped);
   return clamped;
 }
+/** linked 모드(칼럼 공유)에서 칼럼 최대 너비 = layout 너비의 65%. */
 function _bigColMaxWidth(layout) {
   const width = Number(layout?.clientWidth) || 0;
   return width > 0 ? width * 0.65 : Infinity;
 }
+/** 독립(off) 모드에서 패널 최대 너비 = layout 너비의 90%. */
 function _bigPanelMaxWidth(layout) {
   const width = Number(layout?.clientWidth) || 0;
   return width > 0 ? width * 0.9 : Infinity;
 }
+/** 현재 linked/off 모드에 맞는 칼럼 최대 너비(65%/90%)를 반환. */
 function _bigStoredColMaxWidth(layout) {
   return isBigPanelLinked() ? _bigColMaxWidth(layout) : _bigPanelMaxWidth(layout);
 }
@@ -946,6 +951,7 @@ function _lineupGetMaxHeight(panel) {
   );
 }
 
+/** 라인업 패널 너비 오버라이드의 상한 — 소속 layout-wrap(또는 body) 너비의 80%. */
 function _lineupGetMaxWidth(panel) {
   const layout = panel?.closest('.layout-wrap') || document.body;
   const width = layout?.clientWidth || document.body?.clientWidth || window.innerWidth || LINEUP_EDGE_MIN_W;

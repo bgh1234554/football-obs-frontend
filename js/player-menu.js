@@ -89,6 +89,7 @@ function pmFindMatchStats(playerId) {
   return stats.find(s => s && Number(s.playerId) === id) || null;
 }
 
+/** 경기/시즌 스탯 조회용 playerId 결정. ID 연결 override가 있으면 연결된 ID, 없으면 원본 ID 그대로. */
 function pmResolveLinkedProfileId(playerId, player) {
   const originalId = Number(playerId);
   if (!originalId || originalId <= 0) return playerId;
@@ -214,6 +215,7 @@ function pmPositionPopup(el, cx, cy) {
 }
 
 // ── 선수 ID 인라인 입력 뷰 (pm-popup 내부에서 전환, 뒤로가기 지원) ─────────────
+/** pmPopup을 ID 입력 인라인 폼으로 전환 — 검색/미리보기/사진 유지·변경 토글/저장/연결 해제. */
 async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   const popup = document.getElementById('pmPopup');
   if (!popup) return;

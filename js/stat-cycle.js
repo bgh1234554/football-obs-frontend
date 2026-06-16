@@ -42,14 +42,17 @@ const _STAT_CYCLE_ICONS = {
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 
+/** 패널 자동 전환(statCycleAuto) 설정이 ON인지. */
 function _lpIsCycleAutoOn() {
   return (typeof getSetting === 'function') && getSetting('statCycleAuto') === 'on';
 }
 
+/** 스탯 패널 자동 스와이프(statsAutoSwipe) 설정이 ON인지. */
 function _lpIsStatsAutoSwipeOn() {
   return (typeof getSetting === 'function') && getSetting('statsAutoSwipe') === 'on';
 }
 
+/** 자동 전환 간격(ms). 사용자 설정(statsAutoSwipeSec) 우선, 없으면 STATS_CONFIG 기본값. */
 function _lpGetIntervalMs() {
   const cfgMs = window.STATS_CONFIG?.autoSwipeIntervalMs || 10000;
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
@@ -72,11 +75,13 @@ function _lpEventsScrollEl() {
 
 // ─── 이벤트 패널 자동 스크롤 ─────────────────────────────────────────────────
 
+/** 이벤트 리스너 등록 + 추후 일괄 해제를 위해 _lpAuto.scrollListeners에 기록. */
 function _lpAddEventsScrollListener(el, type, handler, options) {
   el.addEventListener(type, handler, options);
   _lpAuto.scrollListeners.push({ el, type, handler, options });
 }
 
+/** _lpAddEventsScrollListener로 등록한 리스너를 전부 해제. */
 function _lpClearEventsScrollListeners() {
   _lpAuto.scrollListeners.forEach(({ el, type, handler, options }) => {
     el.removeEventListener(type, handler, options);
@@ -84,6 +89,7 @@ function _lpClearEventsScrollListeners() {
   _lpAuto.scrollListeners = [];
 }
 
+/** pointerdown 좌표가 스크롤바 영역(우측 끝, 스크롤바 너비만큼)인지 판별 — 스크롤바 드래그를 사용자 개입으로 인식하기 위함. */
 function _lpPointerLooksLikeScrollbarDrag(event, el) {
   if (!event || !el || event.button !== 0) return false;
   const rect = el.getBoundingClientRect();
@@ -96,6 +102,7 @@ function _lpPointerLooksLikeScrollbarDrag(event, el) {
     && event.clientY <= rect.bottom;
 }
 
+/** 프로그래밍적 스크롤(자동 스크롤)임을 표시한 뒤 scrollTop을 설정 — scroll 이벤트 핸들러가 사용자 개입과 구분하는 데 사용. */
 function _lpSetEventsScrollTop(el, value) {
   _lpAuto.scrollProgrammatic = true;
   _lpAuto.scrollExpectedTop = value;
@@ -107,6 +114,7 @@ function _lpSetEventsScrollTop(el, value) {
   }, 0);
 }
 
+/** 진행 중인 이벤트 패널 자동 스크롤(rAF/타이머/리스너)을 전부 정리. */
 function _lpStopEventsScroll() {
   if (_lpAuto.scrollRaf) { cancelAnimationFrame(_lpAuto.scrollRaf); _lpAuto.scrollRaf = null; }
   if (_lpAuto.scrollTimer) { clearTimeout(_lpAuto.scrollTimer); _lpAuto.scrollTimer = null; }
@@ -119,6 +127,7 @@ function _lpStopEventsScroll() {
   _lpClearEventsScrollListeners();
 }
 
+/** 사용자가 이벤트 패널을 직접 스크롤/조작했을 때 호출 — 자동 스크롤을 멈추고, 자동 전환 ON이면 일반 interval 후 다음 패널로 이동을 예약. */
 function _lpCancelEventsScrollByUser() {
   if (_lpStatCycle.mode !== 'events') return;
   _lpStopEventsScroll();
@@ -127,6 +136,7 @@ function _lpCancelEventsScrollByUser() {
   }
 }
 
+/** 이벤트 패널에 wheel/touch/스크롤바드래그/키보드/scroll 리스너를 걸어 사용자 개입 시 _lpCancelEventsScrollByUser 호출. */
 function _lpBindEventsScrollInterruption(el) {
   _lpClearEventsScrollListeners();
   const cancel = () => _lpCancelEventsScrollByUser();
@@ -222,6 +232,7 @@ function _lpStartEventsScroll(intervalMs) {
 
 // ─── 자동 사이클 제어 ────────────────────────────────────────────────────────
 
+/** 자동 사이클 타이머/fallback/이벤트 스크롤을 전부 정리(모드 전환·재시작 전 호출). */
 function _lpAutoClear() {
   if (_lpAuto.timer) { clearTimeout(_lpAuto.timer); _lpAuto.timer = null; }
   if (_lpAuto.fallback) { clearTimeout(_lpAuto.fallback); _lpAuto.fallback = null; }
@@ -288,6 +299,7 @@ function lpStatAvailableModes() {
   return modes;
 }
 
+/** hth 모드로 전환될 때 데이터가 fresh하지 않으면 HTH 데이터를 미리 로드. */
 function lpStatEnsureModeReady(mode) {
   if (mode !== 'hth' || typeof window.hthEnsureLoadedForFixture !== 'function') return;
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'

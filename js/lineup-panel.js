@@ -1254,6 +1254,7 @@ function renderBenchPanel(effectiveData, rawData) {
 
 let _benchCycleResizeObs = null;
 
+/** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
   const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}>${dpEscape(teamName)} 교체명단</div>`;
@@ -1279,6 +1280,7 @@ function lpBenchCycleRebalance(panel) {
   body.classList.toggle('bc-two-col', overflows);
 }
 
+/** 홈/원정 교체명단 사이클 패널 렌더 + rebalance + ResizeObserver 등록, lp-stat 사이클 가시성 갱신. */
 function renderBenchCyclePanels(effectiveData) {
   const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
   const homeColor = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));

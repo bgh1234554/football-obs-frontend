@@ -12,26 +12,32 @@ const PIR_STORE_KEY = 'obs.player.id.resolve.v2';
 //   id=0  선수: "{fixtureId}:{side}:n:{origApiName}"       — id가 없으므로 이름이 유일 식별자
 // 값: { playerId, name, photoUrl, resolvedAt }
 
+/** localStorage에서 override 저장소를 읽어 파싱. 파싱 실패/미존재 시 빈 객체. */
 function pirReadStore() {
   try { return JSON.parse(localStorage.getItem(PIR_STORE_KEY) || '{}') || {}; }
   catch { return {}; }
 }
 
+/** override 저장소 객체를 localStorage에 JSON으로 직렬화해 저장. */
 function pirWriteStore(store) {
   try { localStorage.setItem(PIR_STORE_KEY, JSON.stringify(store)); }
   catch {}
 }
 
+/** id≠0 선수의 저장소 키 생성: "{fixtureId}:{side}:id:{playerId}". */
 function pirMakeIdKey(fixtureId, side, playerId) {
   return `${fixtureId}:${side}:id:${playerId}`;
 }
+/** id=0 선수의 저장소 키 생성(이름 기반): "{fixtureId}:{side}:n:{name}". */
 function pirMakeNameKey(fixtureId, side, name) {
   return `${fixtureId}:${side}:n:${name}`;
 }
 
+/** 키로 override 항목 조회. 키가 없거나 저장된 적 없으면 null. */
 function pirGetByKey(key) {
   return key ? (pirReadStore()[key] || null) : null;
 }
+/** 키에 override 항목 저장. data가 falsy면 해당 키를 삭제(연결 해제). */
 function pirSetByKey(key, data) {
   if (!key) return;
   const store = pirReadStore();
@@ -40,6 +46,7 @@ function pirSetByKey(key, data) {
   pirWriteStore(store);
 }
 
+/** 저장소 키를 fixtureId 접두어 제거 후 {side, kind, value}로 분해. fixtureId가 안 맞거나 형식이 다르면 null. */
 function pirParseStoreKey(fixtureId, key) {
   const prefix = `${fixtureId}:`;
   if (!key || !String(key).startsWith(prefix)) return null;
@@ -57,6 +64,7 @@ function pirParseStoreKey(fixtureId, key) {
   };
 }
 
+/** 한 fixture의 홈/원정 라인업(선발·교체)·부상자 리스트를 side와 함께 순회용 배열로 묶음. */
 function pirRosterBuckets(data) {
   if (!data) return [];
   return [
@@ -69,10 +77,16 @@ function pirRosterBuckets(data) {
   ];
 }
 
+/** 선수 표시 이름. name 우선, 없으면 playerName(수동 입력 부상자 등) fallback. */
 function pirRosterName(player) {
   return String(player?.name || player?.playerName || '').trim();
 }
 
+/**
+ * 로스터의 player가 현재 비교 대상(current)과 같은 선수인지 판별.
+ * id 키(kind==='id')는 playerId로, 이름 키(kind==='n')는 이름 일치 또는
+ * 이미 연결된 effective playerId 일치로 판단.
+ */
 function pirIsCurrentRosterPlayer(player, side, current, currentEntry) {
   if (!player || !current || side !== current.side) return false;
   if (current.kind === 'id') return Number(player.playerId) === Number(current.value);
@@ -84,6 +98,7 @@ function pirIsCurrentRosterPlayer(player, side, current, currentEntry) {
   return false;
 }
 
+/** newPid가 해당 fixture 로스터(라인업/벤치/부상자)에 이미 다른 선수의 playerId로 존재하는지 확인. current(자기 자신)는 제외. */
 function pirFixtureRosterHasPlayerId(data, fixtureId, current, currentEntry, newPid) {
   const dataFixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
   if (dataFixtureId && dataFixtureId !== String(fixtureId)) return false;
@@ -151,6 +166,7 @@ window.pirFindNameKeyByEffectiveId = pirFindNameKeyByEffectiveId;
 // lineup-panel.js의 buildEffectiveFixtureData에서 window hook으로 호출.
 // 복제된 next 객체를 직접 변경(in-place) — 반환값 없음.
 
+/** 저장된 override들을 fixture 데이터에 일괄 적용 (라인업/부상자 이름·사진/playerId, 이벤트, playerStats 리매핑). */
 function applyZeroIdOverrides(next, fixtureId) {
   if (!next || !fixtureId) return;
 
@@ -254,11 +270,13 @@ window.pirFindOriginalIdKey = pirFindOriginalIdKey;
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
 
+/** HTML 특수문자 escape (innerHTML 삽입용). */
 function pirEsc(v) {
   return String(v ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/** 현재 로드된 fixture의 ID 문자열. 없으면 빈 문자열. */
 function pirGetCurrentFixtureId() {
   try {
     return String(
@@ -271,6 +289,7 @@ function pirGetCurrentFixtureId() {
 
 // ── side 감지 ─────────────────────────────────────────────────────────────────
 
+/** 클릭된 DOM 엘리먼트에서 home/away side를 클래스(is-home/is-away)나 data-* 속성으로 추론. */
 function pirGetSide(el) {
   if (!el) return null;
   if (el.classList.contains('is-home')) return 'home';
@@ -286,6 +305,7 @@ function pirGetSide(el) {
 
 // ── raw fixture에서 선수 조회 (id=0 팝업 전용) ────────────────────────────────
 
+/** 현재 fixture의 선발·교체·부상자 명단에서 이름(origName)으로 선수 객체 조회. */
 function pirFindPlayer(side, origName) {
   const data = (typeof lineupPanelState !== 'undefined') ? lineupPanelState.lastFixture : null;
   if (!data) return null;
@@ -299,6 +319,7 @@ function pirFindPlayer(side, origName) {
 
 // ── pmContainer 참조 (player-menu.js와 공유) ──────────────────────────────────
 
+/** 팝업 컨테이너 div. player-menu.js의 pmContainer가 있으면 그걸 재사용, 없으면 직접 생성. */
 function pirGetContainer() {
   if (typeof pmContainer === 'function') return pmContainer();
   let c = document.getElementById('pmContainer');
@@ -306,6 +327,7 @@ function pirGetContainer() {
   return c;
 }
 
+/** 컨테이너를 비워 현재 열린 팝업(pirPopup/pmPopup)을 닫는다. */
 function pirHideAll() {
   pirGetContainer().innerHTML = '';
 }
@@ -313,6 +335,7 @@ function pirHideAll() {
 // ── 팝업 표시 (id=0 선수 전용) ───────────────────────────────────────────────
 // id≠0 선수의 ID 수정은 player-menu.js의 pmShowIdInput이 담당.
 
+/** id=0 선수 클릭 시 ID 연결 팝업(pirPopup) 표시 — 검색/저장/연결 해제 UI + 이벤트 바인딩. */
 function pirShowMenu(side, origName, clientX, clientY) {
   const c = pirGetContainer();
   const player = pirFindPlayer(side, origName);
@@ -465,6 +488,7 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
 // ── 클릭 이벤트 핸들러 ─────────────────────────────────────────────────────────
 
+/** document 클릭 위임으로 id=0 선수 노드 클릭을 감지해 pirShowMenu를 띄움. DOMContentLoaded에서 호출. */
 function pirInit() {
   document.addEventListener('click', e => {
     const c = document.getElementById('pmContainer');

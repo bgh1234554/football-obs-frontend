@@ -244,6 +244,7 @@ function isLikelyLocalFilePath(input) {
   return /^file:/i.test(raw) || /^[a-zA-Z]:[\\/]/.test(raw) || /^\\\\/.test(raw);
 }
 
+/** 값을 0~100 범위로 클램핑. 숫자가 아니면 fallback을 사용. */
 function clampPercent(value, fallback = 0) {
   const numeric = Number(value);
   const safe = Number.isFinite(numeric) ? numeric : fallback;
@@ -981,6 +982,7 @@ function syncSwitchUi(category) {
   }
 }
 
+/** statCycleAuto ON일 때 statsAutoSwipe 토글을 비활성화 + ON 고정하고 잠금 안내 문구를 표시. */
 function syncStatsAutoSwipeLockUi() {
   const input = document.querySelector('input[data-settings-cat="statsAutoSwipe"]');
   if (!input) return;
