@@ -489,6 +489,20 @@ function getFormationSlotsByGridOrder(formation) {
 }
 
 /**
+ * 포메이션에서 최전방(FW) 바로 앞 라인의 depth를 구한다.
+ * split 모드의 awaySupportLift가 이 라인까지 들어올리면 FW와의 간격이 좁아지므로 제외 대상으로 쓴다.
+ */
+function getPreFwFormationDepth(formation) {
+  const depths = Array.from(new Set(
+    (getTacticsFormationMap()[formation] || []).map(coord => {
+      const rawX = Number(coord?.x) || 5;
+      return Math.max(0, Math.min(1, (rawX - 5) / 39));
+    })
+  )).sort((a, b) => b - a);
+  return depths.length > 1 ? depths[1] : null;
+}
+
+/**
  * 슬롯 ↔ 선수 매핑을 grid 순서대로 짝지어 반환.
  * 선수가 없는 슬롯은 결과에서 제외 (포메이션 11개 < startXi 11명일 수도 있는 잡음 방어).
  */
@@ -923,7 +937,7 @@ function buildInjuryListHtml(injuries, provided) {
  *           GK/수비 라벨이 패널 하단에 걸리지 않게 한다.
  *   - 가로: 홈/원정 모두 같은 좌우 기준을 써야 하므로 100-rawY를 공통 적용한다.
  */
-function mapFormationSlotToBigSplitPitchPosition(slot, side) {
+function mapFormationSlotToBigSplitPitchPosition(slot, side, options = {}) {
   const rawX = Number(slot?.coord?.x) || 5;
   const rawY = Number(slot?.coord?.y) || 50;
   const depth = Math.max(0, Math.min(1, (rawX - 5) / 39));
@@ -937,8 +951,12 @@ function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   if (depth < 0.82) top -= SPLIT_LABEL_LINE_LIFT_PCT;
   if (depth === 0) top += 1; // GK: 이름 pill 살짝 안쪽으로
   // split 원정은 수비/미드 라인이 하단에 촘촘하게 몰리므로 중간 라인만 추가 lift.
+  // 단, FW 바로 앞 라인(preFwDepth)은 제외 — 이 라인까지 들어올리면 FW와의 간격이
+  // 좁아져 라벨이 겹친다 (포메이션별로 FW 앞 라인 depth가 달라 동적으로 계산해 제외).
   const SPLIT_AWAY_SUPPORT_LIFT_PCT = 2.5;
-  if (side === 'away' && depth > 0 && depth < 0.82) {
+  const preFwDepth = options.preFwDepth;
+  const isPreFwLine = preFwDepth != null && Math.abs(depth - preFwDepth) < 0.001;
+  if (side === 'away' && depth > 0 && depth < 0.82 && !isPreFwLine) {
     top -= SPLIT_AWAY_SUPPORT_LIFT_PCT;
   }
   // 바둑알(원) 반지름이 컨테이너 높이 대비 ~6%이므로, 포메이션에 관계없이 상단 잘림을 막는
@@ -1021,6 +1039,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
   const names = [];
   // Iter 5-3: 노드 badge는 항상 모두 렌더 (양 캠 동일 DOM 공유).
   // per-feature 토글은 body 클래스(no-lineup-goals/cards/rating/subtime) + 캠 큼 CSS로 숨김 처리.
+  const preFwDepth = pitchMode === 'split' ? getPreFwFormationDepth(lineup?.formation) : null;
 
   getFormationAssignments(lineup).forEach(({ slot, player }) => {
     const name = pickName(player, 'lineup') || player.name || '';
@@ -1028,7 +1047,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
       ? ` title="${dpEscape(player.nameKoLong)}"`
       : '';
     const position = pitchMode === 'split'
-      ? mapFormationSlotToBigSplitPitchPosition(slot, side)
+      ? mapFormationSlotToBigSplitPitchPosition(slot, side, { preFwDepth })
       : mapFormationSlotToPitchPosition(slot, side, options);
     const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
     const posStyle = `left:${position.left}%;top:${position.top}%;`;
