@@ -368,6 +368,7 @@ function lpStatUpdatePauseBtn() {
   const show = _lpIsCycleAutoOn() && canCycle;
   document.querySelectorAll('.lp-stat-pause-btn').forEach(btn => {
     btn.style.display = show ? '' : 'none';
+    btn.closest('.lp-stat')?.classList.toggle('has-pause-btn', show);
     if (!show) return;
     btn.innerHTML = _lpStatCycle.paused ? _STAT_PAUSE_ICONS.play : _STAT_PAUSE_ICONS.pause;
     btn.title = _lpStatCycle.paused ? '자동 전환 다시 시작' : '자동 전환 일시정지';

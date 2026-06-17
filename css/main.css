@@ -1943,6 +1943,11 @@
     }
     .lp-stat-pause-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
     .lp-stat-pause-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+    /* 일시정지 버튼이 떠 있을 때(자동 전환 ON) 이벤트 패널 필터 버튼이 같은 우측 상단 자리에서
+       겹치므로, 일시정지 버튼 너비만큼 왼쪽으로 밀어준다. */
+    .lp-stat.has-pause-btn [data-events-panel] .ev-filter-shell {
+      margin-right: calc(var(--panel-title-control-size) + 6px);
+    }
     .lp-stat-pause-btn.is-paused { border-color: rgba(255,255,255,.35); color: #fff; }
 
     /* bench cycle 패널 공통 — [data-stat-panel] 과 동일한 패딩으로 타이틀 높이 맞춤 */
