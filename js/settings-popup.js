@@ -46,6 +46,10 @@ const SETTINGS_DEFAULTS = {
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
   subReflect: 'on',
+  // 이벤트의 playerId/assistId가 라인업 ID와 안 맞을 때, API 원본(영문) 이름이 그 팀
+  // 라인업+벤치 안에서 유일하게 일치하면 ID 입력 없이 자동으로 연결(player-id-resolve.js).
+  // 동명이인이 있으면 자동 적용하지 않고 건너뛴다. off='off', on='on'.
+  autoLinkPlayerIdByName: 'on',
   // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
   lineupShowGoals: 'on',     // 골/어시스트 이모티콘
   lineupShowCards: 'on',     // 옐로/레드 카드
@@ -323,6 +327,7 @@ function isValidSetting(category, value) {
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
   if (category === 'subReflect'
+    || category === 'autoLinkPlayerIdByName'
     || category === 'fanReaction'
     || category === 'lineupHideInitial'
     || category === 'splitLineup'

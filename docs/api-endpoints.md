@@ -177,14 +177,18 @@ API-Football 문서상 `/fixtures?id={id}` 요청은 이벤트, 라인업, 팀 �
 | playerId | 주 관여 선수 ID | Long |  | X | `6126` |
 | playerName | 주 관여 선수명 | String | 한글 우선 | X | `F. Andrada` |
 | playerNameKoLong | 주 관여 선수 한글 풀네임 | String | CSV에 있을 때만 | O | `페데리코 안드라다` |
+| playerOrigName | 주 관여 선수명 API 원문(영문, 미가공) | String |  | X | `F. Andrada` |
 | assistId | 보조 관여 선수 ID | Long | 골 assist 또는 교체 투입 선수 | O | `5947` |
 | assistName | 보조 관여 선수명 | String | 한글 우선 | O | `M. Merentiel` |
 | assistNameKoLong | 보조 관여 선수 한글 풀네임 | String | CSV에 있을 때만 | O | `null` |
+| assistOrigName | 보조 관여 선수명 API 원문(영문, 미가공) | String | assistId 없으면 null | O | `M. Merentiel` |
 | type | 이벤트 타입 | String | `Goal`, `Card`, `subst`, `Var` 종류 | X | `Goal` |
 | detail | 이벤트 상세 | String | API 원문 | X | `Normal Goal`, `Penalty`, `Yellow Card`, `Substitution 1` |
 | comments | 이벤트 부연 설명 | String | 일반 이벤트/null/PSO | O | `Penalty Shootout` |
 
 API-Football 문서상 `Goal`은 `Normal Goal`, `Own Goal`, `Penalty`, `Missed Penalty`, `Card`는 `Yellow Card`, `Red Card`, `Subst`는 `Substitution n`, `Var`는 `Goal cancelled`, `Goal confirmed`, `Penalty confirmed`, `Penalty cancelled` 같은 상세값을 가질 수 있다.
+
+`playerOrigName`/`assistOrigName`은 화면에 표시하는 용도가 아니라, `playerId`/`assistId`가 `homeLineup`/`awayLineup`의 선수 ID와 다르게 들어오는 API 데이터 불일치 케이스에서 이름으로 동일 선수 여부를 판별하기 위한 매칭용 필드다. `name`/`playerName`(한글 우선)은 한쪽만 한글화돼 있으면 비교가 어긋날 수 있어, 항상 가공 전 영문 원문끼리만 비교해야 한다.
 
 ##### `type === "Var"` 세부 사유 처리
 
@@ -279,6 +283,7 @@ const regularGoals = events.filter(e =>
 | playerId | 선수 ID | Long |  | X | `617` |
 | name | 선수 표시명 | String | 한글 우선 | X | `Ederson` |
 | nameKoLong | 선수 한글 풀네임 | String | CSV에 있을 때만 | O | `에데르송 모라에스` |
+| origName | 선수명 API 원문(영문, 미가공) | String | `events[]`의 `playerOrigName`/`assistOrigName`과 매칭용 | X | `Ederson` |
 | photoUrl | 선수 사진 URL | String | CDN URL | X | `https://.../players/617.png` |
 | number | 등번호 | Integer |  | X | `31` |
 | pos | 포지션 약어 | String | `G`, `D`, `M`, `F` | X | `G` |

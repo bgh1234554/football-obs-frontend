@@ -162,6 +162,67 @@ function pirFindNameKeyByEffectiveId(fixtureId, side, effectivePid) {
 }
 window.pirFindNameKeyByEffectiveId = pirFindNameKeyByEffectiveId;
 
+// ── id≠0 자동 매칭 (이름 기반) ────────────────────────────────────────────────
+// events의 playerId/assistId가 그 팀 라인업+벤치 어떤 선수의 id와도 안 맞는 경우(=API가
+// 다른 ID를 붙인 케이스), 같은 팀 라인업+벤치 안에서 이름이 유일하게 일치하는 선수가
+// 있으면 자동으로 alt→canonical 매핑을 만든다. 두 가지 이름을 각각 독립적으로 시도한다.
+// - origName(API 원문 영문, 가공 전): alt ID가 CSV 매칭 실패로 영문 그대로 내려오는
+//   일반적인 경우를 잡는다.
+// - 한글 표시 이름(name/playerName, nameKoLong/playerNameKoLong): alt ID가 우연히
+//   players.csv에 있는 값(예: 같은 선수의 중복 등록 ID)이면 한글로도 내려오는데, 이때
+//   API가 엔드포인트별로 원문 영문 표기를 다르게 내려줘서(축약형 vs 풀네임 등) origName
+//   비교만으론 못 잡고 한글 비교라야 잡히는 경우가 있다.
+// - 두 이름 공간은 각각 독립적으로 동명이인 검사를 한다 — 같은 팀 안에 그 이름이 같은
+//   선수가 2명 이상이면 해당 이름 공간에서만 후보 제외(다른 이름 공간은 영향 없음).
+// - id=0 선수는 대상이 아니다(이름 키 기반의 별도 시스템이 이미 처리).
+// - 결과는 localStorage에 저장하지 않는다 — 매 렌더마다 현재 데이터로 다시 계산되는
+//   순수 런타임 보정이라, 수동 override(저장됨)가 항상 우선한다.
+function pirAutoLinkAltToCanonical(rawData) {
+  const result = {};
+  if (!rawData) return result;
+
+  // map에 key→id를 넣되, 이미 다른 id로 등록된 key가 들어오면 null로 무효화(동명이인 충돌).
+  const addToMap = (map, key, pid) => {
+    if (!key) return;
+    map.set(key, map.has(key) && map.get(key) !== pid ? null : pid);
+  };
+
+  for (const side of ['home', 'away']) {
+    const lineup = rawData[`${side}Lineup`];
+    const roster = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    const knownIds = new Set();
+    const origNameToId = new Map(); // origName(trim) → playerId
+    const koNameToId = new Map();   // name/nameKoLong(trim) → playerId
+
+    roster.forEach(p => {
+      const pid = Number(p?.playerId);
+      if (!pid) return; // id=0은 이 기능 대상 아님
+      knownIds.add(pid);
+      addToMap(origNameToId, String(p?.origName || '').trim(), pid);
+      addToMap(koNameToId, String(p?.name || '').trim(), pid);
+      addToMap(koNameToId, String(p?.nameKoLong || '').trim(), pid);
+    });
+
+    const tryLink = (eventPid, origName, koName, koNameLong) => {
+      const pid = Number(eventPid);
+      if (!pid || knownIds.has(pid)) return; // id=0 또는 이미 정상 매칭되는 ID면 손댈 필요 없음
+      const canonicalId = origNameToId.get(String(origName || '').trim())
+        || koNameToId.get(String(koName || '').trim())
+        || koNameToId.get(String(koNameLong || '').trim());
+      if (canonicalId && canonicalId !== pid) result[`${side}:${pid}`] = canonicalId;
+    };
+
+    (rawData.events || []).forEach(ev => {
+      if (!ev || ev.side !== side) return;
+      tryLink(ev.playerId, ev.playerOrigName, ev.playerName, ev.playerNameKoLong);
+      if (ev.assistId != null) tryLink(ev.assistId, ev.assistOrigName, ev.assistName, ev.assistNameKoLong);
+    });
+  }
+
+  return result;
+}
+window.pirAutoLinkAltToCanonical = pirAutoLinkAltToCanonical;
+
 // ── override 적용 ─────────────────────────────────────────────────────────────
 // lineup-panel.js의 buildEffectiveFixtureData에서 window hook으로 호출.
 // 복제된 next 객체를 직접 변경(in-place) — 반환값 없음.
@@ -176,11 +237,11 @@ function applyZeroIdOverrides(next, fixtureId) {
   for (const [k, v] of Object.entries(store)) {
     if (k.startsWith(prefix)) relevant[k.slice(prefix.length)] = v;
   }
-  if (!Object.keys(relevant).length) return;
 
-  // altId → canonicalId 역방향 맵 구성 (id≠0 선수의 event/stats 리매핑용)
-  // 예: key "home:id:29809" + value.playerId=533035 → altToCanonical["home:533035"] = 29809
-  const altToCanonical = {};
+  // altId → canonicalId 역방향 맵 구성 (id≠0 선수의 event/stats 리매핑용).
+  // 이름 자동 매칭을 먼저 깔고, 수동 입력(저장된 override)이 있으면 그쪽을 우선해 덮어쓴다.
+  const autoLinkOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
+  const altToCanonical = autoLinkOn ? pirAutoLinkAltToCanonical(next) : {};
   for (const [localKey, ov] of Object.entries(relevant)) {
     if (!localKey.includes(':id:')) continue;
     const parts = localKey.split(':');          // [side, 'id', canonicalId]
@@ -191,6 +252,7 @@ function applyZeroIdOverrides(next, fixtureId) {
       altToCanonical[`${side}:${altId}`] = canonicalId;
     }
   }
+  if (!Object.keys(relevant).length && !Object.keys(altToCanonical).length) return;
 
   // ── 라인업/부상자: id=0→playerId 교체+이름/사진, id≠0→이름/사진만 ────────────
   const applyToList = (list, side) => {
