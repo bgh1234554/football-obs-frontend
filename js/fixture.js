@@ -561,7 +561,13 @@
       // 벤치/부상 패널 채우기 (lineup-panel.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
-      if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+      // buildEffectiveFixtureData를 거쳐야 alt→canonical ID 유사도 매칭 결과(닉네임 조회의
+      // 기준이 되는 playerId)가 이벤트에도 반영된다 — raw data 그대로 넘기면 alt ID가 남아
+      // 닉네임/한글화가 누락된다.
+      if (typeof applyEventsPanel === 'function') {
+        const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+        applyEventsPanel(eventsPanelData);
+      }
       // HTH 자동 전환: 이벤트가 생기면 hth → events (Iter 7)
       if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
       if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
@@ -896,7 +902,10 @@
           _lastFetchId = fixtureId; // 폴링 콜백의 _lastFetchId 비교용
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
-        if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+        if (typeof applyEventsPanel === 'function') {
+          const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+          applyEventsPanel(eventsPanelData);
+        }
         if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
         if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
         if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
