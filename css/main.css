@@ -1921,6 +1921,34 @@
     .lp-stat-cycle-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
     /* 자동 전환 중 표시 — 테두리 강조 */
     .lp-stat-cycle-btn.is-auto { border-color: rgba(255,255,255,.35); color: #fff; }
+    /* lp-stat 자동 전환 일시정지 버튼 — cycle 버튼과 동일 스타일, 우측 상단에 배치. statCycleAuto ON일 때만 표시. */
+    .lp-stat-pause-btn {
+      position: absolute;
+      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      right: 8px;
+      z-index: 20;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,.72);
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      transition: background 120ms;
+    }
+    .lp-stat-pause-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+    .lp-stat-pause-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+    /* 일시정지 버튼이 떠 있을 때(자동 전환 ON) 이벤트 패널 필터 버튼이 같은 우측 상단 자리에서
+       겹치므로, 일시정지 버튼 너비만큼 왼쪽으로 밀어준다. */
+    .lp-stat.has-pause-btn [data-events-panel] .ev-filter-shell {
+      margin-right: calc(var(--panel-title-control-size) + 6px);
+    }
+    .lp-stat-pause-btn.is-paused { border-color: rgba(255,255,255,.35); color: #fff; }
 
     /* bench cycle 패널 공통 — [data-stat-panel] 과 동일한 패딩으로 타이틀 높이 맞춤 */
     .lp-stat [data-bench-home-panel],
@@ -1936,9 +1964,12 @@
       font-family: var(--font-family);
       overflow: hidden;
     }
-    /* 팀명 타이틀 — dp-team-accent 컬러 테두리 강조 */
+    /* 팀명 타이틀 — dp-team-accent 컬러 테두리 강조.
+       margin-bottom도 공유 .st-title-bar 기본값(6px)보다 줄여서 .bc-body가 쓸 수 있는
+       높이를 몇 px 더 확보한다 — 행 패딩은 그대로 두고 빈 여백 쪽에서만 공간을 가져온다. */
     .lp-stat .bc-cycle-title {
       border-bottom: 2px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 60%, transparent);
+      margin-bottom: 0;
     }
     /* 선수 목록 — 단일/2열 공통 컨테이너 */
     .lp-stat .bc-body {
@@ -1946,21 +1977,24 @@
       min-height: 0;
       overflow: hidden;
     }
-    /* 2열 모드: CSS columns — 왼쪽 먼저 꽉 채우고 오른쪽으로 넘침 */
+    /* 2열 모드: CSS columns — auto로 왼쪽을 끝까지 채우고 넘치는 만큼만 오른쪽으로.
+       balance를 쓰면 보기엔 균등해도 굳이 안 옮겨도 될 줄까지 오른쪽으로 끌고 가서
+       원래 1열에 둘 수 있던 줄까지 불필요하게 재배치되는 단점이 있다. */
     .lp-stat .bc-body.bc-two-col {
       columns: 2;
       column-fill: auto;
       column-gap: 6px;
       column-rule: 1px solid rgba(255,255,255,.18);
     }
-    /* 이름이 길면 2줄로 wrap (bench cycle 전용) */
+    /* 이름은 1줄로 끝나면 1줄 높이만, 너무 길면 2줄로 wrap (말줄임표로 정보 손실 없음).
+       -webkit-line-clamp는 1줄로 끝나도 항상 2줄 높이를 강제 예약해버려(약 39px) 1열에 들어갈
+       인원도 불필요하게 2열로 쪼개지는 문제가 있었다 — display:block + max-height로 대체해
+       실제 줄 수에 맞게만 높이가 늘어나게 한다. */
     .lp-stat .bc-body .dp-item-name {
+      display: block;
       white-space: normal;
       overflow-wrap: anywhere;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
+      max-height: calc(1.5em * 2);
       overflow: hidden;
     }
 

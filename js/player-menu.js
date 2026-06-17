@@ -245,12 +245,28 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     }
   }
 
+  // 이벤트의 다른 alt ID가 이 선수(currentApiId)로 자동 연결되고 있는지 확인 (pirAutoLinkAltToCanonical).
+  // applyZeroIdOverrides와 동일한 조건으로 게이트 — 설정이 OFF면 실제로 적용되지 않으므로 배지도 안 보여준다.
+  const autoLinkSettingOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
+  let autoLinkedAltId = null;
+  if (autoLinkSettingOn && side && typeof window.pirAutoLinkAltToCanonical === 'function') {
+    const rawForAutoLink = typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture : null;
+    const autoMap = window.pirAutoLinkAltToCanonical(rawForAutoLink);
+    const prefix = `${side}:`;
+    for (const [k, v] of Object.entries(autoMap)) {
+      if (k.startsWith(prefix) && Number(v) === currentApiId) {
+        autoLinkedAltId = k.slice(prefix.length);
+        break;
+      }
+    }
+  }
+
   popup.innerHTML = `
 <button class="pm-close" id="pmIdBack" aria-label="뒤로가기" style="left:10px;right:auto">&#8592;</button>
 <div class="pm-nick-wrap">
   <div class="pm-nick-title">선수 ID 연결</div>
   <div style="font-size:11px;color:#8af;margin-bottom:6px">
-    현재 API ID: ${pmEsc(String(currentApiId))}${existing ? ` &nbsp;·&nbsp; 연결됨: ${pmEsc(String(existing.playerId))}` : ''}
+    현재 API ID: ${pmEsc(String(currentApiId))}${existing ? ` &nbsp;·&nbsp; 연결됨: ${pmEsc(String(existing.playerId))}` : ''}${autoLinkedAltId ? ` &nbsp;·&nbsp; 자동 연결됨: ${pmEsc(autoLinkedAltId)}` : ''}
   </div>
   <div style="display:flex;gap:6px;align-items:center">
     <input class="pm-nick-input" id="pmIdInput" type="number" min="1"

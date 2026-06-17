@@ -489,6 +489,20 @@ function getFormationSlotsByGridOrder(formation) {
 }
 
 /**
+ * 포메이션에서 최전방(FW) 바로 앞 라인의 depth를 구한다.
+ * split 모드의 awaySupportLift가 이 라인까지 들어올리면 FW와의 간격이 좁아지므로 제외 대상으로 쓴다.
+ */
+function getPreFwFormationDepth(formation) {
+  const depths = Array.from(new Set(
+    (getTacticsFormationMap()[formation] || []).map(coord => {
+      const rawX = Number(coord?.x) || 5;
+      return Math.max(0, Math.min(1, (rawX - 5) / 39));
+    })
+  )).sort((a, b) => b - a);
+  return depths.length > 1 ? depths[1] : null;
+}
+
+/**
  * 슬롯 ↔ 선수 매핑을 grid 순서대로 짝지어 반환.
  * 선수가 없는 슬롯은 결과에서 제외 (포메이션 11개 < startXi 11명일 수도 있는 잡음 방어).
  */
@@ -923,7 +937,7 @@ function buildInjuryListHtml(injuries, provided) {
  *           GK/수비 라벨이 패널 하단에 걸리지 않게 한다.
  *   - 가로: 홈/원정 모두 같은 좌우 기준을 써야 하므로 100-rawY를 공통 적용한다.
  */
-function mapFormationSlotToBigSplitPitchPosition(slot, side) {
+function mapFormationSlotToBigSplitPitchPosition(slot, side, options = {}) {
   const rawX = Number(slot?.coord?.x) || 5;
   const rawY = Number(slot?.coord?.y) || 50;
   const depth = Math.max(0, Math.min(1, (rawX - 5) / 39));
@@ -937,8 +951,12 @@ function mapFormationSlotToBigSplitPitchPosition(slot, side) {
   if (depth < 0.82) top -= SPLIT_LABEL_LINE_LIFT_PCT;
   if (depth === 0) top += 1; // GK: 이름 pill 살짝 안쪽으로
   // split 원정은 수비/미드 라인이 하단에 촘촘하게 몰리므로 중간 라인만 추가 lift.
+  // 단, FW 바로 앞 라인(preFwDepth)은 제외 — 이 라인까지 들어올리면 FW와의 간격이
+  // 좁아져 라벨이 겹친다 (포메이션별로 FW 앞 라인 depth가 달라 동적으로 계산해 제외).
   const SPLIT_AWAY_SUPPORT_LIFT_PCT = 2.5;
-  if (side === 'away' && depth > 0 && depth < 0.82) {
+  const preFwDepth = options.preFwDepth;
+  const isPreFwLine = preFwDepth != null && Math.abs(depth - preFwDepth) < 0.001;
+  if (side === 'away' && depth > 0 && depth < 0.82 && !isPreFwLine) {
     top -= SPLIT_AWAY_SUPPORT_LIFT_PCT;
   }
   // 바둑알(원) 반지름이 컨테이너 높이 대비 ~6%이므로, 포메이션에 관계없이 상단 잘림을 막는
@@ -1021,6 +1039,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
   const names = [];
   // Iter 5-3: 노드 badge는 항상 모두 렌더 (양 캠 동일 DOM 공유).
   // per-feature 토글은 body 클래스(no-lineup-goals/cards/rating/subtime) + 캠 큼 CSS로 숨김 처리.
+  const preFwDepth = pitchMode === 'split' ? getPreFwFormationDepth(lineup?.formation) : null;
 
   getFormationAssignments(lineup).forEach(({ slot, player }) => {
     const name = pickName(player, 'lineup') || player.name || '';
@@ -1028,7 +1047,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
       ? ` title="${dpEscape(player.nameKoLong)}"`
       : '';
     const position = pitchMode === 'split'
-      ? mapFormationSlotToBigSplitPitchPosition(slot, side)
+      ? mapFormationSlotToBigSplitPitchPosition(slot, side, { preFwDepth })
       : mapFormationSlotToPitchPosition(slot, side, options);
     const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
     const posStyle = `left:${position.left}%;top:${position.top}%;`;
@@ -1267,18 +1286,32 @@ function buildBenchCyclePanelHtml(players, teamName, accentColor) {
 
 /**
  * 교체명단 사이클 패널의 2열 전환 처리.
- * 단일 컬럼에서 선수가 넘치면 bc-two-col 클래스를 붙여 CSS columns 활성화.
- * columns: 2; column-fill: auto 로 왼쪽 먼저 꽉 채운 뒤 오른쪽으로 넘침.
- * 높이가 늘어나면 자동으로 왼쪽으로 복귀.
+ * 패딩/폰트는 항상 고정값 그대로 두고(stats-panel의 itemsPerPage 계산과 같은 방식 —
+ * 정상 크기 기준으로 몇 줄이 들어가는지만 본다), 정상 크기로 1열에 다 안 들어가면(=마지막
+ * 행이 가려짐) bc-two-col로 2열 전환한다.
+ * columns: 2; column-fill: auto 로 왼쪽 컬럼을 끝까지 채우고 넘치는 만큼만 오른쪽으로 보낸다
+ * (balance는 균등하게 나누지만 굳이 안 옮겨도 될 줄까지 오른쪽으로 끌고 가는 단점이 있어 폐기).
  */
 function lpBenchCycleRebalance(panel) {
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
   // 일시적으로 단일 컬럼으로 돌려서 실제 overflow 측정
   body.classList.remove('bc-two-col');
-  const overflows = body.scrollHeight > body.clientHeight + 2;
+  const overflows = body.scrollHeight > body.clientHeight + 0.5;
   body.classList.toggle('bc-two-col', overflows);
 }
+
+/**
+ * lineup-resize.js의 패널 너비/높이 드래그 종료 직후 호출용 — stRerenderActivePanels와 같은 시점에
+ * 보이는/숨겨진 교체명단 사이클 패널을 모두 재계산한다. ResizeObserver가 .lp-stat 자체의 크기 변화는
+ * 잡아내지만, 드래그 도중에는 .bc-body 안쪽 줄 수/줄바꿈이 같이 바뀌므로 드래그 종료 시점에 한 번 더
+ * 정확하게 재확인할 필요가 있다.
+ */
+function lpBenchCycleRebalanceAll() {
+  document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]')
+    .forEach(lpBenchCycleRebalance);
+}
+window.lpBenchCycleRebalanceAll = lpBenchCycleRebalanceAll;
 
 /** 홈/원정 교체명단 사이클 패널 렌더 + rebalance + ResizeObserver 등록, lp-stat 사이클 가시성 갱신. */
 function renderBenchCyclePanels(effectiveData) {

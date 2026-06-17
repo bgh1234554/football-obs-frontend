@@ -605,7 +605,10 @@ function startBigColWidthDrag(event, col) {
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-big-col-resizing');
     _bigSave(BIG_COL_WIDTH_KEY, lastW);
-    requestAnimationFrame(() => window.stRerenderActivePanels?.());
+    requestAnimationFrame(() => {
+      window.stRerenderActivePanels?.();
+      window.lpBenchCycleRebalanceAll?.();
+    });
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
@@ -645,7 +648,10 @@ function startBigPanelWidthDrag(event, col, which) {
     document.body.classList.remove('lp-big-col-resizing');
     _bigSave(wKey, lastW);
     _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
-    requestAnimationFrame(() => window.stRerenderActivePanels?.());
+    requestAnimationFrame(() => {
+      window.stRerenderActivePanels?.();
+      window.lpBenchCycleRebalanceAll?.();
+    });
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
@@ -712,7 +718,10 @@ function startBigPanelHeightDrag(event, col, origin) {
     document.body.classList.remove('lp-big-h-resizing');
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
-    requestAnimationFrame(() => window.stRerenderActivePanels?.());
+    requestAnimationFrame(() => {
+      window.stRerenderActivePanels?.();
+      window.lpBenchCycleRebalanceAll?.();
+    });
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
@@ -798,7 +807,10 @@ function startBigCornerDrag(event, col, panelSide) {
     }
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
-    requestAnimationFrame(() => window.stRerenderActivePanels?.());
+    requestAnimationFrame(() => {
+      window.stRerenderActivePanels?.();
+      window.lpBenchCycleRebalanceAll?.();
+    });
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
@@ -818,7 +830,10 @@ function ensureBigPanelHandles() {
       resetBigColWidth(col.closest('.layout-big'));
       requestAnimationFrame(() => {
         applyStoredBigPanelHeights();
-        requestAnimationFrame(() => window.stRerenderActivePanels?.());
+        requestAnimationFrame(() => {
+          window.stRerenderActivePanels?.();
+          window.lpBenchCycleRebalanceAll?.();
+        });
       });
     };
 

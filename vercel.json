@@ -1,10 +1,10 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/overlay_dashboard_five_cols.html" },
-    { "source": "/detail", "destination": "/overlay_dashboard_five_cols.html" },
-    { "source": "/theme", "destination": "/overlay_dashboard_five_cols.html" },
-    { "source": "/schedule", "destination": "/overlay_dashboard_five_cols.html" },
-    { "source": "/tactics", "destination": "/overlay_dashboard_five_cols.html" },
-    { "source": "/about", "destination": "/overlay_dashboard_five_cols.html" }
+    { "source": "/", "destination": "/overlay_dashboard.html" },
+    { "source": "/detail", "destination": "/overlay_dashboard.html" },
+    { "source": "/theme", "destination": "/overlay_dashboard.html" },
+    { "source": "/schedule", "destination": "/overlay_dashboard.html" },
+    { "source": "/tactics", "destination": "/overlay_dashboard.html" },
+    { "source": "/about", "destination": "/overlay_dashboard.html" }
   ]
 }
