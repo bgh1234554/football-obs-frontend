@@ -207,17 +207,20 @@ function pmShowMenu(playerId, clientX, clientY) {
 function pmPositionPopup(el, cx, cy) {
   el.style.left = (cx + 12) + 'px';
   el.style.top  = (cy + 12) + 'px';
-  pmClampPopupToViewport();
+  pmClampPopupToViewport(el);
 }
 
 /**
- * #pmPopup의 실제 렌더링 크기를 측정해 화면 밖으로 넘치면 위치를 보정한다.
+ * 팝업 엘리먼트의 실제 렌더링 크기를 측정해 화면 밖으로 넘치면 위치를 보정한다.
  * pmShowIdInput/pmEditNickname처럼 처음 메뉴보다 더 큰 내용으로 내용만 바꿔 끼우는
  * 경우, 최초 메뉴 크기 기준으로 잡힌 위치를 그대로 쓰면 화면 아래/오른쪽으로 잘릴 수
  * 있다 — 내용 교체 직후마다 호출해서 실제 높이/너비로 다시 클램프한다.
+ * el을 안 넘기면 #pmPopup을 기본으로 찾는다(같은 컨테이너를 재사용하는 pmShowIdInput/
+ * pmEditNickname 호출부 편의용) — id=0 전용 팝업(#pirPopup)처럼 다른 엘리먼트면
+ * 반드시 명시적으로 넘겨야 한다.
  */
-function pmClampPopupToViewport(margin = 8) {
-  const el = document.getElementById('pmPopup');
+function pmClampPopupToViewport(el, margin = 8) {
+  if (!el) el = document.getElementById('pmPopup');
   if (!el) return;
   const rect = el.getBoundingClientRect();
   const W = window.innerWidth, H = window.innerHeight;
