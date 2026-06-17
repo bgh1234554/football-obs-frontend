@@ -73,10 +73,15 @@ function _lpStatPageCount() {
   return Math.max(1, dots.length);
 }
 
-/** lp-stat 안의 이벤트 패널 스크롤 컨테이너 */
-function _lpEventsScrollEl() {
-  const panel = document.querySelector('.lp-stat [data-events-panel]');
+/** lp-stat 안의 이벤트/상대전적 패널 스크롤 컨테이너 */
+function _lpEventsScrollEl(mode = 'events') {
+  const panelSelector = mode === 'hth' ? '[data-hth-panel]' : '[data-events-panel]';
+  const panel = document.querySelector(`.lp-stat ${panelSelector}`);
   return panel?.querySelector('.ev-list') || panel;
+}
+
+function _lpModeUsesPanelAutoScroll(mode) {
+  return mode === 'events' || mode === 'hth';
 }
 
 // ─── 이벤트 패널 자동 스크롤 ─────────────────────────────────────────────────
@@ -135,7 +140,7 @@ function _lpStopEventsScroll() {
 
 /** 사용자가 이벤트 패널을 직접 스크롤/조작했을 때 호출 — 자동 스크롤을 멈추고, 자동 전환 ON이면 일반 interval 후 다음 패널로 이동을 예약. */
 function _lpCancelEventsScrollByUser() {
-  if (_lpStatCycle.mode !== 'events') return;
+  if (!_lpModeUsesPanelAutoScroll(_lpStatCycle.mode)) return;
   _lpStopEventsScroll();
   if (_lpIsCycleAutoOn()) {
     _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), _lpGetIntervalMs());
@@ -173,9 +178,9 @@ function _lpBindEventsScrollInterruption(el) {
  * intervalMs의 10% 동안 맨 아래를 보여주고, 65% 동안 등속도로 맨 위까지 스크롤한다.
  * 이후 나머지 25% 동안 맨 위를 보여준 뒤 다음 패널로 자동 전환한다.
  */
-function _lpStartEventsScroll(intervalMs) {
+function _lpStartEventsScroll(intervalMs, mode = 'events') {
   _lpStopEventsScroll();
-  const el = _lpEventsScrollEl();
+  const el = _lpEventsScrollEl(mode);
   if (!el) {
     _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     return;
@@ -236,6 +241,24 @@ function _lpStartEventsScroll(intervalMs) {
   });
 }
 
+function _lpStartHthScrollWhenReady(intervalMs) {
+  const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
+    && window.hthCurrentDataIsFresh(window._eventsLastData));
+  const ready = lpStatEnsureModeReady('hth');
+
+  if (!needsLoading) {
+    _lpStartEventsScroll(intervalMs, 'hth');
+    return;
+  }
+
+  _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+  Promise.resolve(ready).then(() => {
+    if (_lpStatCycle.mode !== 'hth' || !_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
+    if (_lpAuto.timer) { clearTimeout(_lpAuto.timer); _lpAuto.timer = null; }
+    _lpStartEventsScroll(intervalMs, 'hth');
+  });
+}
+
 // ─── 자동 사이클 제어 ────────────────────────────────────────────────────────
 
 /** 자동 사이클 타이머/fallback/이벤트 스크롤을 전부 정리(모드 전환·재시작 전 호출). */
@@ -269,9 +292,11 @@ function _lpAutoStart() {
       }, (intervalMs * pages) + 500);
     }
   } else if (mode === 'events') {
-    _lpStartEventsScroll(intervalMs);
+    _lpStartEventsScroll(intervalMs, mode);
+  } else if (mode === 'hth') {
+    _lpStartHthScrollWhenReady(intervalMs);
   } else {
-    // hth / bench_home / bench_away
+    // bench_home / bench_away
     _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
   }
 }
@@ -311,11 +336,14 @@ function lpStatAvailableModes() {
 
 /** hth 모드로 전환될 때 데이터가 fresh하지 않으면 HTH 데이터를 미리 로드. */
 function lpStatEnsureModeReady(mode) {
-  if (mode !== 'hth' || typeof window.hthEnsureLoadedForFixture !== 'function') return;
+  if (mode !== 'hth' || typeof window.hthEnsureLoadedForFixture !== 'function') return Promise.resolve(null);
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
-  window.hthEnsureLoadedForFixture(window._eventsLastData, { renderLoading: needsLoading })
-    .catch(err => console.warn('HTH fetch failed:', err));
+  return window.hthEnsureLoadedForFixture(window._eventsLastData, { renderLoading: needsLoading })
+    .catch(err => {
+      console.warn('HTH fetch failed:', err);
+      return null;
+    });
 }
 
 function lpStatUpdateVisibility() {

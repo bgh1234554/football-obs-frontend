@@ -38,7 +38,7 @@ const SETTINGS_DEFAULTS = {
   statCycleAuto: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
-  statsAutoSwipeSec: 5,
+  statsAutoSwipeSec: 10,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
