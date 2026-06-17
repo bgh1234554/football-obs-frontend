@@ -282,7 +282,11 @@ function lpStatAutoAdvance() {
   const modes = lpStatAvailableModes();
   if (modes.length < 2) return;
   const idx = modes.indexOf(_lpStatCycle.mode);
-  _lpStatCycle.mode = modes[(idx + 1) % modes.length];
+  const nextMode = modes[(idx + 1) % modes.length];
+  // 스탯 모드가 마지막 페이지까지 자동 스와이프된 뒤 다음 모드로 넘어간 것이므로,
+  // 한 바퀴 돌아 다시 스탯 모드로 들어올 때는 첫 페이지부터 보여준다.
+  if (nextMode === 'stats' && _lpStatCycle.mode !== 'stats') window.stResetAllPanelPages?.();
+  _lpStatCycle.mode = nextMode;
   lpStatUpdateVisibility();
   lpStatEnsureModeReady(_lpStatCycle.mode);
   // lpStatUpdateVisibility 내에서 _lpAutoStart() 호출됨
@@ -392,7 +396,9 @@ function lpStatCycleNext() {
   _lpAutoClear();
   const modes = lpStatAvailableModes();
   const idx = modes.indexOf(_lpStatCycle.mode);
-  _lpStatCycle.mode = modes[(idx + 1) % modes.length];
+  const nextMode = modes[(idx + 1) % modes.length];
+  if (nextMode === 'stats' && _lpStatCycle.mode !== 'stats') window.stResetAllPanelPages?.();
+  _lpStatCycle.mode = nextMode;
   lpStatUpdateVisibility();
   lpStatEnsureModeReady(_lpStatCycle.mode);
 }

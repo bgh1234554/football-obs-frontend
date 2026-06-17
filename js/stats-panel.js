@@ -524,5 +524,14 @@ window.addEventListener('resize', () => {
   });
 });
 
+/** 스탯 패널 사이클 모드로 다시 들어올 때 마지막 페이지가 아닌 첫 페이지부터 보이도록 리셋. */
+function stResetAllPanelPages() {
+  document.querySelectorAll('[data-stat-panel]').forEach(panel => {
+    const state = statsPanelStates.get(panel);
+    if (state) state.page = 0;
+  });
+}
+
 window.applyStatsPanel = applyStatsPanel;
 window.stRerenderActivePanels = stRerenderActivePanels;
+window.stResetAllPanelPages = stResetAllPanelPages;
