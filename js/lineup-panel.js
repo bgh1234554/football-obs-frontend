@@ -2387,7 +2387,11 @@ function initBenchInjuryPanelObserver() {
 }
 
 /**
- * 라인업 토큰 이름 pill 처리 — 세 단계.
+ * 라인업 토큰 이름 pill 처리 — 네 단계.
+ *  0) 고정폭(113px) 캡 없이 한 줄로 폈을 때의 자연 폭을 먼저 시도한다. 주변 라벨/원/배지/팀칩/
+ *     피치 경계 중 실제로 겹치는 게 하나도 없으면 그 폭을 그대로 유지(원톱처럼 옆이 비어 있는
+ *     경우 불필요하게 2줄로 줄바꿈되는 것을 막음). 겹치는 게 있으면 즉시 되돌리고 기존 1)~3)
+ *     로직에 그대로 맡긴다 — 안전망은 그대로 유지.
  *  1) 잘림(2줄 line-clamp 후 ellipsis) 감지 시 해당 라벨 font-size만 점진 축소.
  *     scrollHeight > clientHeight 이면 텍스트가 잘리는 상태 → min 7px / -0.5px씩 축소.
  *     라벨별 inline 스타일이라 다른 라벨 시각 균형 안 깨짐.
@@ -2399,6 +2403,116 @@ function initBenchInjuryPanelObserver() {
 function elementOverlapsAny(subjectEl, targets) {
   if (!canMeasureTextElement(subjectEl) || !Array.isArray(targets) || !targets.length) return false;
   return targets.some(target => canMeasureTextElement(target) && wrapsOverlap(subjectEl, target));
+}
+
+/**
+ * nameEl의 자연 1줄 폭 시도용 충돌 대상 — 같은 피치의 다른 이름 라벨 + 원(circle) +
+ * 팀칩 + 우선순위/상대팀 배지. 기존 충돌 보정 패스들이 이미 쓰는 타겟 수집 함수를 그대로
+ * 재사용해 새 동작이 기존 로직과 다른 기준으로 판정하지 않도록 한다.
+ */
+function getLineupNameNaturalWidthCollisionTargets(nameEl, labels) {
+  return [
+    ...labels.filter(other => other !== nameEl),
+    ...getSiblingNodeCirclesForLabel(nameEl),
+    ...getTeamChipTargetsForLineupName(nameEl),
+    ...getPriorityLineupBadgeTargets(nameEl),
+    ...getOpposingLineupBadgeTargets(nameEl),
+  ];
+}
+
+function rectsOverlap(rectA, rectB) {
+  return rectA.left < rectB.right - 1
+    && rectA.right > rectB.left + 1
+    && rectA.top < rectB.bottom - 1
+    && rectA.bottom > rectB.top + 1;
+}
+
+/**
+ * nameEl은 전혀 건드리지 않고, 같은 부모에 임시로 붙인 복제본에서만 "한 줄로 폈을 때"의
+ * 자연 폭/높이를 측정한다. .dp-lineup-name은 -webkit-box+line-clamp 레이아웃인데, 원본을
+ * 직접 mutate(inline-block 등으로 토글)했다가 되돌리는 방식은 그 라운드트립 자체가 실패한
+ * 뒤에도 이어지는 fitLineupNameSelf의 측정에 영향을 주는 부작용이 있었다(서브픽셀/내부
+ * line-clamp 상태 오염으로 추정). 복제본에서만 측정하면 실패 시 원본은 처음 상태 그대로
+ * 남아있어 기존(이 기능 추가 전) 동작과 완전히 동일하게 폴백된다.
+ */
+function measureLineupNameNaturalSizeViaClone(nameEl) {
+  const clone = nameEl.cloneNode(true);
+  clone.style.position = 'absolute';
+  clone.style.visibility = 'hidden';
+  clone.style.pointerEvents = 'none';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.maxWidth = 'none';
+  clone.style.width = 'auto';
+  clone.style.whiteSpace = 'nowrap';
+  clone.style.display = 'inline-block';
+  nameEl.parentNode.appendChild(clone);
+  const width = clone.scrollWidth;
+  const height = clone.getBoundingClientRect().height;
+  clone.remove();
+  return { width, height };
+}
+
+function hasLineupNamePitchOverflowForRect(rect, nameEl, paddingPx) {
+  const pitch = getLineupNameWrap(nameEl)?.closest('.dp-lineup-vertical-pitch');
+  if (!pitch || !canMeasureTextElement(pitch)) return false;
+  const pitchRect = pitch.getBoundingClientRect();
+  return rect.left < pitchRect.left + paddingPx - 0.5
+    || rect.right > pitchRect.right - paddingPx + 0.5
+    || rect.top < pitchRect.top + paddingPx - 0.5
+    || rect.bottom > pitchRect.bottom - paddingPx + 0.5;
+}
+
+/**
+ * 113px 캡 없이 "현재 설정된 폰트 크기" 그대로 한 줄로 폈을 때가 안전한지 시도한다 — 폰트는
+ * 절대 건드리지 않는다 (1순위: 옆 공간이 있으면 설정 폰트로 1줄).
+ * 복제본으로만 측정해(measureLineupNameNaturalSizeViaClone) nameEl 자체는 안전 여부를
+ * 판단하기 전까지 한 번도 건드리지 않는다. 안전하면(피치 경계 안 넘고, 다른 라벨/원/배지/
+ * 팀칩과도 안 겹치면) 그제서야 nameEl을 1번만 실제로 inline-block+nowrap으로 전환해 그
+ * 폭을 확정한다 — nowrap이라 구조적으로 줄바꿈이 일어날 수 없다.
+ * 안전하지 않으면 nameEl을 전혀 안 건드린 채 false를 반환해 호출 측의 기존 경로(2순위: 설정
+ * 폰트로 2줄 — fitLineupNameSelf는 자기 박스가 line-clamp 2줄을 넘칠 때만 폰트를 줄이므로
+ * 2줄로 충분하면 폰트는 그대로 유지됨, 3순위: 그래도 다른 라벨과 겹치면 fitLineupNamePills
+ * 2)/3) 단계의 기존 폭/폰트 점진 축소)에 그대로 맡긴다.
+ * 순서 보장: labels.forEach 순서대로 처리하므로, 뒤에 처리되는 라벨은 앞서 이미 자연폭으로
+ * 확정된 라벨의 "현재" 크기를 기준으로 겹침을 검사 — 두 라벨이 동시에 넓어져 결과적으로
+ * 겹치는 경우는 생기지 않는다.
+ */
+function tryLineupNameNaturalSingleLine(nameEl, labels) {
+  if (!canMeasureTextElement(nameEl)) return false;
+
+  const wrap = getLineupNameWrap(nameEl);
+  if (!wrap) return false;
+  const wrapRect = wrap.getBoundingClientRect();
+  const centerX = wrapRect.left + (wrapRect.width / 2);
+  const top = wrapRect.top;
+
+  const { width: naturalWidthPx, height: naturalHeightPx } = measureLineupNameNaturalSizeViaClone(nameEl);
+  if (!Number.isFinite(naturalWidthPx) || naturalWidthPx <= 0) return false;
+
+  const hypotheticalRect = {
+    left: centerX - (naturalWidthPx / 2),
+    right: centerX + (naturalWidthPx / 2),
+    top,
+    bottom: top + naturalHeightPx,
+  };
+
+  const fitsWithinPitch = !hasLineupNamePitchOverflowForRect(hypotheticalRect, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
+  const collisionTargets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
+  const overlapsAnything = collisionTargets.some(target => canMeasureTextElement(target) && rectsOverlap(hypotheticalRect, target.getBoundingClientRect()));
+
+  if (!fitsWithinPitch || overlapsAnything) return false; // nameEl 자체는 한 번도 안 건드림
+
+  nameEl.style.maxWidth = 'none';
+  nameEl.style.whiteSpace = 'nowrap';
+  nameEl.style.display = 'inline-block';
+  // .dp-lineup-name-wrap이 display:flex; width:113px라서, nameEl(flex item)은 기본
+  // flex-shrink:1 때문에 113px보다 넓은 width를 줘도 다시 컨테이너 폭으로 짜부러진다.
+  // nowrap 상태에서 짜부러지면 줄바꿈은 못 하고 overflow:hidden에 텍스트가 그대로 잘린다.
+  // flex-shrink:0으로 풀어줘야 실제로 설정한 폭만큼 넓어진다.
+  nameEl.style.flexShrink = '0';
+  nameEl.style.width = `${naturalWidthPx}px`;
+  return true;
 }
 
 function nudgeTeamChipTowardEdge(chipEl, collisionEls) {
@@ -2544,12 +2658,27 @@ function fitLineupNamePills(root) {
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'))
     .filter(nameEl => !!(nameEl && nameEl.firstChild));
 
-  // 1) 모든 라벨을 CSS 기본 상태로 되돌린 뒤 현재 텍스트 폭에 맞춰 pill width를 잠근다.
+  // 0) 모든 라벨을 먼저 CSS 기본 상태로 되돌린다 — 이 reset과 아래 1)의 처리를 같은 루프
+  // 안에서 하면, 처리 순서상 앞선 라벨이 아직 reset 안 된(직전 렌더의 낡은 크기로 남아있는)
+  // 뒤쪽 라벨을 기준으로 충돌을 판정하게 되어 — 폰트 크기 등 조건이 바뀐 직후엔 그 낡은
+  // 스냅샷이 실제 결과와 달라져 둘 다 넓어진 라벨이 서로 겹치는 사고가 날 수 있다. 그래서
+  // reset을 전부 끝낸 뒤에야 1)을 시작해, 모든 충돌 판정이 항상 "이번 렌더의 동일한 기준선"
+  // 위에서 이뤄지도록 한다.
   labels.forEach(nameEl => {
     resetLineupNameWrapOffset(nameEl);
     nameEl.style.width = '';
     nameEl.style.fontSize = '';
+    nameEl.style.maxWidth = '';
+    nameEl.style.whiteSpace = '';
+    nameEl.style.display = '';
+    nameEl.style.flexShrink = '';
+  });
+
+  // 1) 먼저 자연 1줄 폭이 안전한지 시도하고(주변과 안 겹치면 그대로 유지), 안전하지 않으면
+  // 기존 텍스트 폭 고정/축소 로직으로 넘긴다.
+  labels.forEach(nameEl => {
     if (!canMeasureTextElement(nameEl)) return;
+    if (tryLineupNameNaturalSingleLine(nameEl, labels)) return;
     fitLineupNameSelf(nameEl);
   });
 
