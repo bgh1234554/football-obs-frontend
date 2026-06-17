@@ -188,7 +188,7 @@ API-Football 문서상 `/fixtures?id={id}` 요청은 이벤트, 라인업, 팀 �
 
 API-Football 문서상 `Goal`은 `Normal Goal`, `Own Goal`, `Penalty`, `Missed Penalty`, `Card`는 `Yellow Card`, `Red Card`, `Subst`는 `Substitution n`, `Var`는 `Goal cancelled`, `Goal confirmed`, `Penalty confirmed`, `Penalty cancelled` 같은 상세값을 가질 수 있다.
 
-`playerOrigName`/`assistOrigName`은 화면에 표시하는 용도가 아니라, `playerId`/`assistId`가 `homeLineup`/`awayLineup`의 선수 ID와 다르게 들어오는 API 데이터 불일치 케이스에서 이름으로 동일 선수 여부를 판별하기 위한 매칭용 필드다. `name`/`playerName`(한글 우선)은 한쪽만 한글화돼 있으면 비교가 어긋날 수 있어, 항상 가공 전 영문 원문끼리만 비교해야 한다.
+`playerOrigName`/`assistOrigName`은 화면에 표시하는 용도가 아니라, `playerId`/`assistId`가 `homeLineup`/`awayLineup`의 선수 ID와 다르게 들어오는 API 데이터 불일치 케이스에서 이름으로 동일 선수 여부를 판별하기 위한 매칭용 필드다. 프런트(`pirAutoLinkAltToCanonical`)는 이 원본 영문 이름을 먼저 비교하고, 일치하는 후보가 없으면 `name`/`playerName`(한글 우선) 한글 표시 이름으로도 한 번 더 시도한다 — alt ID가 우연히 CSV에 있는 값이면 한글로도 일치할 수 있고, 두 비교는 각각 독립적으로 동명이인 검사를 거치므로 후보가 늘어나도 안전하다.
 
 ##### `type === "Var"` 세부 사유 처리
 

@@ -947,6 +947,7 @@ function getSwitchSides(category) {
   if (category === 'statCycleAuto') return { off: 'off', on: 'on' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
   if (category === 'subReflect'
+    || category === 'autoLinkPlayerIdByName'
     || category === 'lineupHideInitial'
     || category === 'fanReaction'
     || category === 'splitLineup'

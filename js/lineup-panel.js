@@ -1289,8 +1289,8 @@ function buildBenchCyclePanelHtml(players, teamName, accentColor) {
  * 패딩/폰트는 항상 고정값 그대로 두고(stats-panel의 itemsPerPage 계산과 같은 방식 —
  * 정상 크기 기준으로 몇 줄이 들어가는지만 본다), 정상 크기로 1열에 다 안 들어가면(=마지막
  * 행이 가려짐) bc-two-col로 2열 전환한다.
- * columns: 2; column-fill: balance 로 양쪽 컬럼 높이를 최대한 균등하게 나눈다
- * (auto로 두면 왼쪽을 끝까지 채우고 1명만 오른쪽에 남는 식으로 쏠릴 수 있다).
+ * columns: 2; column-fill: auto 로 왼쪽 컬럼을 끝까지 채우고 넘치는 만큼만 오른쪽으로 보낸다
+ * (balance는 균등하게 나누지만 굳이 안 옮겨도 될 줄까지 오른쪽으로 끌고 가는 단점이 있어 폐기).
  */
 function lpBenchCycleRebalance(panel) {
   const body = panel?.querySelector('.bc-body');

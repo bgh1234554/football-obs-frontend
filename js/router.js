@@ -98,7 +98,9 @@
     if(!path.startsWith('/')) path = `/${path}`;
     path = path.replace(/\/+$/, '') || '/';
     path = path.toLowerCase();
-    if(path === '/index.html' || path === '/overlay_dashboard_five_cols' || path === '/overlay_dashboard_five_cols.html'){
+    if(path === '/index.html'
+      || path === '/overlay_dashboard' || path === '/overlay_dashboard.html'
+      || path === '/overlay_dashboard_five_cols' || path === '/overlay_dashboard_five_cols.html'){
       return '/';
     }
     return path;

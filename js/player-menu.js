@@ -246,8 +246,10 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   }
 
   // 이벤트의 다른 alt ID가 이 선수(currentApiId)로 자동 연결되고 있는지 확인 (pirAutoLinkAltToCanonical).
+  // applyZeroIdOverrides와 동일한 조건으로 게이트 — 설정이 OFF면 실제로 적용되지 않으므로 배지도 안 보여준다.
+  const autoLinkSettingOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
   let autoLinkedAltId = null;
-  if (side && typeof window.pirAutoLinkAltToCanonical === 'function') {
+  if (autoLinkSettingOn && side && typeof window.pirAutoLinkAltToCanonical === 'function') {
     const rawForAutoLink = typeof lineupPanelState !== 'undefined' ? lineupPanelState.lastFixture : null;
     const autoMap = window.pirAutoLinkAltToCanonical(rawForAutoLink);
     const prefix = `${side}:`;

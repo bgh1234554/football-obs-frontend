@@ -61,7 +61,8 @@ function _lpIsStatsAutoSwipeOn() {
 function _lpGetIntervalMs() {
   const cfgMs = window.STATS_CONFIG?.autoSwipeIntervalMs || 10000;
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
-  return Number.isFinite(userSec) && userSec >= 0.5 ? Math.round(userSec * 1000) : cfgMs;
+  const minSec = typeof STATS_SWIPE_SEC_MIN === 'number' ? STATS_SWIPE_SEC_MIN : 2.5;
+  return Number.isFinite(userSec) && userSec >= minSec ? Math.round(userSec * 1000) : cfgMs;
 }
 
 /** lp-stat 안의 stat 패널 점 개수(= 총 페이지 수). 렌더 직후 DOM에서 읽음. */

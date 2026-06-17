@@ -276,7 +276,8 @@ function stSetupAutoSwipe(panel, state, totalPages) {
   const cfgInterval = window.STATS_CONFIG?.autoSwipeIntervalMs || 10000;
   // settings는 초 단위로 저장됨(0.5초 단위 입력). ms로 변환.
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
-  const intervalMs = Number.isFinite(userSec) && userSec >= 0.5 ? Math.round(userSec * 1000) : cfgInterval;
+  const minSec = typeof STATS_SWIPE_SEC_MIN === 'number' ? STATS_SWIPE_SEC_MIN : 2.5;
+  const intervalMs = Number.isFinite(userSec) && userSec >= minSec ? Math.round(userSec * 1000) : cfgInterval;
   state.autoTimer = setInterval(() => {
     const isLastPage = state.page === totalPages - 1;
     state.page = (state.page + 1) % totalPages;
