@@ -986,68 +986,68 @@
 
 <!-- BMC 플로팅 위젯 (사이드바 열릴 때만 표시) -->
 <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="bgh1234554" data-description="Support me on Buy me a coffee!" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
-<script src="js/utils.js"></script>
-<script src="js/state.js"></script>
-<script src="js/render.js"></script>
-<script src="js/timer.js"></script>
-<script src="js/fixture.js"></script>
-<script src="js/api.js"></script>
-<script src="js/theme.js"></script>
-<script src="js/router.js"></script>
-<script src="js/keyboard.js"></script>
-<script src="js/tactics.js"></script>
-<script src="js/injury-reason.js"></script>
-<script src="js/settings-popup.js"></script>
-<script src="js/lineup-events.js"></script>
-<script src="js/lineup-panel.js"></script>
-<script src="js/player-menu-stat-labels.js"></script>
-<script src="js/player-menu-szn-labels.js"></script>
-<script src="js/player-menu.js"></script>
-<script src="js/player-id-resolve.js"></script>
-<script src="js/lineup-resize.js"></script>
-<script src="js/stats-config.js"></script>
-<script src="js/event-comments.js"></script>
-<script src="js/events-panel.js"></script>
-<script src="js/hth-panel.js"></script>
-<script src="js/stats-panel.js"></script>
-<script src="js/stat-cycle.js"></script>
-<script src="js/tactics-timeline.js"></script>
-<script src="js/init.js"></script>
-<script src="js/sidebar.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/state.js"></script>
+<script src="js/core/render.js"></script>
+<script src="js/core/timer.js"></script>
+<script src="js/core/fixture.js"></script>
+<script src="js/core/api.js"></script>
+<script src="js/theme/theme.js"></script>
+<script src="js/core/router.js"></script>
+<script src="js/core/keyboard.js"></script>
+<script src="js/tactics/tactics.js"></script>
+<script src="js/data/injury-reason.js"></script>
+<script src="js/settings/settings-popup.js"></script>
+<script src="js/lineup/lineup-events.js"></script>
+<script src="js/lineup/lineup-panel.js"></script>
+<script src="js/player/player-menu-stat-labels.js"></script>
+<script src="js/player/player-menu-szn-labels.js"></script>
+<script src="js/player/player-menu.js"></script>
+<script src="js/player/player-id-resolve.js"></script>
+<script src="js/lineup/lineup-resize.js"></script>
+<script src="js/data/stats-config.js"></script>
+<script src="js/panels/event-comments.js"></script>
+<script src="js/panels/events-panel.js"></script>
+<script src="js/panels/hth-panel.js"></script>
+<script src="js/panels/stats-panel.js"></script>
+<script src="js/panels/stat-cycle.js"></script>
+<script src="js/tactics/tactics-timeline.js"></script>
+<script src="js/core/init.js"></script>
+<script src="js/sidebar/sidebar.js"></script>
 <!--
   css/main.css                    — 전체 스타일 (CSS 변수, 점수판, 탭, 전술판, 위젯 격리)
   css/hamburger-nav.css           — 햄버거 사이드바 네비게이션 스타일
   css/detail-panels.css           — /detail 페이지 벤치/부상/라인업 그리드 패널 (.dp- 접두어 격리)
   css/settings-popup.css          — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치)
 
-  js/utils.js                     — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
-  js/state.js                     — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
-  js/render.js                    — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
-  js/timer.js                     — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
-  js/theme.js                     — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
-  js/router.js                    — 탭/페이지 전환, path-based URL 동기화
-  js/fixture.js                   — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch + state 매핑
-  js/api.js                       — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead)
-  js/keyboard.js                  — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
-  js/tactics.js                   — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
-  js/injury-reason.js             — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
-  js/settings-popup.js            — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
-  js/lineup-panel.js              — /detail 라인업/벤치/부상 패널 렌더 + 수동 입력 모달 + 전술판 동기화 + lp-stat 교체명단 사이클 패널
-  js/player-menu-stat-labels.js   — 경기별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
-  js/player-menu-szn-labels.js    — 시즌별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
-  js/lineup-events.js             — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼
-  js/lineup-resize.js             — 캠 큼 라인업 패널 높이 핸들 드래그 리사이즈 + localStorage 저장
-  js/stats-config.js              — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
-  js/event-comments.js            — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등 33종) + translateEventComment()
-  js/events-panel.js              — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
-  js/hth-panel.js                 — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
-  js/stats-panel.js               — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
-  js/stat-cycle.js                — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/홈교체/원정교체 + 자동 전환)
-  js/tactics-timeline.js          — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
-  js/player-menu.js               — 선수 컨텍스트 메뉴 (닉네임/경기스탯/시즌스탯 팝업 + ID 입력 인라인 폼)
-  js/player-id-resolve.js         — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
-  js/init.js                      — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
-  js/sidebar.js                   — 햄버거 사이드바 제어 (open/close, 미러 토글, Tab/Esc 단축키)
+  js/core/utils.js                 — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
+  js/core/state.js                 — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
+  js/core/render.js                — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
+  js/core/timer.js                 — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
+  js/theme/theme.js                — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
+  js/core/router.js                — 탭/페이지 전환, path-based URL 동기화
+  js/core/fixture.js               — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch + state 매핑
+  js/core/api.js                   — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead)
+  js/core/keyboard.js              — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
+  js/tactics/tactics.js            — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
+  js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
+  js/settings/settings-popup.js    — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
+  js/lineup/lineup-panel.js        — /detail 라인업/벤치/부상 패널 렌더 + 수동 입력 모달 + 전술판 동기화 + lp-stat 교체명단 사이클 패널
+  js/player/player-menu-stat-labels.js — 경기별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
+  js/player/player-menu-szn-labels.js  — 시즌별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
+  js/lineup/lineup-events.js       — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼
+  js/lineup/lineup-resize.js       — 캠 큼 라인업 패널 높이 핸들 드래그 리사이즈 + localStorage 저장
+  js/data/stats-config.js          — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
+  js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등 33종) + translateEventComment()
+  js/panels/events-panel.js        — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
+  js/panels/hth-panel.js           — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
+  js/panels/stats-panel.js         — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
+  js/panels/stat-cycle.js          — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/홈교체/원정교체 + 자동 전환)
+  js/tactics/tactics-timeline.js   — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
+  js/player/player-menu.js         — 선수 컨텍스트 메뉴 (닉네임/경기스탯/시즌스탯 팝업 + ID 입력 인라인 폼)
+  js/player/player-id-resolve.js   — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
+  js/core/init.js                  — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
+  js/sidebar/sidebar.js            — 햄버거 사이드바 제어 (open/close, 미러 토글, Tab/Esc 단축키)
 -->
 </body>
 </html>
