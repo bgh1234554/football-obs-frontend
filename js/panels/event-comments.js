@@ -16,7 +16,7 @@ window.EVENT_COMMENT_KO = {
   // 카드 사유 — 일반
   'Not on pitch':               '그라운드 밖',
   'Unsportsmanlike conduct':    '비신사적 행위',
-  'Tripping':                   '트리핑',
+  'Tripping':                   '발걸기',
   'Roughing':                   '거친 플레이',
   'Holding':                    '홀딩',
   'Handling':                   '핸들링',

@@ -489,16 +489,39 @@
   state.notes.away = '';
   render();
   */
-  /** 득점자 줄 배열을 perRow 명씩 한 줄로 합쳐 문자열 반환 (perRow=1이면 그대로) */
+  function escapeNoteHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[ch]));
+  }
+
+  function getNoteLineClass(line) {
+    if (String(line).includes('(PK 실축)')) return 'note-line note-line-pk-miss';
+    if (String(line).includes('(퇴장)')) return 'note-line note-line-red-card';
+    if (String(line).includes('(OG)')) return 'note-line note-line-own-goal';
+    return 'note-line';
+  }
+
+  function renderNoteLine(line) {
+    return `<span class="${getNoteLineClass(line)}">${escapeNoteHtml(line)}</span>`;
+  }
+
+  /** 득점자 줄 배열을 perRow 명씩 한 줄로 합쳐 HTML 반환 (perRow=1이면 줄마다 표시) */
   function formatScorers(lines, perRow) {
-    // perRow=1: 그대로, perRow=2: 두 명씩 한 줄
-    if (perRow === 1) return lines.join('\n');
     const rows = [];
-    for (let i = 0; i < lines.length; i += 2) {
-      if (i + 1 < lines.length) rows.push(lines[i] + '  ' + lines[i+1]);
-      else rows.push(lines[i]);
+    const rowSize = Math.max(1, Number(perRow) || 1);
+    for (let i = 0; i < lines.length; i += rowSize) {
+      const row = lines
+        .slice(i, i + rowSize)
+        .map(renderNoteLine)
+        .join('<span class="note-line-gap">  </span>');
+      rows.push(`<span class="note-row">${row}</span>`);
     }
-    return rows.join('\n');
+    return rows.join('');
   }
 
   /**
@@ -515,11 +538,11 @@
     // 1단계: 1줄씩, 기본 폰트 크기로 시작
     let effectiveSize = baseSize;
     setCSS(cssVar, effectiveSize + 'px');
-    noteEl.textContent = formatScorers(lines, 1);
+    noteEl.innerHTML = formatScorers(lines, 1);
 
     // 2단계: 보드 높이를 넘치면 2명씩 한 줄로 압축
     if (noteEl.scrollHeight > boardH) {
-      noteEl.textContent = formatScorers(lines, 2);
+      noteEl.innerHTML = formatScorers(lines, 2);
     }
 
     // 3단계: 그래도 넘치면 폰트 크기를 1px씩 줄여 MIN_SIZE까지 축소

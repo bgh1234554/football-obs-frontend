@@ -56,6 +56,9 @@ const SETTINGS_DEFAULTS = {
   lineupShowRating: 'on',    // 평점 박스
   lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
+  // 점수판 양옆 득점자 박스에 골 외 이벤트를 함께 표시할지.
+  noteShowPenaltyMisses: 'on',
+  noteShowRedCards: 'on',
   // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
   // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
   // color input은 항상 소문자 hex를 반환하므로 default도 소문자로 통일 — 비교/리셋 일관성.
@@ -336,6 +339,8 @@ function isValidSetting(category, value) {
     || category === 'lineupShowRating'
     || category === 'lineupShowSubTime'
     || category === 'lineupShowNumber'
+    || category === 'noteShowPenaltyMisses'
+    || category === 'noteShowRedCards'
     || category === 'greenscreen'
     || category === 'bigPanelLinked') {
     return value === 'on' || value === 'off';
@@ -956,6 +961,8 @@ function getSwitchSides(category) {
     || category === 'lineupShowRating'
     || category === 'lineupShowSubTime'
     || category === 'lineupShowNumber'
+    || category === 'noteShowPenaltyMisses'
+    || category === 'noteShowRedCards'
     || category === 'greenscreen'
     || category === 'bigPanelLinked') {
     return { off: 'off', on: 'on' };
