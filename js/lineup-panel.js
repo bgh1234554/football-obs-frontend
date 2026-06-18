@@ -1272,6 +1272,8 @@ function renderBenchPanel(effectiveData, rawData) {
 // ─── lp-stat 안의 교체명단 사이클 패널 ──────────────────────────────────────
 
 let _benchCycleResizeObs = null;
+const BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS = 15;
+const BENCH_CYCLE_OVERFLOW_EPSILON_PX = 2;
 
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor) {
@@ -1295,9 +1297,20 @@ function buildBenchCyclePanelHtml(players, teamName, accentColor) {
 function lpBenchCycleRebalance(panel) {
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
+
+  const rowCount = Array.from(body.children)
+    .filter(child => child.classList?.contains('dp-item'))
+    .length;
+  if (rowCount <= BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS) {
+    body.classList.remove('bc-two-col');
+    return;
+  }
+
+  if (!body.getClientRects().length || body.clientHeight <= 0) return;
+
   // 일시적으로 단일 컬럼으로 돌려서 실제 overflow 측정
   body.classList.remove('bc-two-col');
-  const overflows = body.scrollHeight > body.clientHeight + 0.5;
+  const overflows = body.scrollHeight > body.clientHeight + BENCH_CYCLE_OVERFLOW_EPSILON_PX;
   body.classList.toggle('bc-two-col', overflows);
 }
 
@@ -1312,6 +1325,7 @@ function lpBenchCycleRebalanceAll() {
     .forEach(lpBenchCycleRebalance);
 }
 window.lpBenchCycleRebalanceAll = lpBenchCycleRebalanceAll;
+window.lpBenchCycleRebalance = lpBenchCycleRebalance;
 
 /** 홈/원정 교체명단 사이클 패널 렌더 + rebalance + ResizeObserver 등록, lp-stat 사이클 가시성 갱신. */
 function renderBenchCyclePanels(effectiveData) {
