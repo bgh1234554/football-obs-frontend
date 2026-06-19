@@ -4,23 +4,37 @@
 
   // --- schedule 탭 위젯 API 호출 차단 (비활성 시 쿼터 낭비 방지) ---
   // 위젯은 DOM 제거 후 재삽입 시 재초기화가 안 되므로, DOM은 유지하되
-  // 비활성 탭에서의 fetch 호출을 빈 응답으로 가로채 폴링을 실질적으로 중단시킨다.
+  // 비활성 탭에서의 fetch 호출을 가로채 폴링을 실질적으로 중단시킨다.
+  // 차단 중에도 "results":0 빈 응답을 주면 위젯이 화면을 비워버리고, 복귀해도 자체
+  // 새로고침 주기(data-refresh)까지 빈 상태로 멈춰있어 사용자가 직접 새로고침해야 했음.
+  // → 차단 직전 마지막으로 받은 정상 응답을 URL별로 캐싱해두고, 차단 중엔 그 캐시를
+  // 그대로 돌려줘 위젯이 "마지막으로 본 화면"을 계속 보여주게 한다. 탭 복귀 후엔 위젯의
+  // 다음 자체 폴링이 차단 없이 통과해 자연스럽게 최신 데이터로 갱신됨 — 수동 새로고침 불필요.
   const _WIDGET_API_HOST = 'obs-scoreline-overlay.b-cdn.net';
   let _widgetBlocked = false;
+  const _widgetLastGoodResponse = new Map(); // url -> 마지막 정상 응답 body(text)
 
   (function () {
     const _origFetch = window.fetch.bind(window);
     window.fetch = function (resource, init) {
-      if (_widgetBlocked) {
-        const url = resource instanceof Request ? resource.url : String(resource);
-        if (url.includes(_WIDGET_API_HOST)) {
-          return Promise.resolve(new Response('{"results":0,"response":[]}', {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          }));
-        }
+      const url = resource instanceof Request ? resource.url : String(resource);
+      const isWidgetCall = url.includes(_WIDGET_API_HOST);
+
+      if (_widgetBlocked && isWidgetCall) {
+        const cachedBody = _widgetLastGoodResponse.get(url) || '{"results":0,"response":[]}';
+        return Promise.resolve(new Response(cachedBody, {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
       }
-      return _origFetch(resource, init);
+
+      const promise = _origFetch(resource, init);
+      if (isWidgetCall) {
+        promise.then(res => {
+          if (res.ok) res.clone().text().then(text => { if (text) _widgetLastGoodResponse.set(url, text); }).catch(() => {});
+        }).catch(() => {});
+      }
+      return promise;
     };
   })();
 
