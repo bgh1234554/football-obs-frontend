@@ -204,7 +204,7 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
 
 /**
  * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
- * lineup-panel.js의 buildEffectiveFixtureData에서 호출해
+ * lineup-data.js의 buildEffectiveFixtureData에서 호출해
  * subReflect 교체 swap이 override를 반영하도록 함.
  */
 function evPatchSubstEvents(events, fixtureId) {
@@ -497,9 +497,18 @@ function evNormalizeDisplayName(value, fallback = '') {
 /**
  * 이벤트의 선수명 또는 어시스트명 선택 — 'event' 설정(long/short)에 따라 분기.
  * long 모드면 한글 풀네임(KoLong) 우선, 없으면 short fallback.
+ * 닉네임(player-menu.js)이 설정돼 있으면 최우선 — settings-popup.js의 pickName()과 동일한
+ * 우선순위. 이벤트의 playerId/assistId는 호출 측(fixture.js)이 buildEffectiveFixtureData를
+ * 거쳐 넘기므로, alt ID가 유사도 매칭으로 canonical ID에 연결된 경우에도 이미 canonical
+ * playerId가 들어와 있어 닉네임이 자동으로 같이 연결된다.
  */
 function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
   const useLong = (typeof getSetting === 'function') && getSetting('event') === 'long';
+  const pid = kind === 'assist' ? ev.assistId : ev.playerId;
+  if (pid && Number(pid) !== 0 && typeof getPlayerNickname === 'function') {
+    const nick = getPlayerNickname(pid);
+    if (nick) return nick;
+  }
   if (kind === 'assist') {
     const long = evNormalizeDisplayName(ev.assistNameKoLong || '');
     const short = evNormalizeDisplayName(ev.assistName || '');

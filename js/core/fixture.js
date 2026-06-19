@@ -558,10 +558,16 @@
           console.warn('Auto template apply failed:', templateErr);
         }
       }
-      // 벤치/부상 패널 채우기 (lineup-panel.js)
+      // 벤치/부상 패널 채우기 (lineup-render.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
-      if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+      // buildEffectiveFixtureData를 거쳐야 alt→canonical ID 유사도 매칭 결과(닉네임 조회의
+      // 기준이 되는 playerId)가 이벤트에도 반영된다 — raw data 그대로 넘기면 alt ID가 남아
+      // 닉네임/한글화가 누락된다.
+      if (typeof applyEventsPanel === 'function') {
+        const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+        applyEventsPanel(eventsPanelData);
+      }
       // HTH 자동 전환: 이벤트가 생기면 hth → events (Iter 7)
       if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
       if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
@@ -720,7 +726,9 @@
    * playerId(가장 안정) > 정규화 이름 > 인덱스(unique fallback).
    */
   function buildScorerGroupKey(event, fallbackIndex) {
-    if (event?.playerId != null && String(event.playerId).trim() !== '') {
+    // playerId=0은 "미해결 선수"를 뜻하는 플레이스홀더 — 동명이인 아닌 서로 다른
+    // 선수가 전부 pid:0으로 묶여 득점이 합쳐지므로 이름/인덱스 fallback으로 넘긴다.
+    if (event?.playerId != null && String(event.playerId).trim() !== '' && Number(event.playerId) !== 0) {
       return `pid:${String(event.playerId).trim()}`;
     }
 
@@ -736,14 +744,39 @@
     return `event:${fallbackIndex}`;
   }
 
+  /** 이벤트 시각 포맷 — "45'" 또는 "45+1'". */
+  function formatEventMinute(event) {
+    const elapsed = event?.elapsed ?? 0;
+    const extra = Number(event?.extra ?? 0);
+    return extra ? `${elapsed}+${extra}'` : `${elapsed}'`;
+  }
+
+  function eventSortKey(event) {
+    const elapsed = Number(event?.elapsed ?? 0);
+    const extra = Number(event?.extra ?? 0);
+    return (elapsed * 100) + extra;
+  }
+
+  function isFixtureEventType(event, type) {
+    return String(event?.type || '').toLowerCase() === String(type).toLowerCase();
+  }
+
+  function isFixtureEventDetail(event, detail) {
+    return String(event?.detail || '').toLowerCase() === String(detail).toLowerCase();
+  }
+
+  function isPenaltyShootoutEvent(event) {
+    return String(event?.comments || '').toLowerCase() === 'penalty shootout';
+  }
+
   /**
-   * 골 시각 포맷 — "45'" 또는 "45+1'". detail 따라 (OG)/(PK) 접미.
+   * 골 시각 포맷 — detail 따라 (OG)/(PK) 접미.
    * 일반골은 시간만, OG/PK는 시간 뒤 괄호 표기.
    */
   function formatScorerMinute(event) {
-    const min = event?.extra ? `${event.elapsed}+${event.extra}'` : `${event.elapsed}'`;
-    if (event?.detail === 'Own Goal') return `${min} (OG)`;
-    if (event?.detail === 'Penalty') return `${min} (PK)`;
+    const min = formatEventMinute(event);
+    if (isFixtureEventDetail(event, 'Own Goal')) return `${min} (OG)`;
+    if (isFixtureEventDetail(event, 'Penalty')) return `${min} (PK)`;
     return min;
   }
 
@@ -754,31 +787,47 @@
     return trimmed;
   }
 
+  function getEventPlayerDisplayName(event, fallback = '') {
+    const rawName = (typeof pickName === 'function') ? pickName(event, 'scorer') : (event?.playerName || '');
+    return normalizeScorerDisplayName(rawName, fallback);
+  }
+
+  function buildTaggedPlayerLine(event, label) {
+    const name = getEventPlayerDisplayName(event);
+    return `${formatEventMinute(event)} (${label}) ${name}`.trim();
+  }
+
+  function isNoteEventEnabled(category) {
+    return typeof getSetting !== 'function' || getSetting(category) !== 'off';
+  }
+
   /**
-   * 한 팀(side)의 득점자 텍스트를 \n 구분 문자열로 빌드.
-   * 1) PSO/Missed Penalty 제외하고 해당 팀 골 이벤트만 추림.
-   * 2) buildScorerGroupKey로 같은 선수 묶음. 첫 등장 시 그룹 생성, 이후엔 minutes에 추가.
-   * 3) 각 그룹을 "분, 분 이름" 형태로 join 후 줄바꿈으로 합침.
+   * 한 팀(side)의 득점자/PK 실축/퇴장 텍스트를 \n 구분 문자열로 빌드.
+   * 1) PSO 제외 후, 골은 같은 선수끼리 한 줄로 묶는다.
+   * 2) PK 실축과 퇴장은 개별 줄로 추가한다.
+   * 3) 각 줄을 첫 이벤트 시각 기준으로 정렬한다.
    */
   function buildScorers(events, side){
     const scorerEvents = events
-      .filter(e =>
-        e.side === side &&
-        e.type === 'Goal' &&
-        e.comments !== 'Penalty Shootout' &&
-        e.detail !== 'Missed Penalty');
+      .map((event, index) => ({ event, index }))
+      .filter(({ event }) =>
+        event.side === side &&
+        isFixtureEventType(event, 'Goal') &&
+        !isPenaltyShootoutEvent(event) &&
+        !isFixtureEventDetail(event, 'Missed Penalty'));
     const groups = [];
     const groupMap = new Map();
 
-    scorerEvents.forEach((event, index) => {
+    scorerEvents.forEach(({ event, index }) => {
       const key = buildScorerGroupKey(event, index);
       let group = groupMap.get(key);
       if (!group) {
         // pickName은 settings-popup.js의 헬퍼 — playerName/playerNameKoLong 양쪽 지원
-        const rawName = (typeof pickName === 'function') ? pickName(event, 'scorer') : (event.playerName || '');
         group = {
-          name: normalizeScorerDisplayName(rawName, '득점'),
+          name: getEventPlayerDisplayName(event, '득점'),
           minutes: [],
+          sortKey: eventSortKey(event),
+          order: index,
         };
         groupMap.set(key, group);
         groups.push(group);
@@ -787,8 +836,42 @@
       group.minutes.push(formatScorerMinute(event));
     });
 
-    return groups
-      .map(group => `${group.minutes.join(', ')} ${group.name}`.trim())
+    const entries = groups.map(group => ({
+      text: `${group.minutes.join(', ')} ${group.name}`.trim(),
+      sortKey: group.sortKey,
+      order: group.order,
+    }));
+    const showPenaltyMisses = isNoteEventEnabled('noteShowPenaltyMisses');
+    const showRedCards = isNoteEventEnabled('noteShowRedCards');
+
+    events.forEach((event, index) => {
+      if (event.side !== side || isPenaltyShootoutEvent(event)) return;
+
+      if (showPenaltyMisses && isFixtureEventType(event, 'Goal') && isFixtureEventDetail(event, 'Missed Penalty')) {
+        entries.push({
+          text: buildTaggedPlayerLine(event, 'PK 실축'),
+          sortKey: eventSortKey(event),
+          order: index,
+        });
+        return;
+      }
+
+      if (
+        showRedCards &&
+        isFixtureEventType(event, 'Card') &&
+        (isFixtureEventDetail(event, 'Red Card') || isFixtureEventDetail(event, 'Second Yellow Card'))
+      ) {
+        entries.push({
+          text: buildTaggedPlayerLine(event, '퇴장'),
+          sortKey: eventSortKey(event),
+          order: index,
+        });
+      }
+    });
+
+    return entries
+      .sort((a, b) => (a.sortKey - b.sortKey) || (a.order - b.order))
+      .map(entry => entry.text)
       .join('\n');
   }
 
@@ -796,8 +879,8 @@
   function countRedCards(events, side){
     return events.filter(e =>
       e.side === side &&
-      e.type === 'Card' &&
-      (e.detail === 'Red Card' || e.detail === 'Second Yellow Card')
+      isFixtureEventType(e, 'Card') &&
+      (isFixtureEventDetail(e, 'Red Card') || isFixtureEventDetail(e, 'Second Yellow Card'))
     ).length;
   }
 
@@ -833,7 +916,13 @@
   // 플래그가 처리하므로 별도 옵션 불필요.
   document.addEventListener('settings:change', e => {
     const category = e.detail?.category;
-    if (category !== 'scorer' && category !== 'teamName' && category !== 'teamLogo') return;
+    if (
+      category !== 'scorer' &&
+      category !== 'teamName' &&
+      category !== 'teamLogo' &&
+      category !== 'noteShowPenaltyMisses' &&
+      category !== 'noteShowRedCards'
+    ) return;
     if (!_lastFixtureData) return;
     applyFixtureToState(_lastFixtureData, { resetRunning: false });
   });
@@ -896,7 +985,10 @@
           _lastFetchId = fixtureId; // 폴링 콜백의 _lastFetchId 비교용
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
-        if (typeof applyEventsPanel === 'function') applyEventsPanel(data);
+        if (typeof applyEventsPanel === 'function') {
+          const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+          applyEventsPanel(eventsPanelData);
+        }
         if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
         if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
         if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);

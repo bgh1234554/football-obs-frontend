@@ -538,6 +538,7 @@ _lastFixtureData.events.map(e => ({
 
 - **FE 소스코드** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-frontend)
 - **BE 소스코드** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-backend)
+- **커스텀 로고 저장소** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-logo-cdn)
 
 ### 개발 아이디어
 

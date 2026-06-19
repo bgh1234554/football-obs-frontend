@@ -216,7 +216,7 @@ body.greenscreen-mode .dp-sub-marker.is-in {
 }
 .dp-item.is-sent-off .dp-item-name {
   text-decoration: line-through;
-  text-decoration-color: rgba(255,107,107,.55);
+  text-decoration-color: rgba(var(--lineup-red-text-rgb), .55);
 }
 
 /* ===== 선수 이름 상태별 색상 (교체/카드) ===== */
@@ -229,7 +229,7 @@ body.greenscreen-mode .dp-item-name.is-sub-in { color: #7cb1fc; }
 /* 경고 — 노랑 */
 .dp-item-name.is-yellow   { color: #FFD93D; }
 /* 퇴장 — 빨강 */
-.dp-item-name.is-red      { color: #FF6B6B; }
+.dp-item-name.is-red      { color: var(--lineup-red-text); }
 
 /* 교체 시간 표시 — 이름 옆 작은 칩 */
 .dp-sub-time {
@@ -1405,7 +1405,7 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   color: #FFD93D;
 }
 .dp-lineup-name.is-red {
-  color: #FF6B6B;
+  color: var(--lineup-red-text);
 }
 .dp-mode-long .dp-lineup-name-wrap {
   width: 113px;

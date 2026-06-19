@@ -56,6 +56,8 @@
       --note-font-size-home: 18px;
       --note-font-size-away: 18px;
       --note-gap: 2px;
+      --lineup-red-text: #FF6B6B;
+      --lineup-red-text-rgb: 255, 107, 107;
       --card-outline: #ffffff15;
       --board-radius: 18px;
       --team-radius: 14px;
@@ -169,6 +171,12 @@
     }
     .note.home { text-align: right; font-size: var(--note-font-size-home); }
     .note.away { text-align: left;  font-size: var(--note-font-size-away); }
+    .note-row { display: block; }
+    .note-line { color: var(--note-text); }
+    .note-line-pk-miss { color: #fb923c; }
+    .note-line-red-card { color: var(--lineup-red-text); }
+    .note-line-own-goal { color: #b6c2d1; }
+    .note-line-gap { display: inline-block; width: .9em; }
     .note-side.hidden { display: none !important; }
 
     /* ========== 보드 ========== */

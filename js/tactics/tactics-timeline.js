@@ -157,7 +157,7 @@ function ttBuildFixtureAtTime(targetElapsed) {
 
 /**
  * 슬라이더 변경 → 그 시점 라인업을 전술판에 적용.
- * lineup-panel.js의 syncTacticsBoard와 같은 흐름이지만, 시간 컷오프된 데이터로 호출.
+ * lineup-render.js의 syncTacticsBoard와 같은 흐름이지만, 시간 컷오프된 데이터로 호출.
  */
 function ttApplyTimelineToTactics(targetElapsed) {
   const reconstructed = ttBuildFixtureAtTime(targetElapsed);
@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (panel) ttInjectTimelineIntoEventsPanel(panel);
 });
 
-// 외부에 노출 — fixture.js와 lineup-panel.js에서 호출
+// 외부에 노출 — fixture.js와 lineup-render.js에서 호출
 function ttEnsureTacticsTimelineReady(options = {}) {
   const rerenderEvents = options.rerenderEvents === true;
   const panel = document.querySelector('#tactics-events-host [data-events-panel]');

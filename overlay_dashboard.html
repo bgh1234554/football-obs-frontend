@@ -126,9 +126,9 @@
         <div class="sp-tabs" role="tablist">
           <button class="sp-tab is-active" type="button" data-sp-tab="names" role="tab">이름</button>
           <button class="sp-tab"            type="button" data-sp-tab="lineup" role="tab">라인업</button>
-          <button class="sp-tab"            type="button" data-sp-tab="events" role="tab">이벤트/스탯</button>
-          <button class="sp-tab"            type="button" data-sp-tab="background" role="tab">배경</button>
-          <button class="sp-tab"            type="button" data-sp-tab="general" role="tab">일반</button>
+          <button class="sp-tab"            type="button" data-sp-tab="events" role="tab">패널/스탯</button>
+          <button class="sp-tab"            type="button" data-sp-tab="background" role="tab">배경/OBS</button>
+          <button class="sp-tab"            type="button" data-sp-tab="general" role="tab">관리</button>
         </div>
 
         <div class="sp-section" data-sp-tab-section="names">
@@ -199,6 +199,29 @@
               <span class="sp-toggle-side" data-side="long">ON</span>
             </div>
           </div>
+          <div class="sp-section-title" style="margin-top:10px;">득점자 박스 표시</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">PK 실축 텍스트 표시</span>
+              <span class="sp-label-sub">득점자 박스에 PK 실축 선수를 함께 표시합니다.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="noteShowPenaltyMisses" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">퇴장자 텍스트 표시</span>
+              <span class="sp-label-sub">득점자 박스에 퇴장 선수를 함께 표시합니다.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="noteShowRedCards" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
           <div class="sp-section-title" style="margin-top:10px;">닉네임</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -213,7 +236,7 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="lineup" hidden>
-          <div class="sp-section-title">라인업 표시</div>
+          <div class="sp-section-title">라인업 화면</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">선수 얼굴 표시</span>
@@ -249,6 +272,22 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
+              <span class="sp-label-main">피치 톤</span>
+              <span class="sp-label-sub">라인업 피치 색상입니다.</span>
+            </div>
+            <div class="sp-radio-cluster sp-radio-cluster-wrap sp-pitch-tone-grid">
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="green">초록</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="black">검정</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="blue">파랑</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="white">흰색</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="red">빨강</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="purple">보라</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="mint">민트</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="brown">갈색</button>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
               <span class="sp-label-main">리그 로고 위치</span>
               <span class="sp-label-sub">센터 서클 안 로고 위치입니다.</span>
             </div>
@@ -258,8 +297,6 @@
               <button type="button" class="sp-radio-btn" data-settings-radio="leagueLogoPos" data-settings-radio-value="right">오른쪽</button>
             </div>
           </div>
-
-          <div class="sp-section-title">교체 반영</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">교체 선수 라인업에 반영</span>
@@ -272,20 +309,7 @@
             </div>
           </div>
 
-          <div class="sp-section-title">선수 ID 자동 연결</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">이벤트 선수 ID 자동 매칭</span>
-              <span class="sp-label-sub">이벤트의 선수 ID가 라인업과 안 맞을 때, 같은 팀에 동명이인이 없으면 이름으로 자동 연결합니다.</span>
-            </div>
-            <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="off">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="autoLinkPlayerIdByName" checked/><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="on">ON</span>
-            </div>
-          </div>
-
-          <div class="sp-section-title">캠 큼 라인업 표시 항목</div>
+          <div class="sp-section-title">캠 큰 화면 라인업 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">골 / 어시스트 이모티콘</span>
@@ -344,7 +368,18 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
-          <div class="sp-section-title">캠 큼 우측 패널</div>
+          <div class="sp-section-title">패널 구성</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">팬 반응 칼럼</span>
+              <span class="sp-label-sub">팬 반응 칼럼 표시 여부입니다.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
+            </div>
+          </div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">팬 반응·스탯 패널 연결</span>
@@ -356,20 +391,6 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
-
-          <div class="sp-section-title">이벤트 패널</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">이벤트 이름 크기</span>
-              <span class="sp-label-sub">이벤트 텍스트 크기입니다. 기본 15px.</span>
-            </div>
-            <div class="sp-slider-cluster">
-              <input type="range" min="10" max="22" step="1" data-settings-slider="eventNameSize" />
-              <span class="sp-slider-value">15px</span>
-            </div>
-          </div>
-
-          <div class="sp-section-title">캠 큰 패널 자동 전환</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">패널 자동 전환</span>
@@ -382,7 +403,17 @@
             </div>
           </div>
 
-          <div class="sp-section-title">경기 스탯 자동 페이지 전환</div>
+          <div class="sp-section-title">이벤트/스탯 표시</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">이벤트 이름 크기</span>
+              <span class="sp-label-sub">이벤트 텍스트 크기입니다. 기본 15px.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="22" step="1" data-settings-slider="eventNameSize" />
+              <span class="sp-slider-value">15px</span>
+            </div>
+          </div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">자동 스와이프</span>
@@ -408,7 +439,7 @@
             </div>
           </div>
 
-          <div class="sp-section-title">평점 색상</div>
+          <div class="sp-section-title">평점</div>
           <div class="sp-row sp-row-rating-colors">
             <div class="sp-row-label">
               <span class="sp-label-main">구간별 색상</span>
@@ -430,7 +461,7 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="background" hidden>
-          <div class="sp-section-title">배경 색</div>
+          <div class="sp-section-title">배경</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">배경 색</span>
@@ -441,30 +472,6 @@
               <button type="button" class="sp-secondary-btn" data-bg-clear="color">초기화</button>
             </div>
           </div>
-
-          <div class="sp-section-title">패널 투명도</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">데이터 패널 투명도</span>
-              <span class="sp-label-sub">이벤트·스탯·교체·부상자 명단 배경 투명도입니다. 높을수록 더 투명합니다.</span>
-            </div>
-            <div class="sp-slider-cluster">
-              <input type="range" min="0" max="100" step="5" data-settings-slider="panelAlpha" />
-              <span class="sp-slider-value">25%</span>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">라인업 투명도</span>
-              <span class="sp-label-sub">라인업 칼럼과 피치 배경 투명도입니다. 높을수록 더 투명합니다.</span>
-            </div>
-            <div class="sp-slider-cluster">
-              <input type="range" min="0" max="100" step="5" data-settings-slider="pitchAlpha" />
-              <span class="sp-slider-value">25%</span>
-            </div>
-          </div>
-
-          <div class="sp-section-title">배경 이미지</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">URL</span>
@@ -486,7 +493,29 @@
             </div>
           </div>
 
-          <div class="sp-section-title">크로마키 호환</div>
+          <div class="sp-section-title">투명도</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">데이터 패널 투명도</span>
+              <span class="sp-label-sub">이벤트·스탯·교체·부상자 명단 배경 투명도입니다. 높을수록 더 투명합니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="0" max="100" step="5" data-settings-slider="panelAlpha" />
+              <span class="sp-slider-value">25%</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">라인업 투명도</span>
+              <span class="sp-label-sub">라인업 칼럼과 피치 배경 투명도입니다. 높을수록 더 투명합니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="0" max="100" step="5" data-settings-slider="pitchAlpha" />
+              <span class="sp-slider-value">25%</span>
+            </div>
+          </div>
+
+          <div class="sp-section-title">크로마키</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">그린스크린 모드</span>
@@ -513,25 +542,18 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="general" hidden>
-          <div class="sp-section-title">라인업 피치</div>
+          <div class="sp-section-title">기본 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">피치 톤</span>
-              <span class="sp-label-sub">라인업 피치 색상입니다.</span>
+              <span class="sp-label-main">기본 메인 화면</span>
+              <span class="sp-label-sub">불러오기 후 자동으로 열릴 메인 화면입니다.</span>
             </div>
-            <div class="sp-radio-cluster sp-radio-cluster-wrap sp-pitch-tone-grid">
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="green">초록</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="black">검정</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="blue">파랑</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="white">흰색</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="red">빨강</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="purple">보라</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="mint">민트</button>
-              <button type="button" class="sp-radio-btn" data-settings-radio="lineupPitchTone" data-settings-radio-value="brown">갈색</button>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="big">캠 큼</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="mainPage" /><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="small">캠 작음</span>
             </div>
           </div>
-
-          <div class="sp-section-title">팀 로고</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">국대 로고 형식</span>
@@ -544,32 +566,18 @@
             </div>
           </div>
 
-          <div class="sp-section-title">칼럼 표시</div>
+          <div class="sp-section-title">데이터/초기화</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">팬 반응 칼럼</span>
-              <span class="sp-label-sub">팬 반응 칼럼 표시 여부입니다.</span>
+              <span class="sp-label-main">이벤트 선수 ID 자동 매칭</span>
+              <span class="sp-label-sub">이벤트의 선수 ID가 라인업과 안 맞을 때, 같은 팀에 동명이인이 없으면 이름으로 자동 연결합니다. (ON 권장)</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></label>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="autoLinkPlayerIdByName" checked/><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
-
-          <div class="sp-section-title">메인 페이지 이동</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">기본 메인 화면</span>
-              <span class="sp-label-sub">불러오기 후 자동으로 열릴 메인 화면입니다.</span>
-            </div>
-            <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="big">캠 큼</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="mainPage" /><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="small">캠 작음</span>
-            </div>
-          </div>
-          <div class="sp-section-title">초기화</div>
           <div class="sp-danger-actions">
             <button type="button" class="sp-danger-btn" id="settingsResetBtn">설정 초기화</button>
             <button type="button" class="sp-danger-btn" id="cacheResetBtn">캐시 초기화</button>
@@ -1001,68 +1009,76 @@
 
 <!-- BMC 플로팅 위젯 (사이드바 열릴 때만 표시) -->
 <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="bgh1234554" data-description="Support me on Buy me a coffee!" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
-<script src="js/utils.js"></script>
-<script src="js/state.js"></script>
-<script src="js/render.js"></script>
-<script src="js/timer.js"></script>
-<script src="js/fixture.js"></script>
-<script src="js/api.js"></script>
-<script src="js/theme.js"></script>
-<script src="js/router.js"></script>
-<script src="js/keyboard.js"></script>
-<script src="js/tactics.js"></script>
-<script src="js/injury-reason.js"></script>
-<script src="js/settings-popup.js"></script>
-<script src="js/lineup-events.js"></script>
-<script src="js/lineup-panel.js"></script>
-<script src="js/player-menu-stat-labels.js"></script>
-<script src="js/player-menu-szn-labels.js"></script>
-<script src="js/player-menu.js"></script>
-<script src="js/player-id-resolve.js"></script>
-<script src="js/lineup-resize.js"></script>
-<script src="js/stats-config.js"></script>
-<script src="js/event-comments.js"></script>
-<script src="js/events-panel.js"></script>
-<script src="js/hth-panel.js"></script>
-<script src="js/stats-panel.js"></script>
-<script src="js/stat-cycle.js"></script>
-<script src="js/tactics-timeline.js"></script>
-<script src="js/init.js"></script>
-<script src="js/sidebar.js"></script>
+<script src="js/core/utils.js"></script>
+<script src="js/core/state.js"></script>
+<script src="js/core/render.js"></script>
+<script src="js/core/timer.js"></script>
+<script src="js/core/fixture.js"></script>
+<script src="js/core/api.js"></script>
+<script src="js/theme/theme.js"></script>
+<script src="js/core/router.js"></script>
+<script src="js/core/keyboard.js"></script>
+<script src="js/tactics/tactics.js"></script>
+<script src="js/data/injury-reason.js"></script>
+<script src="js/settings/settings-popup.js"></script>
+<script src="js/lineup/lineup-events.js"></script>
+<script src="js/lineup/lineup-manual-store.js"></script>
+<script src="js/lineup/lineup-data.js"></script>
+<script src="js/lineup/lineup-render.js"></script>
+<script src="js/lineup/lineup-name-fit.js"></script>
+<script src="js/lineup/lineup-manual-modal.js"></script>
+<script src="js/player/player-menu-stat-labels.js"></script>
+<script src="js/player/player-menu-szn-labels.js"></script>
+<script src="js/player/player-menu.js"></script>
+<script src="js/player/player-id-resolve.js"></script>
+<script src="js/lineup/lineup-resize.js"></script>
+<script src="js/data/stats-config.js"></script>
+<script src="js/panels/event-comments.js"></script>
+<script src="js/panels/events-panel.js"></script>
+<script src="js/panels/hth-panel.js"></script>
+<script src="js/panels/stats-panel.js"></script>
+<script src="js/panels/stat-cycle.js"></script>
+<script src="js/tactics/tactics-timeline.js"></script>
+<script src="js/core/init.js"></script>
+<script src="js/sidebar/sidebar.js"></script>
 <!--
   css/main.css                    — 전체 스타일 (CSS 변수, 점수판, 탭, 전술판, 위젯 격리)
   css/hamburger-nav.css           — 햄버거 사이드바 네비게이션 스타일
   css/detail-panels.css           — /detail 페이지 벤치/부상/라인업 그리드 패널 (.dp- 접두어 격리)
   css/settings-popup.css          — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치)
 
-  js/utils.js                     — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
-  js/state.js                     — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
-  js/render.js                    — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
-  js/timer.js                     — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
-  js/theme.js                     — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
-  js/router.js                    — 탭/페이지 전환, path-based URL 동기화
-  js/fixture.js                   — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch + state 매핑
-  js/api.js                       — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead)
-  js/keyboard.js                  — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
-  js/tactics.js                   — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
-  js/injury-reason.js             — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
-  js/settings-popup.js            — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
-  js/lineup-panel.js              — /detail 라인업/벤치/부상 패널 렌더 + 수동 입력 모달 + 전술판 동기화 + lp-stat 교체명단 사이클 패널
-  js/player-menu-stat-labels.js   — 경기별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
-  js/player-menu-szn-labels.js    — 시즌별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
-  js/lineup-events.js             — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼
-  js/lineup-resize.js             — 캠 큼 라인업 패널 높이 핸들 드래그 리사이즈 + localStorage 저장
-  js/stats-config.js              — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
-  js/event-comments.js            — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등 33종) + translateEventComment()
-  js/events-panel.js              — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
-  js/hth-panel.js                 — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
-  js/stats-panel.js               — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
-  js/stat-cycle.js                — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/홈교체/원정교체 + 자동 전환)
-  js/tactics-timeline.js          — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
-  js/player-menu.js               — 선수 컨텍스트 메뉴 (닉네임/경기스탯/시즌스탯 팝업 + ID 입력 인라인 폼)
-  js/player-id-resolve.js         — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
-  js/init.js                      — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
-  js/sidebar.js                   — 햄버거 사이드바 제어 (open/close, 미러 토글, Tab/Esc 단축키)
+  js/core/utils.js                 — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
+  js/core/state.js                 — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
+  js/core/render.js                — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
+  js/core/timer.js                 — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
+  js/theme/theme.js                — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
+  js/core/router.js                — 탭/페이지 전환, path-based URL 동기화
+  js/core/fixture.js               — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch + state 매핑
+  js/core/api.js                   — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead)
+  js/core/keyboard.js              — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
+  js/tactics/tactics.js            — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
+  js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
+  js/settings/settings-popup.js    — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
+  js/lineup/lineup-manual-store.js — 공통 유틸(dpEscape/clonePlayers 등) + lineupPanelState + fixture 단위 수동 override localStorage CRUD
+  js/lineup/lineup-data.js         — buildEffectiveFixtureData(API+수동override 합성) + 그리드/포메이션/색상 변환 헬퍼
+  js/lineup/lineup-render.js       — /detail 라인업/벤치/부상 패널 HTML 빌더 + 렌더 + 교체명단 사이클 패널 + 전술판 동기화 + applyLineupPanels(외부 진입점)
+  js/lineup/lineup-name-fit.js     — 라인업 이름 pill/팀칩/벤치 하단 텍스트 충돌 보정(fitLineupNamePills 등 픽셀 단위 후처리)
+  js/lineup/lineup-manual-modal.js — 수동 입력 모달(그리드 모드 + 라인업/벤치/부상자 풀폼) + 감독/주심 인라인 편집
+  js/player/player-menu-stat-labels.js — 경기별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
+  js/player/player-menu-szn-labels.js  — 시즌별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
+  js/lineup/lineup-events.js       — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼
+  js/lineup/lineup-resize.js       — 캠 큼 라인업 패널 높이 핸들 드래그 리사이즈 + localStorage 저장
+  js/data/stats-config.js          — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
+  js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등 33종) + translateEventComment()
+  js/panels/events-panel.js        — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
+  js/panels/hth-panel.js           — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
+  js/panels/stats-panel.js         — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
+  js/panels/stat-cycle.js          — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/홈교체/원정교체 + 자동 전환)
+  js/tactics/tactics-timeline.js   — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
+  js/player/player-menu.js         — 선수 컨텍스트 메뉴 (닉네임/경기스탯/시즌스탯 팝업 + ID 입력 인라인 폼)
+  js/player/player-id-resolve.js   — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
+  js/core/init.js                  — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
+  js/sidebar/sidebar.js            — 햄버거 사이드바 제어 (open/close, 미러 토글, Tab/Esc 단축키)
 -->
 </body>
 </html>

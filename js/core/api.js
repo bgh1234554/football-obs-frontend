@@ -225,7 +225,7 @@
   //   matchInfo.extra             → state.extra (null이면 추가시간 없음)
   //
   // events 배열 가공:
-  //   type==="Goal" && detail!=="Missed Penalty" → buildScorers() → state.notes.home/away
+  //   goals + enabled note events(PK miss/red) → buildScorers() → state.notes.home/away
   //   type==="Card" && detail==="Red Card"|"Second Yellow Card" → state.redHome/redAway
   //   comments==="Penalty Shootout" → PK 결과 배열 재구성 (detail==="Penalty"→"G", "Missed Penalty"→"M")
   //

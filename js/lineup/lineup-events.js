@@ -2,7 +2,7 @@
 // [라인업 이벤트 집계 / 평점] (Iter 5-3)
 // 라인업 노드(피치) + 벤치 행에 골/어시/카드/교체/평점을 표시하기 위한 공통 헬퍼.
 // 데이터 소스: fixtureData.events (이벤트), fixtureData.players (PlayerStats — rating).
-// 호출 시점: lineup-panel.js의 rerenderLineupPanels에서 effectiveData 합성 직후.
+// 호출 시점: lineup-render.js의 rerenderLineupPanels에서 effectiveData 합성 직후.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /** 이벤트 시간 비교용 — extra까지 합산해 정렬 키로 사용. */
@@ -369,7 +369,7 @@ function lpCardKind(eventInfo) {
   return null;
 }
 
-// 전역 노출 — lineup-panel.js에서 직접 호출
+// 전역 노출 — lineup-render.js에서 직접 호출
 window.lpAggregatePlayerEvents = lpAggregatePlayerEvents;
 window.lpResolveSubstEventIdsForAggregation = lpResolveSubstEventIdsForAggregation;
 window.lpBuildRatingMap = lpBuildRatingMap;

@@ -38,7 +38,7 @@ const SETTINGS_DEFAULTS = {
   statCycleAuto: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
-  statsAutoSwipeSec: 5,
+  statsAutoSwipeSec: 10,
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
@@ -56,6 +56,9 @@ const SETTINGS_DEFAULTS = {
   lineupShowRating: 'on',    // 평점 박스
   lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
+  // 점수판 양옆 득점자 박스에 골 외 이벤트를 함께 표시할지.
+  noteShowPenaltyMisses: 'on',
+  noteShowRedCards: 'on',
   // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
   // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
   // color input은 항상 소문자 hex를 반환하므로 default도 소문자로 통일 — 비교/리셋 일관성.
@@ -312,6 +315,15 @@ const RATING_COLOR_KEYS = new Set([
 ]);
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
+// on/off 토글 카테고리 — isValidSetting과 getSwitchSides 양쪽이 같은 목록을 참조해야
+// 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
+const ON_OFF_TOGGLE_CATEGORIES = new Set([
+  'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
+  'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
+  'lineupShowSubTime', 'lineupShowNumber', 'noteShowPenaltyMisses',
+  'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
+]);
+
 function isValidSetting(category, value) {
   if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
@@ -326,18 +338,7 @@ function isValidSetting(category, value) {
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
-  if (category === 'subReflect'
-    || category === 'autoLinkPlayerIdByName'
-    || category === 'fanReaction'
-    || category === 'lineupHideInitial'
-    || category === 'splitLineup'
-    || category === 'lineupShowGoals'
-    || category === 'lineupShowCards'
-    || category === 'lineupShowRating'
-    || category === 'lineupShowSubTime'
-    || category === 'lineupShowNumber'
-    || category === 'greenscreen'
-    || category === 'bigPanelLinked') {
+  if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return value === 'on' || value === 'off';
   }
   if (category === 'statsAutoSwipeSec') {
@@ -687,7 +688,7 @@ function applyLayoutSettings() {
     body.classList.toggle('no-lineup-subtime', getSetting('lineupShowSubTime') !== 'on');
     body.classList.toggle('greenscreen-mode',  getSetting('greenscreen') === 'on');
   }
-  // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-panel.js의 fit 함수)
+  // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-name-fit.js의 fit 함수)
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
   }
@@ -946,18 +947,7 @@ function getSwitchSides(category) {
   if (category === 'mainPage') return { off: 'big', on: 'small' };
   if (category === 'statCycleAuto') return { off: 'off', on: 'on' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
-  if (category === 'subReflect'
-    || category === 'autoLinkPlayerIdByName'
-    || category === 'lineupHideInitial'
-    || category === 'fanReaction'
-    || category === 'splitLineup'
-    || category === 'lineupShowGoals'
-    || category === 'lineupShowCards'
-    || category === 'lineupShowRating'
-    || category === 'lineupShowSubTime'
-    || category === 'lineupShowNumber'
-    || category === 'greenscreen'
-    || category === 'bigPanelLinked') {
+  if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return { off: 'off', on: 'on' };
   }
   return { off: 'short', on: 'long' };
