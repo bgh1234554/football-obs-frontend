@@ -726,7 +726,9 @@
    * playerId(가장 안정) > 정규화 이름 > 인덱스(unique fallback).
    */
   function buildScorerGroupKey(event, fallbackIndex) {
-    if (event?.playerId != null && String(event.playerId).trim() !== '') {
+    // playerId=0은 "미해결 선수"를 뜻하는 플레이스홀더 — 동명이인 아닌 서로 다른
+    // 선수가 전부 pid:0으로 묶여 득점이 합쳐지므로 이름/인덱스 fallback으로 넘긴다.
+    if (event?.playerId != null && String(event.playerId).trim() !== '' && Number(event.playerId) !== 0) {
       return `pid:${String(event.playerId).trim()}`;
     }
 

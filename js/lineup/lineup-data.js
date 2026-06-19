@@ -62,9 +62,9 @@ function buildEffectiveFixtureData(data) {
         lineup = {
           ...base,
           formation: manualSide.lineup.formation || base.formation || null,
-          startXi: clonePlayers(base.startXi || []).map(p => ({
+          startXi: clonePlayers(base.startXi || []).map((p, idx) => ({
             ...p,
-            grid: grids[String(p.playerId)] || p.grid || null,
+            grid: grids[buildLineupRosterKey(p, idx)] || p.grid || null,
           })),
           substitutes: clonePlayers(base.substitutes || []),
           coach: base.coach ? { ...base.coach } : null,

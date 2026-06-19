@@ -382,6 +382,8 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     } finally {
       const fb = document.getElementById('pmIdFetch');
       if (fb) fb.disabled = false;
+      // preview.innerHTML 갱신(특히 사진 비교 토글 영역)으로 팝업이 더 커질 수 있어 재클램프.
+      pmClampPopupToViewport();
     }
   }
 

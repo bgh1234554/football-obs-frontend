@@ -444,6 +444,15 @@ function applyZeroIdOverrides(next, fixtureId) {
     const [side, altId] = key.split(':');
     if (claimedAltIdsBySide[side]) claimedAltIdsBySide[side].add(Number(altId));
   }
+  // id=0 선수를 수동으로 이미 특정 실제 ID에 연결해둔 경우, 그 ID도 자동 매칭 후보에서
+  // 제외해야 한다 — 그렇지 않으면 자동 매칭이 같은 ID를 다른 미해결 선수에게도 부여해
+  // 한 ID가 두 명에게 동시에 연결되는 사고가 난다.
+  for (const [localKey, ov] of Object.entries(relevant)) {
+    if (!localKey.includes(':n:')) continue;
+    const side = localKey.split(':')[0];
+    const claimedId = Number(ov?.playerId);
+    if (claimedId && claimedAltIdsBySide[side]) claimedAltIdsBySide[side].add(claimedId);
+  }
   const zeroIdAutoLinks = autoLinkOn ? pirAutoLinkZeroIdFromEvents(next, claimedAltIdsBySide) : {};
 
   if (!Object.keys(relevant).length && !Object.keys(altToCanonical).length && !Object.keys(zeroIdAutoLinks).length) return;

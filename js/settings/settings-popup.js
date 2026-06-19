@@ -315,6 +315,15 @@ const RATING_COLOR_KEYS = new Set([
 ]);
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
+// on/off 토글 카테고리 — isValidSetting과 getSwitchSides 양쪽이 같은 목록을 참조해야
+// 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
+const ON_OFF_TOGGLE_CATEGORIES = new Set([
+  'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
+  'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
+  'lineupShowSubTime', 'lineupShowNumber', 'noteShowPenaltyMisses',
+  'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
+]);
+
 function isValidSetting(category, value) {
   if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
@@ -329,20 +338,7 @@ function isValidSetting(category, value) {
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
-  if (category === 'subReflect'
-    || category === 'autoLinkPlayerIdByName'
-    || category === 'fanReaction'
-    || category === 'lineupHideInitial'
-    || category === 'splitLineup'
-    || category === 'lineupShowGoals'
-    || category === 'lineupShowCards'
-    || category === 'lineupShowRating'
-    || category === 'lineupShowSubTime'
-    || category === 'lineupShowNumber'
-    || category === 'noteShowPenaltyMisses'
-    || category === 'noteShowRedCards'
-    || category === 'greenscreen'
-    || category === 'bigPanelLinked') {
+  if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return value === 'on' || value === 'off';
   }
   if (category === 'statsAutoSwipeSec') {
@@ -951,20 +947,7 @@ function getSwitchSides(category) {
   if (category === 'mainPage') return { off: 'big', on: 'small' };
   if (category === 'statCycleAuto') return { off: 'off', on: 'on' };
   if (category === 'statsAutoSwipe') return { off: 'off', on: 'on' };
-  if (category === 'subReflect'
-    || category === 'autoLinkPlayerIdByName'
-    || category === 'lineupHideInitial'
-    || category === 'fanReaction'
-    || category === 'splitLineup'
-    || category === 'lineupShowGoals'
-    || category === 'lineupShowCards'
-    || category === 'lineupShowRating'
-    || category === 'lineupShowSubTime'
-    || category === 'lineupShowNumber'
-    || category === 'noteShowPenaltyMisses'
-    || category === 'noteShowRedCards'
-    || category === 'greenscreen'
-    || category === 'bigPanelLinked') {
+  if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return { off: 'off', on: 'on' };
   }
   return { off: 'short', on: 'long' };

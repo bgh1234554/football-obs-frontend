@@ -90,7 +90,7 @@ function initGridState(side) {
   const fixtureId = getActiveFixtureId();
   const apiStartXi = lineupPanelState.lastFixture?.[`${side}Lineup`]?.startXi || [];
   const players = clonePlayers(apiStartXi);
-  const playersById = Object.fromEntries(players.map(p => [String(p.playerId), p]));
+  const playersById = Object.fromEntries(players.map((p, idx) => [buildLineupRosterKey(p, idx), p]));
 
   const stored = getManualSideData(fixtureId, side)?.lineup;
   // 포메이션 우선순위: 저장된 수동값 > API 응답 > default(4-3-3)
@@ -112,18 +112,18 @@ function initGridState(side) {
     });
   } else {
     // 2) API 응답에 grid가 있으면 그걸로 초기 배치 (포메이션이 같은 경우만 의미 있음)
-    players.forEach(p => {
+    players.forEach((p, i) => {
       if (!p.grid) return;
       const idx = gridValues.indexOf(p.grid);
-      const pidStr = String(p.playerId);
+      const pidStr = buildLineupRosterKey(p, i);
       if (idx >= 0 && !slotPlayerIds[idx]) slotPlayerIds[idx] = pidStr;
     });
   }
 
   // 3) 매핑 안 된 선수는 빈 슬롯에 API 순서대로 삽입
   let cursor = 0;
-  players.forEach(p => {
-    const pidStr = String(p.playerId);
+  players.forEach((p, i) => {
+    const pidStr = buildLineupRosterKey(p, i);
     if (slotPlayerIds.includes(pidStr)) return;
     while (cursor < slotsCount && slotPlayerIds[cursor]) cursor += 1;
     if (cursor < slotsCount) slotPlayerIds[cursor] = pidStr;

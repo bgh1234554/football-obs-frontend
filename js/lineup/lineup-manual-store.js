@@ -49,6 +49,17 @@ function getTacticsLabelMap() {
   return typeof TACTICS_LABELS !== 'undefined' && TACTICS_LABELS ? TACTICS_LABELS : {};
 }
 
+/**
+ * 그리드 모드(initGridState/lineup-data.js gridByPlayerId)에서 선수를 구분하는 안정적인 키.
+ * playerId=0(미해결)인 선수가 한 팀에 여럴 있으면 전부 같은 키로 충돌하므로,
+ * 같은 startXi 배열 안 인덱스로 구분한다. 두 호출부(initGridState, buildEffectiveFixtureData)
+ * 모두 lineupPanelState.lastFixture의 같은 startXi 배열을 같은 순서로 순회하므로 인덱스가 안정적이다.
+ */
+function buildLineupRosterKey(player, index) {
+  const pid = Number(player?.playerId);
+  return pid ? String(pid) : `0:${index}`;
+}
+
 /** 선수 배열 깊은 복사 (1-depth). null 항목 제거. 입력이 배열 아니면 빈 배열. */
 function clonePlayers(players) {
   return Array.isArray(players) ? players.filter(Boolean).map(player => ({ ...player })) : [];
@@ -108,7 +119,9 @@ function readManualStore() {
   const now = Date.now();
   Object.keys(parsed).forEach(fixtureId => {
     const entry = parsed[fixtureId];
-    if (!entry || typeof entry !== 'object' || Number(entry.expiresAt) < now || isManualEntryEmpty(entry)) {
+    const expiresAt = Number(entry?.expiresAt);
+    const isExpired = !Number.isFinite(expiresAt) || expiresAt < now;
+    if (!entry || typeof entry !== 'object' || isExpired || isManualEntryEmpty(entry)) {
       delete parsed[fixtureId];
       dirty = true;
     }
@@ -240,7 +253,9 @@ function updateManualEntry(fixtureId, side, updater) {
   if (sanitizedSide) draft[side] = sanitizedSide;
   else delete draft[side];
 
-  if (isManualEntryEmpty(draft)) {
+  // refereeName 등 top-level 필드는 draft에 없으므로, current와 합친 결과로 비어있는지 판단해야
+  // home/away만 비워도 기존 refereeName이 남아있는 entry를 통째로 지우는 사고를 막는다.
+  if (isManualEntryEmpty({ ...current, ...draft })) {
     delete store[fixtureId];
   } else {
     // 기존 top-level 필드 (refereeName 등)를 보존하면서 새 home/away와 병합
