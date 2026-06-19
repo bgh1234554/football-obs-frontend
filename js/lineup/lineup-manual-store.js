@@ -221,17 +221,49 @@ function getManualEntry(fixtureId) {
 }
 
 /**
- * fixtureId 하나의 수동 입력(포메이션/라인업/벤치/부상자/감독/주심)을 전부 삭제.
+ * fixtureId 하나의 수동 입력 중, options에서 true로 켠 항목만 선택적으로 삭제.
+ * options: { lineup, bench, injuries, coachName, referee } (boolean, 기본 전부 false).
+ *   - lineup/bench/injuries/coachName: home/away 양쪽에서 함께 지움
+ *     (lineup엔 포메이션+그리드/풀폼 라인업이 같이 들어있어 따로 못 나눔).
+ *   - referee: entry 최상단 refereeName (양 팀 공통이라 side 구분 없음).
  * 다른 fixture의 저장값이나 선수 ID/닉네임 연결(player-id-resolve.js, 별도 storage key)은
  * 건드리지 않음 — "캐시 초기화"가 API 응답 캐시만 지우고 이 store는 그대로 두는 것과
- * 반대로, 이 함수는 이 store의 해당 fixture 항목만 지운다.
- * 삭제된 entry가 있었으면 true, 원래 없었으면 false.
+ * 반대로, 이 함수는 이 store의 해당 fixture 항목 중 선택한 필드만 지운다.
+ * 실제로 뭔가 지워졌으면 true, 지울 게 없었으면 false.
  */
-function clearManualEntry(fixtureId) {
+function clearManualEntryFields(fixtureId, options = {}) {
   if (!fixtureId) return false;
   const store = readManualStore();
-  if (!(fixtureId in store)) return false;
-  delete store[fixtureId];
+  const current = store[fixtureId];
+  if (!current || typeof current !== 'object') return false;
+
+  const next = {
+    ...current,
+    home: { ...(current.home || {}) },
+    away: { ...(current.away || {}) },
+  };
+  let changed = false;
+
+  ['home', 'away'].forEach(side => {
+    ['lineup', 'bench', 'injuries', 'coachName'].forEach(field => {
+      if (options[field] && next[side][field] !== undefined) {
+        delete next[side][field];
+        changed = true;
+      }
+    });
+  });
+  if (options.referee && next.refereeName !== undefined) {
+    delete next.refereeName;
+    changed = true;
+  }
+
+  if (!changed) return false;
+
+  if (isManualEntryEmpty(next)) {
+    delete store[fixtureId];
+  } else {
+    store[fixtureId] = { ...next, savedAt: Date.now(), expiresAt: Date.now() + DETAIL_MANUAL_TTL_MS };
+  }
   writeManualStore(store);
   return true;
 }

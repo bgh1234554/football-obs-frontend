@@ -1321,12 +1321,24 @@ function initSettingsPopup() {
         if (typeof showToast === 'function') showToast('표시 중인 경기가 없습니다');
         return;
       }
-      if (!confirm('현재 경기에 직접 입력한 포메이션/라인업/벤치/부상자/감독/주심을 모두 지우고 API 원본 데이터로 되돌릴까요? (다른 경기나 선수 ID·닉네임 연결은 유지됩니다)')) return;
 
-      const cleared = typeof clearManualEntry === 'function' ? clearManualEntry(fixtureId) : false;
+      const options = {
+        lineup: !!document.getElementById('mrResetLineup')?.checked,
+        bench: !!document.getElementById('mrResetBench')?.checked,
+        injuries: !!document.getElementById('mrResetInjuries')?.checked,
+        coachName: !!document.getElementById('mrResetCoach')?.checked,
+        referee: !!document.getElementById('mrResetReferee')?.checked,
+      };
+      if (!Object.values(options).some(Boolean)) {
+        if (typeof showToast === 'function') showToast('지울 항목을 하나 이상 켜두세요');
+        return;
+      }
+      if (!confirm('켜둔 항목의 수동 입력을 지우고 API 원본 데이터로 되돌릴까요? (다른 경기나 선수 ID·닉네임 연결은 유지됩니다)')) return;
+
+      const cleared = typeof clearManualEntryFields === 'function' ? clearManualEntryFields(fixtureId, options) : false;
       if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
       if (typeof showToast === 'function') {
-        showToast(cleared ? '이 경기의 수동 입력을 초기화했습니다' : '이 경기에는 수동 입력이 없습니다');
+        showToast(cleared ? '선택한 항목을 초기화했습니다' : '이 경기에는 지울 수동 입력이 없습니다');
       }
     });
   }
