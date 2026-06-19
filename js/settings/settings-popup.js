@@ -1111,6 +1111,7 @@ function initSettingsPopup() {
   const backdrop = document.getElementById('settingsBackdrop');
   const settingsResetBtn = document.getElementById('settingsResetBtn');
   const cacheResetBtn = document.getElementById('cacheResetBtn');
+  const currentFixtureManualResetBtn = document.getElementById('currentFixtureManualResetBtn');
   const ratingColorsResetBtn = document.getElementById('ratingColorsResetBtn');
 
   initSettingsTabs();
@@ -1310,6 +1311,23 @@ function initSettingsPopup() {
     cacheResetBtn.addEventListener('click', () => {
       if (!confirm('경기 캐시와 최근 경기 ID를 초기화할까요?')) return;
       clearAppCaches();
+    });
+  }
+
+  if (currentFixtureManualResetBtn) {
+    currentFixtureManualResetBtn.addEventListener('click', () => {
+      const fixtureId = typeof getActiveFixtureId === 'function' ? getActiveFixtureId() : null;
+      if (!fixtureId) {
+        if (typeof showToast === 'function') showToast('표시 중인 경기가 없습니다');
+        return;
+      }
+      if (!confirm('현재 경기에 직접 입력한 포메이션/라인업/벤치/부상자/감독/주심을 모두 지우고 API 원본 데이터로 되돌릴까요? (다른 경기나 선수 ID·닉네임 연결은 유지됩니다)')) return;
+
+      const cleared = typeof clearManualEntry === 'function' ? clearManualEntry(fixtureId) : false;
+      if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
+      if (typeof showToast === 'function') {
+        showToast(cleared ? '이 경기의 수동 입력을 초기화했습니다' : '이 경기에는 수동 입력이 없습니다');
+      }
     });
   }
 }

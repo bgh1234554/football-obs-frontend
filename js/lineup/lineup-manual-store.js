@@ -220,6 +220,22 @@ function getManualEntry(fixtureId) {
   return readManualStore()[fixtureId] || null;
 }
 
+/**
+ * fixtureId 하나의 수동 입력(포메이션/라인업/벤치/부상자/감독/주심)을 전부 삭제.
+ * 다른 fixture의 저장값이나 선수 ID/닉네임 연결(player-id-resolve.js, 별도 storage key)은
+ * 건드리지 않음 — "캐시 초기화"가 API 응답 캐시만 지우고 이 store는 그대로 두는 것과
+ * 반대로, 이 함수는 이 store의 해당 fixture 항목만 지운다.
+ * 삭제된 entry가 있었으면 true, 원래 없었으면 false.
+ */
+function clearManualEntry(fixtureId) {
+  if (!fixtureId) return false;
+  const store = readManualStore();
+  if (!(fixtureId in store)) return false;
+  delete store[fixtureId];
+  writeManualStore(store);
+  return true;
+}
+
 /** fixtureId+side의 수동 데이터 부분만 반환. 모달 진입 시 기존 값 미리 채우는 용도. */
 function getManualSideData(fixtureId, side) {
   return getManualEntry(fixtureId)?.[side] || null;
