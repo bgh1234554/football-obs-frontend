@@ -1706,6 +1706,28 @@
       background: rgba(59,130,246,.10);
       box-shadow: inset 0 0 0 1px rgba(191,219,254,.35);
     }
+    /* 하프타임/후반종료/연장전반종료/연장후반종료/풀타임 구간 구분자 — 양옆 디바이더 라인 +
+       가운데 라벨. 일반 이벤트 row와 달리 막대/배경 없이 가운데 정렬. */
+    .ev-row.ev-period-marker {
+      background: transparent;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 26px;
+      padding: 2px 8px;
+    }
+    .ev-marker-line {
+      flex: 1 1 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+    }
+    .ev-marker-label {
+      flex: 0 0 auto;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: #fff;
+      white-space: nowrap;
+    }
     .ev-bar {
       flex: 0 0 4px;
       background: rgba(255,255,255,.6);

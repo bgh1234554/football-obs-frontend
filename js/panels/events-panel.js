@@ -760,6 +760,100 @@ function evIconHtml(iconKey) {
   }
 }
 
+// ─── 구간 구분자 (하프타임/후반종료/연장전반종료/연장후반종료/풀타임) ───────────
+// API가 이런 경계를 별도 이벤트로 안 주기 때문에 matchInfo.status/elapsed 전이로
+// 추론해서 합성한 "가짜 이벤트"를 실제 이벤트 사이에 끼워 넣는다.
+const EV_PERIOD_MARKER_SORT_PADDING = 50; // 같은 분(elapsed)의 실제 추가시간 이벤트보다 항상 뒤(=더 늦은 시점)로 보내는 패딩
+
+/**
+ * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 두 쌍(후반종료/풀타임,
+ * 연장후반종료/풀타임)은 그 경기가 연장으로 갔는지에 따라 서로 배타적으로 하나만 나온다.
+ *   - 하프타임   : status가 HT 이후로 진행됐으면(HT/2H/ET1/ET2/PSO/FT) 표시.
+ *   - 후반종료   : 연장으로 이어진 경우에만(정규시간 종료 시 FT가 바로 안 왔다는 뜻).
+ *   - 연장 전반 종료 : status가 ET2/PSO까지 진행됐거나(=elapsed 106 이상), FT인데
+ *                  사후적으로 연장이 있었다고 판단되는 경우.
+ *   - 연장 후반 종료 : status가 PSO이거나 승부차기 스코어가 존재하는 경우.
+ *   - 풀타임     : 연장 없이 FT로 끝났을 때, 또는 연장에서 승부차기 없이 FT로 끝났을 때.
+ * FT 시점엔 status만으론 연장 여부를 알 수 없어(정규/연장/PK 종료 모두 그냥 "FT") elapsed가
+ * 105를 넘었는지/승부차기 스코어가 있는지로 사후 추정한다 — 생방송 중에는 ET1/ET2/PSO 상태를
+ * 직접 거치므로 이 추정이 필요 없다.
+ */
+function evBuildPeriodMarkers(matchInfo) {
+  if (!matchInfo) return [];
+
+  const status = String(matchInfo.status || '').toUpperCase();
+  const elapsed = Number(matchInfo.elapsed ?? 0);
+  const hadPenalties = matchInfo.homePenaltyScore != null || matchInfo.awayPenaltyScore != null;
+
+  const isLiveExtraTime = status === 'ET1' || status === 'ET2' || status === 'PSO';
+  const ftLooksLikeExtraTime = status === 'FT' && (elapsed > 105 || hadPenalties);
+  const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime;
+  const reachedEt2 = status === 'ET2' || status === 'PSO' || ftLooksLikeExtraTime;
+  const reachedHalftime = status !== 'NS' && status !== '1H';
+
+  const markers = [];
+  const addMarker = (label, sortElapsed) => markers.push({
+    _isPeriodMarker: true,
+    label,
+    elapsed: sortElapsed,
+    extra: EV_PERIOD_MARKER_SORT_PADDING,
+  });
+
+  if (reachedHalftime) addMarker('하프타임', 45);
+
+  if (extraTimePlayed) {
+    addMarker('후반종료', 90);
+    if (reachedEt2) addMarker('연장 전반 종료', 105);
+    if (status === 'PSO' || hadPenalties) addMarker('연장 후반 종료', 120);
+    else if (status === 'FT') addMarker('풀타임', 120);
+  } else if (status === 'FT') {
+    addMarker('풀타임', 90);
+  }
+
+  return markers;
+}
+
+/**
+ * 필터링된 실제 이벤트(내림차순)와 구간 마커를 합쳐 시간 내림차순 단일 리스트로 반환.
+ * 마커는 evFilterEvents의 카테고리 필터 대상이 아니라 항상 포함됨 — 정렬 키(elapsed*100+extra)에
+ * EV_PERIOD_MARKER_SORT_PADDING을 더해 같은 분의 실제 이벤트보다 항상 늦게(=내림차순에서 더 위로) 배치.
+ */
+function evMergeWithPeriodMarkers(eventsDesc, markers) {
+  const eventItems = eventsDesc.map(ev => ({ kind: 'event', ev }));
+  if (!markers.length) return eventItems;
+
+  const markerItems = markers.map(marker => ({ kind: 'marker', marker }));
+  const sortKeyOf = item => {
+    const src = item.kind === 'marker' ? item.marker : item.ev;
+    return Number(src?.elapsed ?? 0) * 100 + Number(src?.extra ?? 0);
+  };
+
+  return [...eventItems, ...markerItems]
+    .map((item, idx) => ({ item, idx }))
+    .sort((a, b) => (sortKeyOf(b.item) - sortKeyOf(a.item)) || (a.idx - b.idx))
+    .map(({ item }) => item);
+}
+
+/** 구간 구분자 row — 가운데 정렬 라벨 + 양옆 디바이더 라인. 폰트는 일반 이벤트와 동일 크기. */
+function evCreateMarkerRow(marker) {
+  const row = document.createElement('div');
+  row.className = 'ev-row ev-period-marker';
+
+  const lineBefore = document.createElement('span');
+  lineBefore.className = 'ev-marker-line';
+
+  const label = document.createElement('span');
+  label.className = 'ev-marker-label';
+  label.textContent = marker.label;
+  label.style.fontSize = evGetBaseFontSize() + 'px';
+
+  const lineAfter = document.createElement('span');
+  lineAfter.className = 'ev-marker-line';
+
+  row.append(lineBefore, label, lineAfter);
+  return row;
+}
+
 /** 한 이벤트 row의 DOM 생성. fixtureData에서 팀 로고 URL 가져옴. */
 function evCreateRow(ev, fixtureData, renderKey = '') {
   const style = evStyle(ev);
@@ -1147,6 +1241,8 @@ function applyEventsPanel(fixtureData, options = {}) {
   const filterOptions = evBuildFilterOptions(processedEvents);
   if (!filterOptions.length) eventsPanelFilterState.isOpen = false;
   const events = evFilterEvents(processedEvents);
+  const periodMarkers = evBuildPeriodMarkers(fixtureData?.matchInfo);
+  const renderItems = evMergeWithPeriodMarkers(events, periodMarkers);
 
   containers.forEach(container => {
     const previousFixtureId = String(container.dataset.evFixtureId || '').trim();
@@ -1160,7 +1256,7 @@ function applyEventsPanel(fixtureData, options = {}) {
     const titleBar = evCreateTitleBar(filterOptions, container);
 
     // 패널 제목 바 — 교체명단/부상 패널 구조 참고 (.dp-title 톤 유지)
-    if (!processedEvents.length) {
+    if (!processedEvents.length && !periodMarkers.length) {
       container.replaceChildren(titleBar);
       container.dataset.evFixtureId = nextFixtureId;
       const empty = document.createElement('div');
@@ -1171,7 +1267,7 @@ function applyEventsPanel(fixtureData, options = {}) {
       return;
     }
 
-    if (!events.length) {
+    if (!renderItems.length) {
       container.replaceChildren(titleBar);
       container.dataset.evFixtureId = nextFixtureId;
       const empty = document.createElement('div');
@@ -1185,7 +1281,15 @@ function applyEventsPanel(fixtureData, options = {}) {
     const list = document.createElement('div');
     list.className = 'ev-list';
     const renderKeys = evBuildRenderKeys(events);
-    events.forEach((ev, index) => list.appendChild(evCreateRow(ev, fixtureData, renderKeys[index])));
+    let eventKeyIndex = 0;
+    renderItems.forEach(item => {
+      if (item.kind === 'marker') {
+        list.appendChild(evCreateMarkerRow(item.marker));
+        return;
+      }
+      list.appendChild(evCreateRow(item.ev, fixtureData, renderKeys[eventKeyIndex]));
+      eventKeyIndex += 1;
+    });
     container.replaceChildren(titleBar, list);
     container.dataset.evFixtureId = nextFixtureId;
 
