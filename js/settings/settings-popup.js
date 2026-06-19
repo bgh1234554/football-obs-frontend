@@ -692,7 +692,7 @@ function applyLayoutSettings() {
     body.classList.toggle('no-lineup-subtime', getSetting('lineupShowSubTime') !== 'on');
     body.classList.toggle('greenscreen-mode',  getSetting('greenscreen') === 'on');
   }
-  // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-panel.js의 fit 함수)
+  // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-name-fit.js의 fit 함수)
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
   }

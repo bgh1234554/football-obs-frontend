@@ -1022,7 +1022,11 @@
 <script src="js/data/injury-reason.js"></script>
 <script src="js/settings/settings-popup.js"></script>
 <script src="js/lineup/lineup-events.js"></script>
-<script src="js/lineup/lineup-panel.js"></script>
+<script src="js/lineup/lineup-manual-store.js"></script>
+<script src="js/lineup/lineup-data.js"></script>
+<script src="js/lineup/lineup-render.js"></script>
+<script src="js/lineup/lineup-name-fit.js"></script>
+<script src="js/lineup/lineup-manual-modal.js"></script>
 <script src="js/player/player-menu-stat-labels.js"></script>
 <script src="js/player/player-menu-szn-labels.js"></script>
 <script src="js/player/player-menu.js"></script>
@@ -1055,7 +1059,11 @@
   js/tactics/tactics.js            — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
   js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
   js/settings/settings-popup.js    — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
-  js/lineup/lineup-panel.js        — /detail 라인업/벤치/부상 패널 렌더 + 수동 입력 모달 + 전술판 동기화 + lp-stat 교체명단 사이클 패널
+  js/lineup/lineup-manual-store.js — 공통 유틸(dpEscape/clonePlayers 등) + lineupPanelState + fixture 단위 수동 override localStorage CRUD
+  js/lineup/lineup-data.js         — buildEffectiveFixtureData(API+수동override 합성) + 그리드/포메이션/색상 변환 헬퍼
+  js/lineup/lineup-render.js       — /detail 라인업/벤치/부상 패널 HTML 빌더 + 렌더 + 교체명단 사이클 패널 + 전술판 동기화 + applyLineupPanels(외부 진입점)
+  js/lineup/lineup-name-fit.js     — 라인업 이름 pill/팀칩/벤치 하단 텍스트 충돌 보정(fitLineupNamePills 등 픽셀 단위 후처리)
+  js/lineup/lineup-manual-modal.js — 수동 입력 모달(그리드 모드 + 라인업/벤치/부상자 풀폼) + 감독/주심 인라인 편집
   js/player/player-menu-stat-labels.js — 경기별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
   js/player/player-menu-szn-labels.js  — 시즌별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
   js/lineup/lineup-events.js       — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼

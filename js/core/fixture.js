@@ -558,7 +558,7 @@
           console.warn('Auto template apply failed:', templateErr);
         }
       }
-      // 벤치/부상 패널 채우기 (lineup-panel.js)
+      // 벤치/부상 패널 채우기 (lineup-render.js)
       if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
       // 이벤트 타임라인 + 경기 스탯 패널 (Iter 5-2)
       // buildEffectiveFixtureData를 거쳐야 alt→canonical ID 유사도 매칭 결과(닉네임 조회의

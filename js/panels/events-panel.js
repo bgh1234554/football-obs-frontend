@@ -204,7 +204,7 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
 
 /**
  * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
- * lineup-panel.js의 buildEffectiveFixtureData에서 호출해
+ * lineup-data.js의 buildEffectiveFixtureData에서 호출해
  * subReflect 교체 swap이 override를 반영하도록 함.
  */
 function evPatchSubstEvents(events, fixtureId) {

@@ -1,7 +1,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [선수 ID 연결] 클릭 → ID 입력 팝업
 // fetchPlayerStats로 프로필 가져와 이름/사진 덮어쓰기. 폴링 이벤트도 실 ID로 매칭됨.
-// lineup-panel.js의 buildEffectiveFixtureData에서 window.applyZeroIdOverrides를 호출해 적용.
+// lineup-data.js의 buildEffectiveFixtureData에서 window.applyZeroIdOverrides를 호출해 적용.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const PIR_STORE_KEY = 'obs.player.id.resolve.v2';
@@ -405,7 +405,7 @@ function pirAutoLinkZeroIdFromEvents(rawData, claimedAltIdsBySide) {
 window.pirAutoLinkZeroIdFromEvents = pirAutoLinkZeroIdFromEvents;
 
 // ── override 적용 ─────────────────────────────────────────────────────────────
-// lineup-panel.js의 buildEffectiveFixtureData에서 window hook으로 호출.
+// lineup-data.js의 buildEffectiveFixtureData에서 window hook으로 호출.
 // 복제된 next 객체를 직접 변경(in-place) — 반환값 없음.
 
 /** 저장된 override들을 fixture 데이터에 일괄 적용 (라인업/부상자 이름·사진/playerId, 이벤트, playerStats 리매핑). */
