@@ -659,6 +659,7 @@
           <div class="lp lp-stat">
             <button class="lp-stat-cycle-btn" style="display:none"></button>
             <button class="lp-stat-pause-btn" style="display:none"></button>
+            <button class="lp-force-refresh-btn lp-stat-refresh-btn" type="button" title="새로고침"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg><span class="lp-force-refresh-label">새로고침</span></button>
             <div data-stat-panel></div>
             <div data-hth-panel style="display:none"></div>
             <div data-events-panel style="display:none"></div>
@@ -692,7 +693,7 @@
 
         <!-- 교체 명단 / 부상 정보 -->
         <div class="lp-col lp-col-bench">
-          <!-- 교체 명단 -->
+          <!-- 교체 명단 — 새로고침 버튼은 lineup-render.js의 setPanelTitle(leftActionsHtml)이 동적으로 .dp-title 안에 삽입 -->
           <div class="lp lp-bench">
             <div class="dp-panel" id="benchPanel">
               <div class="dp-title">교체 명단</div>

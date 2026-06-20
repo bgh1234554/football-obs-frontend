@@ -1016,3 +1016,70 @@
     return fixtureId || null;
   }
 
+  /**
+   * 강제 새로고침 — 탭 비활성화로 setTimeout 폴링 체인이 지연될 때, 사용자가 즉시 1회 재조회.
+   * 캠 큼(.lp-stat-refresh-btn)/캠 작음(.lp-bench-refresh-btn) 두 버튼이 같은 쿨다운을 공유.
+   * 클릭 시 5초간 비활성화 + 아이콘 대신 카운트다운 숫자(5→1) 표시.
+   */
+  const FORCE_REFRESH_COOLDOWN_SEC = 5;
+  const FORCE_REFRESH_ICON_HTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg>';
+  let _forceRefreshCooldownTimer = null;
+  // 현재 쿨다운 남은 초(null=쉬는 중) — 교체 명단 버튼은 fixture 갱신마다 setPanelTitle()이 DOM을 새로 그려
+  // 쿨다운 도중 새 버튼 노드로 교체되면 idle 모양으로 보였다가 다음 tick에야 따라잡던 문제가 있어,
+  // 새로 그려진 직후 lineup-render.js가 syncForceRefreshButtons()를 호출해 즉시 현재 상태를 재적용한다.
+  let _forceRefreshSecondsLeft = null;
+
+  function updateForceRefreshButtons(secondsLeft) {
+    _forceRefreshSecondsLeft = secondsLeft;
+    document.querySelectorAll('.lp-force-refresh-btn').forEach(btn => {
+      if (secondsLeft == null) {
+        btn.disabled = false;
+        btn.classList.remove('is-cooldown');
+        btn.innerHTML = `${FORCE_REFRESH_ICON_HTML}<span class="lp-force-refresh-label">새로고침</span>`;
+        btn.title = '새로고침';
+      } else {
+        btn.disabled = true;
+        btn.classList.add('is-cooldown');
+        // "진행중" 단어는 lp-stat-refresh-btn(캠 큼)에서 CSS로 숨겨 숫자만 보이게 한다.
+        btn.innerHTML = `${FORCE_REFRESH_ICON_HTML}<span class="lp-force-refresh-label">진행중</span><span class="lp-force-refresh-count">${secondsLeft}</span>`;
+        btn.title = `새로고침 진행중 (${secondsLeft})`;
+      }
+    });
+  }
+
+  function syncForceRefreshButtons() {
+    updateForceRefreshButtons(_forceRefreshSecondsLeft);
+  }
+
+  function forceRefreshCurrentFixture() {
+    if (_forceRefreshCooldownTimer) return;
+    if (state.manualMode || !currentFixtureId) {
+      showToast('연동된 경기가 없습니다');
+      return;
+    }
+    let secondsLeft = FORCE_REFRESH_COOLDOWN_SEC;
+    updateForceRefreshButtons(secondsLeft);
+    _forceRefreshCooldownTimer = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        clearInterval(_forceRefreshCooldownTimer);
+        _forceRefreshCooldownTimer = null;
+        updateForceRefreshButtons(null);
+      } else {
+        updateForceRefreshButtons(secondsLeft);
+      }
+    }, 1000);
+    fetchAndApplyFixtureData(currentFixtureId, { silent: true })
+      .catch(err => console.error('Force refresh failed:', err));
+  }
+
+  // 교체 명단(.lp-bench-refresh-btn)은 fixture 갱신마다 setPanelTitle()이 새로 그려 DOM 노드가 교체되므로
+  // 위임 방식으로 바인딩 — 캠 큼(.lp-stat-refresh-btn)은 정적 마크업이라 상관없이 동작.
+  document.addEventListener('click', e => {
+    if (e.target.closest('.lp-force-refresh-btn')) forceRefreshCurrentFixture();
+  });
+
+  window.syncForceRefreshButtons = syncForceRefreshButtons;
+
+  window.forceRefreshCurrentFixture = forceRefreshCurrentFixture;
+

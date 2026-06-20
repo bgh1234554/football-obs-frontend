@@ -45,6 +45,15 @@
   align-items: center;
   gap: 6px;
 }
+/* top을 지정하지 않은 absolute 요소는 static position(=.dp-title의 align-items:center 결과)을 따르므로
+   "교체 명단" 텍스트와 항상 같은 세로 위치/높이로 맞춰진다 — 별도 top/height 계산 불필요. */
+.dp-title-actions-left {
+  position: absolute;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 
 /* ===== 좌우 분할 (홈|원정) — 벤치/부상 공통 ===== */
 .dp-split {
