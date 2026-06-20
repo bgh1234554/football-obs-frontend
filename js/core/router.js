@@ -11,7 +11,9 @@
   // 그대로 돌려줘 위젯이 "마지막으로 본 화면"을 계속 보여주게 한다. 탭 복귀 후엔 위젯의
   // 다음 자체 폴링이 차단 없이 통과해 자연스럽게 최신 데이터로 갱신됨 — 수동 새로고침 불필요.
   const _WIDGET_API_HOST = 'obs-scoreline-overlay.b-cdn.net';
+  const WIDGET_STALE_RELOAD_MS = 5 * 60 * 1000; // 이 시간 이상 차단됐다가 돌아오면 위젯이 내부적으로 망가져있을 수 있어 새로고침
   let _widgetBlocked = false;
+  let _widgetBlockedAt = 0; // 차단 시작 시각(ms) — 일정확인 탭 복귀 시 얼마나 오래 비웠는지 판단용
   const _widgetLastGoodResponse = new Map(); // url -> 마지막 정상 응답 body(text)
 
   (function () {
@@ -167,10 +169,19 @@
     const nextPage = PAGE_TO_ROUTE[page] ? page : 'main-big';
     const { syncRoute = true, historyMode = 'push' } = options;
     if (nextPage === 'schedule') {
+      // 5분 넘게 차단돼있다가 돌아온 거면, 위젯이 그 사이 내부적으로 맛이 가있을 수 있어
+      // fetch 트릭 대신 그냥 새로고침으로 깔끔하게 재초기화한다. 새로고침 전에 URL을
+      // /schedule로 먼저 동기화해둬야 새로고침 후에도 같은 탭으로 돌아온다.
+      if (_widgetBlocked && _widgetBlockedAt && (Date.now() - _widgetBlockedAt) > WIDGET_STALE_RELOAD_MS) {
+        if (syncRoute) syncRouteForPage(nextPage, historyMode);
+        window.location.reload();
+        return;
+      }
       _widgetBlocked = false;
       _scheduleWidgetMount();
     } else {
       _widgetBlocked = true;
+      _widgetBlockedAt = Date.now();
     }
     tabButtons.forEach(b=>b.classList.toggle('active', b.dataset.page===nextPage));
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
