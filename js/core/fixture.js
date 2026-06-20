@@ -509,13 +509,14 @@
     //   - ok 상태      : 호출하되 noOverlay — 'ok' 텍스트는 그대로 유지되고 타임스탬프만 갱신
     //   - 에러         : console.error만, 배지는 직전 'ok' 상태 유지
     const silent = options && options.silent === true;
+    const cacheMode = options && options.cache;
     const overlayOpts = silent ? { noOverlay: true } : undefined;
     const requestId = normalizedFixtureId;
     _lastFetchId = requestId;
     if (!silent) setApiStatus('loading');
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
-      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000 });
+      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
       if(_lastFetchId !== requestId) return null;
       if(!data){
         resetFixtureDrivenState({
@@ -1069,7 +1070,7 @@
         updateForceRefreshButtons(secondsLeft);
       }
     }, 1000);
-    fetchAndApplyFixtureData(currentFixtureId, { silent: true })
+    fetchAndApplyFixtureData(currentFixtureId, { silent: true, cache: 'reload' })
       .catch(err => console.error('Force refresh failed:', err));
   }
 
