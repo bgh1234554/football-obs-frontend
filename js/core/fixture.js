@@ -244,8 +244,13 @@
     }
   }
 
-  // 마지막으로 요청된 경기 ID — 이전 요청의 응답이 늦게 도착해도 state를 덮어쓰지 않도록 비교에 사용
+  // 마지막으로 요청된 경기 ID — 폴링 재개 가드(wakeAndFetch 등) 비교에 사용. fixtureId 문자열 그대로 저장.
   let _lastFetchId = null;
+
+  // fetchAndApplyFixtureData 호출마다 증가하는 시퀀스 번호 — in-flight 응답 폐기 가드용.
+  // 같은 fixtureId로 겹쳐 호출되면(강제 새로고침 + 폴링 등) _lastFetchId만으로는 둘을 구분 못해
+  // 늦게 도착한 이전 요청의 응답이 더 최신 요청의 결과를 덮어쓸 수 있었음.
+  let _fetchSeq = 0;
 
   // 마지막 fixture 응답 보관 — scorer 토글 변경 시 events에서 notes 재구성용
   let _lastFixtureData = null;
@@ -299,11 +304,11 @@
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
-  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 30초 간격으로 호출
+  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
-  //   - FT + 3분 경과 / 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO): 호출 중단
-  //   - kickoffUtc 없는 NS: 안전하게 1분 간격으로 재호출 (fallback)
-  const POLL_INTERVAL_MS    = 30 * 1000;
+  //   - FT + 3분 경과 or 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO): 호출 중단
+  //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
+  const POLL_INTERVAL_MS    = 15 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
   // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
@@ -331,7 +336,7 @@
    * 2) 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO) — 폴링 중단.
    * 3) NS + kickoffUtc 알면 — 킥오프 30초 전까지 대기 후 wakeAndFetch.
    * 4) FT-like — 1분 간격.
-   * 5) LIVE/NS — 30초 간격.
+   * 5) LIVE/NS — 15초 간격.
    * 6) 그 외 미지의 status — 안전하게 폴링 안 함.
    *
    * wakeAndFetch는 fetchAndApplyFixtureData를 silent=true로 호출하고,
@@ -483,7 +488,7 @@
    * 처리 단계:
    * 1) 입력 정규화 — 빈 ID면 reset 후 종료. 수동 모드면 적용 건너뜀.
    * 2) silent 옵션 분기 — 폴링용 갱신은 로딩 오버레이/배지 안 띄움.
-   * 3) fetchFixture로 데이터 조회. _lastFetchId 비교로 stale 응답 폐기.
+   * 3) fetchFixture로 데이터 조회. _fetchSeq 비교로 stale 응답 폐기(같은 fixtureId로 겹쳐 호출돼도 구분됨).
    * 4) fixture 전환 감지 — 이전 ID와 다르면 팀컬러 override / PK / flash 스냅샷 리셋.
    *    같은 ID면 사용자가 켠 타이머를 보존하는 preserveRunningOnRefresh 플래그 set.
    * 5) applyFixtureToState로 state 매핑 + maybeTriggerFixtureFlash로 변경 부위 깜빡임.
@@ -509,14 +514,19 @@
     //   - ok 상태      : 호출하되 noOverlay — 'ok' 텍스트는 그대로 유지되고 타임스탬프만 갱신
     //   - 에러         : console.error만, 배지는 직전 'ok' 상태 유지
     const silent = options && options.silent === true;
+    const cacheMode = options && options.cache;
     const overlayOpts = silent ? { noOverlay: true } : undefined;
-    const requestId = normalizedFixtureId;
-    _lastFetchId = requestId;
+    _fetchSeq += 1;
+    const requestSeq = _fetchSeq;
+    _lastFetchId = normalizedFixtureId;
     if (!silent) setApiStatus('loading');
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
-      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000 });
-      if(_lastFetchId !== requestId) return null;
+      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
+      // requestSeq 비교: 같은 fixtureId로 겹쳐 호출돼도(강제 새로고침 도중 폴링 등) 더 나중에
+      // 시작된 호출이 있으면 이 응답은 폐기 — _lastFetchId(fixtureId 문자열) 비교로는 같은
+      // fixtureId끼리 겹친 요청을 구분할 수 없었음.
+      if (requestSeq !== _fetchSeq) return null;
       if(!data){
         resetFixtureDrivenState({
           clearFixtureId: true,
@@ -1015,4 +1025,71 @@
     const fixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
     return fixtureId || null;
   }
+
+  /**
+   * 강제 새로고침 — 탭 비활성화로 setTimeout 폴링 체인이 지연될 때, 사용자가 즉시 1회 재조회.
+   * 캠 큼(.lp-stat-refresh-btn)/캠 작음(.lp-bench-refresh-btn) 두 버튼이 같은 쿨다운을 공유.
+   * 클릭 시 5초간 비활성화 + 아이콘 대신 카운트다운 숫자(5→1) 표시.
+   */
+  const FORCE_REFRESH_COOLDOWN_SEC = 5;
+  const FORCE_REFRESH_ICON_HTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg>';
+  let _forceRefreshCooldownTimer = null;
+  // 현재 쿨다운 남은 초(null=쉬는 중) — 교체 명단 버튼은 fixture 갱신마다 setPanelTitle()이 DOM을 새로 그려
+  // 쿨다운 도중 새 버튼 노드로 교체되면 idle 모양으로 보였다가 다음 tick에야 따라잡던 문제가 있어,
+  // 새로 그려진 직후 lineup-render.js가 syncForceRefreshButtons()를 호출해 즉시 현재 상태를 재적용한다.
+  let _forceRefreshSecondsLeft = null;
+
+  function updateForceRefreshButtons(secondsLeft) {
+    _forceRefreshSecondsLeft = secondsLeft;
+    document.querySelectorAll('.lp-force-refresh-btn').forEach(btn => {
+      if (secondsLeft == null) {
+        btn.disabled = false;
+        btn.classList.remove('is-cooldown');
+        btn.innerHTML = `${FORCE_REFRESH_ICON_HTML}<span class="lp-force-refresh-label">새로고침</span>`;
+        btn.title = '새로고침';
+      } else {
+        btn.disabled = true;
+        btn.classList.add('is-cooldown');
+        // "진행중" 단어는 lp-stat-refresh-btn(캠 큼)에서 CSS로 숨겨 숫자만 보이게 한다.
+        btn.innerHTML = `${FORCE_REFRESH_ICON_HTML}<span class="lp-force-refresh-label">진행중</span><span class="lp-force-refresh-count">${secondsLeft}</span>`;
+        btn.title = `새로고침 진행중 (${secondsLeft})`;
+      }
+    });
+  }
+
+  function syncForceRefreshButtons() {
+    updateForceRefreshButtons(_forceRefreshSecondsLeft);
+  }
+
+  function forceRefreshCurrentFixture() {
+    if (_forceRefreshCooldownTimer) return;
+    if (state.manualMode || !currentFixtureId) {
+      showToast('연동된 경기가 없습니다');
+      return;
+    }
+    let secondsLeft = FORCE_REFRESH_COOLDOWN_SEC;
+    updateForceRefreshButtons(secondsLeft);
+    _forceRefreshCooldownTimer = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        clearInterval(_forceRefreshCooldownTimer);
+        _forceRefreshCooldownTimer = null;
+        updateForceRefreshButtons(null);
+      } else {
+        updateForceRefreshButtons(secondsLeft);
+      }
+    }, 1000);
+    fetchAndApplyFixtureData(currentFixtureId, { silent: true, cache: 'reload' })
+      .catch(err => console.error('Force refresh failed:', err));
+  }
+
+  // 교체 명단(.lp-bench-refresh-btn)은 fixture 갱신마다 setPanelTitle()이 새로 그려 DOM 노드가 교체되므로
+  // 위임 방식으로 바인딩 — 캠 큼(.lp-stat-refresh-btn)은 정적 마크업이라 상관없이 동작.
+  document.addEventListener('click', e => {
+    if (e.target.closest('.lp-force-refresh-btn')) forceRefreshCurrentFixture();
+  });
+
+  window.syncForceRefreshButtons = syncForceRefreshButtons;
+
+  window.forceRefreshCurrentFixture = forceRefreshCurrentFixture;
 

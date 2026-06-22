@@ -569,8 +569,8 @@
           <div class="sp-section-title">데이터/초기화</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">이벤트 선수 ID 자동 매칭</span>
-              <span class="sp-label-sub">이벤트의 선수 ID가 라인업과 안 맞을 때, 같은 팀에 동명이인이 없으면 이름으로 자동 연결합니다. (ON 권장)</span>
+              <span class="sp-label-main">이벤트 선수 ID 자동 매칭 (ON 권장)</span>
+              <span class="sp-label-sub">이벤트의 선수 ID가 라인업과 안 맞을 때, 같은 팀에 동명이인이 없으면 이름으로 자동 연결합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -579,8 +579,49 @@
             </div>
           </div>
           <div class="sp-danger-actions">
-            <button type="button" class="sp-danger-btn" id="settingsResetBtn">설정 초기화</button>
-            <button type="button" class="sp-danger-btn" id="cacheResetBtn">캐시 초기화</button>
+            <div class="sp-row">
+              <div class="sp-row-label">
+                <span class="sp-label-main">설정 초기화</span>
+                <span class="sp-label-sub">이름/라인업/패널·스탯/배경·OBS/관리 탭의 모든 토글·슬라이더 설정을 기본값으로 되돌립니다. 경기 데이터, 수동 입력, 선수 ID·닉네임 연결은 건드리지 않습니다.</span>
+              </div>
+              <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="settingsResetBtn">초기화</button>
+            </div>
+            <div class="sp-row">
+              <div class="sp-row-label">
+                <span class="sp-label-main">캐시 초기화</span>
+                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다. 포메이션/라인업/벤치/부상자/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
+              </div>
+              <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="cacheResetBtn">초기화</button>
+            </div>
+            <div class="sp-row sp-row-manual-reset">
+              <div class="sp-row-label">
+                <span class="sp-label-main">현재 경기 수동 입력 초기화</span>
+                <span class="sp-label-sub">켜둔 항목만 지우고 API 원본 데이터로 되돌립니다. 다른 경기 데이터나 선수 ID·닉네임 연결은 그대로 유지됩니다.</span>
+                <div class="sp-manual-reset-toggles">
+                  <label class="sp-mini-toggle-item" title="포메이션 + 그리드/풀폼 라인업">
+                    <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetLineup" checked/><span class="sp-switch-slider"></span></span>
+                    <span class="sp-mini-toggle-label">포메이션/라인업</span>
+                  </label>
+                  <label class="sp-mini-toggle-item" title="교체 명단(벤치)">
+                    <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetBench" checked/><span class="sp-switch-slider"></span></span>
+                    <span class="sp-mini-toggle-label">벤치</span>
+                  </label>
+                  <label class="sp-mini-toggle-item" title="부상/결장 명단">
+                    <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetInjuries" checked/><span class="sp-switch-slider"></span></span>
+                    <span class="sp-mini-toggle-label">부상자</span>
+                  </label>
+                  <label class="sp-mini-toggle-item" title="홈/원정 감독 이름">
+                    <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetCoach" checked/><span class="sp-switch-slider"></span></span>
+                    <span class="sp-mini-toggle-label">감독</span>
+                  </label>
+                  <label class="sp-mini-toggle-item" title="주심 이름 (양 팀 공통)">
+                    <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetReferee" checked/><span class="sp-switch-slider"></span></span>
+                    <span class="sp-mini-toggle-label">주심</span>
+                  </label>
+                </div>
+              </div>
+              <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="currentFixtureManualResetBtn">초기화</button>
+            </div>
           </div>
         </div>
 
@@ -618,6 +659,7 @@
           <div class="lp lp-stat">
             <button class="lp-stat-cycle-btn" style="display:none"></button>
             <button class="lp-stat-pause-btn" style="display:none"></button>
+            <button class="lp-force-refresh-btn lp-stat-refresh-btn" type="button" title="새로고침"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg><span class="lp-force-refresh-label">새로고침</span></button>
             <div data-stat-panel></div>
             <div data-hth-panel style="display:none"></div>
             <div data-events-panel style="display:none"></div>
@@ -651,7 +693,7 @@
 
         <!-- 교체 명단 / 부상 정보 -->
         <div class="lp-col lp-col-bench">
-          <!-- 교체 명단 -->
+          <!-- 교체 명단 — 새로고침 버튼은 lineup-render.js의 setPanelTitle(leftActionsHtml)이 동적으로 .dp-title 안에 삽입 -->
           <div class="lp lp-bench">
             <div class="dp-panel" id="benchPanel">
               <div class="dp-title">교체 명단</div>

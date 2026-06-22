@@ -220,6 +220,54 @@ function getManualEntry(fixtureId) {
   return readManualStore()[fixtureId] || null;
 }
 
+/**
+ * fixtureId 하나의 수동 입력 중, options에서 true로 켠 항목만 선택적으로 삭제.
+ * options: { lineup, bench, injuries, coachName, referee } (boolean, 기본 전부 false).
+ *   - lineup/bench/injuries/coachName: home/away 양쪽에서 함께 지움
+ *     (lineup엔 포메이션+그리드/풀폼 라인업이 같이 들어있어 따로 못 나눔).
+ *   - referee: entry 최상단 refereeName (양 팀 공통이라 side 구분 없음).
+ * 다른 fixture의 저장값이나 선수 ID/닉네임 연결(player-id-resolve.js, 별도 storage key)은
+ * 건드리지 않음 — "캐시 초기화"가 API 응답 캐시만 지우고 이 store는 그대로 두는 것과
+ * 반대로, 이 함수는 이 store의 해당 fixture 항목 중 선택한 필드만 지운다.
+ * 실제로 뭔가 지워졌으면 true, 지울 게 없었으면 false.
+ */
+function clearManualEntryFields(fixtureId, options = {}) {
+  if (!fixtureId) return false;
+  const store = readManualStore();
+  const current = store[fixtureId];
+  if (!current || typeof current !== 'object') return false;
+
+  const next = {
+    ...current,
+    home: { ...(current.home || {}) },
+    away: { ...(current.away || {}) },
+  };
+  let changed = false;
+
+  ['home', 'away'].forEach(side => {
+    ['lineup', 'bench', 'injuries', 'coachName'].forEach(field => {
+      if (options[field] && next[side][field] !== undefined) {
+        delete next[side][field];
+        changed = true;
+      }
+    });
+  });
+  if (options.referee && next.refereeName !== undefined) {
+    delete next.refereeName;
+    changed = true;
+  }
+
+  if (!changed) return false;
+
+  if (isManualEntryEmpty(next)) {
+    delete store[fixtureId];
+  } else {
+    store[fixtureId] = { ...next, savedAt: Date.now(), expiresAt: Date.now() + DETAIL_MANUAL_TTL_MS };
+  }
+  writeManualStore(store);
+  return true;
+}
+
 /** fixtureId+side의 수동 데이터 부분만 반환. 모달 진입 시 기존 값 미리 채우는 용도. */
 function getManualSideData(fixtureId, side) {
   return getManualEntry(fixtureId)?.[side] || null;
@@ -251,7 +299,12 @@ function updateManualEntry(fixtureId, side, updater) {
   const sanitizedSide = sanitizeManualSideData(updated);
 
   if (sanitizedSide) draft[side] = sanitizedSide;
-  else delete draft[side];
+  // delete draft[side] 대신 undefined 대입: 아래 `{ ...current, ...draft }` 병합에서
+  // draft에 side 키 자체가 없으면 spread가 current의 옛 값을 그대로 통과시켜버려서
+  // (스프레드는 source에 없는 키를 지우지 못함) "삭제"가 반영되지 않는 버그가 있었음.
+  // undefined를 명시적으로 대입해야 병합 시 실제로 덮어써서 지워지고,
+  // JSON.stringify는 undefined 값 키를 자동으로 빼므로 저장되는 모양도 깨끗하게 유지된다.
+  else draft[side] = undefined;
 
   // refereeName 등 top-level 필드는 draft에 없으므로, current와 합친 결과로 비어있는지 판단해야
   // home/away만 비워도 기존 refereeName이 남아있는 entry를 통째로 지우는 사고를 막는다.

@@ -162,37 +162,23 @@
 
 /* ----- iOS 스타일 토글 스위치 ----- */
 .sp-danger-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
   margin-top: 10px;
 }
 
-.sp-danger-btn {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid #c62828;
-  border-radius: 10px;
-  background: #d32f2f;
+.sp-row-manual-reset {
+  align-items: flex-start;
+}
+
+/* 다른 sp-row 우측 컨트롤(sp-secondary-btn)과 같은 디자인이지만, 파괴적인 동작이라
+   살짝 위험색으로 구분 — 기존의 길쭉한 .sp-danger-btn 대신 행 우측에 작게 배치. */
+.sp-secondary-btn-danger {
+  border-color: rgba(211,47,47,.55);
+  color: #ff8a80;
+}
+.sp-secondary-btn-danger:hover {
+  background: rgba(211,47,47,.18);
+  border-color: #e53935;
   color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: background .15s, transform .15s, box-shadow .15s;
-}
-
-.sp-danger-btn:hover {
-  background: #e53935;
-  box-shadow: 0 6px 18px rgba(211,47,47,.28);
-}
-
-.sp-danger-btn:active {
-  transform: translateY(1px);
-}
-
-.sp-danger-btn:focus-visible {
-  outline: 2px solid rgba(255,255,255,.55);
-  outline-offset: 2px;
 }
 
 .sp-switch {
@@ -236,6 +222,40 @@
 }
 .sp-switch input:focus-visible + .sp-switch-slider {
   box-shadow: 0 0 0 2px rgba(76,217,100,.4);
+}
+
+/* ----- "현재 경기 수동 입력 초기화" 항목 선택용 작은 토글 5개 한 줄 ----- */
+.sp-manual-reset-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+.sp-mini-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.sp-mini-toggle-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.7);
+  white-space: nowrap;
+}
+.sp-switch.sp-switch-mini {
+  width: 30px;
+  height: 18px;
+}
+.sp-switch.sp-switch-mini .sp-switch-slider::before {
+  width: 13px;
+  height: 13px;
+  left: 2.5px;
+  top: 2.5px;
+}
+.sp-switch.sp-switch-mini input:checked + .sp-switch-slider::before {
+  transform: translateX(12px);
 }
 
 /* ----- 토글 양옆 short/long 텍스트 라벨 ----- */

@@ -151,7 +151,9 @@
         // 타임아웃 타이머 시작
         timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-        res = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+        // cache: 'reload'면 브라우저 캐시 읽기를 무시하고 서버에서 새로 받아오되, 받아온 응답은 캐시에 저장됨
+        // (강제 새로고침 전용 — 일반 폴링/수동 로드는 옵션 없이 기본 캐시 동작 유지)
+        res = await fetch(`${API_BASE}${path}`, { signal: controller.signal, cache: options.cache });
 
         // fetch 성공 시 타이머 즉시 정리
         clearTimeout(timeoutId);

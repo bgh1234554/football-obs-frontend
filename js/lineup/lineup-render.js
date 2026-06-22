@@ -165,11 +165,23 @@ function lpBuildNodeRatingHtml(playerId) {
   return `<span class="dp-node-rating" style="background:${color}">${rating.toFixed(1)}</span>`;
 }
 
-/** 패널 상단 타이틀 텍스트 + 옆 버튼(입력 버튼 등) 갱신. */
-function setPanelTitle(panel, titleText, actionsHtml = '') {
+/** 패널 상단 타이틀 텍스트 + 좌/우 버튼(새로고침, 입력 버튼 등) 갱신.
+ * left/actionsHtml 모두 .dp-title의 flex 정렬(align-items:center)에 기대 별도 top 계산 없이 타이틀 텍스트와 동일한
+ * 높이/세로 위치를 자동으로 맞춘다 — top을 지정하지 않은 absolute 요소는 static position(=flex 정렬 결과)을 따른다. */
+function setPanelTitle(panel, titleText, actionsHtml = '', leftActionsHtml = '') {
   const titleEl = panel?.querySelector('.dp-title');
   if (!titleEl) return;
-  titleEl.innerHTML = `<span class="dp-title-text">${dpEscape(titleText)}</span>${actionsHtml ? `<span class="dp-title-actions">${actionsHtml}</span>` : ''}`;
+  titleEl.innerHTML = `${leftActionsHtml ? `<span class="dp-title-actions-left">${leftActionsHtml}</span>` : ''}<span class="dp-title-text">${dpEscape(titleText)}</span>${actionsHtml ? `<span class="dp-title-actions">${actionsHtml}</span>` : ''}`;
+  // leftActionsHtml(새로고침 버튼)이 새 DOM 노드로 교체됐으므로, 쿨다운 진행 중이었다면 idle 모양으로
+  // 잠깐 보였다가 다음 tick에야 따라잡는 깜빡임을 막기 위해 현재 쿨다운 상태를 즉시 재적용한다.
+  if (leftActionsHtml) window.syncForceRefreshButtons?.();
+}
+
+/** 교체 명단(캠 작음) 타이틀 좌측 강제 새로고침 버튼 HTML — 쿨다운/아이콘 갱신은 fixture.js가 담당. */
+function buildBenchForceRefreshButtonHtml() {
+  return '<button class="lp-force-refresh-btn lp-bench-refresh-btn" type="button" title="새로고침">'
+    + '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg>'
+    + '<span class="lp-force-refresh-label">새로고침</span></button>';
 }
 
 /** 패널에 .dp-title/.dp-lineup-body가 없으면 만들어 붙이고, 본문 엘리먼트를 반환. */
@@ -678,7 +690,7 @@ function renderBenchPanel(effectiveData, rawData) {
   setPanelTitle(panel, '교체 명단', [
     shouldShowBenchManualButton(rawData, 'home') ? buildTitleActionButton('bench', 'home') : '',
     shouldShowBenchManualButton(rawData, 'away') ? buildTitleActionButton('bench', 'away') : '',
-  ].filter(Boolean).join(''));
+  ].filter(Boolean).join(''), buildBenchForceRefreshButtonHtml());
 
   // 2) 팀명과 양쪽 리스트를 채운다 (팀 컬러는 chip 배경 accent에 사용).
   const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
@@ -1071,7 +1083,7 @@ function clearLineupPanels() {
 
   const benchPanel = document.getElementById('benchPanel');
   if (benchPanel) {
-    setPanelTitle(benchPanel, '교체 명단');
+    setPanelTitle(benchPanel, '교체 명단', '', buildBenchForceRefreshButtonHtml());
     benchPanel.classList.remove('dp-mode-long');
     benchPanel.querySelectorAll('.dp-list').forEach(list => { list.innerHTML = ''; });
     benchPanel.querySelectorAll('.dp-side-name').forEach(el => { el.textContent = 'TEAM'; });

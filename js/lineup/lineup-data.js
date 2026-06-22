@@ -219,16 +219,58 @@ function inferBasePos(label) {
 }
 
 /**
- * 포메이션 슬롯을 grid 순서(x → y 오름차순)로 정렬해서 반환.
+ * 포메이션 문자열(예: "3-5-2")을 GK(1) + 숫자 그대로의 라인 인원수로 해석.
+ * API-Football의 grid "line" 번호는 TACTICS_FM의 x좌표가 아니라 이 포메이션 숫자
+ * 그대로를 따른다(예: "3-5-2"는 윙백 포함 5명이 항상 같은 line:3으로 내려옴 — 실제
+ * fixture 데이터로 확인됨). 합이 좌표 개수와 안 맞으면(커스텀/손상 포메이션) null.
+ */
+function getFormationLineSizes(formation, coordsLength) {
+  const digits = String(formation || '').split('-').map(Number);
+  if (!digits.length || digits.some(n => !Number.isFinite(n) || n <= 0)) return null;
+  const sizes = [1, ...digits];
+  return sizes.reduce((sum, n) => sum + n, 0) === coordsLength ? sizes : null;
+}
+
+/**
+ * 포메이션의 11개 슬롯을 "라인" 단위로 그룹핑해서 반환 (순서: GK → 최전방).
+ * 라인 경계는 포메이션 숫자(getFormationLineSizes) 기준으로 원본 배열을 순서대로 끊어서
+ * 정한다 — TACTICS_FM의 x(깊이) 값 자체는 더 이상 그룹 경계로 쓰지 않는다. 그래야 같은
+ * 라인 안에서 특정 선수(예: 윙백)만 깊이를 다르게 그리고 싶을 때 x를 조정해도, API가 실제로
+ * 보내는 grid 라인 묶음과 어긋나 선수가 엉뚱한 슬롯에 배치되는 사고가 안 난다.
+ * 포메이션 숫자 파싱이 안 되는 커스텀/손상 케이스만 x값 동일 여부로 그룹핑(과거 동작 폴백).
+ * 각 그룹 내부는 y(좌우) 오름차순으로 정렬.
+ */
+function getFormationLineGroups(formation) {
+  const coords = getTacticsFormationMap()[formation] || [];
+  const slots = coords.map((coord, originalIndex) => ({ coord: { ...coord }, originalIndex }));
+  if (!slots.length) return [];
+
+  const lineSizes = getFormationLineSizes(formation, slots.length);
+  let groups;
+  if (lineSizes) {
+    groups = [];
+    let cursor = 0;
+    lineSizes.forEach(size => {
+      groups.push(slots.slice(cursor, cursor + size));
+      cursor += size;
+    });
+  } else {
+    const byX = new Map();
+    slots.forEach(slot => {
+      if (!byX.has(slot.coord.x)) byX.set(slot.coord.x, []);
+      byX.get(slot.coord.x).push(slot);
+    });
+    groups = [...byX.entries()].sort((a, b) => a[0] - b[0]).map(([, group]) => group);
+  }
+  return groups.map(group => group.slice().sort((a, b) => a.coord.y - b.coord.y));
+}
+
+/**
+ * 포메이션 슬롯을 grid 순서(라인 → y 오름차순)로 정렬해서 반환.
  * 각 슬롯은 { coord, originalIndex } — originalIndex로 라벨/좌표 매핑 보존.
  */
 function getFormationSlotsByGridOrder(formation) {
-  return (getTacticsFormationMap()[formation] || [])
-    .map((coord, originalIndex) => ({ coord: { ...coord }, originalIndex }))
-    .sort((left, right) => {
-      if (left.coord.x !== right.coord.x) return left.coord.x - right.coord.x;
-      return left.coord.y - right.coord.y;
-    });
+  return getFormationLineGroups(formation).flat();
 }
 
 /**
@@ -263,21 +305,28 @@ function canRenderPitchMode(lineup) {
   return getFormationAssignments(lineup).length > 0;
 }
 
-/** 그리드 모드 모달 초기값용 — 포메이션의 슬롯 11개를 "line:row" grid 문자열 배열로 변환. */
+/**
+ * 그리드 모드 모달 초기값용 — 포메이션의 슬롯 11개를 "line:row" grid 문자열 배열로 변환.
+ * (originalIndex 순서, 즉 TACTICS_FM 배열 순서 그대로 — slotPlayerIds와 같은 인덱싱.)
+ * getFormationLineGroups와 같은 라인 그룹핑을 써야, 여기서 만든 "line:row" 값이
+ * getOrderedLineupPlayers/getFormationAssignments가 실제 API grid를 해석할 때 쓰는
+ * 라인 번호와 어긋나지 않는다.
+ */
 function buildManualGridValues(formation) {
-  const slots = getFormationSlotsByGridOrder(formation);
-  if (!slots.length) return Array.from({ length: 11 }, (_, index) => index === 0 ? '1:1' : null);
+  const groups = getFormationLineGroups(formation);
+  if (!groups.length) return Array.from({ length: 11 }, (_, index) => index === 0 ? '1:1' : null);
 
-  const uniqueLines = [...new Set(slots.map(slot => slot.coord.x))].sort((a, b) => a - b);
-  return slots.map(slot => {
-    const lineIndex = uniqueLines.indexOf(slot.coord.x) + 1;
-    const rowSlots = slots.filter(candidate => candidate.coord.x === slot.coord.x);
-    // grid 값의 col은 API-Football 관례와 동일하게 "오른쪽 -> 왼쪽" 순서로 저장한다.
-    // getOrderedLineupPlayers()가 같은 line 안에서 col 내림차순으로 정렬하기 때문에,
-    // 여기서도 RB/RW가 더 큰 col을 갖도록 맞춰야 저장 후 재로딩 시 좌우가 뒤집히지 않는다.
-    const rowIndex = rowSlots.length - rowSlots.findIndex(candidate => candidate.originalIndex === slot.originalIndex);
-    return `${lineIndex}:${rowIndex}`;
+  const gridBySlotIndex = [];
+  groups.forEach((group, lineZeroBased) => {
+    const lineIndex = lineZeroBased + 1;
+    group.forEach((slot, rowFromLeft) => {
+      // grid 값의 col은 API-Football 관례와 동일하게 "오른쪽 -> 왼쪽" 순서로 저장한다.
+      // getOrderedLineupPlayers()가 같은 line 안에서 col 내림차순으로 정렬하기 때문에,
+      // 여기서도 RB/RW가 더 큰 col을 갖도록 맞춰야 저장 후 재로딩 시 좌우가 뒤집히지 않는다.
+      gridBySlotIndex[slot.originalIndex] = `${lineIndex}:${group.length - rowFromLeft}`;
+    });
   });
+  return gridBySlotIndex;
 }
 
 /** form input value trim. null/undefined는 빈 문자열. */
