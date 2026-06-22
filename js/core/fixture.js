@@ -299,11 +299,11 @@
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
-  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 30초 간격으로 호출
+  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
-  //   - FT + 3분 경과 / 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO): 호출 중단
-  //   - kickoffUtc 없는 NS: 안전하게 1분 간격으로 재호출 (fallback)
-  const POLL_INTERVAL_MS    = 30 * 1000;
+  //   - FT + 3분 경과 or 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO): 호출 중단
+  //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
+  const POLL_INTERVAL_MS    = 15 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
   // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
@@ -331,7 +331,7 @@
    * 2) 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO) — 폴링 중단.
    * 3) NS + kickoffUtc 알면 — 킥오프 30초 전까지 대기 후 wakeAndFetch.
    * 4) FT-like — 1분 간격.
-   * 5) LIVE/NS — 30초 간격.
+   * 5) LIVE/NS — 15초 간격.
    * 6) 그 외 미지의 status — 안전하게 폴링 안 함.
    *
    * wakeAndFetch는 fetchAndApplyFixtureData를 silent=true로 호출하고,

@@ -299,7 +299,12 @@ function updateManualEntry(fixtureId, side, updater) {
   const sanitizedSide = sanitizeManualSideData(updated);
 
   if (sanitizedSide) draft[side] = sanitizedSide;
-  else delete draft[side];
+  // delete draft[side] 대신 undefined 대입: 아래 `{ ...current, ...draft }` 병합에서
+  // draft에 side 키 자체가 없으면 spread가 current의 옛 값을 그대로 통과시켜버려서
+  // (스프레드는 source에 없는 키를 지우지 못함) "삭제"가 반영되지 않는 버그가 있었음.
+  // undefined를 명시적으로 대입해야 병합 시 실제로 덮어써서 지워지고,
+  // JSON.stringify는 undefined 값 키를 자동으로 빼므로 저장되는 모양도 깨끗하게 유지된다.
+  else draft[side] = undefined;
 
   // refereeName 등 top-level 필드는 draft에 없으므로, current와 합친 결과로 비어있는지 판단해야
   // home/away만 비워도 기존 refereeName이 남아있는 entry를 통째로 지우는 사고를 막는다.

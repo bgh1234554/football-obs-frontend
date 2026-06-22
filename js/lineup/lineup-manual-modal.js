@@ -132,6 +132,44 @@ function initGridState(side) {
   lineupPanelState.gridState = { side, formation, slotPlayerIds, players: playersById };
 }
 
+/**
+ * 그리드 모드에서 포메이션 select를 바꿀 때 호출 — initGridState의 2)/3) 단계(API grid 매칭 +
+ * 빈 슬롯 순서대로 채우기)를 그대로 재사용해, 매번 lineupPanelState.lastFixture의 원본 API
+ * startXi 기준으로 새로 계산한다. 직전 슬롯 순서(드래그로 바뀌었을 수 있음)는 베이스로 쓰지 않는다.
+ *
+ * 예전엔 포메이션을 바꿔도 슬롯 라벨만 갱신하고 선수 순서는 그대로 유지했는데, 그 결과
+ * 포메이션을 여러 번 바꿨다가 원래 포메이션으로 되돌려도 (예: 4-2-3-1 → 4-4-2 → 4-2-3-1)
+ * 원래 라이트백이었던 선수가 수비형 미드필더 슬롯에 남아있는 등 위치가 꼬인 채 복구되지 않았다.
+ * initGridState는 건드리지 않는다 — 모달 최초 오픈 / "초기화" 버튼(deleteManualKind) 흐름은
+ * 그대로 유지하고, 이 함수는 select change 핸들러에서만 쓴다.
+ */
+function recomputeGridSlotsForFormation(side, formation) {
+  const apiStartXi = lineupPanelState.lastFixture?.[`${side}Lineup`]?.startXi || [];
+  const players = clonePlayers(apiStartXi);
+  const gridValues = buildManualGridValues(formation);
+  const slotsCount = gridValues.length || 11;
+  const slotPlayerIds = new Array(slotsCount).fill(null);
+
+  // 1) API 응답의 원본 grid 값과 일치하는 자리에 우선 배치
+  players.forEach((p, i) => {
+    if (!p.grid) return;
+    const idx = gridValues.indexOf(p.grid);
+    const pidStr = buildLineupRosterKey(p, i);
+    if (idx >= 0 && !slotPlayerIds[idx]) slotPlayerIds[idx] = pidStr;
+  });
+
+  // 2) 매핑 안 된 선수는 빈 슬롯에 API 순서대로 삽입
+  let cursor = 0;
+  players.forEach((p, i) => {
+    const pidStr = buildLineupRosterKey(p, i);
+    if (slotPlayerIds.includes(pidStr)) return;
+    while (cursor < slotsCount && slotPlayerIds[cursor]) cursor += 1;
+    if (cursor < slotsCount) slotPlayerIds[cursor] = pidStr;
+  });
+
+  return slotPlayerIds;
+}
+
 /** 그리드 모달 한 슬롯 행 HTML — 드래그 핸들 + 슬롯 라벨 + 선수 사진/번호/이름(없으면 "빈 슬롯"). */
 function buildGridRowHtml(pidStr, slotIndex) {
   const { formation, players } = lineupPanelState.gridState;
@@ -657,8 +695,11 @@ document.addEventListener('change', event => {
     syncManualLineupSlotLabels(event.target.value);
   }
   if (event.target?.id === 'manualGridFormation' && lineupPanelState.gridState) {
-    // 그리드 모드 포메이션 변경: 슬롯 라벨만 갱신, 선수 순서는 그대로 유지
+    // 그리드 모드 포메이션 변경: 라벨뿐 아니라 선수 배치도 원본 API grid 기준으로 다시 계산
+    // (포메이션을 여러 번 바꿔도 원래 포메이션으로 돌아오면 원래 배치가 그대로 복구됨)
+    const { side } = lineupPanelState.gridState;
     lineupPanelState.gridState.formation = event.target.value;
+    lineupPanelState.gridState.slotPlayerIds = recomputeGridSlotsForFormation(side, event.target.value);
     rerenderGridList();
   }
 });
