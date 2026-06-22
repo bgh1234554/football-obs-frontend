@@ -180,8 +180,10 @@
       _widgetBlocked = false;
       _scheduleWidgetMount();
     } else {
+      // 이미 차단 상태면 타임스탬프를 건드리지 않는다 — 비-일정 탭 사이를 여러 번 옮겨다녀도
+      // "차단이 시작된 시각"이 매번 갱신되면 5분 경과 판정이 절대 누적되지 않는 문제가 있었음.
+      if (!_widgetBlocked) _widgetBlockedAt = Date.now();
       _widgetBlocked = true;
-      _widgetBlockedAt = Date.now();
     }
     tabButtons.forEach(b=>b.classList.toggle('active', b.dataset.page===nextPage));
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));

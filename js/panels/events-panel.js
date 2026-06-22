@@ -764,6 +764,9 @@ function evIconHtml(iconKey) {
 // API가 이런 경계를 별도 이벤트로 안 주기 때문에 matchInfo.status/elapsed 전이로
 // 추론해서 합성한 "가짜 이벤트"를 실제 이벤트 사이에 끼워 넣는다.
 const EV_PERIOD_MARKER_SORT_PADDING = 50; // 같은 분(elapsed)의 실제 추가시간 이벤트보다 항상 뒤(=더 늦은 시점)로 보내는 패딩
+// 하프타임 마커 표시 허용 status — "NS/1H가 아니면 전부"식 부정 조건은 PST/CANC/SUSP/INT/ABD/AWD/WO
+// 같은 비정상 status에도 걸려 하프타임 마커가 잘못 붙었음. 진행된 상태만 명시적으로 허용한다.
+const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'PSO', 'FT']);
 
 /**
  * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 두 쌍(후반종료/풀타임,
@@ -789,7 +792,7 @@ function evBuildPeriodMarkers(matchInfo) {
   const ftLooksLikeExtraTime = status === 'FT' && (elapsed > 105 || hadPenalties);
   const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime;
   const reachedEt2 = status === 'ET2' || status === 'PSO' || ftLooksLikeExtraTime;
-  const reachedHalftime = status !== 'NS' && status !== '1H';
+  const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status);
 
   const markers = [];
   const addMarker = (label, sortElapsed) => markers.push({

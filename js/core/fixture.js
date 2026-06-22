@@ -244,8 +244,13 @@
     }
   }
 
-  // 마지막으로 요청된 경기 ID — 이전 요청의 응답이 늦게 도착해도 state를 덮어쓰지 않도록 비교에 사용
+  // 마지막으로 요청된 경기 ID — 폴링 재개 가드(wakeAndFetch 등) 비교에 사용. fixtureId 문자열 그대로 저장.
   let _lastFetchId = null;
+
+  // fetchAndApplyFixtureData 호출마다 증가하는 시퀀스 번호 — in-flight 응답 폐기 가드용.
+  // 같은 fixtureId로 겹쳐 호출되면(강제 새로고침 + 폴링 등) _lastFetchId만으로는 둘을 구분 못해
+  // 늦게 도착한 이전 요청의 응답이 더 최신 요청의 결과를 덮어쓸 수 있었음.
+  let _fetchSeq = 0;
 
   // 마지막 fixture 응답 보관 — scorer 토글 변경 시 events에서 notes 재구성용
   let _lastFixtureData = null;
@@ -483,7 +488,7 @@
    * 처리 단계:
    * 1) 입력 정규화 — 빈 ID면 reset 후 종료. 수동 모드면 적용 건너뜀.
    * 2) silent 옵션 분기 — 폴링용 갱신은 로딩 오버레이/배지 안 띄움.
-   * 3) fetchFixture로 데이터 조회. _lastFetchId 비교로 stale 응답 폐기.
+   * 3) fetchFixture로 데이터 조회. _fetchSeq 비교로 stale 응답 폐기(같은 fixtureId로 겹쳐 호출돼도 구분됨).
    * 4) fixture 전환 감지 — 이전 ID와 다르면 팀컬러 override / PK / flash 스냅샷 리셋.
    *    같은 ID면 사용자가 켠 타이머를 보존하는 preserveRunningOnRefresh 플래그 set.
    * 5) applyFixtureToState로 state 매핑 + maybeTriggerFixtureFlash로 변경 부위 깜빡임.
@@ -511,13 +516,17 @@
     const silent = options && options.silent === true;
     const cacheMode = options && options.cache;
     const overlayOpts = silent ? { noOverlay: true } : undefined;
-    const requestId = normalizedFixtureId;
-    _lastFetchId = requestId;
+    _fetchSeq += 1;
+    const requestSeq = _fetchSeq;
+    _lastFetchId = normalizedFixtureId;
     if (!silent) setApiStatus('loading');
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
       const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
-      if(_lastFetchId !== requestId) return null;
+      // requestSeq 비교: 같은 fixtureId로 겹쳐 호출돼도(강제 새로고침 도중 폴링 등) 더 나중에
+      // 시작된 호출이 있으면 이 응답은 폐기 — _lastFetchId(fixtureId 문자열) 비교로는 같은
+      // fixtureId끼리 겹친 요청을 구분할 수 없었음.
+      if (requestSeq !== _fetchSeq) return null;
       if(!data){
         resetFixtureDrivenState({
           clearFixtureId: true,
