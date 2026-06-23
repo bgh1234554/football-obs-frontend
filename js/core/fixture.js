@@ -589,6 +589,12 @@
       }
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
+      const previousStatus = String(_lastFixtureData?.matchInfo?.status || '');
+      const newStatus = String(data?.matchInfo?.status || '');
+      // FT(또는 AET/PEN)에 막 진입한 시점 — preserveRunningOnRefresh로 인해 applyFixtureToState의
+      // resetRunning 가드를 건너뛰는 동안에도(같은 fixture를 silent 폴링 중) 경기가 끝났으면
+      // 사용자가 켜둔 타이머를 멈춰야 한다.
+      const justReachedFT = FT_LIKE_STATUSES.has(newStatus) && !FT_LIKE_STATUSES.has(previousStatus);
       const preserveRunningOnRefresh = !!silent
         && !!previousFixtureId
         && previousFixtureId === normalizedFixtureId;
@@ -608,6 +614,13 @@
       _lastFixtureData = data;
       // 자동 폴링으로 같은 경기를 다시 반영할 때는 사용자가 직접 켠 타이머를 멈추지 않는다.
       applyFixtureToState(data, { resetRunning: !preserveRunningOnRefresh });
+      // FT에 막 도달했으면 위 resetRunning 가드와 무관하게 타이머를 멈춘다 — 경기가 끝났는데
+      // 같은 fixture를 silent 폴링 중이라는 이유로 시계가 계속 흘러가면 안 되기 때문.
+      // pauseClockTimer는 이미 멈춰있어도 안전(idempotent)하므로 중복 호출 걱정 없음.
+      if (justReachedFT) {
+        if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
+        else state.running = false;
+      }
       // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
