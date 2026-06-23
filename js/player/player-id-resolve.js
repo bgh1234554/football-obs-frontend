@@ -226,22 +226,54 @@ function pirCoreTokensFromTokens(tokens, particleSet, stripPrefixFn) {
   return rest.length ? rest : tokens.slice(1); // 전부 관사면 원래 나머지로 폴백
 }
 
-/** 두 문자열 간 Levenshtein 거리. */
-function pirLevenshtein(a, b) {
+/**
+ * 두 문자열 간 Jaro 유사도(0~1). 단순 Levenshtein 정규화 유사도는 짧은 문자열에서
+ * 편집 1번이 점수를 과하게 깎는 문제가 있다(예: 5글자 단어의 1글자 오차가 20%
+ * 손실) — 성씨처럼 짧은 토큰 비교에는 부적합하다는 게 알려진 약점이다. Jaro(-Winkler)는
+ * 애초에 사람 이름/성씨 같은 짧은 문자열 매칭을 위해 고안된 알고리즘이라 이 비교에 더
+ * 적합하다.
+ */
+function pirJaro(a, b) {
+  if (a === b) return 1;
   const m = a.length, n = b.length;
-  if (!m) return n;
-  if (!n) return m;
-  let prev = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const cur = [i];
-    for (let j = 1; j <= n; j++) {
-      cur[j] = a[i - 1] === b[j - 1]
-        ? prev[j - 1]
-        : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+  if (!m || !n) return 0;
+  const matchDistance = Math.floor(Math.max(m, n) / 2) - 1;
+  const aMatches = new Array(m).fill(false);
+  const bMatches = new Array(n).fill(false);
+  let matches = 0;
+  for (let i = 0; i < m; i++) {
+    const start = Math.max(0, i - matchDistance);
+    const end = Math.min(i + matchDistance + 1, n);
+    for (let j = start; j < end; j++) {
+      if (bMatches[j] || a[i] !== b[j]) continue;
+      aMatches[i] = true;
+      bMatches[j] = true;
+      matches++;
+      break;
     }
-    prev = cur;
   }
-  return prev[n];
+  if (!matches) return 0;
+  let transpositions = 0, k = 0;
+  for (let i = 0; i < m; i++) {
+    if (!aMatches[i]) continue;
+    while (!bMatches[k]) k++;
+    if (a[i] !== b[k]) transpositions++;
+    k++;
+  }
+  transpositions /= 2;
+  return (matches / m + matches / n + (matches - transpositions) / matches) / 3;
+}
+
+/** Jaro-Winkler 유사도(0~1). 앞쪽 4글자까지 일치하는 접두어에 가중치를 더 준다(표준 p=0.1). */
+function pirJaroWinkler(a, b) {
+  const jaro = pirJaro(a, b);
+  const maxPrefix = Math.min(4, a.length, b.length);
+  let prefix = 0;
+  for (let i = 0; i < maxPrefix; i++) {
+    if (a[i] !== b[i]) break;
+    prefix++;
+  }
+  return jaro + prefix * 0.1 * (1 - jaro);
 }
 
 /**
@@ -257,8 +289,7 @@ function pirCoreTokensSimilarity(coreA, coreB) {
   for (const tok of shorter) {
     let best = 0;
     for (const other of longer) {
-      const dist = pirLevenshtein(tok, other);
-      const sim = 1 - dist / Math.max(tok.length, other.length);
+      const sim = pirJaroWinkler(tok, other);
       if (sim > best) best = sim;
     }
     total += best;
@@ -266,7 +297,11 @@ function pirCoreTokensSimilarity(coreA, coreB) {
   return total / shorter.length;
 }
 
-const PIR_FUZZY_THRESHOLD = 0.78;   // 이 이상이어야 같은 선수로 인정
+// Jaro-Winkler 기준 임계값. "오매칭 비용이 큰 strict matching"에는 0.8~0.9대가 권장되는
+// 일반적인 가이드라인을 따라 기존 0.78(Levenshtein 기준)보다 올림 — 짧은 성씨 토큰의
+// 정상적인 음역 표기 차이(Rosan/Rousan, Fakhouri/Fakhoury 등)는 Jaro-Winkler에서
+// 0.95 안팎으로 나와 여유 있게 통과하고, 그보다 낮은 애매한 경우는 더 엄격히 거른다.
+const PIR_FUZZY_THRESHOLD = 0.85;   // 이 이상이어야 같은 선수로 인정
 const PIR_FUZZY_MARGIN = 0.08;      // 1위-2위 차이가 이보다 작으면 모호하다고 보고 보류
 
 /**
