@@ -306,7 +306,11 @@
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
   //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
-  //   - FT + 3분 경과 or 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO): 호출 중단
+  //   - FT + 3분 경과: 호출 중단
+  //   - INT(중단, 재개 가능): 5분 간격으로 재확인. 첫 감지로부터 30분 넘게 지속되면
+  //     수동 새로고침을 안내하는 alert를 1회만 띄우고 그 뒤로는 자동 재확인 중단.
+  //   - ABD(중단/취소, 재개 안 됨): 감지 즉시 안내 alert를 1회만 띄우고 호출 영구 중단.
+  //   - 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO): 조용히 호출 중단.
   //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
   const POLL_INTERVAL_MS    = 15 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
@@ -315,17 +319,27 @@
   // 일정 페이지에서 며칠 전 끝난 경기를 클릭한 경우 등 쓸데없이 매분 호출하는 것 방지.
   const FT_STALE_AFTER_MS   = 4 * 60 * 60 * 1000;
   const PRE_KICKOFF_BUFFER_MS = 30 * 1000;
+  const INT_POLL_INTERVAL_MS = 5 * 60 * 1000;  // INT(중단) 상태 재확인 간격
+  const INT_ALERT_AFTER_MS   = 30 * 60 * 1000; // INT가 이만큼 지속되면 수동 새로고침 안내
   const FT_LIKE_STATUSES    = new Set(['FT','AET','PEN']); // 백엔드는 'FT'로 통일하지만 방어
   const ABNORMAL_STATUSES   = new Set(['PST','CANC','SUSP','INT','ABD','AWD','WO']);
   const LIVE_STATUSES_POLL  = new Set(['1H','HT','2H','ET1','ET2','PSO']);
 
   let _pollTimer = null;
   let _ftFirstDetectedAt = null;
+  let _intFirstDetectedAt = null; // INT 첫 감지 시각 — 30분 경과 판정용
+  let _intAlertShown = false;     // 같은 중단 동안 alert 중복 표시 방지
+  let _abdAlertShown = false;     // ABD 감지 시 alert 1회만 표시
 
-  /** 진행 중인 폴링 타이머 취소 + FT 추적 시각 리셋 */
+  /** 진행 중인 폴링 타이머 취소 + FT/INT/ABD 추적 상태 리셋 */
   function clearPolling(resetFt = true) {
     if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
-    if (resetFt) _ftFirstDetectedAt = null;
+    if (resetFt) {
+      _ftFirstDetectedAt = null;
+      _intFirstDetectedAt = null;
+      _intAlertShown = false;
+      _abdAlertShown = false;
+    }
   }
 
   /**
@@ -333,11 +347,13 @@
    * 사용자가 다른 fixtureId로 바꾸면 _lastFetchId 비교로 자동 폐기됨.
    *
    * 1) FT 도달 — 킥오프 후 4시간 이상 경과면 폴링 종료. 그 외엔 3분 윈도우 내에서만 1분 간격 유지.
-   * 2) 비정상 상태(PST/CANC/SUSP/INT/ABD/AWD/WO) — 폴링 중단.
-   * 3) NS + kickoffUtc 알면 — 킥오프 30초 전까지 대기 후 wakeAndFetch.
-   * 4) FT-like — 1분 간격.
-   * 5) LIVE/NS — 15초 간격.
-   * 6) 그 외 미지의 status — 안전하게 폴링 안 함.
+   * 2) ABD(중단/취소, 재개 안 됨) — 안내 alert 1회 후 폴링 영구 중단.
+   * 3) 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO) — 조용히 폴링 중단. (INT는 5)에서 별도 처리)
+   * 4) NS + kickoffUtc 알면 — 킥오프 30초 전까지 대기 후 wakeAndFetch.
+   * 5) INT(중단, 재개 가능) — 5분 간격 재확인. 30분 경과 시 안내 alert 1회 후 재확인도 중단.
+   * 6) FT-like — 1분 간격.
+   * 7) LIVE/NS — 15초 간격.
+   * 8) 그 외 미지의 status — 안전하게 폴링 안 함.
    *
    * wakeAndFetch는 fetchAndApplyFixtureData를 silent=true로 호출하고,
    * 성공 시 fetchAndApplyFixtureData가 내부에서 다시 schedulePoll을 부르며 체인이 이어진다.
@@ -365,12 +381,27 @@
       _ftFirstDetectedAt = null;
     }
 
-    // 2) 비정상 상태면 폴링 중단
-    if (ABNORMAL_STATUSES.has(status)) return;
+    // INT가 아닌 상태로 넘어왔으면 중단 추적을 리셋 — 재개됐다가 나중에 다시 INT가 되면
+    // 30분 카운트가 처음부터 다시 시작되고 alert도 다시 뜰 수 있어야 한다.
+    if (status !== 'INT') { _intFirstDetectedAt = null; _intAlertShown = false; }
+
+    // 2) ABD(중단/취소) — 재개되지 않는 경기이므로 안내 alert 1회만 띄우고 폴링 영구 중단.
+    if (status === 'ABD') {
+      if (!_abdAlertShown) {
+        _abdAlertShown = true;
+        alert('경기가 중단되어 더 이상 진행되지 않습니다 (Abandoned). 자동 갱신을 중단합니다.');
+      }
+      return;
+    }
+    _abdAlertShown = false;
+
+    // 3) 그 외 비정상 상태면 폴링 중단 (INT는 5)에서 재확인 로직으로 따로 처리)
+    if (ABNORMAL_STATUSES.has(status) && status !== 'INT') return;
 
     const scheduleRetryFromLastFixture = () => {
       if (!_lastFixtureData) return;
       const lastStatus = String(_lastFixtureData?.matchInfo?.status || '');
+      if (lastStatus === 'INT') { handleIntRecheck(); return; }
       if (ABNORMAL_STATUSES.has(lastStatus)) return;
       if (FT_LIKE_STATUSES.has(lastStatus)) {
         _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
@@ -397,7 +428,28 @@
       }
     };
 
-    // 3) 경기 시작 전(NS) + kickoffUtc 알면 시작 직전까지 대기
+    // INT(중단, 재개 가능) — 5분 간격으로 재확인하다가 첫 감지로부터 30분 넘게 지속되면
+    // 수동 새로고침을 안내하는 alert를 1회만 띄우고 그 뒤로는 자동 재확인을 멈춘다.
+    // schedulePoll의 메인 흐름과 scheduleRetryFromLastFixture(네트워크 에러 재시도 경로)
+    // 양쪽에서 같은 판단이 필요해 헬퍼로 뺐다.
+    const handleIntRecheck = () => {
+      if (!_intFirstDetectedAt) _intFirstDetectedAt = Date.now();
+      if (Date.now() - _intFirstDetectedAt >= INT_ALERT_AFTER_MS) {
+        if (!_intAlertShown) {
+          _intAlertShown = true;
+          alert('경기가 30분 넘게 중단(Interrupted)된 상태입니다. 경기 재개 시 수동으로 새로고침해 주세요.');
+        }
+        return;
+      }
+      _pollTimer = setTimeout(wakeAndFetch, INT_POLL_INTERVAL_MS);
+    };
+
+    if (status === 'INT') {
+      handleIntRecheck();
+      return;
+    }
+
+    // 4) 경기 시작 전(NS) + kickoffUtc 알면 시작 직전까지 대기
     if (status === 'NS' && kickoffUtc) {
       const kickoffMs = Date.parse(kickoffUtc);
       if (!isNaN(kickoffMs) && kickoffMs > now + PRE_KICKOFF_BUFFER_MS) {
