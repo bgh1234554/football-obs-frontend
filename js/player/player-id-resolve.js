@@ -362,6 +362,9 @@ function pirCoreTokensSimilarity(coreA, coreB) {
 const PIR_FUZZY_THRESHOLD = 0.85;   // 이 이상이어야 같은 선수로 인정
 const PIR_FUZZY_MARGIN = 0.08;      // 1위-2위 차이가 이보다 작으면 모호하다고 보고 보류
 
+/** 문자열에 한글이 포함되어 있는지 확인. */
+const pirHasHangul = s => typeof s === 'string' && /[가-힣]/.test(s);
+
 /**
  * pirFuzzyMatchByField의 단일 패스. stripPrefixFn 유무에 따라 병합형 접두어 분리를
  * 적용하거나(2차 패스) 안 한다(1차 패스).
@@ -449,7 +452,11 @@ function pirFuzzyFindRosterMatch(eventNames, candidates) {
 //   ID 쪽엔 CSV에 한글이 없어 영문으로만 표시되는데(흔한 경우 — 중복 등록된 alt ID에만
 //   한글이 있는 패턴), 수동 ID 입력처럼 프로필을 다시 조회하지 않고도 이벤트에 이미
 //   포함된 한글을 그대로 로스터에 채워 넣을 수 있게 하기 위함(applyZeroIdOverrides에서 사용).
-function pirAutoLinkAltToCanonical(rawData, nameHintsOut) {
+// canonicalKoHintsOut(선택): 매칭 성공 시 canonical(로스터) 쪽에 한글 이름이 있으면
+//   `{side}:{altId}` → { name, nameKoLong }로 채워준다. 이벤트 쪽이 영문이고 로스터
+//   쪽에 한글이 있는 경우, applyZeroIdOverrides가 이벤트의 playerName/assistName도
+//   한글로 덮어써서 양쪽이 같은 한글 이름으로 표시되게 하기 위함.
+function pirAutoLinkAltToCanonical(rawData, nameHintsOut, canonicalKoHintsOut) {
   const result = {};
   if (!rawData) return result;
 
@@ -477,6 +484,14 @@ function pirAutoLinkAltToCanonical(rawData, nameHintsOut) {
       fuzzyCandidates.push({ pid, origName: p?.origName, koName: p?.name, koNameLong: p?.nameKoLong });
     });
 
+    // 매칭 성공 시 이벤트에 roster 쪽 한글 이름을 역전파하기 위한 pid→한글 조회 맵
+    const pidToKo = canonicalKoHintsOut ? new Map(
+      roster.filter(p => Number(p?.playerId)).map(p => [
+        Number(p.playerId),
+        { koName: p?.name || null, koNameLong: p?.nameKoLong || null },
+      ])
+    ) : null;
+
     const tryLink = (eventPid, origName, koName, koNameLong) => {
       const pid = Number(eventPid);
       if (!pid || knownIds.has(pid)) return; // id=0 또는 이미 정상 매칭되는 ID면 손댈 필요 없음
@@ -486,9 +501,18 @@ function pirAutoLinkAltToCanonical(rawData, nameHintsOut) {
         || pirFuzzyFindRosterMatch({ origName, koName, koNameLong }, fuzzyCandidates);
       if (!canonicalId || canonicalId === pid) return;
       result[`${side}:${pid}`] = canonicalId;
+      // 이벤트(alt ID) 쪽에 한글이 있으면 → canonical 로스터에 역전파(nameHintsOut)
       if (nameHintsOut && (koName || koNameLong)) {
         const key = `${side}:${canonicalId}`;
         if (!nameHintsOut[key]) nameHintsOut[key] = { name: koName || null, nameKoLong: koNameLong || null };
+      }
+      // canonical 로스터 쪽에 한글이 있으면 → 이벤트(alt ID)에 역전파(canonicalKoHintsOut)
+      if (canonicalKoHintsOut && pidToKo) {
+        const ko = pidToKo.get(canonicalId);
+        if (ko && (pirHasHangul(ko.koName) || pirHasHangul(ko.koNameLong))) {
+          const altKey = `${side}:${pid}`;
+          if (!canonicalKoHintsOut[altKey]) canonicalKoHintsOut[altKey] = { name: ko.koName, nameKoLong: ko.koNameLong };
+        }
       }
     };
 
@@ -609,7 +633,8 @@ function applyZeroIdOverrides(next, fixtureId) {
   // (canonical ID는 CSV에 한글이 없어 영문으로만 표시되는 흔한 패턴 보강용 — 아래 applyToList에서 사용).
   const autoLinkOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
   const nameHints = {};
-  const altToCanonical = autoLinkOn ? pirAutoLinkAltToCanonical(next, nameHints) : {};
+  const canonicalKoHints = {}; // {side:altId} → { name, nameKoLong } — canonical 로스터 한글을 이벤트에 역전파
+  const altToCanonical = autoLinkOn ? pirAutoLinkAltToCanonical(next, nameHints, canonicalKoHints) : {};
   for (const [localKey, ov] of Object.entries(relevant)) {
     if (!localKey.includes(':id:')) continue;
     const parts = localKey.split(':');          // [side, 'id', canonicalId]
@@ -639,9 +664,7 @@ function applyZeroIdOverrides(next, fixtureId) {
   }
   const zeroIdAutoLinks = autoLinkOn ? pirAutoLinkZeroIdFromEvents(next, claimedAltIdsBySide) : {};
 
-  if (!Object.keys(relevant).length && !Object.keys(altToCanonical).length && !Object.keys(zeroIdAutoLinks).length) return;
-
-  const pirHasHangul = s => typeof s === 'string' && /[가-힣]/.test(s);
+  if (!Object.keys(relevant).length && !Object.keys(altToCanonical).length && !Object.keys(zeroIdAutoLinks).length && !Object.keys(canonicalKoHints).length) return;
 
   // ── 라인업/부상자: id=0→playerId 교체+이름/사진, id≠0→이름/사진만 ────────────
   const applyToList = (list, side) => {
@@ -685,18 +708,31 @@ function applyZeroIdOverrides(next, fixtureId) {
     if (next[ik]) next[ik] = applyToList(next[ik], side);
   }
 
-  // ── 이벤트: altId → canonicalId 리매핑 (교체/카드/골이 라인업 노드에 귀속) ──
-  if (Array.isArray(next.events) && Object.keys(altToCanonical).length) {
+  // ── 이벤트: altId → canonicalId 리매핑 + canonical 로스터 한글 역전파 ──────────
+  // canonicalKoHints: 로스터에 한글이 있고 이벤트가 영문으로 내려온 경우, 이벤트의
+  // playerName/assistName도 한글로 덮어써서 라인업 패널·이벤트 패널 양쪽이 같은 한글을
+  // 표시하도록 한다. altToCanonical이 없어도 canonicalKoHints만으로 이름 패치가 발생할 수 있다.
+  if (Array.isArray(next.events) && (Object.keys(altToCanonical).length || Object.keys(canonicalKoHints).length)) {
     next.events = next.events.map(ev => {
       if (!ev) return ev;
       const side = ev.side || '';
       const newPlayerId = altToCanonical[`${side}:${ev.playerId}`];
       const newAssistId = ev.assistId != null ? altToCanonical[`${side}:${ev.assistId}`] : undefined;
-      if (!newPlayerId && newAssistId === undefined) return ev;
+      const playerKo = canonicalKoHints[`${side}:${ev.playerId}`];
+      const assistKo = ev.assistId != null ? canonicalKoHints[`${side}:${ev.assistId}`] : null;
+      const needsPlayerName = playerKo?.name && !pirHasHangul(ev.playerName);
+      const needsPlayerNameKoLong = playerKo?.nameKoLong && !pirHasHangul(ev.playerNameKoLong);
+      const needsAssistName = assistKo?.name && !pirHasHangul(ev.assistName);
+      const needsAssistNameKoLong = assistKo?.nameKoLong && !pirHasHangul(ev.assistNameKoLong);
+      if (!newPlayerId && newAssistId === undefined && !needsPlayerName && !needsPlayerNameKoLong && !needsAssistName && !needsAssistNameKoLong) return ev;
       return {
         ...ev,
         ...(newPlayerId ? { playerId: newPlayerId } : {}),
         ...(newAssistId !== undefined ? { assistId: newAssistId } : {}),
+        ...(needsPlayerName ? { playerName: playerKo.name } : {}),
+        ...(needsPlayerNameKoLong ? { playerNameKoLong: playerKo.nameKoLong } : {}),
+        ...(needsAssistName ? { assistName: assistKo.name } : {}),
+        ...(needsAssistNameKoLong ? { assistNameKoLong: assistKo.nameKoLong } : {}),
       };
     });
   }
