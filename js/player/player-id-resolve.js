@@ -166,8 +166,16 @@ window.pirFindNameKeyByEffectiveId = pirFindNameKeyByEffectiveId;
 // 정확 일치(map lookup)가 실패했을 때의 2차 보강. API Football이 이벤트 쪽
 // playerName/origName은 축약형("M. Al Daoud")으로, 라인업 쪽 origName은 풀네임
 // ("Mohammad Al Daoud")으로 내려주는 게 기본이라 문자열 완전 일치가 거의 항상 깨진다.
-// 게다가 아랍어 등 음역 표기가 엔드포인트별로 달라지기도 한다(Rosan/Rousan,
-// Fakhouri/Fakhoury). 그래서 "성(姓) 핵심부"만 떼어 유사도로 비교한다.
+// 게다가 한쪽에만 중간 이름이 있거나(예: "Husam Ali Mohammad Abudahab" vs
+// "H. Abu Dahab"), 관사성 접두어가 성에 공백 없이 붙어 한 토큰으로 합쳐지거나
+// (Abudahab vs Abu Dahab), 아랍어 등 음역 표기가 엔드포인트별로 달라지기도 한다
+// (Rosan/Rousan, Fakhouri/Fakhoury). 그래서 "성(姓) 핵심부 토큰들" 사이에서
+// 최적 1:1 정렬로 유사도를 구한다 — 한쪽에만 있는 여분의 중간 이름 토큰이 점수를
+// 깎지 않는다. origName(영문)으로 먼저 시도하고, 실패하면 한글 이름
+// (nameKoLong → name)으로도 같은 방식으로 재시도한다 — CSV 한글 번역자가 영문과
+// 다른 이름 부분(중간 이름 등)을 통상명으로 골라 한글화한 경우, 영문 쪽이 어긋나도
+// 한글 쪽에서 잡힐 수 있다. 같은 팀 안에 비슷한 성을 가진 다른 후보가 없으면
+// 성 핵심부 토큰 1개만으로도 충분히 매칭된다(1위-2위 점수 차이만 확인).
 
 /** 발음 구별 기호 제거 + 소문자 + 영문/숫자 외 문자는 공백으로 치환 + 공백 정리. */
 function pirNormalizeForFuzzy(s) {
@@ -178,15 +186,44 @@ function pirNormalizeForFuzzy(s) {
     .trim();
 }
 
-// 표기 유무가 들쭉날쭉한 이름 관사성 토큰 — 비교 전 제거.
-const PIR_NAME_PARTICLES = new Set(['al', 'el', 'abu', 'ibn', 'bin', 'bint', 'ben', 'de', 'van', 'der']);
+/** 한글 이름 정규화: 한글/공백만 남기고 공백 정리(대소문자·발음부호 문제 없음). */
+function pirNormalizeForFuzzyKo(s) {
+  return String(s || '')
+    .replace(/[^가-힣\s]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-/** 정규화된 이름 문자열 → "성 핵심부" 토큰 배열. 첫 토큰(이름/이니셜)은 버리고 관사성 토큰도 제거. */
-function pirNameCoreTokens(normalized) {
-  const tokens = normalized.split(' ').filter(Boolean);
+// 표기 유무가 들쭉날쭉한 이름 관사성 토큰 — 비교 전 제거. 긴 것부터 시도해야
+// "abudahab"처럼 성에 공백 없이 붙은 접두어를 안전하게 분리할 수 있다.
+const PIR_NAME_PARTICLES = new Set(['al', 'el', 'abu', 'ibn', 'bin', 'bint', 'ben', 'de', 'van', 'der']);
+const PIR_NAME_PARTICLES_BY_LEN = [...PIR_NAME_PARTICLES].sort((a, b) => b.length - a.length);
+// 한글판 관사성 토큰. 한글은 음절 단위 표기라 접두어가 성에 병합되는 문제가 거의
+// 없으므로 토큰 단위 제거에만 쓴다.
+const PIR_NAME_PARTICLES_KO = new Set(['알', '엘', '아부', '이븐', '빈', '벤']);
+
+/**
+ * "abudahab"처럼 관사성 접두어가 성에 공백 없이 붙어 한 토큰으로 합쳐진 경우를
+ * 분리해 접두어를 제거한다. 제거 후 남는 부분이 3자 미만이면(오탐 위험) 원본을 둔다.
+ */
+function pirStripLeadingParticlePrefix(token) {
+  for (const p of PIR_NAME_PARTICLES_BY_LEN) {
+    if (token.length - p.length >= 3 && token.startsWith(p)) return token.slice(p.length);
+  }
+  return token;
+}
+
+/**
+ * 토큰 배열 → "성 핵심부" 토큰 배열. 첫 토큰(이름/이니셜)은 버리고, 나머지 각
+ * 토큰에서 관사성 접두어(stripPrefixFn 제공 시 병합형까지)를 제거한 뒤 관사성
+ * 토큰 자체도 걸러낸다.
+ */
+function pirCoreTokensFromTokens(tokens, particleSet, stripPrefixFn) {
   if (tokens.length <= 1) return tokens;
-  const core = tokens.slice(1).filter(t => !PIR_NAME_PARTICLES.has(t));
-  return core.length ? core : tokens.slice(1); // 전부 관사면 원래 나머지로 폴백
+  const rest = tokens.slice(1)
+    .map(t => stripPrefixFn ? stripPrefixFn(t) : t)
+    .filter(t => t && !particleSet.has(t));
+  return rest.length ? rest : tokens.slice(1); // 전부 관사면 원래 나머지로 폴백
 }
 
 /** 두 문자열 간 Levenshtein 거리. */
@@ -207,40 +244,93 @@ function pirLevenshtein(a, b) {
   return prev[n];
 }
 
+/**
+ * 두 "성 핵심부" 토큰 리스트 사이의 유사도(0~1). 토큰 개수가 달라도(한쪽에만
+ * 중간 이름이 더 있는 경우 등) 점수가 깎이지 않도록, 더 짧은 쪽의 각 토큰에 대해
+ * 다른 쪽에서 가장 유사한 토큰을 찾아 평균 낸다(최적 1:1 정렬) — surname 토큰
+ * 하나만 정확히 일치해도 한쪽에 중간 이름이 더 있다는 이유로 점수가 떨어지지 않는다.
+ */
+function pirCoreTokensSimilarity(coreA, coreB) {
+  if (!coreA.length || !coreB.length) return 0;
+  const [shorter, longer] = coreA.length <= coreB.length ? [coreA, coreB] : [coreB, coreA];
+  let total = 0;
+  for (const tok of shorter) {
+    let best = 0;
+    for (const other of longer) {
+      const dist = pirLevenshtein(tok, other);
+      const sim = 1 - dist / Math.max(tok.length, other.length);
+      if (sim > best) best = sim;
+    }
+    total += best;
+  }
+  return total / shorter.length;
+}
+
 const PIR_FUZZY_THRESHOLD = 0.78;   // 이 이상이어야 같은 선수로 인정
 const PIR_FUZZY_MARGIN = 0.08;      // 1위-2위 차이가 이보다 작으면 모호하다고 보고 보류
 
 /**
- * roster 후보들 중 eventOrigName과 가장 유사한 선수를 찾는다.
+ * pirFuzzyMatchByField의 단일 패스. stripPrefixFn 유무에 따라 병합형 접두어 분리를
+ * 적용하거나(2차 패스) 안 한다(1차 패스).
  * - 첫 토큰(이름/이니셜)의 첫 글자가 같아야 함(다른 이름과의 오매칭 방지).
  * - 성 핵심부 유사도가 임계값 이상이고, 1위와 2위 점수 차이가 충분해야 함(동명이인/
  *   비슷한 철자의 다른 선수와 오매칭 방지) — 모호하면 null 반환(보류, 틀린 매칭보다 안전).
+ *   같은 팀 안에 겹치는 성을 가진 다른 후보가 없으면 1위 점수만으로 충분히 통과한다.
  */
-function pirFuzzyFindRosterMatch(eventOrigName, candidates) {
-  const normEvent = pirNormalizeForFuzzy(eventOrigName);
+function pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet, stripPrefixFn) {
+  const normEvent = normalizeFn(eventRaw);
   if (!normEvent) return null;
   const eventTokens = normEvent.split(' ').filter(Boolean);
   if (!eventTokens.length) return null;
   const eventInitial = eventTokens[0][0];
-  const eventCore = pirNameCoreTokens(normEvent).join(' ');
-  if (eventCore.length < 3) return null; // 핵심부가 너무 짧으면(이니셜만 등) 신뢰 불가
+  const eventCore = pirCoreTokensFromTokens(eventTokens, particleSet, stripPrefixFn);
+  if (eventCore.join('').length < 3) return null; // 핵심부가 너무 짧으면(이니셜만 등) 신뢰 불가
 
   let bestPid = null, bestScore = 0, secondScore = 0;
   for (const cand of candidates) {
-    const normCand = pirNormalizeForFuzzy(cand.origName);
+    const normCand = normalizeFn(cand[field]);
     if (!normCand) continue;
     const candTokens = normCand.split(' ').filter(Boolean);
     if (!candTokens.length || candTokens[0][0] !== eventInitial) continue;
-    const candCore = pirNameCoreTokens(normCand).join(' ');
-    if (candCore.length < 3) continue;
-    const dist = pirLevenshtein(eventCore, candCore);
-    const score = 1 - dist / Math.max(eventCore.length, candCore.length);
+    const candCore = pirCoreTokensFromTokens(candTokens, particleSet, stripPrefixFn);
+    if (candCore.join('').length < 3) continue;
+    const score = pirCoreTokensSimilarity(eventCore, candCore);
     if (score > bestScore) { secondScore = bestScore; bestScore = score; bestPid = cand.pid; }
     else if (score > secondScore) secondScore = score;
   }
   if (!bestPid || bestScore < PIR_FUZZY_THRESHOLD) return null;
   if (secondScore > 0 && bestScore - secondScore < PIR_FUZZY_MARGIN) return null;
   return bestPid;
+}
+
+/**
+ * candidates 중 eventRaw와 가장 유사한 항목을 field 기준으로 찾는다.
+ * normalizeFn/particleSet을 바꿔 영문(origName)/한글(koName 등) 양쪽에 동일한
+ * 알고리즘을 재사용한다.
+ * 1차: 병합형 접두어 분리 없이 원본 토큰 그대로 비교한다. "Bensebaini", "Alonso",
+ * "Albright"처럼 관사성 토큰(al/el/ben 등)으로 시작하지만 실제로는 분리할 게 아닌
+ * 정상 성씨가 이 1차에서 안전하게 매칭되거나(또는 안 되는 게 맞는 경우 그대로 탈락)
+ * 끝난다.
+ * 2차(stripPrefixFn 제공 시): 1차가 모든 후보에서 실패했을 때만 "Abudahab"처럼
+ * 관사성 접두어가 성에 공백 없이 병합된 경우를 잡기 위해 접두어를 뗀 버전으로
+ * 재시도한다. 1차에서 이미 매칭(혹은 정상적으로 매칭 실패)된 케이스는 2차를 타지
+ * 않으므로, 접두어 분리가 정상 성씨를 다른 선수와 혼동시킬 위험을 1차가 전부
+ * 실패하는 좁은 경우로 한정한다.
+ */
+function pirFuzzyMatchByField(eventRaw, candidates, field, normalizeFn, particleSet, stripPrefixFn) {
+  return pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet, null)
+    || (stripPrefixFn ? pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet, stripPrefixFn) : null);
+}
+
+/**
+ * roster 후보들 중 이벤트 쪽 이름(eventNames: {origName, koName, koNameLong})과
+ * 가장 유사한 선수를 찾는다. origName(영문)으로 먼저 시도하고, 실패하면 한글
+ * 풀네임(koNameLong) → 한글 단축명(koName) 순으로 동일한 방식 재시도한다.
+ */
+function pirFuzzyFindRosterMatch(eventNames, candidates) {
+  return pirFuzzyMatchByField(eventNames.origName, candidates, 'origName', pirNormalizeForFuzzy, PIR_NAME_PARTICLES, pirStripLeadingParticlePrefix)
+    || pirFuzzyMatchByField(eventNames.koNameLong, candidates, 'koNameLong', pirNormalizeForFuzzyKo, PIR_NAME_PARTICLES_KO)
+    || pirFuzzyMatchByField(eventNames.koName, candidates, 'koName', pirNormalizeForFuzzyKo, PIR_NAME_PARTICLES_KO);
 }
 
 // ── id≠0 자동 매칭 (이름 기반) ────────────────────────────────────────────────
@@ -253,8 +343,9 @@ function pirFuzzyFindRosterMatch(eventOrigName, candidates) {
 //   우연히 players.csv에 있는 값(예: 같은 선수의 중복 등록 ID)이면 한글로도 내려오는데,
 //   이때 API가 엔드포인트별로 원문 영문 표기를 다르게 내려줘서(축약형 vs 풀네임 등)
 //   origName 비교만으론 못 잡고 한글 비교라야 잡히는 경우가 있다.
-// - 위 두 완전 일치가 모두 실패하면 origName 성 핵심부 유사도(pirFuzzyFindRosterMatch)로
-//   재시도한다 — 축약형 vs 풀네임, 아랍어 음역 표기 차이(Rosan/Rousan 등)를 흡수.
+// - 위 두 완전 일치가 모두 실패하면 origName(영문) → 한글 이름 순으로 성 핵심부
+//   유사도(pirFuzzyFindRosterMatch)로 재시도한다 — 축약형 vs 풀네임, 중간 이름
+//   유무, 아랍어 음역 표기 차이(Rosan/Rousan 등)를 흡수.
 // - 완전 일치 두 이름 공간은 각각 독립적으로 동명이인 검사를 한다 — 같은 팀 안에 그
 //   이름이 같은 선수가 2명 이상이면 해당 이름 공간에서만 후보 제외.
 // - id=0 선수는 대상이 아니다(이름 키 기반의 별도 시스템이 이미 처리).
@@ -281,7 +372,7 @@ function pirAutoLinkAltToCanonical(rawData, nameHintsOut) {
     const knownIds = new Set();
     const origNameToId = new Map(); // origName(trim) → playerId
     const koNameToId = new Map();   // name/nameKoLong(trim) → playerId
-    const fuzzyCandidates = [];     // [{ pid, origName }] — 완전 일치 실패 시 유사도 매칭용
+    const fuzzyCandidates = [];      // [{ pid, origName, koName, koNameLong }] — 완전 일치 실패 시 유사도 매칭용
 
     roster.forEach(p => {
       const pid = Number(p?.playerId);
@@ -290,7 +381,7 @@ function pirAutoLinkAltToCanonical(rawData, nameHintsOut) {
       addToMap(origNameToId, String(p?.origName || '').trim(), pid);
       addToMap(koNameToId, String(p?.name || '').trim(), pid);
       addToMap(koNameToId, String(p?.nameKoLong || '').trim(), pid);
-      fuzzyCandidates.push({ pid, origName: p?.origName });
+      fuzzyCandidates.push({ pid, origName: p?.origName, koName: p?.name, koNameLong: p?.nameKoLong });
     });
 
     const tryLink = (eventPid, origName, koName, koNameLong) => {
@@ -299,7 +390,7 @@ function pirAutoLinkAltToCanonical(rawData, nameHintsOut) {
       const canonicalId = origNameToId.get(String(origName || '').trim())
         || koNameToId.get(String(koName || '').trim())
         || koNameToId.get(String(koNameLong || '').trim())
-        || pirFuzzyFindRosterMatch(origName, fuzzyCandidates);
+        || pirFuzzyFindRosterMatch({ origName, koName, koNameLong }, fuzzyCandidates);
       if (!canonicalId || canonicalId === pid) return;
       result[`${side}:${pid}`] = canonicalId;
       if (nameHintsOut && (koName || koNameLong)) {
@@ -326,8 +417,8 @@ window.pirAutoLinkAltToCanonical = pirAutoLinkAltToCanonical;
 // origName을 후보로 두고 id=0 선수의 origName과 매칭한다.
 // - claimedAltIds(side별 Set): 이미 다른(0이 아닌) 로스터 선수에게 매칭된 이벤트
 //   ID(수동+자동 모두 포함, 호출자가 전달)는 후보에서 제외 — 중복 해석 방지.
-// - 이름 완전 일치를 먼저 모두 시도하고, 남은 선수에 대해서만 유사도 매칭
-//   (pirFuzzyFindRosterMatch와 동일한 알고리즘)으로 재시도한다.
+// - origName 완전 일치를 먼저 모두 시도하고, 남은 선수에 대해서만 pirFuzzyFindRosterMatch로
+//   재시도한다(origName → 한글 이름 순으로 성 핵심부 유사도 비교).
 // - 매칭이 성립하면 { playerId, name, nameKoLong, photoUrl }을 만든다. name/nameKoLong은
 //   이벤트에 이미 내려온 한글을 그대로 쓰고(추가 API 호출 불필요), photoUrl은 해당
 //   선수의 기존 photoUrl(보통 .../players/0.png)에서 파일명만 새 ID로 바꿔 만든다.
@@ -364,7 +455,7 @@ function pirAutoLinkZeroIdFromEvents(rawData, claimedAltIdsBySide) {
     });
     if (!pidInfo.size) continue;
 
-    const fuzzyCandidates = [...pidInfo.entries()].map(([pid, info]) => ({ pid, origName: info.origName }));
+    const fuzzyCandidates = [...pidInfo.entries()].map(([pid, info]) => ({ pid, origName: info.origName, koName: info.koName, koNameLong: info.koNameLong }));
     const exactByOrigName = new Map(); // origName(trim) → pid | null(충돌)
     for (const [pid, info] of pidInfo) {
       if (!info.origName) continue;
@@ -393,7 +484,7 @@ function pirAutoLinkZeroIdFromEvents(rawData, claimedAltIdsBySide) {
     remaining.forEach(p => {
       const pool = fuzzyCandidates.filter(c => !usedIds.has(c.pid));
       if (!pool.length) return;
-      const matchedPid = pirFuzzyFindRosterMatch(p.origName, pool);
+      const matchedPid = pirFuzzyFindRosterMatch({ origName: p.origName, koName: p.name, koNameLong: p.nameKoLong }, pool);
       if (!matchedPid) return;
       usedIds.add(matchedPid);
       result[`${side}:n:${pirRosterName(p)}`] = buildEntry(p, matchedPid);
