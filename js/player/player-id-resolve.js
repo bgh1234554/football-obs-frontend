@@ -4,6 +4,64 @@
 // lineup-data.js의 buildEffectiveFixtureData에서 window.applyZeroIdOverrides를 호출해 적용.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// [자동 ID 매칭 전체 흐름] applyZeroIdOverrides가 매 렌더마다 거치는 순서
+//
+// 배경: API Football이 같은 선수에게 라인업 엔드포인트와 이벤트 엔드포인트에서
+// 서로 다른 playerId를 주는 경우가 있다(흔히 "alt ID" 문제). 이걸 사람이 매번
+// 수동으로 ID 입력 안 해도 되게, 같은 fixture 안에서 이름으로 같은 선수를
+// 추론해 자동으로 이어붙이는 게 이 파일의 자동 매칭 부분이다. 수동 override
+// (localStorage에 저장된 값)는 항상 이 자동 추론보다 우선한다.
+//
+// 0단계 — 수동 override 적용 범위 계산 (applyZeroIdOverrides 안)
+//   localStorage에서 이 fixtureId의 저장된 override를 다 읽어온다(relevant).
+//   autoLinkPlayerIdByName 설정이 off면 아래 1~2단계를 건너뛰고 수동 override만 적용.
+//
+// 1단계 — id≠0인데 ID가 틀린 경우: pirAutoLinkAltToCanonical(rawData, nameHints)
+//   같은 팀 라인업+벤치 안에서, 이벤트에 나온 playerId가 로스터의 어떤 실제
+//   playerId와도 안 맞으면(alt ID) "같은 선수"로 보이는 로스터 선수를 찾아
+//   { side:altId → canonicalId } 매핑을 만든다. 한 선수 후보 안에서 시도 순서:
+//     a) origName(이벤트 원문 영문) 완전 일치
+//     b) 한글 이름(name/nameKoLong) 완전 일치
+//     c) 위 둘 다 실패 → pirFuzzyFindRosterMatch로 유사도 매칭(아래 3단계)
+//   매칭에 쓰인 한글 이름은 nameHints에 적립(원래 영문만 있는 로스터 표시에
+//   나중에 끼워 넣기용).
+//
+// 2단계 — id=0인데 이벤트엔 실제 ID로 나오는 경우(반대 방향):
+//   pirAutoLinkZeroIdFromEvents(rawData, claimedAltIdsBySide)
+//   라인업/벤치에 playerId=0으로 내려온 선수를, 같은 팀 이벤트에 등장하는
+//   (1단계에서 이미 다른 선수에게 쓰인 ID는 제외한) 실제 ID 후보들과 매칭한다.
+//   origName 완전 일치를 먼저 다 처리하고, 남은 선수만 유사도 매칭으로 재시도.
+//
+// 3단계 — 유사도 매칭의 실제 알고리즘: pirFuzzyFindRosterMatch(eventNames, candidates)
+//   완전 일치가 실패했을 때만 호출되는 마지막 보강 단계. 이벤트 쪽 이름
+//   { origName, koName, koNameLong }을 후보들과 비교하는데, 셋을 순서대로
+//   시도하다 하나라도 성공하면 그 결과를 쓴다(OR 체인, 동시 비교 아님):
+//     origName(영문) → koNameLong(한글 풀네임) → koName(한글 단축명)
+//   각 시도는 pirFuzzyMatchByField → pirFuzzyMatchPass로 내려가서:
+//     - 정규화(영문: pirNormalizeForFuzzy / 한글: pirNormalizeForFuzzyKo)
+//     - 첫 토큰(이름) 버리고 나머지(성 핵심부)만 비교 대상으로(pirCoreTokensFromTokens)
+//     - 첫 글자가 다른 후보는 비교 전에 걸러냄(다른 이름과의 오매칭 1차 방지)
+//     - 남은 후보들과 pirCoreTokensSimilarity(토큰별 1:1 최적 정렬 + pirJaroWinkler)로
+//       점수를 매겨 1위/2위를 추적
+//     - 1위가 PIR_FUZZY_THRESHOLD(0.85) 미만이거나, 1위-2위 차이가
+//       PIR_FUZZY_MARGIN(0.08) 미만(모호함)이면 null — 틀린 매칭보다 미매칭이 안전
+//   pirFuzzyMatchByField는 이 pass를 두 번 돌린다(영문에서만 의미 있음):
+//     1차 — 접두어 분리 없이 원본 토큰 그대로(정상적인 Al-/Ben- 등으로 시작하는
+//           성씨가 다른 선수와 혼동되지 않게 기본은 안전한 버전으로 비교)
+//     2차 — 1차가 전부 실패했을 때만, "Abudahab" → "Abu"+"Dahab"처럼 관사성
+//           접두어가 성에 공백 없이 병합된 토큰을 pirStripLeadingParticlePrefix로
+//           분리해 재시도
+//
+// 4단계 — 위에서 만든 매핑들을 실제 데이터에 적용(applyZeroIdOverrides 본문)
+//   altToCanonical(1단계 결과 + 수동 override id키)로 events/playerStats의
+//   playerId/assistId를 라인업 노드에 귀속시키고, zeroIdAutoLinks(2단계 결과)로
+//   playerId=0 로스터 항목에 실제 ID/한글 이름/사진을 채운다.
+//
+// 결과는 localStorage에 저장하지 않는다 — 매 렌더마다 현재 fixture 데이터로 새로
+// 계산되는 순수 런타임 보정이라, 수동 ID 입력(저장됨)이 항상 우선한다.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 const PIR_STORE_KEY = 'obs.player.id.resolve.v2';
 
 // ── 저장소 ───────────────────────────────────────────────────────────────────
