@@ -1066,7 +1066,12 @@ function applyLineupPanels(fixtureData) {
     clearLineupPanels();
     return;
   }
+  // 경기 ID가 실제로 로딩되는 시점이므로, 전술판에 남아있던 수동 입력 이름(tactics-manual-names.js)을
+  // 먼저 지워둔다 — 이후 syncTacticsBoard가 실제 라인업으로 덮어쓰지 못하는 경우(아직 startXi 없음)에도
+  // 수동으로 입력했던 이름이 화면에 그대로 남아있지 않도록 함.
+  clearTacticsLineupSync();
   lineupPanelState.lastFixture = fixtureData;
+  if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
 }
 
@@ -1118,6 +1123,7 @@ function clearLineupPanels() {
   });
 
   clearTacticsLineupSync();
+  if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
 
   window._lpStatBenchData = null;
   window.lpStatUpdateVisibility?.();
