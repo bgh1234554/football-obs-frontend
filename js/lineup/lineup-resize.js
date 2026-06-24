@@ -737,7 +737,7 @@ function startBigPanelHeightDrag(event, col, origin) {
     document.body.classList.remove('lp-big-h-resizing');
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
-    if (usable > 0) _bigSaveFraction(lastChatH / usable);
+    if (linked && usable > 0) _bigSaveFraction(lastChatH / usable);
     requestAnimationFrame(() => {
       window.stRerenderActivePanels?.();
       window.lpBenchCycleRebalanceAll?.();
@@ -827,7 +827,7 @@ function startBigCornerDrag(event, col, panelSide) {
     }
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
-    if (usable > 0) _bigSaveFraction(lastChatH / usable);
+    if (linked && usable > 0) _bigSaveFraction(lastChatH / usable);
     requestAnimationFrame(() => {
       window.stRerenderActivePanels?.();
       window.lpBenchCycleRebalanceAll?.();
@@ -1243,9 +1243,10 @@ document.addEventListener('DOMContentLoaded', () => {
   ensureBigPanelHandles();
   applyStoredBigColWidth();
   requestAnimationFrame(() => {
-    applyStoredBigPanelHeights();
-    // fraction 초기화: 첫 로드 시점(항상 창 모드)에 저장된 chatH px → fraction 자동 변환.
-    // 이 시점에는 F11 전이라 colH가 windowed 기준이므로 안전하게 비율 계산 가능.
+    // fraction 초기화: applyStoredBigPanelHeights 보다 먼저 실행.
+    // applyStoredBigPanelHeights 내부의 OFF→ON 전환 분기가 BIG_CHAT_H_KEY를 50/50으로
+    // 덮어쓰기 전에 기존 chatH px → fraction으로 변환해야 사용자 비율이 보존된다.
+    // 이 시점은 항상 창 모드이므로 colH 기준으로 안전하게 비율 계산 가능.
     if (_bigLoadFraction(BIG_CHAT_FRACTION_KEY) == null) {
       document.querySelectorAll('.layout-big .lp-col').forEach(col => {
         const colH = col.getBoundingClientRect().height;
@@ -1258,6 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (f >= 0.15 && f <= 0.85) _bigSaveFraction(f);
       });
     }
+    applyStoredBigPanelHeights();
   });
 
   // 캠 큰 라인업 독립 엣지 리사이즈
