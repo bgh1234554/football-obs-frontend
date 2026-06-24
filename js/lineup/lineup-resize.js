@@ -1298,6 +1298,7 @@ document.addEventListener('DOMContentLoaded', () => {
       timer = setTimeout(() => {
         applyStoredBigPanelHeights();
         window.stRerenderActivePanels?.();
+        window.lpStatAutoRestart?.();
       }, 60);
     };
   })();
@@ -1347,12 +1348,14 @@ document.addEventListener('DOMContentLoaded', () => {
         applyStoredBigPanelHeights();
         applyStoredLineupEdgeOverrides();
         window.stRerenderActivePanels?.();
+        window.lpStatAutoRestart?.();
         window.fitLineupNamePills?.();
       });
       setTimeout(() => {
         applyStoredBigPanelHeights();
         applyStoredLineupEdgeOverrides();
         window.stRerenderActivePanels?.();
+        window.lpStatAutoRestart?.();
         window.fitLineupNamePills?.();
       }, 600);
     }
