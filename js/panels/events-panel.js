@@ -1076,24 +1076,9 @@ function evCreateTitleBar(filterOptions, container) {
   const titleBar = document.createElement('div');
   titleBar.className = 'ev-title-bar';
 
-  // lp-stat 컨텍스트에서는 cycle 버튼이 내비게이션을 담당 — HTH 토글 불필요
-  const isStatPanel = container?.closest?.('.lp-stat');
-
-  // 작은 메뉴는 HTH를 lazy-load하므로, 팀 ID만 있으면 전환 버튼을 먼저 노출한다.
-  const canLoadHth = typeof window.hthCanLoadForFixture === 'function'
-    && window.hthCanLoadForFixture(window._eventsLastData);
-  if (canLoadHth && !isStatPanel) {
-    const hthBtn = document.createElement('button');
-    hthBtn.type = 'button';
-    hthBtn.className = 'hth-ev-toggle-btn';
-    hthBtn.title = '상대 전적 보기';
-    hthBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>`;
-    hthBtn.addEventListener('click', () => {
-      if (typeof window.hthShowForFixture === 'function') {
-        window.hthShowForFixture(window._eventsLastData).catch(err => console.warn('HTH fetch failed:', err));
-      }
-    });
-    titleBar.appendChild(hthBtn);
+  const isSmallEventsPanel = container?.closest?.('.lp-events-s');
+  if (isSmallEventsPanel && typeof window.createSmallPanelModeButtons === 'function') {
+    titleBar.appendChild(window.createSmallPanelModeButtons('events', window._eventsLastData));
   }
 
   const title = document.createElement('div');
@@ -1104,16 +1089,6 @@ function evCreateTitleBar(filterOptions, container) {
   titleBar.appendChild(evCreateFilterUi(filterOptions));
   return titleBar;
 }
-
-/**
- * 필터 버튼 + popover UI 빌드.
- *
- * 1) 가용한 필터 카테고리 수와 활성/비활성 카운트로 버튼 라벨/뱃지 결정.
- * 2) 버튼 클릭 → popover open/close 토글.
- * 3) popover가 열린 상태일 때만 내부(헤딩/리셋 버튼/옵션 체크박스 목록) 빌드.
- * 4) 각 옵션 체크박스 change → evSetFilterEnabled로 localStorage 영속화 + 재렌더.
- * 5) "전체 표시" 버튼 → 모든 카테고리 enable + 재렌더.
- */
 function evCreateFilterUi(filterOptions) {
   const options = Array.isArray(filterOptions) ? filterOptions : [];
   const totalCount = options.length;
@@ -1235,6 +1210,7 @@ function evCreateFilterUi(filterOptions) {
 function applyEventsPanel(fixtureData, options = {}) {
   // settings:change에서 재사용할 마지막 fixture 캐시
   window._eventsLastData = fixtureData;
+  window.applyScoreaxisStandingsPanel?.(fixtureData);
 
   const containers = document.querySelectorAll('[data-events-panel]');
   if (!containers.length) return;

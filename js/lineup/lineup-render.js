@@ -1066,7 +1066,13 @@ function applyLineupPanels(fixtureData) {
     clearLineupPanels();
     return;
   }
+  // 경기 ID가 실제로 바뀔 때만 전술판 수동 입력 이름을 지운다.
+  // 같은 경기를 폴링할 때는 clearTacticsLineupSync를 생략해 전술판 상태를 보존한다.
+  const incomingId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
+  const currentId = String(lineupPanelState.lastFixture?.matchInfo?.fixtureId ?? '').trim();
+  if (incomingId !== currentId) clearTacticsLineupSync();
   lineupPanelState.lastFixture = fixtureData;
+  if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
 }
 
@@ -1118,6 +1124,7 @@ function clearLineupPanels() {
   });
 
   clearTacticsLineupSync();
+  if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
 
   window._lpStatBenchData = null;
   window.lpStatUpdateVisibility?.();

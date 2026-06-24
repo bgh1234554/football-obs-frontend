@@ -1979,6 +1979,31 @@
       margin-right: calc(var(--panel-title-control-size) + 6px);
     }
     .lp-stat-pause-btn.is-paused { border-color: rgba(255,255,255,.35); color: #fff; }
+    .lp-stat-standings-popup-btn {
+      position: absolute;
+      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      left: 36px;
+      z-index: 20;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,.72);
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      transition: background 120ms;
+    }
+    .lp-stat.has-standings-popup-btn .lp-stat-refresh-btn {
+      left: 64px;
+    }
+    .lp-stat-standings-popup-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+    .lp-stat-standings-popup-btn:hover:not(:disabled) { background: rgba(255,255,255,.18); color: #fff; }
+    .lp-stat-standings-popup-btn:disabled { cursor: default; opacity: .35; }
 
     /* 강제 새로고침 버튼 — 탭 비활성화로 폴링이 지연될 때 즉시 1회 재조회.
        클릭 시 5초 쿨다운 동안 아이콘 대신 카운트다운 숫자(5→1) 표시 + 비활성화.
@@ -2087,6 +2112,129 @@
       color: #f0f0f0;
       font-family: var(--font-family);
     }
+    .lp-events-s [data-scoreaxis-standings-panel],
+    .lp-stat [data-scoreaxis-standings-panel] {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 8px 6px;
+      box-sizing: border-box;
+      color: #f0f0f0;
+      font-family: var(--font-family);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148,163,184,.45) transparent;
+    }
+    .lp-stat [data-scoreaxis-standings-panel] { padding: 4px 10px 6px; }
+    .lp-events-s [data-scoreaxis-standings-panel]::-webkit-scrollbar,
+    .lp-stat [data-scoreaxis-standings-panel]::-webkit-scrollbar { width: 7px; }
+    .lp-events-s [data-scoreaxis-standings-panel]::-webkit-scrollbar-track,
+    .lp-stat [data-scoreaxis-standings-panel]::-webkit-scrollbar-track { background: transparent; }
+    .lp-events-s [data-scoreaxis-standings-panel]::-webkit-scrollbar-thumb,
+    .lp-stat [data-scoreaxis-standings-panel]::-webkit-scrollbar-thumb {
+      background: rgba(148,163,184,.42);
+      border: 2px solid rgba(var(--panel-ui-rgb), var(--panel-alpha));
+      border-radius: 999px;
+      background-clip: padding-box;
+    }
+    .scoreaxis-standings-list {
+      flex: 1 0 auto;
+      min-height: calc(100% - var(--panel-title-bar-height) - 10px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+    .scoreaxis-standings-item {
+      min-width: 0;
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .scoreaxis-standings-frame {
+      display: block;
+      flex: 1 0 auto;
+      width: 100%;
+      height: auto;
+      min-height: 340px;
+      border: 0;
+      background: transparent;
+    }
+    .lp-stat .scoreaxis-standings-frame { min-height: 430px; }
+    .scoreaxis-standings-title-bar { position: relative; }
+    .scoreaxis-small-popup-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.78);
+      cursor: pointer;
+      padding: 0;
+      z-index: 2;
+      transition: background 120ms, color 120ms, border-color 120ms;
+    }
+    .scoreaxis-small-popup-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,.18);
+      color: #fff;
+      border-color: rgba(255,255,255,.34);
+    }
+    .scoreaxis-small-popup-btn:disabled {
+      opacity: .35;
+      cursor: default;
+    }
+    .scoreaxis-standings-entry-label {
+      margin: 0 0 5px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: rgba(255,255,255,.58);
+      text-align: center;
+    }
+    .scoreaxis-standings-modal {
+      width: min(980px, calc(100vw - 48px));
+      height: min(820px, calc(100vh - 48px));
+      border-radius: 12px;
+      background: #0B1220;
+    }
+    .scoreaxis-standings-modal-header {
+      padding: 12px 14px;
+      background: #0B1220;
+    }
+    .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel] {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 12px 12px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      font-family: var(--font-family);
+      background: #0B1220;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148,163,184,.45) transparent;
+    }
+    .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel]::-webkit-scrollbar { width: 7px; }
+    .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel]::-webkit-scrollbar-track { background: transparent; }
+    .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel]::-webkit-scrollbar-thumb {
+      background: rgba(148,163,184,.42);
+      border: 2px solid #0B1220;
+      border-radius: 999px;
+      background-clip: padding-box;
+    }
+    .scoreaxis-standings-popup-body .scoreaxis-standings-list { min-height: 100%; }
+    .scoreaxis-standings-popup-body .scoreaxis-standings-frame { min-height: 680px; }
+
+
     body.low-panel-alpha :is(.lp-events-s [data-events-panel], .lp-stat [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
       text-shadow: var(--low-panel-text-outline);
     }

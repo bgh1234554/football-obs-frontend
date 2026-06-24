@@ -388,14 +388,15 @@ function startLineupResize(event) {
 //   - 더블클릭: 초기화
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const BIG_COL_WIDTH_KEY = 'obs.bigLayout.colWidth.v1';
-const BIG_CHAT_H_KEY    = 'obs.bigLayout.chatH.v1';
-const BIG_STAT_H_KEY    = 'obs.bigLayout.statH.v1';
-const BIG_CHAT_W_KEY    = 'obs.bigLayout.chatW.v1';
-const BIG_STAT_W_KEY    = 'obs.bigLayout.statW.v1';
-const BIG_PANEL_MIN_H   = 60;
-const BIG_PANEL_MIN_W   = 100;
-const BIG_COL_GAP       = 6; // .lp-col { gap: 6px } — ON 모드 높이 계산 시 차감
+const BIG_COL_WIDTH_KEY      = 'obs.bigLayout.colWidth.v1';
+const BIG_CHAT_H_KEY         = 'obs.bigLayout.chatH.v1';
+const BIG_STAT_H_KEY         = 'obs.bigLayout.statH.v1';
+const BIG_CHAT_W_KEY         = 'obs.bigLayout.chatW.v1';
+const BIG_STAT_W_KEY         = 'obs.bigLayout.statW.v1';
+const BIG_CHAT_FRACTION_KEY  = 'obs.bigLayout.chatFraction.v1'; // 비례 스케일링용 (chatH / usable)
+const BIG_PANEL_MIN_H        = 60;
+const BIG_PANEL_MIN_W        = 100;
+const BIG_COL_GAP            = 6; // .lp-col { gap: 6px } — ON 모드 높이 계산 시 차감
 
 function isBigPanelLinked() {
   return typeof getSetting === 'function' ? getSetting('bigPanelLinked') !== 'off' : false;
@@ -415,6 +416,18 @@ function _bigSave(key, px) {
 }
 function _bigClear(key) {
   try { localStorage.removeItem(key); } catch {}
+}
+function _bigLoadFraction(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null || raw === '') return null;
+    const v = Number(raw);
+    return Number.isFinite(v) && v > 0 && v < 1 ? v : null;
+  } catch { return null; }
+}
+// fraction은 소수점 값이라 _bigSave(Math.round) 경유 불가 — 직접 저장
+function _bigSaveFraction(f) {
+  try { localStorage.setItem(BIG_CHAT_FRACTION_KEY, f.toFixed(4)); } catch {}
 }
 /** px 값을 [min, max] 범위로 클램핑. 숫자가 아니면 null, max가 min보다 작으면 min만 보장. */
 function _clampPx(px, min, max) {
@@ -480,11 +493,17 @@ function _applyLinkedMode(col) {
   _clearPanelAbsolute(statPanel);
   const colH = col.getBoundingClientRect().height;
   const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
-  let chatH = colH > 0
-    ? _bigLoadClamped(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H, usable - BIG_PANEL_MIN_H)
-    : _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);
   if (colH > 0) {
-    if (chatH == null) chatH = Math.floor(usable / 2);
+    // 비율(fraction) 기준 우선(드래그 후 저장) → 없으면 절대 px → 없으면 50/50
+    // fraction은 드래그 onUp에서만 저장 — 자동 초기화 없음 (전체화면 시 잘못된 px 기반 fraction 방지)
+    let chatH;
+    const fraction = _bigLoadFraction(BIG_CHAT_FRACTION_KEY);
+    if (fraction != null) {
+      chatH = Math.round(usable * fraction);
+    } else {
+      chatH = _bigLoadClamped(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H, usable - BIG_PANEL_MIN_H);
+      if (chatH == null) chatH = Math.floor(usable / 2);
+    }
     chatH = Math.max(BIG_PANEL_MIN_H, Math.min(usable - BIG_PANEL_MIN_H, chatH));
     const statH = usable - chatH;
     chatPanel.style.flex = `0 0 ${chatH}px`;
@@ -718,6 +737,7 @@ function startBigPanelHeightDrag(event, col, origin) {
     document.body.classList.remove('lp-big-h-resizing');
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
+    if (linked && usable > 0) _bigSaveFraction(lastChatH / usable);
     requestAnimationFrame(() => {
       window.stRerenderActivePanels?.();
       window.lpBenchCycleRebalanceAll?.();
@@ -807,6 +827,7 @@ function startBigCornerDrag(event, col, panelSide) {
     }
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
+    if (linked && usable > 0) _bigSaveFraction(lastChatH / usable);
     requestAnimationFrame(() => {
       window.stRerenderActivePanels?.();
       window.lpBenchCycleRebalanceAll?.();
@@ -826,7 +847,7 @@ function ensureBigPanelHandles() {
 
     const resetAll = (e) => {
       e.preventDefault();
-      [BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY, BIG_CHAT_W_KEY, BIG_STAT_W_KEY].forEach(_bigClear);
+      [BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY, BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY].forEach(_bigClear);
       resetBigColWidth(col.closest('.layout-big'));
       requestAnimationFrame(() => {
         applyStoredBigPanelHeights();
@@ -1011,6 +1032,10 @@ function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
       panel.style.width = `${Math.round(frozenWidth)}px`;
       panel.dataset.lineupFrozenWidth = `${Math.round(frozenWidth)}px`;
       panel.classList.add('has-h-frozen-width');
+    } else {
+      // 패널이 아직 레이아웃되지 않은 상태 — width 고정 없이 has-edge-override만 붙으면
+      // aspect-ratio:unset + 너비 미지정 → 너비 0 붕괴 발생. 적용을 건너뛴다.
+      return;
     }
   }
   panel.style.height = `${Math.round(px)}px`;
@@ -1217,9 +1242,100 @@ document.addEventListener('DOMContentLoaded', () => {
   // 캠 큰 우측 패널 독립 엣지 리사이즈
   ensureBigPanelHandles();
   applyStoredBigColWidth();
-  requestAnimationFrame(() => applyStoredBigPanelHeights());
+  requestAnimationFrame(() => {
+    // fraction 초기화: applyStoredBigPanelHeights 보다 먼저 실행.
+    // applyStoredBigPanelHeights 내부의 OFF→ON 전환 분기가 BIG_CHAT_H_KEY를 50/50으로
+    // 덮어쓰기 전에 기존 chatH px → fraction으로 변환해야 사용자 비율이 보존된다.
+    // 이 시점은 항상 창 모드이므로 colH 기준으로 안전하게 비율 계산 가능.
+    if (_bigLoadFraction(BIG_CHAT_FRACTION_KEY) == null) {
+      document.querySelectorAll('.layout-big .lp-col').forEach(col => {
+        const colH = col.getBoundingClientRect().height;
+        if (colH <= 0) return;
+        const usable = colH - BIG_COL_GAP;
+        const chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);
+        if (chatH == null) return;
+        const f = chatH / usable;
+        // 0.15~0.85 범위만 신뢰 — 전체화면 때 저장된 큰 px값이 잘못 변환되지 않도록
+        if (f >= 0.15 && f <= 0.85) _bigSaveFraction(f);
+      });
+    }
+    applyStoredBigPanelHeights();
+  });
 
   // 캠 큰 라인업 독립 엣지 리사이즈
   ensureLineupEdgeHandles();
   requestAnimationFrame(() => applyStoredLineupEdgeOverrides());
+  // 페이지 로드 시점에 패널 너비가 아직 0이어서 적용을 건너뛴 경우를 위한 폴백
+  window.addEventListener('load', () => requestAnimationFrame(() => applyStoredLineupEdgeOverrides()), { once: true });
+
+  // 캠 큰 우측 패널: 전체화면 진입·해제 또는 창 크기 변경 시 패널 높이 재계산
+  // (lp-col 높이 변화 감지 → applyStoredBigPanelHeights 재호출)
+  const _onBigColHeightChange = (() => {
+    let timer = null;
+    return () => {
+      if (document.body.classList.contains('lp-big-col-resizing') ||
+          document.body.classList.contains('lp-big-h-resizing')) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        applyStoredBigPanelHeights();
+        window.stRerenderActivePanels?.();
+      }, 60);
+    };
+  })();
+
+  if (typeof ResizeObserver === 'function') {
+    const bigColObserver = new ResizeObserver(_onBigColHeightChange);
+    document.querySelectorAll('.layout-big .lp-col').forEach(col => bigColObserver.observe(col));
+  }
+
+  // 라인업 패널 ResizeObserver: F11/창 크기 변경 등 모든 리사이즈 시 x-scale 재계산 + 이름 라벨 재측정
+  // (fullscreenchange는 F11에서 발화하지 않으므로 ResizeObserver로 대응)
+  if (typeof ResizeObserver === 'function') {
+    const _onLineupPanelResize = (() => {
+      let timer = null;
+      return () => {
+        if (document.body.classList.contains('lp-lineup-w-resizing') ||
+            document.body.classList.contains('lp-lineup-h-resizing')) return;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          applyStoredLineupEdgeOverrides();
+          window.fitLineupNamePills?.();
+        }, 150);
+      };
+    })();
+    const lineupPanelObserver = new ResizeObserver(_onLineupPanelResize);
+    document.querySelectorAll('.layout-big .lp-lineup').forEach(p => lineupPanelObserver.observe(p));
+  }
+
+  // window.resize: F11/창 크기 변경 시 우측 패널 높이 재계산 (lp-col ResizeObserver 보완)
+  window.addEventListener('resize', (() => {
+    let t = null;
+    return () => {
+      if (document.body.classList.contains('lp-big-col-resizing') ||
+          document.body.classList.contains('lp-big-h-resizing')) return;
+      clearTimeout(t);
+      t = setTimeout(applyStoredBigPanelHeights, 200);
+    };
+  })());
+
+  // fullscreenchange: requestFullscreen() API 사용 시 대응 (F11과는 별개)
+  // rAF: 빠른 초기 적용(애니메이션 중간일 수 있음)
+  // 600ms timeout: 애니메이션 완료 후 확정 치수로 재보정 (--lp-lineup-x-scale 포함)
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.body.classList.contains('lp-big-col-resizing') &&
+        !document.body.classList.contains('lp-big-h-resizing')) {
+      requestAnimationFrame(() => {
+        applyStoredBigPanelHeights();
+        applyStoredLineupEdgeOverrides();
+        window.stRerenderActivePanels?.();
+        window.fitLineupNamePills?.();
+      });
+      setTimeout(() => {
+        applyStoredBigPanelHeights();
+        applyStoredLineupEdgeOverrides();
+        window.stRerenderActivePanels?.();
+        window.fitLineupNamePills?.();
+      }, 600);
+    }
+  });
 });

@@ -30,6 +30,7 @@ const _STAT_CYCLE_LABELS = {
   hth: '상대전적',
   bench_home: '홈 교체',
   bench_away: '원정 교체',
+  standings: '순위표',
 };
 
 const _STAT_CYCLE_ICONS = {
@@ -38,6 +39,7 @@ const _STAT_CYCLE_ICONS = {
   hth:        `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>`,
   bench_home: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
   bench_away: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
+  standings:  `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="2" rx="1"/><rect x="1" y="6" width="12" height="2" rx="1"/><rect x="1" y="10" width="12" height="2" rx="1"/></svg>`,
 };
 
 const _STAT_PAUSE_ICONS = {
@@ -75,11 +77,11 @@ function _lpStatPageCount() {
 
 /** lp-stat 안의 이벤트/상대전적 패널 스크롤 컨테이너 */
 function _lpEventsScrollEl(mode = 'events') {
-  const panelSelector = mode === 'hth' ? '[data-hth-panel]' : '[data-events-panel]';
+  let panelSelector = '[data-events-panel]';
+  if (mode === 'hth') panelSelector = '[data-hth-panel]';
   const panel = document.querySelector(`.lp-stat ${panelSelector}`);
   return panel?.querySelector('.ev-list') || panel;
 }
-
 function _lpModeUsesPanelAutoScroll(mode) {
   return mode === 'events' || mode === 'hth';
 }
@@ -181,6 +183,7 @@ function _lpBindEventsScrollInterruption(el) {
 function _lpStartEventsScroll(intervalMs, mode = 'events') {
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
+  const scrollDown = mode === 'standings';
   if (!el) {
     _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     return;
@@ -193,17 +196,19 @@ function _lpStartEventsScroll(intervalMs, mode = 'events') {
 
   const startAfterLayout = () => {
     const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
-    _lpSetEventsScrollTop(el, maxScroll);
+    const startTop = scrollDown ? 0 : maxScroll;
+    const endTop = scrollDown ? maxScroll : 0;
+    _lpSetEventsScrollTop(el, startTop);
 
     if (maxScroll <= 0 || scrollDuration <= 0) {
-      _lpSetEventsScrollTop(el, 0);
+      _lpSetEventsScrollTop(el, endTop);
       _lpClearEventsScrollListeners();
       _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
       return;
     }
 
-    const finishAtTop = () => {
-      _lpSetEventsScrollTop(el, 0);
+    const finishAtEnd = () => {
+      _lpSetEventsScrollTop(el, endTop);
       _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
     };
 
@@ -212,12 +217,12 @@ function _lpStartEventsScroll(intervalMs, mode = 'events') {
       const startTime = performance.now();
       const tick = now => {
         const progress = Math.min((now - startTime) / scrollDuration, 1);
-        _lpSetEventsScrollTop(el, maxScroll * (1 - progress));
+        _lpSetEventsScrollTop(el, scrollDown ? maxScroll * progress : maxScroll * (1 - progress));
 
         if (progress < 1) {
           _lpAuto.scrollRaf = requestAnimationFrame(tick);
         } else {
-          finishAtTop();
+          finishAtEnd();
         }
       };
 
@@ -227,8 +232,8 @@ function _lpStartEventsScroll(intervalMs, mode = 'events') {
     if (scrollDuration <= 0) {
       _lpAuto.scrollTimer = setTimeout(() => {
         _lpAuto.scrollTimer = null;
-        _lpSetEventsScrollTop(el, 0);
-        finishAtTop();
+        _lpSetEventsScrollTop(el, endTop);
+        finishAtEnd();
       }, holdBottom);
       return;
     }
@@ -240,7 +245,6 @@ function _lpStartEventsScroll(intervalMs, mode = 'events') {
     _lpAuto.scrollRaf = requestAnimationFrame(startAfterLayout);
   });
 }
-
 function _lpStartHthScrollWhenReady(intervalMs) {
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
@@ -333,9 +337,9 @@ function lpStatAvailableModes() {
   if (hasBenchAway) modes.push('bench_away');
   return modes;
 }
-
 /** hth 모드로 전환될 때 데이터가 fresh하지 않으면 HTH 데이터를 미리 로드. */
 function lpStatEnsureModeReady(mode) {
+
   if (mode !== 'hth' || typeof window.hthEnsureLoadedForFixture !== 'function') return Promise.resolve(null);
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
@@ -345,7 +349,6 @@ function lpStatEnsureModeReady(mode) {
       return null;
     });
 }
-
 function lpStatUpdateVisibility() {
   const available = lpStatAvailableModes();
   if (!available.includes(_lpStatCycle.mode)) _lpStatCycle.mode = 'stats';
@@ -365,20 +368,23 @@ function lpStatUpdateVisibility() {
   });
   document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
     el.style.display = mode === 'bench_home' ? '' : 'none';
-    // 숨겨진 동안 계산된 1열/2열 판정은 clientHeight=0이라 항상 부정확하므로,
-    // 보여지는 시점에 다시 계산한다 (hth/events 모드와 동일한 패턴).
     if (mode === 'bench_home') requestAnimationFrame(() => window.lpBenchCycleRebalance?.(el));
   });
   document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
     el.style.display = mode === 'bench_away' ? '' : 'none';
     if (mode === 'bench_away') requestAnimationFrame(() => window.lpBenchCycleRebalance?.(el));
   });
+  document.querySelectorAll('.lp-stat [data-scoreaxis-standings-panel]').forEach(el => {
+    el.style.display = 'none';
+    el.dataset.scoreaxisRenderKey = '';
+    el.replaceChildren();
+  });
+  window.scoreaxisStandingsUpdatePopupButton?.();
 
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();
   _lpAutoStart();
 }
-
 function lpStatUpdateBtn() {
   const available = lpStatAvailableModes();
   const canCycle = available.length > 1;

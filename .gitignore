@@ -11,3 +11,4 @@ docs/fsm-integration-guide.md
 /node_modules
 package-lock.json
 package.json
+/tools

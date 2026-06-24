@@ -293,15 +293,8 @@ function hthCreateTitleBar(container) {
   const titleBar = document.createElement('div');
   titleBar.className = 'ev-title-bar';
 
-  if (!isStatPanel) {
-    const toggleBtn = document.createElement('button');
-    toggleBtn.type = 'button';
-    toggleBtn.className = 'hth-toggle-btn';
-    toggleBtn.title = '이벤트 패널로 전환';
-    // events 아이콘 (점+줄 목록)
-    toggleBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="3" cy="3" r="1.5"/><rect x="6" y="2" width="7" height="2" rx="1"/><circle cx="3" cy="7" r="1.5"/><rect x="6" y="6" width="7" height="2" rx="1"/><circle cx="3" cy="11" r="1.5"/><rect x="6" y="10" width="7" height="2" rx="1"/></svg>`;
-    toggleBtn.addEventListener('click', () => hthSetMode('events'));
-    titleBar.appendChild(toggleBtn);
+  if (!isStatPanel && typeof window.createSmallPanelModeButtons === 'function') {
+    titleBar.appendChild(window.createSmallPanelModeButtons('hth', hthGetFixtureData()));
   }
 
   const title = document.createElement('div');
@@ -311,7 +304,6 @@ function hthCreateTitleBar(container) {
 
   return titleBar;
 }
-
 /** 메타 행 wrap 감지 → .hth-meta-row-wrapped 토글 */
 function hthCheckMetaWrap() {
   document.querySelectorAll('[data-hth-panel] .hth-meta-row').forEach(row => {
@@ -431,6 +423,7 @@ function hthShowForFixture(fixtureData = null) {
  * 'events'로 전환 시 이벤트 패널 제목 바 재렌더 (토글 버튼 표시 갱신).
  */
 function hthSetMode(mode) {
+  if (mode === 'hth') window.scoreaxisStandingsHideSmall?.({ skipHthUpdate: true });
   _hthState.mode = mode === 'hth' ? 'hth' : 'events';
   hthUpdateVisibility();
   if (_hthState.mode === 'hth') {
@@ -443,12 +436,28 @@ function hthSetMode(mode) {
 /** lp-events-s 안의 [data-hth-panel]과 [data-events-panel] 가시성 갱신.
  *  .lp-stat [data-hth-panel]은 stat-cycle.js가 독립 관리하므로 건드리지 않음. */
 function hthUpdateVisibility() {
+  if (window.scoreaxisStandingsIsSmallMode?.()) {
+    document.querySelectorAll('.lp-events-s [data-hth-panel]').forEach(el => {
+      el.style.display = 'none';
+    });
+    document.querySelectorAll('.lp-events-s [data-events-panel]').forEach(el => {
+      el.style.display = 'none';
+    });
+    document.querySelectorAll('.lp-events-s [data-scoreaxis-standings-panel]').forEach(el => {
+      el.style.display = '';
+    });
+    return;
+  }
+
   const isHth = _hthState.mode === 'hth';
   document.querySelectorAll('.lp-events-s [data-hth-panel]').forEach(el => {
     el.style.display = isHth ? '' : 'none';
   });
   document.querySelectorAll('.lp-events-s [data-events-panel]').forEach(el => {
     el.style.display = isHth ? 'none' : '';
+  });
+  document.querySelectorAll('.lp-events-s [data-scoreaxis-standings-panel]').forEach(el => {
+    el.style.display = 'none';
   });
 }
 
