@@ -1076,8 +1076,8 @@ function evCreateTitleBar(filterOptions, container) {
   const titleBar = document.createElement('div');
   titleBar.className = 'ev-title-bar';
 
-  const isStatPanel = container?.closest?.('.lp-stat');
-  if (!isStatPanel && typeof window.createSmallPanelModeButtons === 'function') {
+  const isSmallEventsPanel = container?.closest?.('.lp-events-s');
+  if (isSmallEventsPanel && typeof window.createSmallPanelModeButtons === 'function') {
     titleBar.appendChild(window.createSmallPanelModeButtons('events', window._eventsLastData));
   }
 

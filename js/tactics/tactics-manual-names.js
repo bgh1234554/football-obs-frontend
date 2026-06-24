@@ -169,17 +169,24 @@ function isTacticsNamesPanelOpen() {
  * 쓰고 있으면 충돌을 피해 미사용 번호 중 가장 작은 값으로 대체한다.
  */
 function resolveTacticsNumberDefaults(rawNumbers) {
-  const usedNumbers = new Set(
-    rawNumbers.map(Number).filter(n => Number.isFinite(n) && n > 0)
-  );
+  const claimedNumbers = new Set();
   return rawNumbers.map((entered, index) => {
     if (entered) {
       const explicit = Number(entered);
-      return Number.isFinite(explicit) && explicit > 0 ? explicit : null;
+      if (!Number.isFinite(explicit) || explicit <= 0) return null;
+      if (!claimedNumbers.has(explicit)) {
+        claimedNumbers.add(explicit);
+        return explicit;
+      }
+      // 같은 번호가 중복 입력된 경우 미사용 번호로 대체
+      let candidate = 1;
+      while (claimedNumbers.has(candidate)) candidate += 1;
+      claimedNumbers.add(candidate);
+      return candidate;
     }
     let candidate = index + 1;
-    while (usedNumbers.has(candidate)) candidate += 1;
-    usedNumbers.add(candidate);
+    while (claimedNumbers.has(candidate)) candidate += 1;
+    claimedNumbers.add(candidate);
     return candidate;
   });
 }

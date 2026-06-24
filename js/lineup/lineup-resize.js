@@ -1011,6 +1011,10 @@ function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
       panel.style.width = `${Math.round(frozenWidth)}px`;
       panel.dataset.lineupFrozenWidth = `${Math.round(frozenWidth)}px`;
       panel.classList.add('has-h-frozen-width');
+    } else {
+      // 패널이 아직 레이아웃되지 않은 상태 — width 고정 없이 has-edge-override만 붙으면
+      // aspect-ratio:unset + 너비 미지정 → 너비 0 붕괴 발생. 적용을 건너뛴다.
+      return;
     }
   }
   panel.style.height = `${Math.round(px)}px`;
@@ -1222,4 +1226,37 @@ document.addEventListener('DOMContentLoaded', () => {
   // 캠 큰 라인업 독립 엣지 리사이즈
   ensureLineupEdgeHandles();
   requestAnimationFrame(() => applyStoredLineupEdgeOverrides());
+  // 페이지 로드 시점에 패널 너비가 아직 0이어서 적용을 건너뛴 경우를 위한 폴백
+  window.addEventListener('load', () => requestAnimationFrame(() => applyStoredLineupEdgeOverrides()), { once: true });
+
+  // 캠 큰 우측 패널: 전체화면 진입·해제 또는 창 크기 변경 시 패널 높이 재계산
+  // (lp-col 높이 변화 감지 → applyStoredBigPanelHeights 재호출)
+  const _onBigColHeightChange = (() => {
+    let timer = null;
+    return () => {
+      if (document.body.classList.contains('lp-big-col-resizing') ||
+          document.body.classList.contains('lp-big-h-resizing')) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        applyStoredBigPanelHeights();
+        window.stRerenderActivePanels?.();
+      }, 60);
+    };
+  })();
+
+  if (typeof ResizeObserver === 'function') {
+    const bigColObserver = new ResizeObserver(_onBigColHeightChange);
+    document.querySelectorAll('.layout-big .lp-col').forEach(col => bigColObserver.observe(col));
+  }
+
+  // fullscreenchange: ResizeObserver가 늦게 발화하는 브라우저를 위한 보완
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.body.classList.contains('lp-big-col-resizing') &&
+        !document.body.classList.contains('lp-big-h-resizing')) {
+      requestAnimationFrame(() => {
+        applyStoredBigPanelHeights();
+        window.stRerenderActivePanels?.();
+      });
+    }
+  });
 });

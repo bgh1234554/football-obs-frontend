@@ -720,10 +720,10 @@ function applyZeroIdOverrides(next, fixtureId) {
       const newAssistId = ev.assistId != null ? altToCanonical[`${side}:${ev.assistId}`] : undefined;
       const playerKo = canonicalKoHints[`${side}:${ev.playerId}`];
       const assistKo = ev.assistId != null ? canonicalKoHints[`${side}:${ev.assistId}`] : null;
-      const needsPlayerName = playerKo?.name && !pirHasHangul(ev.playerName);
-      const needsPlayerNameKoLong = playerKo?.nameKoLong && !pirHasHangul(ev.playerNameKoLong);
-      const needsAssistName = assistKo?.name && !pirHasHangul(ev.assistName);
-      const needsAssistNameKoLong = assistKo?.nameKoLong && !pirHasHangul(ev.assistNameKoLong);
+      const needsPlayerName = playerKo?.name && pirHasHangul(playerKo.name) && !pirHasHangul(ev.playerName);
+      const needsPlayerNameKoLong = playerKo?.nameKoLong && pirHasHangul(playerKo.nameKoLong) && !pirHasHangul(ev.playerNameKoLong);
+      const needsAssistName = assistKo?.name && pirHasHangul(assistKo.name) && !pirHasHangul(ev.assistName);
+      const needsAssistNameKoLong = assistKo?.nameKoLong && pirHasHangul(assistKo.nameKoLong) && !pirHasHangul(ev.assistNameKoLong);
       if (!newPlayerId && newAssistId === undefined && !needsPlayerName && !needsPlayerNameKoLong && !needsAssistName && !needsAssistNameKoLong) return ev;
       return {
         ...ev,

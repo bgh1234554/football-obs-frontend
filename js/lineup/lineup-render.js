@@ -1066,10 +1066,11 @@ function applyLineupPanels(fixtureData) {
     clearLineupPanels();
     return;
   }
-  // 경기 ID가 실제로 로딩되는 시점이므로, 전술판에 남아있던 수동 입력 이름(tactics-manual-names.js)을
-  // 먼저 지워둔다 — 이후 syncTacticsBoard가 실제 라인업으로 덮어쓰지 못하는 경우(아직 startXi 없음)에도
-  // 수동으로 입력했던 이름이 화면에 그대로 남아있지 않도록 함.
-  clearTacticsLineupSync();
+  // 경기 ID가 실제로 바뀔 때만 전술판 수동 입력 이름을 지운다.
+  // 같은 경기를 폴링할 때는 clearTacticsLineupSync를 생략해 전술판 상태를 보존한다.
+  const incomingId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
+  const currentId = String(lineupPanelState.lastFixture?.matchInfo?.fixtureId ?? '').trim();
+  if (incomingId !== currentId) clearTacticsLineupSync();
   lineupPanelState.lastFixture = fixtureData;
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();

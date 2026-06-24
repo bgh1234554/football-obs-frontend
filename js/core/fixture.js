@@ -385,11 +385,12 @@
     // 30분 카운트가 처음부터 다시 시작되고 alert도 다시 뜰 수 있어야 한다.
     if (status !== 'INT') { _intFirstDetectedAt = null; _intAlertShown = false; }
 
-    // 2) ABD(중단/취소) — 재개되지 않는 경기이므로 안내 alert 1회만 띄우고 폴링 영구 중단.
+    // 2) ABD(중단/취소) — 재개되지 않는 경기이므로 안내 1회만 띄우고 폴링 영구 중단.
     if (status === 'ABD') {
       if (!_abdAlertShown) {
         _abdAlertShown = true;
-        alert('경기가 중단되어 더 이상 진행되지 않습니다 (Abandoned). 자동 갱신을 중단합니다.');
+        showToast('경기가 중단(Abandoned)되어 자동 갱신을 중단합니다.');
+        setApiStatus('idle', '경기 중단 (ABD) — 자동 갱신 중단');
       }
       return;
     }
