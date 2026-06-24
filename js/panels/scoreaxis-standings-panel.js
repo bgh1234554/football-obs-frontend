@@ -6,6 +6,9 @@
   const SMALL_HTH_SELECTOR = '.lp-events-s [data-hth-panel]';
   const BIG_POPUP_BUTTON_SELECTOR = '.lp-stat-standings-popup-btn';
   const POPUP_BACKDROP_ID = 'scoreaxisStandingsBackdrop';
+  const FRAME_OVERRIDE_STYLE_ID = 'scoreaxisHostOverrides';
+
+  let panelSurfaceObserver = null;
 
   const state = {
     fixtureData: null,
@@ -123,18 +126,35 @@
     return titleBar;
   }
 
-  function buildIframeSrcdoc(embedCode) {
-    const fontLinks = '<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">'
-      + '<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet">';
-    const frameCss = '<style>'
+  function getPanelSurfaceVars() {
+    try {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        rgb: styles.getPropertyValue('--panel-ui-rgb').trim() || '11, 18, 32',
+        alpha: styles.getPropertyValue('--panel-alpha').trim() || '1',
+      };
+    } catch (err) {
+      return { rgb: '11, 18, 32', alpha: '1' };
+    }
+  }
+
+  function buildFrameCss(surface) {
+    return ':root{--scoreaxis-panel-rgb:' + surface.rgb + ';--scoreaxis-panel-alpha:' + surface.alpha + '}'
       + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.5) transparent;}'
       + '*{box-sizing:border-box;}'
-      + '.scoreaxis-widget,.scoreaxis-widget *{font-family:"Ubuntu","NanumBarunGothic","Nanum Barun Gothic","Malgun Gothic",Arial,sans-serif!important;}'
+      + 'html,body,body *,.scoreaxis-widget,.scoreaxis-widget *,.scoreaxis-inner-widget,.scoreaxis-inner-widget *{font-family:"Ubuntu","NanumBarunGothic","Nanum Barun Gothic","Malgun Gothic",Arial,sans-serif!important;}'
+      + '.scoreaxis-widget,.scoreaxis-inner-widget{background-color:rgba(var(--scoreaxis-panel-rgb),var(--scoreaxis-panel-alpha))!important;}'
       + '::-webkit-scrollbar{width:7px;height:7px;}'
       + '::-webkit-scrollbar-track{background:transparent;}'
       + '::-webkit-scrollbar-thumb{background:rgba(148,163,184,.45);border-radius:999px;border:2px solid #0b1220;}'
-      + '::-webkit-scrollbar-thumb:hover{background:rgba(203,213,225,.62);}'
-      + '</style>';
+      + '::-webkit-scrollbar-thumb:hover{background:rgba(203,213,225,.62);}';
+  }
+
+  function buildIframeSrcdoc(embedCode) {
+    const surface = getPanelSurfaceVars();
+    const fontLinks = '<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">'
+      + '<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet">';
+    const frameCss = '<style>' + buildFrameCss(surface) + '</style>';
     return '<!doctype html><html><head><meta charset="utf-8">'
       + fontLinks
       + frameCss
@@ -143,6 +163,32 @@
       + '</body></html>';
   }
 
+  function installFrameOverrides(frame) {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc?.head) return;
+      const surface = getPanelSurfaceVars();
+      doc.documentElement?.style?.setProperty('--scoreaxis-panel-rgb', surface.rgb);
+      doc.documentElement?.style?.setProperty('--scoreaxis-panel-alpha', surface.alpha);
+      let style = doc.getElementById(FRAME_OVERRIDE_STYLE_ID);
+      if (!style) {
+        style = doc.createElement('style');
+        style.id = FRAME_OVERRIDE_STYLE_ID;
+        doc.head.appendChild(style);
+      }
+      style.textContent = buildFrameCss(surface);
+    } catch (err) {}
+  }
+
+  function syncAllFrameSurfaces() {
+    document.querySelectorAll('.scoreaxis-standings-frame').forEach(installFrameOverrides);
+  }
+
+  function ensurePanelSurfaceObserver() {
+    if (panelSurfaceObserver || !window.MutationObserver) return;
+    panelSurfaceObserver = new MutationObserver(syncAllFrameSurfaces);
+    panelSurfaceObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+  }
   function getFrameContentHeight(frame) {
     try {
       const doc = frame.contentDocument;
@@ -168,6 +214,7 @@
   function attachFrameAutoHeight(frame) {
     const run = () => resizeFrameToContent(frame);
     frame.addEventListener('load', () => {
+      installFrameOverrides(frame);
       run();
       try {
         const doc = frame.contentDocument;
@@ -177,7 +224,7 @@
         frame._scoreaxisResizeObserver = ro;
         doc?.fonts?.ready?.then(run).catch(() => {});
       } catch (err) {}
-      [250, 750, 1500, 3000, 6000, 10000].forEach(delay => setTimeout(run, delay));
+      [250, 750, 1500, 3000, 6000, 10000].forEach(delay => setTimeout(() => { installFrameOverrides(frame); run(); }, delay));
     });
     requestAnimationFrame(run);
   }
@@ -192,13 +239,14 @@
     frame.referrerPolicy = 'no-referrer-when-downgrade';
     frame.loading = 'eager';
     frame.srcdoc = buildIframeSrcdoc(embedCode);
+    ensurePanelSurfaceObserver();
     attachFrameAutoHeight(frame);
     return frame;
   }
   function createEntryLabel(entry) {
     const label = document.createElement('div');
     label.className = 'scoreaxis-standings-entry-label';
-    label.textContent = [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' · ');
+    label.textContent = [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' \u00B7 ');
     return label;
   }
 
@@ -238,9 +286,17 @@
   }
 
   function describeEmbeds(embeds) {
-    return embeds.map(entry => [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' · ')).join(' / ');
+    return embeds.map(entry => [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' \u00B7 ')).join(' / ');
   }
 
+  function describeFixtureLeague(fixtureData, fallbackEmbeds = []) {
+    const matchInfo = fixtureData?.matchInfo || {};
+    const leagueName = String(matchInfo.leagueName || matchInfo.league?.name || '').trim();
+    const round = String(matchInfo.leagueRound || matchInfo.round || '').trim();
+    const parts = [leagueName, round].filter(Boolean);
+    if (parts.length) return parts.join(' \u00B7 ');
+    return describeEmbeds(fallbackEmbeds);
+  }
   function openStandingsPopup(fixtureData = state.fixtureData) {
     const data = fixtureData || state.fixtureData;
     const embeds = getEmbeds(data);
@@ -248,7 +304,7 @@
     state.fixtureData = data || null;
     state.popupOpen = true;
     const { backdrop, panel, meta } = ensurePopupElements();
-    if (meta) meta.textContent = describeEmbeds(embeds);
+    if (meta) meta.textContent = describeFixtureLeague(data, embeds);
     backdrop.classList.add('open');
     backdrop.setAttribute('aria-hidden', 'false');
     renderPanel(panel, state.fixtureData, embeds, 0, { force: true });

@@ -2175,8 +2175,12 @@
       width: min(980px, calc(100vw - 48px));
       height: min(820px, calc(100vh - 48px));
       border-radius: 12px;
+      background: #0B1220;
     }
-    .scoreaxis-standings-modal-header { padding: 12px 14px; }
+    .scoreaxis-standings-modal-header {
+      padding: 12px 14px;
+      background: #0B1220;
+    }
     .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel] {
       flex: 1 1 auto;
       min-height: 0;
@@ -2186,6 +2190,7 @@
       overflow-y: auto;
       overflow-x: hidden;
       font-family: var(--font-family);
+      background: #0B1220;
       scrollbar-width: thin;
       scrollbar-color: rgba(148,163,184,.45) transparent;
     }
@@ -2193,7 +2198,7 @@
     .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel]::-webkit-scrollbar-track { background: transparent; }
     .scoreaxis-standings-popup-body[data-scoreaxis-standings-panel]::-webkit-scrollbar-thumb {
       background: rgba(148,163,184,.42);
-      border: 2px solid #181a20;
+      border: 2px solid #0B1220;
       border-radius: 999px;
       background-clip: padding-box;
     }
