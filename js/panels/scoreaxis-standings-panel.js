@@ -64,6 +64,10 @@
     return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>';
   }
 
+  function popupOpenIcon() {
+    return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><path d="M9 1h4v4"/><path d="M13 1 7.5 6.5"/></svg>';
+  }
+
   function createSmallPanelModeButton({ mode, activeMode, title, iconHtml, disabled, onClick }) {
     const button = createIconButton(title, 'small-panel-mode-btn', iconHtml, onClick);
     button.dataset.smallPanelMode = mode;
@@ -129,7 +133,7 @@
       const popupButton = createIconButton(
         '\uC21C\uC704\uD45C \uD31D\uC5C5',
         'scoreaxis-small-popup-btn',
-        standingsIcon(),
+        popupOpenIcon(),
         () => { openStandingsPopup(fixtureData || state.fixtureData); }
       );
       popupButton.setAttribute('aria-label', '\uC21C\uC704\uD45C \uD31D\uC5C5 \uC5F4\uAE30');
