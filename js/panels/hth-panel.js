@@ -508,3 +508,7 @@ window.hthUpdateVisibility = hthUpdateVisibility;
 window.hthAutoSwitch = hthAutoSwitch;
 window.hthReset = hthReset;
 window.hthCheckMetaWrap = hthCheckMetaWrap;
+window.hthClearCache = function hthClearCache() {
+  _hthCache.clear();
+  try { sessionStorage.removeItem(HTH_CACHE_STORAGE_KEY); } catch {}
+};

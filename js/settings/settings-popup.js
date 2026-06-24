@@ -613,6 +613,8 @@ function clearAppCaches() {
 
   try { localStorage.removeItem('last_fixture_id'); } catch {}
 
+  window.hthClearCache?.();
+
   if (typeof showToast === 'function') showToast('캐시를 초기화했습니다');
 }
 
