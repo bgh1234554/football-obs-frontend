@@ -320,7 +320,7 @@
     badge.className = 'tactics-name-badge';
     badge.style.cssText = `
       margin-top:2px; padding:1px 6px; border-radius:4px;
-      font-size:calc(10px * var(--td-scale,1)); font-weight:600; white-space:nowrap;
+      font-size:calc(var(--td-name-size, 10px) * var(--td-scale,1)); font-weight:600; white-space:nowrap;
       background:rgba(0,0,0,.75); color:#fff;
       visibility:${showNames ? 'visible' : 'hidden'};
     `;

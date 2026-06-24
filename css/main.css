@@ -13,6 +13,7 @@
       --panel-bg: rgba(var(--panel-ui-rgb), var(--panel-alpha));
       --lp-pitch-alpha: 1;
       --td-pitch-alpha: 1;
+      --td-name-size: 10px;
       --lineup-panel-bg: rgba(var(--panel-ui-rgb), var(--lp-pitch-alpha));
       --api-widget-surface-rgb: 43, 44, 47;
       --api-widget-hover-alpha: .22;
@@ -566,14 +567,20 @@
     #tactics-topbar {
       background: var(--panel-bg);
     }
-    .td-alpha-control {
+    .td-alpha-control,
+    .td-name-size-control {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       order: 99;
-      margin-left: auto;
       min-width: 0;
       padding-left: 8px;
+    }
+    .td-alpha-control {
+      margin-left: auto;
+    }
+    .td-name-size-control {
+      padding-left: 0;
     }
     .td-alpha-label {
       font-size: 11px;
@@ -585,6 +592,9 @@
       width: 120px;
       accent-color: #60a5fa;
       cursor: pointer;
+    }
+    .td-name-size-slider {
+      width: 96px;
     }
     .td-alpha-value {
       min-width: 40px;
