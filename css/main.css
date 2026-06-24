@@ -2163,6 +2163,35 @@
       background: transparent;
     }
     .lp-stat .scoreaxis-standings-frame { min-height: 430px; }
+    .scoreaxis-standings-title-bar { position: relative; }
+    .scoreaxis-small-popup-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.78);
+      cursor: pointer;
+      padding: 0;
+      z-index: 2;
+      transition: background 120ms, color 120ms, border-color 120ms;
+    }
+    .scoreaxis-small-popup-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,.18);
+      color: #fff;
+      border-color: rgba(255,255,255,.34);
+    }
+    .scoreaxis-small-popup-btn:disabled {
+      opacity: .35;
+      cursor: default;
+    }
     .scoreaxis-standings-entry-label {
       margin: 0 0 5px;
       font-size: 10px;

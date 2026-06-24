@@ -7,8 +7,28 @@
   const BIG_POPUP_BUTTON_SELECTOR = '.lp-stat-standings-popup-btn';
   const POPUP_BACKDROP_ID = 'scoreaxisStandingsBackdrop';
   const FRAME_OVERRIDE_STYLE_ID = 'scoreaxisHostOverrides';
+  const SCOREAXIS_FONT_STACK = '"Ubuntu","NanumBarunGothic","Nanum Barun Gothic","Malgun Gothic",Arial,sans-serif';
+  const SCOREAXIS_SURFACE_SELECTOR = [
+    'html',
+    'body',
+    '.scoreaxis-widget',
+    '.scoreaxis-inner-widget',
+    '.scoreaxis-inner-widget table',
+    '.scoreaxis-inner-widget thead',
+    '.scoreaxis-inner-widget tbody',
+    '.scoreaxis-inner-widget tr',
+    '.scoreaxis-inner-widget th',
+    '.scoreaxis-inner-widget td',
+    '[class*="table"]',
+    '[class*="Table"]',
+    '[class*="standings"]',
+    '[class*="Standings"]',
+    '[class*="league"]',
+    '[class*="League"]',
+  ].join(',');
 
   let panelSurfaceObserver = null;
+  let restoringSmallEventsPanel = false;
 
   const state = {
     fixtureData: null,
@@ -121,8 +141,21 @@
 
     const title = document.createElement('div');
     title.className = 'ev-title scoreaxis-standings-title';
-    title.textContent = '순위표';
+    title.textContent = '\uC21C\uC704\uD45C';
     titleBar.appendChild(title);
+
+    if (isSmallPanel) {
+      const popupButton = createIconButton(
+        '\uC21C\uC704\uD45C \uD31D\uC5C5',
+        'scoreaxis-small-popup-btn',
+        standingsIcon(),
+        () => { openStandingsPopup(fixtureData || state.fixtureData); }
+      );
+      popupButton.setAttribute('aria-label', '\uC21C\uC704\uD45C \uD31D\uC5C5 \uC5F4\uAE30');
+      popupButton.disabled = !hasEmbeds(fixtureData || state.fixtureData);
+      titleBar.appendChild(popupButton);
+    }
+
     return titleBar;
   }
 
@@ -142,7 +175,7 @@
     return ':root{--scoreaxis-panel-rgb:' + surface.rgb + ';--scoreaxis-panel-alpha:' + surface.alpha + '}'
       + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.5) transparent;}'
       + '*{box-sizing:border-box;}'
-      + 'html,body,body *,.scoreaxis-widget,.scoreaxis-widget *,.scoreaxis-inner-widget,.scoreaxis-inner-widget *{font-family:"Ubuntu","NanumBarunGothic","Nanum Barun Gothic","Malgun Gothic",Arial,sans-serif!important;}'
+      + 'html,body,body *,.scoreaxis-widget,.scoreaxis-widget *,.scoreaxis-inner-widget,.scoreaxis-inner-widget *{font-family:' + SCOREAXIS_FONT_STACK + '!important;}'
       + '.scoreaxis-widget,.scoreaxis-inner-widget{background-color:rgba(var(--scoreaxis-panel-rgb),var(--scoreaxis-panel-alpha))!important;}'
       + '::-webkit-scrollbar{width:7px;height:7px;}'
       + '::-webkit-scrollbar-track{background:transparent;}'
@@ -150,6 +183,66 @@
       + '::-webkit-scrollbar-thumb:hover{background:rgba(203,213,225,.62);}';
   }
 
+  function parseCssColor(color) {
+    const match = String(color || '').match(/rgba?\(([^)]+)\)/i);
+    if (!match) return null;
+    const parts = match[1].split(',').map(part => Number.parseFloat(part.trim()));
+    if (parts.length < 3 || parts.some(value => Number.isNaN(value))) return null;
+    return { r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1 };
+  }
+
+  function isDarkWidgetBackground(color) {
+    const parsed = parseCssColor(color);
+    if (!parsed || parsed.a === 0) return false;
+    return parsed.r <= 45 && parsed.g <= 55 && parsed.b <= 70;
+  }
+
+  function applyInlineWidgetOverrides(root, surface) {
+    const ownerWindow = root?.defaultView || root?.ownerDocument?.defaultView || window;
+    const panelBg = `rgba(${surface.rgb},${surface.alpha})`;
+    root.querySelectorAll?.('*')?.forEach(el => {
+      el.style?.setProperty('font-family', SCOREAXIS_FONT_STACK, 'important');
+      try {
+        if (isDarkWidgetBackground(ownerWindow.getComputedStyle(el).backgroundColor)) {
+          el.style.setProperty('background-color', 'transparent', 'important');
+        }
+      } catch (err) {}
+    });
+    root.querySelectorAll?.(SCOREAXIS_SURFACE_SELECTOR)?.forEach(el => {
+      el.style?.setProperty('font-family', SCOREAXIS_FONT_STACK, 'important');
+      el.style?.setProperty('background-color', 'transparent', 'important');
+    });
+    root.querySelectorAll?.('.scoreaxis-widget,.scoreaxis-inner-widget')?.forEach(el => {
+      el.style?.setProperty('background-color', panelBg, 'important');
+    });
+  }
+
+  function applyDeepWidgetOverrides(root, surface, seen = new Set()) {
+    if (!root || seen.has(root)) return;
+    seen.add(root);
+    applyInlineWidgetOverrides(root, surface);
+    root.querySelectorAll?.('*')?.forEach(el => {
+      if (el.shadowRoot) {
+        try {
+          const styleDoc = el.shadowRoot.ownerDocument || document;
+          let style = el.shadowRoot.getElementById(FRAME_OVERRIDE_STYLE_ID);
+          if (!style) {
+            style = styleDoc.createElement('style');
+            style.id = FRAME_OVERRIDE_STYLE_ID;
+          }
+          style.textContent = buildFrameCss(surface);
+          el.shadowRoot.appendChild(style);
+          applyDeepWidgetOverrides(el.shadowRoot, surface, seen);
+        } catch (err) {}
+      }
+      if (el.tagName === 'IFRAME') {
+        try {
+          const childDoc = el.contentDocument;
+          if (childDoc) applyDeepWidgetOverrides(childDoc, surface, seen);
+        } catch (err) {}
+      }
+    });
+  }
   function buildIframeSrcdoc(embedCode) {
     const surface = getPanelSurfaceVars();
     const fontLinks = '<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">'
@@ -174,9 +267,10 @@
       if (!style) {
         style = doc.createElement('style');
         style.id = FRAME_OVERRIDE_STYLE_ID;
-        doc.head.appendChild(style);
       }
       style.textContent = buildFrameCss(surface);
+      doc.head.appendChild(style);
+      applyDeepWidgetOverrides(doc, surface);
     } catch (err) {}
   }
 
@@ -218,11 +312,25 @@
       run();
       try {
         const doc = frame.contentDocument;
-        const ro = new ResizeObserver(run);
+        const ro = new ResizeObserver(() => { installFrameOverrides(frame); run(); });
         if (doc?.documentElement) ro.observe(doc.documentElement);
         if (doc?.body) ro.observe(doc.body);
         frame._scoreaxisResizeObserver = ro;
-        doc?.fonts?.ready?.then(run).catch(() => {});
+        doc?.fonts?.ready?.then(() => { installFrameOverrides(frame); run(); }).catch(() => {});
+        if (!frame._scoreaxisDomObserver && window.MutationObserver && doc?.documentElement) {
+          let queued = false;
+          const mo = new MutationObserver(() => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => {
+              queued = false;
+              installFrameOverrides(frame);
+              run();
+            });
+          });
+          mo.observe(doc.documentElement, { childList: true, subtree: true });
+          frame._scoreaxisDomObserver = mo;
+        }
       } catch (err) {}
       [250, 750, 1500, 3000, 6000, 10000].forEach(delay => setTimeout(() => { installFrameOverrides(frame); run(); }, delay));
     });
@@ -412,6 +520,23 @@
     window.lpStatUpdateBtn?.();
   }
 
+  function restoreSmallEventsPanelIfNeeded() {
+    if (restoringSmallEventsPanel || state.smallMode === 'standings' || window._hthState?.mode === 'hth') return;
+    if (typeof window.applyEventsPanel !== 'function') return;
+    const data = window._eventsLastData || state.fixtureData;
+    if (!data) return;
+    const needsRender = Array.from(document.querySelectorAll(SMALL_EVENTS_SELECTOR)).some(el => {
+      return el.style.display !== 'none' && !el.childElementCount;
+    });
+    if (!needsRender) return;
+    restoringSmallEventsPanel = true;
+    try {
+      window.applyEventsPanel(data, { animate: false });
+    } finally {
+      restoringSmallEventsPanel = false;
+    }
+  }
+
   function scoreaxisStandingsUpdateSmallVisibility() {
     const isStandings = state.smallMode === 'standings';
     document.querySelectorAll(SMALL_PANEL_SELECTOR).forEach(el => {
@@ -431,7 +556,9 @@
     document.querySelectorAll(SMALL_HTH_SELECTOR).forEach(el => {
       el.style.display = isHth ? '' : 'none';
     });
+    requestAnimationFrame(restoreSmallEventsPanelIfNeeded);
   }
+
   function scoreaxisStandingsShowForFixture(fixtureData = state.fixtureData) {
     const data = fixtureData || state.fixtureData;
     if (!hasEmbeds(data)) return false;
