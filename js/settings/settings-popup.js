@@ -1111,6 +1111,7 @@ function initSettingsPopup() {
   const backdrop = document.getElementById('settingsBackdrop');
   const settingsResetBtn = document.getElementById('settingsResetBtn');
   const cacheResetBtn = document.getElementById('cacheResetBtn');
+  const layoutResetBtn = document.getElementById('layoutResetBtn');
   const currentFixtureManualResetBtn = document.getElementById('currentFixtureManualResetBtn');
   const ratingColorsResetBtn = document.getElementById('ratingColorsResetBtn');
 
@@ -1311,6 +1312,16 @@ function initSettingsPopup() {
     cacheResetBtn.addEventListener('click', () => {
       if (!confirm('경기 캐시와 최근 경기 ID를 초기화할까요?')) return;
       clearAppCaches();
+    });
+  }
+
+  if (layoutResetBtn) {
+    layoutResetBtn.addEventListener('click', () => {
+      if (!confirm('드래그로 조정한 패널 크기를 모두 기본값으로 되돌릴까요?')) return;
+      if (typeof window.resetAllLayoutSizes === 'function') {
+        window.resetAllLayoutSizes();
+        if (typeof showToast === 'function') showToast('패널 크기를 초기화했습니다');
+      }
     });
   }
 
