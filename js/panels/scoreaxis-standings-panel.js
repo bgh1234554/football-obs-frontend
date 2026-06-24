@@ -7,7 +7,6 @@
   const BIG_POPUP_BUTTON_SELECTOR = '.lp-stat-standings-popup-btn';
   const POPUP_BACKDROP_ID = 'scoreaxisStandingsBackdrop';
   const FRAME_OVERRIDE_STYLE_ID = 'scoreaxisHostOverrides';
-  const SCOREAXIS_FONT_STACK = '"Ubuntu","NanumBarunGothic","Nanum Barun Gothic","Malgun Gothic",Arial,sans-serif';
 
   let panelSurfaceObserver = null;
   let restoringSmallEventsPanel = false;
@@ -157,7 +156,6 @@
     return ':root{--scoreaxis-panel-rgb:' + surface.rgb + ';--scoreaxis-panel-alpha:' + surface.alpha + '}'
       + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.5) transparent;}'
       + '*{box-sizing:border-box;}'
-      + 'html,body,body *,.scoreaxis-widget,.scoreaxis-widget *,.scoreaxis-inner-widget,.scoreaxis-inner-widget *{font-family:' + SCOREAXIS_FONT_STACK + '!important;}'
       + '.scoreaxis-widget,.scoreaxis-inner-widget{background-color:rgba(var(--scoreaxis-panel-rgb),var(--scoreaxis-panel-alpha))!important;}'
       + '.scoreaxis-inner-widget table,.scoreaxis-inner-widget thead,.scoreaxis-inner-widget tbody,.scoreaxis-inner-widget tr,.scoreaxis-inner-widget th,.scoreaxis-inner-widget td{background-color:transparent!important;}'
       + '::-webkit-scrollbar{width:7px;height:7px;}'
@@ -185,11 +183,8 @@
   }
   function buildIframeSrcdoc(embedCode) {
     const surface = getPanelSurfaceVars();
-    const fontLinks = '<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">'
-      + '<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet">';
     const frameCss = '<style>' + buildFrameCss(surface) + '</style>';
     return '<!doctype html><html><head><meta charset="utf-8">'
-      + fontLinks
       + frameCss
       + '</head><body>'
       + embedCode
@@ -453,7 +448,8 @@
     const data = window._eventsLastData || state.fixtureData;
     if (!data) return;
     const needsRender = Array.from(document.querySelectorAll(SMALL_EVENTS_SELECTOR)).some(el => {
-      return el.style.display !== 'none' && !el.childElementCount;
+      if (el.style.display === 'none') return false;
+      return !el.querySelector('.ev-list,.ev-empty');
     });
     if (!needsRender) return;
     restoringSmallEventsPanel = true;
@@ -462,6 +458,22 @@
     } finally {
       restoringSmallEventsPanel = false;
     }
+  }
+
+  function restoreSmallStandingsPanelIfNeeded() {
+    if (state.smallMode !== 'standings') return;
+    const data = state.fixtureData || window._eventsLastData;
+    const embeds = getEmbeds(data);
+    if (!data || !embeds.length) {
+      state.smallMode = 'events';
+      scoreaxisStandingsUpdateSmallVisibility();
+      return;
+    }
+    document.querySelectorAll(SMALL_PANEL_SELECTOR).forEach((el, index) => {
+      if (el.style.display === 'none') return;
+      if (el.querySelector('.scoreaxis-standings-list')) return;
+      renderPanel(el, data, embeds, index, { force: true });
+    });
   }
 
   function scoreaxisStandingsUpdateSmallVisibility() {
@@ -473,6 +485,7 @@
     if (isStandings) {
       document.querySelectorAll(SMALL_EVENTS_SELECTOR).forEach(el => { el.style.display = 'none'; });
       document.querySelectorAll(SMALL_HTH_SELECTOR).forEach(el => { el.style.display = 'none'; });
+      requestAnimationFrame(restoreSmallStandingsPanelIfNeeded);
       return;
     }
 
@@ -546,4 +559,11 @@
   window.scoreaxisStandingsIsSmallMode = () => state.smallMode === 'standings';
   window.scoreaxisStandingsUpdateSmallVisibility = scoreaxisStandingsUpdateSmallVisibility;
   window.scoreaxisStandingsReset = scoreaxisStandingsReset;
+
+  window.addEventListener('pageshow', () => {
+    requestAnimationFrame(scoreaxisStandingsUpdateSmallVisibility);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) requestAnimationFrame(scoreaxisStandingsUpdateSmallVisibility);
+  });
 }());
