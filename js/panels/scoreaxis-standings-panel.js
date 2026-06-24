@@ -4,10 +4,13 @@
   const SMALL_PANEL_SELECTOR = '.lp-events-s [data-scoreaxis-standings-panel]';
   const SMALL_EVENTS_SELECTOR = '.lp-events-s [data-events-panel]';
   const SMALL_HTH_SELECTOR = '.lp-events-s [data-hth-panel]';
+  const BIG_POPUP_BUTTON_SELECTOR = '.lp-stat-standings-popup-btn';
+  const POPUP_BACKDROP_ID = 'scoreaxisStandingsBackdrop';
 
   const state = {
     fixtureData: null,
     smallMode: 'events',
+    popupOpen: false,
     renderSeq: 0,
   };
 
@@ -105,11 +108,11 @@
   }
 
   function createTitleBar(container, fixtureData) {
-    const isStatPanel = container?.closest?.('.lp-stat');
+    const isSmallPanel = container?.closest?.('.lp-events-s');
     const titleBar = document.createElement('div');
     titleBar.className = 'ev-title-bar scoreaxis-standings-title-bar';
 
-    if (!isStatPanel) {
+    if (isSmallPanel) {
       titleBar.appendChild(createSmallPanelModeButtons('standings', fixtureData));
     }
 
@@ -120,6 +123,65 @@
     return titleBar;
   }
 
+  function buildIframeSrcdoc(embedCode) {
+    const fontLinks = '<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">'
+      + '<link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet">';
+    const frameCss = '<style>'
+      + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.5) transparent;}'
+      + '*{box-sizing:border-box;}'
+      + '.scoreaxis-widget,.scoreaxis-widget *{font-family:"Ubuntu","NanumBarunGothic","Nanum Barun Gothic","Malgun Gothic",Arial,sans-serif!important;}'
+      + '::-webkit-scrollbar{width:7px;height:7px;}'
+      + '::-webkit-scrollbar-track{background:transparent;}'
+      + '::-webkit-scrollbar-thumb{background:rgba(148,163,184,.45);border-radius:999px;border:2px solid #0b1220;}'
+      + '::-webkit-scrollbar-thumb:hover{background:rgba(203,213,225,.62);}'
+      + '</style>';
+    return '<!doctype html><html><head><meta charset="utf-8">'
+      + fontLinks
+      + frameCss
+      + '</head><body>'
+      + embedCode
+      + '</body></html>';
+  }
+
+  function getFrameContentHeight(frame) {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc) return 0;
+      const body = doc.body;
+      const html = doc.documentElement;
+      return Math.ceil(Math.max(
+        body?.scrollHeight || 0,
+        body?.offsetHeight || 0,
+        html?.scrollHeight || 0,
+        html?.offsetHeight || 0
+      ));
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  function resizeFrameToContent(frame) {
+    const height = getFrameContentHeight(frame);
+    if (height > 80) frame.style.height = `${height}px`;
+  }
+
+  function attachFrameAutoHeight(frame) {
+    const run = () => resizeFrameToContent(frame);
+    frame.addEventListener('load', () => {
+      run();
+      try {
+        const doc = frame.contentDocument;
+        const ro = new ResizeObserver(run);
+        if (doc?.documentElement) ro.observe(doc.documentElement);
+        if (doc?.body) ro.observe(doc.body);
+        frame._scoreaxisResizeObserver = ro;
+        doc?.fonts?.ready?.then(run).catch(() => {});
+      } catch (err) {}
+      [250, 750, 1500, 3000, 6000, 10000].forEach(delay => setTimeout(run, delay));
+    });
+    requestAnimationFrame(run);
+  }
+
   function materializeEmbed(entry) {
     const embedCode = String(entry?.embedCode || '').trim();
     if (!embedCode) return document.createTextNode('');
@@ -128,7 +190,9 @@
     frame.className = 'scoreaxis-standings-frame';
     frame.title = [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' - ') || 'ScoreAxis standings';
     frame.referrerPolicy = 'no-referrer-when-downgrade';
-    frame.srcdoc = embedCode;
+    frame.loading = 'eager';
+    frame.srcdoc = buildIframeSrcdoc(embedCode);
+    attachFrameAutoHeight(frame);
     return frame;
   }
   function createEntryLabel(entry) {
@@ -138,16 +202,99 @@
     return label;
   }
 
+  function isPopupContainer(container) {
+    return !!container?.closest?.(`#${POPUP_BACKDROP_ID}`);
+  }
+
+  function ensurePopupElements() {
+    let backdrop = document.getElementById(POPUP_BACKDROP_ID);
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = POPUP_BACKDROP_ID;
+      backdrop.className = 'dp-manual-backdrop scoreaxis-standings-backdrop';
+      backdrop.setAttribute('aria-hidden', 'true');
+      backdrop.innerHTML = `
+        <div class="dp-manual-modal scoreaxis-standings-modal" role="dialog" aria-modal="true" aria-labelledby="scoreaxisStandingsTitle">
+          <div class="dp-manual-header scoreaxis-standings-modal-header">
+            <div>
+              <div class="dp-manual-title" id="scoreaxisStandingsTitle">&#49692;&#50948;&#54364;</div>
+              <div class="dp-manual-meta" id="scoreaxisStandingsMeta"></div>
+            </div>
+            <button class="dp-manual-close" id="scoreaxisStandingsClose" aria-label="&#45803;&#44592;">&times;</button>
+          </div>
+          <div class="dp-manual-body scoreaxis-standings-popup-body" data-scoreaxis-standings-panel data-scoreaxis-popup-panel></div>
+        </div>`;
+      document.body.appendChild(backdrop);
+      backdrop.addEventListener('click', event => {
+        if (event.target === backdrop) closeStandingsPopup();
+      });
+      backdrop.querySelector('#scoreaxisStandingsClose')?.addEventListener('click', closeStandingsPopup);
+    }
+    return {
+      backdrop,
+      panel: backdrop.querySelector('[data-scoreaxis-popup-panel]'),
+      meta: backdrop.querySelector('#scoreaxisStandingsMeta'),
+    };
+  }
+
+  function describeEmbeds(embeds) {
+    return embeds.map(entry => [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' · ')).join(' / ');
+  }
+
+  function openStandingsPopup(fixtureData = state.fixtureData) {
+    const data = fixtureData || state.fixtureData;
+    const embeds = getEmbeds(data);
+    if (!embeds.length) return false;
+    state.fixtureData = data || null;
+    state.popupOpen = true;
+    const { backdrop, panel, meta } = ensurePopupElements();
+    if (meta) meta.textContent = describeEmbeds(embeds);
+    backdrop.classList.add('open');
+    backdrop.setAttribute('aria-hidden', 'false');
+    renderPanel(panel, state.fixtureData, embeds, 0, { force: true });
+    updatePopupButton();
+    requestAnimationFrame(() => { if (panel) panel.scrollTop = 0; });
+    return true;
+  }
+
+  function closeStandingsPopup() {
+    const backdrop = document.getElementById(POPUP_BACKDROP_ID);
+    state.popupOpen = false;
+    if (backdrop) {
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      const panel = backdrop.querySelector('[data-scoreaxis-popup-panel]');
+      if (panel) {
+        panel.dataset.scoreaxisRenderKey = '';
+        panel.replaceChildren();
+      }
+    }
+    updatePopupButton();
+  }
+
+  function updatePopupButton(fixtureData = state.fixtureData || window._eventsLastData) {
+    const data = fixtureData || state.fixtureData || window._eventsLastData || null;
+    const show = hasEmbeds(data);
+    document.querySelectorAll(BIG_POPUP_BUTTON_SELECTOR).forEach(button => {
+      button.style.display = show ? '' : 'none';
+      button.disabled = !show;
+      button.innerHTML = standingsIcon();
+      button.title = '\uC21C\uC704\uD45C \uD31D\uC5C5';
+      button.setAttribute('aria-label', '\uC21C\uC704\uD45C \uD31D\uC5C5 \uC5F4\uAE30');
+      button.closest('.lp-stat')?.classList.toggle('has-standings-popup-btn', show);
+    });
+  }
+
   function isInActivePage(container) {
     const page = container.closest?.('.page');
     return !page || page.classList.contains('active');
   }
 
   function shouldRenderContainer(container) {
+    if (isPopupContainer(container)) return state.popupOpen;
     if (!isInActivePage(container)) return false;
     if (container.closest?.('.lp-events-s')) return state.smallMode === 'standings';
-    if (container.closest?.('.lp-stat')) return window._lpStatCycle?.mode === 'standings';
-    return true;
+    return false;
   }
   function renderEmpty(container, message) {
     const empty = document.createElement('div');
@@ -172,7 +319,7 @@
     }
 
     state.renderSeq += 1;
-    const titleBar = createTitleBar(container, fixtureData);
+    const titleBar = isPopupContainer(container) ? null : createTitleBar(container, fixtureData);
     const list = document.createElement('div');
     list.className = 'scoreaxis-standings-list';
 
@@ -184,7 +331,8 @@
       list.appendChild(item);
     });
 
-    container.replaceChildren(titleBar, list);
+    if (titleBar) container.replaceChildren(titleBar, list);
+    else container.replaceChildren(list);
     requestAnimationFrame(() => { container.scrollTop = 0; });
   }
 
@@ -192,6 +340,7 @@
     state.fixtureData = fixtureData || null;
     const embeds = getEmbeds(state.fixtureData);
     if (!embeds.length && state.smallMode === 'standings') state.smallMode = 'events';
+    if (!embeds.length && state.popupOpen) closeStandingsPopup();
 
     document.querySelectorAll(PANEL_SELECTOR).forEach((container, panelIndex) => {
       if (!shouldRenderContainer(container)) {
@@ -203,6 +352,7 @@
     });
 
     scoreaxisStandingsUpdateSmallVisibility();
+    updatePopupButton(state.fixtureData);
     window.lpStatUpdateBtn?.();
   }
 
@@ -257,13 +407,31 @@
       container.replaceChildren();
     });
     scoreaxisStandingsUpdateSmallVisibility();
+    closeStandingsPopup();
+    updatePopupButton(null);
   }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll(BIG_POPUP_BUTTON_SELECTOR).forEach(button => {
+      button.addEventListener('click', event => {
+        event.preventDefault();
+        openStandingsPopup(window._eventsLastData || state.fixtureData);
+      });
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && state.popupOpen) closeStandingsPopup();
+    });
+    updatePopupButton(window._eventsLastData || state.fixtureData);
+  });
 
   window.createSmallPanelModeButtons = createSmallPanelModeButtons;
   window.applyScoreaxisStandingsPanel = applyScoreaxisStandingsPanel;
   window.scoreaxisStandingsHasEmbeds = hasEmbeds;
   window.scoreaxisStandingsShowForFixture = scoreaxisStandingsShowForFixture;
   window.scoreaxisStandingsShowEvents = scoreaxisStandingsShowEvents;
+  window.scoreaxisStandingsOpenPopup = openStandingsPopup;
+  window.scoreaxisStandingsClosePopup = closeStandingsPopup;
+  window.scoreaxisStandingsUpdatePopupButton = updatePopupButton;
   window.scoreaxisStandingsHideSmall = scoreaxisStandingsHideSmall;
   window.scoreaxisStandingsIsSmallMode = () => state.smallMode === 'standings';
   window.scoreaxisStandingsUpdateSmallVisibility = scoreaxisStandingsUpdateSmallVisibility;

@@ -79,12 +79,11 @@ function _lpStatPageCount() {
 function _lpEventsScrollEl(mode = 'events') {
   let panelSelector = '[data-events-panel]';
   if (mode === 'hth') panelSelector = '[data-hth-panel]';
-  else if (mode === 'standings') panelSelector = '[data-scoreaxis-standings-panel]';
   const panel = document.querySelector(`.lp-stat ${panelSelector}`);
-  return mode === 'standings' ? panel : (panel?.querySelector('.ev-list') || panel);
+  return panel?.querySelector('.ev-list') || panel;
 }
 function _lpModeUsesPanelAutoScroll(mode) {
-  return mode === 'events' || mode === 'hth' || mode === 'standings';
+  return mode === 'events' || mode === 'hth';
 }
 
 // ─── 이벤트 패널 자동 스크롤 ─────────────────────────────────────────────────
@@ -300,8 +299,6 @@ function _lpAutoStart() {
     _lpStartEventsScroll(intervalMs, mode);
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
-  } else if (mode === 'standings') {
-    _lpStartEventsScroll(intervalMs, mode);
   } else {
     // bench_home / bench_away
     _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
@@ -334,21 +331,15 @@ function lpStatAvailableModes() {
     && window.hthCanLoadForFixture(window._eventsLastData);
   const hasBenchHome = !!(window._lpStatBenchData?.home);
   const hasBenchAway = !!(window._lpStatBenchData?.away);
-  const hasStandings = typeof window.scoreaxisStandingsHasEmbeds === 'function'
-    && window.scoreaxisStandingsHasEmbeds(window._eventsLastData);
   if (hasEvents) modes.push('events');
   if (hasHth) modes.push('hth');
   if (hasBenchHome) modes.push('bench_home');
   if (hasBenchAway) modes.push('bench_away');
-  if (hasStandings) modes.push('standings');
   return modes;
 }
 /** hth 모드로 전환될 때 데이터가 fresh하지 않으면 HTH 데이터를 미리 로드. */
 function lpStatEnsureModeReady(mode) {
-  if (mode === 'standings') {
-    window.applyScoreaxisStandingsPanel?.(window._eventsLastData, { force: true });
-    return Promise.resolve(null);
-  }
+
   if (mode !== 'hth' || typeof window.hthEnsureLoadedForFixture !== 'function') return Promise.resolve(null);
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
@@ -384,12 +375,11 @@ function lpStatUpdateVisibility() {
     if (mode === 'bench_away') requestAnimationFrame(() => window.lpBenchCycleRebalance?.(el));
   });
   document.querySelectorAll('.lp-stat [data-scoreaxis-standings-panel]').forEach(el => {
-    el.style.display = mode === 'standings' ? '' : 'none';
-    if (mode === 'standings') {
-      window.applyScoreaxisStandingsPanel?.(window._eventsLastData, { force: true });
-      requestAnimationFrame(() => { el.scrollTop = 0; });
-    }
+    el.style.display = 'none';
+    el.dataset.scoreaxisRenderKey = '';
+    el.replaceChildren();
   });
+  window.scoreaxisStandingsUpdatePopupButton?.();
 
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();
