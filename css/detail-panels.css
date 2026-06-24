@@ -2584,6 +2584,45 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
 }
 
 /* 토글 버튼: HTH 패널 제목 바 (← events), 이벤트 패널 제목 바 (→ hth) — 아이콘 전용 정사각형 */
+.small-panel-mode-buttons {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 5;
+}
+
+.small-panel-mode-btn {
+  flex: 0 0 auto;
+  width: var(--panel-title-control-size);
+  height: var(--panel-title-control-size);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 4px;
+  color: rgba(255,255,255,.64);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms, opacity 120ms;
+}
+.small-panel-mode-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+.small-panel-mode-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+.small-panel-mode-btn.is-active {
+  background: rgba(255,255,255,.18);
+  border-color: rgba(255,255,255,.36);
+  color: #fff;
+}
+.small-panel-mode-btn:disabled {
+  opacity: .32;
+  cursor: default;
+}
 .hth-toggle-btn,
 .hth-ev-toggle-btn {
   flex: 0 0 auto;
