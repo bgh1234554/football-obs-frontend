@@ -18,19 +18,28 @@
     renderSeq: 0,
   };
 
+  /** 현재 fixture에 대한 ScoreAxis embed 항목 배열을 반환한다. */
   function getEmbeds(fixtureData = state.fixtureData) {
     if (typeof window.resolveScoreaxisStandingsEmbeds !== 'function') return [];
     return window.resolveScoreaxisStandingsEmbeds(fixtureData);
   }
 
+  /** ScoreAxis embed 항목이 1개 이상 있으면 true를 반환한다. */
   function hasEmbeds(fixtureData = state.fixtureData) {
     return getEmbeds(fixtureData).length > 0;
   }
 
+  /** fixtureData에서 fixtureId를 문자열로 추출해 반환한다. */
   function getFixtureId(fixtureData = state.fixtureData) {
     return String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
   }
 
+  /**
+   * fixture + embed 조합으로 패널 렌더 캐시 키를 생성한다.
+   * @param {object} fixtureData - FixtureResponseDto 형태의 경기 데이터.
+   * @param {Array} embeds - ScoreAxis embed 항목 배열.
+   * @returns {string} 콜론으로 구분된 캐시 키 문자열.
+   */
   function getRenderKey(fixtureData, embeds) {
     const fixtureId = getFixtureId(fixtureData);
     const leagueId = String(fixtureData?.matchInfo?.leagueId ?? '');
@@ -39,6 +48,14 @@
     return [fixtureId, leagueId, round, names].join('::');
   }
 
+  /**
+   * type=button 엘리먼트를 생성해 클릭 핸들러를 등록한다.
+   * @param {string} title - 버튼 tooltip 텍스트.
+   * @param {string} className - 버튼에 적용할 CSS 클래스.
+   * @param {string} iconHtml - 버튼 내부 아이콘 HTML.
+   * @param {Function} onClick - 클릭 시 호출할 콜백.
+   * @returns {HTMLButtonElement} 생성된 버튼 엘리먼트.
+   */
   function createIconButton(title, className, iconHtml, onClick) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -52,22 +69,37 @@
     return button;
   }
 
+  /** 이벤트 패널 모드 버튼에 사용할 아이콘 SVG 문자열을 반환한다. */
   function eventsIcon() {
     return '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="3" cy="3" r="1.5"/><rect x="6" y="2" width="7" height="2" rx="1"/><circle cx="3" cy="7" r="1.5"/><rect x="6" y="6" width="7" height="2" rx="1"/><circle cx="3" cy="11" r="1.5"/><rect x="6" y="10" width="7" height="2" rx="1"/></svg>';
   }
 
+  /** 순위표 패널 모드 버튼에 사용할 아이콘 SVG 문자열을 반환한다. */
   function standingsIcon() {
     return '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="2" rx="1"/><rect x="1" y="6" width="12" height="2" rx="1"/><rect x="1" y="10" width="12" height="2" rx="1"/></svg>';
   }
 
+  /** 상대 전적(HTH) 패널 모드 버튼에 사용할 아이콘 SVG 문자열을 반환한다. */
   function hthIcon() {
     return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h10M9 2l2 2-2 2"/><path d="M13 10H3M5 8l-2 2 2 2"/></svg>';
   }
 
+  /** 순위표 팝업 열기 버튼에 사용할 아이콘 SVG 문자열을 반환한다. */
   function popupOpenIcon() {
     return '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><path d="M9 1h4v4"/><path d="M13 1 7.5 6.5"/></svg>';
   }
 
+  /**
+   * 캠 작은 패널 모드 전환 버튼 하나를 생성한다.
+   * @param {object} params - 버튼 생성 파라미터.
+   * @param {string} params.mode - 이 버튼이 나타내는 모드 식별자.
+   * @param {string} params.activeMode - 현재 활성 모드 식별자.
+   * @param {string} params.title - 버튼 tooltip 텍스트.
+   * @param {string} params.iconHtml - 버튼 내부 아이콘 HTML.
+   * @param {boolean} [params.disabled] - 비활성화 여부.
+   * @param {Function} [params.onClick] - 클릭 시 호출할 콜백.
+   * @returns {HTMLButtonElement} 생성된 모드 버튼 엘리먼트.
+   */
   function createSmallPanelModeButton({ mode, activeMode, title, iconHtml, disabled, onClick }) {
     const button = createIconButton(title, 'small-panel-mode-btn', iconHtml, onClick);
     button.dataset.smallPanelMode = mode;
@@ -76,6 +108,12 @@
     return button;
   }
 
+  /**
+   * 이벤트/순위표/HTH 3-버튼 토글 그룹을 생성해 반환한다. window에 노출됨.
+   * @param {string} [activeMode='events'] - 초기 활성 모드 식별자.
+   * @param {object} [fixtureData] - 현재 경기 데이터. 버튼 비활성화 여부 판별에 사용.
+   * @returns {HTMLDivElement} 버튼 3개가 담긴 그룹 엘리먼트.
+   */
   function createSmallPanelModeButtons(activeMode = 'events', fixtureData = state.fixtureData) {
     const data = fixtureData || state.fixtureData;
     const group = document.createElement('div');
@@ -115,6 +153,12 @@
     return group;
   }
 
+  /**
+   * 순위표 패널 타이틀 바 엘리먼트를 생성해 반환한다.
+   * @param {HTMLElement} container - 패널 컨테이너 엘리먼트. lp-events-s 여부 판별에 사용.
+   * @param {object} fixtureData - 현재 경기 데이터.
+   * @returns {HTMLDivElement} 타이틀 바 엘리먼트.
+   */
   function createTitleBar(container, fixtureData) {
     const isSmallPanel = container?.closest?.('.lp-events-s');
     const titleBar = document.createElement('div');
@@ -144,6 +188,10 @@
     return titleBar;
   }
 
+  /**
+   * CSS 변수에서 패널 배경 rgb 값과 alpha 값을 읽어 반환한다.
+   * @returns {{ rgb: string, alpha: string }} 패널 배경 변수 객체.
+   */
   function getPanelSurfaceVars() {
     try {
       const styles = getComputedStyle(document.documentElement);
@@ -156,6 +204,11 @@
     }
   }
 
+  /**
+   * iframe srcdoc에 삽입할 배경/스크롤바 CSS 문자열을 생성한다.
+   * @param {{ rgb: string, alpha: string }} surface - 패널 배경 변수 객체.
+   * @returns {string} CSS 문자열.
+   */
   function buildFrameCss(surface) {
     return ':root{--scoreaxis-panel-rgb:' + surface.rgb + ';--scoreaxis-panel-alpha:' + surface.alpha + '}'
       + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.5) transparent;}'
@@ -169,6 +222,11 @@
   }
 
   const ROW_DENSITY = '1';
+  /**
+   * embed 코드 내 ScoreAxis script src에 rowDensity 파라미터를 주입해 반환한다.
+   * @param {string} embedCode - 원본 embed HTML 코드 문자열.
+   * @returns {string} rowDensity가 주입된 embed HTML 코드 문자열.
+   */
   function applyRuntimeEmbedParams(embedCode) {
     const raw = String(embedCode || '').trim();
     if (!raw) return raw;
@@ -185,6 +243,11 @@
       return raw;
     }
   }
+  /**
+   * 패널 표면 CSS를 포함한 완전한 iframe srcdoc HTML 문자열을 생성한다.
+   * @param {string} embedCode - rowDensity가 주입된 embed HTML 코드 문자열.
+   * @returns {string} srcdoc에 삽입할 완전한 HTML 문자열.
+   */
   function buildIframeSrcdoc(embedCode) {
     const surface = getPanelSurfaceVars();
     const frameCss = '<style>' + buildFrameCss(surface) + '</style>';
@@ -195,6 +258,11 @@
       + '</body></html>';
   }
 
+  /**
+   * 로드된 iframe 내부 문서에 CSS 변수 오버라이드 style 태그를 주입한다.
+   * cross-origin 예외는 무시한다.
+   * @param {HTMLIFrameElement} frame - 대상 iframe 엘리먼트.
+   */
   function installFrameOverrides(frame) {
     try {
       const doc = frame.contentDocument;
@@ -212,15 +280,25 @@
     } catch (err) {}
   }
 
+  /** 모든 .scoreaxis-standings-frame iframe에 CSS 변수를 일괄 동기화한다. */
   function syncAllFrameSurfaces() {
     document.querySelectorAll('.scoreaxis-standings-frame').forEach(installFrameOverrides);
   }
 
+  /**
+   * CSS 변수 변경을 감지하는 MutationObserver를 등록한다. 최초 1회만 등록된다.
+   * documentElement의 style 속성 변경 시 syncAllFrameSurfaces를 호출한다.
+   */
   function ensurePanelSurfaceObserver() {
     if (panelSurfaceObserver || !window.MutationObserver) return;
     panelSurfaceObserver = new MutationObserver(syncAllFrameSurfaces);
     panelSurfaceObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
   }
+  /**
+   * iframe 내부 컨텐츠 높이를 픽셀 단위로 읽어 반환한다. cross-origin 예외 시 0을 반환한다.
+   * @param {HTMLIFrameElement} frame - 높이를 측정할 iframe 엘리먼트.
+   * @returns {number} 컨텐츠 높이(px). 접근 불가 시 0.
+   */
   function getFrameContentHeight(frame) {
     try {
       const doc = frame.contentDocument;
@@ -238,11 +316,19 @@
     }
   }
 
+  /**
+   * iframe 높이를 내부 컨텐츠 크기에 맞게 조정한다. 80px 미만이면 조정하지 않는다.
+   * @param {HTMLIFrameElement} frame - 높이를 조정할 iframe 엘리먼트.
+   */
   function resizeFrameToContent(frame) {
     const height = getFrameContentHeight(frame);
     if (height > 80) frame.style.height = `${height}px`;
   }
 
+  /**
+   * load 이벤트/ResizeObserver/주기적 타이머로 iframe 높이를 컨텐츠에 맞게 자동 추적한다.
+   * @param {HTMLIFrameElement} frame - 높이 자동 추적을 설정할 iframe 엘리먼트.
+   */
   function attachFrameAutoHeight(frame) {
     const run = () => resizeFrameToContent(frame);
     frame.addEventListener('load', () => {
@@ -262,6 +348,11 @@
     requestAnimationFrame(run);
   }
 
+  /**
+   * embed 항목 하나를 iframe 엘리먼트로 생성해 반환한다.
+   * @param {object} entry - ScoreAxis embed 항목 객체 ({ country, scoreaxisLeagueName, embedCode }).
+   * @returns {HTMLIFrameElement|Text} 생성된 iframe 엘리먼트. embedCode가 없으면 빈 텍스트 노드.
+   */
   function materializeEmbed(entry) {
     const rawEmbedCode = String(entry?.embedCode || '').trim();
     const embedCode = applyRuntimeEmbedParams(rawEmbedCode);
@@ -277,6 +368,11 @@
     attachFrameAutoHeight(frame);
     return frame;
   }
+  /**
+   * 순위표 항목의 country와 leagueName을 표시하는 레이블 엘리먼트를 생성한다.
+   * @param {object} entry - ScoreAxis embed 항목 객체 ({ country, scoreaxisLeagueName }).
+   * @returns {HTMLDivElement} 레이블 엘리먼트.
+   */
   function createEntryLabel(entry) {
     const label = document.createElement('div');
     label.className = 'scoreaxis-standings-entry-label';
@@ -284,10 +380,19 @@
     return label;
   }
 
+  /**
+   * 컨테이너가 순위표 팝업 모달 안에 있는지 판별한다.
+   * @param {HTMLElement} container - 확인할 컨테이너 엘리먼트.
+   * @returns {boolean} 팝업 안이면 true.
+   */
   function isPopupContainer(container) {
     return !!container?.closest?.(`#${POPUP_BACKDROP_ID}`);
   }
 
+  /**
+   * 순위표 팝업 모달 DOM을 생성하거나 기존 것을 재사용해 반환한다.
+   * @returns {{ backdrop: HTMLElement, panel: HTMLElement, meta: HTMLElement }} 팝업 구성 엘리먼트.
+   */
   function ensurePopupElements() {
     let backdrop = document.getElementById(POPUP_BACKDROP_ID);
     if (!backdrop) {
@@ -319,10 +424,22 @@
     };
   }
 
+  /**
+   * embed 항목 목록을 "country · leagueName / ..." 형태의 표시용 문자열로 변환한다.
+   * @param {Array} embeds - ScoreAxis embed 항목 배열.
+   * @returns {string} 표시용 문자열.
+   */
   function describeEmbeds(embeds) {
     return embeds.map(entry => [entry.country, entry.scoreaxisLeagueName].filter(Boolean).join(' \u00B7 ')).join(' / ');
   }
 
+  /**
+   * fixtureData의 리그명과 라운드 정보를 팝업 메타 텍스트로 변환한다.
+   * 정보가 없으면 fallbackEmbeds를 describeEmbeds로 변환해 반환한다.
+   * @param {object} fixtureData - FixtureResponseDto 형태의 경기 데이터.
+   * @param {Array} [fallbackEmbeds=[]] - 리그명 정보가 없을 때 사용할 embed 배열.
+   * @returns {string} 팝업 메타 텍스트.
+   */
   function describeFixtureLeague(fixtureData, fallbackEmbeds = []) {
     const matchInfo = fixtureData?.matchInfo || {};
     const leagueName = String(matchInfo.leagueName || matchInfo.league?.name || '').trim();
@@ -331,6 +448,11 @@
     if (parts.length) return parts.join(' \u00B7 ');
     return describeEmbeds(fallbackEmbeds);
   }
+  /**
+   * 순위표 전체화면 팝업을 열고 embed 패널을 렌더한다. window에 노출됨.
+   * @param {object} [fixtureData] - 렌더할 경기 데이터. 생략 시 현재 state.fixtureData 사용.
+   * @returns {boolean} embed가 없으면 false, 열리면 true.
+   */
   function openStandingsPopup(fixtureData = state.fixtureData) {
     const data = fixtureData || state.fixtureData;
     const embeds = getEmbeds(data);
@@ -347,6 +469,7 @@
     return true;
   }
 
+  /** 순위표 팝업을 닫고 팝업 패널 내용을 비운다. window에 노출됨. */
   function closeStandingsPopup() {
     const backdrop = document.getElementById(POPUP_BACKDROP_ID);
     state.popupOpen = false;
@@ -362,6 +485,10 @@
     updatePopupButton();
   }
 
+  /**
+   * 캠 큰 lp-stat 상단 순위표 팝업 버튼의 가시성과 상태를 갱신한다. window에 노출됨.
+   * @param {object} [fixtureData] - embed 존재 여부 판별에 사용할 경기 데이터.
+   */
   function updatePopupButton(fixtureData = state.fixtureData || window._eventsLastData) {
     const data = fixtureData || state.fixtureData || window._eventsLastData || null;
     const show = hasEmbeds(data);
@@ -375,17 +502,33 @@
     });
   }
 
+  /**
+   * 컨테이너가 현재 활성 .page 탭 안에 있는지 확인한다.
+   * @param {HTMLElement} container - 확인할 컨테이너 엘리먼트.
+   * @returns {boolean} 활성 페이지 안이거나 .page 조상이 없으면 true.
+   */
   function isInActivePage(container) {
     const page = container.closest?.('.page');
     return !page || page.classList.contains('active');
   }
 
+  /**
+   * 이 컨테이너에 순위표를 렌더해야 하는지 판별한다.
+   * 팝업이면 popupOpen 상태, lp-events-s이면 smallMode='standings' 상태일 때만 true.
+   * @param {HTMLElement} container - 판별할 컨테이너 엘리먼트.
+   * @returns {boolean} 렌더해야 하면 true.
+   */
   function shouldRenderContainer(container) {
     if (isPopupContainer(container)) return state.popupOpen;
     if (!isInActivePage(container)) return false;
     if (container.closest?.('.lp-events-s')) return state.smallMode === 'standings';
     return false;
   }
+  /**
+   * 컨테이너에 빈 상태 메시지 DOM 노드를 삽입한다.
+   * @param {HTMLElement} container - 메시지를 삽입할 컨테이너 엘리먼트.
+   * @param {string} message - 표시할 텍스트 메시지.
+   */
   function renderEmpty(container, message) {
     const empty = document.createElement('div');
     empty.className = 'scoreaxis-standings-empty ev-empty';
@@ -393,6 +536,15 @@
     container.replaceChildren(empty);
   }
 
+  /**
+   * 순위표 패널 타이틀 바와 embed iframe 목록을 컨테이너에 렌더한다.
+   * renderKey가 같고 options.force가 없으면 중복 렌더를 건너뛴다.
+   * @param {HTMLElement} container - 렌더할 컨테이너 엘리먼트.
+   * @param {object} fixtureData - 현재 경기 데이터.
+   * @param {Array} embeds - ScoreAxis embed 항목 배열.
+   * @param {number} panelIndex - 컨테이너 인덱스 (querySelectorAll 순서).
+   * @param {object} [options={}] - { force: true }로 renderKey 캐시를 무시할 수 있다.
+   */
   function renderPanel(container, fixtureData, embeds, panelIndex, options = {}) {
     container.classList.add('scoreaxis-standings-panel');
     const renderKey = getRenderKey(fixtureData, embeds);
@@ -426,6 +578,13 @@
     requestAnimationFrame(() => { container.scrollTop = 0; });
   }
 
+  /**
+   * 현재 경기의 리그 ID로 ScoreAxis 순위표 embed 항목을 조회해
+   * 모든 data-scoreaxis-standings-panel 컨테이너에 iframe을 렌더하거나 초기화한다.
+   * window에 노출됨.
+   * @param {object} fixtureData - 백엔드 FixtureResponseDto 형태의 경기 데이터.
+   * @param {object} [options={}] - { force: true }로 renderKey 캐시를 무시할 수 있다.
+   */
   function applyScoreaxisStandingsPanel(fixtureData, options = {}) {
     state.fixtureData = fixtureData || null;
     const embeds = getEmbeds(state.fixtureData);
@@ -446,6 +605,10 @@
     window.lpStatUpdateBtn?.();
   }
 
+  /**
+   * 캠 작은 이벤트 패널이 표시 중이지만 내용이 비어있을 때 applyEventsPanel을 호출해 재렌더한다.
+   * standings 모드이거나 HTH 모드이면 아무것도 하지 않는다.
+   */
   function restoreSmallEventsPanelIfNeeded() {
     if (restoringSmallEventsPanel || state.smallMode === 'standings' || window._hthState?.mode === 'hth') return;
     if (typeof window.applyEventsPanel !== 'function') return;
@@ -464,6 +627,10 @@
     }
   }
 
+  /**
+   * 탭 복귀 시 캠 작은 순위표 패널이 비어있으면 renderPanel을 호출해 재마운트한다.
+   * embed가 없으면 smallMode를 'events'로 되돌린다.
+   */
   function restoreSmallStandingsPanelIfNeeded() {
     if (state.smallMode !== 'standings') return;
     const data = state.fixtureData || window._eventsLastData;
@@ -480,6 +647,11 @@
     });
   }
 
+  /**
+   * smallMode에 따라 이벤트/순위표/HTH 패널의 display 상태를 전환한다. window에 노출됨.
+   * standings 모드이면 순위표 패널 표시 + 이벤트/HTH 숨김.
+   * 그 외에는 HTH 상태에 따라 이벤트/HTH 패널만 전환한다.
+   */
   function scoreaxisStandingsUpdateSmallVisibility() {
     const isStandings = state.smallMode === 'standings';
     document.querySelectorAll(SMALL_PANEL_SELECTOR).forEach(el => {
@@ -503,6 +675,11 @@
     requestAnimationFrame(restoreSmallEventsPanelIfNeeded);
   }
 
+  /**
+   * 현재 fixture로 순위표 패널을 활성화한다. embed가 없으면 false를 반환한다. window에 노출됨.
+   * @param {object} [fixtureData] - 순위표를 표시할 경기 데이터.
+   * @returns {boolean} 활성화 성공 여부.
+   */
   function scoreaxisStandingsShowForFixture(fixtureData = state.fixtureData) {
     const data = fixtureData || state.fixtureData;
     if (!hasEmbeds(data)) return false;
@@ -514,18 +691,27 @@
     return true;
   }
 
+  /** 이벤트 패널로 전환한다. HTH 모드도 함께 events로 복귀시킨다. window에 노출됨. */
   function scoreaxisStandingsShowEvents() {
     state.smallMode = 'events';
     scoreaxisStandingsUpdateSmallVisibility();
     if (typeof window.hthSetMode === 'function') window.hthSetMode('events');
   }
 
+  /**
+   * 캠 작은 순위표 패널을 숨기고 이벤트 패널로 전환한다. window에 노출됨.
+   * @param {object} [options={}] - { skipHthUpdate: true }로 HTH 가시성 갱신을 건너뛸 수 있다.
+   */
   function scoreaxisStandingsHideSmall(options = {}) {
     state.smallMode = 'events';
     scoreaxisStandingsUpdateSmallVisibility();
     if (!options.skipHthUpdate) window.hthUpdateVisibility?.();
   }
 
+  /**
+   * 모든 순위표 패널을 초기화하고 state를 기본값으로 되돌린다. window에 노출됨.
+   * 팝업이 열려 있으면 닫고, 팝업 버튼도 숨긴다.
+   */
   function scoreaxisStandingsReset() {
     state.fixtureData = null;
     state.smallMode = 'events';

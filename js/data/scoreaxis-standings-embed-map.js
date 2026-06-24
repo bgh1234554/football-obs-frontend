@@ -2904,11 +2904,21 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
 (function () {
   const entries = window.SCOREAXIS_STANDINGS_EMBEDS || [];
 
+  /**
+   * 값을 유한 숫자 리그 ID로 변환한다. 변환 불가능하면 null을 반환한다.
+   * @param {*} value - 변환할 값.
+   * @returns {number|null} 유한 숫자이면 해당 값, 아니면 null.
+   */
   function toFiniteLeagueId(value) {
     const leagueId = Number(value);
     return Number.isFinite(leagueId) ? leagueId : null;
   }
 
+  /**
+   * 비교용 정규화를 수행한다. 발음 기호 제거, 특수문자를 공백으로 치환, 소문자로 변환한다.
+   * @param {*} value - 정규화할 값.
+   * @returns {string} 정규화된 소문자 문자열.
+   */
   function normalize(value) {
     return String(value || '')
       .normalize('NFD')
@@ -2919,10 +2929,21 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
       .toLowerCase();
   }
 
+  /**
+   * 정규화된 문자열을 공백 기준 토큰 배열로 분리해 반환한다.
+   * @param {*} value - 토큰으로 분리할 값.
+   * @returns {string[]} 비어있지 않은 토큰 배열.
+   */
   function tokens(value) {
     return normalize(value).split(/\s+/).filter(Boolean);
   }
 
+  /**
+   * 두 문자열의 토큰 기반 Dice 유사도를 계산한다.
+   * @param {string} a - 비교할 첫 번째 문자열.
+   * @param {string} b - 비교할 두 번째 문자열.
+   * @returns {number} 0에서 1 사이의 Dice 유사도 점수.
+   */
   function diceScore(a, b) {
     const aTokens = tokens(a);
     const bTokens = tokens(b);
@@ -2942,6 +2963,11 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     return (2 * overlap) / (aTokens.length + bTokens.length);
   }
 
+  /**
+   * fixtureData 객체 또는 숫자/문자열 값에서 리그 ID를 추출해 반환한다.
+   * @param {object|number|string} input - fixtureData 객체이거나 직접 리그 ID 값.
+   * @returns {number|null} 유한 숫자 리그 ID. 없으면 null.
+   */
   function getFixtureLeagueId(input) {
     if (typeof input === 'number' || typeof input === 'string') return toFiniteLeagueId(input);
     return toFiniteLeagueId(
@@ -2952,6 +2978,11 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     );
   }
 
+  /**
+   * embed 매칭에 사용할 리그명, 라운드, 스테이지, 그룹 정보를 조합한 검색 텍스트를 반환한다.
+   * @param {object} input - fixtureData 또는 matchInfo 형태의 객체.
+   * @returns {string} 공백으로 연결된 검색 텍스트. 객체가 아니면 빈 문자열.
+   */
   function getFixtureSearchText(input) {
     if (!input || typeof input !== 'object') return '';
     const matchInfo = input.matchInfo || input;
@@ -2964,11 +2995,22 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     ].filter(Boolean).join(' ');
   }
 
+  /**
+   * 플레이오프/결승전 등 순위표와 무관한 라운드 텍스트인지 판별한다.
+   * @param {string} fixtureText - 판별할 리그명/라운드 텍스트.
+   * @returns {boolean} 순위표 무관 라운드이면 true.
+   */
   function isNonStandingsRound(fixtureText) {
     const normalized = normalize(fixtureText);
     return /\bplay\s*offs?\b|\bplayoffs?\b|\bquarter\s*finals?\b|\bsemi\s*finals?\b|\bround\s*of\s*(16|32|64)\b|\bknockout\b|\bfinal\b/.test(normalized);
   }
 
+  /**
+   * UEFA 네이션스리그 A/B/C/D 그룹별로 알맞은 embed 항목을 선택해 반환한다.
+   * @param {Array} candidates - 동일 leagueId를 가진 embed 항목 배열.
+   * @param {string} fixtureText - 그룹 식별에 사용할 리그명/라운드 텍스트.
+   * @returns {object|null} 매칭된 embed 항목. 매칭 불가 시 null.
+   */
   function resolveUefaNationsLeagueVariant(candidates, fixtureText) {
     const normalized = normalize(fixtureText);
     const match = normalized.match(/\bleague\s*([abcd])\b|\bgroup\s*([abcd])\b|\bdivision\s*([abcd])\b|\b([abcd])\s*league\b/i);
@@ -2977,6 +3019,13 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     return candidates.find(entry => new RegExp('\\b' + variant + '\\b', 'i').test(entry.scoreaxisLeagueName)) || null;
   }
 
+  /**
+   * 리그 ID + 텍스트 유사도(Dice)로 최적 ScoreAxis embed 항목 배열을 반환한다. window에 노출됨.
+   * 플레이오프 등 순위표 무관 라운드이면 빈 배열을 반환한다.
+   * 후보가 여러 개이고 1위 점수가 0.66 이상이며 2위와 차이가 0.08 이상이면 1개만 반환한다.
+   * @param {object|number|string} input - fixtureData 또는 리그 ID 값.
+   * @returns {Array} 매칭된 ScoreAxis embed 항목 배열. 없으면 빈 배열.
+   */
   function resolveScoreaxisStandingsEmbeds(input) {
     const leagueId = getFixtureLeagueId(input);
     if (leagueId == null) return [];
