@@ -31,9 +31,11 @@
          0    1px 0 rgba(0,0,0,.9),
          1px  1px 0 rgba(0,0,0,.9);
 
-      /* Board */
+      /* ---- 점수판 배경 그라디언트 (--board-a 에서 --board-b 로 135deg) ---- */
       --board-a: #000000;
       --board-b: #000000;
+
+      /* ---- 홈/원정 팀 배경·텍스트·테두리 (theme.js가 API 색상으로 자동 교체) ---- */
       --home-bg: #1d4ed8;
       --home-text: #ffffff;
       --away-bg: #ef4444;
@@ -44,45 +46,61 @@
       --away-outline-w: 1px;
       --board-outline-w: 1px;
       --score-outline-w: 1px;
+
+      /* ---- 가운데 스코어 박스 ---- */
       --score-bg: #0b1220;
-      --digits-color: #e5e7eb;
-      --meta-color: #e5e7eb;
-      --extra-color: #22c55e;
-      --half-bg: #a70e80;
-      --half-text: #f6fd8e;
+      --digits-color: #e5e7eb;  /* 점수 숫자 */
+      --meta-color: #e5e7eb;    /* 리그명/경기장 등 메타 텍스트 */
+      --extra-color: #22c55e;   /* 추가시간 (+N) */
+      --half-bg: #a70e80;       /* 전/후반 표시 배경 */
+      --half-text: #f6fd8e;     /* 전/후반 표시 텍스트 */
+
+      /* ---- 득점자 박스 (.note-side) ---- */
       --note-text: #e5e7eb;
-      --note-stroke: #000000;
+      --note-stroke: #000000;   /* 텍스트 외곽선 색 */
       --note-stroke-w: 1px;
       --note-stroke-w-neg: -1px;
       --note-font-size-home: 18px;
       --note-font-size-away: 18px;
       --note-gap: 2px;
-      --lineup-red-text: #FF6B6B;
+      --lineup-red-text: #FF6B6B;       /* 퇴장/레드카드 강조색 */
       --lineup-red-text-rgb: 255, 107, 107;
+
+      /* ---- 둥근 모서리 ---- */
       --card-outline: #ffffff15;
       --board-radius: 18px;
       --team-radius: 14px;
       --score-radius: 14px;
+
+      /* ---- 라인업/벤치 패널 타이틀 바 (detail 패널 공통) ---- */
       --panel-title-bar-height: 33px;
       --panel-title-control-size: 22px;
+
+      /* ---- 팀 로고 크기/오프셋 (JS로 동적 설정, 기본값은 API 로고 기준) ---- */
       --home-logo-scale: 1;
       --away-logo-scale: 1;
-      --home-logo-over: 36px;
+      --home-logo-over: 36px;   /* 로고가 팀 박스 밖으로 삐져나오는 양 */
       --away-logo-over: 36px;
-      --pk-base: #334155;
       --home-logo-x: 0px;
       --home-logo-y: 0px;
       --away-logo-x: 0px;
       --away-logo-y: 0px;
+
+      /* ---- 페널티 슛아웃 ---- */
+      --pk-base: #334155;       /* O/X 슬롯 기본 배경 */
+
+      /* ---- 레드카드 레일 (.rc-rail — board 위 절대 배치) ---- */
       --rc-size: 14px;
       --rc-gap: 6px;
       --rc-color: #ef4444;
       --rc-border: #ffffff80;
-      --rc-top: -25px;
+      --rc-top: -25px;          /* board 위쪽으로 올라가는 거리 */
       --rc-home-inset: 6px;
       --rc-away-inset: 6px;
-      --score-col: 180px;
-      --board-width: 1080px;
+
+      /* ---- 점수판 전체 크기 ---- */
+      --score-col: 180px;       /* 가운데 스코어 박스 폭 */
+      --board-width: 1080px;    /* 점수판 최대 너비 (95vw 상한 적용) */
     }
     /* 위 :root 안의 중복 --panel-bg(#111827cc)가 line 13의 알파 가변 버전을
        덮어쓰던 버그 — Iter 5-7 패널 투명도 슬라이더가 동작하도록 라인 46의

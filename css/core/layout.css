@@ -178,8 +178,8 @@
       background-attachment: fixed;
     }
 
-    /* ━━━ 전술판 타임라인 + 이벤트 패널 (Iter 5-8) ━━━
-
+    /* ========== 패널 공통 컨테이너 ==========
+       일정 확인 탭 등 전용 panel-box/Header/Body 스타일. */
     .panel-box {
       background: var(--panel-bg);
       border: 1px solid var(--line);
@@ -547,5 +547,3 @@
     }
 
     @media (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
-
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
