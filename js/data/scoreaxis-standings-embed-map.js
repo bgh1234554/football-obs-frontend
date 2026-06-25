@@ -553,6 +553,30 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     "scoreaxisLeagueName": "League One China",
     "embedCode": "<div id=\"widget-liafmqrnrvui\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c7e98b2e367f650e6ce?widgetId=liafmqrnrvui&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
   },
+    {
+    "leagueId": 171,
+    "country": "China",
+    "scoreaxisLeagueName": "China Cup",
+    "embedCode": "<div id=\"widget-yychmqrnrwmh\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c8c54325170cc61a22a?widgetId=yychmqrnrwmh&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
+  },
+  {
+    "leagueId": 172,
+    "country": "Bulgaria",
+    "scoreaxisLeagueName": "Parva liga Bulgaria",
+    "embedCode": "<div id=\"widget-hpkjmqrnrrj2\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/623231565e26210c107a6b68?widgetId=hpkjmqrnrrj2&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
+  },
+  {
+    "leagueId": 173,
+    "country": "Bulgaria",
+    "scoreaxisLeagueName": "Vtora liga Bulgaria",
+    "embedCode": "<div id=\"widget-pr8imqrnrr50\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/623234cd751cc91c570a1acc?widgetId=pr8imqrnrr50&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
+  },
+  {
+    "leagueId": 174,
+    "country": "Bulgaria",
+    "scoreaxisLeagueName": "Bulgarian Cup",
+    "embedCode": "<div id=\"widget-e2nvmqrnrqr2\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/6232315d5e26210c107a6bf4?widgetId=e2nvmqrnrqr2&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
+  },
   {
     "leagueId": 179,
     "country": "Top tournaments",
@@ -1022,6 +1046,12 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     "embedCode": "<div id=\"widget-4ayfmqrnv25g\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c6813ee1621646be3fa?widgetId=4ayfmqrnv25g&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
   },
   {
+    "leagueId": 656,
+    "country": "Bulgaria",
+    "scoreaxisLeagueName": "Bulgarian Supercup",
+    "embedCode": "<div id=\"widget-yy6rmqrnrrx0\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c7098b2e367f650e4b0?widgetId=yy6rmqrnrrx0&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
+  },
+  {
     "leagueId": 666,
     "country": "International",
     "scoreaxisLeagueName": "Friendly International Women",
@@ -1371,30 +1401,6 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
   },
   {
     "leagueId": null,
-    "country": "Bulgaria",
-    "scoreaxisLeagueName": "Bulgarian Cup",
-    "embedCode": "<div id=\"widget-e2nvmqrnrqr2\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/6232315d5e26210c107a6bf4?widgetId=e2nvmqrnrqr2&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
-  },
-  {
-    "leagueId": null,
-    "country": "Bulgaria",
-    "scoreaxisLeagueName": "Vtora liga Bulgaria",
-    "embedCode": "<div id=\"widget-pr8imqrnrr50\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/623234cd751cc91c570a1acc?widgetId=pr8imqrnrr50&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
-  },
-  {
-    "leagueId": null,
-    "country": "Bulgaria",
-    "scoreaxisLeagueName": "Parva liga Bulgaria",
-    "embedCode": "<div id=\"widget-hpkjmqrnrrj2\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/623231565e26210c107a6b68?widgetId=hpkjmqrnrrj2&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
-  },
-  {
-    "leagueId": null,
-    "country": "Bulgaria",
-    "scoreaxisLeagueName": "Bulgarian Supercup",
-    "embedCode": "<div id=\"widget-yy6rmqrnrrx0\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c7098b2e367f650e4b0?widgetId=yy6rmqrnrrx0&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
-  },
-  {
-    "leagueId": null,
     "country": "Cameroon",
     "scoreaxisLeagueName": "Elite One Cameroon",
     "embedCode": "<div id=\"widget-e7fbmqrnrsb0\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/6232263c85183a48c14d1c9e?widgetId=e7fbmqrnrsb0&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
@@ -1440,12 +1446,6 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     "country": "Chile",
     "scoreaxisLeagueName": "Supercopa de Chile",
     "embedCode": "<div id=\"widget-9b65mqrnrv14\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c847bf6106c72572fb6?widgetId=9b65mqrnrv14&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
-  },
-  {
-    "leagueId": null,
-    "country": "China",
-    "scoreaxisLeagueName": "China Cup",
-    "embedCode": "<div id=\"widget-yychmqrnrwmh\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62327c8c54325170cc61a22a?widgetId=yychmqrnrwmh&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
   },
   {
     "leagueId": null,

@@ -1,0 +1,394 @@
+﻿    /* ━━━ 전술판 타임라인 + 이벤트 패널 (Iter 5-8) ━━━
+       일반 모드: 피치와 도구 사이 가운데 컬럼 (3열 레이아웃의 중앙).
+       풀스크린 모드: position:fixed로 우측에 슬라이드 인 (.is-open 토글). */
+    #tactics-topbar {
+      background: var(--panel-bg);
+    }
+    .td-alpha-control,
+    .td-name-size-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      order: 99;
+      min-width: 0;
+      padding-left: 8px;
+    }
+    .td-alpha-control {
+      margin-left: auto;
+    }
+    .td-name-size-control {
+      padding-left: 0;
+    }
+    .td-alpha-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+    .td-alpha-slider {
+      width: 120px;
+      accent-color: #60a5fa;
+      cursor: pointer;
+    }
+    .td-name-size-slider {
+      width: 96px;
+    }
+    .td-alpha-value {
+      min-width: 40px;
+      text-align: right;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,.72);
+      font-variant-numeric: tabular-nums;
+    }
+    #tactics-timeline-panel {
+      flex: 1 1 auto;
+      min-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      border-left: 1px solid rgba(255,255,255,.08);
+      background: var(--panel-bg);
+      overflow: hidden;
+    }
+    /* 타임라인 박스 (전술판 전용) — 제목 + 이벤트 칩 + 슬라이더를 카드 형태로 묶음 */
+    #tactics-timeline-bar {
+      flex: 0 0 auto;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px 10px;
+      background: rgba(var(--panel-ui-rgb), calc(var(--panel-alpha) * .38));
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 10px;
+    }
+    #tactics-pitch {
+      background: transparent !important;
+      isolation: isolate;
+    }
+    #tactics-pitch::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: var(--td-pitch-bg, var(--lp-pitch-bg, linear-gradient(135deg,#1a7a3a 0%,#15662f 25%,#1a7a3a 50%,#15662f 75%,#1a7a3a 100%)));
+      box-shadow: inset 0 0 0 1px var(--td-pitch-border-color, var(--lp-pitch-border-color, rgba(255,255,255,.12)));
+      opacity: var(--td-pitch-alpha, 1);
+      z-index: 0;
+    }
+    /* 타임라인 제목 행 — 좌측 "타임라인" + 우측 현재 시각 */
+    .td-tl-title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .td-tl-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(255,255,255,.85);
+      letter-spacing: 0.02em;
+    }
+    .td-tl-current {
+      font-size: 14px;
+      font-weight: 800;
+      color: #60a5fa;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    body.greenscreen-mode .td-tl-current { color: #f0a3df; }
+
+    /* 홈/원정 이벤트 칩 컨테이너 — 슬라이더 위(home), 아래(away).
+       JS가 lane 수에 따라 height를 동적으로 설정. */
+    #tactics-timeline-events-home,
+    #tactics-timeline-events-away {
+      position: relative;
+      pointer-events: none;
+      min-height: 26px;
+    }
+    #tactics-timeline-events-home { margin-top: 2px; }
+    #tactics-timeline-events-away { margin-bottom: 2px; }
+
+    /* 이벤트 칩 — 글리프 + 시간 라벨이 한 칩에서 항상 수평 정렬.
+       top/bottom은 JS가 lane 위치에 따라 inline 설정 — CSS에서 default 값을 두면 안 됨
+       (양쪽 다 설정되면 칩이 위아래로 stretch). */
+    .td-tl-event {
+      position: absolute;
+      transform: translateX(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      pointer-events: auto;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      box-shadow: 0 1px 3px rgba(0,0,0,.25);
+      transition: background .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      white-space: nowrap;
+      /* height는 콘텐츠 자연 크기 — top/bottom 동시 지정 방지 */
+    }
+    .td-tl-event:hover {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.22);
+      transform: translateX(-50%) translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,.4);
+    }
+    .td-tl-glyph {
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .td-tl-time {
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255,255,255,.95);
+      letter-spacing: -0.02em;
+    }
+    /* 동시간 동일팀 이벤트 그룹의 개수 배지 (×2, ×3 등) — 같은 stop에서 여러 이벤트가 묶일 때만 표시 */
+    .td-tl-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      padding: 0 4px;
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.18);
+      color: rgba(255,255,255,.95);
+      font-size: 9px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    /* 종류별 색상 강조 — 칩 배경/테두리에 살짝 색감 부여 */
+    .td-tl-event.kind-subst {
+      background: rgba(34,197,94,.12);
+      border-color: rgba(34,197,94,.32);
+    }
+    .td-tl-event.kind-subst:hover {
+      background: rgba(34,197,94,.22);
+      border-color: rgba(34,197,94,.55);
+    }
+    .td-tl-event.kind-subst .td-tl-glyph { color: #4ade80; }
+
+    .td-tl-event.kind-red {
+      background: rgba(239,68,68,.14);
+      border-color: rgba(239,68,68,.38);
+    }
+    .td-tl-event.kind-red:hover {
+      background: rgba(239,68,68,.24);
+      border-color: rgba(239,68,68,.6);
+    }
+    .td-tl-event.kind-red .td-tl-glyph { color: #f87171; }
+
+    body.greenscreen-mode .td-tl-event.kind-subst {
+      background: rgba(232,121,201,.14);
+      border-color: rgba(232,121,201,.38);
+    }
+    body.greenscreen-mode .td-tl-event.kind-subst:hover {
+      background: rgba(232,121,201,.24);
+      border-color: rgba(232,121,201,.6);
+    }
+    body.greenscreen-mode .td-tl-event.kind-subst .td-tl-glyph { color: #e879c9; }
+
+    /* 0'/max 경계 라벨 (슬라이더 아래) */
+    #tactics-timeline-bounds {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: rgba(255,255,255,.45);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    /* 슬라이더 — 더 굵고 또렷하게 */
+    #tactics-time-slider {
+      width: 100%;
+      height: 22px;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      margin: 0;
+    }
+    #tactics-time-slider::-webkit-slider-runnable-track {
+      height: 6px;
+      background: linear-gradient(90deg, rgba(96,165,250,.2), rgba(255,255,255,.08));
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,.05);
+    }
+    #tactics-time-slider::-moz-range-track {
+      height: 6px;
+      background: linear-gradient(90deg, rgba(96,165,250,.2), rgba(255,255,255,.08));
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,.05);
+    }
+    #tactics-time-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff 0%, #e0e7ff 70%);
+      border: 3px solid #3b82f6;
+      cursor: grab;
+      margin-top: -7px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.2);
+      transition: transform .12s, box-shadow .12s;
+    }
+    #tactics-time-slider:hover::-webkit-slider-thumb {
+      transform: scale(1.12);
+      box-shadow: 0 3px 10px rgba(59,130,246,.5), 0 0 0 1px rgba(0,0,0,.2);
+    }
+    #tactics-time-slider:active::-webkit-slider-thumb { cursor: grabbing; }
+    #tactics-time-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #3b82f6;
+      cursor: grab;
+      box-shadow: 0 2px 6px rgba(0,0,0,.45);
+    }
+    body.greenscreen-mode #tactics-time-slider::-webkit-slider-thumb { border-color: #c026d3; }
+    body.greenscreen-mode #tactics-time-slider::-moz-range-thumb    { border-color: #c026d3; }
+    #tactics-events-host {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+    }
+    #tactics-events-host > [data-events-panel] {
+      flex: 1 1 auto;
+      min-height: 0;
+      /* 패널 자체는 스크롤 X — 안의 .ev-list만 스크롤 (타임라인/제목 고정). */
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    /* host 안의 .ev-list가 panel 남은 높이를 채우면서 자체 스크롤.
+       타임라인과 시각적 분리를 위해 위쪽 여백 확장. */
+    #tactics-events-host .ev-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: 14px;
+    }
+    /* 타임라인 카드 자체는 살짝 아래 여백 추가 — 이벤트 리스트와의 sep 강화 */
+    #tactics-events-host #tactics-timeline-bar {
+      margin-bottom: 4px;
+    }
+
+    /* 풀스크린 토글 버튼 — 일반 모드에서는 숨김. 도구 사이드바 하단에 배치됨. */
+    #td-timeline-toggle {
+      display: none;
+      margin-top: 4px;
+      background: #1e40af;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+    #td-timeline-toggle:hover { background: #2952c8; }
+
+    /* 패널 닫기 버튼 — 풀스크린 모드에서만 보임. 패널 우상단 absolute. */
+    #td-timeline-close {
+      display: none;
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35);
+      color: rgba(255,255,255,.85);
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 110;
+      padding: 0;
+    }
+    #td-timeline-close:hover {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+    }
+    #tactics-timeline-panel { position: relative; }
+
+    /* 풀스크린 모드: 타임라인 패널을 우측 슬라이드 패널로 전환 */
+    #page-tactics:fullscreen #td-timeline-toggle { display: block; }
+    #page-tactics:fullscreen #td-timeline-close { display: block; }
+    /* 풀스크린에서 타임라인 패널이 position:fixed로 빠져나간 빈 자리는
+       피치 래퍼가 flex:1로 확장돼 채우게 한다 — 가운데에 큰 빈 공간 방지.
+       피치 래퍼의 인라인 style(flex:0 0 auto)을 덮으려면 !important 필요. */
+    #page-tactics:fullscreen #tactics-pitch-wrap {
+      flex: 1 1 auto !important;
+      justify-content: center !important;
+    }
+    #page-tactics:fullscreen #tactics-timeline-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(420px, 38vw);
+      height: 100vh;
+      max-height: none;
+      z-index: 100;
+      transform: translateX(100%);
+      transition: transform .22s ease;
+      background: var(--panel-bg);
+      box-shadow: -4px 0 20px rgba(0,0,0,.45);
+      border-left: 1px solid rgba(255,255,255,.12);
+      border-top: none;
+    }
+    #page-tactics:fullscreen #tactics-timeline-panel.is-open {
+      transform: translateX(0);
+    }
+    /* 풀스크린 우측 슬라이드 패널에서, 이벤트 패널 title-bar의 필터 버튼이
+       우상단 닫기(×) 버튼(top:6 right:8 / 26x26)과 겹치는 문제 해결.
+       닫기 버튼 폭(26) + 여유(10) = 36px 만큼 필터 버튼을 왼쪽으로 밀어 클릭 가능하게.
+       동시에 필터 popover도 같은 양만큼 좌측으로 이동해 화면 밖으로 빠지지 않도록 보정. */
+    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
+    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
+    .page-wrap {
+      display: flex; flex-direction: column; gap: 8px; padding: 8px;
+      height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
+    }
+    #tactics-draw-toolbar {
+      background: var(--panel-bg);
+      padding: 8px 7px 6px !important;
+      gap: 4px !important;
+    }
+    #tactics-draw-toolbar > button {
+      padding: 5px 8px !important;
+      min-height: 28px !important;
+      font-size: 12px !important;
+      line-height: 1.2 !important;
+    }
+    #tactics-draw-toolbar .tactics-draw-title,
+    #tactics-draw-toolbar .tactics-draw-subtitle {
+      line-height: 1.1;
+    }
+    #tactics-draw-toolbar .tactics-draw-title { margin-bottom: 0 !important; }
+    #tactics-draw-toolbar .tactics-draw-divider { margin: 1px 0 !important; }
+    #tactics-draw-toolbar .tactics-draw-swatches { gap: 4px !important; }
+    #tactics-draw-toolbar .tactics-draw-swatches button {
+      width: 20px !important;
+      height: 20px !important;
+      font-size: 12px !important;
+    }
+
+    /* ========== 메인 페이지 패널 ========== */

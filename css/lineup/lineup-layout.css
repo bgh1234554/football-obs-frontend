@@ -1,0 +1,541 @@
+﻿/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [라인업 레이아웃 보정 + 리사이즈 핸들]
+   layout-small 컬럼 비율 보정, dp-side-header 인라인 편집, 캠 큼(.lp-big-col-*)
+   리사이즈 핸들, 라인업 독립 edge 리사이즈(.lp-lineup-right-edge / top-edge).
+   소스: detail-panels.css 525–900 (레이아웃 보정) + 2651–2807 (edge 핸들).
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* 기존 main.css의 lp-col-events / lp-col-stat (각 flex 0.9, 두 개의 얇은 세로 컬럼)을
+   하나의 와이드 컬럼으로 통합. events / 경기 스탯이 위/아래로 쌓여 가로 폭이 두 배. */
+.layout-small .lp-col-events-stat {
+  flex: 1.65 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+}
+.layout-small.lp-small-columns-custom .lp-col-events-stat {
+  flex: 0 0 var(--lp-small-events-width);
+}
+.layout-small .lp-col-events-stat .lp-events-s,
+.layout-small .lp-col-events-stat .lp-stat-s { flex: 1; }
+
+/* 벤치/부상 세로 비율 — 벤치 패널이 푸터(감독/주심) + 경기장 이름 줄까지 가지므로
+   부상 컬럼에서 한 줄 정도 가져옴. 1.2 → 1.45. */
+/* 벤치 15명일 때 미세하게 스크롤바가 생기는 문제 — 부상 컬럼에서 몇 px 가져와 해소.
+   1.45 → 1.55 (벤치 +)/ 1 → 0.95 (부상 -). 부상은 보통 3-5명이라 줄어들어도 영향 적음. */
+.layout-small .lp-col-bench .lp-bench  { flex: 1.62; }
+.layout-small .lp-col-bench .lp-injury { flex: 0.88; }
+/* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
+   컬럼 = 피치 가득 채움 → 옆에 빈 공간 안 생김. */
+.layout-small .lp-lineup-s {
+  flex: 0 0 auto;
+  height: 100%;
+  aspect-ratio: 62 / 105;
+}
+/* 라인업 패널에서는 별도 타이틀 줄 숨김 — 안쪽 피치 위/아래의 home/away chip이
+   "팀명 + 포메이션"을 이미 표시하므로 redundant. 빈 공간 차지하면 피치 압축됨. */
+/* 라인업 패널은 별도 타이틀 줄 없이 피치만 — 양쪽 페이지의 모든 인스턴스 적용 */
+[data-dp-role="lineup"] > .dp-title { display: none; }
+[data-dp-role="lineup"] { padding: 0; }
+.layout-small .lp-cam-chat {
+  flex: 0 0 19.2%;
+}
+.layout-small.lp-small-columns-custom .lp-cam-chat {
+  flex: 0 0 var(--lp-small-chat-width);
+}
+
+.layout-small .lp-small-col-resize {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  z-index: 8;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+body.lp-small-resizing,
+body.lp-small-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* ===== 후보 명단 인원수 기반 폰트 조정 ===== */
+/* 1~15명: 기본 폰트 그대로 (.dp-item 기본값 13px / line-height 1.5)
+   16명 이상: 기본 폰트 유지하되 .dp-list의 overflow-y:auto로 자동 스크롤
+   .dp-count-md 클래스는 추후 더 좁은 레이아웃에서 재활용 가능하도록 일단 유지 (현재 무효) */
+
+/* ===== Long 모드 (풀네임) — 약간의 폰트/간격 조정 ===== */
+/* 패널 컨테이너에 .dp-mode-long 클래스 토글 시, 더 긴 이름을 위한 미세 조정.
+   너무 줄이면 가독성 깨지니 살짝만 줄이고, 정말 긴 이름은 ellipsis + title 툴팁으로 처리 */
+
+/* ===== .lp 기본 align/justify 덮어쓰기 ===== */
+/* .lp는 align-items: center + justify-content: center로 .lp-label만 가운데 정렬하던 구조라,
+   .dp-panel을 넣으면 가운데 작게 모이는 문제 발생 → stretch로 덮어씀 */
+.lp.lp-bench,
+.lp.lp-injury {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.lp.lp-lineup-s,
+.lp.lp-lineup {
+  align-items: stretch;
+  justify-content: stretch;
+}
+.lp.lp-lineup-s > .lp-label,
+.lp.lp-lineup > .lp-label {
+  display: none;
+}
+
+/* 팬 반응 패널 (캠 큼 lp-chat-big + 캠 작음 lp-cam-chat) — 경기 스탯/벤치/부상과 같은 dp-panel
+   + dp-title 구조 사용. .lp의 가운데 flex 정렬을 stretch로 덮어 dp-panel이 가득 차게 함. */
+.lp.lp-chat-big,
+.lp.lp-cam-chat {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big,
+body.no-fan-reaction .layout-small .lp-cam-chat {
+  pointer-events: none;
+  opacity: .34;
+  filter: grayscale(1) saturate(.18);
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big .dp-panel,
+body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel {
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,.035) 0 10px,
+      rgba(255,255,255,0) 10px 20px
+    );
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big .dp-title,
+body.no-fan-reaction .layout-small .lp-cam-chat .dp-title {
+  color: rgba(255,255,255,.42);
+  border-bottom-color: rgba(255,255,255,.08);
+}
+
+body.no-fan-reaction .layout-big .lp-chat-big .dp-panel::after,
+body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel::after {
+  content: 'OFF';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(8, 12, 18, .66);
+  color: rgba(255,255,255,.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+/* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.
+   --lp-lineup-scale: 0.5~1.0 (default 1). 비율 유지하며 height만 축소 → cam-big(flex:1)이 남는 폭 흡수.
+   align-self: flex-end → 축소 시 컬럼이 아래로 정렬되어 윗 모서리에 위치한 resize handle을 위로 끌어 확장하기 자연스럽게.
+   position: relative → 우상단 .lp-lineup-resize 핸들을 absolute로 띄우기 위함. */
+.layout-big .lp-lineup {
+  flex: 0 0 auto;
+  height: calc(100% * var(--lp-lineup-scale, 1));
+  aspect-ratio: 62 / 105;
+  align-self: flex-end;
+  position: relative;
+}
+
+/* 라인업 우상단 resize 핸들 — 마우스 드래그로 라인업 크기 조정.
+   .layout-big .lp-lineup 내부에만 출현 (작은 캠 페이지/모바일에서는 미생성). */
+.lp-lineup-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nesw-resize;
+  z-index: 10;
+  border-radius: 0 14px 0 6px;
+  background: linear-gradient(225deg,
+    rgba(255,255,255,.55) 0%, rgba(255,255,255,.55) 18%,
+    transparent 18%, transparent 36%,
+    rgba(255,255,255,.42) 36%, rgba(255,255,255,.42) 50%,
+    transparent 50%);
+  opacity: .5;
+  transition: opacity .12s, background-color .12s;
+}
+.lp-lineup-resize:hover { opacity: 1; }
+.lp-lineup.is-resizing .lp-lineup-resize { opacity: 1; }
+/* drag 중 user-select 방지 (실수로 텍스트 잡히는거) */
+body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
+
+/* 라인업 패널 height가 원래의 75% 이하로 축소되면 바둑알/얼굴/이름/팀chip 같이 축소.
+   nodeScale = min(1, lineupScale / 0.75)
+   - lineupScale 100% → 1.0 (변화 없음)
+   - lineupScale  75% → 1.0 (이 지점부터 변화 시작)
+   - lineupScale  60% → 0.80
+   - lineupScale  50% → 0.67
+   layout-big의 .lp-lineup 내부에만 적용 — layout-small/모바일은 영향 없음.
+   font-size뿐 아니라 node width/gap, name pill padding, 팀chip 사이즈까지 같이 비례 축소
+   해야 시각적으로 부조화가 안 생긴다. */
+.layout-big .lp-lineup {
+  --lp-node-scale: min(1, calc(var(--lp-lineup-scale, 1) / 0.75));
+}
+/* node는 원/아바타만 담음. translate(-50%, -50%)는 element 크기 비례라 별도 스케일 불필요.
+   --lp-lineup-x-scale: 너비 독립 조절 시 JS가 주입 (default 1). 이름 라벨이 비례 확장됨. */
+.layout-big .lp-lineup .dp-lineup-name-wrap {
+  width: calc(113px * var(--lp-node-scale, 1) * var(--lp-lineup-x-scale, 1));
+  transform: translate(-50%, calc(24px * var(--lp-node-scale, 1)));
+}
+.layout-big .lp-lineup .dp-mode-long .dp-lineup-name-wrap {
+  width: calc(113px * var(--lp-node-scale, 1) * var(--lp-lineup-x-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-circle {
+  width: calc(42px * var(--lp-node-scale, 1));
+  height: calc(42px * var(--lp-node-scale, 1));
+  font-size: calc(16px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-avatar {
+  width: calc(44px * var(--lp-node-scale, 1));
+  height: calc(44px * var(--lp-node-scale, 1));
+}
+/* 이름 pill — 축소 시 폭/패딩은 줄이되, 폰트는 base 크기를 유지하고 실제 충돌 시 JS가 별도로 축소 */
+.layout-big .lp-lineup .dp-lineup-name {
+  font-size: var(--lp-name-base-size, 12px);
+  padding: calc(2px * var(--lp-node-scale, 1)) calc(6px * var(--lp-node-scale, 1));
+  border-radius: calc(4px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-mode-long .dp-lineup-name {
+  font-size: var(--lp-name-base-size, 12px);
+}
+
+/* 팀 chip(상단 home / 하단 away의 "팀명 + 포메이션" 패널) — 라인업 패널 축소 시 함께 축소 */
+.layout-big .lp-lineup .dp-lineup-team-chip {
+  left: calc(14px * var(--lp-node-scale, 1));
+  right: calc(14px * var(--lp-node-scale, 1));
+  gap: calc(10px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-chip.is-home {
+  top: calc(14px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-chip.is-away {
+  bottom: calc(14px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-main {
+  min-width: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: calc(5px * var(--lp-node-scale, 1)) calc(10px * var(--lp-node-scale, 1));
+  gap: calc(8px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-stacked {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(2px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-formation-only {
+  gap: 0;
+  padding-inline: calc(10px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-formation-only .dp-lineup-team-name {
+  max-width: none;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-formation-only + .dp-side-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max-content;
+  min-height: calc(20px * var(--lp-node-scale, 1));
+  white-space: nowrap;
+  word-break: normal;
+  line-height: 1;
+}
+.layout-big .lp-lineup .dp-lineup-team-name {
+  font-size: calc(11px * var(--lp-node-scale, 1));
+  max-width: calc(150px * var(--lp-node-scale, 1));
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layout-big .lp-lineup .dp-lineup-team-main.is-stacked .dp-lineup-team-name {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+.layout-big .lp-lineup .dp-lineup-team-fm {
+  font-size: calc(10px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-chip .dp-side-edit-btn {
+  min-width: 0;
+  padding: calc(2px * var(--lp-node-scale, 1)) calc(8px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1));
+  line-height: 1.15;
+  word-break: keep-all;
+  text-align: center;
+}
+
+/* ===== side header / inline edit ===== */
+.dp-side-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px 6px;
+}
+.dp-side-name {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: rgba(255,255,255,.52);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-side-edit-btn {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,.72);
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.dp-side-edit-btn:hover {
+  background: rgba(255,255,255,.14);
+  color: #fff;
+}
+#benchPanel .dp-side-header .dp-side-edit-btn,
+#injuryPanel .dp-side-header .dp-side-edit-btn {
+  display: none;
+}
+#benchPanel .dp-side-name {
+  padding: 5px 10px;
+  border-radius: 12px;
+  background: rgb(10 15 23 / .55);
+  border: 1px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 55%, transparent);
+  backdrop-filter: blur(3px);
+  color: rgba(255,255,255,.92);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 11px;
+  font-weight: 800;
+}
+.dp-coach-name.dp-coach-editable,
+.dp-referee-name.dp-referee-editable {
+  cursor: text;
+  border-bottom: 1px dotted rgba(255,255,255,.28);
+}
+.dp-coach-name.dp-coach-editable:hover,
+.dp-referee-name.dp-referee-editable:hover {
+  border-bottom-color: rgba(255,255,255,.62);
+}
+.dp-coach-name.dp-coach-editing,
+.dp-referee-name.dp-referee-editing {
+  flex: 1 1 auto;
+  max-width: none;
+  overflow: visible;
+  border-bottom-color: transparent;
+  /* line-clamp:2(referee 기본)나 다른 줄제한이 input에 영향 안 가도록 reset */
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+.dp-coach-inline-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(76,217,100,.55);
+  background: rgba(15,17,22,.96);
+  color: #f0f0f0;
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+}
+.dp-coach-inline-input::placeholder {
+  color: rgba(255,255,255,.42);
+}
+.dp-coach-inline-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+}
+
+/* ===== lineup panel ===== */
+
+
+/* 패널이 absolute 모드일 때 내부 content가 높이를 채우도록 */
+.lp.lp-chat-big,
+.lp.lp-stat { box-sizing: border-box; }
+
+/* 핸들 공통 */
+.lp-big-col-left-handle,
+.lp-big-edge-left,
+.lp-big-chat-edge-bottom,
+.lp-big-stat-edge-top,
+.lp-big-corner-bl,
+.lp-big-corner-tl {
+  position: absolute;
+  z-index: 20;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+/* 대각선 코너 핸들 — 12×12px, 엣지보다 위 레이어(z-index:25) */
+.lp-big-corner-bl,
+.lp-big-corner-tl {
+  width: 12px;
+  height: 12px;
+  z-index: 25;
+  border-radius: 2px;
+}
+/* chat 하단-왼쪽 코너: 왼쪽으로 드래그=너비증가, 아래=chat높이증가 */
+.lp-big-corner-bl {
+  bottom: 0; left: 0;
+  cursor: sw-resize;
+}
+/* stat 상단-왼쪽 코너: 왼쪽으로 드래그=너비증가, 위=stat높이증가 */
+.lp-big-corner-tl {
+  top: 0; left: 0;
+  cursor: nw-resize;
+}
+.lp-big-corner-bl:hover,
+.lp-big-corner-tl:hover { background: rgba(255,255,255,.30); }
+
+/* ON 모드 공유 너비 핸들 — lp-col 직속 자식, 왼쪽 엣지 전체 */
+.lp-big-col-left-handle {
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+/* OFF 모드 각 패널 왼쪽 너비 핸들 */
+.lp-big-edge-left {
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+/* chat 아랫쪽 엣지 — chat 높이 */
+.lp-big-chat-edge-bottom {
+  bottom: 0; left: 0; right: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+/* stat 윗쪽 엣지 — stat 높이 */
+.lp-big-stat-edge-top {
+  top: 0; left: 0; right: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+.lp-big-col-left-handle:hover,
+.lp-big-edge-left:hover,
+.lp-big-chat-edge-bottom:hover,
+.lp-big-stat-edge-top:hover { background: rgba(255,255,255,.18); }
+
+/* ON 모드: lp-col에 .is-big-linked → col-left 보임, panel-left 숨김 */
+.layout-big .lp-col.is-big-linked > .lp-big-col-left-handle { display: block; }
+.layout-big .lp-col:not(.is-big-linked) > .lp-big-col-left-handle { display: none; }
+/* OFF 모드: panel 왼쪽 핸들 보임 */
+.layout-big .lp-col.is-big-linked .lp-big-edge-left { display: none; }
+.layout-big .lp-col:not(.is-big-linked) .lp-big-edge-left { display: block; }
+
+/* OFF 모드: 패널이 absolute일 때 내부 [data-stat-panel] / [data-events-panel] height:100% 보장 */
+.layout-big .lp-col:not(.is-big-linked) .lp-stat,
+.layout-big .lp-col:not(.is-big-linked) .lp-chat-big {
+  overflow: hidden;
+}
+
+body.lp-big-col-resizing,
+body.lp-big-col-resizing * { cursor: ew-resize !important; user-select: none !important; }
+body.lp-big-h-resizing,
+body.lp-big-h-resizing * { cursor: ns-resize !important; user-select: none !important; }
+/* 코너 드래그(너비+높이 동시 조절)는 두 클래스가 함께 붙으므로 대각선 커서로 덮어쓴다. */
+body.lp-big-col-resizing.lp-big-h-resizing,
+body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
+
+/* ===== 라인업 패널 독립 엣지 리사이즈 (캠 큰 전용 — 오른쪽 너비 / 위쪽 높이) ===== */
+
+/* 자유 엣지 리사이즈 중에는 aspect-ratio가 반대 축까지 밀지 않게 제거한다. */
+.layout-big .lp-lineup.has-edge-override {
+  aspect-ratio: unset;
+}
+
+/* 자유 리사이즈가 걸린 라인업 패널은 내부 피치도 패널 자체를 기준으로 따라오게 한다.
+   예전에는 패널만 커지고 피치는 원래 62:105 비율에 묶여 있어,
+   남는 영역이 배경색처럼 보이고 팀 칩/포메이션 버튼도 안쪽으로 밀려 보였다. */
+.layout-big .lp-lineup.has-edge-override .dp-lineup-vertical-pitch {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0;
+}
+
+/* split 모드도 두 피치가 남는 높이를 함께 흡수하도록 맞춘다. */
+.layout-big .lp-lineup.has-edge-override .dp-lineup-pitch.is-split {
+  align-items: stretch;
+}
+.layout-big .lp-lineup.has-edge-override .dp-lineup-vertical-pitch.is-split {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+/* 오른쪽 엣지 — 너비 독립 조절 (기존 우상단 핸들 22px 아래에서 시작) */
+.lp-lineup-right-edge {
+  position: absolute;
+  right: 0;
+  top: 22px;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 10;
+  touch-action: none;
+  background: transparent;
+  transition: background .15s;
+}
+.lp-lineup-right-edge:hover { background: rgba(255,255,255,.18); }
+
+/* 위쪽 엣지 — 높이 독립 조절 (기존 우상단 핸들 22px 왼쪽까지) */
+.lp-lineup-top-edge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 22px;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 10;
+  touch-action: none;
+  background: transparent;
+  transition: background .15s;
+}
+.lp-lineup-top-edge:hover { background: rgba(255,255,255,.18); }
+
+body.lp-lineup-w-resizing,
+body.lp-lineup-w-resizing * { cursor: ew-resize !important; user-select: none !important; }
+body.lp-lineup-h-resizing,
+body.lp-lineup-h-resizing * { cursor: ns-resize !important; user-select: none !important; }

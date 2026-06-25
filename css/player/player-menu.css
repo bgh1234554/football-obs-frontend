@@ -1,0 +1,586 @@
+﻿/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [선수 컨텍스트 메뉴] Iter 6 — .pm- 접두어 격리
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* 클릭 가능 표시 — 피치 노드/이름랩은 기본이 pointer-events:none이므로 auto로 override */
+.dp-item[data-player-id] { cursor: pointer; }
+.dp-item[data-player-id]:hover { background: rgba(255,255,255,.06); border-radius: 4px; }
+
+.dp-lineup-node[data-player-id],
+.dp-lineup-name-wrap[data-player-id] {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* ── 컨텍스트 메뉴 컨테이너 ── */
+#pmContainer {
+  position: fixed;
+  z-index: 12000;
+  pointer-events: none; /* 자식만 이벤트 수신 */
+}
+#pmContainer > * { pointer-events: auto; }
+
+/* ── 컨텍스트 메뉴 팝업 ── */
+.pm-popup {
+  position: fixed;
+  min-width: 220px;
+  max-width: 280px;
+  background: rgba(18, 18, 32, 0.97);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 10px;
+  padding: 10px 12px 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.65);
+  backdrop-filter: blur(6px);
+  color: #f0f0f0;
+  font-family: var(--font-family, sans-serif);
+  font-size: 13px;
+  animation: pm-fadein .12s ease;
+}
+@keyframes pm-fadein { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:scale(1); } }
+
+.pm-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.45);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.pm-close:hover { color: #fff; }
+
+.pm-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-right: 18px;
+}
+
+.pm-num {
+  font-weight: 700;
+  color: rgba(255,255,255,.5);
+  margin-right: 4px;
+}
+
+.pm-avatar {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255,255,255,.12);
+  border: 2px solid rgba(255,255,255,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pm-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pm-avatar-empty {
+  background: rgba(255,255,255,.1);
+}
+.pm-avatar-num {
+  font-weight: 800;
+  font-size: 14px;
+  color: rgba(255,255,255,.6);
+}
+
+.pm-info-text { min-width: 0; }
+
+.pm-name {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pm-subname {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pm-nick-badge {
+  font-size: 11px;
+  color: #7dd3fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pm-pos {
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  margin-top: 1px;
+}
+
+.pm-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.pm-btn {
+  flex: 1 1 0;
+  padding: 5px 4px;
+  font-size: 12px;
+  font-family: inherit;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 6px;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.pm-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,.16);
+  border-color: rgba(255,255,255,.28);
+}
+.pm-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.pm-btn.pm-btn-primary {
+  background: rgba(37,99,235,.7);
+  border-color: #3b82f6;
+  color: #fff;
+}
+.pm-btn.pm-btn-primary:hover { background: rgba(59,130,246,.85); }
+.pm-btn.pm-btn-danger {
+  background: rgba(185,28,28,.55);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+.pm-btn.pm-btn-danger:hover { background: rgba(220,38,38,.7); }
+
+/* ── 닉네임 편집 ── */
+.pm-nick-wrap { padding: 2px 0; }
+
+.pm-nick-title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: rgba(255,255,255,.75);
+}
+
+.pm-nick-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  color: #f0f0f0;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 8px;
+}
+.pm-nick-input:focus { border-color: #3b82f6; }
+
+.pm-nick-btns {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── 모달 백드롭 ── */
+.pm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 12000;
+  animation: pm-fadein .15s ease;
+}
+
+.pm-modal {
+  background: rgba(18, 18, 35, 0.99);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  /* 고정 높이 지정 — body가 flex:1로 남은 공간 채울 수 있도록 */
+  height: min(85vh, 600px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.75);
+  font-family: var(--font-family, sans-serif);
+  color: #f0f0f0;
+  font-size: 13px;
+}
+/* 닉네임 목록 모달 — 내용 길이에 따라 너비 유동, 높이도 내용에 맞게 */
+.pm-modal.pm-modal-wide {
+  width: fit-content;
+  min-width: 320px;
+  max-width: min(90vw, 820px);
+  height: auto;
+  max-height: min(85vh, 600px);
+}
+/* wide 모달 body: 내용이 길면 스크롤, 짧으면 자연 높이 */
+.pm-modal.pm-modal-wide .pm-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pm-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  flex: 0 0 auto;
+}
+
+.pm-modal-title {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.pm-modal-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.45);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex: 0 0 auto;
+}
+.pm-modal-close:hover { color: #fff; }
+
+.pm-modal-body {
+  overflow-y: auto;
+  flex: 1 1 0;
+  padding: 10px 14px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.2) transparent;
+}
+.pm-modal-body::-webkit-scrollbar { width: 5px; }
+.pm-modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+
+/* ── 경기 스탯 테이블 ── */
+.pm-stat-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pm-stat-table tr + tr td { border-top: 1px solid rgba(255,255,255,.07); }
+.pm-st-label {
+  padding: 5px 4px 5px 0;
+  color: rgba(255,255,255,.55);
+  white-space: nowrap;
+  width: 55%;
+}
+.pm-st-val {
+  padding: 5px 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ── 시즌 스탯 ── */
+.pm-szn-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 0 10px;
+}
+
+.pm-nav-btn {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 5px;
+  color: #e2e8f0;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.pm-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,.2); }
+.pm-nav-btn:disabled { opacity: .3; cursor: default; }
+
+.pm-szn-key {
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 90px;
+  text-align: center;
+}
+
+/* .pm-szn-table-wrap: overflow 없음 — .pm-szn-scroll이 x/y 단일 처리 */
+
+.pm-szn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.pm-szn-table th {
+  padding: 4px 6px;
+  color: rgba(255,255,255,.5);
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  text-align: center;
+}
+.pm-szn-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.pm-szn-table tr:last-child td { border-bottom: none; }
+
+.pm-th-league { text-align: left; }
+.pm-th-num, .pm-st-num { text-align: center; }
+
+/* sticky td 내부 div — td 자체는 순수 table-cell 유지 */
+.pm-st-league {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  overflow: hidden;
+}
+.pm-st-team-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  opacity: 0.6;
+  font-size: 11px;
+  overflow: hidden;
+}
+.pm-st-league span,
+.pm-st-team-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-lg-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+/* ── 닉네임 목록 테이블 ── */
+.pm-nick-list-table { width: 100%; }
+.pm-nick-list-table th { text-align: center; }
+.pm-nick-list-table td { text-align: center; }
+.pm-nick-list-name { padding: 6px 16px; color: rgba(255,255,255,.6); white-space: nowrap; }
+.pm-nick-list-id { padding: 6px 10px; color: rgba(255,255,255,.72); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pm-nick-list-nick { padding: 6px 16px; font-weight: 700; white-space: nowrap; }
+.pm-nick-list-action { padding: 4px 8px 4px 0; text-align: center; white-space: nowrap; }
+.pm-nick-del { padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+
+/* ── 시즌 스탯 wide modal ── */
+.pm-modal.pm-modal-szn {
+  width: 55vw;
+  min-width: 400px;
+  height: min(85vh, 700px);
+}
+
+.pm-modal-body.pm-body-split {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.pm-szn-profile {
+  flex: 0 0 auto;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+.pm-szn-nav-fixed {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.pm-szn-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px 12px 0;
+}
+.pm-match-stat-scroll {
+  padding: 8px 14px 14px;
+}
+
+/* ── 선수 프로필 섹션 ── */
+.pm-avatar-lg {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: 0 0 auto;
+  background: rgba(255,255,255,.1);
+}
+.pm-avatar-lg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pm-avatar-lg.pm-avatar-empty {
+  border: 2px solid rgba(255,255,255,.2);
+}
+
+.pm-profile-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pm-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pm-profile-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.pm-profile-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+}
+
+.pm-profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.pm-chip {
+  background: rgba(255,255,255,.12);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.pm-profile-birth {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+}
+
+/* ── 시즌 스탯 표 그룹 헤더 ── */
+/* border-collapse:collapse + position:sticky = Chrome 렌더링 버그 (배경이 scrolled content를 덮지 않음)
+   separate + spacing:0 으로 변경해 sticky 배경이 정상 동작하도록 함 */
+.pm-szn-table-full {
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.pm-th-group-row th {
+  background: rgba(255,255,255,.05);
+}
+
+.pm-th-group-cell {
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-left: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.7) !important;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* ── sticky 열 (대회 = 1열, 팀 = 2열) ──
+   table-layout:auto — 대회명 너비를 콘텐츠에 맞춰 자동 결정. */
+.pm-th-sticky,
+.pm-st-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: rgb(18, 18, 35);
+  overflow: hidden;
+}
+
+.pm-th-group-row .pm-th-sticky {
+  z-index: 3;
+  background: rgb(23, 23, 43);
+}
+
+/* 모든 셀에 명시적 배경 — sticky 셀 뒤로 scrolled content가 비치는 렌더링 버그 방지 */
+.pm-szn-table-full td,
+.pm-szn-table-full thead th { background-color: rgb(18, 18, 35); }
+.pm-szn-table-full .pm-th-group-row th { background-color: rgb(26, 26, 46); }
+
+/* ── 평점 배지 ── */
+.pm-rating-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255,255,255,.15);
+  min-width: 30px;
+  text-align: center;
+}
+
+/* ── 카드 표시 ── */
+.pm-card-y {
+  display: inline-block;
+  background: #f59e0b;
+  color: #000;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+  margin-right: 2px;
+}
+
+.pm-card-yr {
+  display: inline-block;
+  background: linear-gradient(90deg, #f59e0b 50%, #ef4444 50%);
+  color: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+  margin-right: 2px;
+}
+
+.pm-card-r {
+  display: inline-block;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+}
+
+/* ── 상태 메시지 ── */
+.pm-loading, .pm-error, .pm-empty {
+  padding: 20px 0;
+  text-align: center;
+  color: rgba(255,255,255,.45);
+  font-size: 13px;
+}
+.pm-error { color: #f87171; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

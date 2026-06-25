@@ -1,0 +1,413 @@
+﻿/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [수동 입력 모달 + 그리드 모드]
+   .dp-manual-backdrop/modal/header/footer/body, .dp-field (입력 행),
+   .dp-manual-grid, .dp-grid-* (포메이션 슬롯 드래그),
+   .sp-radio-cluster (포지션 라디오 선택),
+   .tn-tabs (전술판 선수 이름 수동 입력 모달 — tactics-manual-names.js)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.dp-manual-backdrop {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0,0,0,.58);
+  z-index: 12100;
+}
+.dp-manual-backdrop.open {
+  display: flex;
+}
+.dp-manual-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 36px);
+  display: flex;
+  flex-direction: column;
+  background: #181a20;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px;
+  box-shadow: 0 28px 70px rgba(0,0,0,.58);
+  color: #f0f0f0;
+}
+.dp-manual-header,
+.dp-manual-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.dp-manual-header {
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.dp-manual-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+.dp-manual-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(255,255,255,.46);
+}
+.dp-manual-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,.65);
+  font-size: 18px;
+  cursor: pointer;
+}
+.dp-manual-close:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+.dp-manual-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 16px 18px;
+}
+.dp-manual-footer {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.dp-manual-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+.dp-manual-primary,
+.dp-manual-secondary {
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dp-manual-primary {
+  border: 1px solid #4cd964;
+  background: #4cd964;
+  color: #0a1f10;
+}
+.dp-manual-secondary {
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.78);
+}
+.dp-manual-primary:hover { filter: brightness(1.05); }
+.dp-manual-secondary:hover {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+}
+.dp-form-grid,
+.dp-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dp-form-grid {
+  gap: 8px;
+}
+.dp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dp-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.55);
+}
+.dp-input,
+.dp-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: #0f1116;
+  color: #f0f0f0;
+  font-size: 12px;
+}
+.dp-input:focus,
+.dp-select:focus {
+  outline: none;
+  border-color: rgba(76,217,100,.65);
+  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+}
+.dp-manual-grid {
+  display: grid;
+  gap: 8px;
+}
+.dp-manual-row {
+  display: grid;
+  grid-template-columns: 52px 78px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.dp-manual-row.is-injury {
+  grid-template-columns: 72px 72px minmax(0, 1fr) minmax(180px, 240px);
+}
+.dp-slot-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.62);
+  text-align: center;
+}
+.dp-manual-help {
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: rgba(255,255,255,.48);
+  line-height: 1.45;
+}
+
+/* ===== 전술판 선수 이름 수동 입력 모달 — 홈/원정 탭 ===== */
+.tn-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+}
+.tn-tab {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.6);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.tn-tab.active {
+  background: rgba(76,217,100,.16);
+  border-color: rgba(76,217,100,.55);
+  color: #fff;
+}
+.tn-team-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tn-name-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+.tn-name-group .tn-teamname-input {
+  flex: 1;
+  min-width: 0;
+}
+.tn-swatch-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.tn-swatch-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.5);
+  white-space: nowrap;
+}
+.tn-swatch {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.28);
+  box-shadow: 0 1px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25);
+  cursor: pointer;
+  transition: border-color .15s ease, transform .1s ease;
+}
+.tn-swatch-group:hover .tn-swatch {
+  border-color: rgba(76,217,100,.65);
+  transform: scale(1.08);
+}
+.tn-swatch input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+#btn-tactics-manual-names:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* ===== Iter 3: 그리드 모드 (포메이션만 null인 경우 드래그-드롭 UI) ===== */
+.dp-grid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dp-grid-row {
+  display: grid;
+  grid-template-columns: 22px 38px 30px 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
+  transition: background .12s, border-color .12s, transform .12s;
+}
+.dp-grid-row:hover { background: rgba(255,255,255,.08); }
+.dp-grid-row.is-dragging { opacity: .35; cursor: grabbing; }
+.dp-grid-row.is-drop-target {
+  background: rgba(76,217,100,.18);
+  border-color: rgba(76,217,100,.55);
+  transform: translateY(-1px);
+}
+.dp-grid-handle {
+  cursor: grab;
+  color: rgba(255,255,255,.55);
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+  font-weight: 800;
+}
+.dp-grid-row.is-dragging .dp-grid-handle { cursor: grabbing; }
+.dp-grid-slot-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.62);
+  text-align: center;
+}
+.dp-grid-photo {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.dp-grid-photo-empty {
+  background-color: rgba(255,255,255,.04);
+  background-image: none;
+}
+.dp-grid-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,.78);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.dp-grid-name {
+  font-size: 13px;
+  color: #f0f0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dp-grid-name.dp-grid-empty {
+  color: rgba(255,255,255,.32);
+  font-style: italic;
+}
+@media (max-width: 900px) {
+  .dp-manual-row,
+  .dp-manual-row.is-injury {
+    grid-template-columns: 1fr;
+  }
+  .dp-slot-label {
+    text-align: left;
+  }
+}
+
+/* ─── 라인업 분할 모드 (캠 큼 + splitLineup=on) ───────────────────────────
+   .dp-mode-split: 패널이 두 풀 피치를 세로(위:홈, 아래:원정)로 쌓음.
+   리셋 기본형은 원래 62/210보다 넓은 94/210 비율을 사용한다.
+   두 피치는 split 전용으로 가로를 채워, 지나치게 가늘고 긴 기본 상태를 피한다. */
+.layout-big .lp-lineup.dp-mode-split {
+  aspect-ratio: 94 / 210;
+}
+.dp-lineup-pitch.is-split {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.dp-lineup-vertical-pitch.is-split {
+  width: 100%;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: 62 / 105;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.layout-big .lp-lineup.dp-mode-split .dp-lineup-pitch.is-split {
+  align-items: stretch;
+}
+.layout-big .lp-lineup.dp-mode-split .dp-lineup-vertical-pitch.is-split {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: auto;
+  aspect-ratio: auto;
+}
+/* split 모드에서는 양 팀 모두 GK가 피치 아래쪽에 있으므로 home chip도 아래로 내림 */
+.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+  top: auto;
+  bottom: 14px;
+}
+.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+  top: auto;
+  bottom: calc(14px * var(--lp-node-scale, 1));
+}
+
+/* ─── 리그 로고 워시 위치 (leagueLogoPos: center / left / right) ─────────
+   center(default)는 기존 dp-lineup-league-wash 스타일 그대로 (left:50% top:50%).
+   left/right는 센터 서클이 라인업에 가려질때 사이드로 회피해서 보이게 함.
+   transform: translate(-50%, -50%)는 base에서 이미 적용되어 있어 left/top만 override. */
+.dp-lineup-league-wash.is-left  { left: 22%; }
+.dp-lineup-league-wash.is-right { left: 78%; }
+
+/* ─── 라디오 클러스터 (3-state 설정 — leagueLogoPos 등) ─────────────────
+   sp-toggle-cluster와 시각적으로 같은 톤의 segmented 버튼 그룹.
+   .is-active 가 들어간 버튼이 현재 선택값. */
+.sp-radio-cluster {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  padding: 2px;
+  gap: 2px;
+}
+.sp-radio-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.65);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  font-family: inherit;
+}
+.sp-radio-btn:hover { color: #fff; }
+.sp-radio-btn.is-active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(37,99,235,.4);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
