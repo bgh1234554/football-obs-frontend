@@ -15,8 +15,8 @@
       --td-pitch-alpha: 1;
       --td-name-size: 10px;
       --lineup-panel-bg: rgba(var(--panel-ui-rgb), var(--lp-pitch-alpha));
-      --api-widget-surface-rgb: 43, 44, 47;
-      --api-widget-hover-alpha: .22;
+      --api-widget-surface-rgb: 11, 18, 32;
+      --api-widget-hover-alpha: .18;
       --line: rgba(255,255,255,.12);
       --text: rgba(255,255,255,.92);
       --muted: rgba(255,255,255,.55);

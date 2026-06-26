@@ -259,13 +259,49 @@
       font-size: inherit;
     }
 
-    /* API Sports 위젯은 글자/크기/레이아웃은 유지하고 회색 테마 배경 토큰만 알파 처리. */
+    /* API Sports 위젯 커스텀 테마 — 우리 다크 패널 팔레트에 맞춤 (data-theme="ObsOverlay").
+       셀렉터를 두 벌 쓰는 이유: 위젯 JS가 config의 data-theme을 개별 위젯에 복사하는 경우와
+       복사하지 않는 경우를 모두 커버하기 위해 .initialized 셀렉터를 병렬로 둔다. */
+    api-sports-widget[data-theme="ObsOverlay"],
+    #page-schedule api-sports-widget.initialized {
+      --primary-color: #60a5fa;
+      --success-color: #22c55e;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --light-color: rgba(255,255,255,.45);
+
+      --home-color: var(--primary-color);
+      --away-color: #ffc107;
+
+      --text-color: rgba(255,255,255,.90);
+      --text-color-info: rgba(255,255,255,.50);
+
+      --background-color: rgb(var(--api-widget-surface-rgb));
+
+      --primary-font-size: 0.72rem;
+      --secondary-font-size: 0.75rem;
+      --button-font-size: 0.8rem;
+      --title-font-size: 0.9rem;
+
+      --header-text-transform: uppercase;
+      --button-text-transform: uppercase;
+      --title-text-transform: uppercase;
+
+      --border: 1px solid rgba(255,255,255,.10);
+      --game-height: 2.3rem;
+      --league-height: 2.35rem;
+
+      --score-size: 2.25rem;
+      --flag-size: 22px;
+      --teams-logo-size: 18px;
+      --teams-logo-size-xl: 5rem;
+      --hover: rgba(255,255,255,.08);
+    }
+
+    /* 패널 투명도 슬라이더(--panel-alpha) 연동 — 테마 설정값을 알파 가변 버전으로 덮어씀. */
     #page-schedule :where(.panelBody, #games-list, #standings-content, #team-content, #game-content, api-sports-widget.initialized:not([data-type="config"])) {
       --background-color: rgba(var(--api-widget-surface-rgb), var(--panel-alpha)) !important;
-      --button-text-color: rgb(var(--api-widget-surface-rgb)) !important;
-      --text-color-info: rgb(var(--api-widget-surface-rgb)) !important;
-      --opacity: var(--api-widget-hover-alpha) !important;
-      --hover: rgba(73, 73, 73, var(--api-widget-hover-alpha)) !important;
+      --hover: rgba(255,255,255, calc(var(--api-widget-hover-alpha) * var(--panel-alpha))) !important;
     }
     .panel { background: var(--panel-bg); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
 
