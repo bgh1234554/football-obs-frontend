@@ -1,8 +1,4 @@
-﻿    /* ========== 점수판 컴포넌트 ==========
-       .board, .team, .logo-box, .score, .digits, .timer, .pk-wrap, .rc-rail 등
-       득점자 박스(.note-side / .note) 수동 편집 인터랙션 스타일 포함.
-       주의: 모든 선택자는 .board 하위에서만 적용할 것 (위젯/페이지 스타일 오염 방지).
-    */
+﻿    /* ========== 기본 보드 테마 ==========*/
 
     .note-side.manual-editable { cursor: text; }
     .note-side.manual-editable.editing { z-index: 5; }

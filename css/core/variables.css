@@ -37,9 +37,9 @@
 
       /* ---- 홈/원정 팀 배경·텍스트·테두리 (theme.js가 API 색상으로 자동 교체) ---- */
       --home-bg: #1d4ed8;
-      --home-text: #ffffff;
+      --home-text: #000000;
       --away-bg: #ef4444;
-      --away-text: #ffffff;
+      --away-text: #000000;
       --home-outline: #ffffff40;
       --away-outline: #ffffff40;
       --home-outline-w: 1px;
@@ -48,8 +48,8 @@
       --score-outline-w: 1px;
 
       /* ---- 가운데 스코어 박스 ---- */
-      --score-bg: #0b1220;
-      --digits-color: #e5e7eb;  /* 점수 숫자 */
+      --score-bg: gold;
+      --digits-color: black;  /* 점수 숫자 */
       --meta-color: #e5e7eb;    /* 리그명/경기장 등 메타 텍스트 */
       --extra-color: #22c55e;   /* 추가시간 (+N) */
       --half-bg: #a70e80;       /* 전/후반 표시 배경 */

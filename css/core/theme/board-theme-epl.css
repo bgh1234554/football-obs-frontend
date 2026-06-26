@@ -1,8 +1,4 @@
-﻿    /* ========== 점수판 컴포넌트 ==========
-       .board, .team, .logo-box, .score, .digits, .timer, .pk-wrap, .rc-rail 등
-       득점자 박스(.note-side / .note) 수동 편집 인터랙션 스타일 포함.
-       주의: 모든 선택자는 .board 하위에서만 적용할 것 (위젯/페이지 스타일 오염 방지).
-    */
+    /* ========== 잉글랜드 프리미어리그 보드 테마(25-26 Season) ==========*/
 
     .note-side.manual-editable { cursor: text; }
     .note-side.manual-editable.editing { z-index: 5; }
@@ -74,8 +70,8 @@
       min-width: 0;
       width: 100%;
     }
-    .team.home { background: linear-gradient(90deg, white 93%, rgb(200, 200, 200)); color: black; border-bottom: 4px solid var(--home-bg); }
-    .team.away { background: linear-gradient(-90deg, white 93%, rgb(200, 200, 200)); color: black; border-bottom: 4px solid var(--away-bg); }
+    .team.home { background: var(--home-bg); color: black; border-top-left-radius: 10px; }
+    .team.away { background: var(--away-bg); color: black; border-top-right-radius: 10px; }
     .team.home.outline-on { box-shadow: inset 0 0 0 var(--home-outline-w) var(--home-outline); }
     .team.away.outline-on { box-shadow: inset 0 0 0 var(--away-outline-w) var(--away-outline); }
 
@@ -146,8 +142,8 @@
       background: gold;
       color: var(--meta-color);
     }
-
-    .board .league-logo { display: none; }
+    .board .league-logo { display: flex; width: 86px; height: 86px; justify-content: center; align-items: center; }
+    .board .league-img { width: 100%; height: 100%; }
     .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
     #aggHomeWrap { grid-area: aggL; align-self: center; }
     #aggAwayWrap { grid-area: aggR; align-self: center; }
@@ -156,13 +152,13 @@
     .board .score .meta { grid-area: meta; }
     .board .score .agg { color: black !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
     .board .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: black; }
-    .board .meta { width: 160px; font-size: 14px; opacity: .95; display: flex; grid-column: 1 / 4; gap: 10px; margin: 0 auto; margin-top: 2px; align-items: center; justify-content: center; background: dodgerblue; }
+    .board .meta { width: 160px; font-size: 14px; opacity: .95; display: flex; grid-column: 1 / 4; gap: 10px; margin: 0 auto; margin-top: 2px; align-items: center; justify-content: center; background: #3E0B3D; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
     .board .pk-score-row { display: flex; justify-content: center; }
     .board .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
-    .board .timer { width: 60px; background: dodgerblue; }
+    .board .timer { width: 60px; background: #3E0B3D; }
     .board .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
     .board .timer .minsec:hover { background: rgba(255,255,255,.1); }
-    .board .extra { width: 40px; text-align: center; font-size: 20px; font-weight: 700; color: white; background: var(--extra-color); padding: 2px; left: 10px; position: relative; }
+    .board .extra { width: 40px; text-align: center; font-size: 20px; font-weight: 700; color: white; background: linear-gradient(90deg, orange, red, hotpink); padding: 2px; left: 10px; position: relative; border-bottom-right-radius: 10px; }
 
     /* PK 모드: 새 행 추가로 높이가 늘어나지 않도록 전체 축소 */
     .board .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }
