@@ -81,7 +81,7 @@ const SETTINGS_DEFAULTS = {
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   0,
-  tacticsNameSize: 10, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
+  tacticsNameSize: 12, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
   // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
   alphaTransparencyMode: 'transparency',
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
@@ -659,7 +659,7 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
-  const tacticsNameSize = Math.max(TACTICS_NAME_SIZE_MIN, Math.min(TACTICS_NAME_SIZE_MAX, Number(getSetting('tacticsNameSize')) || 10));
+  const tacticsNameSize = Math.max(TACTICS_NAME_SIZE_MIN, Math.min(TACTICS_NAME_SIZE_MAX, Number(getSetting('tacticsNameSize')) || 12));
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
     || LINEUP_PITCH_TONE_STYLES[SETTINGS_DEFAULTS.lineupPitchTone];
   const root = document.documentElement;

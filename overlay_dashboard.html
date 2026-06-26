@@ -889,7 +889,7 @@
     <div class="td-name-size-control" title="전술판 선수 이름 라벨 크기">
       <label for="tactics-name-size-slider" class="td-alpha-label">라벨 크기</label>
       <input id="tactics-name-size-slider" class="td-alpha-slider td-name-size-slider" type="range" min="7" max="18" step="1" data-settings-slider="tacticsNameSize" aria-label="전술판 선수 이름 라벨 크기">
-      <span class="td-alpha-value td-name-size-value" data-settings-slider-value="tacticsNameSize">10px</span>
+      <span class="td-alpha-value td-name-size-value" data-settings-slider-value="tacticsNameSize">12px</span>
     </div>
     <span style="font-size:11px;color:#64748b;font-weight:700;">HOME</span>
     <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
@@ -1080,6 +1080,7 @@
 <!-- BMC 플로팅 위젯 (사이드바 열릴 때만 표시) -->
 <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="bgh1234554" data-description="Support me on Buy me a coffee!" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 <script src="js/core/utils.js"></script>
+<script src="js/data/team-color-overrides.js"></script>
 <script src="js/core/state.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/core/timer.js"></script>
@@ -1121,6 +1122,7 @@
   css/settings-popup.css          — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치)
 
   js/core/utils.js                 — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
+  js/data/team-color-overrides.js  — teamId 기반 팀 컬러 수동 보정 매핑
   js/core/state.js                 — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
   js/core/render.js                — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
   js/core/timer.js                 — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
