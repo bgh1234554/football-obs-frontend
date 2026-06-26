@@ -180,7 +180,7 @@ function _lpBindEventsScrollInterruption(el) {
  * intervalMs의 10% 동안 맨 아래를 보여주고, 65% 동안 등속도로 맨 위까지 스크롤한다.
  * 이후 나머지 25% 동안 맨 위를 보여준 뒤 다음 패널로 자동 전환한다.
  */
-function _lpStartEventsScroll(intervalMs, mode = 'events') {
+function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
   const scrollDown = mode === 'standings';
@@ -201,6 +201,17 @@ function _lpStartEventsScroll(intervalMs, mode = 'events') {
     _lpSetEventsScrollTop(el, startTop);
 
     if (maxScroll <= 0 || scrollDuration <= 0) {
+      // maxScroll=0: HTH 등 비동기 렌더링 패널이 아직 안 그려졌을 수 있음. 1회 재시도.
+      if (maxScroll <= 0 && _retryCount < 1) {
+        _lpClearEventsScrollListeners();
+        _lpAuto.scrollTimer = setTimeout(() => {
+          _lpAuto.scrollTimer = null;
+          if (_lpStatCycle.mode === mode) {
+            _lpStartEventsScroll(intervalMs, mode, _retryCount + 1);
+          }
+        }, 100);
+        return;
+      }
       _lpSetEventsScrollTop(el, endTop);
       _lpClearEventsScrollListeners();
       _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
@@ -477,6 +488,13 @@ window.lpStatUpdatePauseBtn = lpStatUpdatePauseBtn;
 window.lpStatTogglePause = lpStatTogglePause;
 window.lpStatUpdateVisibility = lpStatUpdateVisibility;
 window.lpStatAutoAdvance = lpStatAutoAdvance;
+// stRerenderActivePanels가 스탯 패널을 페이지 1로 리셋할 때 fallback 타이머도 같이 리셋.
+// stats 모드 + 자동 전환 ON일 때만 동작 (다른 모드의 스크롤 애니메이션은 건드리지 않음).
+window.lpStatAutoRestart = function lpStatAutoRestart() {
+  if (_lpIsCycleAutoOn() && !_lpStatCycle.paused && _lpStatCycle.mode === 'stats') {
+    _lpAutoStart();
+  }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.lp-stat-cycle-btn').forEach(btn => {

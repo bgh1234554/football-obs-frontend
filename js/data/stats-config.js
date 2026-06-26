@@ -17,6 +17,7 @@ window.STATS_CONFIG = {
     totalShots:       '총 슈팅',
     shotsOnGoal:      '유효슈팅',
     fouls:            '파울',
+    freeKicks:        '프리킥',
     cornerKicks:      '코너킥',
     offsides:         '오프사이드',
     yellowCards:      '경고',
@@ -35,7 +36,7 @@ window.STATS_CONFIG = {
   // 표시 순서 — 사용자 지정 순서 그대로
   order: [
     'expectedGoals', 'ballPossession', 'totalShots', 'shotsOnGoal',
-    'yellowCards', 'redCards', 'fouls', 'cornerKicks', 'offsides',
+    'yellowCards', 'redCards', 'fouls', 'cornerKicks', 'offsides', 'freeKicks',
     'totalPasses', 'passesPercent', 'passesAccurate',
     'shotsOffGoal', 'blockedShots', 'shotsInsidebox', 'shotsOutsidebox',
     'goalkeeperSaves', 'goalsPrevented',

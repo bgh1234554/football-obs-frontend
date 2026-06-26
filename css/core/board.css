@@ -1,0 +1,300 @@
+﻿    /* ========== 점수판 컴포넌트 ==========
+       .board, .team, .logo-box, .score, .digits, .timer, .pk-wrap, .rc-rail 등
+       득점자 박스(.note-side / .note) 수동 편집 인터랙션 스타일 포함.
+       주의: 모든 선택자는 .board 하위에서만 적용할 것 (위젯/페이지 스타일 오염 방지).
+    */
+
+    .note-side.manual-editable { cursor: text; }
+    .note-side.manual-editable.editing { z-index: 5; }
+    .note.manual-editable {
+      box-sizing: border-box;
+      min-height: 44px;
+      cursor: text;
+    }
+    .note.manual-editable:hover { background: rgba(255,255,255,.08); }
+    .note-inline-editor {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      width: 100%;
+    }
+    .note-inline-editor.away { flex-direction: row-reverse; }
+    .note-inline-textarea {
+      width: 100%;
+      min-width: 0;
+      min-height: 96px;
+      resize: none;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 10px;
+      background: rgba(11,18,32,.92);
+      color: var(--note-text);
+      font-family: var(--font-family);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      box-shadow: 0 8px 24px rgba(0,0,0,.28);
+    }
+    .note-inline-editor.home .note-inline-textarea { text-align: right; }
+    .note-inline-editor.away .note-inline-textarea { text-align: left; }
+    .note-inline-textarea::placeholder { color: rgba(229,231,235,.65); }
+    .note-inline-textarea:focus {
+      outline: 2px solid rgba(255,255,255,.85);
+      outline-offset: 1px;
+      border-color: rgba(255,255,255,.5);
+    }
+    .note-inline-save { flex: 0 0 auto; margin-top: 2px; }
+
+    .board {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+      align-items: center;
+      gap: 12px;
+      width: min(var(--board-width, 1080px), 95vw);
+      border-radius: var(--board-radius, 18px);
+      background: linear-gradient(135deg, var(--board-a) 0%, var(--board-b) 100%);
+      padding: 10px 12px;
+      box-shadow: 0 8px 30px #00000055;
+      position: relative;
+      overflow: visible;
+      flex-shrink: 0;
+    }
+    .board.outline-on {
+      box-shadow: 0 8px 30px #00000055, inset 0 0 0 var(--board-outline-w) var(--card-outline);
+    }
+
+    .team {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      position: relative;
+      gap: 10px;
+      border-radius: var(--team-radius, 14px);
+      padding: 10px 12px;
+      min-height: 70px;
+      min-width: 0;
+      width: 100%;
+    }
+    .team.home { background: var(--home-bg); color: var(--home-text); }
+    .team.away { background: var(--away-bg); color: var(--away-text); }
+    .team.home.outline-on { box-shadow: inset 0 0 0 var(--home-outline-w) var(--home-outline); }
+    .team.away.outline-on { box-shadow: inset 0 0 0 var(--away-outline-w) var(--away-outline); }
+
+    /* 정렬 모드 */
+    .board.align-outer #homeCard { flex-direction: row; }
+    .board.align-outer #awayCard { flex-direction: row-reverse; }
+    .board.align-outer #awayCard .name { flex-direction: row-reverse; text-align: right; }
+    .board.align-inner #homeCard { flex-direction: row-reverse; }
+    .board.align-inner #awayCard { flex-direction: row; }
+    .board.align-inner #homeCard .name { margin-left: auto; text-align: right; }
+    .board.align-hybrid #homeCard { flex-direction: row; }
+    .board.align-hybrid #awayCard { flex-direction: row-reverse; }
+    .board.align-hybrid #homeCard .name { margin-left: auto; text-align: right; }
+    .board.align-hybrid #awayCard .name { margin-right: auto; text-align: left; }
+
+    .logo-box {
+      width: 48px; height: 48px; flex: 0 0 48px;
+      overflow: visible; position: relative;
+      display: grid; place-items: center;
+    }
+    /* max-width/height로 변경 — width/height: 100% 조합이 비정사각 이미지(예: 1:1.75 이탈리아 FIGC)에서
+       height만 자연 종횡비로 늘어나는 브라우저 버그 회피. max-* + width/height auto로 자연 종횡비 유지하며
+       logo-box 48×48에 capped되게 함. 결과적으로 모든 로고가 박스 안에 정확히 들어옴(transform 중심 어긋남 해소). */
+    .logo-img {
+      position: absolute; top: 50%; left: 50%;
+      max-width: 100%; max-height: 100%;
+      width: auto; height: auto;
+      object-fit: contain;
+      transform: translate(-50%, -50%) scale(1);
+      transform-origin: center center;
+      z-index: 2;
+    }
+    /* 일부 원격 SVG(예: Wikimedia 국기)는 intrinsic width/height가 100%로 들어와
+       auto + max-* 조합에서 실제 렌더 박스가 과하게 작아질 수 있다.
+       SVG만 48x48 logo-box 기준으로 contain시키고, 기존 scale/X/Y 보정 로직은 유지한다. */
+    .logo-img[src$=".svg"],
+    .logo-img[src*=".svg?"],
+    .logo-img[src^="data:image/svg+xml"] {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+    }
+    #homeCard .logo-img {
+      transform: translate(calc(-50% + var(--home-logo-x)), calc(-50% + var(--home-logo-y)))
+                scale(var(--home-logo-scale, 1));
+    }
+    #awayCard .logo-img {
+      transform: translate(calc(-50% + var(--away-logo-x)), calc(-50% + var(--away-logo-y)))
+                scale(var(--away-logo-scale, 1));
+    }
+    /* will-change: transform 제거 — GPU 레이어 사전 래스터화로 인한 SVG 화질 저하 방지.
+       position은 .logo-img의 absolute를 그대로 두기 위해 override 안 함 — relative로 덮으면
+       top/left/translate 기반 정중앙 정렬이 깨져서 비정사각 로고(예: 이탈리아 1:1.75) 위치 어긋남. */
+    #homeLogo, #awayLogo { z-index: 2; }
+
+    .board .name { font-weight: 800; font-size: 24px; letter-spacing: .2px; line-height: 1.1; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* 스코어 패널 */
+    .board .score {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas: "aggL digits aggR" "pk pk pk" "meta meta meta";
+      place-items: center;
+      gap: 6px;
+      min-width: 180px;
+      padding: 10px 14px;
+      border-radius: var(--score-radius, 14px);
+      background: var(--score-bg);
+      color: var(--meta-color);
+    }
+    .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
+    #aggHomeWrap { grid-area: aggL; align-self: center; }
+    #aggAwayWrap { grid-area: aggR; align-self: center; }
+    .board .score .digits { grid-area: digits; }
+    .board .score .pk-score-row { grid-area: pk; }
+    .board .score .meta { grid-area: meta; }
+    .board .score .agg { color: var(--digits-color) !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
+    .board .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: var(--digits-color); }
+    .board .meta { font-size: 14px; opacity: .95; display: flex; gap: 10px; align-items: center; }
+    .board .pk-score-row { display: flex; justify-content: center; }
+    .board .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
+    .board .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
+    .board .timer .minsec:hover { background: rgba(255,255,255,.1); }
+    .board .timer .extra { font-size: 18px; font-weight: 700; color: var(--extra-color); }
+
+    /* PK 모드: 새 행 추가로 높이가 늘어나지 않도록 전체 축소 */
+    .board .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }
+    .board .score.pk-mode .pk-score-text { font-size: 17px; }
+    .board .score.pk-mode .timer .minsec { font-size: 17px; }
+    .board .score.pk-mode .timer .extra  { font-size: 14px; }
+    .board .score.pk-mode .half          { font-size: 12px; padding: 1px 6px; }
+    .board .score.pk-mode .agg           { font-size: 17px; }
+
+    /* 인라인 시간 편집기 */
+    .clock-editor {
+      display: none;
+      align-items: center;
+      gap: 2px;
+    }
+    .clock-editor.active { display: flex; }
+    .clock-editor .minsec { display: none; }
+    .clock-editor.active ~ .minsec { display: none; }
+
+    .ce-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+    .ce-arrow {
+      background: transparent;
+      border: none;
+      color: var(--meta-color);
+      font-size: 10px;
+      line-height: 1;
+      padding: 1px 4px;
+      cursor: pointer;
+      border-radius: 4px;
+      opacity: .7;
+      transition: opacity .1s, background-color .1s;
+    }
+    .ce-arrow:hover { opacity: 1; background-color: rgba(255,255,255,.15); }
+    .ce-num {
+      width: 38px;
+      text-align: center;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 6px;
+      color: var(--meta-color);
+      font-size: 20px;
+      font-weight: 800;
+      padding: 0 2px;
+      height: 30px;
+      -moz-appearance: textfield; appearance: textfield;
+    }
+    .ce-num::-webkit-inner-spin-button,
+    .ce-num::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .ce-colon {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--meta-color);
+      padding: 0 1px;
+      align-self: center;
+      padding-bottom: 2px;
+    }
+    .ce-confirm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: linear-gradient(180deg, rgba(17,24,39,.96) 0%, rgba(11,18,32,.98) 100%);
+      border: 1px solid rgba(255,255,255,.78);
+      box-shadow:
+        0 0 0 1px rgba(34,197,94,.42),
+        0 3px 10px rgba(0,0,0,.35);
+      color: #86efac;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      margin-left: 4px;
+      align-self: center;
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+      transition: transform .08s, background-color .12s, box-shadow .12s, color .12s;
+    }
+    .ce-confirm:hover {
+      background: linear-gradient(180deg, rgba(30,41,59,.98) 0%, rgba(15,23,42,1) 100%);
+      color: #dcfce7;
+      box-shadow:
+        0 0 0 1px rgba(74,222,128,.62),
+        0 4px 12px rgba(0,0,0,.42);
+    }
+    .ce-confirm:active { transform: translateY(1px); }
+    .ce-confirm:focus-visible {
+      outline: 2px solid rgba(255,255,255,.92);
+      outline-offset: 2px;
+    }
+    .board .half { padding: 2px 8px; border-radius: 999px; background: var(--half-bg); color: var(--half-text); font-weight: 800; }
+
+    /* 레드카드 */
+    .rc-rail {
+      position: absolute; top: var(--rc-top); pointer-events: none;
+      display: flex; gap: var(--rc-gap);
+    }
+    .rc-rail.home { right: var(--rc-home-inset); left: auto; justify-content: flex-end; flex-direction: row-reverse; }
+    .rc-rail.away { left: var(--rc-away-inset); right: auto; justify-content: flex-start; flex-direction: row; }
+    .rc-rail.hidden { display: none; }
+    .rc-card {
+      width: var(--rc-size);
+      height: calc(var(--rc-size) * 1.41421356); /* fallback: sqrt(2) numeric */
+      height: calc(var(--rc-size) * sqrt(2));
+      background: var(--rc-color);
+      border-radius: 2px;
+      box-shadow: inset 0 0 0 2px var(--rc-border);
+      transform: skewY(-3deg);
+    }
+
+    /* PK */
+    .pk-wrap {
+      position: absolute; left: 12px; right: 12px; bottom: 8px; width: auto; margin: 0;
+      display: none; pointer-events: none;
+    }
+    .pk-wrap.show { display: grid; gap: 6px; }
+    .pk-strip { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 10px; width: 100%; }
+    .pk-team { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+    .pk-team.away { justify-content: flex-end; }
+    .pk-dot {
+      width: 18px; height: 18px; border-radius: 999px;
+      background: var(--pk-base);
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 900; color: #0b1220;
+    }
+    .pk-dot.goal { background: #22c55e; }
+    .pk-dot.miss { background: #ef4444; color: #111827; }
+    .pk-label { font-size: 12px; opacity: .8; }
+
+    /* ========== 탭 바 ========== */

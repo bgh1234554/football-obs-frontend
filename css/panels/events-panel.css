@@ -1,0 +1,608 @@
+﻿/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       [이벤트 패널 — 문자중계 타임라인 / Iter 5-2]
+       events-panel.js의 applyEventsPanel(fixture)이 .ev-list 트리를 [data-events-panel]에 주입.
+       lp-events-s 안에서만 사용 (캠 작음 페이지). 캠 큼 페이지에는 안 표시 (사용자 요청).
+       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .lp-events-s [data-events-panel],
+    .lp-stat [data-events-panel],
+    #tactics-events-host [data-events-panel] {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 8px 6px;
+      box-sizing: border-box;
+      color: #f0f0f0;
+      font-family: var(--font-family);
+      overflow: hidden;
+    }
+    /* 패널 제목 줄 — 교체명단/부상 패널 .dp-title 톤 유지 */
+    .ev-title-bar {
+      flex: 0 0 auto;
+      position: relative;
+      display: flex;
+      align-items: center;
+      height: var(--panel-title-bar-height);
+      min-height: var(--panel-title-bar-height);
+      box-sizing: border-box;
+      padding: 4px 0 6px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      margin-bottom: 6px;
+      z-index: 4;
+    }
+    /* ev-title-bar 전체 기준 정중앙 — 왼쪽 토글 버튼/오른쪽 필터와 무관하게 항상 중앙 */
+    .ev-title {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,.70);
+      pointer-events: none;
+    }
+    .ev-filter-shell {
+      flex: 0 0 auto;
+      position: relative;
+      margin-left: auto;
+    }
+    .ev-filter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: var(--panel-title-control-size);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.82);
+      padding: 4px 8px;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, color .16s ease;
+    }
+    .ev-filter-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,.11);
+      border-color: rgba(255,255,255,.22);
+    }
+    .ev-filter-btn:disabled {
+      opacity: .45;
+      cursor: default;
+    }
+    .ev-filter-btn.is-open {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.24);
+    }
+    .ev-filter-btn.is-active {
+      color: #dcfce7;
+      background: rgba(34,197,94,.14);
+      border-color: rgba(34,197,94,.4);
+    }
+    .ev-filter-btn svg {
+      width: 11px;
+      height: 11px;
+      display: block;
+    }
+    .ev-filter-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      color: inherit;
+      font-size: 9px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .ev-filter-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 196px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      background: rgba(11,16,27,.96);
+      box-shadow: 0 14px 28px rgba(0,0,0,.34);
+      backdrop-filter: blur(10px);
+    }
+    .ev-filter-popover[hidden] { display: none !important; }
+    .ev-filter-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .ev-filter-heading-text {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255,255,255,.84);
+    }
+    .ev-filter-reset {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: #93c5fd;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .ev-filter-reset:disabled {
+      color: rgba(255,255,255,.34);
+      cursor: default;
+    }
+    .ev-filter-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.2) transparent;
+    }
+    .ev-filter-options::-webkit-scrollbar { width: 5px; }
+    .ev-filter-options::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
+    .ev-filter-options::-webkit-scrollbar-track { background: transparent; }
+    .ev-filter-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: #f0f0f0;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .ev-filter-option input {
+      margin: 0;
+      accent-color: #22c55e;
+      cursor: pointer;
+    }
+    .ev-filter-swatch {
+      flex: 0 0 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+    }
+    .ev-filter-swatch-blue { background: #3b82f6; }
+    .ev-filter-swatch-yellow { background: #f5c518; }
+    .ev-filter-swatch-red { background: #ef4444; }
+    .ev-filter-swatch-green { background: #22c55e; }
+    .ev-filter-swatch-orange { background: #f97316; }
+    .ev-filter-swatch-white { background: rgba(255,255,255,.92); }
+    .ev-filter-option-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ev-filter-count {
+      flex: 0 0 auto;
+      color: rgba(255,255,255,.45);
+      font-size: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 교체 OUT/IN 선수 null 시 표시되는 클릭 가능 버튼 */
+    .ev-subst-fix-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(249,115,22,.18);
+      border: 1px solid rgba(249,115,22,.5);
+      color: #fb923c;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 0 6px;
+      height: 18px;
+      cursor: pointer;
+      line-height: 1;
+      transition: background .14s ease, border-color .14s ease;
+      vertical-align: middle;
+    }
+    .ev-subst-fix-btn:hover {
+      background: rgba(249,115,22,.32);
+      border-color: rgba(249,115,22,.75);
+    }
+
+    /* 교체 선수 선택 모달 */
+    .ev-subst-picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 9200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ev-subst-picker-modal {
+      background: #1e1e2a;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      width: 320px;
+      max-width: calc(100vw - 32px);
+      height: clamp(260px, 55vh, 480px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.55);
+    }
+    .ev-subst-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.09);
+    }
+    .ev-subst-picker-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,255,255,.9);
+    }
+    .ev-subst-picker-close {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,.5);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .ev-subst-picker-close:hover { color: rgba(255,255,255,.9); background: rgba(255,255,255,.08); }
+    .ev-subst-picker-list {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.2) transparent;
+    }
+    .ev-subst-picker-list::-webkit-scrollbar { width: 5px; }
+    .ev-subst-picker-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+    .ev-subst-picker-empty {
+      padding: 20px;
+      text-align: center;
+      color: rgba(255,255,255,.35);
+      font-size: 12px;
+    }
+    .ev-subst-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .ev-subst-picker-item:hover {
+      background: rgba(255,255,255,.07);
+    }
+    .ev-subst-picker-item.is-selected {
+      background: rgba(34,197,94,.14);
+      border-color: rgba(34,197,94,.4);
+    }
+    .ev-subst-picker-number {
+      flex: 0 0 26px;
+      text-align: right;
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,.5);
+      font-variant-numeric: tabular-nums;
+    }
+    .ev-subst-picker-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 13px;
+      color: rgba(255,255,255,.9);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ev-subst-picker-pos {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,.35);
+    }
+    .ev-subst-picker-actions {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px 12px;
+      border-top: 1px solid rgba(255,255,255,.09);
+    }
+    .ev-subst-picker-confirm {
+      flex: 1 1 auto;
+      background: rgba(34,197,94,.22);
+      border: 1px solid rgba(34,197,94,.45);
+      color: #86efac;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 7px 0;
+      cursor: pointer;
+      transition: background .14s ease;
+    }
+    .ev-subst-picker-confirm:hover { background: rgba(34,197,94,.35); }
+    .ev-subst-picker-cancel {
+      flex: 0 0 auto;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.65);
+      font-size: 13px;
+      border-radius: 6px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background .14s ease;
+    }
+    .ev-subst-picker-cancel:hover { background: rgba(255,255,255,.12); }
+
+    .ev-list {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    .ev-list::-webkit-scrollbar { width: 6px; }
+    .ev-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .ev-list::-webkit-scrollbar-track { background: transparent; }
+
+    .ev-empty {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,.35);
+      font-size: 12px;
+    }
+
+    .ev-row {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: stretch;
+      background: rgba(255,255,255,.04);
+      border-radius: 6px;
+      overflow: hidden;
+      min-height: 36px;
+      transform-origin: top center;
+    }
+    .ev-row.ev-row-new {
+      background: rgba(59,130,246,.10);
+      box-shadow: inset 0 0 0 1px rgba(191,219,254,.35);
+    }
+    /* 하프타임/후반종료/연장전반종료/연장후반종료/풀타임 구간 구분자 — 양옆 디바이더 라인 +
+       가운데 라벨. 일반 이벤트 row와 달리 막대/배경 없이 가운데 정렬. */
+    .ev-row.ev-period-marker {
+      background: transparent;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 26px;
+      padding: 2px 8px;
+    }
+    .ev-marker-line {
+      flex: 1 1 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+    }
+    .ev-marker-label {
+      flex: 0 0 auto;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .ev-bar {
+      flex: 0 0 4px;
+      background: rgba(255,255,255,.6);
+    }
+    /* 이벤트 종류별 색상 막대.
+       greenscreen 모드(.greenscreen-mode body 클래스) ON일 때 .ev-bar-green과 .ev-label-green을
+       시안 계열로 자동 치환 — OBS 크로마키와 충돌 방지. */
+    .ev-bar-blue   .ev-bar { background: #3b82f6; }
+    .ev-bar-yellow .ev-bar { background: #f5c518; }
+    .ev-bar-red    .ev-bar { background: #ef4444; }
+    .ev-bar-green  .ev-bar { background: #22c55e; }
+    .ev-bar-orange .ev-bar { background: #f97316; }
+    .ev-bar-white  .ev-bar { background: rgba(255, 255, 255, 0.925); }
+    /* greenscreen 모드: 교체 막대를 마젠타로 치환 (utils.js의 toChromaSafeColor와 같은 hue 영역).
+       기본 #22c55e (134°) → 마젠타 (~314°). */
+    body.greenscreen-mode .ev-bar-green .ev-bar { background: #c522b8; }
+
+    /* 메인 줄 (단일 flex row): 시간 + 라벨 + 아이콘 + 텍스트 + 인라인 코멘트 + 팀 로고 */
+    .ev-main {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px 4px 8px;
+      overflow: hidden;
+    }
+    .ev-time {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255,255,255,.65);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .02em;
+      min-width: 30px;
+    }
+    /* 라벨 배경 — 이벤트 색상과 매칭 (.ev-label-{color}). min-width로 골/경고/교체 등 너비 통일. */
+    .ev-label {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      min-width: 36px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .ev-label-blue   { background: rgba(59,130,246,.30);  color: #bfdbfe; }
+    .ev-label-yellow { background: rgba(245,197,24,.30);  color: #fde68a; }
+    .ev-label-red    { background: rgba(239,68,68,.30);   color: #fecaca; }
+    .ev-label-green  { background: rgba(34,197,94,.30);   color: #bbf7d0; }
+    .ev-label-orange { background: rgba(249,115,22,.30);  color: #fed7aa; }
+    .ev-label-white  { background: rgba(255,255,255,.18); color: #fff; }
+    /* greenscreen 모드 ON: 교체 라벨도 마젠타 계열로 치환 (시안은 평점 8.0~8.9와 충돌). */
+    body.greenscreen-mode .ev-label-green {
+      background: rgba(197,34,184,.30);
+      color: #f7bce8;
+    }
+    .ev-icon {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      line-height: 1;
+    }
+    .ev-icon-glyph {
+      font-size: 13px;
+      line-height: 1;
+    }
+    .ev-icon-own { filter: hue-rotate(180deg) saturate(1.2); }
+    .ev-icon-sub {
+      font-size: 9px;
+      font-weight: 800;
+      color: rgba(255,255,255,.7);
+    }
+    .ev-icon-sub.ev-icon-x { color: #ef4444; }
+    .ev-icon-var {
+      font-size: 9px;
+      font-weight: 900;
+      color: rgba(255,255,255,.85);
+      padding: 1px 3px;
+      border: 1px solid rgba(255,255,255,.55);
+      border-radius: 2px;
+      letter-spacing: .04em;
+    }
+    .ev-icon-card {
+      display: inline-block;
+      width: 8px;
+      height: 11px;
+      border-radius: 1px;
+    }
+    .ev-icon-card-yellow { background: #f5c518; }
+    .ev-icon-card-red    { background: #ef4444; }
+    /* 경고누적 — 노랑 아래 빨강 살짝 겹쳐서 표시 */
+    .ev-icon-card-stack {
+      margin-right: -3px;
+    }
+    .ev-icon-card-stack:last-child { margin-right: 0; }
+
+    /* 텍스트 — 기본은 한 줄 시도, 잘리면 2줄 wrap (line-clamp). evFitText에서 fontSize/lineClamp 동적 조정. */
+    .ev-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: var(--ev-name-base-size, 15px);
+      font-weight: 700;
+      color: #f0f0f0;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+    /* 교체용 — IN/OUT 두 줄 스택. 각 라인이 line-clamp:2까지 wrap 가능 → 총 최대 4줄. */
+    .ev-text-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      -webkit-line-clamp: unset;
+      line-clamp: unset;
+      overflow: visible;
+    }
+    .ev-text-line {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: normal;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+    }
+    .ev-text-in  { color: #7CFC8E; }   /* 들어옴 — 연두 */
+    .ev-text-out { color: rgba(255,255,255,.65); }
+    /* greenscreen 모드: 교체 IN 선수명도 파란 계열로 치환 (sub-in 마커와 통일된 톤). */
+    body.greenscreen-mode .ev-text-in { color: #7cb1fc; }
+    /* 교체 row는 IN/OUT 2줄 보장하기 위해 더 큰 min-height. */
+    .ev-row-subst { min-height: 52px; }
+    /* 인라인 코멘트 — .ev-text 또는 .ev-text-line 내부에서 선수 이름 바로 옆에 인라인 표시.
+       부모(.ev-text/.ev-text-line) 폰트 사이즈를 따라가도록 em 단위 사용 → evFitText에서 px 줄여도 같이 축소. */
+    .ev-comment {
+      font-size: 0.75em;
+      font-style: normal;
+      color: rgba(255,255,255,.55);
+      font-weight: 600;
+      margin-left: 4px;
+    }
+    .ev-comment::before {
+      content: '· ';
+      color: rgba(255,255,255,.35);
+    }
+    /* 선수 이름 wrapper — 굵게 강조 (.ev-text 내부에서 강한 폰트로 visual hierarchy). */
+    .ev-text-name {
+      font-weight: 800;
+    }
+    /* 골의 어시스트 라인 — 회색 + 작게 (.ev-comment와 동일한 톤). */
+    .ev-text-assist {
+      font-size: 0.82em;
+      font-weight: 600;
+      color: rgba(255,255,255,.55);
+    }
+    /* 골 1줄(어시스트 있음) — 첫 라인 기본 굵기. */
+    .ev-text-primary { font-weight: 700; }
+
+    /* 팀 로고 — row 우측 끝. 점수판 .logo-img 패턴(max-width/max-height + auto + position absolute)으로
+       자연 종횡비 유지하면서 컨테이너에 cap. 박스 정중앙 정렬. */
+    .ev-team-logo {
+      flex: 0 0 26px;
+      width: 26px;
+      height: 26px;
+      position: relative;
+      align-self: center;
+      margin-right: 2px;
+    }
+    .ev-team-logo img {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+    }
+

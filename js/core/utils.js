@@ -110,6 +110,273 @@
     const h = n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
     return '#' + h(r) + h(g) + h(b);
   }
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // [팀 컬러 fallback]
+  // /fixture 응답 색상이 비어 있을 때 쓰는 프런트 보정 흐름.
+  // 1) 서버가 primary/number를 주면 그 값을 우선 사용한다.
+  // 2) 둘 다 없으면 팀 로고를 canvas로 읽고, 비슷한 색을 먼저 부류로 묶는다.
+  //    가장 큰 색 부류의 최빈 hex를 primary로, 다음 색 부류의 최빈 hex를 number로 쓴다.
+  //    한 부류만 잡히면 primary와 더 멀리 대비되는 흰색/검은색을 number로 쓴다.
+  //    단, 로고 CDN이 CORS를 허용하지 않으면 픽셀을 읽을 수 없으므로 실패 처리한다.
+  // 3) 로고 추출도 실패하면 variables.css의 기본 홈/원정 팀 컬러로 돌아간다.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const TEAM_COLOR_CSS_DEFAULTS = Object.freeze({
+    home: Object.freeze({ bg: '#1d4ed8', text: '#ffffff' }),
+    away: Object.freeze({ bg: '#ef4444', text: '#ffffff' }),
+  });
+  // CIELAB Delta E 기준. 20 미만은 팀 배경끼리 비슷하다고 보고,
+  // 같은 팀의 primary-number는 45 이상 벌려 swap 이후에도 구분 여유를 남긴다.
+  const TEAM_COLOR_SIMILAR_DELTA_E = 20;
+  const TEAM_COLOR_DISTINCT_DELTA_E = 45;
+  const TEAM_COLOR_MIN_TEXT_CONTRAST = 3;
+  const LOGO_PALETTE_CACHE = new Map();
+
+  function normalizeTeamColorHex(value) {
+    const rgb = parseAnyColor(value);
+    if (!rgb) return null;
+    return rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
+
+  function teamColorComplementHex(value) {
+    const rgb = parseAnyColor(value);
+    if (!rgb) return null;
+    return rgbToHex(255 - rgb.r, 255 - rgb.g, 255 - rgb.b);
+  }
+
+  function teamColorRelativeLuminance(value) {
+    const rgb = parseAnyColor(value);
+    if (!rgb) return null;
+    const channel = n => {
+      const v = n / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
+  }
+
+  function teamColorContrastRatio(a, b) {
+    const l1 = teamColorRelativeLuminance(a);
+    const l2 = teamColorRelativeLuminance(b);
+    if (l1 === null || l2 === null) return 1;
+    const light = Math.max(l1, l2);
+    const dark = Math.min(l1, l2);
+    return (light + 0.05) / (dark + 0.05);
+  }
+
+  function teamColorRgbDistance(a, b) {
+    const ar = parseAnyColor(a);
+    const br = parseAnyColor(b);
+    if (!ar || !br) return 0;
+    const dr = ar.r - br.r;
+    const dg = ar.g - br.g;
+    const db = ar.b - br.b;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+  }
+
+  function teamColorReadableText(value) {
+    const bg = normalizeTeamColorHex(value);
+    if (!bg) return '#ffffff';
+    return teamColorContrastRatio(bg, '#000000') >= teamColorContrastRatio(bg, '#ffffff')
+      ? '#000000'
+      : '#ffffff';
+  }
+  // RGB 거리는 사람이 느끼는 색 차이와 잘 맞지 않으므로, 시각적 유사도는 CIELAB Delta E로 본다.
+  // 여기서는 CIE76 거리(유클리드 Delta E)를 쓴다. 구현이 짧고 triangle inequality가 성립해
+  // "팀 내부 distinct 기준 > 팀 간 similar 기준" 같은 안전 여유를 계산하기 쉽다.
+  function teamColorLab(value) {
+    const rgb = parseAnyColor(value);
+    if (!rgb) return null;
+    const pivotRgb = n => {
+      const v = n / 255;
+      return v > 0.04045 ? Math.pow((v + 0.055) / 1.055, 2.4) : v / 12.92;
+    };
+    const r = pivotRgb(rgb.r);
+    const g = pivotRgb(rgb.g);
+    const b = pivotRgb(rgb.b);
+
+    const x = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047;
+    const y =  r * 0.2126729 + g * 0.7151522 + b * 0.0721750;
+    const z = (r * 0.0193339 + g * 0.1191920 + b * 0.9503041) / 1.08883;
+    const pivotXyz = n => n > 0.008856 ? Math.cbrt(n) : (7.787 * n) + (16 / 116);
+    const fx = pivotXyz(x);
+    const fy = pivotXyz(y);
+    const fz = pivotXyz(z);
+    return {
+      l: (116 * fy) - 16,
+      a: 500 * (fx - fy),
+      b: 200 * (fy - fz),
+    };
+  }
+
+  function teamColorDeltaE(a, b) {
+    const al = teamColorLab(a);
+    const bl = teamColorLab(b);
+    if (!al || !bl) return null;
+    const dl = al.l - bl.l;
+    const da = al.a - bl.a;
+    const db = al.b - bl.b;
+    return Math.sqrt(dl * dl + da * da + db * db);
+  }
+
+  function teamColorsVisuallySimilar(a, b) {
+    const delta = teamColorDeltaE(a, b);
+    return delta !== null && delta < TEAM_COLOR_SIMILAR_DELTA_E;
+  }
+
+  function teamColorsVisuallyDistinct(a, b) {
+    const delta = teamColorDeltaE(a, b);
+    if (delta !== null) return delta >= TEAM_COLOR_DISTINCT_DELTA_E;
+    return teamColorRgbDistance(a, b) >= 80;
+  }
+
+  function readRootCssVariableDeclaration(name) {
+    if (typeof document === 'undefined' || !document.styleSheets) return '';
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules;
+      try { rules = sheet.cssRules; }
+      catch (_) { continue; }
+      if (!rules) continue;
+      for (const rule of Array.from(rules)) {
+        if (rule.selectorText !== ':root' || !rule.style) continue;
+        const value = rule.style.getPropertyValue(name).trim();
+        if (value) return value;
+      }
+    }
+    return '';
+  }
+
+  function getDefaultTeamColors(side) {
+    const normalizedSide = side === 'away' ? 'away' : 'home';
+    const cssNames = normalizedSide === 'away'
+      ? { bg: '--away-bg', text: '--away-text' }
+      : { bg: '--home-bg', text: '--home-text' };
+    const fallback = TEAM_COLOR_CSS_DEFAULTS[normalizedSide];
+    return {
+      bg: normalizeTeamColorHex(readRootCssVariableDeclaration(cssNames.bg)) || fallback.bg,
+      text: normalizeTeamColorHex(readRootCssVariableDeclaration(cssNames.text)) || fallback.text,
+    };
+  }
+
+  function loadLogoImageForPalette(url, timeoutMs = 2500) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      let done = false;
+      const finish = fn => value => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        fn(value);
+      };
+      const timer = setTimeout(finish(reject), timeoutMs, new Error('logo palette timeout'));
+      img.crossOrigin = 'anonymous';
+      img.decoding = 'async';
+      img.onload = () => finish(resolve)(img);
+      img.onerror = () => finish(reject)(new Error('logo image load failed'));
+      img.src = url;
+    });
+  }
+
+  function logoPaletteFamilyKey(r, g, b) {
+    const { h, s, l } = rgbToHsl(r, g, b);
+    const chromatic = s >= 0.12 && l > 0.06 && l < 0.94;
+    if (!chromatic) {
+      if (l >= 0.88) return { key: 'neutral:light', chromatic: false };
+      if (l <= 0.14) return { key: 'neutral:dark', chromatic: false };
+      return { key: `neutral:${Math.round(l * 5)}`, chromatic: false };
+    }
+    return { key: `hue:${Math.round(h / 30) % 12}`, chromatic: true };
+  }
+
+  function logoPaletteFamilies(imageData) {
+    const families = new Map();
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const alpha = data[i + 3];
+      if (alpha < 96) continue;
+
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const hex = rgbToHex(r, g, b);
+      const { key, chromatic } = logoPaletteFamilyKey(r, g, b);
+      const weight = alpha / 255;
+      const family = families.get(key) || {
+        key,
+        chromatic,
+        score: 0,
+        hexCounts: new Map(),
+      };
+      family.score += weight;
+      family.hexCounts.set(hex, (family.hexCounts.get(hex) || 0) + weight);
+      families.set(key, family);
+    }
+
+    return Array.from(families.values())
+      .map(family => {
+        let hex = null;
+        let hexScore = -1;
+        for (const [candidateHex, score] of family.hexCounts.entries()) {
+          if (score > hexScore) {
+            hex = candidateHex;
+            hexScore = score;
+          }
+        }
+        return { ...family, hex, hexScore };
+      })
+      .filter(family => family.hex)
+      .sort((a, b) => b.score - a.score);
+  }
+
+  function extractTeamColorsFromLogoImage(img) {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    const size = 72;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(img, 0, 0, size, size);
+
+    let imageData;
+    try { imageData = ctx.getImageData(0, 0, size, size); }
+    catch (_) { return null; }
+
+    const families = logoPaletteFamilies(imageData);
+    if (!families.length) return null;
+
+    const chromaticFamilies = families.filter(family => family.chromatic);
+    const primaryFamily = (chromaticFamilies[0] || families[0]);
+    const primary = primaryFamily.hex;
+    const numberFamily = families.find(family => (
+      family.key !== primaryFamily.key &&
+      teamColorsVisuallyDistinct(primary, family.hex) &&
+      teamColorContrastRatio(primary, family.hex) >= TEAM_COLOR_MIN_TEXT_CONTRAST
+    ));
+
+    return {
+      bg: primary,
+      text: numberFamily?.hex || teamColorReadableText(primary),
+    };
+  }
+
+  async function extractTeamColorsFromLogo(logoUrl) {
+    const url = String(logoUrl || '').trim();
+    if (!url) return null;
+    if (LOGO_PALETTE_CACHE.has(url)) return LOGO_PALETTE_CACHE.get(url);
+
+    const promise = (async () => {
+      try {
+        const img = await loadLogoImageForPalette(url);
+        return extractTeamColorsFromLogoImage(img);
+      } catch (err) {
+        console.warn('Failed to extract team colors from logo:', url, err);
+        return null;
+      }
+    })();
+    LOGO_PALETTE_CACHE.set(url, promise);
+    return promise;
+  }
 
   /**
    * 색상이 "초록 계열"인지 판정.

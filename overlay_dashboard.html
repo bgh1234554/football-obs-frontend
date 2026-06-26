@@ -13,9 +13,19 @@
   <!-- API-SPORTS Widgets -->
   <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
 
-  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/core/variables.css"/>
+  <link rel="stylesheet" href="css/core/board.css"/>
+  <link rel="stylesheet" href="css/core/layout.css"/>
+  <link rel="stylesheet" href="css/tactics/tactics-timeline.css"/>
+  <link rel="stylesheet" href="css/panels/events-panel.css"/>
+  <link rel="stylesheet" href="css/panels/stats-panel.css"/>
   <link rel="stylesheet" href="css/hamburger-nav.css"/>
-  <link rel="stylesheet" href="css/detail-panels.css"/>
+  <link rel="stylesheet" href="css/panels/bench-injury.css"/>
+  <link rel="stylesheet" href="css/lineup/lineup-layout.css"/>
+  <link rel="stylesheet" href="css/lineup/lineup-pitch.css"/>
+  <link rel="stylesheet" href="css/lineup/lineup-manual.css"/>
+  <link rel="stylesheet" href="css/player/player-menu.css"/>
+  <link rel="stylesheet" href="css/panels/hth-panel.css"/>
   <link rel="stylesheet" href="css/settings-popup.css"/>
   <!-- 마크다운 렌더링: markdown-it (CommonMark + GFM) + 헤딩 anchor 자동 생성 + XSS sanitize -->
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js" integrity="sha384-wLhprpjsmjc/XYIcF+LpMxd8yS1gss6jhevOp6F6zhiIoFK6AmHtm4bGKtehTani" crossorigin="anonymous"></script>
@@ -593,6 +603,13 @@
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="cacheResetBtn">초기화</button>
             </div>
+            <div class="sp-row">
+              <div class="sp-row-label">
+                <span class="sp-label-main">패널 크기 초기화</span>
+                <span class="sp-label-sub">드래그로 조정한 패널 크기(캠 큰 우측 패널 높이·너비, 캠 작은 칼럼 비율, 라인업 패널 크기)를 기본값으로 되돌립니다.</span>
+              </div>
+              <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="layoutResetBtn">초기화</button>
+            </div>
             <div class="sp-row sp-row-manual-reset">
               <div class="sp-row-label">
                 <span class="sp-label-main">현재 경기 수동 입력 초기화</span>
@@ -869,11 +886,16 @@
       <input id="tactics-alpha-slider" class="td-alpha-slider" type="range" min="0" max="100" step="5" data-settings-slider="tacticsAlpha" aria-label="전술판 투명도">
       <span class="td-alpha-value" data-settings-slider-value="tacticsAlpha">0%</span>
     </div>
+    <div class="td-name-size-control" title="전술판 선수 이름 라벨 크기">
+      <label for="tactics-name-size-slider" class="td-alpha-label">라벨 크기</label>
+      <input id="tactics-name-size-slider" class="td-alpha-slider td-name-size-slider" type="range" min="7" max="18" step="1" data-settings-slider="tacticsNameSize" aria-label="전술판 선수 이름 라벨 크기">
+      <span class="td-alpha-value td-name-size-value" data-settings-slider-value="tacticsNameSize">12px</span>
+    </div>
     <span style="font-size:11px;color:#64748b;font-weight:700;">HOME</span>
-    <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
+    <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
     <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
     <span style="font-size:11px;color:#64748b;font-weight:700;">AWAY</span>
-    <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
+    <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
     <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
     <button id="btn-tactics-manual-names" onclick="openTacticsNamesPanel()" title="경기 ID가 없을 때 포지션별로 선수 이름을 직접 입력합니다." style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 이름 입력</button>
     <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 위치 초기화</button>
@@ -1010,7 +1032,7 @@
   data-url-football="https://obs-scoreline-overlay.b-cdn.net/"
   data-logo-url="https://media-handle-obsoverlay.b-cdn.net/"
   data-lang="en"
-  data-theme="grey"
+  data-theme="ObsOverlay"
   data-show-error="true"
   data-show-logos="true"
   data-refresh="45"
@@ -1058,6 +1080,7 @@
 <!-- BMC 플로팅 위젯 (사이드바 열릴 때만 표시) -->
 <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="bgh1234554" data-description="Support me on Buy me a coffee!" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 <script src="js/core/utils.js"></script>
+<script src="js/data/team-color-overrides.js"></script>
 <script src="js/core/state.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/core/timer.js"></script>
@@ -1099,6 +1122,7 @@
   css/settings-popup.css          — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치)
 
   js/core/utils.js                 — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
+  js/data/team-color-overrides.js  — teamId 기반 팀 컬러 수동 보정 매핑
   js/core/state.js                 — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
   js/core/render.js                — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
   js/core/timer.js                 — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)

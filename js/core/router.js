@@ -207,3 +207,21 @@
     window.addEventListener('hashchange', ()=>activatePage(resolvePageFromPath(), { syncRoute: false }));
   }
   activatePage(resolvePageFromPath(), { historyMode: 'replace' });
+
+  // bfcache(back-forward cache)에서 페이지가 복원됐을 때 위젯 재초기화.
+  // Chrome이 탭을 동결했다가 되살리는 경우 event.persisted=true. 이 때 JS 상태가
+  // 그대로 재개되어 위젯이 오래된 데이터를 보여주게 된다.
+  // 스케줄 탭이 활성화된 채로 복원됐다면 _widgetBlocked=false라 5분 재로드 조건이
+  // 발동되지 않으므로, pageshow에서 직접 reload해 위젯을 재초기화한다.
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    const currentPage = resolvePageFromPath();
+    if (currentPage === 'schedule') {
+      window.location.reload();
+    } else {
+      // 스케줄 탭 밖에서 복원됐으면, 다음에 스케줄 탭으로 돌아올 때 5분 재로드가 발동되도록
+      // 차단 시작 시각을 "충분히 오래 전"으로 강제 설정한다.
+      _widgetBlocked = true;
+      _widgetBlockedAt = Date.now() - WIDGET_STALE_RELOAD_MS - 1;
+    }
+  });

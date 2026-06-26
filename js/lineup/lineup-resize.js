@@ -394,6 +394,7 @@ const BIG_STAT_H_KEY         = 'obs.bigLayout.statH.v1';
 const BIG_CHAT_W_KEY         = 'obs.bigLayout.chatW.v1';
 const BIG_STAT_W_KEY         = 'obs.bigLayout.statW.v1';
 const BIG_CHAT_FRACTION_KEY  = 'obs.bigLayout.chatFraction.v1'; // 비례 스케일링용 (chatH / usable)
+const BIG_LAYOUT_MIGRATED_KEY = 'obs.bigLayout.migrated.v2';    // 1회 마이그레이션 완료 플래그
 const BIG_PANEL_MIN_H        = 60;
 const BIG_PANEL_MIN_W        = 100;
 const BIG_COL_GAP            = 6; // .lp-col { gap: 6px } — ON 모드 높이 계산 시 차감
@@ -428,6 +429,23 @@ function _bigLoadFraction(key) {
 // fraction은 소수점 값이라 _bigSave(Math.round) 경유 불가 — 직접 저장
 function _bigSaveFraction(f) {
   try { localStorage.setItem(BIG_CHAT_FRACTION_KEY, f.toFixed(4)); } catch {}
+}
+// 구버전에서 fraction이 Math.round로 "1"로 잘못 저장되던 버그 대응.
+// 첫 로드 시 1회만 실행 — 깨진 값 감지 시 big layout 키 전체 초기화해 5:5 기본값으로 복구.
+function _bigMigrateOnce() {
+  try {
+    if (localStorage.getItem(BIG_LAYOUT_MIGRATED_KEY)) return;
+    const raw = localStorage.getItem(BIG_CHAT_FRACTION_KEY);
+    if (raw === '1' || raw === '0') {
+      // big layout + 같은 시기에 저장된 라인업/캠 작은 레이아웃 크기도 함께 초기화
+      [
+        BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY, BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY,
+        SMALL_LAYOUT_RESIZE_STORAGE_KEY,
+        LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
+      ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+    }
+    localStorage.setItem(BIG_LAYOUT_MIGRATED_KEY, '1');
+  } catch {}
 }
 /** px 값을 [min, max] 범위로 클램핑. 숫자가 아니면 null, max가 min보다 작으면 min만 보장. */
 function _clampPx(px, min, max) {
@@ -1240,6 +1258,7 @@ document.addEventListener('DOMContentLoaded', () => {
   observeSmallLayoutResize();
 
   // 캠 큰 우측 패널 독립 엣지 리사이즈
+  _bigMigrateOnce(); // 구버전 깨진 fraction("1") → 전체 초기화 (1회)
   ensureBigPanelHandles();
   applyStoredBigColWidth();
   requestAnimationFrame(() => {
@@ -1279,6 +1298,7 @@ document.addEventListener('DOMContentLoaded', () => {
       timer = setTimeout(() => {
         applyStoredBigPanelHeights();
         window.stRerenderActivePanels?.();
+        window.lpStatAutoRestart?.();
       }, 60);
     };
   })();
@@ -1328,14 +1348,47 @@ document.addEventListener('DOMContentLoaded', () => {
         applyStoredBigPanelHeights();
         applyStoredLineupEdgeOverrides();
         window.stRerenderActivePanels?.();
+        window.lpStatAutoRestart?.();
         window.fitLineupNamePills?.();
       });
       setTimeout(() => {
         applyStoredBigPanelHeights();
         applyStoredLineupEdgeOverrides();
         window.stRerenderActivePanels?.();
+        window.lpStatAutoRestart?.();
         window.fitLineupNamePills?.();
       }, 600);
     }
   });
 });
+
+/**
+ * 수동으로 조정한 패널 크기를 전부 기본값으로 되돌린다.
+ * settings-popup.js의 "패널 크기 초기화" 버튼이 호출.
+ */
+window.resetAllLayoutSizes = function resetAllLayoutSizes() {
+  // 1) 저장된 키 전체 삭제 (마이그레이션 플래그도 함께 제거해 다음 로드에서 재평가)
+  [
+    BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY,
+    BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY,
+    BIG_LAYOUT_MIGRATED_KEY,
+    SMALL_LAYOUT_RESIZE_STORAGE_KEY,
+    LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
+  ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+
+  // 2) 캠 큰 우측 칼럼 CSS 변수 + 패널 인라인 스타일 제거 후 5:5 재적용
+  document.querySelectorAll('.layout-big').forEach(layout => resetBigColWidth(layout));
+  applyStoredBigPanelHeights();
+
+  // 3) 캠 작은 칼럼 비율 기본 복원
+  resetSmallLayoutResize();
+
+  // 4) 라인업 엣지 오버라이드 인라인 스타일 제거
+  document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
+    _lineupClearWidthOverride(panel);
+    _lineupClearHeightOverride(panel);
+  });
+
+  // 5) 이름 라벨 재측정
+  requestAnimationFrame(() => window.fitLineupNamePills?.());
+};
