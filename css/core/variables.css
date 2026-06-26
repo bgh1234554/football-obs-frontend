@@ -13,7 +13,7 @@
       --panel-bg: rgba(var(--panel-ui-rgb), var(--panel-alpha));
       --lp-pitch-alpha: 1;
       --td-pitch-alpha: 1;
-      --td-name-size: 10px;
+      --td-name-size: 12px;
       --lineup-panel-bg: rgba(var(--panel-ui-rgb), var(--lp-pitch-alpha));
       --api-widget-surface-rgb: 11, 18, 32;
       --api-widget-hover-alpha: .18;

@@ -389,7 +389,7 @@
 /* ── 시즌 스탯 wide modal ── */
 .pm-modal.pm-modal-szn {
   width: 55vw;
-  min-width: 400px;
+  min-width: min(400px, calc(100vw - 32px));
   height: min(85vh, 700px);
 }
 

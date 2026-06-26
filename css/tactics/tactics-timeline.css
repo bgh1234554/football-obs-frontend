@@ -66,6 +66,7 @@
     }
     #tactics-pitch {
       background: transparent !important;
+      position: relative;
       isolation: isolate;
     }
     #tactics-pitch::before {
@@ -363,7 +364,7 @@
        동시에 필터 popover도 같은 양만큼 좌측으로 이동해 화면 밖으로 빠지지 않도록 보정. */
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
-    .page-wrap {
+    #page-tactics .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
       height: 100%; min-height: 0; overflow: hidden; box-sizing: border-box;
     }

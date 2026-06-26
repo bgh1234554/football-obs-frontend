@@ -206,7 +206,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
         _lpClearEventsScrollListeners();
         _lpAuto.scrollTimer = setTimeout(() => {
           _lpAuto.scrollTimer = null;
-          if (_lpStatCycle.mode === mode || mode !== 'events') {
+          if (_lpStatCycle.mode === mode) {
             _lpStartEventsScroll(intervalMs, mode, _retryCount + 1);
           }
         }, 100);

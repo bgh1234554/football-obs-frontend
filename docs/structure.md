@@ -101,6 +101,7 @@
 | `injury-reason.js` | 부상 사유 한글화 (`INJURY_REASON_KO`) + `isSuspension()` |
 | `stats-config.js` | 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용) |
 | `scoreaxis-standings-embed-map.js` | ScoreAxis 리그 순위 위젯 embed 코드 맵 (Iter 14) |
+| `team-color-overrides.js` | 팀 컬러 수동 보정 맵 (`TEAM_COLOR_OVERRIDES`). API/로고 색상이 실제 유니폼과 다를 때 teamId 키로 primaryColor/numberColor 덮어씀 |
 
 ### js/settings/
 

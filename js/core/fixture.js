@@ -480,7 +480,7 @@
 
       render();
       persist();
-      document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: 'fixtureLogoPalette' } }));
+      document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: 'homeBg' } }));
     }).catch(err => console.warn('Failed to apply logo team color fallback:', err));
   }
 
