@@ -26,6 +26,7 @@
     'Hamstring Injury':  '햄스트링 부상',
     'Calf Injury':       '종아리 부상',
     'Thigh Injury':      '허벅지 부상',
+    'Thigh problems':    '허벅지 부상',
     'Groin Injury':      '사타구니 부상',
     'Knee Injury':       '무릎 부상',
     'Leg Injury':        '다리 부상',
