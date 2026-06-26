@@ -32,9 +32,9 @@ function applyTheme(theme, logoUrl) {
   // FSM의 switch(data.theme) 블록을 함수로 추출한 것
   switch(theme) {
     case 'pl':
-      changeCSS('./styles/result_style_PL.css', CSS_LINK_INDEX);
+      changeCSS('../css/core/theme/board-theme-epl.css', CSS_LINK_INDEX);
       break;
     default:
-      changeCSS('./styles/result_style.css', CSS_LINK_INDEX);
+      changeCSS('../css/core/theme/board-theme-default.css', CSS_LINK_INDEX);
   }
 }
