@@ -302,12 +302,12 @@
   }
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [fixture 팀 컬러 적용]
-  // 1) team-color-overrides.js에 teamId 매핑이 있으면 그 색을 최우선으로 사용한다.
-  // 2) /fixture가 primary/number를 주면 그대로 state.colors에 반영한다.
-  // 3) 한쪽만 오면 기존 백엔드 보정 정책과 맞춰 단일 색을 배경으로 쓰고 보색을 글자색으로 채운다.
-  // 4) 둘 다 없으면 stale color를 막기 위해 variables.css 기본값을 먼저 적용한다.
-  // 5) 그 뒤 로고 픽셀 팔레트 추출이 성공하면 기본값을 대표 색 부류 기반 색상으로 교체한다.
-  // 6) 로고로 얻은 홈/원정 primary가 비슷하면 원정 primary/number를 뒤집는다.
+  // 1) /fixture가 primary/number를 주면 그대로 state.colors에 반영한다.
+  //    백엔드가 null일 때만 teams.csv override를 채워서 내려보낸다.
+  // 2) 한쪽만 오면 기존 백엔드 보정 정책과 맞춰 단일 색을 배경으로 쓰고 보색을 글자색으로 채운다.
+  // 3) 둘 다 없으면 stale color를 막기 위해 variables.css 기본값을 먼저 적용한다.
+  // 4) 그 뒤 로고 픽셀 팔레트 추출이 성공하면 기본값을 대표 색 부류 기반 색상으로 교체한다.
+  // 5) 로고로 얻은 홈/원정 primary가 비슷하면 원정 primary/number를 뒤집는다.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // home/away에 따라 API 필드명과 state.colors 필드명이 달라지는 부분을 한 곳에 묶는다.
   // 이후 함수들은 side만 넘기면 같은 로직으로 홈/원정을 모두 처리한다.
@@ -315,11 +315,6 @@
     return side === 'away'
       ? { bg: 'awayBg', text: 'awayText', primary: 'awayPrimaryColor', number: 'awayNumberColor' }
       : { bg: 'homeBg', text: 'homeText', primary: 'homePrimaryColor', number: 'homeNumberColor' };
-  }
-
-  // teamId 필드명도 홈/원정에 따라 달라지므로 색상 키와 같은 패턴으로 묶는다.
-  function fixtureTeamIdKey(side) {
-    return side === 'away' ? 'awayTeamId' : 'homeTeamId';
   }
 
   // API는 '#' 없는 6자리 hex를 주지만, 프런트 fallback은 '#rrggbb'도 다룬다.
@@ -382,31 +377,9 @@
     return false;
   }
 
-  // team-color-overrides.js의 teamId 기반 수동 보정값을 읽는다.
-  // 국가대표처럼 국기/협회 로고 색과 실제 유니폼 색이 다른 팀을 비상 보정하는 용도다.
-  function fixtureResolveTeamColorOverride(matchInfo, side) {
-    const teamId = String(matchInfo?.[fixtureTeamIdKey(side)] ?? '').trim();
-    if (!teamId) return null;
-
-    const table = window.TEAM_COLOR_OVERRIDES || {};
-    const override = table[teamId] || table[Number(teamId)];
-    if (!override) return null;
-
-    const bg = fixtureNormalizeApiColor(override.primaryColor || override.primary || override.bg);
-    const text = fixtureNormalizeApiColor(override.numberColor || override.number || override.text);
-    if (!bg || !text) return null;
-    return { bg, text };
-  }
-
-  function applyFixtureTeamColorOverride(matchInfo, side) {
-    const colors = fixtureResolveTeamColorOverride(matchInfo, side);
-    return colors ? applyFixtureTeamColorPair(side, colors) : false;
-  }
-
-  // 로고 fallback은 수동 매핑/API 색상이 양쪽 모두 없을 때만 실행한다.
-  // 한쪽이라도 있으면 위 보정 경로가 처리할 수 있으므로 로고로 덮지 않는다.
+  // 로고 fallback은 API 색상이 양쪽 모두 없을 때만 실행한다.
+  // 백엔드가 primary/number를 주면 (teams.csv override 포함) 로고로 덮지 않는다.
   function fixtureHasAuthoritativeTeamColor(matchInfo, side) {
-    if (fixtureResolveTeamColorOverride(matchInfo, side)) return true;
     const keys = fixtureTeamColorKeys(side);
     return !!fixtureNormalizeApiColor(matchInfo?.[keys.primary]) || !!fixtureNormalizeApiColor(matchInfo?.[keys.number]);
   }
@@ -909,10 +882,19 @@
     // 팀 컬러 — 수동 매핑 > API 색상 > CSS 기본색 순서. 로고 팔레트는 render 후 비동기로 보정한다.
     state.colors = state.colors || {};
     if (!preserveTeamColors) {
-      const homeApplied = applyFixtureTeamColorOverride(m, 'home') || applyFixtureTeamColorsFromApi('home', m.homePrimaryColor, m.homeNumberColor);
-      const awayApplied = applyFixtureTeamColorOverride(m, 'away') || applyFixtureTeamColorsFromApi('away', m.awayPrimaryColor, m.awayNumberColor);
+      const homeApplied = applyFixtureTeamColorsFromApi('home', m.homePrimaryColor, m.homeNumberColor);
+      const awayApplied = applyFixtureTeamColorsFromApi('away', m.awayPrimaryColor, m.awayNumberColor);
       if (!homeApplied) applyFixtureTeamColorPair('home', getFixtureDefaultTeamColors('home'));
       if (!awayApplied) applyFixtureTeamColorPair('away', getFixtureDefaultTeamColors('away'));
+
+      // 홈/원정 primary가 둘 다 API로 제공됐고 시각적으로 유사하면 원정 primary/number를 swap해 구분 가능하게 함.
+      // 로고 팔레트 기반 fallback의 유사 충돌 처리(resolveFixtureFallbackPrimaryConflict)와 별개 경로.
+      const homePrimary = fixtureNormalizeApiColor(m.homePrimaryColor);
+      const awayPrimary = fixtureNormalizeApiColor(m.awayPrimaryColor);
+      if (homePrimary && awayPrimary && fixtureTeamColorsTooSimilar(homePrimary, awayPrimary)) {
+        const current = fixtureCurrentTeamColorPair('away');
+        if (current.bg && current.text) applyFixtureTeamColorPair('away', { bg: current.text, text: current.bg });
+      }
     }
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
     if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m));
