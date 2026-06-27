@@ -157,6 +157,8 @@
       background: #30F599;
       color: var(--meta-color);
     }
+
+    .board .score .divider { display: none; }
     .board .league-logo { display: none; width: 86px; height: 86px; justify-content: center; align-items: center; position: absolute; z-index: 1; bottom: 50px; }
     .board .league-img { width: 100%; height: 100%; }
     .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }

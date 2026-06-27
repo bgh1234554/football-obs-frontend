@@ -146,6 +146,8 @@
       color: var(--meta-color);
     }
 
+    .board .score .divider { display: none; }
+
     .board .league-logo { display: none; }
     .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
     #aggHomeWrap { grid-area: aggL; align-self: center; }
