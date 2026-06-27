@@ -1,4 +1,4 @@
-    /* ========== 잉글랜드 프리미어리그 보드 테마(25-26 Season) ==========*/
+    /* ========== 잉글랜드 프리미어리그 보드 테마(Old Season) ==========*/
 
     @font-face {
     font-family: 'Koverwatch';
@@ -82,14 +82,14 @@
       align-items: center;
       position: relative;
       gap: 10px;
-      padding: 10px 12px;
       min-height: 70px;
       min-width: 0;
       width: 100%;
       font-family: 'GmarketSansMedium';
+      background: #350B53;
     }
-    .team.home { background: var(--home-bg); color: black; border-top-left-radius: 10px; }
-    .team.away { background: var(--away-bg); color: black; border-top-right-radius: 10px; }
+    .team.home { background: #350B53; color: white; padding: 10px 12px; }
+    .team.away { background: #350B53; color: white; padding: 10px 12px; }
     .team.home.outline-on { box-shadow: inset 0 0 0 var(--home-outline-w) var(--home-outline); }
     .team.away.outline-on { box-shadow: inset 0 0 0 var(--away-outline-w) var(--away-outline); }
 
@@ -106,22 +106,18 @@
     .board.align-hybrid #awayCard .name { margin-right: auto; text-align: left; }
 
     .logo-box {
-      width: 48px; height: 48px; flex: 0 0 48px;
+      width: 100px; height: 48px;
       overflow: visible; position: relative;
-      display: grid; place-items: center;
+      background: whitesmoke;
     }
     /* max-width/height로 변경 — width/height: 100% 조합이 비정사각 이미지(예: 1:1.75 이탈리아 FIGC)에서
        height만 자연 종횡비로 늘어나는 브라우저 버그 회피. max-* + width/height auto로 자연 종횡비 유지하며
        logo-box 48×48에 capped되게 함. 결과적으로 모든 로고가 박스 안에 정확히 들어옴(transform 중심 어긋남 해소). */
     .logo-img {
-      position: absolute; top: 50%; left: 50%;
-      max-width: 100%; max-height: 100%;
-      width: auto; height: auto;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
-      transform: translate(-50%, -50%) scale(1);
-      transform-origin: center center;
       z-index: 2;
-      filter: drop-shadow(3px 3px 3px gray);
     }
     /* 일부 원격 SVG(예: Wikimedia 국기)는 intrinsic width/height가 100%로 들어와
        auto + max-* 조합에서 실제 렌더 박스가 과하게 작아질 수 있다.
@@ -157,27 +153,27 @@
       grid-template-areas: "aggL digits aggR" "pk pk pk" "meta meta meta";
       place-items: center;
       min-width: 180px;
-      background: gold;
+      background: #30F599;
       color: var(--meta-color);
     }
-    .board .league-logo { display: flex; width: 86px; height: 86px; justify-content: center; align-items: center; position: absolute; z-index: 1; bottom: 50px; }
+    .board .league-logo { display: none; width: 86px; height: 86px; justify-content: center; align-items: center; position: absolute; z-index: 1; bottom: 50px; }
     .board .league-img { width: 100%; height: 100%; }
     .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
     #aggHomeWrap { grid-area: aggL; align-self: center; }
     #aggAwayWrap { grid-area: aggR; align-self: center; }
-    .board .score .digits { grid-area: digits; color: white; }
-    .board .score .digits .score-split { display: none; }
+    .board .score .digits { grid-area: digits; color: black; }
+    /* .board .score .digits .score-split { display: none; } */
     .board .score .pk-score-row { grid-area: pk; }
     .board .score .meta { grid-area: meta; }
     .board .score .agg { color: black !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
     .board .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: black; }
-    .board .meta { width: 160px; font-size: 14px; opacity: .95; display: flex; grid-column: 1 / 4; gap: 10px; margin: 0 auto; margin-top: 2px; align-items: center; justify-content: center; background: #3E0B3D; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; }
+    .board .meta { width: 160px; font-size: 14px; opacity: .95; display: flex; grid-column: 1 / 4; gap: 10px; margin: 0 auto; margin-top: 2px; align-items: center; justify-content: center; background: white; }
     .board .pk-score-row { display: flex; justify-content: center; }
     .board .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
-    .board .timer { width: 60px; background: #3E0B3D; }
-    .board .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
+    .board .timer { width: 60px; background: white; }
+    .board .timer .minsec { font-size: 22px; font-weight: 800; color: black; cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
     .board .timer .minsec:hover { background: rgba(255,255,255,.1); }
-    .board .extra { width: 40px; text-align: center; font-size: 20px; font-weight: 700; color: white; background: linear-gradient(90deg, orange, red, hotpink); padding: 2px; left: 10px; position: relative; border-bottom-right-radius: 10px; }
+    .board .extra { width: 40px; text-align: center; font-size: 20px; font-weight: 700; color: black; background: gold; padding: 2px; left: 10px; position: relative;   }
 
     /* PK 모드: 새 행 추가로 높이가 늘어나지 않도록 전체 축소 */
     .board .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }

@@ -1,5 +1,6 @@
 const LEAGUE_THEME_MAP = {
-  39:  { theme: 'pl', logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png' }
+  39:  { theme: 'pl', logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png' },
+  292: { theme: 'kl', logoUrl: '' }
 };
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const CSS_LINK_INDEX = 17;
@@ -33,6 +34,9 @@ function applyTheme(theme, logoUrl) {
   switch(theme) {
     case 'pl':
       changeCSS('css/theme/board-theme-epl.css', CSS_LINK_INDEX);
+      break;
+    case 'kl':
+      changeCSS('css/theme/board-theme-kleague.css', CSS_LINK_INDEX);
       break;
     default:
       changeCSS('css/theme/board-theme-default.css', CSS_LINK_INDEX);
