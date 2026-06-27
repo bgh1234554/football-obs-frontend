@@ -1,5 +1,22 @@
     /* ========== 잉글랜드 프리미어리그 보드 테마(25-26 Season) ==========*/
 
+    @font-face {
+    font-family: 'Koverwatch';
+    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
+    }
+    @font-face {
+        font-family: 'Pretendard-Medium';
+        src: url('/resources/fonts/Pretendard-Medium.woff') format('woff');
+    }
+    @font-face {
+        font-family: 'NanumGothic';
+        src: url('/resources/fonts/NanumGothic.ttf') format('woff');
+    }
+    @font-face {
+        font-family: 'GmarketSansMedium';
+        src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
+    }
+
     .note-side.manual-editable { cursor: text; }
     .note-side.manual-editable.editing { z-index: 5; }
     .note.manual-editable {
@@ -69,6 +86,7 @@
       min-height: 70px;
       min-width: 0;
       width: 100%;
+      font-family: 'GmarketSansMedium';
     }
     .team.home { background: var(--home-bg); color: black; border-top-left-radius: 10px; }
     .team.away { background: var(--away-bg); color: black; border-top-right-radius: 10px; }
@@ -142,12 +160,13 @@
       background: gold;
       color: var(--meta-color);
     }
-    .board .league-logo { display: flex; width: 86px; height: 86px; justify-content: center; align-items: center; }
+    .board .league-logo { display: flex; width: 86px; height: 86px; justify-content: center; align-items: center; position: absolute; z-index: 1; bottom: 50px; }
     .board .league-img { width: 100%; height: 100%; }
     .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
     #aggHomeWrap { grid-area: aggL; align-self: center; }
     #aggAwayWrap { grid-area: aggR; align-self: center; }
-    .board .score .digits { grid-area: digits; }
+    .board .score .digits { grid-area: digits; color: white; }
+    .board .score .digits .score-split { display: none; }
     .board .score .pk-score-row { grid-area: pk; }
     .board .score .meta { grid-area: meta; }
     .board .score .agg { color: black !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
