@@ -93,6 +93,7 @@
     .logo-box {
       width: 48px; height: 48px;
       overflow: visible; position: relative;
+      background: whitesmoke;
     }
     /* max-width/height로 변경 — width/height: 100% 조합이 비정사각 이미지(예: 1:1.75 이탈리아 FIGC)에서
        height만 자연 종횡비로 늘어나는 브라우저 버그 회피. max-* + width/height auto로 자연 종횡비 유지하며
@@ -105,6 +106,7 @@
       transform: translate(-50%, -50%) scale(1);
       transform-origin: center center;
       z-index: 2;
+      filter: drop-shadow(0px 0px 2px black);
     }
     /* 일부 원격 SVG(예: Wikimedia 국기)는 intrinsic width/height가 100%로 들어와
        auto + max-* 조합에서 실제 렌더 박스가 과하게 작아질 수 있다.
