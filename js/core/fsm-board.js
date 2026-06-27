@@ -32,16 +32,16 @@ function applyTheme(theme, logoUrl) {
   // FSM의 switch(data.theme) 블록을 함수로 추출한 것
   switch(theme) {
     case 'pl':
-      changeCSS('../css/theme/board-theme-epl.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/board-theme-epl.css', CSS_LINK_INDEX);
       break;
     default:
-      changeCSS('../css/theme/board-theme-default.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/board-theme-default.css', CSS_LINK_INDEX);
   }
 }
 
 (function init() {
   // 페이지 로드 즉시 default(친선경기) CSS 적용
-  changeCSS('../css/theme/board-theme-default.css');
+  changeCSS('css/theme/board-theme-default.css');
 
   // localStorage에 저장된 leagueId가 있으면 복원 (선택 사항)
   const savedLeagueId = localStorage.getItem('obs-last-league-id');
