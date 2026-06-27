@@ -812,7 +812,7 @@
       const leagueId = extractLeagueIdFromFixtureData(data);
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
         try {
-          await window.autoApplyTemplateByLeagueId(leagueId);
+          await window.autoApplyTemplateByLeagueId(leagueId, data.matchInfo.leagueLogoUrl);
         } catch (templateErr) {
           console.warn('Auto template apply failed:', templateErr);
         }
