@@ -886,6 +886,15 @@
       const awayApplied = applyFixtureTeamColorsFromApi('away', m.awayPrimaryColor, m.awayNumberColor);
       if (!homeApplied) applyFixtureTeamColorPair('home', getFixtureDefaultTeamColors('home'));
       if (!awayApplied) applyFixtureTeamColorPair('away', getFixtureDefaultTeamColors('away'));
+
+      // 홈/원정 primary가 둘 다 API로 제공됐고 시각적으로 유사하면 원정 primary/number를 swap해 구분 가능하게 함.
+      // 로고 팔레트 기반 fallback의 유사 충돌 처리(resolveFixtureFallbackPrimaryConflict)와 별개 경로.
+      const homePrimary = fixtureNormalizeApiColor(m.homePrimaryColor);
+      const awayPrimary = fixtureNormalizeApiColor(m.awayPrimaryColor);
+      if (homePrimary && awayPrimary && fixtureTeamColorsTooSimilar(homePrimary, awayPrimary)) {
+        const current = fixtureCurrentTeamColorPair('away');
+        if (current.bg && current.text) applyFixtureTeamColorPair('away', { bg: current.text, text: current.bg });
+      }
     }
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
     if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m));
