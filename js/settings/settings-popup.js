@@ -821,6 +821,7 @@ function setNameMode(category, mode) {
 }
 
 let lineupInitialCollisionBaseNames = new Set();
+let lineupShortNameCollisionNames = new Set();
 
 function getLineupShortName(player) {
   return player?.name || player?.playerName || '';
@@ -846,9 +847,11 @@ function hasLeadingLineupInitial(name) {
 /**
  * lineupHideInitial=on일 때도 동명이인이 생기면 이니셜을 보존하기 위한 경기 단위 인덱스.
  * 양 팀 선발+교체 전체를 기준으로 "J. Kim" → "Kim" 같은 base 이름을 세어 충돌 여부를 판단한다.
+ * 이니셜까지 동일한 경우에는, 줄이지 않고 full name을 그대로 사용한다.
  */
 function setLineupInitialCollisionContext(fixtureData) {
   const counts = new Map();
+  const shortCounts = new Map();
   const seenPlayerKeys = new Set();
 
   ['home', 'away'].forEach(side => {
@@ -868,6 +871,9 @@ function setLineupInitialCollisionContext(fixtureData) {
         seenPlayerKeys.add(playerKey);
 
         counts.set(base, (counts.get(base) || 0) + 1);
+
+        const normShort = String(shortName).normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+        if (normShort) shortCounts.set(normShort, (shortCounts.get(normShort) || 0) + 1);
       });
     });
   });
@@ -876,6 +882,12 @@ function setLineupInitialCollisionContext(fixtureData) {
     Array.from(counts.entries())
       .filter(([, count]) => count > 1)
       .map(([base]) => base)
+  );
+
+  lineupShortNameCollisionNames = new Set(
+    Array.from(shortCounts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([name]) => name)
   );
 }
 
@@ -909,6 +921,11 @@ function pickName(player, category) {
     ? stripLeadingLineupInitial(shortName) || shortName
     : shortName;
   if (isLongName(category) && longName) return longName;
+  // 이니셜 포함 shortname도 다른 선수와 동일하면 풀네임으로
+  if (longName && (category === 'lineup' || category === 'roster')) {
+    const normDisplay = String(displayShortName).normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    if (normDisplay && lineupShortNameCollisionNames.has(normDisplay)) return longName;
+  }
   return displayShortName || longName || shortName || '';
 }
 
