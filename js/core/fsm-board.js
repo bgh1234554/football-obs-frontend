@@ -43,10 +43,15 @@ function applyTheme(theme, logoUrl) {
   _currentTheme = theme;
   switch(theme) {
     case 'pl':
-      changeCSS('css/theme/result_style_epl.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_EPL.css', CSS_LINK_INDEX);
+      jQuery('.epl-lion').attr('src', logoUrl);
       break;
-    case 'kl':
-      changeCSS('css/theme/board-theme-kleague.css', CSS_LINK_INDEX);
+    case 'kleague':
+      changeCSS('css/theme/result_style_KLEAGUE.css', CSS_LINK_INDEX);
+      break;
+    case 'seriea':
+      changeCSS('css/theme/result_style_SERIEA.css', CSS_LINK_INDEX);
+      jQuery('.epl-lion').attr('src', logoUrl);
       break;
     default:
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
@@ -85,6 +90,14 @@ function applyTheme(theme, logoUrl) {
     }
   }
 
+  function toPsoArr(pkArr) {
+    const base = Math.max(5, (pkArr || []).length);
+    return Array.from({ length: base }, (_, i) => {
+      const v = (pkArr || [])[i];
+      return v === 'G' ? 1 : v === 'M' ? 0 : -1;
+    });
+  }
+
   // applyPSO()도 state.pk 배열 읽도록 수정 (자세한 내용은 6-5 참조)
   function applyPSO() {
     const isPso = state.half === 'PK';
@@ -92,7 +105,13 @@ function applyTheme(theme, logoUrl) {
     if (!isPso) return;
     const homePso = toPsoArr(state.pk.home);  // 'G'/'M' → [1,0,-1,...] 변환
     const awayPso = toPsoArr(state.pk.away);
-    // FSM 원본 DOM 조작 코드에서 data.teamLeft.pso → homePso, data.teamRight.pso → awayPso 로 교체
+
+    for (let i = 0; i < Math.max(homePso.length, 5); i++) {
+      const lColor = homePso[i] === 1 ? 'limegreen' : homePso[i] === 0 ? 'red' : '';
+      const rColor = awayPso[i] === 1 ? 'limegreen' : awayPso[i] === 0 ? 'red' : '';
+      jQuery('.fsm-board #pso-left .pso-circle').eq(i).css({background: lColor});
+      jQuery('.fsm-board #pso-right .pso-circle').eq(i).css({background: rColor});
+    }
   }
 
   function getColorContract(hex) {
