@@ -234,3 +234,7 @@
     align-items: center;
     justify-content: center;
 }
+
+.clock-editor {
+    margin-top: 100px;
+}

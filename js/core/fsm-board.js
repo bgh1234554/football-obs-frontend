@@ -20,7 +20,7 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   const entry = LEAGUE_THEME_MAP[leagueId];
   const theme = entry ? entry.theme : FSM_FALLBACK_THEME;
   // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
-  const logoUrl = apiLeagueLogoUrl || entry?.logoUrl || null;
+  const logoUrl = entry?.logoUrl || apiLeagueLogoUrl || null;
 
   _currentTheme = theme;
   // FSM의 기존 switch 로직을 그대로 재활용
@@ -53,6 +53,9 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_SERIEA.css', CSS_LINK_INDEX);
       jQuery('.epl-lion').attr('src', logoUrl);
       break;
+    case 'cl':
+      changeCSS('css/theme/result_style_CL.css', CSS_LINK_INDEX);
+      break;
     default:
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
   }
@@ -74,6 +77,12 @@ function applyTheme(theme, logoUrl) {
     // pl2 테마는 언더라인 대신 팀 컬러 배경을 사용: state.colors.homeBg / state.colors.awayBg
     // 나머지 테마는 state.colors.homeBg 를 border-bottom 색상으로 사용
     applyTeamColors();
+
+    if(state.extra > 0) {
+      jQuery('.fsm-board .extra-time').css({marginLeft: '180px'});
+    } else {
+      jQuery('.fsm-board .extra-time').css({marginLeft: '0px'});
+    }
   }
 
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
@@ -84,8 +93,8 @@ function applyTheme(theme, logoUrl) {
       jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none'});
     } else {
       // default / pl / cl / uel / 나머지 모든 테마
-      jQuery('.fsm-board .teams-left').css({borderBottom: '3px solid ' + state.colors.homeBg});
-      jQuery('.fsm-board .teams-right').css({borderBottom: '3px solid ' + state.colors.awayBg});
+      jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg});
+      jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg});
       // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
   }
