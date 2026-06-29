@@ -50,16 +50,16 @@
       <div class="board fsm-board align-outer" id="board">
         <div class="scoreboard-main">
           <div class="team-logo" id="team-logo-left">
-              <img id="logo-imgLeft" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_United_FC.svg'/>
+              <img class="logo-imgLeft" id="homeLogo" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_United_FC.svg'/>
           </div>
           <div class="div-background"></div>
-          <div class="teams-left">
-              <div class="team-name">
+          <div class="teams-left" id="homeCard">
+              <div class="team-name" id="homeName">
                   <span class="text" id="team-text-left">맨유</span>
               </div>
           </div>
           <div class="team-score" id="team-score-left">
-              <span class="score" id="score-left">0</span>
+              <span class="score-left" id="homeScore">0</span>
           </div>
           <div class="score-div">
               <span class="hipen">-</span>
@@ -67,15 +67,15 @@
               <img class="epl-lion" src='https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png'/>
           </div>
           <div class="team-score" id="team-score-right">
-              <span class="score" id="score-right">0</span>
+              <span class="score-right" id="awayScore">0</span>
           </div>
-          <div class="teams-right">
-              <div class="team-name">
+          <div class="teams-right" id="awayCard">
+              <div class="team-name" id="awayName">
                   <span class="text" id="team-text-right">맨시티</span>
               </div>
           </div>
           <div class="team-logo" id="team-logo-right">
-              <img id="logo-imgRight" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_City_FC.svg'/>
+              <img class="logo-imgRight" id="awayLogo" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_City_FC.svg'/>
           </div>
         </div>
         <div class="scoreboard-timer">
@@ -108,6 +108,29 @@
             </div>
           </div> -->
       </div><!-- /board -->
+      <!-- obs-frontend 상태 홀더 — FSM HTML 교체 후에도 DOM에 유지되어야 함 -->
+      <div class="clock-editor" id="clockEditor" style="position:absolute">
+        <div class="ce-unit">
+          <button class="ce-arrow" id="ceMinUp">▲</button>
+          <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
+          <button class="ce-arrow" id="ceMinDown">▼</button>
+        </div>
+        <div class="ce-colon">:</div>
+        <div class="ce-unit">
+          <button class="ce-arrow" id="ceSecUp">▲</button>
+          <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
+          <button class="ce-arrow" id="ceSecDown">▼</button>
+        </div>
+        <button class="ce-confirm" id="ceConfirm">✓</button>
+      </div>
+      <div class="rc-rail home hidden" id="rcHome" style="position:absolute"></div>
+      <div class="rc-rail away hidden" id="rcAway" style="position:absolute"></div>
+      <div class="pk-score-row hidden" id="pkScoreRow" style="position:absolute">
+        <span class="pk-score-text">(<span id="pkScoreHome">0</span> PK <span id="pkScoreAway">0</span>)</span>
+      </div>
+      <span id="half" style="display:none">1H</span>
+      <!-- PK Strip -->
+      <div class="pk-wrap" id="pkWrap"><div class="pk-strip"><div class="pk-team home" id="pkHome"></div><div class="pk-center"><div class="pk-label"></div></div><div class="pk-team away" id="pkAway"></div></div></div>
       <!-- 원정 득점자 (우측) -->
       <div class="note-side" id="awayNoteSide"><div class="note away" id="awayNote"></div></div>
     </div><!-- /board-stage-inner -->

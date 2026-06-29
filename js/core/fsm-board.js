@@ -74,7 +74,7 @@ function applyTheme(theme, logoUrl) {
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
-    if (theme === 'pl2') {
+    if (theme === 'pl') {
       $('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none'});
       $('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none'});
     } else {
