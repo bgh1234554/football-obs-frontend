@@ -1,0 +1,27 @@
+/* css/fsm-board.css - FSM이 정의하지 않는 obs-frontend 보정 */
+
+/* FSM 점수판이 OBS 캡처 영역 안에서 가운데 정렬되도록 */
+.board.fsm-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* clockEditor: .board 바깥으로 이동했으므로 #clock 위에 겹쳐 보이도록 */
+#clockEditor {
+  position: absolute;
+  z-index: 100;
+}
+
+/* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */
+#rcHome, #rcAway {
+  position: absolute;
+  top: 0;
+}
+
+/* PK 점수 행: FSM에 없으므로 별도 표시 */
+#pkScoreRow {
+  position: absolute;
+  text-align: center;
+  width: 100%;
+}

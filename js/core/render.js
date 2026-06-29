@@ -874,3 +874,5 @@
       }
     });
   }
+
+  if (typeof fsmBoardRender === 'function') fsmBoardRender();

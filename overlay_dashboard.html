@@ -27,7 +27,8 @@
   <link rel="stylesheet" href="css/player/player-menu.css"/>
   <link rel="stylesheet" href="css/panels/hth-panel.css"/>
   <link rel="stylesheet" href="css/settings-popup.css"/>
-  <link id="fsm-theme-link" rel="stylesheet" href="css/theme/board-theme-default.css">
+  <link href="css/core/fsm-board.css" rel="stylesheet">
+  <link id="fsm-theme-link" rel="stylesheet" href="css/theme/result_style_default.css">
   <!-- 마크다운 렌더링: markdown-it (CommonMark + GFM) + 헤딩 anchor 자동 생성 + XSS sanitize -->
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js" integrity="sha384-wLhprpjsmjc/XYIcF+LpMxd8yS1gss6jhevOp6F6zhiIoFK6AmHtm4bGKtehTani" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-anchor@9.2.0/dist/markdownItAnchor.umd.js" integrity="sha384-F82O4o8GLvoQoVK9ZRL8xcftEJ//NJHsvM+rjapg2vEKK0BJSvY2a5F6rTrgePo0" crossorigin="anonymous"></script>
@@ -36,6 +37,8 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-abbr@2.0.0/dist/markdown-it-abbr.min.js" integrity="sha384-IMLykgno5giusK9t0GcQGqE6/opB+dbkalYq7aZwceQglysXkBrHGVxaf1b9zaCQ" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-mark@4.0.0/dist/markdown-it-mark.min.js" integrity="sha384-103ef71r6a4LrDA2zOGPPuPgWj6fME0NHVPTVytUTpFz78x89wq7KOvIX+9E6Nt2" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.5.1/gsap.min.js"></script>
+  <script src="https://code.jquery.com/jquery-4.0.0.min.js" integrity="sha256-OaVG6prZf4v69dPg6PhVattBXkcOWQB62pdZ3ORyrao=" crossorigin="anonymous"></script>
 </head>
 <body>
   <!-- ========== 보드 스테이지 (항상 표시) ========== -->
@@ -44,48 +47,66 @@
       <!-- 홈 득점자 (좌측) -->
       <div class="note-side" id="homeNoteSide"><div class="note home" id="homeNote"></div></div>
       <!-- 보드 -->
-      <div class="board align-outer" id="board">
-        <div class="team home" id="homeCard">
-          <div class="logo-box"><img id="homeLogo" class="logo-img hidden" alt="HOME" /></div>
-          <div class="name" id="homeName">HOME</div>
-          <div class="rc-rail home hidden" id="rcHome"></div>
-        </div>
-        <div class="score" id="scorePanel">
-          <span class="agg hidden" id="aggHomeWrap">(<span id="aggHomeVal">0</span>)</span>
-          <div class="digits"><span id="homeScore">0</span> <div class="league-logo"><img class="league-img" src='https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png'/></div> <div class="divider"></div> <span class="score-split">-</span> <span id="awayScore">0</span></div>
-          <span class="agg hidden" id="aggAwayWrap">(<span id="aggAwayVal">0</span>)</span>
-          <!-- PK 점수 (PK 하프일 때만 표시) -->
-          <div class="pk-score-row hidden" id="pkScoreRow"><span class="pk-score-text">(<span id="pkScoreHome">0</span> PK <span id="pkScoreAway">0</span>)</span></div>
-        </div>
-        <div class="team away" id="awayCard">
-          <div class="logo-box"><img id="awayLogo" class="logo-img hidden" alt="AWAY" /></div>
-          <div class="name" id="awayName">AWAY</div>
-          <div class="rc-rail away hidden" id="rcAway"></div>
-        </div>
-        <div class="meta">
-          <div class="timer">
-            <span class="t minsec" id="clock" title="더블클릭해서 시간 조정">00:00</span>
-            <!-- 인라인 시간 편집기 (더블클릭 시 활성화) -->
-            <div class="clock-editor" id="clockEditor">
-              <div class="ce-unit">
-                <button class="ce-arrow" id="ceMinUp">▲</button>
-                <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
-                <button class="ce-arrow" id="ceMinDown">▼</button>
-              </div>
-              <div class="ce-colon">:</div>
-              <div class="ce-unit">
-                <button class="ce-arrow" id="ceSecUp">▲</button>
-                <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
-                <button class="ce-arrow" id="ceSecDown">▼</button>
-              </div>
-              <button class="ce-confirm" id="ceConfirm">✓</button>
-            </div>
+      <div class="board fsm-board align-outer" id="board">
+        <div class="scoreboard-main">
+          <div class="team-logo" id="team-logo-left">
+              <img id="logo-imgLeft" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_United_FC.svg'/>
           </div>
-          <span class="half" id="half">1H</span>
-          <span class="t extra hidden" id="extra">+0</span>
+          <div class="div-background"></div>
+          <div class="teams-left">
+              <div class="team-name">
+                  <span class="text" id="team-text-left">맨유</span>
+              </div>
+          </div>
+          <div class="team-score" id="team-score-left">
+              <span class="score" id="score-left">0</span>
+          </div>
+          <div class="score-div">
+              <span class="hipen">-</span>
+              <div class="divider"></div>
+              <img class="epl-lion" src='https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png'/>
+          </div>
+          <div class="team-score" id="team-score-right">
+              <span class="score" id="score-right">0</span>
+          </div>
+          <div class="teams-right">
+              <div class="team-name">
+                  <span class="text" id="team-text-right">맨시티</span>
+              </div>
+          </div>
+          <div class="team-logo" id="team-logo-right">
+              <img id="logo-imgRight" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_City_FC.svg'/>
+          </div>
         </div>
-        <!-- PK Strip -->
-        <div class="pk-wrap" id="pkWrap"><div class="pk-strip"><div class="pk-team home" id="pkHome"></div><div class="pk-center"><div class="pk-label"></div></div><div class="pk-team away" id="pkAway"></div></div></div>
+        <div class="scoreboard-timer">
+            <span class="time" id="clock">00:00</span>
+            <span class="extra-time" id="extra">+ 0</span>
+        </div>
+        <!-- <div class="pso-status">
+            <div class="pso-main">
+              <div class="pso-content" id="pso-left">
+                  <ul>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                  </ul>
+              </div>
+              <div class="pso-middle">
+                  <span class="pso-text">PSO</span>
+              </div>
+              <div class="pso-content" id="pso-right">
+                  <ul>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                  </ul>
+              </div>
+            </div>
+          </div> -->
       </div><!-- /board -->
       <!-- 원정 득점자 (우측) -->
       <div class="note-side" id="awayNoteSide"><div class="note away" id="awayNote"></div></div>

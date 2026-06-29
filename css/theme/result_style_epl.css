@@ -1,0 +1,247 @@
+@font-face {
+    font-family: 'SsangmunDongB';
+    src: url('../resources/Typo_SsangmunDongB.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Koverwatch';
+    src: url('../resources/koverwatch.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Pretendard-Medium';
+    src: url('../resources/Pretendard-Medium.woff') format('woff');
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('../resources/NanumGothic.ttf') format('woff');
+}
+@font-face {
+    font-family: 'GmarketSansMedium';
+    src: url('../resources/GmarketSansTTFMedium.ttf') format('truetype');
+}
+
+.fsm-board { margin:0; padding:0; overflow:hidden; }
+
+.fsm-board .scoreboard-main {
+    width: 656px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    vertical-align: middle;
+    overflow: hidden;
+    margin: 0 auto;
+    margin-top: 30px;
+}
+
+.fsm-board .div-background {
+    width: 656px;
+    height: 48px;
+    position: absolute;
+    background-image: url("../resources/background/background_pl2.png");
+    background-repeat: no-repeat;
+    background-blend-mode: darken;
+    display: flex;
+}
+
+.fsm-board .teams-left, .teams-right {
+    width: 240px;
+    height: 48px;
+    background: #350B53;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .team-name {
+    width: 100%;
+    height: 100%;
+    font-family: 'GmarketSansMedium';
+    font-size: 33px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 6px;
+}
+
+.fsm-board .teams-left > .team-name {
+    display: flex;
+    justify-content: flex-start;
+    margin-left: 20px;
+}
+
+.fsm-board .teams-right > .team-name {
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 20px;
+}
+
+.fsm-board .team-score {
+    font-family: 'Pretendard-Medium';
+    font-size: 70px;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    padding: 8px;
+    transition: 0.4s ease-in-out;
+    position: absolute;
+    margin-top: -20px;
+    z-index: 1;
+}
+
+.fsm-board #team-score-left {
+    margin-right: 110px;
+}
+
+.fsm-board #team-score-right {
+    margin-left: 110px;
+}
+
+.fsm-board .score {
+    text-shadow: 5px 0px 0px rgba(0, 0, 0, 0.25);
+}
+
+.fsm-board .score-div {
+    height: auto;
+    font-family: 'Pretendard-Medium';
+    font-size: 26px;
+    font-weight: bold;
+    color: black;
+    padding: 8px;
+    text-align: center;
+    transition: 0.4s ease-in-out;
+    position: absolute;
+    margin-top: -20px;
+}
+
+.fsm-board .hipen {
+    display: none;
+}
+
+.fsm-board .divider {
+    display: none;
+}
+
+.fsm-board .team-logo {
+    width: 80px;
+    height: 48px;
+    background: whitesmoke;
+    border: 2px solid whitesmoke;
+    position: relative;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .team-logo > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.fsm-board #team-logo-left {
+    border-top-left-radius: 10px;
+}
+
+.fsm-board #team-logo-right {
+    border-top-right-radius: 10px;
+}
+
+.fsm-board .epl-lion {
+    width: 86px;
+    height: 86px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+}
+
+.fsm-board .scoreboard-timer {
+    width: 180px;
+    height: 32px;
+    margin: 0 auto;
+    text-align: center;
+    vertical-align: middle;
+    color: white;
+    font-family: 'NanumGothic';
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .time {
+    width: 114px;
+    height: 100%;
+    background: #3E0B3D;
+    position: relative;
+    z-index: 1;
+    transition: 0.4s ease-in-out;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.fsm-board .extra-time {
+    width: 80px;
+    height: 32px;
+    color: white;
+    background: linear-gradient(90deg, orange, red, hotpink);
+    transition: 0.5s ease-in-out;
+    position: absolute;
+    margin-left: 0px;
+    transition: 0.4s ease-in-out;
+    border-bottom-right-radius: 10px;
+}
+
+.fsm-board .pso-status {
+    width: 360px;
+    height: 32px;
+    left: 260px;
+    top: 78px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    align-items: flex-start;
+    position: absolute;
+    z-index: 1;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .pso-main {
+    width: 360px;
+    height: 0px;
+    transition: 0.4s ease-in-out;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    background: linear-gradient(0deg, rgb(255, 230, 0) 80%, goldenrod);
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.fsm-board .pso-circle {
+    width: 25px;
+    height: 25px;
+    border-radius: 20px;
+    border: 1px solid black;
+    margin: 2px;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .pso-status > .pso-main ul {
+    width: 100%;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.fsm-board .pso-middle {
+    display: flex;
+    font-family: 'NanumGothic';
+    font-weight: bold;
+    font-size: 20px;
+    margin: 8px;
+    align-items: center;
+    justify-content: center;
+}
