@@ -772,16 +772,27 @@ function lpBenchCycleRebalance(panel) {
     .filter(child => child.classList?.contains('dp-item'))
     .length;
   if (rowCount <= BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS) {
-    body.classList.remove('bc-two-col');
+    body.classList.remove('bc-two-col', 'bc-scroll-mode');
+    panel.removeAttribute('data-bench-scroll');
     return;
   }
 
   if (!body.getClientRects().length || body.clientHeight <= 0) return;
 
-  // 일시적으로 단일 컬럼으로 돌려서 실제 overflow 측정
-  body.classList.remove('bc-two-col');
+  // 1열 상태에서 overflow 측정
+  body.classList.remove('bc-two-col', 'bc-scroll-mode');
+  panel.removeAttribute('data-bench-scroll');
   const overflows = body.scrollHeight > body.clientHeight + BENCH_CYCLE_OVERFLOW_EPSILON_PX;
-  body.classList.toggle('bc-two-col', overflows);
+  if (!overflows) return;
+
+  // 2열로 전환 후 여전히 overflow이면 1열 + 자동 스크롤 폴백
+  body.classList.add('bc-two-col');
+  const twoColOverflows = body.scrollHeight > body.clientHeight + BENCH_CYCLE_OVERFLOW_EPSILON_PX;
+  if (twoColOverflows) {
+    body.classList.remove('bc-two-col');
+    body.classList.add('bc-scroll-mode');
+    panel.setAttribute('data-bench-scroll', 'true');
+  }
 }
 
 /**

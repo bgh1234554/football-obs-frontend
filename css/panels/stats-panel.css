@@ -166,6 +166,10 @@
       column-gap: 6px;
       column-rule: 1px solid rgba(255,255,255,.18);
     }
+    /* 2열도 overflow일 때 폴백 — 1열 유지 + 세로 스크롤 (stat-cycle.js가 자동 스크롤 처리) */
+    .lp-stat .bc-body.bc-scroll-mode {
+      overflow-y: auto;
+    }
     /* 이름은 1줄로 끝나면 1줄 높이만, 너무 길면 2줄로 wrap (말줄임표로 정보 손실 없음).
        -webkit-line-clamp는 1줄로 끝나도 항상 2줄 높이를 강제 예약해버려(약 39px) 1열에 들어갈
        인원도 불필요하게 2열로 쪼개지는 문제가 있었다 — display:block + max-height로 대체해

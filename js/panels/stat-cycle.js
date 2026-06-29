@@ -79,11 +79,20 @@ function _lpStatPageCount() {
 function _lpEventsScrollEl(mode = 'events') {
   let panelSelector = '[data-events-panel]';
   if (mode === 'hth') panelSelector = '[data-hth-panel]';
+  if (mode === 'bench_home') panelSelector = '[data-bench-home-panel]';
+  if (mode === 'bench_away') panelSelector = '[data-bench-away-panel]';
   const panel = document.querySelector(`.lp-stat ${panelSelector}`);
+  if (mode === 'bench_home' || mode === 'bench_away') return panel?.querySelector('.bc-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
 function _lpModeUsesPanelAutoScroll(mode) {
-  return mode === 'events' || mode === 'hth';
+  if (mode === 'events' || mode === 'hth') return true;
+  if (mode === 'bench_home' || mode === 'bench_away') {
+    const attr = mode === 'bench_home' ? 'data-bench-home-panel' : 'data-bench-away-panel';
+    return document.querySelector(`.lp-stat [${attr}]`)
+      ?.getAttribute('data-bench-scroll') === 'true';
+  }
+  return false;
 }
 
 // ─── 이벤트 패널 자동 스크롤 ─────────────────────────────────────────────────
@@ -183,7 +192,7 @@ function _lpBindEventsScrollInterruption(el) {
 function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
-  const scrollDown = mode === 'standings';
+  const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away';
   if (!el) {
     _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     return;
@@ -311,8 +320,12 @@ function _lpAutoStart() {
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
   } else {
-    // bench_home / bench_away
-    _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+    // bench_home / bench_away — 2열도 overflow인 경우 이벤트 패널과 동일한 위→아래 자동 스크롤
+    if (_lpModeUsesPanelAutoScroll(mode)) {
+      _lpStartEventsScroll(intervalMs, mode);
+    } else {
+      _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+    }
   }
 }
 
