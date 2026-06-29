@@ -1,4 +1,4 @@
-﻿    /* ========== 점수판 컴포넌트 ==========
+﻿﻿    /* ========== 점수판 컴포넌트 ==========
        .board, .team, .logo-box, .score, .digits, .timer, .pk-wrap, .rc-rail 등
        득점자 박스(.note-side / .note) 수동 편집 인터랙션 스타일 포함.
        주의: 모든 선택자는 .board 하위에서만 적용할 것 (위젯/페이지 스타일 오염 방지).
@@ -48,16 +48,16 @@
     .board {
       display: grid;
       grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
-      grid-template-rows: 72px;
       align-items: center;
+      gap: 12px;
       width: min(var(--board-width, 1080px), 95vw);
+      border-radius: var(--board-radius, 18px);
       /* background: linear-gradient(135deg, var(--board-a) 0%, var(--board-b) 100%); */
       padding: 10px 12px;
       /* box-shadow: 0 8px 30px #00000055; */
       position: relative;
       overflow: visible;
       flex-shrink: 0;
-      place-items: center;
     }
     /* .board.outline-on {
       box-shadow: 0 8px 30px #00000055, inset 0 0 0 var(--board-outline-w) var(--card-outline);
@@ -69,12 +69,14 @@
       align-items: center;
       position: relative;
       gap: 10px;
+      border-radius: var(--team-radius, 14px);
+      padding: 10px 12px;
       min-height: 70px;
       min-width: 0;
       width: 100%;
     }
-    .team.home { background: linear-gradient(90deg, white 93%, rgb(200, 200, 200)); color: black; border-bottom: 4px solid var(--home-bg); padding: 10px 12px; }
-    .team.away { background: linear-gradient(-90deg, white 93%, rgb(200, 200, 200)); color: black; border-bottom: 4px solid var(--away-bg); padding: 10px 12px; }
+    .team.home { background: var(--home-bg); color: var(--home-text); }
+    .team.away { background: var(--away-bg); color: var(--away-text); }
     .team.home.outline-on { box-shadow: inset 0 0 0 var(--home-outline-w) var(--home-outline); }
     .team.away.outline-on { box-shadow: inset 0 0 0 var(--away-outline-w) var(--away-outline); }
 
@@ -91,9 +93,9 @@
     .board.align-hybrid #awayCard .name { margin-right: auto; text-align: left; }
 
     .logo-box {
-      width: 48px; height: 48px;
+      width: 48px; height: 48px; flex: 0 0 48px;
       overflow: visible; position: relative;
-      background: whitesmoke;
+      display: grid; place-items: center;
     }
     /* max-width/height로 변경 — width/height: 100% 조합이 비정사각 이미지(예: 1:1.75 이탈리아 FIGC)에서
        height만 자연 종횡비로 늘어나는 브라우저 버그 회피. max-* + width/height auto로 자연 종횡비 유지하며
@@ -106,7 +108,6 @@
       transform: translate(-50%, -50%) scale(1);
       transform-origin: center center;
       z-index: 2;
-      filter: drop-shadow(0px 0px 2px black);
     }
     /* 일부 원격 SVG(예: Wikimedia 국기)는 intrinsic width/height가 100%로 들어와
        auto + max-* 조합에서 실제 렌더 박스가 과하게 작아질 수 있다.
@@ -132,38 +133,35 @@
        top/left/translate 기반 정중앙 정렬이 깨져서 비정사각 로고(예: 이탈리아 1:1.75) 위치 어긋남. */
     #homeLogo, #awayLogo { z-index: 2; }
 
-    .board .name { font-weight: 800; font-size: 28px; letter-spacing: .2px; line-height: 1.1; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .board .name { font-weight: 800; font-size: 24px; letter-spacing: .2px; line-height: 1.1; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* 스코어 패널 */
     .board .score {
-      height: 100%;
       display: grid;
       grid-template-columns: auto 1fr auto;
       grid-template-areas: "aggL digits aggR" "pk pk pk" "meta meta meta";
       place-items: center;
+      gap: 6px;
       min-width: 180px;
-      background: gold;
+      padding: 10px 14px;
+      border-radius: var(--score-radius, 14px);
+      background: var(--score-bg);
       color: var(--meta-color);
     }
-
-    .board .score .divider { display: none; }
-
-    .board .league-logo { display: none; }
     .board .score.outline-on { box-shadow: inset 0 0 0 var(--score-outline-w) var(--card-outline); }
     #aggHomeWrap { grid-area: aggL; align-self: center; }
     #aggAwayWrap { grid-area: aggR; align-self: center; }
     .board .score .digits { grid-area: digits; }
     .board .score .pk-score-row { grid-area: pk; }
     .board .score .meta { grid-area: meta; }
-    .board .score .agg { color: black !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
-    .board .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: black; }
-    .board .meta { width: 160px; font-size: 14px; opacity: .95; display: flex; grid-column: 1 / 4; gap: 10px; margin: 0 auto; margin-top: 2px; align-items: center; justify-content: center; background: dodgerblue; }
+    .board .score .agg { color: var(--digits-color) !important; font-weight: 900; font-size: 22px; margin: 0 8px; white-space: nowrap; }
+    .board .digits { font-size: 48px; font-weight: 900; letter-spacing: 2px; color: var(--digits-color); }
+    .board .meta { font-size: 14px; opacity: .95; display: flex; gap: 10px; align-items: center; }
     .board .pk-score-row { display: flex; justify-content: center; }
     .board .pk-score-text { font-size: 22px; font-weight: 800; color: var(--meta-color); letter-spacing: 1px; }
-    .board .timer { width: 60px; background: dodgerblue; }
     .board .timer .minsec { font-size: 22px; font-weight: 800; color: var(--meta-color); cursor: pointer; user-select: none; border-radius: 6px; padding: 1px 4px; transition: background .15s; }
     .board .timer .minsec:hover { background: rgba(255,255,255,.1); }
-    .board .extra { width: 40px; text-align: center; font-size: 20px; font-weight: 700; color: white; background: var(--extra-color); padding: 2px; left: 10px; position: relative; }
+    .board .timer .extra { font-size: 18px; font-weight: 700; color: var(--extra-color); }
 
     /* PK 모드: 새 행 추가로 높이가 늘어나지 않도록 전체 축소 */
     .board .score.pk-mode .digits        { font-size: 36px; letter-spacing: 1px; }

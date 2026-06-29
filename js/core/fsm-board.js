@@ -14,6 +14,7 @@ const LEAGUE_THEME_MAP = {
 };
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const CSS_LINK_INDEX = 17;
+var _currentTheme = 'default'
 
 window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   const entry = LEAGUE_THEME_MAP[leagueId];
@@ -21,6 +22,7 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
   const logoUrl = apiLeagueLogoUrl || entry?.logoUrl || null;
 
+  _currentTheme = theme;
   // FSM의 기존 switch 로직을 그대로 재활용
   applyTheme(theme, logoUrl);
 };

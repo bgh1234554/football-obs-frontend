@@ -375,6 +375,7 @@
       const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');
       if (_tck !== render._lastTacticsColorKey) { render._lastTacticsColorKey = _tck; tacticsRenderTokens(); }
     }
+    if (typeof fsmBoardRender === 'function') fsmBoardRender();
   }
 
   /**
@@ -874,5 +875,3 @@
       }
     });
   }
-
-  if (typeof fsmBoardRender === 'function') fsmBoardRender();
