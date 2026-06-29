@@ -41,29 +41,26 @@ function applyTheme(theme, logoUrl) {
   switch(theme) {
     case 'pl':
       changeCSS('css/theme/result_style_epl.css', CSS_LINK_INDEX);
-      if (logoUrl) $('.epl-lion').attr('src', logoUrl).show();
       break;
     case 'kl':
       changeCSS('css/theme/board-theme-kleague.css', CSS_LINK_INDEX);
-      $('.epl-lion').hide();
       break;
     default:
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
-      $('.epl-lion').hide();
   }
 }
 
   // applyText()는 data 대신 state를 읽도록 수정
   function applyText() {
-    $('.fsm-board #team-text-left').text(state.homeName);   // data.teamLeft.name → state.homeName
-    $('.fsm-board #score-left').text(state.homeScore);
-    $('.fsm-board #team-text-right').text(state.awayName);
-    $('.fsm-board #score-right').text(state.awayScore);
+    jQuery('.fsm-board #team-text-left').text(state.homeName);   // data.teamLeft.name → state.homeName
+    jQuery('.fsm-board #score-left').text(state.homeScore);
+    jQuery('.fsm-board #team-text-right').text(state.awayName);
+    jQuery('.fsm-board #score-right').text(state.awayScore);
 
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
     // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영됩니다.
-    $('.fsm-board #logo-imgLeft').css({objectFit: 'contain'}).attr('src', state.homeLogo);
-    $('.fsm-board #logo-imgRight').css({objectFit: 'contain'}).attr('src', state.awayLogo);
+    jQuery('.fsm-board #logo-imgLeft').css({objectFit: 'contain'}).attr('src', state.homeLogo);
+    jQuery('.fsm-board #logo-imgRight').css({objectFit: 'contain'}).attr('src', state.awayLogo);
 
     // 팀 컬러 언더라인 — 현재 테마에 따라 다르게 처리 (applyTheme()에서 호출됨)
     // pl2 테마는 언더라인 대신 팀 컬러 배경을 사용: state.colors.homeBg / state.colors.awayBg
@@ -75,12 +72,12 @@ function applyTheme(theme, logoUrl) {
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
     if (theme === 'pl') {
-      $('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none'});
-      $('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none'});
+      jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none'});
+      jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none'});
     } else {
       // default / pl / cl / uel / 나머지 모든 테마
-      $('.fsm-board .teams-left').css({borderBottom: '3px solid ' + state.colors.homeBg});
-      $('.fsm-board .teams-right').css({borderBottom: '3px solid ' + state.colors.awayBg});
+      jQuery('.fsm-board .teams-left').css({borderBottom: '3px solid ' + state.colors.homeBg});
+      jQuery('.fsm-board .teams-right').css({borderBottom: '3px solid ' + state.colors.awayBg});
       // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
   }
@@ -88,7 +85,7 @@ function applyTheme(theme, logoUrl) {
   // applyPSO()도 state.pk 배열 읽도록 수정 (자세한 내용은 6-5 참조)
   function applyPSO() {
     const isPso = state.half === 'PK';
-    $('.fsm-board .pso-status').css('height', isPso ? '32px' : '0');
+    jQuery('.fsm-board .pso-status').css('height', isPso ? '32px' : '0');
     if (!isPso) return;
     const homePso = toPsoArr(state.pk.home);  // 'G'/'M' → [1,0,-1,...] 변환
     const awayPso = toPsoArr(state.pk.away);
