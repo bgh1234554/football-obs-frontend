@@ -40,6 +40,7 @@ function changeCSS(cssFile) {
 
 function applyTheme(theme, logoUrl) {
   // FSM의 switch(data.theme) 블록을 함수로 추출한 것
+  _currentTheme = theme;
   switch(theme) {
     case 'pl':
       changeCSS('css/theme/result_style_epl.css', CSS_LINK_INDEX);
