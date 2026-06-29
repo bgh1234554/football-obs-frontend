@@ -36,7 +36,7 @@
     width: 656px;
     height: 48px;
     position: absolute;
-    background-image: url("/resources/background/background_pl2.png");
+    background-image: url("/resources/imgs/background_pl2.png");
     background-repeat: no-repeat;
     background-blend-mode: darken;
     display: flex;
