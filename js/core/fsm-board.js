@@ -3,7 +3,7 @@ const LEAGUE_THEME_MAP = {
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png' },
   2:   { theme: 'cl',      logoUrl: null },  // UEFA Champions League (leagues.csv CDN URL 우선)
   3:   { theme: 'uel',     logoUrl: null },  // UEFA Europa League
-  848: { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite (leagueId 확인 필요)
+  17: { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite (leagueId 확인 필요)
   5:   { theme: 'unl',     logoUrl: null },  // UEFA Nations League
   960: { theme: 'er24',    logoUrl: null },  // UEFA Euro 2024 (leagueId 확인 필요)
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png' },
@@ -56,6 +56,19 @@ function applyTheme(theme, logoUrl) {
     case 'cl':
       changeCSS('css/theme/result_style_CL.css', CSS_LINK_INDEX);
       break;
+    case 'uel':
+      changeCSS('css/theme/result_style_UEL.css', CSS_LINK_INDEX);
+      break;
+    case 'unl':
+      changeCSS('css/theme/result_style_UNL.css', CSS_LINK_INDEX);
+      break;
+    case 'acle':
+      changeCSS('css/theme/result_style_ACLE.css', CSS_LINK_INDEX);
+      break;
+    case 'ligue1':
+      changeCSS('css/theme/result_style_LIGUE1.css', CSS_LINK_INDEX);
+      jQuery('.epl-lion').attr('src', logoUrl);
+      break;
     default:
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
   }
@@ -82,6 +95,14 @@ function applyTheme(theme, logoUrl) {
       jQuery('.fsm-board .extra-time').css({marginLeft: '180px'});
     } else {
       jQuery('.fsm-board .extra-time').css({marginLeft: '0px'});
+    }
+
+    if(state.half == 'PK') {
+       jQuery('.pso-main').css({height: '32px'});
+       jQuery('.pso-status').css({display: 'flex'});
+    } else {
+       jQuery('.pso-main').css({height: '0px'});
+       jQuery('.pso-status').css({display: 'none'});
     }
   }
 
