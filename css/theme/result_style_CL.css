@@ -91,13 +91,11 @@
 }
 
 .fsm-board .score-div {
-    width: 30px;
     height: 48px;
     font-family: 'Pretendard-Medium';
     font-size: 26px;
     font-weight: bold;
     color: white;
-    background: #00009c;
     text-align: center;
     transition: 0.4s ease-in-out;
     justify-content: center;
