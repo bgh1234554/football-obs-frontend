@@ -80,7 +80,7 @@
 }
 
 .fsm-board .score-div {
-    width: 30px;
+    width: 34px;
     height: auto;
     font-family: 'Pretendard-Medium';
     font-size: 26px;
@@ -93,7 +93,10 @@
 }
 
 .fsm-board .hipen {
-    display: block;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .fsm-board .divider {

@@ -113,7 +113,10 @@
 }
 
 .fsm-board .hipen {
-    display: none;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .fsm-board .divider {
@@ -142,6 +145,7 @@
     justify-content: center;
     align-items: center;
     z-index: 1;
+    margin-top: -35px;
 }
 
 .fsm-board .scoreboard-timer {

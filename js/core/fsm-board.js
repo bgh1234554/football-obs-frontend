@@ -3,9 +3,9 @@ const LEAGUE_THEME_MAP = {
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png' },
   2:   { theme: 'cl',      logoUrl: null },  // UEFA Champions League (leagues.csv CDN URL 우선)
   3:   { theme: 'uel',     logoUrl: null },  // UEFA Europa League
-  17: { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite (leagueId 확인 필요)
+  17:  { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite (leagueId 확인 필요)
   5:   { theme: 'unl',     logoUrl: null },  // UEFA Nations League
-  960: { theme: 'er24',    logoUrl: null },  // UEFA Euro 2024 (leagueId 확인 필요)
+  4:   { theme: 'er24',    logoUrl: null },  // UEFA Euro 2024 (leagueId 확인 필요)
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png' },
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg' },
   292: { theme: 'kleague', logoUrl: null },  // K League 1
@@ -68,6 +68,9 @@ function applyTheme(theme, logoUrl) {
     case 'ligue1':
       changeCSS('css/theme/result_style_LIGUE1.css', CSS_LINK_INDEX);
       jQuery('.epl-lion').attr('src', logoUrl);
+      break;
+    case 'er24':
+      changeCSS('css/theme/result_style_EURO24.css', CSS_LINK_INDEX);
       break;
     default:
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
