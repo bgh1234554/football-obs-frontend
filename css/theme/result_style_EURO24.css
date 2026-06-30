@@ -64,10 +64,12 @@
    
 .fsm-board .teams-left {
     border-bottom: 3px solid red;
+    margin-left: 10px;
 }
 
 .fsm-board .teams-right {
     border-bottom: 3px solid blue;
+    margin-right: 10px;
 }
 
 .fsm-board .team-score {
