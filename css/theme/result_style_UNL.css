@@ -1,18 +1,18 @@
 @font-face {
     font-family: 'SsangmunDongB';
-    src: url('../resources/Typo_SsangmunDongB.ttf') format('truetype');
+    src: url('/resources/Typo_SsangmunDongB.ttf') format('truetype');
 }
 @font-face {
     font-family: 'Koverwatch';
-    src: url('../resources/koverwatch.ttf') format('truetype');
+    src: url('/resources/koverwatch.ttf') format('truetype');
 }
 @font-face {
     font-family: 'Pretendard-Medium';
-    src: url('../resources/Pretendard-Medium.woff') format('woff');
+    src: url('/resources/Pretendard-Medium.woff') format('woff');
 }
 @font-face {
     font-family: 'NanumGothic';
-    src: url('../resources/NanumGothic.ttf') format('woff');
+    src: url('/resources/NanumGothic.ttf') format('woff');
 }
 
 .fsm-board { margin:0; padding:0; overflow:hidden; }
@@ -80,7 +80,6 @@
 }
 
 .fsm-board .score-div {
-    width: 34px;
     height: auto;
     font-family: 'Pretendard-Medium';
     font-size: 26px;
@@ -88,7 +87,6 @@
     color: white;
     padding: 8px;
     text-align: center;
-    background: #48516E;
     transition: 0.4s ease-in-out;
 }
 

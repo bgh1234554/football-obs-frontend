@@ -1,22 +1,22 @@
 @font-face {
     font-family: 'SsangmunDongB';
-    src: url('../resources/Typo_SsangmunDongB.ttf') format('truetype');
+    src: url('/resources/Typo_SsangmunDongB.ttf') format('truetype');
 }
 @font-face {
     font-family: 'Koverwatch';
-    src: url('../resources/koverwatch.ttf') format('truetype');
+    src: url('/resources/koverwatch.ttf') format('truetype');
 }
 @font-face {
     font-family: 'Pretendard-Medium';
-    src: url('../resources/Pretendard-Medium.woff') format('woff');
+    src: url('/resources/Pretendard-Medium.woff') format('woff');
 }
 @font-face {
     font-family: 'NanumGothic';
-    src: url('../resources/NanumGothic.ttf') format('woff');
+    src: url('/resources/NanumGothic.ttf') format('woff');
 }
 @font-face {
     font-family: 'GmarketSansMedium';
-    src: url('../resources/GmarketSansTTFMedium.ttf') format('truetype');
+    src: url('/resources/GmarketSansTTFMedium.ttf') format('truetype');
 }
 
 .fsm-board { margin:0; padding:0; overflow:hidden; }
@@ -87,14 +87,12 @@
 }
 
 .fsm-board .score-div {
-    width: 8px;
     height: 48px;
     font-family: 'Pretendard-Medium';
     font-size: 26px;
     font-weight: bold;
     color: black;
     text-align: center;
-    background: white;
     transition: 0.4s ease-in-out;
     display: flex;
     justify-content: center;

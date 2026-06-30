@@ -97,7 +97,6 @@
     font-weight: bold;
     color: white;
     text-align: center;
-    background: #1F3459;
     transition: 0.4s ease-in-out;
     display: flex;
     justify-content: center;
@@ -107,7 +106,7 @@
 
 .fsm-board .hipen {
     height: 100%;
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     transform: skewX(10deg);
