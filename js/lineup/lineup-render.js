@@ -845,6 +845,63 @@ function renderBenchCyclePanels(effectiveData) {
   window.lpStatUpdateVisibility?.();
 }
 
+// ─── lp-stat 경기 정보 사이클 패널 ─────────────────────────────────────────
+
+/** lp-stat 경기 정보 사이클 패널 HTML 빌드. */
+function buildMatchInfoCyclePanel(effectiveData) {
+  const matchInfo = effectiveData?.matchInfo || {};
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  const homeAccent = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));
+  const awayAccent = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
+
+  const homeCoach = getCoachName(effectiveData?.homeLineup) || '-';
+  const awayCoach = getCoachName(effectiveData?.awayLineup) || '-';
+  const referee = matchInfo.refereeName || '-';
+  const leagueName = matchInfo.leagueName || '-';
+  const leagueRound = String(matchInfo.leagueRound || '').trim();
+  const venueName = matchInfo.venueName || '-';
+  const venueCity = String(matchInfo.venueCity || '').trim();
+  const venue = (venueCity && venueName !== '-') ? `${venueName}, ${venueCity}` : venueName;
+  const kickoff = formatBenchKickoffLocal(matchInfo);
+
+  const miRow = (label, value, accentColor) => {
+    const labelStyle = accentColor ? ` style="--mi-label-color:${dpEscape(accentColor)}"` : '';
+    return `<div class="mi-row">
+      <span class="mi-label"${labelStyle}>${dpEscape(label)}</span>
+      <span class="mi-value">${dpEscape(value || '-')}</span>
+    </div>`;
+  };
+
+  return `<div class="st-title-bar mi-panel-title">경기 정보</div>
+<div class="mi-body">
+  <div class="mi-section">
+    ${miRow('홈 감독', homeCoach, homeAccent)}
+    ${miRow('원정 감독', awayCoach, awayAccent)}
+  </div>
+  <div class="mi-sep"></div>
+  <div class="mi-section">
+    ${miRow('주심', referee)}
+  </div>
+  <div class="mi-sep"></div>
+  <div class="mi-section">
+    ${miRow('대회', leagueName)}
+    ${leagueRound ? miRow('라운드', leagueRound) : ''}
+    ${miRow('경기장', venue)}
+    ${miRow('킥오프', kickoff)}
+  </div>
+</div>`;
+}
+
+/** lp-stat 경기 정보 사이클 패널 렌더 — _lpStatMatchInfoAvailable 플래그 갱신.
+ *  lpStatUpdateVisibility는 이후 renderBenchCyclePanels에서 한 번만 호출됨. */
+function renderMatchInfoCyclePanel(effectiveData) {
+  const hasData = !!(effectiveData?.matchInfo);
+  window._lpStatMatchInfoAvailable = hasData;
+  document.querySelectorAll('.lp-stat [data-match-info-panel]').forEach(el => {
+    el.innerHTML = hasData ? buildMatchInfoCyclePanel(effectiveData) : '';
+  });
+}
+
 /** 부상자 명단 패널 전체 갱신 — 타이틀/입력버튼/팀명/좌우 리스트. */
 function renderInjuryPanel(effectiveData, rawData) {
   const panel = document.getElementById('injuryPanel');
@@ -1059,6 +1116,7 @@ function rerenderLineupPanels() {
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
   syncTacticsBoard(effectiveData);
+  renderMatchInfoCyclePanel(effectiveData);
   renderBenchCyclePanels(effectiveData);
 
   // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
@@ -1138,6 +1196,8 @@ function clearLineupPanels() {
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
 
   window._lpStatBenchData = null;
+  window._lpStatMatchInfoAvailable = false;
+  document.querySelectorAll('.lp-stat [data-match-info-panel]').forEach(el => { el.innerHTML = ''; });
   window.lpStatUpdateVisibility?.();
 }
 

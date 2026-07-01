@@ -31,6 +31,7 @@ const _STAT_CYCLE_LABELS = {
   bench_home: '홈 교체',
   bench_away: '원정 교체',
   standings: '순위표',
+  match_info: '경기 정보',
 };
 
 const _STAT_CYCLE_ICONS = {
@@ -40,6 +41,7 @@ const _STAT_CYCLE_ICONS = {
   bench_home: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
   bench_away: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
   standings:  `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="2" rx="1"/><rect x="1" y="6" width="12" height="2" rx="1"/><rect x="1" y="10" width="12" height="2" rx="1"/></svg>`,
+  match_info: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6.25" y="6" width="1.5" height="4.5" rx=".6"/><circle cx="7" cy="3.75" r=".9"/></svg>`,
 };
 
 const _STAT_PAUSE_ICONS = {
@@ -355,10 +357,12 @@ function lpStatAvailableModes() {
     && window.hthCanLoadForFixture(window._eventsLastData);
   const hasBenchHome = !!(window._lpStatBenchData?.home);
   const hasBenchAway = !!(window._lpStatBenchData?.away);
+  const hasMatchInfo = !!(window._lpStatMatchInfoAvailable);
   if (hasEvents) modes.push('events');
   if (hasHth) modes.push('hth');
   if (hasBenchHome) modes.push('bench_home');
   if (hasBenchAway) modes.push('bench_away');
+  if (hasMatchInfo) modes.push('match_info');
   return modes;
 }
 /** hth 모드로 전환될 때 데이터가 fresh하지 않으면 HTH 데이터를 미리 로드. */
@@ -397,6 +401,9 @@ function lpStatUpdateVisibility() {
   document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
     el.style.display = mode === 'bench_away' ? '' : 'none';
     if (mode === 'bench_away') requestAnimationFrame(() => window.lpBenchCycleRebalance?.(el));
+  });
+  document.querySelectorAll('.lp-stat [data-match-info-panel]').forEach(el => {
+    el.style.display = mode === 'match_info' ? '' : 'none';
   });
   document.querySelectorAll('.lp-stat [data-scoreaxis-standings-panel]').forEach(el => {
     el.style.display = 'none';
