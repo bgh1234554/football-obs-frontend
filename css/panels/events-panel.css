@@ -23,6 +23,7 @@
       position: relative;
       display: flex;
       align-items: center;
+      justify-content: center;
       height: var(--panel-title-bar-height);
       min-height: var(--panel-title-bar-height);
       box-sizing: border-box;
@@ -31,23 +32,28 @@
       margin-bottom: 6px;
       z-index: 4;
     }
-    /* ev-title-bar 전체 기준 정중앙 — 왼쪽 토글 버튼/오른쪽 필터와 무관하게 항상 중앙 */
-    .ev-title {
+    /* 모드 버튼(좌)·필터(우)를 absolute로 빼고 justify-content:center로 제목을 정중앙 정렬 */
+    .ev-title-bar .small-panel-mode-buttons {
       position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .ev-title {
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
-      color: rgba(255,255,255,.70);
+      color: rgba(255,255,255,.88);
       pointer-events: none;
+      position: relative;
+      z-index: 1;
     }
     .ev-filter-shell {
-      flex: 0 0 auto;
-      position: relative;
-      margin-left: auto;
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
     }
     .ev-filter-btn {
       display: inline-flex;
@@ -147,12 +153,7 @@
       max-height: 220px;
       overflow-y: auto;
       padding-right: 2px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,.2) transparent;
     }
-    .ev-filter-options::-webkit-scrollbar { width: 5px; }
-    .ev-filter-options::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
-    .ev-filter-options::-webkit-scrollbar-track { background: transparent; }
     .ev-filter-option {
       display: flex;
       align-items: center;
@@ -270,11 +271,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,.2) transparent;
     }
-    .ev-subst-picker-list::-webkit-scrollbar { width: 5px; }
-    .ev-subst-picker-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
     .ev-subst-picker-empty {
       padding: 20px;
       text-align: center;
@@ -362,12 +359,7 @@
       flex-direction: column;
       gap: 4px;
       padding-right: 2px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,.25) transparent;
     }
-    .ev-list::-webkit-scrollbar { width: 6px; }
-    .ev-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
-    .ev-list::-webkit-scrollbar-track { background: transparent; }
 
     .ev-empty {
       flex: 1 1 auto;

@@ -20,12 +20,7 @@
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.25) transparent;
 }
-.hth-list::-webkit-scrollbar { width: 6px; }
-.hth-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
-.hth-list::-webkit-scrollbar-track { background: transparent; }
 
 .hth-row {
   display: flex;

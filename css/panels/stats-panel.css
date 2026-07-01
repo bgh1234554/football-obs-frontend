@@ -206,21 +206,8 @@
       color: #f0f0f0;
       font-family: var(--font-family);
       overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(148,163,184,.45) transparent;
     }
     .lp-stat [data-scoreaxis-standings-panel] { padding: 4px 10px 6px; }
-    .lp-events-s [data-scoreaxis-standings-panel]::-webkit-scrollbar,
-    .lp-stat [data-scoreaxis-standings-panel]::-webkit-scrollbar { width: 7px; }
-    .lp-events-s [data-scoreaxis-standings-panel]::-webkit-scrollbar-track,
-    .lp-stat [data-scoreaxis-standings-panel]::-webkit-scrollbar-track { background: transparent; }
-    .lp-events-s [data-scoreaxis-standings-panel]::-webkit-scrollbar-thumb,
-    .lp-stat [data-scoreaxis-standings-panel]::-webkit-scrollbar-thumb {
-      background: rgba(148,163,184,.42);
-      border: 2px solid rgba(var(--panel-ui-rgb), var(--panel-alpha));
-      border-radius: 999px;
-      background-clip: padding-box;
-    }
     .scoreaxis-standings-list {
       flex: 1 0 auto;
       min-height: calc(100% - var(--panel-title-bar-height) - 10px);
@@ -338,7 +325,7 @@
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
-      color: rgba(255,255,255,.70);
+      color: rgba(255,255,255,.88);
       padding: 0;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
@@ -506,4 +493,64 @@
       border-color: rgba(76,217,100,.55);
       color: #4cd964;
       letter-spacing: 0;
+    }
+
+    /* ── 경기 정보 사이클 패널 ── */
+    .lp-stat [data-match-info-panel] {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 10px 6px;
+      box-sizing: border-box;
+      color: #f0f0f0;
+      font-family: var(--font-family);
+      overflow: hidden;
+    }
+    .mi-panel-title {
+      margin-bottom: 4px;
+    }
+    .mi-body {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .mi-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 5px 0;
+    }
+    .mi-sep {
+      flex: 0 0 1px;
+      background: rgba(255,255,255,.12);
+    }
+    .mi-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .mi-label {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      color: var(--mi-label-color, #ff9900);
+      font-weight: 600;
+      font-size: 12px;
+      padding-top: 1px;
+    }
+    .mi-value {
+      flex: 1 1 0;
+      min-width: 0;
+      text-align: right;
+      word-break: break-word;
+      color: rgba(255,255,255,.92);
+    }
+    body.low-panel-alpha .lp-stat [data-match-info-panel] :is(.mi-panel-title, .mi-label, .mi-value) {
+      text-shadow: var(--low-panel-text-outline);
     }

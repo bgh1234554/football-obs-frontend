@@ -3034,7 +3034,6 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     if (!candidates.length) return [];
 
     const fixtureText = getFixtureSearchText(input);
-    if (fixtureText && isNonStandingsRound(fixtureText)) return [];
     if (candidates.length <= 1) return candidates;
     if (!fixtureText) return candidates;
 
