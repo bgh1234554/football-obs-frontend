@@ -248,21 +248,21 @@
 
 .fsm-board .div-rc {
     position: absolute;
-    top: -16px;
+    top: 16px;
     gap: 6px;
     z-index: -1;
 }
 
 .fsm-board #rcHome {
     display: flex;
-    left: 10px;
+    left: 20px;
     justify-content: flex-end; 
     flex-direction: row-reverse;
 }
 
 .fsm-board #rcAway {
     display: flex;
-    right: 10px;
+    right: 20px;
     justify-content: flex-start; 
     flex-direction: row-reverse;
 }

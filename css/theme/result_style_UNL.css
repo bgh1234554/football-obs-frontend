@@ -30,7 +30,7 @@
     vertical-align: middle;
     margin: 0 auto;
     margin-top: 30px;   
-    clip-path: polygon(0% 55%, 4% 0%, 96% 0%, 100% 55%, 96% 100%, 4% 100%);
+    /* clip-path: polygon(0% 55%, 4% 0%, 96% 0%, 100% 55%, 96% 100%, 4% 100%); */
 }
 
 .fsm-board .div-background {
@@ -77,13 +77,12 @@
     font-weight: bold;
     color: white;
     text-align: center;
-    padding: 8px;
     background: #48516E;
     transition: 0.4s ease-in-out;
 }
 
 .fsm-board .score-div {
-    height: auto;
+    height: 48px;
     font-family: 'Pretendard-Medium';
     font-size: 26px;
     font-weight: bold;
@@ -109,10 +108,11 @@
     width: 52px;
     height: 48px;
     background: whitesmoke;
-    border: 2px solid whitesmoke;
+    border: 1px solid whitesmoke;
     position: relative;
     transition: 0.4s ease-in-out;
     transform: rotate(45deg);
+    overflow: hidden;
 }
 
 .fsm-board #team-logo-left {
@@ -239,21 +239,21 @@
 
 .fsm-board .div-rc {
     position: absolute;
-    top: -16px;
+    top: 16px;
     gap: 6px;
     z-index: -1;
 }
 
 .fsm-board #rcHome {
     display: flex;
-    left: 10px;
+    left: 80px;
     justify-content: flex-end; 
     flex-direction: row-reverse;
 }
 
 .fsm-board #rcAway {
     display: flex;
-    right: 10px;
+    right: 80px;
     justify-content: flex-start; 
     flex-direction: row-reverse;
 }
