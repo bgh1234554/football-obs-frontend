@@ -139,6 +139,7 @@ function applyTheme(theme, logoUrl) {
       // default / pl / cl / uel / 나머지 모든 테마
       jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
       jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
+      jQuery('.fsm-board .team-logo > img').css({outline: 'none'});
       // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
   }
