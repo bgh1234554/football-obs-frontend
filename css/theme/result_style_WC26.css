@@ -1,0 +1,308 @@
+@font-face {
+    font-family: 'SsangmunDongB';
+    src: url('/resources/fonts/Typo_SsangmunDongB.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Koverwatch';
+    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Pretendard-Medium';
+    src: url('/resources/fonts/Pretendard-Medium.woff') format('woff');
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('/resources/fonts/NanumGothic.ttf') format('woff');
+}
+@font-face {
+    font-family: 'GmarketSansMedium';
+    src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
+}
+
+.fsm-board { margin:0; padding:0; overflow:hidden; }
+
+.fsm-board .scoreboard-main {
+    width: 656px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 auto;
+    margin-top: 30px;
+}
+
+.fsm-board .div-background {
+    width: 656px;
+    height: 48px;
+    position: absolute;
+    display: flex;
+}
+
+.fsm-board .teams-left, .teams-right {
+    width: 240px;
+    height: 48px;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .team-name {
+    width: 100%;
+    height: 100%;
+    color: white;
+    font-family: 'GmarketSansMedium';
+    font-size: 33px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 6px;
+}
+
+.fsm-board .teams-left > .team-name {
+    display: flex;
+    justify-content: flex-start;
+    margin-left: 20px;
+}
+
+.fsm-board .teams-right > .team-name {
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 20px;
+}
+
+.fsm-board .text {
+    text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
+}
+
+.fsm-board .team-score {
+    width: 50px;
+    font-family: 'Pretendard-Medium';
+    font-size: 34px;
+    font-weight: bold;
+    color: black;
+    text-align: center;
+    transition: 0.4s ease-in-out;
+    position: absolute;
+    z-index: 2;
+    background: #A0FBDC;
+    padding: 4px;
+}
+
+.fsm-board #team-score-left {
+    margin-right: 110px;
+    border-top-left-radius: 15px;
+    border-bottom-left-radius: 15px;
+}
+
+.fsm-board #team-score-right {
+    margin-left: 110px;
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+
+.fsm-board .score-div {
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 26px;
+    font-weight: bold;
+    background: #A0FBDC;
+    color: white;
+    text-align: center;
+    transition: 0.4s ease-in-out;
+    border-radius: 15px;
+}
+
+.fsm-board .hipen {
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .divider {
+    display: none;
+}
+
+.fsm-board .team-logo {
+    width: 80px;
+    height: 48px;
+    background: whitesmoke;
+    border: 2px solid whitesmoke;
+    position: relative;
+    transition: 0.4s ease-in-out;
+    overflow: hidden;
+}
+
+.fsm-board #team-logo-left {
+    border-top-left-radius: 15px;
+    border-bottom-left-radius: 15px;
+}
+
+.fsm-board #team-logo-right {
+    border-top-right-radius: 15px;
+    border-bottom-right-radius: 15px;
+}
+
+.fsm-board .team-logo > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.fsm-board .epl-lion {
+    width: 58px;
+    height: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    background: black;
+    padding: 4px;
+    border-radius: 15px;
+    margin-top: -15px;
+}
+
+.fsm-board .scoreboard-timer {
+    width: 180px;
+    height: 32px;
+    margin: 0 auto;
+    text-align: center;
+    vertical-align: middle;
+    color: black;
+    font-family: 'NanumGothic';
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.4s ease-in-out;
+    margin-top: -10px;
+}
+
+.fsm-board .time {
+    width: 114px;
+    height: 100%;
+    background: #CDFB0A;
+    position: relative;
+    z-index: -1;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .extra-time {
+    width: 80px;
+    height: 32px;
+    color: black;
+    background: lime;
+    transition: 0.5s ease-in-out;
+    position: absolute;
+    margin-left: 0px;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .pso-status {
+    width: 360px;
+    height: 32px;
+    top: 78px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    align-items: flex-start;
+    position: absolute;
+    z-index: 1;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .pso-main {
+    width: 100%;
+    height: 0px;
+    transition: 0.4s ease-in-out;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    background: white;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.fsm-board .pso-circle {
+    width: 25px;
+    height: 25px;
+    border-radius: 20px;
+    border: 1px solid black;
+    margin: 2px;
+    transition: 0.4s ease-in-out;
+}
+
+.fsm-board .pso-status > .pso-main ul {
+    width: 100%;
+    height: 32px;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fsm-board .pso-middle {
+    display: flex;
+    font-family: 'NanumGothic';
+    font-weight: bold;
+    font-size: 20px;
+    margin: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.clock-editor {
+    margin-top: 100px;
+}
+
+.pk-wrap.show, .pk-score-row {
+    display: none;
+}
+
+.fsm-board .div-rc {
+    position: absolute;
+    top: 16px;
+    gap: 6px;
+    z-index: -1;
+}
+
+.fsm-board #rcHome {
+    display: flex;
+    left: 20px;
+    justify-content: flex-end; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board #rcAway {
+    display: flex;
+    right: 20px;
+    justify-content: flex-start; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board .div-rc .rc-card {
+    width: 14px;
+    height: 22px;
+    background: #ef4444;
+    border-radius: 3px;
+}
+
+.fsm-board #rcHome .rc-card {
+    transform: skewX(3deg);
+}
+
+.fsm-board #rcAway .rc-card {
+    transform: skewX(-3deg);
+}
+
+.fsm-board .div-rc.hidden {
+    display: none; 
+}

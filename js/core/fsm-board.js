@@ -3,13 +3,14 @@ const LEAGUE_THEME_MAP = {
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png' },
   2:   { theme: 'cl',      logoUrl: null },  // UEFA Champions League (leagues.csv CDN URL 우선)
   3:   { theme: 'uel',     logoUrl: null },  // UEFA Europa League
-  17:  { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite (leagueId 확인 필요)
+  17:  { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite
   5:   { theme: 'unl',     logoUrl: null },  // UEFA Nations League
-  4:   { theme: 'er24',    logoUrl: null },  // UEFA Euro 2024 (leagueId 확인 필요)
+  4:   { theme: 'er24',    logoUrl: null },  // UEFA Euro 2024
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png' },
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg' },
   292: { theme: 'kleague', logoUrl: null },  // K League 1
-  1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg' },  // FIFA CWC 2025 (leagueId 확인 필요)
+  1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg' },
+  1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg' }
   // 리그 추가 시 여기에만 한 줄 추가
 };
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
@@ -72,6 +73,10 @@ function applyTheme(theme, logoUrl) {
     case 'er24':
       changeCSS('css/theme/result_style_EURO24.css', CSS_LINK_INDEX);
       break;
+    case 'wc26':
+      changeCSS('css/theme/result_style_WC26.css', CSS_LINK_INDEX);
+      jQuery('.epl-lion').attr('src', logoUrl);
+      break; 
     default:
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
   }
@@ -115,6 +120,11 @@ function applyTheme(theme, logoUrl) {
     if (theme === 'pl') {
       jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none'});
       jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none'});
+    } if (theme === 'wc26') {
+      jQuery('.fsm-board .teams-left').css({background: 'black', color: 'white', borderBottom: 'none'});
+      jQuery('.fsm-board .teams-right').css({background: 'black', color: 'white', borderBottom: 'none'});
+      jQuery('.fsm-board #team-logo-left').css({background: '', boxShadow: '6px 0 0 0 ' + state.colors.homeBg});
+      jQuery('.fsm-board #team-logo-right').css({background: '', boxShadow: '-6px 0 0 0 ' + state.colors.awayBg});
     } else {
       // default / pl / cl / uel / 나머지 모든 테마
       jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg});
