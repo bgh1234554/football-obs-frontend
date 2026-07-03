@@ -14,10 +14,10 @@
 }
 
 /* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */
-#rcHome, #rcAway {
+/* #rcHome, #rcAway {
   position: absolute;
   top: 0;
-}
+} */
 
 /* PK 점수 행: FSM에 없으므로 별도 표시 */
 #pkScoreRow {

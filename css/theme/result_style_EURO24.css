@@ -27,7 +27,6 @@
     justify-content: center;
     align-items: center;
     vertical-align: middle;
-    overflow: hidden;
     margin: 0 auto;
     margin-top: 20px;
 }
@@ -251,4 +250,44 @@
 
 .pk-wrap.show, .pk-score-row {
     display: none;
+}
+
+.fsm-board .div-rc {
+    position: absolute;
+    top: -16px;
+    gap: 6px;
+    z-index: -1;
+}
+
+.fsm-board #rcHome {
+    display: flex;
+    left: 10px;
+    justify-content: flex-end; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board #rcAway {
+    display: flex;
+    right: 10px;
+    justify-content: flex-start; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board .div-rc .rc-card {
+    width: 14px;
+    height: 22px;
+    background: #ef4444;
+    border-radius: 3px;
+}
+
+.fsm-board #rcHome .rc-card {
+    transform: skewX(3deg);
+}
+
+.fsm-board #rcAway .rc-card {
+    transform: skewX(-3deg);
+}
+
+.fsm-board .div-rc.hidden {
+    display: none; 
 }
