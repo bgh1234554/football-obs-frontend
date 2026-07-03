@@ -53,7 +53,7 @@
     height: 100%;
     color: white;
     font-family: 'GmarketSansMedium';
-    font-size: 33px;
+    font-size: 30px;
     font-weight: bold;
     text-align: center;
     margin-top: 6px;
@@ -76,27 +76,27 @@
 }
 
 .fsm-board .team-score {
-    width: 50px;
+    width: 40px;
     font-family: 'Pretendard-Medium';
-    font-size: 34px;
+    font-size: 32px;
     font-weight: bold;
     color: black;
     text-align: center;
     transition: 0.4s ease-in-out;
     position: absolute;
-    z-index: 2;
+    z-index: 1;
     background: #A0FBDC;
     padding: 4px;
 }
 
 .fsm-board #team-score-left {
-    margin-right: 110px;
+    margin-right: 95px;
     border-top-left-radius: 15px;
     border-bottom-left-radius: 15px;
 }
 
 .fsm-board #team-score-right {
-    margin-left: 110px;
+    margin-left: 95px;
     border-top-right-radius: 15px;
     border-bottom-right-radius: 15px;
 }
@@ -128,7 +128,6 @@
     width: 80px;
     height: 48px;
     background: whitesmoke;
-    border: 2px solid whitesmoke;
     position: relative;
     transition: 0.4s ease-in-out;
     overflow: hidden;
@@ -137,30 +136,37 @@
 .fsm-board #team-logo-left {
     border-top-left-radius: 15px;
     border-bottom-left-radius: 15px;
+    border-bottom: 3px solid #E9A186;
+    border-left: 5px solid #661D18;
+    border-top: 3px solid #661D18;
 }
 
 .fsm-board #team-logo-right {
     border-top-right-radius: 15px;
     border-bottom-right-radius: 15px;
+    border-bottom: 3px solid #BDE74C;
+    border-right: 5px solid #AD8BF7;
+    border-top: 3px solid #AD8BF7;
 }
 
 .fsm-board .team-logo > img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
 }
 
 .fsm-board .epl-lion {
     width: 58px;
-    height: 70px;
+    height: 68px;
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1;
+    z-index: 2;
     background: black;
     padding: 4px;
     border-radius: 15px;
     margin-top: -15px;
+    position: relative;
 }
 
 .fsm-board .scoreboard-timer {
@@ -169,7 +175,7 @@
     margin: 0 auto;
     text-align: center;
     vertical-align: middle;
-    color: black;
+    color: white;
     font-family: 'NanumGothic';
     font-size: 22px;
     font-weight: bold;
@@ -183,7 +189,7 @@
 .fsm-board .time {
     width: 114px;
     height: 100%;
-    background: #CDFB0A;
+    background: black;
     position: relative;
     z-index: -1;
     transition: 0.4s ease-in-out;
@@ -192,8 +198,8 @@
 .fsm-board .extra-time {
     width: 80px;
     height: 32px;
-    color: black;
-    background: lime;
+    color: lime;
+    background: black;
     transition: 0.5s ease-in-out;
     position: absolute;
     margin-left: 0px;
@@ -203,7 +209,7 @@
 .fsm-board .pso-status {
     width: 360px;
     height: 32px;
-    top: 78px;
+    top: 80px;
     text-align: center;
     display: flex;
     justify-content: center;
@@ -222,16 +228,17 @@
     display: flex;
     justify-content: center;
     vertical-align: middle;
-    background: white;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    background: black;
+    color: white;
+    border-radius: 10px;
+    border: 1px solid white;
 }
 
 .fsm-board .pso-circle {
     width: 25px;
     height: 25px;
     border-radius: 20px;
-    border: 1px solid black;
+    border: 1px solid white;
     margin: 2px;
     transition: 0.4s ease-in-out;
 }

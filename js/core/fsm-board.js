@@ -1,29 +1,33 @@
 const LEAGUE_THEME_MAP = {
   // EPL: 'pl' 또는 'pl2' 중 선택. pl2는 팀 컬러가 배경이 되는 스타일
-  39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png' },
-  2:   { theme: 'cl',      logoUrl: null },  // UEFA Champions League (leagues.csv CDN URL 우선)
-  3:   { theme: 'uel',     logoUrl: null },  // UEFA Europa League
-  17:  { theme: 'acle',    logoUrl: null },  // AFC Champions League Elite
-  5:   { theme: 'unl',     logoUrl: null },  // UEFA Nations League
-  4:   { theme: 'er24',    logoUrl: null },  // UEFA Euro 2024
-  61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png' },
-  135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg' },
-  292: { theme: 'kleague', logoUrl: null },  // K League 1
-  1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg' },
-  1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg' }
+  39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
+  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA Champions League (leagues.csv CDN URL 우선)
+  3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA Europa League
+  17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC Champions League Elite
+  5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA Nations League
+  4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA Euro 2024
+  61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png', type: 'club' },
+  135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
+  292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K League 1
+  1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
+  1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
   // 리그 추가 시 여기에만 한 줄 추가
 };
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
+const FSM_FALLBACK_TYPE = 'club';
 const CSS_LINK_INDEX = 17;
-var _currentTheme = 'default'
+var _currentTheme = 'default';
+var _currentType = 'club';
 
 window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   const entry = LEAGUE_THEME_MAP[leagueId];
   const theme = entry ? entry.theme : FSM_FALLBACK_THEME;
+  const type = entry ? entry.type : FSM_FALLBACK_TYPE;
   // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
   const logoUrl = entry?.logoUrl || apiLeagueLogoUrl || null;
 
   _currentTheme = theme;
+  _currentType = type;
   // FSM의 기존 switch 로직을 그대로 재활용
   applyTheme(theme, logoUrl);
 };
@@ -91,8 +95,14 @@ function applyTheme(theme, logoUrl) {
 
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
     // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영됩니다.
-    jQuery('.fsm-board #logo-imgLeft').css({objectFit: 'contain'}).attr('src', state.homeLogo);
-    jQuery('.fsm-board #logo-imgRight').css({objectFit: 'contain'}).attr('src', state.awayLogo);
+
+    if(_currentType == 'national') {
+      jQuery('.fsm-board #logo-imgLeft').css({objectFit: 'cover'}).attr('src', state.homeLogo);
+      jQuery('.fsm-board #logo-imgRight').css({objectFit: 'cover'}).attr('src', state.awayLogo);
+    } else {
+      jQuery('.fsm-board #logo-imgLeft').css({objectFit: 'contain'}).attr('src', state.homeLogo);
+      jQuery('.fsm-board #logo-imgRight').css({objectFit: 'contain'}).attr('src', state.awayLogo);
+    }
 
     // 팀 컬러 언더라인 — 현재 테마에 따라 다르게 처리 (applyTheme()에서 호출됨)
     // pl2 테마는 언더라인 대신 팀 컬러 배경을 사용: state.colors.homeBg / state.colors.awayBg
@@ -118,17 +128,17 @@ function applyTheme(theme, logoUrl) {
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
     if (theme === 'pl') {
-      jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none'});
-      jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none'});
+      jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
+      jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
     } if (theme === 'wc26') {
-      jQuery('.fsm-board .teams-left').css({background: 'black', color: 'white', borderBottom: 'none'});
-      jQuery('.fsm-board .teams-right').css({background: 'black', color: 'white', borderBottom: 'none'});
-      jQuery('.fsm-board #team-logo-left').css({background: '', boxShadow: '6px 0 0 0 ' + state.colors.homeBg});
-      jQuery('.fsm-board #team-logo-right').css({background: '', boxShadow: '-6px 0 0 0 ' + state.colors.awayBg});
+      jQuery('.fsm-board .teams-left').css({background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
+      jQuery('.fsm-board .teams-right').css({background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
+      jQuery('.fsm-board #team-logo-left').css({background: '', boxShadow: '8px 0 0 0 ' + state.colors.homeBg});
+      jQuery('.fsm-board #team-logo-right').css({background: '', boxShadow: '-8px 0 0 0 ' + state.colors.awayBg});
     } else {
       // default / pl / cl / uel / 나머지 모든 테마
-      jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg});
-      jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg});
+      jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
+      jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
       // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
   }
