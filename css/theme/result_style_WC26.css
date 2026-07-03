@@ -213,8 +213,8 @@
     position: relative;
     z-index: -1;
     transition: 0.4s ease-in-out;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
 }
 
 .fsm-board .extra-time {
@@ -226,7 +226,7 @@
     position: absolute;
     margin-left: 0px;
     transition: 0.4s ease-in-out;
-    border-bottom-right-radius: 10px;
+    border-bottom-right-radius: 15px;
 }
 
 .fsm-board .pso-status {
