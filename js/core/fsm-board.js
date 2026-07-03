@@ -133,8 +133,8 @@ function applyTheme(theme, logoUrl) {
     } if (theme === 'wc26') {
       jQuery('.fsm-board .teams-left').css({background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       jQuery('.fsm-board .teams-right').css({background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
-      jQuery('.fsm-board #team-logo-left').css({background: '', boxShadow: '8px 0 0 0 ' + state.colors.homeBg});
-      jQuery('.fsm-board #team-logo-right').css({background: '', boxShadow: '-8px 0 0 0 ' + state.colors.awayBg});
+      jQuery('.fsm-board #homeColor').css({background: state.colors.homeBg});
+      jQuery('.fsm-board #awayColor').css({background: state.colors.awayBg});
     } else {
       // default / pl / cl / uel / 나머지 모든 테마
       jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});

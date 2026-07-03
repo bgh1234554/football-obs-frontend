@@ -146,6 +146,10 @@
     display: none;
 }
 
+.fsm-board .team-color {
+    display: none;
+}
+
 .fsm-board .scoreboard-timer {
     width: 180px;
     height: 32px;

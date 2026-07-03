@@ -137,6 +137,10 @@
     display: none;
 }
 
+.fsm-board .team-color {
+    display: none;
+}
+
 .fsm-board #team-logo-left {
     background: linear-gradient(120deg, #89abc2 10%, skyblue);
 }
