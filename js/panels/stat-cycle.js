@@ -20,6 +20,11 @@ const _lpAuto = {
   scrollProgrammaticTimer: null,
   scrollExpectedTop: null,
   scrollListeners: [],
+  // 새 이벤트가 들어와 이벤트 패널로 강제 전환될 때(lpStatPrepareForNewEvent), 다음
+  // _lpAutoStart()가 이벤트 모드를 시작할 때 한 번만 소비할 "고정 하단 유지 시간(ms)".
+  // 평소 자동 순환(맨 아래 10% 유지)과 달리 항상 5초 고정 — FLIP 삽입 애니메이션이 보일
+  // 시간을 확보한 뒤에 스크롤을 시작하기 위함.
+  pendingNewEventHoldMs: null,
 };
 
 const _LP_SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
@@ -190,8 +195,13 @@ function _lpBindEventsScrollInterruption(el) {
  * 이벤트 패널에 스크롤이 있으면 맨 아래에서 시작해
  * intervalMs의 10% 동안 맨 아래를 보여주고, 65% 동안 등속도로 맨 위까지 스크롤한다.
  * 이후 나머지 25% 동안 맨 위를 보여준 뒤 다음 패널로 자동 전환한다.
+ *
+ * options.fixedHoldBottomMs가 주어지면(새 이벤트로 강제 전환된 경우, lpStatResumeAfterNewEventRendered)
+ * "맨 아래 유지" 구간을 intervalMs의 10%가 아니라 이 고정값으로 쓴다 — FLIP 삽입 애니메이션이
+ * 다 보일 시간(항상 5초)을 먼저 확보한 뒤, 슬라이드 시간(intervalMs)은 스크롤+마지막 유지에만
+ * 그대로 적용한다(둘을 합친 총 시간 = fixedHoldBottomMs + intervalMs).
  */
-function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
+function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, options = {}) {
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
   const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away';
@@ -201,9 +211,12 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
   }
   _lpBindEventsScrollInterruption(el);
 
-  const holdBottom = Math.max(0, intervalMs * 0.10);
+  const hasFixedHold = Number.isFinite(options.fixedHoldBottomMs);
+  const holdBottom = hasFixedHold ? Math.max(0, options.fixedHoldBottomMs) : Math.max(0, intervalMs * 0.10);
   const scrollDuration = Math.max(0, intervalMs * 0.65);
-  const waitAfter = Math.max(0, intervalMs - holdBottom - scrollDuration);
+  const waitAfter = hasFixedHold
+    ? Math.max(0, intervalMs - scrollDuration)
+    : Math.max(0, intervalMs - holdBottom - scrollDuration);
 
   const startAfterLayout = () => {
     const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -218,14 +231,16 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
         _lpAuto.scrollTimer = setTimeout(() => {
           _lpAuto.scrollTimer = null;
           if (_lpStatCycle.mode === mode) {
-            _lpStartEventsScroll(intervalMs, mode, _retryCount + 1);
+            _lpStartEventsScroll(intervalMs, mode, _retryCount + 1, options);
           }
         }, 100);
         return;
       }
       _lpSetEventsScrollTop(el, endTop);
       _lpClearEventsScrollListeners();
-      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+      // 스크롤할 내용 자체가 없는 경우 — 고정 유지 시간이 있으면(새 이벤트 강조 표시) 그만큼은
+      // 최소한 보장하고 그 위에 슬라이드 시간을 더한다.
+      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), hasFixedHold ? holdBottom + intervalMs : intervalMs);
       return;
     }
 
@@ -267,13 +282,27 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0) {
     _lpAuto.scrollRaf = requestAnimationFrame(startAfterLayout);
   });
 }
+/** 상대전적 경기 수가 많으면 슬라이드 시간을 비례해서 늘린다(HTH 패널 전용).
+ *  경기 수가 (기준 슬라이드 시간(초) * 1.25) 이상이면, 경기 1개당 1초 기준으로 재계산. */
+const HTH_RATIO = 1.25;
+
+function _lpHthAdjustedIntervalMs(baseIntervalMs) {
+  const count = Array.isArray(window._hthState?.hthData?.matches)
+    ? window._hthState.hthData.matches.length : 0;
+  const baseSec = baseIntervalMs / 1000;
+  if (baseSec > 0 && count >= baseSec * HTH_RATIO) {
+    return Math.round(count * 1000);
+  }
+  return baseIntervalMs;
+}
+
 function _lpStartHthScrollWhenReady(intervalMs) {
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
   const ready = lpStatEnsureModeReady('hth');
 
   if (!needsLoading) {
-    _lpStartEventsScroll(intervalMs, 'hth');
+    _lpStartEventsScroll(_lpHthAdjustedIntervalMs(intervalMs), 'hth');
     return;
   }
 
@@ -281,7 +310,7 @@ function _lpStartHthScrollWhenReady(intervalMs) {
   Promise.resolve(ready).then(() => {
     if (_lpStatCycle.mode !== 'hth' || !_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
     if (_lpAuto.timer) { clearTimeout(_lpAuto.timer); _lpAuto.timer = null; }
-    _lpStartEventsScroll(intervalMs, 'hth');
+    _lpStartEventsScroll(_lpHthAdjustedIntervalMs(intervalMs), 'hth');
   });
 }
 
@@ -293,6 +322,13 @@ function _lpAutoClear() {
   if (_lpAuto.fallback) { clearTimeout(_lpAuto.fallback); _lpAuto.fallback = null; }
   _lpAuto.listening = false;
   _lpStopEventsScroll();
+}
+
+/** 지금 진행 중인 자동 사이클 타이머/스크롤이 있는지(= _lpAutoStart를 다시 부르면
+ *  안전하게 이어지는 게 아니라 처음부터 다시 시작해버리는 상태인지). */
+function _lpAutoIsActive() {
+  return !!(_lpAuto.timer || _lpAuto.fallback || _lpAuto.listening
+    || _lpAuto.scrollRaf || _lpAuto.scrollTimer);
 }
 
 /** 현재 모드에 맞게 자동 사이클 타이머/리스너 셋업 */
@@ -318,7 +354,12 @@ function _lpAutoStart() {
       }, (intervalMs * pages) + 500);
     }
   } else if (mode === 'events') {
-    _lpStartEventsScroll(intervalMs, mode);
+    // lpStatResumeAfterNewEventRendered가 예약해둔 "고정 5초 유지"를 1회 소비 — 새 이벤트 삽입
+    // 애니메이션이 다 보인 뒤에 스크롤을 시작하기 위함. 평소 자동 순환 진입 시엔 null이라
+    // 기존 방식(intervalMs의 10%)대로 동작.
+    const fixedHoldBottomMs = _lpAuto.pendingNewEventHoldMs;
+    _lpAuto.pendingNewEventHoldMs = null;
+    _lpStartEventsScroll(intervalMs, mode, 0, fixedHoldBottomMs != null ? { fixedHoldBottomMs } : {});
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
   } else {
@@ -343,7 +384,7 @@ function lpStatAutoAdvance() {
   if (nextMode === 'stats' && _lpStatCycle.mode !== 'stats') window.stResetAllPanelPages?.();
   _lpStatCycle.mode = nextMode;
   lpStatUpdateVisibility();
-  lpStatEnsureModeReady(_lpStatCycle.mode);
+  _lpEnsureModeReadyUnlessAutoHandled(_lpStatCycle.mode);
   // lpStatUpdateVisibility 내에서 _lpAutoStart() 호출됨
 }
 
@@ -365,6 +406,19 @@ function lpStatAvailableModes() {
   if (hasMatchInfo) modes.push('match_info');
   return modes;
 }
+/**
+ * lpStatEnsureModeReady(mode)를 호출하되, 자동 전환이 켜져 있을 때는 건너뛴다.
+ * 자동 전환 ON이면 _lpAutoStart() -> _lpStartHthScrollWhenReady()가 이미 hth 데이터를
+ * ensure하므로, 여기서 또 호출하면 applyHthPanel이 두 번 실행돼 hth-list DOM이
+ * 스크롤 애니메이션 시작 직후 통째로 교체되어(스크롤 대상이 detach) "스크롤이 2번
+ * 일어나는 것처럼" 보이는 버그가 있었다. 자동 전환 OFF일 때(수동 클릭)는
+ * _lpAutoStart가 아무 것도 하지 않으므로 계속 직접 호출해야 한다.
+ */
+function _lpEnsureModeReadyUnlessAutoHandled(mode) {
+  if (_lpIsCycleAutoOn() && !_lpStatCycle.paused) return;
+  lpStatEnsureModeReady(mode);
+}
+
 /** hth 모드로 전환될 때 데이터가 fresh하지 않으면 HTH 데이터를 미리 로드. */
 function lpStatEnsureModeReady(mode) {
 
@@ -414,7 +468,15 @@ function lpStatUpdateVisibility() {
 
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();
-  _lpAutoStart();
+  // lpStatUpdateVisibility()는 실제 모드 전환뿐 아니라, applyStatsPanel/renderBenchCyclePanels
+  // 등에서 매 폴링(진행 중 경기 15초 간격)마다도 호출된다. 이미 스크롤/타이머가 진행 중인데
+  // 매번 _lpAutoStart()를 부르면 _lpAutoClear()가 진행 중인 애니메이션을 끊고 처음부터
+  // 다시 시작시켜, 상대전적처럼 dwell 시간이 긴 패널이 끝까지 재생되지 못하고 계속
+  // "처음부터 다시 재생"되는 것처럼 보이는 버그가 있었다. 진짜 모드 전환 경로
+  // (lpStatAutoAdvance/lpStatCycleNext/lpStatReset/lpStatPrepareForNewEvent)는 전부
+  // lpStatUpdateVisibility() 호출 전에 _lpAutoClear()를 먼저 부르므로, 이미 아무 것도
+  // 진행 중이지 않을 때만 _lpAutoStart()를 실행해도 새 모드 전환은 그대로 즉시 반영된다.
+  if (!_lpAutoIsActive()) _lpAutoStart();
 }
 function lpStatUpdateBtn() {
   const available = lpStatAvailableModes();
@@ -465,7 +527,7 @@ function lpStatCycleNext() {
   if (nextMode === 'stats' && _lpStatCycle.mode !== 'stats') window.stResetAllPanelPages?.();
   _lpStatCycle.mode = nextMode;
   lpStatUpdateVisibility();
-  lpStatEnsureModeReady(_lpStatCycle.mode);
+  _lpEnsureModeReadyUnlessAutoHandled(_lpStatCycle.mode);
 }
 
 function lpStatReset() {
@@ -474,6 +536,40 @@ function lpStatReset() {
   _lpStatCycle.paused = false;
   window._lpStatBenchData = null;
   lpStatUpdateVisibility();
+}
+
+/**
+ * 새 이벤트가 로드됐을 때(fixture.js) 호출하는 2단계 인터럽트 — Phase 1.
+ * applyEventsPanel이 새 row를 렌더하기 *전에* 먼저 이벤트 패널을 보이는 상태로 전환해둔다.
+ * applyEventsPanel의 삽입 애니메이션(opacity/transform transition)은 실제로 화면에 그려지고
+ * 있는 요소에서만 재생되므로, 컨테이너가 display:none인 채로 렌더되면 애니메이션이 스킵된
+ * 것처럼(순간 이동) 보인다 — 그래서 렌더 전에 미리 보이게 만들어야 한다.
+ * 호출자는 반환값이 true일 때만 이어서 lpStatResumeAfterNewEventRendered()를 호출해야 한다
+ * (이미 이벤트 패널을 보고 있던 경우 등은 아무 것도 하지 않고 false를 반환).
+ */
+function lpStatPrepareForNewEvent() {
+  if (!_lpIsCycleAutoOn() || _lpStatCycle.paused) return false;
+  if (_lpStatCycle.mode === 'events') return false; // 이미 보고 있으면 진행 중인 스크롤 그대로 둠
+  const modes = lpStatAvailableModes();
+  if (!modes.includes('events')) return false;
+  _lpAutoClear();
+  _lpStatCycle.mode = 'events';
+  lpStatUpdateVisibility();
+  return true;
+}
+
+/**
+ * Phase 2 — applyEventsPanel로 새 이벤트가 실제 렌더된 *직후* 호출.
+ * 삽입 애니메이션이 다 보일 시간(항상 고정 5초)을 맨 아래에서 확보한 뒤, 슬라이드 시간은
+ * 스크롤(+마지막 유지)에만 그대로 적용한다. 이후 자동 전환은 lpStatAvailableModes()의 고정
+ * 순서를 그대로 타므로, 이벤트를 보여준 다음부터는 원래 로테이션 순서대로 계속 이어진다.
+ */
+function lpStatResumeAfterNewEventRendered() {
+  if (!_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
+  if (_lpStatCycle.mode !== 'events') return;
+  _lpAutoClear();
+  _lpAuto.pendingNewEventHoldMs = 5000;
+  _lpAutoStart();
 }
 
 // ─── 이벤트 리스너 ────────────────────────────────────────────────────────────
@@ -503,6 +599,8 @@ document.addEventListener('settings:change', e => {
 // window 노출
 window.lpStatCycleNext = lpStatCycleNext;
 window.lpStatReset = lpStatReset;
+window.lpStatPrepareForNewEvent = lpStatPrepareForNewEvent;
+window.lpStatResumeAfterNewEventRendered = lpStatResumeAfterNewEventRendered;
 window.lpStatUpdateBtn = lpStatUpdateBtn;
 window.lpStatUpdatePauseBtn = lpStatUpdatePauseBtn;
 window.lpStatTogglePause = lpStatTogglePause;

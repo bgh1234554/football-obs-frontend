@@ -556,6 +556,13 @@
       font-size: 12px;
       padding-top: 1px;
     }
+    /* 팀 컬러 라벨(홈/원정 감독)이 패널 배경과 비슷할 때만 글자 자체에 은은한 화이트 테두리(stroke)
+       추가 (박스/배경이 아니라 글자 획 자체를 둘러싸는 외곽선 — miRow가 대비 부족 여부 판단,
+       색은 항상 고정된 MI_LABEL_BORDER_COLOR — 보색이 아님, 팀 컬러별로 튀는 색 방지). */
+    .mi-label.mi-label-accented {
+      -webkit-text-stroke: 1px var(--mi-label-border-color, transparent);
+      paint-order: stroke fill;
+    }
     .mi-value {
       flex: 1 1 0;
       min-width: 0;

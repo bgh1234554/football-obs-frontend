@@ -380,9 +380,25 @@
       min-height: 36px;
       transform-origin: top center;
     }
+    /* 새 이벤트 진입 글로우 — 안쪽 테두리 링은 항상 흰색 고정, 바깥으로 퍼지는 빛만 이벤트
+       종류 색(.ev-bar-{color}, 아래 "이벤트 종류별 색상 막대" 규칙과 동일한 색)으로 나온다.
+       --ev-new-glow 기본값(흰색)은 .ev-bar-* 클래스가 못 붙는 경우를 위한 fallback.
+       duration(900ms)은 js/panels/events-panel.js의 EVENTS_PANEL_ROW_GLOW_MS와 반드시 일치. */
     .ev-row.ev-row-new {
+      --ev-new-glow: rgba(255, 255, 255, 0.925);
       background: rgba(59,130,246,.10);
-      box-shadow: inset 0 0 0 1px rgba(191,219,254,.35);
+      animation: ev-row-glow 900ms ease-out 1;
+    }
+    @keyframes ev-row-glow {
+      0% {
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 0 var(--ev-new-glow);
+      }
+      25% {
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px var(--ev-new-glow);
+      }
+      100% {
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 0 transparent;
+      }
     }
     /* 하프타임/후반종료/연장전반종료/연장후반종료/풀타임 구간 구분자 — 양옆 디바이더 라인 +
        가운데 라벨. 일반 이벤트 row와 달리 막대/배경 없이 가운데 정렬. */
@@ -422,6 +438,14 @@
     /* greenscreen 모드: 교체 막대를 마젠타로 치환 (utils.js의 toChromaSafeColor와 같은 hue 영역).
        기본 #22c55e (134°) → 마젠타 (~314°). */
     body.greenscreen-mode .ev-bar-green .ev-bar { background: #c522b8; }
+    /* 새 이벤트 글로우 색 — 위 막대 색과 동일하게, 종류별로 --ev-new-glow만 재정의. */
+    .ev-row-new.ev-bar-blue   { --ev-new-glow: #3b82f6; }
+    .ev-row-new.ev-bar-yellow { --ev-new-glow: #f5c518; }
+    .ev-row-new.ev-bar-red    { --ev-new-glow: #ef4444; }
+    .ev-row-new.ev-bar-green  { --ev-new-glow: #22c55e; }
+    .ev-row-new.ev-bar-orange { --ev-new-glow: #f97316; }
+    .ev-row-new.ev-bar-white  { --ev-new-glow: rgba(255, 255, 255, 0.925); }
+    body.greenscreen-mode .ev-row-new.ev-bar-green { --ev-new-glow: #c522b8; }
 
     /* 메인 줄 (단일 flex row): 시간 + 라벨 + 아이콘 + 텍스트 + 인라인 코멘트 + 팀 로고 */
     .ev-main {

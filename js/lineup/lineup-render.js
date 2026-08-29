@@ -918,12 +918,39 @@ function renderBenchCyclePanels(effectiveData) {
 
 // ─── lp-stat 경기 정보 사이클 패널 ─────────────────────────────────────────
 
+/**
+ * 경기 정보 패널의 실제 배경색 근사치.
+ * [data-match-info-panel] 자신은 배경이 없고 .lp-stat의 배경(`--panel-bg:
+ * rgba(var(--panel-ui-rgb), var(--panel-alpha))`)이 그대로 비친다 — .lp-lineup류가 쓰는
+ * `--lp-pitch-alpha`가 아니라 `--panel-alpha`가 실제로 적용되는 값이다(이전엔 이걸 착각해서
+ * 유사도 판정이 거의 항상 빗나갔음). 그 값을 페이지 배경(`--bg-ui`) 위에 알파 합성해 추정한다
+ * (그린스크린 모드 등으로 `--bg-ui`가 진한 초록이고 패널이 반투명하면 그 색이 비쳐 보임).
+ */
+function miResolveEffectiveBgHex() {
+  const panelRgb = (typeof parseAnyColor === 'function') ? parseAnyColor(`rgb(${getCSS('--panel-ui-rgb') || '11, 18, 32'})`) : null;
+  const base = (typeof parseAnyColor === 'function') ? parseAnyColor(normalizeTeamColorHex(getCSS('--bg-ui')) || '#111827') : null;
+  if (!panelRgb || !base || typeof rgbToHex !== 'function') return '#0b1220';
+  const alpha = clampNum(parseFloat(getCSS('--panel-alpha')), 0, 1, 1);
+  const blend = (p, b) => p * alpha + b * (1 - alpha);
+  return rgbToHex(blend(panelRgb.r, base.r), blend(panelRgb.g, base.g), blend(panelRgb.b, base.b));
+}
+
+// WCAG AA 기준(일반 텍스트 4.5:1)을 기준으로 삼는다. 팀 컬러 유사도(deltaE)는 "두 팀 배지색이
+// 구분되는가"를 보는 지표라 톤(초록 vs 청록)만 달라도 안 비슷하다고 판정되기 쉬운데, 여기서
+// 문제되는 건 어두운 팀 컬러 글자가 어두운 패널 배경에 묻히는 "명도 대비" 부족이라 밝기 기반
+// contrast ratio가 더 맞다.
+const MI_LABEL_MIN_CONTRAST = 4.5;
+// 테두리(stroke) 색 — 팀 컬러의 보색을 쓰면 팀 컬러에 따라 형광/원색이 튀어나와 눈이 피로할 수
+// 있어, 항상 이 고정된 은은한 화이트로 통일한다(완전한 #ffffff보다 살짝 차분하게).
+const MI_LABEL_BORDER_COLOR = '#e6e6e6';
+
 /** lp-stat 경기 정보 사이클 패널 HTML 빌드. */
 function buildMatchInfoCyclePanel(effectiveData) {
   const matchInfo = effectiveData?.matchInfo || {};
   const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
   const homeAccent = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));
   const awayAccent = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
+  const effectiveBg = miResolveEffectiveBgHex();
 
   const homeCoach = getCoachName(effectiveData?.homeLineup) || '-';
   const awayCoach = getCoachName(effectiveData?.awayLineup) || '-';
@@ -936,9 +963,23 @@ function buildMatchInfoCyclePanel(effectiveData) {
   const kickoff = formatBenchKickoffLocal(matchInfo);
 
   const miRow = (label, value, accentColor) => {
-    const labelStyle = accentColor ? ` style="--mi-label-color:${dpEscape(accentColor)}"` : '';
+    let labelClass = 'mi-label';
+    let labelStyle = '';
+    if (accentColor) {
+      const styleParts = [`--mi-label-color:${dpEscape(accentColor)}`];
+      // 팀 컬러와 패널 배경의 명도 대비가 부족하면(둘 다 어두운 톤이라 글자가 묻히는 경우 등)
+      // 테두리를 둘러 구분되게 한다. 보색은 팀 컬러에 따라 형광/원색이 나올 수 있어 눈이
+      // 피로하므로, 항상 고정된 은은한 화이트(완전 #fff는 아님)로 통일.
+      const contrast = (typeof teamColorContrastRatio === 'function')
+        ? teamColorContrastRatio(accentColor, effectiveBg) : 21;
+      if (contrast < MI_LABEL_MIN_CONTRAST) {
+        styleParts.push(`--mi-label-border-color:${MI_LABEL_BORDER_COLOR}`);
+        labelClass += ' mi-label-accented';
+      }
+      labelStyle = ` style="${styleParts.join(';')}"`;
+    }
     return `<div class="mi-row">
-      <span class="mi-label"${labelStyle}>${dpEscape(label)}</span>
+      <span class="${labelClass}"${labelStyle}>${dpEscape(label)}</span>
       <span class="mi-value">${dpEscape(value || '-')}</span>
     </div>`;
   };

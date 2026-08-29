@@ -95,19 +95,62 @@
   // ── 시간 프리셋 드롭다운 (":" hover 시 표시) ──
   // 콜론에서 드롭다운으로 마우스를 옮기는 동안 시각적 공백(스코어박스 하단 패딩)을
   // 지나가므로, 즉시 닫지 않고 250ms 유예 후 닫음. 둘 중 하나에 다시 들어오면 취소.
+  // 추가로 콜론<->프리셋 사이 공백을 이동하는 동안에는 mousemove로 "안전 영역"(둘의
+  // bounding rect를 합친 사각형 + 여백) 안에 있는지 계속 확인해 hide 타이머를 취소한다.
+  // (하프 화면 캠 작은 페이지 등에서 두 요소 사이 간격이 커 250ms 안에 못 넘어가면
+  // 버튼에 도달하기 전에 패널이 닫혀버리는 문제 대응)
   let _cePresetHideTimer = null;
+  let _ceSafeZoneMoveHandler = null;
+
+  function ceGetSafeZoneRect() {
+    if (!ceColon || !cePresets) return null;
+    const a = ceColon.getBoundingClientRect();
+    const b = cePresets.getBoundingClientRect();
+    const pad = 12;
+    return {
+      left: Math.min(a.left, b.left) - pad,
+      right: Math.max(a.right, b.right) + pad,
+      top: a.top - pad,
+      bottom: b.bottom + pad,
+    };
+  }
+
+  function ceStartSafeZoneTracking() {
+    if (_ceSafeZoneMoveHandler) return;
+    _ceSafeZoneMoveHandler = (e) => {
+      const rect = ceGetSafeZoneRect();
+      if (!rect) return;
+      const inside = e.clientX >= rect.left && e.clientX <= rect.right
+        && e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (inside) clearTimeout(_cePresetHideTimer);
+      else ceScheduleHidePresets();
+    };
+    document.addEventListener('mousemove', _ceSafeZoneMoveHandler);
+  }
+
+  function ceStopSafeZoneTracking() {
+    if (!_ceSafeZoneMoveHandler) return;
+    document.removeEventListener('mousemove', _ceSafeZoneMoveHandler);
+    _ceSafeZoneMoveHandler = null;
+  }
+
   function ceShowPresets() {
     if (!cePresets) return;
     clearTimeout(_cePresetHideTimer);
     cePresets.classList.add('open');
+    ceStartSafeZoneTracking();
   }
   function ceScheduleHidePresets() {
     clearTimeout(_cePresetHideTimer);
-    _cePresetHideTimer = setTimeout(() => cePresets?.classList.remove('open'), 250);
+    _cePresetHideTimer = setTimeout(() => {
+      cePresets?.classList.remove('open');
+      ceStopSafeZoneTracking();
+    }, 250);
   }
   function ceHidePresetsNow() {
     clearTimeout(_cePresetHideTimer);
     cePresets?.classList.remove('open');
+    ceStopSafeZoneTracking();
   }
   ceColon?.addEventListener('mouseenter', ceShowPresets);
   ceColon?.addEventListener('mouseleave', ceScheduleHidePresets);
