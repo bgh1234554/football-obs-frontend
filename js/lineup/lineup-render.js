@@ -959,7 +959,7 @@ function buildMatchInfoCyclePanel(effectiveData) {
   const leagueRound = String(matchInfo.leagueRound || '').trim();
   const venueName = matchInfo.venueName || '-';
   const venueCity = String(matchInfo.venueCity || '').trim();
-  const venue = (venueCity && venueName !== '-') ? `${venueName}, ${venueCity}` : venueName;
+  const venue = (venueCity && venueName !== '-' && venueCity !== venueName) ? `${venueName}, ${venueCity}` : venueName;
   const kickoff = formatBenchKickoffLocal(matchInfo);
 
   const miRow = (label, value, accentColor) => {

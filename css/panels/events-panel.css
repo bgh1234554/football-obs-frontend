@@ -386,6 +386,7 @@
        duration(900ms)은 js/panels/events-panel.js의 EVENTS_PANEL_ROW_GLOW_MS와 반드시 일치. */
     .ev-row.ev-row-new {
       --ev-new-glow: rgba(255, 255, 255, 0.925);
+
       background: rgba(59,130,246,.10);
       animation: ev-row-glow 900ms ease-out 1;
     }

@@ -567,7 +567,7 @@
       flex: 1 1 0;
       min-width: 0;
       text-align: right;
-      word-break: break-word;
+      overflow-wrap: anywhere;
       color: rgba(255,255,255,.92);
     }
     body.low-panel-alpha .lp-stat [data-match-info-panel] :is(.mi-panel-title, .mi-label, .mi-value) {

@@ -137,18 +137,24 @@
   function ceShowPresets() {
     if (!cePresets) return;
     clearTimeout(_cePresetHideTimer);
+    _cePresetHideTimer = null;
     cePresets.classList.add('open');
     ceStartSafeZoneTracking();
   }
   function ceScheduleHidePresets() {
-    clearTimeout(_cePresetHideTimer);
+    // 이미 예약된 타이머가 있으면 새로 잡지 않는다 — 세이프존 밖에서 마우스가 계속
+    // 움직이면 mousemove마다 이 함수가 불려서, 매번 250ms로 리셋되면 타이머가 영영
+    // 발동을 못 해 드롭다운이 안 닫히는 버그가 있었다.
+    if (_cePresetHideTimer) return;
     _cePresetHideTimer = setTimeout(() => {
+      _cePresetHideTimer = null;
       cePresets?.classList.remove('open');
       ceStopSafeZoneTracking();
     }, 250);
   }
   function ceHidePresetsNow() {
     clearTimeout(_cePresetHideTimer);
+    _cePresetHideTimer = null;
     cePresets?.classList.remove('open');
     ceStopSafeZoneTracking();
   }
