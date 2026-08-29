@@ -43,7 +43,7 @@
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
-      color: rgba(255,255,255,.88);
+      color: #fff; /* .st-title-bar와 동일 흰색 — lp-stat 사이클 모드 간 제목 색 통일 (2026-08 피드백) */
       pointer-events: none;
       position: relative;
       z-index: 1;

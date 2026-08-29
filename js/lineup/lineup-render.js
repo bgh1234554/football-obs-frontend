@@ -744,6 +744,75 @@ function renderBenchPanel(effectiveData, rawData) {
 let _benchCycleResizeObs = null;
 const BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS = 15;
 const BENCH_CYCLE_OVERFLOW_EPSILON_PX = 2;
+const BC_CYCLE_TITLE_FONT_MAX = 12; // .st-title-bar 기본 font-size와 동일
+const BC_CYCLE_TITLE_FONT_MIN = 9;
+
+// 교체명단 타이틀과 겹칠 수 있는 .lp-stat 컨트롤 버튼들 — 왼쪽/오른쪽에 뜰 수 있는 것만 구분.
+// 개수/위치는 상태에 따라 달라지므로(순환 버튼만 있을 때 vs 새로고침·순위표 팝업까지 뜰 때)
+// 실제로 화면에 떠 있는 것만 매번 실측한다 — 고정 padding으로 예약해두면 버튼이 적게 떠 있을 때
+// 제목이 한쪽으로 쏠려 보이는 문제가 있었다(2026-08 피드백).
+const BC_CYCLE_TITLE_LEFT_BTN_SELECTORS = ['.lp-stat-cycle-btn', '.lp-stat-refresh-btn', '.lp-stat-standings-popup-btn'];
+const BC_CYCLE_TITLE_RIGHT_BTN_SELECTORS = ['.lp-stat-pause-btn'];
+const BC_CYCLE_TITLE_SAFE_GAP_PX = 6;
+
+// 텍스트 폭 측정 전용 오프스크린 canvas — 재사용(매번 새로 만들지 않음).
+let _bcTitleMeasureCtx = null;
+/**
+ * 후보 폰트 크기로 렌더했을 때 텍스트의 "진짜" 자연 폭을 잰다.
+ * titleEl.scrollWidth는 쓸 수 없다 — .bc-cycle-title은 width:100%(패널 전체 폭)인 flex
+ * 컨테이너라서, 텍스트가 그 폭보다 짧아 안 넘칠 때는 scrollWidth가 텍스트 폭이 아니라
+ * "박스 자체의 폭"(=패널 전체 폭)을 그대로 반환한다 — 그래서 (버튼 안전영역만큼 줄인) 더 좁은
+ * availableWidth와 비교하면 텍스트가 짧아도 항상 "넘친다"고 오판정해 매번 최소 폰트까지
+ * 줄어드는 버그가 있었다(2026-08 피드백: "px을 줄일 필요가 없는데 줄어들었어"). canvas
+ * measureText는 박스 크기와 무관하게 텍스트 자체의 폭만 재므로 이 문제가 없다.
+ */
+function bcMeasureTitleWidth(text, fontSizePx, sampleEl) {
+  if (!_bcTitleMeasureCtx) _bcTitleMeasureCtx = document.createElement('canvas').getContext('2d');
+  const ctx = _bcTitleMeasureCtx;
+  const cs = getComputedStyle(sampleEl);
+  ctx.font = `${cs.fontWeight} ${fontSizePx}px ${cs.fontFamily}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = cs.letterSpacing;
+  return ctx.measureText(text).width;
+}
+
+/**
+ * 교체명단 사이클 패널 타이틀(팀명 + "교체명단")이 길어서 .lp-stat 위에 절대좌표로 뜨는
+ * 순환/새로고침/순위표팝업/일시정지 버튼과 겹칠 때, 잘라내는 대신 폰트를 한 줄 안에 들어올
+ * 때까지 1px씩 점진적으로 줄인다 — events-panel.js의 evFitText와 동일한 정책(기본 크기로
+ * 시도 → 넘치면 축소 → 하한 도달하면 그대로 둠), 다만 폭 측정은 canvas로(위 설명 참조).
+ *
+ * 제목은 항상 정중앙 정렬(.st-title-bar의 justify-content:center)을 유지해야 하므로, 왼쪽/
+ * 오른쪽에 실제로 보이는 버튼들의 폭 중 더 넓은 쪽을 기준으로 양쪽에 똑같이 안전 여백을 두고
+ * (비대칭 padding을 쓰면 버튼이 적을 때 제목이 한쪽으로 쏠려 보임) 그 안에 들어오는지만 본다.
+ */
+function lpFitBenchCycleTitle(titleEl) {
+  if (!titleEl) return;
+  const lpStat = titleEl.closest('.lp-stat');
+  const panelRect = lpStat?.getBoundingClientRect();
+  if (!lpStat || !panelRect?.width) { titleEl.style.fontSize = ''; return; }
+
+  const isVisible = el => !!el && el.offsetParent !== null;
+  const btnEdgeFrom = (selectors, pick) => selectors.reduce((acc, sel) => {
+    const el = lpStat.querySelector(sel);
+    if (!isVisible(el)) return acc;
+    return pick(acc, el.getBoundingClientRect());
+  }, 0);
+  const leftEdge = btnEdgeFrom(BC_CYCLE_TITLE_LEFT_BTN_SELECTORS,
+    (acc, r) => Math.max(acc, r.right - panelRect.left));
+  const rightGap = btnEdgeFrom(BC_CYCLE_TITLE_RIGHT_BTN_SELECTORS,
+    (acc, r) => Math.max(acc, panelRect.right - r.left));
+
+  const sideMargin = Math.max(leftEdge, rightGap, 0) + BC_CYCLE_TITLE_SAFE_GAP_PX;
+  const availableWidth = Math.max(20, panelRect.width - sideMargin * 2);
+
+  const text = titleEl.textContent;
+  const MEASURE_BUFFER_PX = 2; // canvas vs 실제 DOM 렌더 간 미세한 커닝 차이 대비
+  let size = BC_CYCLE_TITLE_FONT_MAX;
+  while (bcMeasureTitleWidth(text, size, titleEl) + MEASURE_BUFFER_PX > availableWidth && size > BC_CYCLE_TITLE_FONT_MIN) {
+    size--;
+  }
+  titleEl.style.fontSize = size + 'px';
+}
 
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor) {
@@ -765,6 +834,8 @@ function buildBenchCyclePanelHtml(players, teamName, accentColor) {
  * (balance는 균등하게 나누지만 굳이 안 옮겨도 될 줄까지 오른쪽으로 끌고 가는 단점이 있어 폐기).
  */
 function lpBenchCycleRebalance(panel) {
+  lpFitBenchCycleTitle(panel?.querySelector('.bc-cycle-title'));
+
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
 
