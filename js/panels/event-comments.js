@@ -32,6 +32,7 @@ window.EVENT_COMMENT_KO = {
   'Argument':                   '항의',
   'Handball':                   '핸드볼',
   'Time wasting':               '시간 끌기',
+  'Abusive Language':           '모욕적인 언행',
   'Violent conduct':            '폭력 행위',
   'Persistent fouling':         '반복적 파울',
   'Simulation':                 '시뮬레이션',
@@ -45,7 +46,8 @@ window.EVENT_COMMENT_KO = {
   'Rescinded Card':             '카드 철회',
   'misses next match':          '다음 경기 출장 정지',
   'Offside':                    '오프사이드',
-
+  'Dissent':                    '판정 항의',
+  
   // 페널티 슛아웃
   'Penalty Shootout':             '승부차기',
 

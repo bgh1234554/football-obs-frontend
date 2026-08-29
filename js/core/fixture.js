@@ -746,6 +746,8 @@
       }
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
+      // 새 이벤트 감지용 — _lastFixtureData가 아래서 이번 data로 덮이기 전에 개수를 미리 저장.
+      const prevEventCount = Array.isArray(_lastFixtureData?.events) ? _lastFixtureData.events.length : 0;
       const previousStatus = String(_lastFixtureData?.matchInfo?.status || '');
       const newStatus = String(data?.matchInfo?.status || '');
       // FT(또는 AET/PEN)에 막 진입한 시점 — preserveRunningOnRefresh로 인해 applyFixtureToState의
@@ -796,9 +798,24 @@
       // buildEffectiveFixtureData를 거쳐야 alt→canonical ID 유사도 매칭 결과(닉네임 조회의
       // 기준이 되는 playerId)가 이벤트에도 반영된다 — raw data 그대로 넘기면 alt ID가 남아
       // 닉네임/한글화가 누락된다.
-      if (typeof applyEventsPanel === 'function') {
-        const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
-        applyEventsPanel(eventsPanelData);
+      const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+      // 새 이벤트가 로드됐으면(같은 fixture, 개수 증가) 캠 큰 메뉴 패널 자동 로테이션 중이던
+      // 순서를 끊고 이벤트 패널로 전환한다 — 단, applyEventsPanel이 새 row를 렌더하기 *전에*
+      // 먼저 컨테이너를 보이는 상태로 바꿔둬야 한다. applyEventsPanel의 삽입 애니메이션은
+      // display:none인 채로 렌더되면 재생되지 않고 그냥 순간 이동한 것처럼 보이기 때문
+      // (stat-cycle.js: lpStatPrepareForNewEvent 참고).
+      const newEventCount = Array.isArray(data.events) ? data.events.length : 0;
+      const isNewEventForSameFixture = previousFixtureId === normalizedFixtureId && newEventCount > prevEventCount;
+      let preparedForNewEvent = false;
+      if (isNewEventForSameFixture && typeof window.lpStatPrepareForNewEvent === 'function') {
+        // lpStatAvailableModes()가 최신 이벤트 유무를 바로 반영하도록 미리 갱신 —
+        // applyEventsPanel도 곧 같은 값으로 다시 대입하므로 중복 대입이라도 무해하다.
+        window._eventsLastData = eventsPanelData;
+        preparedForNewEvent = window.lpStatPrepareForNewEvent();
+      }
+      if (typeof applyEventsPanel === 'function') applyEventsPanel(eventsPanelData);
+      if (preparedForNewEvent && typeof window.lpStatResumeAfterNewEventRendered === 'function') {
+        window.lpStatResumeAfterNewEventRendered();
       }
       // HTH 자동 전환: 이벤트가 생기면 hth → events (Iter 7)
       if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);

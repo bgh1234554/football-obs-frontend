@@ -56,6 +56,7 @@
     'Strain':            '근육 긴장',
     'Muscle Bruise':     '근육 타박상',
     'Tendon Injury':     '힘줄 부상',
+    'Twisted Knee':      '무릎 접질림',
     'Ligament Injury':   '인대 부상',
     'ACL Injury':        '전방십자인대 부상',
     'Meniscus Injury':   '반월판 부상',

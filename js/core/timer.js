@@ -89,6 +89,79 @@
   const ceMin        = $('ceMin');
   const ceSec        = $('ceSec');
   const ceConfirm    = $('ceConfirm');
+  const ceColon      = $('ceColon');
+  const cePresets    = $('cePresets');
+
+  // ── 시간 프리셋 드롭다운 (":" hover 시 표시) ──
+  // 콜론에서 드롭다운으로 마우스를 옮기는 동안 시각적 공백(스코어박스 하단 패딩)을
+  // 지나가므로, 즉시 닫지 않고 250ms 유예 후 닫음. 둘 중 하나에 다시 들어오면 취소.
+  // 추가로 콜론<->프리셋 사이 공백을 이동하는 동안에는 mousemove로 "안전 영역"(둘의
+  // bounding rect를 합친 사각형 + 여백) 안에 있는지 계속 확인해 hide 타이머를 취소한다.
+  // (하프 화면 캠 작은 페이지 등에서 두 요소 사이 간격이 커 250ms 안에 못 넘어가면
+  // 버튼에 도달하기 전에 패널이 닫혀버리는 문제 대응)
+  let _cePresetHideTimer = null;
+  let _ceSafeZoneMoveHandler = null;
+
+  function ceGetSafeZoneRect() {
+    if (!ceColon || !cePresets) return null;
+    const a = ceColon.getBoundingClientRect();
+    const b = cePresets.getBoundingClientRect();
+    const pad = 12;
+    return {
+      left: Math.min(a.left, b.left) - pad,
+      right: Math.max(a.right, b.right) + pad,
+      top: a.top - pad,
+      bottom: b.bottom + pad,
+    };
+  }
+
+  function ceStartSafeZoneTracking() {
+    if (_ceSafeZoneMoveHandler) return;
+    _ceSafeZoneMoveHandler = (e) => {
+      const rect = ceGetSafeZoneRect();
+      if (!rect) return;
+      const inside = e.clientX >= rect.left && e.clientX <= rect.right
+        && e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (inside) clearTimeout(_cePresetHideTimer);
+      else ceScheduleHidePresets();
+    };
+    document.addEventListener('mousemove', _ceSafeZoneMoveHandler);
+  }
+
+  function ceStopSafeZoneTracking() {
+    if (!_ceSafeZoneMoveHandler) return;
+    document.removeEventListener('mousemove', _ceSafeZoneMoveHandler);
+    _ceSafeZoneMoveHandler = null;
+  }
+
+  function ceShowPresets() {
+    if (!cePresets) return;
+    clearTimeout(_cePresetHideTimer);
+    _cePresetHideTimer = null;
+    cePresets.classList.add('open');
+    ceStartSafeZoneTracking();
+  }
+  function ceScheduleHidePresets() {
+    // 이미 예약된 타이머가 있으면 새로 잡지 않는다 — 세이프존 밖에서 마우스가 계속
+    // 움직이면 mousemove마다 이 함수가 불려서, 매번 250ms로 리셋되면 타이머가 영영
+    // 발동을 못 해 드롭다운이 안 닫히는 버그가 있었다.
+    if (_cePresetHideTimer) return;
+    _cePresetHideTimer = setTimeout(() => {
+      _cePresetHideTimer = null;
+      cePresets?.classList.remove('open');
+      ceStopSafeZoneTracking();
+    }, 250);
+  }
+  function ceHidePresetsNow() {
+    clearTimeout(_cePresetHideTimer);
+    _cePresetHideTimer = null;
+    cePresets?.classList.remove('open');
+    ceStopSafeZoneTracking();
+  }
+  ceColon?.addEventListener('mouseenter', ceShowPresets);
+  ceColon?.addEventListener('mouseleave', ceScheduleHidePresets);
+  cePresets?.addEventListener('mouseenter', ceShowPresets);
+  cePresets?.addEventListener('mouseleave', ceScheduleHidePresets);
 
   /**
    * 시계 더블클릭 시 인라인 편집기를 열고, 확인/취소/외부클릭을 처리하는 편집 세션을 시작.
@@ -127,12 +200,23 @@
     function closeClockEditor() {
       clockEditor.classList.remove('active');
       clockEl.style.display = '';
+      ceHidePresetsNow();
     }
 
     // 체크 버튼 클릭 — applyTime + cleanup 묶어 호출.
     // (이전엔 cleanup 누락으로 keydown/mousedown 리스너가 다음 편집 세션에 중복 등록되어,
     // state.running=false 상태(스페이스 안 눌러 멈춰있을 때)에서 체크 버튼이 정상 동작 안 함)
     ceConfirm.onclick = () => { applyTime(); cleanup(); };
+
+    // 프리셋(00:00/45:00/90:00/105:00) 클릭 — 입력값을 프리셋으로 채운 뒤
+    // 수동 입력 + 체크 버튼과 완전히 동일한 경로(applyTime)로 적용 + 자동 재생
+    if (cePresets) cePresets.onclick = (e) => {
+      const btn = e.target.closest('.ce-preset-btn');
+      if (!btn) return;
+      ceMin.value = Math.max(0, parseInt(btn.dataset.min, 10) || 0);
+      ceSec.value = 0;
+      applyTime();
+    };
 
     // 4. Enter로 확인, Escape로 취소 (편집 세션 키보드 이벤트)
     function onKeyDown(e) {

@@ -65,13 +65,20 @@
                   <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
                   <button class="ce-arrow" id="ceMinDown">▼</button>
                 </div>
-                <div class="ce-colon">:</div>
+                <div class="ce-colon" id="ceColon" title="시간 프리셋 보기">:</div>
                 <div class="ce-unit">
                   <button class="ce-arrow" id="ceSecUp">▲</button>
                   <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
                   <button class="ce-arrow" id="ceSecDown">▼</button>
                 </div>
                 <button class="ce-confirm" id="ceConfirm">✓</button>
+                <!-- 시간 프리셋 드롭다운 (":" hover 시 스코어박스 너비로 아래 표시) -->
+                <div class="ce-presets" id="cePresets">
+                  <button class="ce-preset-btn" data-min="0">00:00</button>
+                  <button class="ce-preset-btn" data-min="45">45:00</button>
+                  <button class="ce-preset-btn" data-min="90">90:00</button>
+                  <button class="ce-preset-btn" data-min="105">105:00</button>
+                </div>
               </div>
               <span class="t extra hidden" id="extra">+0</span>
             </div>
@@ -685,6 +692,7 @@
             <div data-events-panel style="display:none"></div>
             <div data-bench-home-panel style="display:none"></div>
             <div data-bench-away-panel style="display:none"></div>
+            <div data-match-info-panel style="display:none"></div>
             <div data-scoreaxis-standings-panel style="display:none"></div>
           </div>
         </div>
@@ -736,7 +744,10 @@
                 <div data-bench-coach="away"><span class="dp-label">감독</span><span class="dp-coach-name">-</span></div>
               </div>
               <div class="dp-bench-venue" data-bench-venue>
-                <span class="dp-league-name">-</span>
+                <span class="dp-league-wrap">
+                  <span class="dp-label">대회</span>
+                  <span class="dp-league-name">-</span>
+                </span>
                 <span class="dp-venue-wrap">
                   <span class="dp-label dp-venue-label">경기장</span>
                   <span class="dp-venue-name">-</span>
@@ -1034,6 +1045,7 @@
   data-lang="en"
   data-theme="ObsOverlay"
   data-show-error="true"
+  data-show-errors="true"
   data-show-logos="true"
   data-refresh="45"
   data-favorite="true"
