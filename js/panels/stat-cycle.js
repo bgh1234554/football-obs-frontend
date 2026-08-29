@@ -28,6 +28,8 @@ const _lpAuto = {
 };
 
 const _LP_SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+const LP_PANEL_SCROLL_START_HOLD_RATIO = 0.10;
+const LP_PANEL_SCROLL_DURATION_RATIO = 0.65;
 
 const _STAT_CYCLE_LABELS = {
   stats: '스탯',
@@ -211,12 +213,24 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
   }
   _lpBindEventsScrollInterruption(el);
 
+  const hasCustomStartHold = Number.isFinite(options.startHoldMs);
+  const hasCustomScrollDuration = Number.isFinite(options.scrollDurationMs);
+  const hasCustomEndHold = Number.isFinite(options.endHoldMs);
   const hasFixedHold = Number.isFinite(options.fixedHoldBottomMs);
-  const holdBottom = hasFixedHold ? Math.max(0, options.fixedHoldBottomMs) : Math.max(0, intervalMs * 0.10);
-  const scrollDuration = Math.max(0, intervalMs * 0.65);
-  const waitAfter = hasFixedHold
+  const holdBottom = hasFixedHold
+    ? Math.max(0, options.fixedHoldBottomMs)
+    : hasCustomStartHold
+      ? Math.max(0, options.startHoldMs)
+    : Math.max(0, intervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO);
+  const scrollDuration = hasCustomScrollDuration
+    ? Math.max(0, options.scrollDurationMs)
+    : Math.max(0, intervalMs * LP_PANEL_SCROLL_DURATION_RATIO);
+  const waitAfter = hasCustomEndHold
+    ? Math.max(0, options.endHoldMs)
+    : hasFixedHold
     ? Math.max(0, intervalMs - scrollDuration)
     : Math.max(0, intervalMs - holdBottom - scrollDuration);
+  const totalDwellMs = holdBottom + scrollDuration + waitAfter;
 
   const startAfterLayout = () => {
     const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -240,7 +254,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
       _lpClearEventsScrollListeners();
       // 스크롤할 내용 자체가 없는 경우 — 고정 유지 시간이 있으면(새 이벤트 강조 표시) 그만큼은
       // 최소한 보장하고 그 위에 슬라이드 시간을 더한다.
-      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), hasFixedHold ? holdBottom + intervalMs : intervalMs);
+      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), totalDwellMs);
       return;
     }
 
@@ -282,18 +296,27 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
     _lpAuto.scrollRaf = requestAnimationFrame(startAfterLayout);
   });
 }
-/** 상대전적 경기 수가 많으면 슬라이드 시간을 비례해서 늘린다(HTH 패널 전용).
- *  경기 수가 (기준 슬라이드 시간(초) * 1.25) 이상이면, 경기 1개당 1초 기준으로 재계산. */
-const HTH_RATIO = 1.25;
+/** 상대전적 경기 수가 많으면 실제 스크롤 이동 시간을 비례해서 늘린다(HTH 패널 전용). */
+const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
-function _lpHthAdjustedIntervalMs(baseIntervalMs) {
+function _lpHthScrollOptions(baseIntervalMs) {
   const count = Array.isArray(window._hthState?.hthData?.matches)
     ? window._hthState.hthData.matches.length : 0;
+  if (!count || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
+
   const baseSec = baseIntervalMs / 1000;
-  if (baseSec > 0 && count >= baseSec * HTH_RATIO) {
-    return Math.round(count * 1000);
-  }
-  return baseIntervalMs;
+  const countThreshold = baseSec * HTH_ROWS_PER_SLIDE_SECOND;
+  if (count < countThreshold) return {};
+
+  const scrollGrowthRatio = count / countThreshold;
+  return {
+    startHoldMs: baseIntervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO,
+    scrollDurationMs: Math.round(baseIntervalMs * scrollGrowthRatio),
+    endHoldMs: Math.max(
+      0,
+      baseIntervalMs * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO)
+    ),
+  };
 }
 
 function _lpStartHthScrollWhenReady(intervalMs) {
@@ -302,7 +325,7 @@ function _lpStartHthScrollWhenReady(intervalMs) {
   const ready = lpStatEnsureModeReady('hth');
 
   if (!needsLoading) {
-    _lpStartEventsScroll(_lpHthAdjustedIntervalMs(intervalMs), 'hth');
+    _lpStartEventsScroll(intervalMs, 'hth', 0, _lpHthScrollOptions(intervalMs));
     return;
   }
 
@@ -310,7 +333,7 @@ function _lpStartHthScrollWhenReady(intervalMs) {
   Promise.resolve(ready).then(() => {
     if (_lpStatCycle.mode !== 'hth' || !_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
     if (_lpAuto.timer) { clearTimeout(_lpAuto.timer); _lpAuto.timer = null; }
-    _lpStartEventsScroll(_lpHthAdjustedIntervalMs(intervalMs), 'hth');
+    _lpStartEventsScroll(intervalMs, 'hth', 0, _lpHthScrollOptions(intervalMs));
   });
 }
 
