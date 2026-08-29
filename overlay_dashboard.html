@@ -65,13 +65,20 @@
                   <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
                   <button class="ce-arrow" id="ceMinDown">▼</button>
                 </div>
-                <div class="ce-colon">:</div>
+                <div class="ce-colon" id="ceColon" title="시간 프리셋 보기">:</div>
                 <div class="ce-unit">
                   <button class="ce-arrow" id="ceSecUp">▲</button>
                   <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
                   <button class="ce-arrow" id="ceSecDown">▼</button>
                 </div>
                 <button class="ce-confirm" id="ceConfirm">✓</button>
+                <!-- 시간 프리셋 드롭다운 (":" hover 시 스코어박스 너비로 아래 표시) -->
+                <div class="ce-presets" id="cePresets">
+                  <button class="ce-preset-btn" data-min="0">00:00</button>
+                  <button class="ce-preset-btn" data-min="45">45:00</button>
+                  <button class="ce-preset-btn" data-min="90">90:00</button>
+                  <button class="ce-preset-btn" data-min="105">105:00</button>
+                </div>
               </div>
               <span class="t extra hidden" id="extra">+0</span>
             </div>
