@@ -100,44 +100,14 @@ body.lp-small-resizing * {
   justify-content: stretch;
 }
 
+/* 팬 반응 OFF — 캠 큼(.lp-chat-big)/캠 작음(.lp-cam-chat) 둘 다 자리(칼럼 폭·높이)는 그대로
+   두고 완전히 투명하게만 만든다. 다른 컬럼/패널의 크기·분할 비율에 영향을 주지 않기 위해
+   display:none 대신 opacity:0을 사용 — 레이아웃 흐름에서 빠지지 않아 스탯 패널이 그
+   자리를 차지하러 늘어나지 않는다. */
 body.no-fan-reaction .layout-big .lp-chat-big,
 body.no-fan-reaction .layout-small .lp-cam-chat {
+  opacity: 0;
   pointer-events: none;
-  opacity: .34;
-  filter: grayscale(1) saturate(.18);
-}
-
-body.no-fan-reaction .layout-big .lp-chat-big .dp-panel,
-body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel {
-  position: relative;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(255,255,255,.035) 0 10px,
-      rgba(255,255,255,0) 10px 20px
-    );
-}
-
-body.no-fan-reaction .layout-big .lp-chat-big .dp-title,
-body.no-fan-reaction .layout-small .lp-cam-chat .dp-title {
-  color: rgba(255,255,255,.42);
-  border-bottom-color: rgba(255,255,255,.08);
-}
-
-body.no-fan-reaction .layout-big .lp-chat-big .dp-panel::after,
-body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel::after {
-  content: 'OFF';
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(8, 12, 18, .66);
-  color: rgba(255,255,255,.58);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .08em;
 }
 
 /* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.
