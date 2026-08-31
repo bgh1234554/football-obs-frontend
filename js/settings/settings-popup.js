@@ -36,6 +36,15 @@ const SETTINGS_DEFAULTS = {
   fanReaction: 'on',
   // 캠 큰 패널 자동 전환 (stat-cycle.js). off='off', on='on' 토글.
   statCycleAuto: 'on',
+  // 자동 전환(statCycleAuto) 순서에 각 패널을 포함시킬지 per-panel 토글 (stat-cycle.js).
+  // 체크 여부와 무관하게 해당 경기에 실제 데이터가 없는 패널은 lpStatAvailableModes()에서
+  // 애초에 제외되므로, 이 토글은 "데이터는 있지만 자동 전환에서는 보고 싶지 않은" 패널 제외용.
+  statCycleModeStats: 'on',
+  statCycleModeEvents: 'on',
+  statCycleModeHth: 'on',
+  statCycleModeBenchHome: 'on',
+  statCycleModeBenchAway: 'on',
+  statCycleModeMatchInfo: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
   statsAutoSwipeSec: 10,
@@ -325,6 +334,8 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
   'lineupShowSubTime', 'lineupShowNumber', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
+  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
+  'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
 ]);
 
 function isValidSetting(category, value) {

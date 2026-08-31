@@ -258,6 +258,19 @@
   transform: translateX(12px);
 }
 
+/* "자동 전환 시 표시할 패널" 6개 체크박스 — 줄바꿈 없이 한 줄로. 기본 .sp-row-label의
+   max-width(430px) 제한을 풀어 모달 너비를 그대로 활용하고, 아이템 간격을 살짝 줄인다. */
+.sp-row-panel-modes .sp-row-label {
+  max-width: none;
+}
+.sp-manual-reset-toggles-nowrap {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+.sp-manual-reset-toggles-nowrap .sp-mini-toggle-label {
+  white-space: nowrap;
+}
+
 /* ----- 토글 양옆 short/long 텍스트 라벨 ----- */
 .sp-toggle-cluster {
   display: inline-flex;
@@ -641,6 +654,11 @@
 
   .sp-file-input {
     max-width: none;
+  }
+
+  /* 좁은 화면에서는 한 줄 강제를 풀어 잘림 대신 줄바꿈으로 대응 */
+  .sp-manual-reset-toggles-nowrap {
+    flex-wrap: wrap;
   }
 }
 

@@ -532,6 +532,12 @@ function stResetAllPanelPages() {
   });
 }
 
+/** fixtureData에 실제로 표시할 스탯 row가 하나라도 있는지. stat-cycle.js의 가용 모드 판정용. */
+function stHasStatsRows(fixtureData) {
+  return stCollectRows(fixtureData).length > 0;
+}
+
 window.applyStatsPanel = applyStatsPanel;
 window.stRerenderActivePanels = stRerenderActivePanels;
 window.stResetAllPanelPages = stResetAllPanelPages;
+window.stHasStatsRows = stHasStatsRows;
