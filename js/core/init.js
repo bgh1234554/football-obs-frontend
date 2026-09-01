@@ -4,6 +4,9 @@
 
   // 1. LocalStorage에서 상태 복원
   restore();
+  if (state.leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
+    window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl || null);
+  }
   // 1-1. 수동 모드 상태 UI 반영
   if(state.manualMode){
     if(el.manualModeToggle) el.manualModeToggle.checked = true;

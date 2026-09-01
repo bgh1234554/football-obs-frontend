@@ -189,12 +189,6 @@ function applyTheme(theme, logoUrl) {
 (function init() {
   // 페이지 로드 즉시 default(친선경기) CSS 적용
   changeCSS('css/theme/result_style_default.css');
-
-  // localStorage에 저장된 leagueId가 있으면 복원 (선택 사항)
-  const savedLeagueId = localStorage.getItem('obs-last-league-id');
-  if (savedLeagueId) {
-    window.autoApplyTemplateByLeagueId(Number(savedLeagueId), null);
-  }
 })();
 
 window.fsmBoardRender = function() { applyText(); applyPSO(); };

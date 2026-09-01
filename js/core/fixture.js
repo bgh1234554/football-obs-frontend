@@ -785,6 +785,8 @@
       maybeTriggerFixtureFlash();
       setFixtureId(normalizedFixtureId);
       const leagueId = extractLeagueIdFromFixtureData(data);
+      state.leagueId = leagueId;
+      state.leagueLogoUrl = data.matchInfo?.leagueLogoUrl || null;
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
         try {
           await window.autoApplyTemplateByLeagueId(leagueId, data.matchInfo.leagueLogoUrl);

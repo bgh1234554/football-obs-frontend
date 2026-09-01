@@ -100,6 +100,8 @@
     noteBorderWidth: 1,
     noteMinHeight: 56,
     manualMode: false,
+    leagueId: null,
+    leagueLogoUrl: null
   };
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
