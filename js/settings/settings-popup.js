@@ -91,6 +91,7 @@ const SETTINGS_DEFAULTS = {
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   0,
   tacticsNameSize: 12, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
+  tacticsTokenScale: 100, // 전술판 선수 바둑알 크기 배율(%). 전술판 상단 슬라이더로 조정. 태블릿 등 작은 화면 대응.
   // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
   alphaTransparencyMode: 'transparency',
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
@@ -132,6 +133,9 @@ const LINEUP_NAME_SIZE_MIN = 9;
 const LINEUP_NAME_SIZE_MAX = 16;
 const TACTICS_NAME_SIZE_MIN = 7;
 const TACTICS_NAME_SIZE_MAX = 18;
+// 전술판 선수 바둑알 크기 배율(%) — 태블릿 등 작은 화면에서 기본 44px 원이 너무 크다는 피드백으로 추가.
+const TACTICS_TOKEN_SCALE_MIN = 50;
+const TACTICS_TOKEN_SCALE_MAX = 150;
 const LINEUP_PITCH_TONE_STYLES = {
   green: {
     background: 'linear-gradient(135deg, #1a7a3a 0%, #15662f 25%, #1a7a3a 50%, #15662f 75%, #1a7a3a 100%)',
@@ -370,6 +374,9 @@ function isValidSetting(category, value) {
   if (category === 'tacticsNameSize') {
     return Number.isFinite(value) && value >= TACTICS_NAME_SIZE_MIN && value <= TACTICS_NAME_SIZE_MAX;
   }
+  if (category === 'tacticsTokenScale') {
+    return Number.isFinite(value) && value >= TACTICS_TOKEN_SCALE_MIN && value <= TACTICS_TOKEN_SCALE_MAX;
+  }
   if (category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
     return Number.isFinite(value) && value >= 0 && value <= 100;
   }
@@ -540,7 +547,7 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize') applyLayoutSettings();
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -671,6 +678,7 @@ function applyLayoutSettings() {
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
   const tacticsNameSize = Math.max(TACTICS_NAME_SIZE_MIN, Math.min(TACTICS_NAME_SIZE_MAX, Number(getSetting('tacticsNameSize')) || 12));
+  const tacticsTokenScale = Math.max(TACTICS_TOKEN_SCALE_MIN, Math.min(TACTICS_TOKEN_SCALE_MAX, Number(getSetting('tacticsTokenScale')) || 100)) / 100;
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
     || LINEUP_PITCH_TONE_STYLES[SETTINGS_DEFAULTS.lineupPitchTone];
   const root = document.documentElement;
@@ -678,6 +686,7 @@ function applyLayoutSettings() {
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
+  root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
   // 그린스크린 ON일 때 피치 톤의 모든 색을 시안으로 자동 치환 (gradient/단색 모두 처리).
   // 사용자가 'green' 톤을 골라뒀어도 OBS 크로마키와 충돌하지 않게 보호.
   root.style.setProperty('--lp-pitch-bg',          chromaSafeGradient(pitchTone.background));

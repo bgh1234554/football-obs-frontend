@@ -413,7 +413,10 @@ function ttBindFullscreenToggle() {
   if (openBtn) {
     openBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      setOpen(!panel.classList.contains('is-open'));
+      const next = !panel.classList.contains('is-open');
+      // 그리기 도구 패널과 같은 우측 슬라이드 자리를 공유 — 겹치지 않도록 상대방을 먼저 닫는다.
+      if (next && typeof window.tdSetDrawToolbarOpen === 'function') window.tdSetDrawToolbarOpen(false);
+      setOpen(next);
     });
   }
   if (closeBtn) {
@@ -432,6 +435,9 @@ function ttBindFullscreenToggle() {
     if (openBtn && openBtn.contains(e.target)) return;
     setOpen(false);
   });
+
+  // 그리기 도구 쪽(tactics.js)에서 타임라인 패널을 닫을 수 있도록 노출.
+  window.ttSetTimelinePanelOpen = setOpen;
 }
 
 /**

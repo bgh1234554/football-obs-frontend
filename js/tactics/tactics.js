@@ -153,7 +153,11 @@
     const padBottom = parseFloat(styles.paddingBottom) || 0;
     const availableHeight = Math.max(0, main.clientHeight - padTop - padBottom);
     const toolbar = document.getElementById('tactics-draw-toolbar');
-    const toolbarWidth = toolbar ? Math.ceil(toolbar.getBoundingClientRect().width) : 0;
+    // 풀스크린에서는 그리기 도구 패널도 타임라인 패널처럼 position:fixed 오버레이 슬라이드 패널로
+    // 전환되어 평소엔 화면 밖(translateX(100%))에 숨어있다 — getBoundingClientRect().width는
+    // transform과 무관하게 레이아웃 상자 크기를 그대로 반환하므로, 닫혀 있어도 폭을 빼버리면
+    // 피치가 실제로 비어있는 공간만큼 불필요하게 작아진다. 풀스크린에선 예약 폭 0으로 취급.
+    const toolbarWidth = (toolbar && !document.fullscreenElement) ? Math.ceil(toolbar.getBoundingClientRect().width) : 0;
     const reservedPanelWidth = document.fullscreenElement ? 0 : 240;
     const maxPitchWidth = Math.max(0, main.clientWidth - toolbarWidth - reservedPanelWidth - padLeft - padRight);
     const pitchWidthByHeight = availableHeight * (105 / 68);
@@ -301,15 +305,15 @@
       position:absolute; left:${x}%; top:${y}%;
       transform:translate(-50%,-50%);
       display:flex; flex-direction:column; align-items:center;
-      user-select:none; cursor:grab; z-index:10;
+      user-select:none; cursor:grab; z-index:10; touch-action:none;
       transition:left .15s ease, top .15s ease;
     `;
 
     const circle = document.createElement('div');
     circle.style.cssText = `
-      width:calc(44px * var(--td-scale,1)); height:calc(44px * var(--td-scale,1)); border-radius:50%;
+      width:calc(44px * var(--td-scale,1) * var(--td-token-scale,1)); height:calc(44px * var(--td-scale,1) * var(--td-token-scale,1)); border-radius:50%;
       display:flex; align-items:center; justify-content:center;
-      font-weight:700; font-size:calc(14px * var(--td-scale,1)); color:${color.text};
+      font-weight:700; font-size:calc(14px * var(--td-scale,1) * var(--td-token-scale,1)); color:${color.text};
       background:${color.bg}; border:2px solid ${color.border};
       box-shadow:0 2px 8px rgba(0,0,0,.45);
     `;
@@ -322,7 +326,7 @@
     badge.className = 'tactics-name-badge';
     badge.style.cssText = `
       margin-top:2px; padding:1px 6px; border-radius:4px;
-      font-size:calc(var(--td-name-size, 10px) * var(--td-scale,1)); font-weight:600; white-space:nowrap;
+      font-size:calc(var(--td-name-size, 10px) * var(--td-scale,1) * var(--td-token-scale,1)); font-weight:600; white-space:nowrap;
       background:rgba(0,0,0,.75); color:#fff;
       visibility:${showNames ? 'visible' : 'hidden'};
     `;
@@ -341,9 +345,9 @@
       position:absolute; left:${x}%; top:${y}%;
       transform:translate(-50%,-50%);
       display:flex; align-items:center; justify-content:center;
-      width:calc(34px * var(--td-scale,1)); height:calc(34px * var(--td-scale,1));
-      font-size:calc(24px * var(--td-scale,1)); line-height:1;
-      user-select:none; cursor:grab; z-index:15;
+      width:calc(34px * var(--td-scale,1) * var(--td-token-scale,1)); height:calc(34px * var(--td-scale,1) * var(--td-token-scale,1));
+      font-size:calc(24px * var(--td-scale,1) * var(--td-token-scale,1)); line-height:1;
+      user-select:none; cursor:grab; z-index:15; touch-action:none;
       filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
       transition:left .15s ease, top .15s ease;
     `;
@@ -640,6 +644,53 @@
     tacticsSyncPitchLayout();
   });
   window.addEventListener('resize', tacticsSyncPitchLayout);
+
+  /**
+   * 풀스크린 모드 전용 — 우측 그리기 도구 패널 슬라이드 토글.
+   * 상단바의 `‹‹ 그리기 도구` 버튼(topbar로 이동, tactics-timeline.js의 타임라인 토글과
+   * 나란히 배치) + 패널 우상단 `×` 버튼 + 패널 밖 클릭으로 닫기.
+   * 타임라인 패널과 같은 우측 슬라이드 자리를 공유하므로, 하나를 열면 다른 하나는 자동으로 닫아
+   * 두 패널이 겹치지 않게 한다(window.ttSetTimelinePanelOpen — tactics-timeline.js가 노출).
+   */
+  function tacticsBindDrawToolbarFullscreenToggle() {
+    const openBtn = document.getElementById('td-drawtools-toggle');
+    const closeBtn = document.getElementById('td-drawtools-close');
+    const panel = document.getElementById('tactics-draw-toolbar');
+    if (!panel) return;
+
+    const setOpen = (next) => {
+      panel.classList.toggle('is-open', next);
+      if (openBtn) openBtn.textContent = next ? '›› 그리기 도구' : '‹‹ 그리기 도구';
+    };
+
+    if (openBtn) {
+      openBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const next = !panel.classList.contains('is-open');
+        if (next && typeof window.ttSetTimelinePanelOpen === 'function') window.ttSetTimelinePanelOpen(false);
+        setOpen(next);
+      });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpen(false);
+      });
+    }
+
+    // 풀스크린 + 패널이 열려있을 때만 외부 클릭으로 닫기 (일반 모드는 인라인이라 불필요).
+    document.addEventListener('click', (e) => {
+      if (!document.fullscreenElement) return;
+      if (!panel.classList.contains('is-open')) return;
+      if (panel.contains(e.target)) return;
+      if (openBtn && openBtn.contains(e.target)) return;
+      setOpen(false);
+    });
+
+    // 타임라인 쪽(tactics-timeline.js)에서 그리기 도구를 닫을 수 있도록 노출.
+    window.tdSetDrawToolbarOpen = setOpen;
+  }
+  document.addEventListener('DOMContentLoaded', tacticsBindDrawToolbarFullscreenToggle);
 
   /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 드로잉 초기화, 라인업 재렌더 */
   function tacticsReset() {
@@ -1718,6 +1769,11 @@
   /** 드로잉 Undo 외부 호출 래퍼 (버튼 onclick 등에서 사용) */
   function tacticsDrawUndo() {
     tdUndo();
+  }
+
+  /** 드로잉 Redo 외부 호출 래퍼 (버튼 onclick 등에서 사용) — 기존엔 Ctrl+Y 단축키로만 접근 가능했음 */
+  function tacticsDrawRedo() {
+    tdRedo();
   }
 
   /** 모든 드로잉·히스토리를 완전 초기화 */
