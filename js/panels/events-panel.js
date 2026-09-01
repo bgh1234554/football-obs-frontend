@@ -326,6 +326,12 @@ function evOpenSubstPicker(ev, field, fixtureData) {
     if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
       applyLineupPanels(window._eventsLastData);
     }
+    // 전술판 타임라인은 buildEffectiveFixtureData를 안 거치는 별도 fixture 스냅샷을 쓰므로
+    // 이 override가 자동으로 반영되지 않는다 — 패치된 events로 직접 갱신해준다.
+    if (typeof window.ttRefreshEventsData === 'function' && window._eventsLastData) {
+      const patchedEvents = evPatchSubstEvents(window._eventsLastData.events, fixtureId);
+      window.ttRefreshEventsData({ ...window._eventsLastData, events: patchedEvents });
+    }
   });
 
   const cancelBtn = document.createElement('button');

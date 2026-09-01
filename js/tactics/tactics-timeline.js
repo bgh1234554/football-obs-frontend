@@ -500,3 +500,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.applyTacticsTimeline = applyTacticsTimeline;
+
+/**
+ * 이벤트 패널의 교체 선수 선택 모달(evOpenSubstPicker)에서 OUT/IN 선수를 지정한 뒤 호출.
+ *
+ * tacticsTimelineState.fixture는 fixture.js가 최초 수신한 원본 데이터의 스냅샷이라 events에
+ * evPatchSubstEvents override가 반영돼 있지 않다 — 캠 큼/캠 작음 라인업 패널은
+ * buildEffectiveFixtureData(lineup-data.js)가 매번 override를 다시 적용해서 그리는 반면,
+ * 전술판 타임라인은 이 스냅샷을 그대로 재사용하기 때문에 OUT 선수가 "?"로 미해결일 때
+ * 슬라이더로 그 시점을 넘어가도 startXi에서 못 찾아 교체가 반영되지 않는 버그가 있었다.
+ * applyTacticsTimeline을 통째로 다시 부르면 슬라이더 기본 위치(ttComputeDefaultPosition)까지
+ * 재계산돼 사용자가 보고 있던 시점이 날아가므로, 여기서는 이벤트 데이터만 다시 추출해
+ * 현재 슬라이더 위치(currentElapsed)를 유지한 채 그 시점의 라인업만 재구성한다.
+ */
+function ttRefreshEventsData(fixtureData) {
+  if (!fixtureData || !tacticsTimelineState.fixture) return;
+  tacticsTimelineState.fixture = fixtureData;
+  tacticsTimelineState.events = ttCollectLineupEvents(fixtureData.events);
+  tacticsTimelineState.maxElapsed = ttComputeMaxElapsed(tacticsTimelineState.events);
+  ttRenderMarkers();
+  ttApplyTimelineToTactics(tacticsTimelineState.currentElapsed);
+}
+window.ttRefreshEventsData = ttRefreshEventsData;
