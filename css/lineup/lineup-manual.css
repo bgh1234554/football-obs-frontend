@@ -319,6 +319,13 @@
   color: rgba(255,255,255,.32);
   font-style: italic;
 }
+/* API가 이름 없이 내려준 선수용 인라인 입력 (buildGridRowHtml) — .dp-input 기본 스타일을
+   그리드 행의 좁은 세로 여백(padding 6px 10px)에 맞게 축소. */
+.dp-grid-name-input {
+  padding: 3px 8px;
+  font-size: 12px;
+  width: 100%;
+}
 @media (max-width: 900px) {
   .dp-manual-row,
   .dp-manual-row.is-injury {

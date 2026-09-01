@@ -219,10 +219,14 @@
       font-size: 20px;
       font-weight: 800;
       color: var(--meta-color);
-      padding: 0 1px;
+      padding: 0 3px;
       align-self: center;
       padding-bottom: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color .12s;
     }
+    .ce-colon:hover { background-color: rgba(255,255,255,.15); }
     .ce-confirm {
       display: inline-flex;
       align-items: center;
@@ -258,6 +262,40 @@
       outline: 2px solid rgba(255,255,255,.92);
       outline-offset: 2px;
     }
+
+    /* 시간 프리셋 드롭다운 — ":" hover 시 스코어박스(#scorePanel) 너비 그대로 아래에 표시.
+       left/right:0 기준이 되도록 스코어 패널에 position:relative 부여 (rc-rail 등 다른
+       absolute 요소는 .score 하위가 아니라서 영향 없음) */
+    #scorePanel { position: relative; }
+    .ce-presets {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      background: var(--score-bg);
+      border-radius: var(--score-radius, 14px);
+      box-shadow: 0 6px 18px rgba(0,0,0,.35);
+      z-index: 40;
+    }
+    .ce-presets.open { display: flex; }
+    .ce-preset-btn {
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 8px;
+      color: var(--meta-color);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      line-height: 1.3;
+      padding: 4px 0;
+      cursor: pointer;
+      transition: background-color .12s;
+    }
+    .ce-preset-btn:hover { background: rgba(255,255,255,.22); }
     .board .half { padding: 2px 8px; border-radius: 999px; background: var(--half-bg); color: var(--half-text); font-weight: 800; }
 
     /* 레드카드 */

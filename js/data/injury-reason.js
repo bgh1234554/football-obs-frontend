@@ -54,7 +54,9 @@
     'Fracture':          '골절',
     'Sprain':            '염좌',
     'Strain':            '근육 긴장',
+    'Muscle Bruise':     '근육 타박상',
     'Tendon Injury':     '힘줄 부상',
+    'Twisted Knee':      '무릎 접질림',
     'Ligament Injury':   '인대 부상',
     'ACL Injury':        '전방십자인대 부상',
     'Meniscus Injury':   '반월판 부상',
@@ -79,6 +81,7 @@
     'Yellow Cards':                 '경고 누적',
     'Red card':                     '퇴장 (레드카드)',
     'Suspension':                   '출장 정지',
+    'Suspension Through Sports Court': '스포츠 재판소를 통한 징계',
     'Red Card':                     '퇴장 (레드카드)',
     'Yellow Card Accumulation':     '경고 누적',
   };

@@ -17,6 +17,10 @@ const SUBST_OVERRIDE_STORAGE_KEY = 'obs.subst.override.v1';
 const EVENTS_PANEL_FONT_MIN = 10;
 const EVENTS_PANEL_ROW_ANIM_MS = 340;
 const EVENTS_PANEL_ROW_ENTER_OFFSET_PX = 16;
+// 새 이벤트 row의 팀 컬러 글로우(.ev-row-new, css/panels/events-panel.css @keyframes ev-row-glow)
+// 지속 시간. 진입 슬라이드/페이드(EVENTS_PANEL_ROW_ANIM_MS)보다 길게 둬서 글로우가 눈에 띄게
+// 한 번 확실히 보이게 한다 — CSS의 애니메이션 duration과 반드시 같은 값이어야 함(둘 다 900ms).
+const EVENTS_PANEL_ROW_GLOW_MS = 900;
 const EVENTS_PANEL_FILTER_STORAGE_KEY = 'obs.eventsPanel.filters.v1';
 const EVENTS_PANEL_FILTER_ORDER = [
   'goal',
@@ -726,6 +730,9 @@ function evAnimateListInsertion(list, previousRects) {
       return;
     }
 
+    // 글로우 색은 이 row에 이미 붙어있는 이벤트 종류 클래스(.ev-bar-{color} — 골=파랑,
+    // 경고=노랑, 퇴장=빨강, 교체=초록, PK실축/VAR취소=주황, 기타=흰색)를 CSS 쪽에서
+    // 그대로 참조한다(css/panels/events-panel.css의 .ev-row-new.ev-bar-{color} 규칙).
     row.classList.add('ev-row-new');
     row.style.transition = 'none';
     row.style.opacity = '0';
@@ -739,7 +746,7 @@ function evAnimateListInsertion(list, previousRects) {
       row.style.transform = '';
       row.style.opacity = '';
       row.classList.remove('ev-row-new');
-    }, EVENTS_PANEL_ROW_ANIM_MS + 220);
+    }, EVENTS_PANEL_ROW_GLOW_MS);
   });
 }
 

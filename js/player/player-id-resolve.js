@@ -612,6 +612,84 @@ function pirAutoLinkZeroIdFromEvents(rawData, claimedAltIdsBySide) {
 }
 window.pirAutoLinkZeroIdFromEvents = pirAutoLinkZeroIdFromEvents;
 
+// ── 수동 입력 이름 → fuzzy 매칭 후보 반영 ────────────────────────────────────
+// lineup-manual-modal.js의 그리드 모드에서, API가 이름 없이 내려준 선수(name/origName
+// 둘 다 공백)에게 사용자가 직접 이름을 입력하면 id-key override(name/nameKoLong)로
+// 저장된다. 이 override는 applyToList에서도 반영되지만, 그건 pirAutoLinkAltToCanonical이
+// 이미 fuzzyCandidates를 다 만든 "뒤"에 실행되므로 이번 렌더에서 후보 풀에 끼워 넣으려면
+// altToCanonical을 계산하기 전에 먼저 name/nameKoLong만 선반영해야 한다. 그래야 나중에
+// 다른 alt ID로 도착하는 교체 이벤트가 이 이름과 유사도 매칭돼(koName/koNameLong 경로)
+// 자동으로 연계될 수 있다.
+function pirApplyManualNameHintsForFuzzy(next, relevant) {
+  if (!next || !relevant) return;
+  ['home', 'away'].forEach(side => {
+    const lk = `${side}Lineup`;
+    const lineup = next[lk];
+    if (!lineup) return;
+    const patch = list => Array.isArray(list) ? list.map(p => {
+      const pid = Number(p?.playerId);
+      if (!pid) return p;
+      const ov = relevant[`${side}:id:${pid}`];
+      if (!ov || (!ov.name && !ov.nameKoLong)) return p;
+      return {
+        ...p,
+        ...(ov.name ? { name: ov.name } : {}),
+        ...(ov.nameKoLong ? { nameKoLong: ov.nameKoLong } : {}),
+      };
+    }) : list;
+    next[lk] = { ...lineup, startXi: patch(lineup.startXi), substitutes: patch(lineup.substitutes) };
+  });
+}
+
+// ── "이름 없는 선발 선수 수동 입력" 소거법 보강 ───────────────────────────────
+// lineup-manual-modal.js의 saveManualGridPlayerName이 저장한 id-key override는
+// viaBlankNameInput 플래그를 남긴다. pirAutoLinkAltToCanonical(exact/fuzzy)이 이름
+// 표기 차이 등으로 실패해도, 아래 조건이 모두 성립하면 소거법으로 강제 연결한다:
+//   1) 이 side에 viaBlankNameInput 플래그가 있는 선수가 정확히 1명뿐 (동명이인/모호함 없음)
+//   2) 같은 side의 교체 이벤트(playerId=OUT, assistId=IN)에서, 로스터 어디에도 없고
+//      이미 다른 선수로 확정되지도 않은 id가 정확히 1개뿐
+// 두 조건 다 "유일함"을 요구하므로, 여러 명이 수동 입력됐거나 미해결 id가 여럿이면
+// 그냥 skip(틀린 매칭보다 미매칭이 안전 — 이 파일 전체의 기본 원칙과 동일).
+function pirAutoLinkOrphanByElimination(rawData, relevant, altToCanonical) {
+  if (!rawData) return;
+
+  for (const side of ['home', 'away']) {
+    const lineup = rawData[`${side}Lineup`];
+    const roster = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    const knownIds = new Set(
+      roster.map(p => Number(p?.playerId)).filter(id => Number.isFinite(id) && id > 0)
+    );
+
+    // viaBlankNameInput 플래그가 있는 선수 — id-key는 "{side}:id:{canonicalId}" 형식이라
+    // 키에서 바로 canonical(로스터) id를 읽는다(ov.playerId는 과거 alt ID 재검색이 있었으면
+    // 그 alt ID일 수 있어 여기서 링크 대상으로 쓰기엔 부적합).
+    const manualPids = Object.keys(relevant)
+      .filter(k => k.startsWith(`${side}:id:`) && relevant[k]?.viaBlankNameInput)
+      .map(k => Number(k.split(':')[2]))
+      .filter(id => Number.isFinite(id) && id > 0);
+    if (manualPids.length !== 1) continue;
+    const solePid = manualPids[0];
+    if (!knownIds.has(solePid)) continue; // 방어적 — 로스터에 없으면 skip
+
+    // 같은 side 교체 이벤트 중 로스터에도 없고 이미 다른 선수로 확정되지도 않은 id 수집.
+    const orphanIds = new Set();
+    (rawData.events || []).forEach(ev => {
+      if (!ev || ev.side !== side || String(ev.type || '').toLowerCase() !== 'subst') return;
+      [ev.playerId, ev.assistId].forEach(rawId => {
+        const id = Number(rawId);
+        if (!Number.isFinite(id) || id <= 0 || knownIds.has(id)) return;
+        if (altToCanonical[`${side}:${id}`] != null) return; // 이미 다른 선수로 확정됨
+        orphanIds.add(id);
+      });
+    });
+    if (orphanIds.size !== 1) continue;
+
+    const [orphanId] = [...orphanIds];
+    altToCanonical[`${side}:${orphanId}`] = solePid;
+  }
+}
+window.pirAutoLinkOrphanByElimination = pirAutoLinkOrphanByElimination;
+
 // ── override 적용 ─────────────────────────────────────────────────────────────
 // lineup-data.js의 buildEffectiveFixtureData에서 window hook으로 호출.
 // 복제된 next 객체를 직접 변경(in-place) — 반환값 없음.
@@ -631,6 +709,10 @@ function applyZeroIdOverrides(next, fixtureId) {
   // 이름 자동 매칭을 먼저 깔고, 수동 입력(저장된 override)이 있으면 그쪽을 우선해 덮어쓴다.
   // nameHints: 자동 매칭이 성립한 alt ID 쪽 이벤트에 한글 이름이 같이 와 있으면 채워짐
   // (canonical ID는 CSV에 한글이 없어 영문으로만 표시되는 흔한 패턴 보강용 — 아래 applyToList에서 사용).
+  // 이름 없이 내려온 선수에게 수동 입력한 이름(id-key override)을 fuzzy 후보 계산 전에
+  // 먼저 반영 — 그래야 이번 렌더의 이벤트 자동 연계가 이 이름을 인식할 수 있다.
+  pirApplyManualNameHintsForFuzzy(next, relevant);
+
   const autoLinkOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
   const nameHints = {};
   const canonicalKoHints = {}; // {side:altId} → { name, nameKoLong } — canonical 로스터 한글을 이벤트에 역전파
@@ -644,6 +726,11 @@ function applyZeroIdOverrides(next, fixtureId) {
     if (altId && altId !== canonicalId) {
       altToCanonical[`${side}:${altId}`] = canonicalId;
     }
+  }
+  // "이름 없는 선발 선수 수동 입력" 소거법 보강 — fuzzy 매칭이 실패해도, 그 side에
+  // 수동 입력 선수가 유일하고 로스터에 없는 id도 유일하게 하나뿐이면 자동 연결.
+  if (autoLinkOn) {
+    pirAutoLinkOrphanByElimination(next, relevant, altToCanonical);
   }
   // id=0 로스터 자동 매칭 (반대 방향) — 라인업엔 id=0인데 같은 팀 이벤트엔 실제 ID로
   // 등장하는 선수를 자동 연결. 이미 위에서 alt→canonical로 해석된 ID는 후보에서

@@ -33,6 +33,12 @@
       border-bottom: none;
       overflow: visible; /* rc-rail이 위로 삐져나오므로 */
       position: relative;
+      /* z-index 명시 — board-stage-inner가 JS(applyBoardScale)로 transform:scale()을
+         적용받아 자체 스태킹 컨텍스트를 만들기 때문에, 내부의 ce-presets(z-index:40) 같은
+         값은 이 래퍼 밖(예: 라인업 패널의 리사이즈 핸들 z-index:25)과는 비교되지 않고
+         래퍼 자신이 auto(0)로 취급되어 밀림. 래퍼에 z-index를 줘서 보드 전체가 아래
+         패널들 위에 오도록 함(사이드바/설정모달 등 9999+ 오버레이보다는 낮게 유지). */
+      z-index: 50;
       flex-shrink: 0;
       /* 높이는 JS로 동적 조정 */
     }
@@ -494,6 +500,29 @@
       min-width: 0;
       min-height: 0;
       flex: 1;
+    }
+    /* 패널 내 모든 스크롤바 숨김 — 스크롤 기능은 유지 */
+    .lp * { scrollbar-width: none; }
+    .lp *::-webkit-scrollbar { display: none; }
+    /* 타이틀바 상단 영역만 약간 어둡게: background-image를 panel 컨테이너에 직접 적용하면
+       해당 요소의 border-radius 가 자동 클리핑하므로 overflow:hidden 없이도 모서리 처리됨.
+       solid 구간이 정확히 구분선(border-bottom) 위치까지 채워야 자연스럽게 끊긴다. */
+    .lp.lp-bench, .lp.lp-injury, .lp.lp-lineup-s {
+      /* dp-panel(padding-top:8) + dp-title(pad:2+6, border:1, line-height≈16) = 33px */
+      background-image: linear-gradient(
+        rgba(0,0,0,.25) 0px,
+        rgba(0,0,0,.25) 33px,
+        transparent 37px
+      );
+    }
+    .lp.lp-stat, .lp.lp-stat-s, .lp.lp-events-s {
+      /* separator = padding-top(4) + title-bar(33px, border-box) = 37px.
+         transparent를 separator에 맞추고 3px 앞에서 fade 시작. */
+      background-image: linear-gradient(
+        rgba(0,0,0,.25) 0px,
+        rgba(0,0,0,.25) calc(var(--panel-title-bar-height) + 1px),
+        transparent calc(var(--panel-title-bar-height) + 4px)
+      );
     }
     .lp-label {
       color: var(--muted);

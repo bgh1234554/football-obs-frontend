@@ -28,6 +28,10 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
     next.events = window.evPatchSubstEvents(next.events, fixtureId);
   }
+  // 교체 IN 이벤트에만 등장하고 교체 명단(substitutes)엔 없는 선수를 벤치에 보강.
+  // (예: API가 벤치 명단 갱신 없이 실제로 투입된 선수를 이벤트에서만 내려주는 경우 —
+  //  lpFindLineupPlayerIndex가 substitutes에서 못 찾아 subReflect swap이 그냥 skip됨.)
+  synthesizeMissingBenchPlayers(next);
   if (!entry) {
     // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
     if (typeof window.applyZeroIdOverrides === 'function') {
@@ -119,6 +123,69 @@ function buildEffectiveFixtureData(data) {
   }
 
   return next;
+}
+
+/**
+ * 교체 IN(assistId)으로 이벤트에 등장하는 선수가 라인업(startXi)에도 교체 명단
+ * (substitutes)에도 없으면, playerStats(항상 실제로 뛴 선수 기준으로 내려옴)에서
+ * 이름/사진/포지션/등번호를 찾아 벤치에 합성해 넣는다. playerStats에도 없으면
+ * 이벤트 쪽 assist* 필드(이름만)로 최소한의 항목을 만든다 — 이름조차 없으면 표시할
+ * 수 없으므로 skip.
+ * 이렇게 해야 lpFindLineupPlayerIndex(substitutes, ...)가 그 선수를 찾을 수 있어
+ * subReflect(교체 반영) swap과 벤치 패널 표시가 정상 작동한다. 원본 객체는 건드리지
+ * 않고 next를 직접 변형한다(buildEffectiveFixtureData가 이미 clone한 next 대상).
+ */
+function synthesizeMissingBenchPlayers(next) {
+  if (!next) return;
+  const events = Array.isArray(next.events) ? next.events : [];
+  const playerStats = Array.isArray(next.playerStats) ? next.playerStats : [];
+  if (!events.length) return;
+
+  ['home', 'away'].forEach(side => {
+    const lineupKey = `${side}Lineup`;
+    const lineup = next[lineupKey];
+    if (!lineup) return;
+
+    const knownIds = new Set(
+      [...(lineup.startXi || []), ...(lineup.substitutes || [])]
+        .map(p => Number(p?.playerId))
+        .filter(id => Number.isFinite(id) && id > 0)
+    );
+
+    const missingIds = new Set();
+    events.forEach(ev => {
+      if (!ev || ev.side !== side || String(ev.type || '').toLowerCase() !== 'subst') return;
+      const inId = Number(ev.assistId);
+      if (Number.isFinite(inId) && inId > 0 && !knownIds.has(inId)) missingIds.add(inId);
+    });
+    if (!missingIds.size) return;
+
+    const added = [];
+    missingIds.forEach(id => {
+      // playerStats가 사진/포지션/등번호까지 갖춘 가장 정확한 소스 — side까지 일치해야 오매칭 방지.
+      const statRow = playerStats.find(p => p && Number(p.playerId) === id && p.side === side);
+      const eventRow = events.find(ev => ev && ev.side === side
+        && String(ev.type || '').toLowerCase() === 'subst' && Number(ev.assistId) === id);
+
+      const name = statRow?.playerName || eventRow?.assistName || '';
+      if (!name) return; // 이름조차 없으면 표시 불가 — skip
+
+      added.push({
+        playerId: id,
+        name,
+        nameKoLong: statRow?.playerNameKoLong || eventRow?.assistNameKoLong || null,
+        origName: eventRow?.assistOrigName || null,
+        photoUrl: statRow?.playerPhotoUrl || null,
+        number: statRow?.number ?? null,
+        pos: statRow?.position || null,
+        grid: null,
+      });
+    });
+
+    if (added.length) {
+      next[lineupKey] = { ...lineup, substitutes: [...(lineup.substitutes || []), ...added] };
+    }
+  });
 }
 
 // Iter 5-3: 교체 이벤트로 선발/벤치 swap. subReflect=on일 때만 적용.

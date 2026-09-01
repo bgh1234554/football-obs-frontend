@@ -170,7 +170,14 @@ function recomputeGridSlotsForFormation(side, formation) {
   return slotPlayerIds;
 }
 
-/** 그리드 모달 한 슬롯 행 HTML — 드래그 핸들 + 슬롯 라벨 + 선수 사진/번호/이름(없으면 "빈 슬롯"). */
+/**
+ * 그리드 모달 한 슬롯 행 HTML — 드래그 핸들 + 슬롯 라벨 + 선수 사진/번호/이름(없으면 "빈 슬롯").
+ * API가 아예 이름 없이 내려준 선수(pickName/name/origName 모두 공백, playerId만 있음)는
+ * "빈 슬롯"과 겉보기엔 비슷하지만 실제로는 선수가 배정돼 있는 자리라 드래그 대상이 된다 —
+ * 이런 경우 이름 자리에 직접 입력 가능한 input을 대신 렌더해 이름을 채울 수 있게 한다
+ * (saveManualGridPlayerName). 저장된 이름은 player-id-resolve.js의 id-key override로
+ * 들어가 /detail 패널 표시뿐 아니라 이후 이벤트 fuzzy 자동 연계 후보로도 쓰인다.
+ */
 function buildGridRowHtml(pidStr, slotIndex) {
   const { formation, players } = lineupPanelState.gridState;
   const labels = getFormationSlotLabels(formation);
@@ -178,15 +185,59 @@ function buildGridRowHtml(pidStr, slotIndex) {
   const photoStyle = p?.photoUrl ? ` style="background-image:url('${dpEscape(p.photoUrl)}')"` : '';
   const photoCls = p?.photoUrl ? '' : ' dp-grid-photo-empty';
   const num = p ? dpEscape(p.number ?? '') : '';
-  const name = p ? dpEscape(pickName(p, 'lineup') || p.name || '') : '(빈 슬롯)';
-  const emptyCls = p ? '' : ' dp-grid-empty';
+  const resolvedName = p ? (pickName(p, 'lineup') || p.name || '') : '';
+  const isNamelessPlayer = !!p && !resolvedName && Number(p.playerId) > 0;
+  const nameHtml = !p
+    ? '(빈 슬롯)'
+    : isNamelessPlayer
+      ? `<input type="text" class="dp-input dp-grid-name-input" data-player-id="${p.playerId}" placeholder="선수 이름 입력 (이벤트 자동 연계용)" value="" draggable="false">`
+      : dpEscape(resolvedName);
+  const emptyCls = p ? '' : ' dp-grid-empty'; // "(빈 슬롯)" 텍스트 전용 — 입력창 렌더링일 땐 부여 안 함
   return `<div class="dp-grid-row" data-slot-index="${slotIndex}" draggable="true">
     <span class="dp-grid-handle" aria-hidden="true">⠿</span>
     <span class="dp-grid-slot-label">${dpEscape(labels[slotIndex] || `${slotIndex + 1}`)}</span>
     <span class="dp-grid-photo${photoCls}"${photoStyle}></span>
     <span class="dp-grid-num">${num}</span>
-    <span class="dp-grid-name${emptyCls}">${name}</span>
+    <span class="dp-grid-name${emptyCls}">${nameHtml}</span>
   </div>`;
+}
+
+/**
+ * 이름 없이 내려온 그리드 슬롯 선수에게 입력한 이름을 저장.
+ * player-id-resolve.js의 id-key override(pirSetByKey)를 그대로 재사용 —
+ * applyZeroIdOverrides가 /detail 패널·전술판 표시와 이벤트 fuzzy 자동 연계
+ * (pirApplyManualNameHintsForFuzzy) 양쪽에 이 이름을 반영한다.
+ * `viaBlankNameInput: true` 플래그를 남겨, 같은 side에 이 플래그를 가진 선수가 유일하고
+ * 교체 이벤트에 로스터 어디에도 없는 id가 유일하게 하나뿐이면 fuzzy 매칭 실패와 무관하게
+ * 소거법으로 자동 연결하는 pirAutoLinkOrphanByElimination이 이 선수를 식별할 수 있게 한다.
+ */
+function saveManualGridPlayerName(inputEl) {
+  const pid = Number(inputEl?.dataset?.playerId);
+  const side = lineupPanelState.gridState?.side;
+  const fixtureId = getActiveFixtureId();
+  const name = getInputValue(inputEl.value);
+  if (!pid || !side || !fixtureId) return;
+  if (typeof pirMakeIdKey !== 'function' || typeof pirSetByKey !== 'function') return;
+
+  const key = pirMakeIdKey(fixtureId, side, pid);
+  if (!name) {
+    pirSetByKey(key, null);
+  } else {
+    const existing = typeof pirGetByKey === 'function' ? pirGetByKey(key) : null;
+    // 이 키로 이미 다른 실제(alt) ID가 연결돼 있었다면(예: 과거 ID 재검색으로 연결) 그대로 보존 —
+    // 이름만 채우는 이 흐름이 기존 alt ID 연결을 되돌리지 않도록.
+    const resolvedPid = existing && Number(existing.playerId) > 0 ? existing.playerId : pid;
+    pirSetByKey(key, { ...(existing || {}), playerId: resolvedPid, name, nameKoLong: name, viaBlankNameInput: true, resolvedAt: Date.now() });
+  }
+
+  // 모달이 열려있는 동안에도 즉시 반영되도록 gridState 스냅샷(원본 API startXi 복제본)도 패치.
+  Object.values(lineupPanelState.gridState?.players || {}).forEach(player => {
+    if (player && Number(player.playerId) === pid) {
+      player.name = name || player.name;
+      player.nameKoLong = name || player.nameKoLong;
+    }
+  });
+  rerenderGridList();
 }
 
 /** 그리드 모드 모달 본문 전체 HTML — 안내문 + 포메이션 select + 슬롯 목록. */
@@ -220,6 +271,8 @@ function bindLineupGridDragDrop() {
   if (!list) return;
   list.querySelectorAll('.dp-grid-row').forEach(row => {
     row.addEventListener('dragstart', event => {
+      // 이름 입력 칸에서 텍스트를 드래그-선택하는 동작이 행 자체의 드래그로 오인되지 않도록.
+      if (event.target.closest('.dp-grid-name-input')) { event.preventDefault(); return; }
       event.dataTransfer.setData('text/plain', row.dataset.slotIndex);
       event.dataTransfer.effectAllowed = 'move';
       row.classList.add('is-dragging');
@@ -691,6 +744,10 @@ document.addEventListener('click', event => {
 });
 
 document.addEventListener('change', event => {
+  if (event.target?.classList?.contains('dp-grid-name-input')) {
+    saveManualGridPlayerName(event.target);
+    return;
+  }
   if (event.target?.id === 'manualLineupFormation') {
     syncManualLineupSlotLabels(event.target.value);
   }
@@ -720,6 +777,12 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && isManualPanelOpen()) {
     event.preventDefault();
     closeManualPanel();
+    return;
+  }
+  // 이름 입력 칸에서 Enter → blur시켜 'change' 저장을 즉시 트리거.
+  if (event.key === 'Enter' && event.target?.classList?.contains('dp-grid-name-input')) {
+    event.preventDefault();
+    event.target.blur();
   }
 });
 
