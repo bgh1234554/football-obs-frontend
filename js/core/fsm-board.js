@@ -138,6 +138,7 @@ function applyTheme(theme, logoUrl) {
       jQuery('.fsm-board #awayColor').css({background: state.colors.awayBg});
     } else {
       // default / pl / cl / uel / 나머지 모든 테마
+      console.log('Default theme applied');
       jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
       jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
       jQuery('.fsm-board .team-logo > img').css({outline: 'none'});
