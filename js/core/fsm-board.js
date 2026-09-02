@@ -28,8 +28,7 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
 
   _currentTheme = theme;
   _currentType = type;
-  state.leagueId = leagueId;
-  state.leagueLogoUrl = logoUrl;
+  persist();
   // FSM의 기존 switch 로직을 그대로 재활용
   applyTheme(theme, logoUrl);
 };
