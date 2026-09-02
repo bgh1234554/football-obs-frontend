@@ -49,7 +49,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .team-name {
@@ -87,7 +87,7 @@
     background: #0456E5;
     color: whitesmoke;
     text-align: center;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     position: absolute;
     transform: skewX(-10deg);
 }
@@ -121,7 +121,7 @@
     color: #2A235B;
     padding: 8px;
     text-align: center;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     position: absolute;
     z-index: 1;
     transform: skewX(-10deg);
@@ -145,7 +145,7 @@
     background: whitesmoke;
     border: 2px solid whitesmoke;
     position: relative;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .team-logo > img {
@@ -181,7 +181,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     position: relative;
     z-index: 1;
     margin-top: -10px;
@@ -193,7 +193,7 @@
     background: white;
     position: relative;
     z-index: 1;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .extra-time {
@@ -201,10 +201,9 @@
     height: 32px;
     color: #04235E;
     background: #03E7DB;
-    transition: 0.5s ease-in-out;
     position: absolute;
     margin-left: 0px;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .pso-status {
@@ -218,13 +217,13 @@
     align-items: flex-start;
     position: absolute;
     z-index: 1;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .pso-main {
     width: 100%;
     height: 0px;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     text-align: center;
     display: flex;
     justify-content: center;
@@ -238,7 +237,7 @@
     border-radius: 20px;
     border: 1px solid black;
     margin: 2px;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .pso-status > .pso-main ul {

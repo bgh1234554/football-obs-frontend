@@ -95,7 +95,7 @@
     font-weight: bold;
     color: white;
     text-align: center;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -169,10 +169,9 @@
     height: 30px;
     color: white;
     background: #CF3A36;
-    transition: 0.5s ease-in-out;
     position: absolute;
     margin-left: 0px;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .pso-status {
@@ -186,14 +185,14 @@
     align-items: flex-start;
     position: absolute;
     z-index: 1;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     margin-top: 3px;
 }
 
 .fsm-board .pso-main {
     width: 100%;
     height: 0px;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
     text-align: center;
     display: flex;
     justify-content: center;
@@ -207,7 +206,7 @@
     border-radius: 8px;
     border: 1px solid white;
     margin: 2px;
-    transition: 0.4s ease-in-out;
+    transition: 0.9s ease-in-out;
 }
 
 .fsm-board .pso-status > .pso-main ul {
