@@ -300,8 +300,11 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
 const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
 function _lpHthScrollOptions(baseIntervalMs) {
-  const count = Array.isArray(window._hthState?.hthData?.matches)
-    ? window._hthState.hthData.matches.length : 0;
+  // displayMatches는 오늘 포함 이후 예정 경기를 뺀, 실제로 화면에 그려지는 행 수와 일치하는 배열
+  // (hth-panel.js applyHthPanel). 필터 전 hthData.matches를 쓰면 화면엔 안 보이는 예정 경기 때문에
+  // 스크롤 시간이 실제 콘텐츠 길이보다 과하게 늘어난다.
+  const count = Array.isArray(window._hthState?.displayMatches)
+    ? window._hthState.displayMatches.length : 0;
   if (!count || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
 
   const baseSec = baseIntervalMs / 1000;

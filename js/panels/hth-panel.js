@@ -95,6 +95,26 @@ function hthRenderStatus(message) {
   });
 }
 
+/**
+ * 오늘 0시(로컬 자정) 이전에 킥오프한 경기만 상대 전적으로 유효.
+ * API가 두 팀의 향후 예정 경기(같은 시즌 역대진 등)까지 목록에 섞어 내려주는 경우가 있는데,
+ * 아직 열리지 않은 경기는 스코어가 확정되지 않아 상대 전적에 포함시키면 안 된다.
+ * 날짜 파싱이 안 되는 항목은 걸러낼 근거가 없으므로 안전하게 표시 쪽(true)으로 둔다.
+ */
+function hthIsPastMatch(match) {
+  if (!match?.date) return true;
+  const d = new Date(match.date);
+  if (isNaN(d.getTime())) return true;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return d.getTime() < todayStart.getTime();
+}
+
+/** hthIsPastMatch 필터를 배열에 적용. 렌더링뿐 아니라 스크롤 속도 등 크기 계산도 이 결과를 공유한다. */
+function hthFilterPastMatches(matches) {
+  return (Array.isArray(matches) ? matches : []).filter(hthIsPastMatch);
+}
+
 /** 승자 판정: 'home' | 'away' | 'draw' */
 function hthGetWinner(match) {
   if (match.homePenaltyScore != null) {
@@ -325,10 +345,13 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
   _hthState.cacheKey = meta.cacheKey || hthGetCacheKey(fixtureData);
   _hthState.fetchedAt = Number(meta.fetchedAt) || Date.now();
   _hthState.expiresAt = Number(meta.expiresAt) || (_hthState.fetchedAt + HTH_CACHE_TTL_MS);
+  // 오늘 포함 이후 예정 경기는 제외한 표시용 목록 — 렌더링과 stat-cycle.js의 스크롤 속도 계산이
+  // 둘 다 이 필터링된 배열을 기준으로 삼는다(원본 hthData.matches는 캐시 용도로 그대로 보존).
+  _hthState.displayMatches = hthFilterPastMatches(hthData?.matches);
 
   document.querySelectorAll('[data-hth-panel]').forEach(container => {
     const titleBar = hthCreateTitleBar(container);
-    const matches = Array.isArray(hthData?.matches) ? hthData.matches : [];
+    const matches = _hthState.displayMatches;
     if (!matches.length) {
       const empty = document.createElement('div');
       empty.className = 'ev-empty';
@@ -475,6 +498,7 @@ function hthAutoSwitch(events) {
 /** fixture 전환 시 HTH 상태 초기화 */
 function hthReset() {
   _hthState.hthData = null;
+  _hthState.displayMatches = [];
   _hthState.fixtureData = null;
   _hthState.cacheKey = '';
   _hthState.fetchedAt = 0;
