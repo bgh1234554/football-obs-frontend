@@ -240,5 +240,7 @@
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
+      state.leagueId = saved.leagueId;
+      state.leagueLogoUrl = saved.leagueLogoUrl;
     }catch(e){ console.warn('복원 실패:', e); }
   }

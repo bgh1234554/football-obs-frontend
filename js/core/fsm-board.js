@@ -192,7 +192,6 @@ function applyTheme(theme, logoUrl) {
 
   // localStorage에 저장된 leagueId가 있으면 복원 (선택 사항)
   const savedLeagueId = localStorage.getItem('obs-scoreboard-state-v2').leagueId;
-  console.log(savedLeagueId);
   if (savedLeagueId) {
     window.autoApplyTemplateByLeagueId(Number(savedLeagueId), null);
   }
