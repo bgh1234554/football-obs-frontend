@@ -787,6 +787,7 @@
       const leagueId = extractLeagueIdFromFixtureData(data);
       state.leagueId = leagueId;
       state.leagueLogoUrl = data.matchInfo?.leagueLogoUrl || null;
+      persist();
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
         try {
           await window.autoApplyTemplateByLeagueId(leagueId, data.matchInfo.leagueLogoUrl);
