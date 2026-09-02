@@ -127,17 +127,16 @@ function applyTheme(theme, logoUrl) {
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
-    if (theme === 'pl') {
+    if (theme == 'pl') {
       console.log('EPL theme applied');
       jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
       jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
-    } if (theme === 'wc26') {
+    } if (theme == 'wc26') {
       jQuery('.fsm-board .teams-left').css({background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       jQuery('.fsm-board .teams-right').css({background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
       jQuery('.fsm-board #homeColor').css({background: state.colors.homeBg});
       jQuery('.fsm-board #awayColor').css({background: state.colors.awayBg});
     } else {
-      console.log(theme);
       // default / pl / cl / uel / 나머지 모든 테마
       jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
       jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
