@@ -127,6 +127,7 @@ function applyTheme(theme, logoUrl) {
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
+    console.log(theme);
     if (theme === 'pl') {
       console.log('EPL theme applied');
       jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
