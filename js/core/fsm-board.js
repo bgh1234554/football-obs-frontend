@@ -188,8 +188,10 @@ function applyTheme(theme, logoUrl) {
   window.fsmBoardRender = function() { applyText(); applyPSO(); };
 
 (function init() {
-  // 페이지 로드 즉시 default(친선경기) CSS 적용
-  changeCSS('css/theme/result_style_default.css');
+  // 페이지 로드 즉시 default(친선경기) CSS 적용(저장된 리그 아이디가 없을 시)
+  if(state.leagueId == null) {
+    changeCSS('css/theme/result_style_default.css');
+  }
 })();
 
 window.fsmBoardRender = function() { applyText(); applyPSO(); };
