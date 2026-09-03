@@ -46,7 +46,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
 }
 
 .fsm-board .team-name {
@@ -77,7 +77,7 @@
     font-weight: bold;
     color: white;
     text-align: center;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
     position: absolute;
     margin-top: -20px;
     z-index: 1;
@@ -103,7 +103,7 @@
     color: black;
     padding: 8px;
     text-align: center;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
     position: absolute;
     margin-top: -20px;
 }
@@ -125,7 +125,7 @@
     background: whitesmoke;
     border: 2px solid whitesmoke;
     position: relative;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
 }
 
 .fsm-board .team-logo > img {
@@ -168,7 +168,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
     margin-top: -10px;
 }
 
@@ -178,7 +178,7 @@
     background: #3E0B3D;
     position: relative;
     z-index: 1;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
 }
@@ -190,7 +190,7 @@
     background: linear-gradient(90deg, orange, red, hotpink);
     position: absolute;
     margin-left: 0px;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
     border-bottom-right-radius: 10px;
 }
 
@@ -205,13 +205,13 @@
     align-items: flex-start;
     position: absolute;
     z-index: 1;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
 }
 
 .fsm-board .pso-main {
     width: 100%;
     height: 0px;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
     text-align: center;
     display: flex;
     justify-content: center;
@@ -227,7 +227,7 @@
     border-radius: 20px;
     border: 1px solid black;
     margin: 2px;
-    transition: 0.9s ease-in-out;
+    transition: 0.6s ease-in-out;
 }
 
 .fsm-board .pso-status > .pso-main ul {
