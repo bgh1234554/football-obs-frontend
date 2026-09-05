@@ -586,10 +586,16 @@ function pmBuildMatchStatRows(s) {
   const tackleLabel = [lbl('tacklesTotal'), lbl('tacklesBlocks'), lbl('tacklesInterceptions')].join(' / ');
   const tackleVal = tackleAllNull ? null : tackleParts.map(v => v ?? '-').join(' / ');
 
+  // 평점은 다른 스탯과 달리 순수 텍스트가 아니라 포메이션 라인업 평점 배지와 동일한
+  // 배경색(_pmRatingHtml — lpRatingColor와 같은 구간 기준)을 입혀야 하므로 row()를 안 거친다.
+  const ratingRow = (s.rating != null && s.rating !== '')
+    ? `<tr><td class="pm-st-label">${pmEsc(lbl('rating'))}</td><td class="pm-st-val">${_pmRatingHtml(s.rating)}</td></tr>`
+    : '';
+
   return [
     row('minutes',  s.minutes != null ? `${s.minutes}분` : null),
     row('position', pmPosKo(s.position)),
-    row('rating',   s.rating),
+    ratingRow,
     // 슛을 한 행으로 묶어 표시 (총 / 유효)
     `${row('shotsTotal', s.shotsTotal)}${row('shotsOn', s.shotsOn)}`,
     row('goalsScored', s.goalsScored),
