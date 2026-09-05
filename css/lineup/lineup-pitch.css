@@ -414,6 +414,14 @@ body.greenscreen-mode .dp-node-sub-in {
   border: 1px solid #fff;
   text-shadow: none;
 }
+/* 자책골 카운트 — 공 이모티콘은 색을 바꿀 수 없어 원형 배지 배경만 빨간색으로 구분.
+   정규 골 배지와 같이 있을 때만(dp-node-count-paired) 왼쪽으로 밀어 "1 1"처럼 나란히 배치. */
+.dp-node-goal .dp-node-count-og {
+  background: #d32f2f;
+}
+.dp-node-goal .dp-node-count-og.dp-node-count-paired {
+  right: 8px;
+}
 /* 좌하단 — 카드 (yellow / red / cumulative 두 장). 평점 chip의 하한선과 같은 높이(node_bottom - 1px)에 정렬. */
 .dp-node-card {
   bottom: 1px;

@@ -144,10 +144,24 @@ function lpBuildNodeBadgesHtml(events) {
     const n = events.assists.length;
     html += `<span class="dp-node-badge dp-node-assist" title="도움 ${n}회">👟${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
   }
-  // bottom-right: 골
-  if (events.goals?.length) {
-    const n = events.goals.length;
-    html += `<span class="dp-node-badge dp-node-goal" title="득점 ${n}회">⚽${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
+  // bottom-right: 골(자책골 포함). 공 이모티콘 자체는 색을 바꿀 수 없으므로, 자책골은 카운트
+  // 배지(원형 숫자)만 빨간 배경으로 구분한다. 자책골이 같이 있으면 정규 골이 1개뿐이어도
+  // "1 1"처럼 나란히 보이도록 정규 골 카운트도 함께 표시한다(기존엔 2개 이상일 때만 숫자 표시).
+  {
+    const goalCount = events.goals?.length || 0;
+    const ownGoalCount = events.ownGoals?.length || 0;
+    if (goalCount || ownGoalCount) {
+      const paired = goalCount > 0 && ownGoalCount > 0;
+      const titleParts = [];
+      if (goalCount) titleParts.push(`득점 ${goalCount}회`);
+      if (ownGoalCount) titleParts.push(`자책골 ${ownGoalCount}회`);
+      const goalCountHtml = goalCount && (goalCount > 1 || paired)
+        ? `<span class="dp-node-count">${goalCount}</span>` : '';
+      const ownGoalCountHtml = ownGoalCount
+        ? `<span class="dp-node-count dp-node-count-og${paired ? ' dp-node-count-paired' : ''}">${ownGoalCount}</span>`
+        : '';
+      html += `<span class="dp-node-badge dp-node-goal" title="${titleParts.join(', ')}">⚽${goalCountHtml}${ownGoalCountHtml}</span>`;
+    }
   }
   // left side: 카드
   const cardKind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
