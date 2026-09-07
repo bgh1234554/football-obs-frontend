@@ -159,6 +159,13 @@ function pmShowMenu(playerId, clientX, clientY) {
   const subNameRow = fullName && fullName !== displayName
     ? `<div class="pm-subname">${pmEsc(fullName)}</div>`
     : '';
+  // 부상자 명단 선수만 — hover 툴팁이 잘 안 보이는 환경 대비 사유를 메뉴에도 노출.
+  const injuryReasonText = player._kind === 'injury'
+    ? (typeof getInjuryReasonDisplayText === 'function' ? getInjuryReasonDisplayText(player.reason, player.type) : '')
+    : '';
+  const injuryReasonRow = injuryReasonText
+    ? `<div class="pm-injury-reason">${pmEsc(injuryReasonText)}</div>`
+    : '';
 
   pmContainer().innerHTML = `
 <div class="pm-popup" id="pmPopup" role="dialog">
@@ -169,6 +176,7 @@ function pmShowMenu(playerId, clientX, clientY) {
       <div class="pm-name"><span class="pm-num">${pmEsc(number)}</span>${pmEsc(displayName)}</div>
       ${subNameRow}
       ${nicknameRow}
+      ${injuryReasonRow}
       <div class="pm-pos" style="display:flex;align-items:center;gap:5px">
         <span>포지션: ${pmEsc(pos)}</span>
         <button class="pm-btn" id="pmBtnIdLink" style="padding:1px 6px;font-size:10px;line-height:1.5;margin:0;opacity:.75">ID 입력</button>

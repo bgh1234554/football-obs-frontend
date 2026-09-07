@@ -119,6 +119,14 @@
   text-overflow: ellipsis;
 }
 
+.pm-injury-reason {
+  font-size: 11px;
+  color: #f87171;
+  margin-top: 2px;
+  white-space: normal;
+  word-break: keep-all;
+}
+
 .pm-pos {
   font-size: 11px;
   color: rgba(255,255,255,.5);
