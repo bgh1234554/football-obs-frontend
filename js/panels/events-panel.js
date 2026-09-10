@@ -212,6 +212,23 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
 }
 
 /**
+ * '?' 버튼으로 채운(override로 저장된) 교체 선수 이름 표시용 — 클릭하면 evOpenSubstPicker를
+ * 다시 열어 선택을 바꿀 수 있게 함. API가 원래 제공한 이름(override 없음)은 고정 텍스트로 둠.
+ */
+function evCreateSubstEditableName(ev, field, fixtureData, name) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ev-text-name ev-subst-name-editable';
+  btn.title = field === 'player' ? '클릭해서 OUT 선수 다시 선택' : '클릭해서 IN 선수 다시 선택';
+  btn.textContent = name;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    evOpenSubstPicker(ev, field, fixtureData);
+  });
+  return btn;
+}
+
+/**
  * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
  * lineup-data.js의 buildEffectiveFixtureData에서 호출해
  * subReflect 교체 swap이 override를 반영하도록 함.
@@ -277,6 +294,8 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   list.className = 'ev-subst-picker-list';
 
   let selectedPlayer = null;
+  // 재선택(수정)인 경우 기존 override 값을 미리 선택된 상태로 보여줌.
+  const existingOverride = evGetSubstOverride(fixtureId, ev, field);
 
   if (!allPlayers.length) {
     const empty = document.createElement('div');
@@ -306,6 +325,10 @@ function evOpenSubstPicker(ev, field, fixtureData) {
       posEl.textContent = player.pos || '';
 
       item.append(num, nameEl, posEl);
+      if (existingOverride && Number(existingOverride.playerId) === Number(player.playerId)) {
+        item.classList.add('is-selected');
+        selectedPlayer = { playerId: player.playerId, name: displayName };
+      }
       item.addEventListener('click', () => {
         list.querySelectorAll('.ev-subst-picker-item.is-selected')
           .forEach(el => el.classList.remove('is-selected'));
@@ -962,16 +985,24 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
     inLine.className = 'ev-text-line ev-text-in';
     inLine.append('IN: ');
     const inName = evGetSubstDisplayName(ev, 'assist', fixtureId);
-    if (inName) appendName(inLine, inName);
-    else inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
+    if (inName) {
+      if (evGetSubstOverride(fixtureId, ev, 'assist')) inLine.appendChild(evCreateSubstEditableName(ev, 'assist', fixtureData, inName));
+      else appendName(inLine, inName);
+    } else {
+      inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
+    }
     appendInlineComment(inLine); // subst의 코멘트는 IN 라인 옆에
 
     const outLine = document.createElement('span');
     outLine.className = 'ev-text-line ev-text-out';
     outLine.append('OUT: ');
     const outName = evGetSubstDisplayName(ev, 'player', fixtureId);
-    if (outName) appendName(outLine, outName);
-    else outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
+    if (outName) {
+      if (evGetSubstOverride(fixtureId, ev, 'player')) outLine.appendChild(evCreateSubstEditableName(ev, 'player', fixtureData, outName));
+      else appendName(outLine, outName);
+    } else {
+      outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
+    }
 
     stack.appendChild(inLine);
     stack.appendChild(outLine);
