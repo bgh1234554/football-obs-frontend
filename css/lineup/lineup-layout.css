@@ -176,6 +176,42 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   width: calc(44px * var(--lp-node-scale, 1));
   height: calc(44px * var(--lp-node-scale, 1));
 }
+/* 노드 배지(평점/카드/골/어시/교체시간)는 여태 --lp-node-scale과 무관한 고정 px였다.
+   패널을 극단적으로 축소하면(예: 캠 큰 라인업 코너 핸들 최소치) 노드/이름표는 같이
+   작아지는데 배지만 원래 크기 그대로 남아, 특히 노드 바로 아래에 붙는 평점 배지가
+   그 밑 이름 pill과 겹쳐 뭉개져 보이는 문제가 있었다. 노드/원/아바타와 같은 배율로 맞춘다. */
+.layout-big .lp-lineup .dp-node-rating {
+  min-width: calc(26px * var(--lp-node-scale, 1));
+  height: calc(14px * var(--lp-node-scale, 1));
+  padding: 0 calc(4px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1));
+  border-radius: calc(3px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-badge {
+  font-size: calc(11px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-sub-in,
+.layout-big .lp-lineup .dp-node-sub-out {
+  padding: calc(1px * var(--lp-node-scale, 1)) calc(4px * var(--lp-node-scale, 1));
+  border-radius: calc(6px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1));
+  gap: calc(2px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-assist,
+.layout-big .lp-lineup .dp-node-goal {
+  width: calc(16px * var(--lp-node-scale, 1));
+  height: calc(16px * var(--lp-node-scale, 1));
+  font-size: calc(13px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-count {
+  min-width: calc(12px * var(--lp-node-scale, 1));
+  height: calc(12px * var(--lp-node-scale, 1));
+  font-size: calc(9px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-card .dp-card {
+  width: calc(8px * var(--lp-node-scale, 1));
+  height: calc(11px * var(--lp-node-scale, 1));
+}
 /* 이름 pill — 축소 시 폭/패딩은 줄이되, 폰트는 base 크기를 유지하고 실제 충돌 시 JS가 별도로 축소 */
 .layout-big .lp-lineup .dp-lineup-name {
   font-size: var(--lp-name-base-size, 12px);
