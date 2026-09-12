@@ -90,8 +90,10 @@ function _lpEventsScrollEl(mode = 'events') {
   if (mode === 'hth') panelSelector = '[data-hth-panel]';
   if (mode === 'bench_home') panelSelector = '[data-bench-home-panel]';
   if (mode === 'bench_away') panelSelector = '[data-bench-away-panel]';
+  if (mode === 'match_info') panelSelector = '[data-match-info-panel]';
   const panel = document.querySelector(`.lp-stat ${panelSelector}`);
   if (mode === 'bench_home' || mode === 'bench_away') return panel?.querySelector('.bc-body') || null;
+  if (mode === 'match_info') return panel?.querySelector('.mi-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
 function _lpModeUsesPanelAutoScroll(mode) {
@@ -101,6 +103,10 @@ function _lpModeUsesPanelAutoScroll(mode) {
     return document.querySelector(`.lp-stat [${attr}]`)
       ?.getAttribute('data-bench-scroll') === 'true';
   }
+  // match_info는 교체명단과 달리 2열 폴백 개념이 없고 .mi-body가 항상 overflow-y:auto라
+  // 내용이 짧아 안 넘칠 때도 그냥 무해하게 대기 후 다음 모드로 넘어간다(_lpStartEventsScroll의
+  // maxScroll<=0 분기) — 별도 overflow 게이트 없이 이벤트/HTH와 동일하게 항상 true.
+  if (mode === 'match_info') return true;
   return false;
 }
 
@@ -206,7 +212,7 @@ function _lpBindEventsScrollInterruption(el) {
 function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, options = {}) {
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
-  const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away';
+  const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info';
   if (!el) {
     _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     return;
@@ -398,7 +404,7 @@ function _lpAutoStart() {
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
   } else {
-    // bench_home / bench_away — 2열도 overflow인 경우 이벤트 패널과 동일한 위→아래 자동 스크롤
+    // bench_home / bench_away(2열도 overflow인 경우) / match_info — 위→아래 자동 스크롤
     if (_lpModeUsesPanelAutoScroll(mode)) {
       _lpStartEventsScroll(intervalMs, mode);
     } else {
