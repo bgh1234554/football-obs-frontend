@@ -41,7 +41,7 @@ function getTextLineRects(el) {
   const range = document.createRange();
   try {
     range.selectNodeContents(el);
-    return Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+    return Array.from(range.getClientRects(), toLayoutRect).filter(rect => rect.width > 0 && rect.height > 0);
   } finally {
     range.detach && range.detach();
   }
@@ -139,7 +139,7 @@ function canStayWithinTwoTextLines(el) {
 /** 이분탐색으로 el의 width를 canFitFn이 통과하는 한도 내 최소값까지 줄인다. */
 function tightenTextElementWidth(el, minWidthPx, canFitFn) {
   if (!canMeasureTextElement(el) || typeof canFitFn !== 'function') return false;
-  const currentWidth = Math.ceil(el.getBoundingClientRect().width);
+  const currentWidth = Math.ceil(getLayoutRect(el).width);
   if (!Number.isFinite(currentWidth) || currentWidth <= minWidthPx) return false;
 
   let low = minWidthPx;
@@ -191,7 +191,7 @@ function isBigLineupName(nameEl) {
 /** 큰 캠 이름 라벨의 최소 폭 — wrap 폭의 58%, 단 30~44px 범위로 clamp. */
 function getBigLineupNameMinWidthPx(nameEl) {
   const wrap = nameEl?.closest('.dp-lineup-name-wrap');
-  const wrapWidth = wrap ? Math.floor(wrap.getBoundingClientRect().width) : 0;
+  const wrapWidth = wrap ? Math.floor(getLayoutRect(wrap).width) : 0;
   if (!Number.isFinite(wrapWidth) || wrapWidth <= 0) return LINEUP_NAME_MIN_WIDTH_PX;
   return Math.max(30, Math.min(LINEUP_NAME_MIN_WIDTH_PX, Math.floor(wrapWidth * 0.58)));
 }
@@ -246,8 +246,8 @@ function getLineupNamePitchOverflow(nameEl, paddingPx = LINEUP_NAME_PITCH_PADDIN
   const pitch = wrap?.closest('.dp-lineup-vertical-pitch');
   if (!wrap || !pitch || !canMeasureTextElement(nameEl) || !canMeasureTextElement(pitch)) return null;
 
-  const wrapRect = nameEl.getBoundingClientRect();
-  const pitchRect = pitch.getBoundingClientRect();
+  const wrapRect = getLayoutRect(nameEl);
+  const pitchRect = getLayoutRect(pitch);
   return {
     left: Math.max(0, (pitchRect.left + paddingPx) - wrapRect.left),
     right: Math.max(0, wrapRect.right - (pitchRect.right - paddingPx)),
@@ -346,8 +346,8 @@ function fitLineupNameWithinPitchBounds(nameEl) {
 
 /** 두 라벨(또는 wrap)의 bounding rect가 실제로 겹치는지 (1px 여유). */
 function wrapsOverlap(leftWrap, rightWrap) {
-  const leftRect = leftWrap.getBoundingClientRect();
-  const rightRect = rightWrap.getBoundingClientRect();
+  const leftRect = getLayoutRect(leftWrap);
+  const rightRect = getLayoutRect(rightWrap);
   return leftRect.left < rightRect.right - 1
     && leftRect.right > rightRect.left + 1
     && leftRect.top < rightRect.bottom - 1
@@ -356,8 +356,8 @@ function wrapsOverlap(leftWrap, rightWrap) {
 
 /** 겹치는 두 라벨 중 먼저 줄여야 할 쪽 — 더 넓은 쪽, 동률이면 텍스트 더 긴 쪽, 그래도 같으면 더 아래쪽. */
 function chooseWrapToShrink(leftWrap, rightWrap) {
-  const leftRect = leftWrap.getBoundingClientRect();
-  const rightRect = rightWrap.getBoundingClientRect();
+  const leftRect = getLayoutRect(leftWrap);
+  const rightRect = getLayoutRect(rightWrap);
   if (Math.abs(leftRect.width - rightRect.width) > 1) {
     return leftRect.width > rightRect.width ? leftWrap : rightWrap;
   }
@@ -645,8 +645,8 @@ function fitBigLineupNameAgainstOpposingBadges(labels) {
 //   - AABB만 쓰면 코너 투명 공간 때문에 false positive가 발생하므로 이 방식이 정확함
 function nameOverlapsNodeCircleSignificantly(nameEl, nodeEl) {
   if (!canMeasureTextElement(nameEl) || !canMeasureTextElement(nodeEl)) return false;
-  const nr = nameEl.getBoundingClientRect();
-  const cr = nodeEl.getBoundingClientRect();
+  const nr = getLayoutRect(nameEl);
+  const cr = getLayoutRect(nodeEl);
   // pill 패딩 제외한 텍스트 표시 영역
   const tL = nr.left + 6, tR = nr.right - 6;
   const tT = nr.top + 2,  tB = nr.bottom - 2;
@@ -779,7 +779,7 @@ function fitBenchFooterNames(root) {
 function getPanelOuterHeight(el) {
   if (!el) return 0;
   const style = getComputedStyle(el);
-  return el.getBoundingClientRect().height
+  return getLayoutRect(el).height
     + (parseFloat(style.marginTop) || 0)
     + (parseFloat(style.marginBottom) || 0);
 }
@@ -798,11 +798,11 @@ function getListContentHeight(list) {
   const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
   const children = Array.from(list.children);
   if (!children.length) return paddingY;
-  const listRect = list.getBoundingClientRect();
+  const listRect = getLayoutRect(list);
   const measuredBottom = children.reduce((maxBottom, child) => (
     Math.max(
       maxBottom,
-      (child.getBoundingClientRect().bottom - listRect.top) + list.scrollTop
+      (getLayoutRect(child).bottom - listRect.top) + list.scrollTop
     )
   ), 0);
   return Math.max(paddingY, measuredBottom + (parseFloat(style.paddingBottom) || 0));
@@ -825,7 +825,7 @@ function getPanelSplitMinHeight(splitEl) {
 function getPanelSplitMetrics(panel) {
   const split = panel?.querySelector('.dp-split');
   if (!split) return { current: 0, required: 0, spare: 0, deficit: 0 };
-  const current = split.getBoundingClientRect().height;
+  const current = getLayoutRect(split).height;
   const required = getPanelSplitMinHeight(split);
   return {
     current,
@@ -839,8 +839,8 @@ function getPanelSplitMetrics(panel) {
 function getPanelChromeHeight(panel) {
   if (!panel) return 0;
   const split = panel.querySelector('.dp-split');
-  const panelHeight = panel.getBoundingClientRect().height;
-  const splitHeight = split ? split.getBoundingClientRect().height : 0;
+  const panelHeight = getLayoutRect(panel).height;
+  const splitHeight = split ? getLayoutRect(split).height : 0;
   return Math.max(0, panelHeight - splitHeight);
 }
 
@@ -884,8 +884,8 @@ function balanceBenchInjuryPanelHeights() {
   const page = benchColumn.closest('.page');
   if (page && !page.classList.contains('active')) return;
 
-  const benchRect = benchSection.getBoundingClientRect();
-  const injuryRect = injurySection.getBoundingClientRect();
+  const benchRect = getLayoutRect(benchSection);
+  const injuryRect = getLayoutRect(injurySection);
   if (benchRect.height <= DETAIL_PANEL_BALANCE_EPSILON_PX
     || injuryRect.height <= DETAIL_PANEL_BALANCE_EPSILON_PX) {
     return;
@@ -1019,7 +1019,7 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
   clone.style.display = 'inline-block';
   nameEl.parentNode.appendChild(clone);
   const width = clone.scrollWidth;
-  const height = clone.getBoundingClientRect().height;
+  const height = getLayoutRect(clone).height;
   clone.remove();
   return { width, height };
 }
@@ -1028,7 +1028,7 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
 function hasLineupNamePitchOverflowForRect(rect, nameEl, paddingPx) {
   const pitch = getLineupNameWrap(nameEl)?.closest('.dp-lineup-vertical-pitch');
   if (!pitch || !canMeasureTextElement(pitch)) return false;
-  const pitchRect = pitch.getBoundingClientRect();
+  const pitchRect = getLayoutRect(pitch);
   return rect.left < pitchRect.left + paddingPx - 0.5
     || rect.right > pitchRect.right - paddingPx + 0.5
     || rect.top < pitchRect.top + paddingPx - 0.5
@@ -1055,7 +1055,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 
   const wrap = getLineupNameWrap(nameEl);
   if (!wrap) return false;
-  const wrapRect = wrap.getBoundingClientRect();
+  const wrapRect = getLayoutRect(wrap);
   const centerX = wrapRect.left + (wrapRect.width / 2);
   const top = wrapRect.top;
 
@@ -1071,7 +1071,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 
   const fitsWithinPitch = !hasLineupNamePitchOverflowForRect(hypotheticalRect, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
   const collisionTargets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const overlapsAnything = collisionTargets.some(target => canMeasureTextElement(target) && rectsOverlap(hypotheticalRect, target.getBoundingClientRect()));
+  const overlapsAnything = collisionTargets.some(target => canMeasureTextElement(target) && rectsOverlap(hypotheticalRect, getLayoutRect(target)));
 
   if (!fitsWithinPitch || overlapsAnything) return false; // nameEl 자체는 한 번도 안 건드림
 

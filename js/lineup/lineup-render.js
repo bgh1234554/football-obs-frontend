@@ -816,14 +816,14 @@ function bcMeasureTitleWidth(text, fontSizePx, sampleEl) {
 function lpFitBenchCycleTitle(titleEl) {
   if (!titleEl) return;
   const lpStat = titleEl.closest('.lp-stat');
-  const panelRect = lpStat?.getBoundingClientRect();
+  const panelRect = lpStat ? getLayoutRect(lpStat) : null;
   if (!lpStat || !panelRect?.width) { titleEl.style.fontSize = ''; return; }
 
   const isVisible = el => !!el && el.offsetParent !== null;
   const btnEdgeFrom = (selectors, pick) => selectors.reduce((acc, sel) => {
     const el = lpStat.querySelector(sel);
     if (!isVisible(el)) return acc;
-    return pick(acc, el.getBoundingClientRect());
+    return pick(acc, getLayoutRect(el));
   }, 0);
   const leftEdge = btnEdgeFrom(BC_CYCLE_TITLE_LEFT_BTN_SELECTORS,
     (acc, r) => Math.max(acc, r.right - panelRect.left));

@@ -102,8 +102,8 @@ function getSmallLayoutResizeMetrics(layout) {
   const innerWidth = layout.clientWidth - paddingLeft - paddingRight;
   if (innerWidth <= 0) return null;
 
-  const lineupWidth = lineup.getBoundingClientRect().width;
-  const benchWidth = bench.getBoundingClientRect().width;
+  const lineupWidth = getLayoutRect(lineup).width;
+  const benchWidth = getLayoutRect(bench).width;
   const sideWidth = innerWidth - lineupWidth - benchWidth - (gapPx * 3);
   if (sideWidth <= 0) return null;
 
@@ -229,8 +229,8 @@ function startSmallLayoutResize(event) {
   const metrics = getSmallLayoutResizeMetrics(layout);
   if (!handle || !eventsCol || !layout || !metrics) return;
 
-  const startLeft = eventsCol.getBoundingClientRect().width;
-  const startX = event.clientX;
+  const startLeft = getLayoutRect(eventsCol).width;
+  const startX = toLayoutPixels(event.clientX);
   let lastRatio = clampSmallLayoutResizeRatio(metrics, startLeft / metrics.sideWidth);
   if (lastRatio == null) return;
 
@@ -241,7 +241,7 @@ function startSmallLayoutResize(event) {
   const onMove = (e) => {
     const nextMetrics = getSmallLayoutResizeMetrics(layout);
     if (!nextMetrics) return;
-    const deltaX = e.clientX - startX;
+    const deltaX = toLayoutPixels(e.clientX) - startX;
     const nextLeft = Math.max(
       nextMetrics.leftMin,
       Math.min(nextMetrics.sideWidth - nextMetrics.rightMin, startLeft + deltaX)
@@ -312,7 +312,7 @@ function startLineupResize(event) {
   const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
   const hasEdgeOverride = panel.classList.contains('has-w-override')
     || panel.classList.contains('has-h-override');
-  const currentHeightPct = Math.round((panel.getBoundingClientRect().height / layoutHeight) * 100);
+  const currentHeightPct = Math.round((getLayoutRect(panel).height / layoutHeight) * 100);
   const startScalePct = hasEdgeOverride
     ? Math.max(
       LINEUP_RESIZE_MIN,
@@ -320,7 +320,7 @@ function startLineupResize(event) {
     )
     : storedScalePct;
   const saveBaselinePct = hasEdgeOverride ? startScalePct : storedScalePct;
-  const startY = event.clientY;
+  const startY = toLayoutPixels(event.clientY);
 
   panel.classList.add('is-resizing');
   document.body.classList.add('lp-lineup-resizing');
@@ -332,7 +332,7 @@ function startLineupResize(event) {
   const onMove = (e) => {
     // 1) 포인터 이동량을 layout 높이 기준 백분율로 환산한다.
     // 위로 드래그(deltaY > 0) → 확장, 아래로 드래그(deltaY < 0) → 축소.
-    const deltaY = startY - e.clientY;
+    const deltaY = startY - toLayoutPixels(e.clientY);
     const deltaPct = (deltaY / layoutHeight) * 100;
     let next = startScalePct + deltaPct;
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
@@ -509,7 +509,7 @@ function _applyLinkedMode(col) {
   col.classList.add('is-big-linked');
   _clearPanelAbsolute(chatPanel);
   _clearPanelAbsolute(statPanel);
-  const colH = col.getBoundingClientRect().height;
+  const colH = getLayoutRect(col).height;
   const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
   if (colH > 0) {
     // 비율(fraction) 기준 우선(드래그 후 저장) → 없으면 절대 px → 없으면 50/50
@@ -545,8 +545,8 @@ function _applyIndependentMode(col) {
   chatPanel.style.removeProperty('flex');
   statPanel.style.removeProperty('flex');
 
-  const colH   = col.getBoundingClientRect().height;
-  const colRect = col.getBoundingClientRect();
+  const colH   = getLayoutRect(col).height;
+  const colRect = getLayoutRect(col);
   const layout = col.closest('.layout-big');
   const defaultH = colH > 0 ? Math.max(BIG_PANEL_MIN_H, Math.floor(colH / 2)) : 200;
   const defaultW = (() => {
@@ -607,7 +607,7 @@ function applyStoredBigPanelHeights() {
         if (layout) applyBigColWidth(layout, newColW);
         _bigSave(BIG_COL_WIDTH_KEY, newColW);
       }
-      const colH = col.getBoundingClientRect().height;
+      const colH = getLayoutRect(col).height;
       if (colH > 0) _bigSave(BIG_CHAT_H_KEY, Math.floor((colH - BIG_COL_GAP) / 2));
     }
 
@@ -623,15 +623,15 @@ function startBigColWidthDrag(event, col) {
   event.preventDefault();
   const layout = col.closest('.layout-big');
   if (!layout) return;
-  const startX = event.clientX;
-  const startW = col.getBoundingClientRect().width;
+  const startX = toLayoutPixels(event.clientX);
+  const startW = getLayoutRect(col).width;
   const maxW   = layout.clientWidth * 0.65;
   let lastW = startW;
   const handle = event.currentTarget;
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-big-col-resizing');
   const onMove = (e) => {
-    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - e.clientX)));
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - toLayoutPixels(e.clientX))));
     lastW = newW;
     applyBigColWidth(layout, newW);
   };
@@ -663,8 +663,8 @@ function startBigPanelWidthDrag(event, col, which) {
   const wKey   = which === 'chat' ? BIG_CHAT_W_KEY : BIG_STAT_W_KEY;
   const layout = col.closest('.layout-big');
   if (!layout) return;
-  const startX = event.clientX;
-  const startW = panel.getBoundingClientRect().width;
+  const startX = toLayoutPixels(event.clientX);
+  const startW = getLayoutRect(panel).width;
   const maxW   = layout.clientWidth * 0.9;
   let lastW = startW;
   const handle = event.currentTarget;
@@ -672,10 +672,10 @@ function startBigPanelWidthDrag(event, col, which) {
   document.body.classList.add('lp-big-col-resizing');
   const otherPanel = which === 'chat' ? statPanel : chatPanel;
   const onMove = (e) => {
-    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - e.clientX)));
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - toLayoutPixels(e.clientX))));
     lastW = newW;
     panel.style.width = `${Math.round(newW)}px`;
-    applyBigColWidth(layout, Math.max(newW, otherPanel.getBoundingClientRect().width));
+    applyBigColWidth(layout, Math.max(newW, getLayoutRect(otherPanel).width));
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
@@ -684,7 +684,7 @@ function startBigPanelWidthDrag(event, col, which) {
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-big-col-resizing');
     _bigSave(wKey, lastW);
-    _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+    _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, getLayoutRect(otherPanel).width));
     requestAnimationFrame(() => {
       window.stRerenderActivePanels?.();
       window.lpBenchCycleRebalanceAll?.();
@@ -711,10 +711,10 @@ function startBigPanelHeightDrag(event, col, origin) {
   const statPanel = col.querySelector('.lp-stat');
   if (!chatPanel || !statPanel) return;
   const linked     = isBigPanelLinked();
-  const startY     = event.clientY;
-  const startChatH = chatPanel.getBoundingClientRect().height;
-  const startStatH = statPanel.getBoundingClientRect().height;
-  const colH       = col.getBoundingClientRect().height;
+  const startY     = toLayoutPixels(event.clientY);
+  const startChatH = getLayoutRect(chatPanel).height;
+  const startStatH = getLayoutRect(statPanel).height;
+  const colH       = getLayoutRect(col).height;
   const usable     = colH - BIG_COL_GAP;
   let lastChatH = startChatH;
   let lastStatH = startStatH;
@@ -723,7 +723,7 @@ function startBigPanelHeightDrag(event, col, origin) {
   document.body.classList.add('lp-big-h-resizing');
 
   const onMove = (e) => {
-    const delta = e.clientY - startY;
+    const delta = toLayoutPixels(e.clientY) - startY;
     if (origin === 'chatBottom') {
       const maxChat = linked ? usable - BIG_PANEL_MIN_H : colH - startStatH;
       const newChatH = Math.max(BIG_PANEL_MIN_H, Math.min(maxChat, startChatH + delta));
@@ -776,14 +776,14 @@ function startBigCornerDrag(event, col, panelSide) {
   if (!chatPanel || !statPanel) return;
   const linked     = isBigPanelLinked();
   const layout     = col.closest('.layout-big');
-  const startX     = event.clientX;
-  const startY     = event.clientY;
+  const startX     = toLayoutPixels(event.clientX);
+  const startY     = toLayoutPixels(event.clientY);
   const panel      = panelSide === 'chat' ? chatPanel : statPanel;
   const otherPanel = panelSide === 'chat' ? statPanel : chatPanel;
-  const startW     = linked ? col.getBoundingClientRect().width : panel.getBoundingClientRect().width;
-  const startChatH = chatPanel.getBoundingClientRect().height;
-  const startStatH = statPanel.getBoundingClientRect().height;
-  const colH       = col.getBoundingClientRect().height;
+  const startW     = linked ? getLayoutRect(col).width : getLayoutRect(panel).width;
+  const startChatH = getLayoutRect(chatPanel).height;
+  const startStatH = getLayoutRect(statPanel).height;
+  const colH       = getLayoutRect(col).height;
   const usable     = colH - BIG_COL_GAP;
   const maxW       = layout ? (linked ? _bigColMaxWidth(layout) : _bigPanelMaxWidth(layout)) : window.innerWidth;
   let lastW = startW, lastChatH = startChatH, lastStatH = startStatH;
@@ -792,8 +792,8 @@ function startBigCornerDrag(event, col, panelSide) {
   document.body.classList.add('lp-big-col-resizing', 'lp-big-h-resizing');
 
   const onMove = (e) => {
-    const dx = startX - e.clientX; // 왼쪽 드래그 = 너비 증가
-    const dy = e.clientY - startY; // 아래 드래그 = 양수
+    const dx = startX - toLayoutPixels(e.clientX); // 왼쪽 드래그 = 너비 증가
+    const dy = toLayoutPixels(e.clientY) - startY; // 아래 드래그 = 양수
 
     // 너비
     const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + dx));
@@ -802,7 +802,7 @@ function startBigCornerDrag(event, col, panelSide) {
       if (layout) applyBigColWidth(layout, newW);
     } else {
       panel.style.width = `${Math.round(newW)}px`;
-      if (layout) applyBigColWidth(layout, Math.max(newW, otherPanel.getBoundingClientRect().width));
+      if (layout) applyBigColWidth(layout, Math.max(newW, getLayoutRect(otherPanel).width));
     }
 
     // 높이
@@ -841,7 +841,7 @@ function startBigCornerDrag(event, col, panelSide) {
       _bigSave(BIG_COL_WIDTH_KEY, lastW);
     } else {
       _bigSave(panelSide === 'chat' ? BIG_CHAT_W_KEY : BIG_STAT_W_KEY, lastW);
-      _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+      _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, getLayoutRect(otherPanel).width));
     }
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
@@ -1017,7 +1017,7 @@ function _lineupApplyWidthOverride(panel, px, knownHeight = null) {
   panel.classList.add('has-w-override');
   panel.classList.add('has-edge-override');
   // --lp-lineup-x-scale: 너비/자연너비 비율 → 이름 라벨 폭 비례 확장
-  const h = Number(knownHeight) || panel.getBoundingClientRect().height;
+  const h = Number(knownHeight) || getLayoutRect(panel).height;
   const naturalW = h > 0 ? h * _lineupNaturalAspectRatio(panel) : px;
   // 높이를 크게 늘렸다고 이름 pill 기본 폭까지 같이 줄어들면,
   // 실제로는 공간이 충분한 라벨도 억지로 두 줄이 된다. 기본 폭(1)보다 작게는 줄이지 않는다.
@@ -1045,7 +1045,7 @@ function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
   // 위쪽 엣지는 높이 전용이다. 기존 aspect-ratio가 너비까지 끌고 가지 않게
   // 사용자가 너비를 따로 조절하지 않은 상태라면 현재 너비를 임시로 고정한다.
   if (!panel.classList.contains('has-w-override') && !panel.classList.contains('has-h-frozen-width')) {
-    const frozenWidth = Number(knownWidth) || panel.getBoundingClientRect().width;
+    const frozenWidth = Number(knownWidth) || getLayoutRect(panel).width;
     if (frozenWidth > 0) {
       panel.style.width = `${Math.round(frozenWidth)}px`;
       panel.dataset.lineupFrozenWidth = `${Math.round(frozenWidth)}px`;
@@ -1098,9 +1098,9 @@ function startLineupWidthDrag(event, panel) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
-  const startX  = event.clientX;
-  const startW  = panel.getBoundingClientRect().width;
-  const startH  = panel.getBoundingClientRect().height;
+  const startX  = toLayoutPixels(event.clientX);
+  const startW  = getLayoutRect(panel).width;
+  const startH  = getLayoutRect(panel).height;
   const layoutW = (panel.closest('.layout-wrap') || document.body).clientWidth;
   const maxW    = layoutW * 0.8;
   let lastW = startW;
@@ -1111,7 +1111,7 @@ function startLineupWidthDrag(event, panel) {
   document.body.classList.add('lp-lineup-w-resizing');
 
   const onMove = (e) => {
-    const newW = Math.max(LINEUP_EDGE_MIN_W, Math.min(maxW, startW + (e.clientX - startX)));
+    const newW = Math.max(LINEUP_EDGE_MIN_W, Math.min(maxW, startW + (toLayoutPixels(e.clientX) - startX)));
     lastW = newW;
     pendingW = newW;
     if (rafId) return;
@@ -1144,9 +1144,9 @@ function startLineupHeightDrag(event, panel) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
-  const startY  = event.clientY;
-  const startH  = panel.getBoundingClientRect().height;
-  const startW  = panel.getBoundingClientRect().width;
+  const startY  = toLayoutPixels(event.clientY);
+  const startH  = getLayoutRect(panel).height;
+  const startW  = getLayoutRect(panel).width;
   const maxH    = _lineupGetMaxHeight(panel);
   let lastH = startH;
   let pendingH = startH;
@@ -1157,7 +1157,7 @@ function startLineupHeightDrag(event, panel) {
 
   const onMove = (e) => {
     // 위로 드래그(dy < 0) = 높이 증가
-    const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (e.clientY - startY)));
+    const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (toLayoutPixels(e.clientY) - startY)));
     lastH = newH;
     pendingH = newH;
     if (rafId) return;
@@ -1268,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 이 시점은 항상 창 모드이므로 colH 기준으로 안전하게 비율 계산 가능.
     if (_bigLoadFraction(BIG_CHAT_FRACTION_KEY) == null) {
       document.querySelectorAll('.layout-big .lp-col').forEach(col => {
-        const colH = col.getBoundingClientRect().height;
+        const colH = getLayoutRect(col).height;
         if (colH <= 0) return;
         const usable = colH - BIG_COL_GAP;
         const chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);

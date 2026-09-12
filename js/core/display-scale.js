@@ -24,7 +24,10 @@
   function applyDisplayScale(){
     var dpr = window.devicePixelRatio;
     if (!dpr || dpr <= 0) dpr = 1;
-    document.documentElement.style.zoom = String(1 / dpr);
+    const zoom = String(1 / dpr);
+    document.documentElement.style.zoom = zoom;
+    // vh는 zoom 전 뷰포트 높이이므로 body 높이에도 같은 배율을 보정한다.
+    document.documentElement.style.setProperty('--display-zoom', zoom);
   }
 
   applyDisplayScale();

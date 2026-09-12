@@ -4,6 +4,19 @@
 
   /** id로 DOM 엘리먼트를 가져오는 단축 함수 */
   const $ = id => document.getElementById(id);
+  /** 루트 display-scale의 zoom만 제거한다. 요소 자체의 transform은 유지한다. */
+  function getDisplayZoom(){
+    const zoom = parseFloat(document.documentElement.style.zoom);
+    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  }
+  /** 뷰포트 좌표/이동량을 style.width/height 등과 같은 레이아웃 CSS px로 변환. */
+  function toLayoutPixels(value){ return value / getDisplayZoom(); }
+  /** Element/Range의 화면 사각형을 레이아웃 CSS px 좌표로 변환. */
+  function toLayoutRect(rect){
+    const zoom = getDisplayZoom();
+    return new DOMRect(rect.x / zoom, rect.y / zoom, rect.width / zoom, rect.height / zoom);
+  }
+  function getLayoutRect(element){ return toLayoutRect(element.getBoundingClientRect()); }
   /** CSS 커스텀 변수 값을 설정하는 단축 함수 */
   const setCSS = (k,v) => document.documentElement.style.setProperty(k, v);
   /** CSS 커스텀 변수 값을 읽어오는 함수 */
