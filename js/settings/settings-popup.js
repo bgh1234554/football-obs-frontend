@@ -12,7 +12,7 @@ const SETTINGS_DEFAULTS = {
   teamName: 'long',   // 라인업 chip + 벤치/부상 컬럼 헤더의 팀명 표시 (default 풀네임)
   lineup: 'short',
   scorer: 'long',
-  roster: 'short',
+  roster: 'long',
   lineupNode: 'photo',
   lineupHideInitial: 'off',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
@@ -843,12 +843,17 @@ function setNameMode(category, mode) {
 let lineupInitialCollisionBaseNames = new Set();
 let lineupShortNameCollisionNames = new Set();
 
+// CSV 한글 숏네임의 하이픈은 성 경계 메타데이터이며 표시명에서는 숨긴다.
+function stripKoreanSurnameBreaks(name) {
+  return String(name || '').replace(/(?<=[가-힣])-(?=[가-힣])/g, '');
+}
+
 function getLineupShortName(player) {
-  return player?.name || player?.playerName || '';
+  return stripKoreanSurnameBreaks(player?.name || player?.playerName || '');
 }
 
 function normalizeLineupInitialBaseName(name) {
-  const text = String(name || '').trim();
+  const text = stripKoreanSurnameBreaks(name).trim();
   if (!text) return '';
   const base = stripLeadingLineupInitial(text) || text;
   return String(base || '')
@@ -924,9 +929,12 @@ function shouldKeepLineupInitial(shortName) {
  *    단, 양 팀 선발+교체 전체에서 이니셜을 제거했을 때 동명이인이 생기면 식별을 위해 이니셜을 유지.
  *    long 모드에선 hideInitial 무시(풀네임 형식이 깨짐).
  */
-function pickName(player, category) {
+function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
   if (!player) return '';
+  // 포메이션 pill만 원본 경계를 받아 피팅 단계에서 사용한다.
+  const display = name => preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name);
   // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
+  // 닉네임은 사용자가 자유 입력한 텍스트라 성 경계 하이픈 규칙 대상이 아니다 — 그대로 반환.
   const pid = player.playerId || player.id;
   if (pid && Number(pid) !== 0 && typeof getPlayerNickname === 'function') {
     const nick = getPlayerNickname(pid);
@@ -940,13 +948,13 @@ function pickName(player, category) {
   const displayShortName = shouldHideInitial && !shouldKeepLineupInitial(shortName)
     ? stripLeadingLineupInitial(shortName) || shortName
     : shortName;
-  if (isLongName(category) && longName) return longName;
+  if (isLongName(category) && longName) return display(longName);
   // 이니셜 포함 shortname도 다른 선수와 동일하면 풀네임으로
   if (longName && (category === 'lineup' || category === 'roster')) {
-    const normDisplay = String(displayShortName).normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
-    if (normDisplay && lineupShortNameCollisionNames.has(normDisplay)) return longName;
+    const normDisplay = stripKoreanSurnameBreaks(displayShortName).normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    if (normDisplay && lineupShortNameCollisionNames.has(normDisplay)) return display(longName);
   }
-  return displayShortName || longName || shortName || '';
+  return display(displayShortName || longName || shortName || '');
 }
 
 /**

@@ -378,20 +378,26 @@ function buildBenchListHtml(players, lineupExists) {
   return players.map(player => lpBuildRosterRowHtml(player, 'bench')).join('');
 }
 
-/** 미출전 선수 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지/미등록) + 한글 사유 툴팁. 미등록은 맨 밑으로 정렬. */
+/** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/미등록=3)을 매긴다. */
+function getInjuryCategoryRank(injury) {
+  if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) return 3;
+  if (isQuestionableInjuryReason(injury.reason, injury.type)) return 1;
+  if (typeof isSuspension === 'function' && isSuspension(injury.reason)) return 2;
+  return 0;
+}
+
+/** 미출전 선수 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지/미등록) + 한글 사유 툴팁. 아이콘 표시 순서(부상→의심→출장정지→미등록)대로 정렬. */
 function buildInjuryListHtml(injuries, provided) {
   if (!injuries || injuries.length === 0) {
     return buildEmptyHtml(provided ? '결장자 없음' : '부상 정보 미제공');
   }
 
-  // 선수단 미등록(Off the roster)은 부상/의심/출장정지와 성격이 달라 맨 밑으로 몰아서 표시.
-  // 그 외 순서는 원본 순서 그대로 유지(안정 정렬).
+  // 카테고리별로 묶어서 정렬하되, 같은 카테고리 안에서는 원본 순서 그대로 유지(안정 정렬).
   const sortedInjuries = injuries
     .map((injury, index) => ({ injury, index }))
     .sort((a, b) => {
-      const aOff = (typeof isOffRoster === 'function' && isOffRoster(a.injury.reason)) ? 1 : 0;
-      const bOff = (typeof isOffRoster === 'function' && isOffRoster(b.injury.reason)) ? 1 : 0;
-      if (aOff !== bOff) return aOff - bOff;
+      const rankDiff = getInjuryCategoryRank(a.injury) - getInjuryCategoryRank(b.injury);
+      if (rankDiff !== 0) return rankDiff;
       return a.index - b.index;
     })
     .map(entry => entry.injury);
@@ -523,15 +529,34 @@ function shouldShowLineupNameNumber() {
   return typeof getSetting !== 'function' || getSetting('lineupShowNumber') !== 'off';
 }
 
+/** 풀네임에도 같은 선수의 숏네임에서 확인된 성 경계만 연결한다. */
+function getLineupNameWithSurnameBreaks(player, name) {
+  const selectedName = String(name || '');
+  if (stripKoreanSurnameBreaks(selectedName) !== selectedName) return selectedName;
+  const shortName = String(player?.name || player?.playerName || '');
+  const surname = stripLeadingLineupInitial(shortName);
+  const parts = surname.split(/(?<=[가-힣])-(?=[가-힣])/);
+  if (parts.length !== 2) return selectedName;
+  const visibleSurname = stripKoreanSurnameBreaks(surname);
+  if (!selectedName.endsWith(visibleSurname)) return selectedName;
+  const prefix = selectedName.slice(0, -visibleSurname.length);
+  // 닉네임이나 다른 성의 일부가 우연히 일치하는 경우에는 경계를 옮기지 않는다.
+  if (prefix && !/\s$/.test(prefix)) return selectedName;
+  return prefix + surname;
+}
+
 /** 이름 라벨 내부 HTML — (사진 모드면) 등번호 + 이름 텍스트. */
 function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
-  const safeName = dpEscape(name || '');
+  const rawName = getLineupNameWithSurnameBreaks(player, name);
+  const visibleName = stripKoreanSurnameBreaks(rawName);
+  const safeName = dpEscape(visibleName);
+  const surnameAttr = visibleName !== rawName ? ` data-surname-breaks="${dpEscape(rawName)}"` : '';
   const rawNumber = String(player?.number ?? '').trim();
   const showNumber = shouldShowLineupNameNumber() && rawNumber !== '';
   const numberHtml = showNumber
     ? `<span class="dp-lineup-name-num">${dpEscape(rawNumber)}</span>`
     : '';
-  return `<span class="${nameClass}"${title}>${numberHtml}<span class="dp-lineup-name-text">${safeName}</span></span>`;
+  return `<span class="${nameClass}"${title}>${numberHtml}<span class="dp-lineup-name-text"${surnameAttr}>${safeName}</span></span>`;
 }
 
 // 두 패스 렌더링 — 원/아바타와 이름 라벨을 분리해 HTML 두 덩어리로 반환.
@@ -550,7 +575,7 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
   const preFwDepth = pitchMode === 'split' ? getPreFwFormationDepth(lineup?.formation) : null;
 
   getFormationAssignments(lineup).forEach(({ slot, player }) => {
-    const name = pickName(player, 'lineup') || player.name || '';
+    const name = pickName(player, 'lineup', { preserveSurnameBreaks: true }) || player.name || '';
     const title = player.nameKoLong && player.nameKoLong !== player.name
       ? ` title="${dpEscape(player.nameKoLong)}"`
       : '';

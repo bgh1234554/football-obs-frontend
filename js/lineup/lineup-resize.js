@@ -36,6 +36,9 @@ const SMALL_LAYOUT_RIGHT_MIN_PX = 220;
 // ResizeObserver가 없는 구형 환경은 window resize 이벤트로 fallback.
 let smallLayoutResizeObserver = null;
 let smallLayoutResizeFallbackBound = false;
+// layout(.layout-small) → 드래그 중인 pointerId. 한 layout당 세션 1개만 허용해
+// (events-stat/cam-chat 핸들 동시 조작이나 멀티터치로) 두 세션이 겹치는 것을 막는다.
+const smallLayoutActiveResizePointers = new Map();
 
 /** 큰 캠 라인업 패널마다 우하단 리사이즈 핸들을 한 번만 생성한다. */
 function ensureLineupResizeHandles() {
@@ -181,7 +184,9 @@ function resetSmallLayoutResize(layout = null) {
 }
 
 /**
- * 작은 캠 layout의 events-stat 칼럼 우측 경계에 리사이즈 핸들 1회 생성.
+ * 작은 캠 layout의 events-stat 칼럼 우측 경계 + cam-chat 칼럼 좌측 경계에 리사이즈 핸들 생성.
+ * 가운데 두 패널(라인업/벤치)은 고정 폭이라, 어느 쪽 핸들을 드래그해도 좌(events)/우(chat)
+ * 비율이 완전히 같은 방식으로 조정된다(합이 일정하므로 handle 위치와 무관하게 동일한 로직).
  * - pointerdown → 드래그 세션 시작.
  * - dblclick → 기본 비율 복원.
  */
@@ -196,23 +201,34 @@ function ensureSmallLayoutResizeHandles() {
     handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
     panel.appendChild(handle);
   });
+  document.querySelectorAll('.layout-small .lp-cam-chat').forEach(panel => {
+    if (panel.querySelector(':scope > .lp-small-col-resize-end')) return;
+    const handle = document.createElement('div');
+    handle.className = 'lp-small-col-resize-end';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.title = '칼럼 크기 조정';
+    handle.addEventListener('pointerdown', startSmallLayoutResize);
+    handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
+    panel.appendChild(handle);
+  });
 }
 
-/** 핸들 더블클릭 → 저장된 비율 제거 + 해당 layout만 default로 복원. */
+/** 핸들 더블클릭 → 저장된 비율 제거 + 해당 layout만 default로 복원. (events-stat/cam-chat 핸들 공용) */
 function resetSmallLayoutResizeFromHandle(event) {
   event.preventDefault();
   event.stopPropagation();
   const handle = event.currentTarget;
-  const eventsCol = handle.closest('.lp-col-events-stat');
-  const layout = eventsCol?.closest('.layout-small');
+  const layout = handle.closest('.layout-small');
   clearSmallLayoutResizeRatio();
   resetSmallLayoutResize(layout);
 }
 
 /**
- * 작은 캠 칼럼 리사이즈 드래그 세션.
+ * 작은 캠 칼럼 리사이즈 드래그 세션. events-stat 우측 핸들 / cam-chat 좌측 핸들 공용.
  * 1) 좌클릭이 아니면 무시. 메트릭 못 구하면 무시.
  * 2) 시작 시점의 events 폭 + clientX를 기록해 dragX 기준점으로 사용.
+ *    (두 핸들 모두 "핸들을 오른쪽으로 끌면 좌측 폭이 늘어난다"는 방향이 동일 — 가운데
+ *    라인업/벤치가 고정폭이라 좌우 합이 일정하기 때문에 별도 부호 반전 없이 그대로 재사용)
  * 3) onMove: 새 메트릭으로 매번 sideWidth 재산출 후 좌측 폭을 [leftMin, sideWidth-rightMin]로 클램프.
  * 4) onUp: 핸들러 정리 + 마지막으로 적용된 비율(lastRatio)을 storage에 저장.
  *
@@ -224,21 +240,28 @@ function startSmallLayoutResize(event) {
   event.stopPropagation();
 
   const handle = event.currentTarget;
-  const eventsCol = handle.closest('.lp-col-events-stat');
-  const layout = eventsCol?.closest('.layout-small');
+  const layout = handle.closest('.layout-small');
+  const eventsCol = layout?.querySelector('.lp-col-events-stat');
   const metrics = getSmallLayoutResizeMetrics(layout);
   if (!handle || !eventsCol || !layout || !metrics) return;
+  // 같은 layout에 이미 진행 중인 드래그 세션이 있으면(다른 핸들 동시 클릭, 멀티터치 등)
+  // 새 세션을 시작하지 않는다 — 두 세션이 겹치면 서로 다른 startX 기준으로 같은
+  // CSS 변수를 동시에 덮어써 값이 튀는 문제가 생긴다.
+  if (smallLayoutActiveResizePointers.has(layout)) return;
 
   const startLeft = eventsCol.getBoundingClientRect().width;
   const startX = event.clientX;
+  const pointerId = event.pointerId;
   let lastRatio = clampSmallLayoutResizeRatio(metrics, startLeft / metrics.sideWidth);
   if (lastRatio == null) return;
 
+  smallLayoutActiveResizePointers.set(layout, pointerId);
   document.body.classList.add('lp-small-resizing');
   layout.classList.add('is-resizing');
-  handle.setPointerCapture?.(event.pointerId);
+  handle.setPointerCapture?.(pointerId);
 
   const onMove = (e) => {
+    if (e.pointerId !== pointerId) return;
     const nextMetrics = getSmallLayoutResizeMetrics(layout);
     if (!nextMetrics) return;
     const deltaX = e.clientX - startX;
@@ -250,13 +273,15 @@ function startSmallLayoutResize(event) {
     if (nextRatio != null) lastRatio = nextRatio;
   };
 
-  const onUp = () => {
+  const onUp = (e) => {
+    if (e && e.pointerId !== pointerId) return;
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onUp);
     document.body.classList.remove('lp-small-resizing');
     layout.classList.remove('is-resizing');
-    handle.releasePointerCapture?.(event.pointerId);
+    handle.releasePointerCapture?.(pointerId);
+    smallLayoutActiveResizePointers.delete(layout);
     saveSmallLayoutResizeRatio(lastRatio);
   };
 

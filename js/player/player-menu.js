@@ -160,11 +160,15 @@ function pmShowMenu(playerId, clientX, clientY) {
     ? `<div class="pm-subname">${pmEsc(fullName)}</div>`
     : '';
   // 부상자 명단 선수만 — hover 툴팁이 잘 안 보이는 환경 대비 사유를 메뉴에도 노출.
+  // 출전 여부 미정(Questionable)은 확정 부상/출장정지와 구분되도록 노란색으로 표시.
   const injuryReasonText = player._kind === 'injury'
     ? (typeof getInjuryReasonDisplayText === 'function' ? getInjuryReasonDisplayText(player.reason, player.type) : '')
     : '';
+  const isQuestionable = player._kind === 'injury'
+    && typeof isQuestionableInjuryReason === 'function'
+    && isQuestionableInjuryReason(player.reason, player.type);
   const injuryReasonRow = injuryReasonText
-    ? `<div class="pm-injury-reason">${pmEsc(injuryReasonText)}</div>`
+    ? `<div class="pm-injury-reason${isQuestionable ? ' pm-injury-reason-questionable' : ''}">${pmEsc(injuryReasonText)}</div>`
     : '';
 
   pmContainer().innerHTML = `
