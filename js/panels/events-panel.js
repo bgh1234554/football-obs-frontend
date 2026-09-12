@@ -1045,13 +1045,13 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   // state 없거나 비었으면 fixtureData.matchInfo로 폴백.
   const logoUrl = evResolveTeamLogo(ev, fixtureData);
   if (logoUrl) {
-    const logoBox = document.createElement('span');
-    logoBox.className = 'ev-team-logo';
+    // .hth-logo(hth-panel.js)와 동일하게 래퍼 span 없이 img 자체가 고정 크기 박스
+    // (css/panels/events-panel.css: .ev-team-logo) — object-fit이 비율을 알아서 맞춘다.
     const img = document.createElement('img');
+    img.className = 'ev-team-logo';
     img.src = logoUrl;
     img.alt = ev.side === 'home' ? 'HOME' : 'AWAY';
-    logoBox.appendChild(img);
-    main.appendChild(logoBox);
+    main.appendChild(img);
   }
 
   row.appendChild(main);
