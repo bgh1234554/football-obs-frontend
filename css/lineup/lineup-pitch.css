@@ -525,6 +525,14 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
 .dp-lineup-name-text {
   color: inherit;
 }
+/* 기본 2줄이 부족해 폰트 축소 단계에 진입한 복합 성 라벨만 사용. */
+.dp-lineup-name.has-surname-breaks {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+.dp-lineup-surname-part {
+  white-space: nowrap;
+}
 .dp-lineup-name.is-yellow {
   color: #FFD93D;
 }
