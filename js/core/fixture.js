@@ -161,7 +161,11 @@
   const mainUseLastBtn = $('main-use-last-btn');
   const mainClearBtn   = $('main-clear-btn');
 
-  /** 입력된 fixtureId로 fetchAndApplyFixtureData를 호출하고 오버레이를 닫음 */
+  /**
+   * 입력된 fixtureId로 fetchAndApplyFixtureData를 호출하고 오버레이를 닫음.
+   * 반환값: 실제로 fetch가 걸렸으면 그 Promise, 빈 입력이라 reset만 했으면 null
+   * (호출부에서 버튼 중복 클릭 가드에 사용).
+   */
   function renderMainGame(fixtureId){
     const id = (fixtureId||'').trim();
     if(!id){
@@ -170,15 +174,30 @@
         clearCache: true,
         statusMessage: '경기 선택 대기'
       });
-      return;
+      return null;
     }
-    fetchAndApplyFixtureData(id);
+    return fetchAndApplyFixtureData(id);
   }
 
   // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기)
   // 메인 표시 버튼 — 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  //
+  // 중복 클릭 가드: 조회 중(_mainShowBtnBusy)에 다시 누르면 무시.
+  // 원인 - fetchAndApplyFixtureData가 겹쳐 실행되면 FixtureService.buildInjuries()의
+  // 선수별 프로필 API 호출(캐시가 비어있는 첫 로딩 시)이 그대로 2배로 나가는 게 확인됐음
+  // (API-Football 대시보드에서 같은 playerId가 동시각에 정확히 2번씩 찍히는 패턴으로 발견).
+  let _mainShowBtnBusy = false;
   if(mainShowBtn)    mainShowBtn.addEventListener('click', ()=>{
-    renderMainGame(mainInput?.value);
+    if (_mainShowBtnBusy) return;
+    const result = renderMainGame(mainInput?.value);
+    if (result && typeof result.finally === 'function') {
+      _mainShowBtnBusy = true;
+      mainShowBtn.disabled = true;
+      result.finally(() => {
+        _mainShowBtnBusy = false;
+        mainShowBtn.disabled = false;
+      });
+    }
     closeOverlay();
     const target = (typeof getSetting === 'function' && getSetting('mainPage') === 'small') ? 'main-small' : 'main-big';
     if (typeof window.activatePage === 'function') window.activatePage(target);
@@ -460,15 +479,17 @@
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
-  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
+  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 20초 간격으로 호출
+  //     (Bunny CDN 오리진 캐시 TTL이 그보다 짧으면 어차피 낭비 폴링이라 TTL에 맞춰 조정.
+  //     2026-09-13: CDN 캐시가 이미 30초라 15초 폴링의 절반은 캐시만 다시 받아오는 낭비였음 — 20초로 상향)
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
   //   - FT + 3분 경과: 호출 중단
   //   - INT(중단, 재개 가능): 5분 간격으로 재확인. 첫 감지로부터 30분 넘게 지속되면
   //     수동 새로고침을 안내하는 alert를 1회만 띄우고 그 뒤로는 자동 재확인 중단.
   //   - ABD(중단/취소, 재개 안 됨): 감지 즉시 안내 alert를 1회만 띄우고 호출 영구 중단.
   //   - 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO): 조용히 호출 중단.
-  //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
-  const POLL_INTERVAL_MS    = 15 * 1000;
+  //   - kickoffUtc 없는 NS: 안전하게 20초 간격으로 재호출 (fallback)
+  const POLL_INTERVAL_MS    = 20 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
   // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
