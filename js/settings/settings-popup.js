@@ -12,7 +12,7 @@ const SETTINGS_DEFAULTS = {
   teamName: 'long',   // 라인업 chip + 벤치/부상 컬럼 헤더의 팀명 표시 (default 풀네임)
   lineup: 'short',
   scorer: 'long',
-  roster: 'short',
+  roster: 'long',
   lineupNode: 'photo',
   lineupHideInitial: 'off',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
