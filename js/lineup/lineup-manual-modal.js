@@ -34,27 +34,30 @@ function getInjuryReasonDisplayText(reason, type) {
   return typeof getInjuryReasonKo === 'function' ? getInjuryReasonKo(raw) : raw;
 }
 
-/** INJURY_REASON_KO 전체 키를 일반 부상/징계(출장정지) 두 그룹으로 분류 + 한글 라벨 기준 정렬. */
+/** INJURY_REASON_KO 전체 키를 일반 부상/징계(출장정지)/미등록 세 그룹으로 분류 + 한글 라벨 기준 정렬. */
 function getManualInjuryReasonCatalog() {
   const keys = typeof INJURY_REASON_KO !== 'undefined' && INJURY_REASON_KO
     ? Object.keys(INJURY_REASON_KO)
     : [];
   const regular = [];
   const suspensions = [];
+  const offRoster = [];
   const seenLabels = new Set();
 
   Array.from(new Set(keys.filter(Boolean))).forEach(reason => {
     const label = getInjuryReasonDisplayText(reason);
     if (!label || seenLabels.has(label)) return;
     seenLabels.add(label);
-    if (typeof isSuspension === 'function' && isSuspension(reason)) suspensions.push(reason);
+    if (typeof isOffRoster === 'function' && isOffRoster(reason)) offRoster.push(reason);
+    else if (typeof isSuspension === 'function' && isSuspension(reason)) suspensions.push(reason);
     else regular.push(reason);
   });
 
   const sortByLabel = (a, b) => getInjuryReasonDisplayText(a).localeCompare(getInjuryReasonDisplayText(b), 'ko');
   regular.sort(sortByLabel);
   suspensions.sort(sortByLabel);
-  return { regular, suspensions };
+  offRoster.sort(sortByLabel);
+  return { regular, suspensions, offRoster };
 }
 
 /** 부상 사유 select용 option 한 줄 HTML. */
@@ -65,8 +68,8 @@ function buildInjuryReasonOptionHtml(reason, selectedReason) {
 /** 부상 사유 select 전체 HTML — 상태/부상·결장/징계·카드 optgroup 3개 + 카탈로그에 없는 커스텀 값 보존. */
 function buildInjuryReasonOptionsHtml(reason, type) {
   const selectedReason = isQuestionableInjuryReason(reason, type) ? 'Questionable' : String(reason || '').trim();
-  const { regular, suspensions } = getManualInjuryReasonCatalog();
-  const knownReasons = new Set(['Questionable', ...regular, ...suspensions]);
+  const { regular, suspensions, offRoster } = getManualInjuryReasonCatalog();
+  const knownReasons = new Set(['Questionable', ...regular, ...suspensions, ...offRoster]);
   const customOption = selectedReason && !knownReasons.has(selectedReason)
     ? buildInjuryReasonOptionHtml(selectedReason, selectedReason)
     : '';
@@ -81,6 +84,9 @@ function buildInjuryReasonOptionsHtml(reason, type) {
     </optgroup>
     <optgroup label="징계 / 카드">
       ${suspensions.map(item => buildInjuryReasonOptionHtml(item, selectedReason)).join('')}
+    </optgroup>
+    <optgroup label="미등록">
+      ${offRoster.map(item => buildInjuryReasonOptionHtml(item, selectedReason)).join('')}
     </optgroup>`;
 }
 
@@ -379,7 +385,7 @@ function buildInjuryManualFormHtml(injuries) {
 function getManualKindLabel(kind) {
   if (kind === 'lineup') return '선발 라인업';
   if (kind === 'bench') return '교체 명단';
-  return '부상자 명단';
+  return '미출전 선수 명단';
 }
 
 /** 해당 fixture/side/kind에 수동 override가 저장돼 있는지 — 모달 "초기화" 버튼 노출 여부 판단. */

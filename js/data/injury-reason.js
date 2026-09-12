@@ -123,3 +123,14 @@
     const lower = reason.toLowerCase();
     return SUSPENSION_PATTERNS.some(p => lower.includes(p));
   }
+
+  /**
+   * reason이 "선수단 미등록"(Off the roster)인지 판별 — 부상/의심/출장정지와 별개 카테고리.
+   * 부상 아이콘 대신 빨간 X 아이콘 표시용.
+   * @param {string|null|undefined} reason
+   * @returns {boolean}
+   */
+  function isOffRoster(reason) {
+    if (!reason) return false;
+    return normalizeInjuryReasonKey(reason) === 'off the roster';
+  }

@@ -198,8 +198,8 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">벤치/부상자 이름 풀네임</span>
-              <span class="sp-label-sub">벤치·부상자 이름을 풀네임으로 표시합니다.</span>
+              <span class="sp-label-main">벤치/미출전 선수 이름 풀네임</span>
+              <span class="sp-label-sub">벤치·미출전 선수 이름을 풀네임으로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -548,7 +548,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">데이터 패널 투명도</span>
-              <span class="sp-label-sub">이벤트·스탯·교체·부상자 명단 배경 투명도입니다. 높을수록 더 투명합니다.</span>
+              <span class="sp-label-sub">이벤트·스탯·교체·미출전 선수 명단 배경 투명도입니다. 높을수록 더 투명합니다.</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="0" max="100" step="5" data-settings-slider="panelAlpha" />
@@ -640,7 +640,7 @@
             <div class="sp-row">
               <div class="sp-row-label">
                 <span class="sp-label-main">캐시 초기화</span>
-                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다. 포메이션/라인업/벤치/부상자/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
+                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다. 포메이션/라인업/벤치/미출전 선수/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="cacheResetBtn">초기화</button>
             </div>
@@ -664,9 +664,9 @@
                     <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetBench" checked/><span class="sp-switch-slider"></span></span>
                     <span class="sp-mini-toggle-label">벤치</span>
                   </label>
-                  <label class="sp-mini-toggle-item" title="부상/결장 명단">
+                  <label class="sp-mini-toggle-item" title="미출전 선수 명단">
                     <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetInjuries" checked/><span class="sp-switch-slider"></span></span>
-                    <span class="sp-mini-toggle-label">부상자</span>
+                    <span class="sp-mini-toggle-label">미출전</span>
                   </label>
                   <label class="sp-mini-toggle-item" title="홈/원정 감독 이름">
                     <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetCoach" checked/><span class="sp-switch-slider"></span></span>
@@ -1194,7 +1194,7 @@
   js/core/keyboard.js              — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
   js/tactics/tactics.js            — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
   js/tactics/tactics-manual-names.js — 경기 ID 미연동 시 전술판 포지션별 선수 이름 수동 입력 모달 (홈/원정 탭). 경기 ID 로딩 시 자동 소멸
-  js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
+  js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension/isOffRoster 판별(선수단 미등록은 부상/징계와 별도 카테고리, 빨간 X 아이콘)
   js/settings/settings-popup.js    — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
   js/lineup/lineup-manual-store.js — 공통 유틸(dpEscape/clonePlayers 등) + lineupPanelState + fixture 단위 수동 override localStorage CRUD
   js/lineup/lineup-data.js         — buildEffectiveFixtureData(API+수동override 합성) + 그리드/포메이션/색상 변환 헬퍼
