@@ -161,7 +161,11 @@
   const mainUseLastBtn = $('main-use-last-btn');
   const mainClearBtn   = $('main-clear-btn');
 
-  /** 입력된 fixtureId로 fetchAndApplyFixtureData를 호출하고 오버레이를 닫음 */
+  /**
+   * 입력된 fixtureId로 fetchAndApplyFixtureData를 호출하고 오버레이를 닫음.
+   * 반환값: 실제로 fetch가 걸렸으면 그 Promise, 빈 입력이라 reset만 했으면 null
+   * (호출부에서 버튼 중복 클릭 가드에 사용).
+   */
   function renderMainGame(fixtureId){
     const id = (fixtureId||'').trim();
     if(!id){
@@ -170,15 +174,30 @@
         clearCache: true,
         statusMessage: '경기 선택 대기'
       });
-      return;
+      return null;
     }
-    fetchAndApplyFixtureData(id);
+    return fetchAndApplyFixtureData(id);
   }
 
   // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기)
   // 메인 표시 버튼 — 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  //
+  // 중복 클릭 가드: 조회 중(_mainShowBtnBusy)에 다시 누르면 무시.
+  // 원인 - fetchAndApplyFixtureData가 겹쳐 실행되면 FixtureService.buildInjuries()의
+  // 선수별 프로필 API 호출(캐시가 비어있는 첫 로딩 시)이 그대로 2배로 나가는 게 확인됐음
+  // (API-Football 대시보드에서 같은 playerId가 동시각에 정확히 2번씩 찍히는 패턴으로 발견).
+  let _mainShowBtnBusy = false;
   if(mainShowBtn)    mainShowBtn.addEventListener('click', ()=>{
-    renderMainGame(mainInput?.value);
+    if (_mainShowBtnBusy) return;
+    const result = renderMainGame(mainInput?.value);
+    if (result && typeof result.finally === 'function') {
+      _mainShowBtnBusy = true;
+      mainShowBtn.disabled = true;
+      result.finally(() => {
+        _mainShowBtnBusy = false;
+        mainShowBtn.disabled = false;
+      });
+    }
     closeOverlay();
     const target = (typeof getSetting === 'function' && getSetting('mainPage') === 'small') ? 'main-small' : 'main-big';
     if (typeof window.activatePage === 'function') window.activatePage(target);
@@ -460,15 +479,17 @@
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
-  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
+  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 20초 간격으로 호출
+  //     (Bunny CDN 오리진 캐시 TTL이 그보다 짧으면 어차피 낭비 폴링이라 TTL에 맞춰 조정.
+  //     2026-09-13: CDN 캐시가 이미 30초라 15초 폴링의 절반은 캐시만 다시 받아오는 낭비였음 — 20초로 상향)
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
   //   - FT + 3분 경과: 호출 중단
   //   - INT(중단, 재개 가능): 5분 간격으로 재확인. 첫 감지로부터 30분 넘게 지속되면
   //     수동 새로고침을 안내하는 alert를 1회만 띄우고 그 뒤로는 자동 재확인 중단.
   //   - ABD(중단/취소, 재개 안 됨): 감지 즉시 안내 alert를 1회만 띄우고 호출 영구 중단.
   //   - 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO): 조용히 호출 중단.
-  //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
-  const POLL_INTERVAL_MS    = 15 * 1000;
+  //   - kickoffUtc 없는 NS: 안전하게 20초 간격으로 재호출 (fallback)
+  const POLL_INTERVAL_MS    = 20 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
   // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
@@ -748,12 +769,6 @@
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
       // 새 이벤트 감지용 — _lastFixtureData가 아래서 이번 data로 덮이기 전에 개수를 미리 저장.
       const prevEventCount = Array.isArray(_lastFixtureData?.events) ? _lastFixtureData.events.length : 0;
-      const previousStatus = String(_lastFixtureData?.matchInfo?.status || '');
-      const newStatus = String(data?.matchInfo?.status || '');
-      // FT(또는 AET/PEN)에 막 진입한 시점 — preserveRunningOnRefresh로 인해 applyFixtureToState의
-      // resetRunning 가드를 건너뛰는 동안에도(같은 fixture를 silent 폴링 중) 경기가 끝났으면
-      // 사용자가 켜둔 타이머를 멈춰야 한다.
-      const justReachedFT = FT_LIKE_STATUSES.has(newStatus) && !FT_LIKE_STATUSES.has(previousStatus);
       const preserveRunningOnRefresh = !!silent
         && !!previousFixtureId
         && previousFixtureId === normalizedFixtureId;
@@ -776,15 +791,11 @@
       }
 
       _lastFixtureData = data;
-      // 자동 폴링으로 같은 경기를 다시 반영할 때는 사용자가 직접 켠 타이머를 멈추지 않는다.
-      applyFixtureToState(data, { resetRunning: !preserveRunningOnRefresh });
-      // FT에 막 도달했으면 위 resetRunning 가드와 무관하게 타이머를 멈춘다 — 경기가 끝났는데
-      // 같은 fixture를 silent 폴링 중이라는 이유로 시계가 계속 흘러가면 안 되기 때문.
-      // pauseClockTimer는 이미 멈춰있어도 안전(idempotent)하므로 중복 호출 걱정 없음.
-      if (justReachedFT) {
-        if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
-        else state.running = false;
-      }
+      // 진행 중인 같은 경기의 수동 타이머는 보존하되, 새 응답의 HT/FT는 항상 시각을 보정한다.
+      applyFixtureToState(data, {
+        resetRunning: !preserveRunningOnRefresh,
+        syncClockFromFixture: true,
+      });
       // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
@@ -875,8 +886,8 @@
    * 7) 추가시간 — extraManualOverride가 false일 때만 API extra로 갱신.
    * 8) 페널티 슛아웃 — events에서 PK 시퀀스 재구성. 단, 새 시퀀스가 더 짧으면 기존 값 유지.
    * 9) 득점자/레드카드 — applyScorersAndCards에서 events 가공.
-   * 10) 타이머 — resetRunning !== false 일 때 비-진행 status면 정지.
-   *     (silent 폴링 + 같은 fixture 케이스에선 호출자가 false로 끔.)
+   * 10) 타이머 — 새 응답의 HT는 45:00, FT 계열/90분 BT는 90:00으로 보정하고 정지.
+   *     진행 중 폴링과 설정 변경에 따른 재적용은 수동 시계를 보존한다.
    */
   function applyFixtureToState(data, options){
     const m = data?.matchInfo || {};
@@ -958,12 +969,24 @@
     // 득점자/레드카드 (events 가공)
     applyScorersAndCards(data);
 
-    // 타이머: 비-진행 상태(HT/FT/NS 등)면 정지.
-    //   단, 단순 재적용(예: settings 토글 변경)에서는 사용자가 수동으로 시작한 타이머를
-    //   덮어쓰지 않도록 호출자가 options.resetRunning=false로 끌 수 있음.
-    if (options?.resetRunning !== false) {
+    // 폴링/수동 조회로 받은 새 상태는 같은 경기라도 반드시 보정한다.
+    // 설정 토글의 캐시 재적용(resetRunning:false)은 수동으로 편집한 시계를 유지한다.
+    const status = String(m.status || '').toUpperCase();
+    const stoppedSeconds = status === 'HT' ? 45 * 60
+      : (FT_LIKE_STATUSES.has(status) || (status === 'BT' && Number(m.elapsed) === 90)) ? 90 * 60
+      : null;
+    if (stoppedSeconds !== null
+      && (options?.syncClockFromFixture === true || options?.resetRunning !== false)) {
+      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(stoppedSeconds);
+      else {
+        state.seconds = stoppedSeconds;
+        state.running = false;
+        state.lastRunningTickMs = 0;
+        if (el.clock) el.clock.textContent = fmtClock(stoppedSeconds);
+      }
+    } else if (options?.resetRunning !== false) {
       const LIVE_STATUSES = new Set(['1H','2H','ET1','ET2','PSO']);
-      if (m.status && !LIVE_STATUSES.has(String(m.status))) {
+      if (status && !LIVE_STATUSES.has(status)) {
         if (typeof window.pauseClockTimer === 'function') window.pauseClockTimer();
         else state.running = false;
       }
@@ -1176,6 +1199,8 @@
       if (elapsed > 105) return 'ET2';
       return '2';
     }
+    // BT = 정규 후반 종료 후 연장전 시작 전 휴식(90분 시점) — '1'(전반) 폴백은 오표시이므로 명시 매핑.
+    if (s === 'BT') return '2';
     return '1';
   }
 

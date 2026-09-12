@@ -2,7 +2,7 @@
 // [라인업 패널 / 이름 라벨·팀칩 텍스트 피팅]
 // 라인업 이름 pill, 벤치 하단 텍스트, 팀 칩을 렌더 후 실제 픽셀 기준으로 보정한다.
 // fitLineupNamePills 4단계: 0) 자연 1줄(폰트 유지) 1) 2줄 클램프(폰트 유지)
-// 2) 충돌 시 폭/폰트 점진 축소 3) 큰 캠 잔여 충돌 보정. lineup-render.js가 렌더한
+// 2) 축소 필요 시 복합 성을 최대 3줄로 분리 후 폭/폰트 축소 3) 큰 캠 잔여 충돌 보정. lineup-render.js가 렌더한
 // DOM을 다음 frame에 다시 읽어 보정하므로 그 이후 로드돼도 무방하다.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -27,12 +27,117 @@ function canMeasureTextElement(el) {
 
 /** 폰트 크기를 1px 단계로 줄인다. 이미 최소값이면 false. */
 function shrinkTextElement(el, minFontPx) {
+  // 기존 1~2줄 피팅이 실패해 축소가 필요한 때만 성 경계를 사용한다.
+  if (el.classList.contains('dp-lineup-name') && tryLineupSurnameBreaks(el)) return true;
   const current = parseFloat(getComputedStyle(el).fontSize);
   if (!Number.isFinite(current) || current <= minFontPx + 0.01) return false;
   const next = Math.max(minFontPx, current - TEXT_FIT_FONT_STEP_PX);
   if (next >= current) return false;
   el.style.fontSize = `${next}px`;
   return true;
+}
+
+/** 폰트를 줄이기 직전에 이니셜 / 첫 성 / 둘째 성으로 최대 3줄을 시도한다. */
+function tryLineupSurnameBreaks(nameEl) {
+  if (nameEl.classList.contains('has-surname-breaks')) return false;
+  const textEl = nameEl.querySelector('.dp-lineup-name-text[data-surname-breaks]');
+  if (!textEl) return false;
+  const parts = textEl.dataset.surnameBreaks.split(/(?<=[가-힣])-(?=[가-힣])/);
+  if (parts.length !== 2 || parts.some(part => !part.trim())) return false;
+  const prefixEnd = parts[0].lastIndexOf(' ');
+  const lines = prefixEnd > 0
+    ? [parts[0].slice(0, prefixEnd), parts[0].slice(prefixEnd + 1), parts[1]]
+    : parts;
+  const font = getPreferredLineupSurnameFont(nameEl, lines);
+  if (font === null) return false;
+  applyLineupSurnameLines(nameEl, lines);
+  nameEl.style.fontSize = `${font}px`;
+  return true;
+}
+
+function applyLineupSurnameLines(nameEl, lines) {
+  const textEl = nameEl.querySelector('.dp-lineup-name-text');
+  textEl.replaceChildren();
+  lines.forEach((line, index) => {
+    if (index) textEl.appendChild(document.createElement('br'));
+    const segment = document.createElement('span');
+    segment.className = 'dp-lineup-surname-part';
+    segment.textContent = line;
+    textEl.appendChild(segment);
+  });
+  nameEl.classList.add('has-surname-breaks');
+  nameEl.style.whiteSpace = '';
+  nameEl.style.display = '';
+  nameEl.style.flexShrink = '';
+  nameEl.style.maxWidth = '';
+  nameEl.style.width = '';
+}
+
+/** 2줄/성 경계 줄바꿈 중 안전하게 표시 가능한 폰트가 큰 쪽. 동률이면 기본 2줄. */
+function getPreferredLineupSurnameFont(nameEl, lines) {
+  if (!canMeasureTextElement(nameEl)) return null;
+  const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
+  const scope = nameEl.closest('.dp-lineup-vertical-pitch') || wrap;
+  const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'));
+  const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
+  const twoLineFont = measureLineupNameCandidateFont(nameEl, null, targets);
+  const surnameFont = measureLineupNameCandidateFont(nameEl, lines, targets);
+  return surnameFont !== null && (twoLineFont === null || surnameFont > twoLineFont)
+    ? surnameFont : null;
+}
+
+/** 원본에 손대지 않고 각 후보의 최대 폰트를 피치 경계/라벨/원/배지 충돌까지 검사한다. */
+function measureLineupNameCandidateFont(nameEl, lines, targets) {
+  const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
+  const clone = nameEl.cloneNode(true);
+  if (lines) applyLineupSurnameLines(clone, lines);
+  else resetLineupSurnameBreaks(clone);
+  clone.style.whiteSpace = '';
+  clone.style.display = '';
+  clone.style.flexShrink = '';
+  clone.style.width = '';
+  clone.style.position = 'absolute';
+  clone.style.visibility = 'hidden';
+  clone.style.pointerEvents = 'none';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.maxWidth = `${wrap.clientWidth}px`;
+  wrap.appendChild(clone);
+  try {
+    let font = parseFloat(getComputedStyle(nameEl).fontSize);
+    if (!Number.isFinite(font)) return null;
+    while (font >= LINEUP_NAME_MIN_FONT_PX) {
+      clone.style.fontSize = `${font}px`;
+      clone.style.width = '';
+      if (canStayWithinLineupNameLayout(clone)) {
+        lockLineupNameWidth(clone);
+        const size = clone.getBoundingClientRect();
+        const wrapRect = wrap.getBoundingClientRect();
+        const centerX = wrapRect.left + wrapRect.width / 2;
+        const candidate = {
+          left: centerX - size.width / 2,
+          right: centerX + size.width / 2,
+          top: wrapRect.top,
+          bottom: wrapRect.top + size.height,
+        };
+        const outsidePitch = hasLineupNamePitchOverflowForRect(candidate, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
+        const overlaps = targets.some(target => canMeasureTextElement(target) && rectsOverlap(candidate, target.getBoundingClientRect()));
+        if (!outsidePitch && !overlaps) return font;
+      }
+      const next = Math.max(LINEUP_NAME_MIN_FONT_PX, font - TEXT_FIT_FONT_STEP_PX);
+      if (next === font) break;
+      font = next;
+    }
+    return null;
+  } finally {
+    clone.remove();
+  }
+}
+
+function resetLineupSurnameBreaks(nameEl) {
+  const textEl = nameEl.querySelector('.dp-lineup-name-text[data-surname-breaks]');
+  if (textEl) textEl.textContent = stripKoreanSurnameBreaks(textEl.dataset.surnameBreaks);
+  nameEl.classList.remove('has-surname-breaks');
 }
 
 /** Range API로 el 안 텍스트가 실제로 몇 개의 줄 사각형으로 렌더됐는지 읽어온다. */
@@ -108,13 +213,13 @@ function lockLineupNameWidth(nameEl) {
   lockTextElementWidth(nameEl, 1);
 }
 
-/** 기본(줄바꿈 허용) 모드에서 2줄 클램프 높이를 넘지 않는지. */
-function canStayWithinTwoLineClamp(nameEl) {
+/** 현재 클램프(기본 2줄, 복합 성 분리 시 3줄)의 높이를 넘지 않는지. */
+function canStayWithinLineupNameClamp(nameEl) {
   return nameEl.scrollHeight <= nameEl.clientHeight + 0.5;
 }
 
 // tryLineupNameNaturalSingleLine이 white-space:nowrap 1줄 모드로 확정한 라벨은 폭을 줄여도
-// 줄바꿈이 일어나지 않아 scrollHeight가 절대 안 변한다 — canStayWithinTwoLineClamp가 항상
+// 줄바꿈이 일어나지 않아 scrollHeight가 절대 안 변한다 — canStayWithinLineupNameClamp가 항상
 // true를 반환해, 실제로는 안 맞는 폭까지 깎여 overflow:hidden에 텍스트가 잘려 보이는 사고로
 // 이어진다(예: "스티븐 안투네스" -> "스티"). nowrap 상태에서는 scrollWidth <= clientWidth로
 // 실제 텍스트가 박스 안에 들어가는지 직접 검사한다.
@@ -122,7 +227,8 @@ function canStayWithinLineupNameLayout(nameEl) {
   if (getComputedStyle(nameEl).whiteSpace === 'nowrap') {
     return nameEl.scrollWidth <= nameEl.clientWidth + 0.5;
   }
-  return canStayWithinTwoLineClamp(nameEl);
+  return canStayWithinLineupNameClamp(nameEl)
+    && nameEl.scrollWidth <= nameEl.clientWidth + 0.5;
 }
 
 /** 실제로 렌더된 줄 수 (Range 기반, line-clamp 자체 줄 수가 아니라 실측치). */
@@ -205,7 +311,7 @@ function tightenBigLineupNameWidth(nameEl) {
 function fitLineupNameSelf(nameEl) {
   if (!canMeasureTextElement(nameEl) || !nameEl.firstChild) return;
   let safety = 0;
-  while (safety < 16 && nameEl.scrollHeight > nameEl.clientHeight + 0.5) {
+  while (safety < 16 && !canStayWithinLineupNameLayout(nameEl)) {
     if (!shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) break;
     safety += 1;
   }
@@ -1240,6 +1346,7 @@ function fitLineupNamePills(root) {
   // 위에서 이뤄지도록 한다.
   labels.forEach(nameEl => {
     resetLineupNameWrapOffset(nameEl);
+    resetLineupSurnameBreaks(nameEl);
     nameEl.style.width = '';
     nameEl.style.fontSize = '';
     nameEl.style.maxWidth = '';
