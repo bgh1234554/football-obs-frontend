@@ -399,6 +399,71 @@ function pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet
   return bestPid;
 }
 
+// 한국식 로마자 표기 성/이름 순서 반전 보강 pass. API가 한쪽 엔드포인트는
+// "Kim Do-yeon"(성 + 하이픈 이름, 한국식 어순)으로, 다른 쪽은 "D. Kim"(이니셜+
+// 성, 서양식 축약형)으로 내려주는 경우가 있다 — 이러면 첫 토큰을 이니셜로 보는
+// 정상 파싱은 두 표기의 "첫 토큰"이 서로 반대 역할(성 vs 이름 이니셜)이라
+// 이니셜 자체가 어긋나 1차/2차 pass 모두 후보 단계에서 걸러진다. "성 이름-이름"
+// 2단어 + 두번째 단어에 하이픈이 있는 패턴은 이니셜/성 위치가 뒤바뀐 로마자
+// 한국 이름 표기의 강한 신호라서, 이 패턴에서만 성/이름을 뒤집어 재해석한 뷰를
+// 만들어 비교한다(그 외 이름에는 적용 안 해 오매칭 위험을 좁게 한정).
+
+/** "성 이름-이름" 2단어 + 두번째 단어 하이픈 패턴이면 순서를 뒤집은 {initial, core} 뷰 반환. 아니면 null. */
+function pirKoreanReversedNameView(raw) {
+  const words = String(raw || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length !== 2) return null;
+  const [surnameRaw, givenRaw] = words;
+  if (!givenRaw.includes('-')) return null;
+  const firstSyllable = givenRaw.split('-')[0];
+  const core = pirNormalizeForFuzzy(surnameRaw);
+  const initial = pirNormalizeForFuzzy(firstSyllable)[0];
+  if (!core || !initial) return null;
+  return { initial, core: [core] };
+}
+
+/** 원본 문자열의 정상 파싱: 첫 토큰 첫 글자를 이니셜로, 나머지를 core로. */
+function pirNormalNameView(raw) {
+  const norm = pirNormalizeForFuzzy(raw);
+  if (!norm) return null;
+  const tokens = norm.split(' ').filter(Boolean);
+  if (!tokens.length) return null;
+  return { initial: tokens[0][0], core: tokens.length > 1 ? tokens.slice(1) : tokens };
+}
+
+/**
+ * 이벤트/후보 origName 양쪽에 대해 정상 뷰와 한국식 반전 뷰를 모두 만들어 두고,
+ * "정상 대 정상"(이미 앞의 두 pass가 시도한 조합)을 제외한 나머지 조합 중 가장
+ * 좋은 매칭을 찾는다. pirFuzzyMatchPass와 달리 성 핵심부가 통째로 1토큰이라
+ * 최소 길이 기준을 2자로 낮춘다(오/고/유처럼 짧은 한국 성씨 대응).
+ */
+function pirFuzzyMatchKoreanOrderPass(eventRaw, candidates, field) {
+  const eventNormal = pirNormalNameView(eventRaw);
+  const eventReversed = pirKoreanReversedNameView(eventRaw);
+  if (!eventNormal && !eventReversed) return null;
+
+  let bestPid = null, bestScore = 0, secondScore = 0;
+  for (const cand of candidates) {
+    const candRaw = cand[field];
+    const candNormal = pirNormalNameView(candRaw);
+    const candReversed = pirKoreanReversedNameView(candRaw);
+    const pairs = [
+      eventReversed && candNormal && [eventReversed, candNormal],
+      eventNormal && candReversed && [eventNormal, candReversed],
+      eventReversed && candReversed && [eventReversed, candReversed],
+    ].filter(Boolean);
+    for (const [ev, cd] of pairs) {
+      if (ev.initial !== cd.initial) continue;
+      if (ev.core.join('').length < 2 || cd.core.join('').length < 2) continue;
+      const score = pirCoreTokensSimilarity(ev.core, cd.core);
+      if (score > bestScore) { secondScore = bestScore; bestScore = score; bestPid = cand.pid; }
+      else if (score > secondScore) secondScore = score;
+    }
+  }
+  if (!bestPid || bestScore < PIR_FUZZY_THRESHOLD) return null;
+  if (secondScore > 0 && bestScore - secondScore < PIR_FUZZY_MARGIN) return null;
+  return bestPid;
+}
+
 /**
  * candidates 중 eventRaw와 가장 유사한 항목을 field 기준으로 찾는다.
  * normalizeFn/particleSet을 바꿔 영문(origName)/한글(koName 등) 양쪽에 동일한
@@ -412,10 +477,15 @@ function pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet
  * 재시도한다. 1차에서 이미 매칭(혹은 정상적으로 매칭 실패)된 케이스는 2차를 타지
  * 않으므로, 접두어 분리가 정상 성씨를 다른 선수와 혼동시킬 위험을 1차가 전부
  * 실패하는 좁은 경우로 한정한다.
+ * 3차(field==='origName'만): "Kim Do-yeon" vs "D. Kim"처럼 한국식/서양식 어순이
+ * 반대라 1·2차의 이니셜 게이트 자체를 못 통과하는 경우를 위한
+ * pirFuzzyMatchKoreanOrderPass. 한글 필드(koName/koNameLong)는 어순 반전 문제가
+ * 없어 적용하지 않는다.
  */
 function pirFuzzyMatchByField(eventRaw, candidates, field, normalizeFn, particleSet, stripPrefixFn) {
   return pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet, null)
-    || (stripPrefixFn ? pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet, stripPrefixFn) : null);
+    || (stripPrefixFn ? pirFuzzyMatchPass(eventRaw, candidates, field, normalizeFn, particleSet, stripPrefixFn) : null)
+    || (field === 'origName' ? pirFuzzyMatchKoreanOrderPass(eventRaw, candidates, field) : null);
 }
 
 /**

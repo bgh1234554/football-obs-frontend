@@ -1091,7 +1091,14 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 function nudgeTeamChipTowardEdge(chipEl, collisionEls) {
   if (!chipEl || !Array.isArray(collisionEls) || !collisionEls.length) return false;
 
-  const prop = chipEl.classList.contains('is-away') ? 'bottom' : 'top';
+  // split 모드에서는 CSS가 home chip도 top이 아닌 bottom으로 앵커링한다(양 팀 GK가 모두
+  // 피치 아래쪽에 있으므로 — lineup-manual.css의 `.dp-lineup-vertical-pitch.is-split
+  // .dp-lineup-team-chip.is-home` 참고). is-away 여부만으로 prop을 고르면 split 모드의
+  // home chip에 엉뚱하게 top을 인라인으로 써버려 (실제 앵커는 bottom인데) top+bottom이
+  // 동시에 고정값이 되어 chip이 피치 중간까지 늘어나 버리는 버그가 있었다.
+  const isBottomAnchored = chipEl.classList.contains('is-away')
+    || (chipEl.classList.contains('is-home') && !!chipEl.closest('.dp-lineup-vertical-pitch.is-split'));
+  const prop = isBottomAnchored ? 'bottom' : 'top';
   const currentOffset = parseFloat(getComputedStyle(chipEl)[prop]);
   const minOffset = 2;
   if (!Number.isFinite(currentOffset) || currentOffset <= minOffset + 0.5) return false;
@@ -1134,7 +1141,13 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
   while (safety < 32) {
     const mainOverlaps = elementOverlapsAny(mainEl, collisionEls);
     const buttonOverlaps = elementOverlapsAny(buttonEl, collisionEls);
-    if (!mainOverlaps && !buttonOverlaps) break;
+    // mainEl/buttonEl는 칩 좌우 끝의 실제 pill만 가리켜서, 라벨(예: GK 이름표)이 그 사이
+    // 빈 여백(예: formationOnly 모드에서 포메이션 텍스트와 버튼 사이)에 걸리는 경우를
+    // 놓친다 — 시각적으로는 칩 바(is-home/away 가로 전체 라인)와 겹쳐 지저분해 보이는데도
+    // mainOverlaps/buttonOverlaps 둘 다 false라 아래 nudge/shrink 단계로 못 내려갔다.
+    // 칩 전체 rect까지 같이 확인해 그 경우도 remediation 루프에 들어오게 한다.
+    const chipOverlaps = elementOverlapsAny(chipEl, collisionEls);
+    if (!mainOverlaps && !buttonOverlaps && !chipOverlaps) break;
 
     if (preferShrink && mainOverlaps) {
       if (shrinkTeamChipMainText(nameEl, formationEl)) {

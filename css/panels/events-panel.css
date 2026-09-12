@@ -592,6 +592,22 @@
     .ev-text-name {
       font-weight: 800;
     }
+    /* '?' 버튼으로 채운 교체 선수 이름 — 다시 클릭해 선택을 바꿀 수 있음을 점선 밑줄로 표시. */
+    .ev-subst-name-editable {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      text-decoration: underline dotted rgba(255,255,255,.5);
+      text-underline-offset: 2px;
+    }
+    .ev-subst-name-editable:hover {
+      color: #fb923c;
+      text-decoration-color: #fb923c;
+    }
     /* 골의 어시스트 라인 — 회색 + 작게 (.ev-comment와 동일한 톤). */
     .ev-text-assist {
       font-size: 0.82em;

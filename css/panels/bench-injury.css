@@ -135,6 +135,14 @@
   line-height: 1.35;
 }
 
+/* 등번호(.dp-item-num)가 이름(.dp-item-name)과 다른 line-height(기본 1.5 상속)를 쓰던 탓에
+   같은 행 안에서 위쪽(align-items:flex-start)으로 정렬해도 텍스트 상단이 미묘하게
+   어긋나 보였음 — 이름과 같은 line-height로 맞춰 첫 줄 기준 상하 정렬을 일치시킴. */
+#benchPanel .dp-item-num,
+#injuryPanel .dp-item-num {
+  line-height: 1.35;
+}
+
 body.low-panel-alpha #benchPanel :is(.dp-title, .dp-side-name, .dp-item-num, .dp-item-name, .dp-label, .dp-coach-name, .dp-referee-name, .dp-league-name, .dp-venue-name, .dp-kickoff-time),
 body.low-panel-alpha #injuryPanel :is(.dp-title, .dp-side-name, .dp-item-num, .dp-item-name, .dp-label) {
   text-shadow: var(--low-panel-text-outline);
@@ -310,6 +318,15 @@ body.greenscreen-mode .dp-item-name.is-sub-in { color: #7cb1fc; }
   font-weight: 800;
 }
 .dp-icon-questionable::before { content: '?'; }
+
+/* 선수단 미등록 (Off the roster) — 빨간 X. 부상(+)과 구분되는 별도 카테고리. */
+.dp-icon-unregistered {
+  color: #FF3B30;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+}
+.dp-icon-unregistered::before { content: '\2715'; }
 
 /* ===== 부상 명단 — 호버 시 reason 툴팁 ===== */
 /* 이름 자체에 underline + native title 툴팁 (HTML title 속성 활용) */

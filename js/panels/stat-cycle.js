@@ -300,8 +300,11 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
 const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
 function _lpHthScrollOptions(baseIntervalMs) {
-  const count = Array.isArray(window._hthState?.hthData?.matches)
-    ? window._hthState.hthData.matches.length : 0;
+  // displayMatches는 오늘 포함 이후 예정 경기를 뺀, 실제로 화면에 그려지는 행 수와 일치하는 배열
+  // (hth-panel.js applyHthPanel). 필터 전 hthData.matches를 쓰면 화면엔 안 보이는 예정 경기 때문에
+  // 스크롤 시간이 실제 콘텐츠 길이보다 과하게 늘어난다.
+  const count = Array.isArray(window._hthState?.displayMatches)
+    ? window._hthState.displayMatches.length : 0;
   if (!count || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
 
   const baseSec = baseIntervalMs / 1000;
@@ -358,7 +361,16 @@ function _lpAutoIsActive() {
 function _lpAutoStart() {
   _lpAutoClear();
   if (!_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
-  const modes = lpStatAvailableModes();
+  const modes = _lpAutoCycleModes();
+  if (!modes.length) return;
+  // 현재 모드가 (체크 해제 등으로) 자동 전환 대상에서 빠져 있으면, 빈/제외된 패널을 잠깐이라도
+  // 보여주지 않도록 즉시 첫 허용 모드로 전환한다. lpStatUpdateVisibility()가 화면 갱신 후
+  // 다시 _lpAutoStart()를 불러 정상 스케줄을 잡으므로 여기서는 그대로 리턴.
+  if (!modes.includes(_lpStatCycle.mode)) {
+    _lpStatCycle.mode = modes[0];
+    lpStatUpdateVisibility();
+    return;
+  }
   if (modes.length < 2) return;
 
   const intervalMs = _lpGetIntervalMs();
@@ -398,7 +410,7 @@ function _lpAutoStart() {
 /** 다음 모드로 전환하고 자동 사이클 재시작 */
 function lpStatAutoAdvance() {
   _lpAutoClear();
-  const modes = lpStatAvailableModes();
+  const modes = _lpAutoCycleModes();
   if (modes.length < 2) return;
   const idx = modes.indexOf(_lpStatCycle.mode);
   const nextMode = modes[(idx + 1) % modes.length];
@@ -414,7 +426,13 @@ function lpStatAutoAdvance() {
 // ─── 가용 모드 / 가시성 / 버튼 ───────────────────────────────────────────────
 
 function lpStatAvailableModes() {
-  const modes = ['stats'];
+  // stats도 다른 모드와 동일하게 "실제로 보여줄 데이터가 있을 때만" 포함시킨다.
+  // 리그에 따라 API가 팀 스탯을 전혀 안 주는 경우(양 팀 전 항목 null) "데이터가 없습니다"만
+  // 뜨는 빈 패널이 자동/수동 전환 목록에 남지 않도록 함. stHasStatsRows 로드 전(스크립트
+  // 순서 문제 등)에는 안전하게 항상 포함(기존 동작 유지).
+  const hasStats = typeof window.stHasStatsRows !== 'function'
+    || window.stHasStatsRows(window._eventsLastData);
+  const modes = hasStats ? ['stats'] : [];
   const hasEvents = Array.isArray(window._eventsLastData?.events)
     && window._eventsLastData.events.length > 0;
   const hasHth = typeof window.hthCanLoadForFixture === 'function'
@@ -428,6 +446,28 @@ function lpStatAvailableModes() {
   if (hasBenchAway) modes.push('bench_away');
   if (hasMatchInfo) modes.push('match_info');
   return modes;
+}
+
+/** 자동 전환(statCycleAuto) 순서 전용 설정 카테고리 매핑. */
+const _STAT_CYCLE_AUTO_SETTING_KEY = {
+  stats: 'statCycleModeStats',
+  events: 'statCycleModeEvents',
+  hth: 'statCycleModeHth',
+  bench_home: 'statCycleModeBenchHome',
+  bench_away: 'statCycleModeBenchAway',
+  match_info: 'statCycleModeMatchInfo',
+};
+
+/**
+ * lpStatAvailableModes()(= 실제 데이터가 있는 모드) 중, 사용자가 설정 팝업에서
+ * "자동 전환 시 표시할 패널" 체크박스로 켜둔 것만 남긴다. 수동 클릭 사이클(lpStatCycleNext)은
+ * 이 필터를 타지 않고 lpStatAvailableModes()를 그대로 사용 — 체크 해제는 자동 전환에서
+ * 건너뛰는 용도일 뿐, 수동 선택 자체를 막지는 않는다.
+ */
+function _lpAutoCycleModes() {
+  const modes = lpStatAvailableModes();
+  if (typeof getSetting !== 'function') return modes;
+  return modes.filter(mode => getSetting(_STAT_CYCLE_AUTO_SETTING_KEY[mode]) !== 'off');
 }
 /**
  * lpStatEnsureModeReady(mode)를 호출하되, 자동 전환이 켜져 있을 때는 건너뛴다.
@@ -456,7 +496,12 @@ function lpStatEnsureModeReady(mode) {
 }
 function lpStatUpdateVisibility() {
   const available = lpStatAvailableModes();
-  if (!available.includes(_lpStatCycle.mode)) _lpStatCycle.mode = 'stats';
+  // 'stats'가 available에 없을 수 있다(리그가 팀 스탯을 안 주는 경우) — 그때 무조건 'stats'로
+  // 되돌리면 실제로 보여줄 데이터가 없는 모드로 고정돼 모든 패널이 숨어버린다. available이
+  // 비어있지 않으면 그 중 첫 번째로, 완전히 비어있을 때만(모든 패널이 데이터 없음) 'stats'로.
+  if (!available.includes(_lpStatCycle.mode)) {
+    _lpStatCycle.mode = available.length ? available[0] : 'stats';
+  }
   const mode = _lpStatCycle.mode;
 
   document.querySelectorAll('.lp-stat [data-stat-panel]').forEach(el => {
@@ -607,10 +652,11 @@ document.addEventListener('statspanel:cycle-done', event => {
   }
 });
 
-// 자동 사이클 설정 변경 시 즉시 반영
+// 자동 사이클 설정 변경 시 즉시 반영 (자동 전환 on/off, 간격, per-패널 표시 체크박스)
 document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
-  if (cat === 'statCycleAuto' || cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec') {
+  const isModeToggle = !!cat && Object.values(_STAT_CYCLE_AUTO_SETTING_KEY).includes(cat);
+  if (cat === 'statCycleAuto' || cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec' || isModeToggle) {
     if (cat === 'statCycleAuto') _lpStatCycle.paused = false;
     _lpAutoClear();
     _lpAutoStart();

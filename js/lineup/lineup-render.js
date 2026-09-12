@@ -144,10 +144,24 @@ function lpBuildNodeBadgesHtml(events) {
     const n = events.assists.length;
     html += `<span class="dp-node-badge dp-node-assist" title="도움 ${n}회">👟${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
   }
-  // bottom-right: 골
-  if (events.goals?.length) {
-    const n = events.goals.length;
-    html += `<span class="dp-node-badge dp-node-goal" title="득점 ${n}회">⚽${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
+  // bottom-right: 골(자책골 포함). 공 이모티콘 자체는 색을 바꿀 수 없으므로, 자책골은 카운트
+  // 배지(원형 숫자)만 빨간 배경으로 구분한다. 자책골이 같이 있으면 정규 골이 1개뿐이어도
+  // "1 1"처럼 나란히 보이도록 정규 골 카운트도 함께 표시한다(기존엔 2개 이상일 때만 숫자 표시).
+  {
+    const goalCount = events.goals?.length || 0;
+    const ownGoalCount = events.ownGoals?.length || 0;
+    if (goalCount || ownGoalCount) {
+      const paired = goalCount > 0 && ownGoalCount > 0;
+      const titleParts = [];
+      if (goalCount) titleParts.push(`득점 ${goalCount}회`);
+      if (ownGoalCount) titleParts.push(`자책골 ${ownGoalCount}회`);
+      const goalCountHtml = goalCount && (goalCount > 1 || paired)
+        ? `<span class="dp-node-count">${goalCount}</span>` : '';
+      const ownGoalCountHtml = ownGoalCount
+        ? `<span class="dp-node-count dp-node-count-og${paired ? ' dp-node-count-paired' : ''}">${ownGoalCount}</span>`
+        : '';
+      html += `<span class="dp-node-badge dp-node-goal" title="${titleParts.join(', ')}">⚽${goalCountHtml}${ownGoalCountHtml}</span>`;
+    }
   }
   // left side: 카드
   const cardKind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
@@ -216,7 +230,7 @@ function shouldShowBenchManualButton(rawFixture, side) {
   return !Array.isArray(rawFixture?.[`${side}Lineup`]?.substitutes);
 }
 
-/** 부상자는 API에 있어도 추가 입력이 의미 있어 항상 노출. */
+/** 미출전 선수는 API에 있어도 추가 입력이 의미 있어 항상 노출. */
 function shouldShowInjuryManualButton(/* rawFixture, side */) {
   return true;
 }
@@ -347,18 +361,32 @@ function buildBenchListHtml(players, lineupExists) {
   return players.map(player => lpBuildRosterRowHtml(player, 'bench')).join('');
 }
 
-/** 부상자 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지) + 한글 사유 툴팁. */
+/** 미출전 선수 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지/미등록) + 한글 사유 툴팁. 미등록은 맨 밑으로 정렬. */
 function buildInjuryListHtml(injuries, provided) {
   if (!injuries || injuries.length === 0) {
     return buildEmptyHtml(provided ? '결장자 없음' : '부상 정보 미제공');
   }
 
-  return injuries.map(injury => {
+  // 선수단 미등록(Off the roster)은 부상/의심/출장정지와 성격이 달라 맨 밑으로 몰아서 표시.
+  // 그 외 순서는 원본 순서 그대로 유지(안정 정렬).
+  const sortedInjuries = injuries
+    .map((injury, index) => ({ injury, index }))
+    .sort((a, b) => {
+      const aOff = (typeof isOffRoster === 'function' && isOffRoster(a.injury.reason)) ? 1 : 0;
+      const bOff = (typeof isOffRoster === 'function' && isOffRoster(b.injury.reason)) ? 1 : 0;
+      if (aOff !== bOff) return aOff - bOff;
+      return a.index - b.index;
+    })
+    .map(entry => entry.injury);
+
+  return sortedInjuries.map(injury => {
     const reasonKo = getInjuryReasonDisplayText(injury.reason, injury.type);
     const tooltip = reasonKo ? ` title="${dpEscape(reasonKo)}"` : '';
 
     let iconHtml = '<span class="dp-icon dp-icon-injury" aria-label="부상"></span>';
-    if (isQuestionableInjuryReason(injury.reason, injury.type)) {
+    if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) {
+      iconHtml = '<span class="dp-icon dp-icon-unregistered" aria-label="선수단 미등록"></span>';
+    } else if (isQuestionableInjuryReason(injury.reason, injury.type)) {
       iconHtml = '<span class="dp-icon dp-icon-questionable" aria-label="의심"></span>';
     } else if (typeof isSuspension === 'function' && isSuspension(injury.reason)) {
       iconHtml = '<span class="dp-icon dp-icon-redcard" aria-label="출장 정지"></span>';
@@ -1014,14 +1042,14 @@ function renderMatchInfoCyclePanel(effectiveData) {
   });
 }
 
-/** 부상자 명단 패널 전체 갱신 — 타이틀/입력버튼/팀명/좌우 리스트. */
+/** 미출전 선수 명단 패널 전체 갱신 — 타이틀/입력버튼/팀명/좌우 리스트. */
 function renderInjuryPanel(effectiveData, rawData) {
   const panel = document.getElementById('injuryPanel');
   if (!panel) return;
 
   // 1) 패널 모드와 수동 입력 버튼 상태를 맞춘다.
   panel.classList.toggle('dp-mode-long', typeof isLongName === 'function' && isLongName('roster'));
-  setPanelTitle(panel, '부상자 명단', [
+  setPanelTitle(panel, '미출전 선수 명단', [
     shouldShowInjuryManualButton(rawData, 'home') ? buildTitleActionButton('injury', 'home') : '',
     shouldShowInjuryManualButton(rawData, 'away') ? buildTitleActionButton('injury', 'away') : '',
   ].filter(Boolean).join(''));
@@ -1290,7 +1318,7 @@ function clearLineupPanels() {
 
   const injuryPanel = document.getElementById('injuryPanel');
   if (injuryPanel) {
-    setPanelTitle(injuryPanel, '부상자 명단');
+    setPanelTitle(injuryPanel, '미출전 선수 명단');
     injuryPanel.classList.remove('dp-mode-long');
     injuryPanel.querySelectorAll('.dp-list').forEach(list => { list.innerHTML = ''; });
     injuryPanel.querySelectorAll('.dp-side-name').forEach(el => { el.textContent = 'TEAM'; });

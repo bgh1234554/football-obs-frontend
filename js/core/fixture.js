@@ -763,6 +763,11 @@
         clearPkState();
         state.pkScore = { home: null, away: null };
         state.pkLastExitedAt = 0;
+        // 추가시간 수동 override도 다른 경기로 넘어가면 해제 — 이전 경기에서 T키/+-로 손댄 적
+        // 있으면 이 플래그가 true로 남아있어(resetFixtureDrivenState는 경기 ID를 완전히
+        // 비울 때만 호출됨), 새 경기를 로딩해도 applyFixtureToState의 extraManualOverride
+        // 가드에 걸려 이전 경기의 추가시간이 그대로 남아있는 버그가 있었다.
+        state.extraManualOverride = false;
         // 다른 경기로 전환 — 깜빡임 비교용 스냅샷도 초기화 (이전 경기와 비교하면 의미 없음)
         _flashSnapshot = null;
         // HTH 패널 초기화 (Iter 7)
