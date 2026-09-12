@@ -267,8 +267,12 @@ function stIsAutoSwipeEnabled() {
  * - settings에서 statsAutoSwipe='on' + statsAutoSwipeSec 읽음.
  * - 없으면 STATS_CONFIG.autoSwipeIntervalMs 기본값.
  * - state.paused가 true이면 ON이어도 타이머 시작 안 함 (사용자가 일시정지 누른 상태).
+ * - itemsPerPage가 STATS_CONFIG.autoSwipeBaselineItemsPerPage(기본 8)보다 적으면(패널이
+ *   작아져 페이지당 항목 수가 줄어든 경우), 설정된 간격을 그 비율만큼 줄인다 — 항목 하나당
+ *   노출 시간을 페이지 크기와 무관하게 일정하게 유지하기 위함. 그 이상 들어갈 때는 설정값을
+ *   그대로 사용(줄어들 때만 비례 적용, 요청 범위 밖의 "늘어날 때" 동작은 건드리지 않음).
  */
-function stSetupAutoSwipe(panel, state, totalPages) {
+function stSetupAutoSwipe(panel, state, totalPages, itemsPerPage) {
   stClearAutoSwipe(state);
   if (totalPages < 2) return;
   if (!stIsAutoSwipeEnabled()) return;
@@ -277,7 +281,13 @@ function stSetupAutoSwipe(panel, state, totalPages) {
   // settings는 초 단위로 저장됨(0.5초 단위 입력). ms로 변환.
   const userSec = (typeof getSetting === 'function') ? Number(getSetting('statsAutoSwipeSec')) : NaN;
   const minSec = typeof STATS_SWIPE_SEC_MIN === 'number' ? STATS_SWIPE_SEC_MIN : 2.5;
-  const intervalMs = Number.isFinite(userSec) && userSec >= minSec ? Math.round(userSec * 1000) : cfgInterval;
+  let intervalMs = Number.isFinite(userSec) && userSec >= minSec ? Math.round(userSec * 1000) : cfgInterval;
+
+  const baselineItems = window.STATS_CONFIG?.autoSwipeBaselineItemsPerPage || 8;
+  if (Number.isFinite(itemsPerPage) && itemsPerPage > 0 && itemsPerPage < baselineItems) {
+    intervalMs = Math.max(Math.round(minSec * 1000), Math.round(intervalMs * itemsPerPage / baselineItems));
+  }
+
   state.autoTimer = setInterval(() => {
     const isLastPage = state.page === totalPages - 1;
     state.page = (state.page + 1) % totalPages;
@@ -472,7 +482,7 @@ function stRenderPanel(panel, fixtureData) {
 
   panel.appendChild(wrap);
 
-  stSetupAutoSwipe(panel, state, pages.length);
+  stSetupAutoSwipe(panel, state, pages.length, itemsPerPage);
 }
 
 /**

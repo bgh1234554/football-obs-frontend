@@ -7,8 +7,13 @@
 //
 // - labels: TeamStatsDto 필드명 → 한글 라벨
 // - order : 표시 순서. 빠진 키는 표시 안 됨. 양 팀 모두 null인 항목은 자동 skip.
-// - itemsPerPage: 한 페이지에 표시할 스탯 항목 수 (큼/작음 페이지 공통)
+// - itemsPerPage: 한 페이지에 표시할 스탯 항목 수 (큼/작음 페이지 공통) — 높이 측정 실패 시의 fallback값.
+//   실제 페이지당 항목 수는 stComputeItemsPerPage가 패널 높이로 매번 동적 계산.
 // - autoSwipeIntervalMs: 자동 스와이프 ON일 때 페이지 전환 간격 (ms). 설정 팝업에서 토글/조정.
+// - autoSwipeBaselineItemsPerPage: 설정에 표시되는 "패널 슬라이딩 시간"이 기준으로 삼는
+//   페이지당 항목 수. 패널이 작아져 동적 itemsPerPage가 이보다 적으면, 실제 페이지 전환
+//   간격을 (동적 itemsPerPage / 이 값) 비율만큼 줄인다 — 항목 하나당 노출 시간을 일정하게
+//   유지하기 위함. 더 많이 들어갈 때는 설정값을 그대로 사용(줄어들 때만 비례 적용).
 
 window.STATS_CONFIG = {
   labels: {
@@ -44,4 +49,5 @@ window.STATS_CONFIG = {
 
   itemsPerPage: 6,
   autoSwipeIntervalMs: 10000,
+  autoSwipeBaselineItemsPerPage: 8,
 };

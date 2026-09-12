@@ -265,8 +265,13 @@ function getCoachName(lineupLike) {
   return typeof pickName === 'function' ? pickName(lineupLike?.coach, 'roster') : '';
 }
 
-/** 감독 이름 표시 + API에 없을 때만 더블클릭 인라인 편집 가능하도록 editable 표시. */
-function setCoachElement(el, effectiveData, rawData, side) {
+/**
+ * 감독 이름 표시 + API에 없을 때만 더블클릭 인라인 편집 가능하도록 editable 표시.
+ * accentColor가 주어지면 캠 큰 메뉴 경기 정보 패널(buildMatchInfoCyclePanel의 miRow)과
+ * 동일한 로직으로 라벨(mi-label)을 팀 컬러로 물들이고, 패널 배경과 대비가 부족하면
+ * 은은한 화이트 stroke(mi-label-accented)를 추가한다.
+ */
+function setCoachElement(el, effectiveData, rawData, side, accentColor) {
   if (!el) return;
 
   const fixtureId = getActiveFixtureId();
@@ -280,6 +285,18 @@ function setCoachElement(el, effectiveData, rawData, side) {
   el.dataset.coachSide = side;
   el.dataset.apiMissing = editable ? 'true' : 'false';
   el.title = editable ? '더블클릭해서 감독 이름 입력' : '';
+
+  const labelEl = el.previousElementSibling;
+  if (labelEl && labelEl.classList.contains('mi-label') && accentColor) {
+    labelEl.style.setProperty('--mi-label-color', accentColor);
+    const effectiveBg = (typeof miResolveEffectiveBgHex === 'function') ? miResolveEffectiveBgHex() : '#0b1220';
+    const contrast = (typeof teamColorContrastRatio === 'function')
+      ? teamColorContrastRatio(accentColor, effectiveBg) : 21;
+    const accented = contrast < MI_LABEL_MIN_CONTRAST;
+    labelEl.classList.toggle('mi-label-accented', accented);
+    if (accented) labelEl.style.setProperty('--mi-label-border-color', MI_LABEL_BORDER_COLOR);
+    else labelEl.style.removeProperty('--mi-label-border-color');
+  }
 }
 
 // setCoachElement와 동일한 패턴 — 단, 안내 텍스트 없이 빈 값엔 '정보 없음' 표시 (사용자 요청).
@@ -740,14 +757,17 @@ function renderBenchPanel(effectiveData, rawData) {
   }
 
   // 3) 벤치 패널 하단의 감독 / 주심 인라인 편집 영역을 함께 갱신한다.
-  setCoachElement(panel.querySelector('[data-bench-coach="home"] .dp-coach-name'), effectiveData, rawData, 'home');
-  setCoachElement(panel.querySelector('[data-bench-coach="away"] .dp-coach-name'), effectiveData, rawData, 'away');
+  // 감독 라벨도 경기 정보 패널(mi-row)과 동일하게 팀 컬러 accent + 대비 부족 시 stroke 적용.
+  const homeAccent = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));
+  const awayAccent = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
+  setCoachElement(panel.querySelector('[data-bench-coach="home"] .dp-coach-name'), effectiveData, rawData, 'home', homeAccent);
+  setCoachElement(panel.querySelector('[data-bench-coach="away"] .dp-coach-name'), effectiveData, rawData, 'away', awayAccent);
 
   setRefereeElement(panel.querySelector('[data-bench-referee] .dp-referee-name'), effectiveData, rawData);
 
   // 4) 리그/라운드와 경기장 정보를 하단 메타 라인에 반영한다.
   // 경기장 이름 — venueName + venueCity (도시 있으면 ", 도시" 형태로 붙임)
-  const leagueEl = panel.querySelector('[data-bench-venue] .dp-league-name');
+  const leagueEl = panel.querySelector('[data-bench-league] .dp-league-name');
   const venueEl = panel.querySelector('[data-bench-venue] .dp-venue-name');
   const kickoffEl = panel.querySelector('[data-bench-kickoff] .dp-kickoff-time');
   if (leagueEl || venueEl || kickoffEl) {
@@ -767,10 +787,60 @@ function renderBenchPanel(effectiveData, rawData) {
   }
 }
 
+const BENCH_INFO_MIN_LEFTOVER_PX = 10; // 이보다 작은 차이는 무시(자잘한 오차로 인한 흔들림 방지)
+
+/**
+ * #benchPanel의 후보명단(.dp-split)과 정보 블록(.dp-bench-info) 사이 공간 배분.
+ *
+ * 순수 CSS(flex-basis:auto 등)로 ".dp-split을 콘텐츠 크기로 줄이고 남는 공간을
+ * .dp-bench-info가 흡수"를 구현하려 하면, .dp-list가 overflow-y:auto라 flexbox의
+ * automatic minimum size 규칙(overflow가 visible이 아닌 flex 아이템은 자동 최소 높이가 0)
+ * 때문에 .dp-split의 내재 크기가 0에 가깝게 붕괴해버려 명단 자체가 거의 안 보이게 된다.
+ * 그래서 JS로 실측 후 명시적 px 값을 지정하는 방식으로 처리한다(lpBenchCycleRebalance와
+ * 같은 패턴).
+ *
+ * - 명단이 배정된 공간보다 짧으면(=밑에 여백이 남으면): .dp-split을 실제 필요한 높이로
+ *   고정하고, .dp-bench-info(기본 CSS flex:1 1 auto)가 남는 공간을 자동으로 흡수 —
+ *   주심/대회/경기장/킥오프가 더 여유 있게(세로 중앙 정렬) 표시된다.
+ * - 남는 공간이 없으면(명단이 꽉 차거나 넘침): .dp-split은 기존과 동일하게 전체 공간을
+ *   차지(내부 스크롤 유지, 명단 전체를 스크롤 없이 다 보여주는 게 최우선), .dp-bench-info는
+ *   자기 콘텐츠 높이만큼만(flex:0 0 auto) 차지해 명단 공간을 침범하지 않는다.
+ *
+ * 호출 순서 주의: lineup-name-fit.js의 balanceBenchInjuryPanelHeights()가 #benchPanel과
+ * #injuryPanel "사이"(두 패널 전체 높이)를 먼저 재분배하므로, 이 함수는 그 뒤에(같은
+ * 함수 안에서 호출) #benchPanel에 "그 결과로" 남은 공간만 .dp-bench-info로 다시 나눠야
+ * 한다 — 순서가 바뀌면 이 함수가 먼저 .dp-split을 줄여버려 balanceBenchInjuryPanelHeights가
+ * "벤치가 여유있다"고 오판하고 부상 패널에 넘길 공간이 실제보다 적게 계산된다.
+ */
+function lpBenchPanelRebalanceInfoSpace(panel) {
+  const split = panel?.querySelector('.dp-split');
+  const info = panel?.querySelector('.dp-bench-info');
+  if (!split || !info) return;
+
+  // 재측정을 위해 이전 오버라이드를 먼저 해제 — .dp-split 기본값(flex:1 1 0, 전체 공간 차지)
+  // 상태에서 재야 "지금 배정된 높이"와 "실제로 필요한 높이"를 정확히 비교할 수 있다.
+  split.style.flex = '';
+  info.style.flex = '';
+  if (!split.getClientRects().length || split.clientHeight <= 0) return;
+
+  const headerHeight = split.querySelector('.dp-side-header')?.getBoundingClientRect().height || 0;
+  const homeList = split.querySelector('[data-bench-side="home"] .dp-list');
+  const awayList = split.querySelector('[data-bench-side="away"] .dp-list');
+  const contentHeight = Math.max(homeList?.scrollHeight || 0, awayList?.scrollHeight || 0);
+  const naturalSplitHeight = headerHeight + contentHeight;
+  const leftover = split.clientHeight - naturalSplitHeight;
+
+  if (naturalSplitHeight > 0 && leftover > BENCH_INFO_MIN_LEFTOVER_PX) {
+    split.style.flex = `0 0 ${Math.ceil(naturalSplitHeight)}px`;
+  } else {
+    info.style.flex = '0 0 auto';
+  }
+}
+window.lpBenchPanelRebalanceInfoSpace = lpBenchPanelRebalanceInfoSpace;
+
 // ─── lp-stat 안의 교체명단 사이클 패널 ──────────────────────────────────────
 
 let _benchCycleResizeObs = null;
-const BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS = 15;
 const BENCH_CYCLE_OVERFLOW_EPSILON_PX = 2;
 const BC_CYCLE_TITLE_FONT_MAX = 12; // .st-title-bar 기본 font-size와 동일
 const BC_CYCLE_TITLE_FONT_MIN = 9;
@@ -856,26 +926,22 @@ function buildBenchCyclePanelHtml(players, teamName, accentColor) {
 /**
  * 교체명단 사이클 패널의 2열 전환 처리.
  * 패딩/폰트는 항상 고정값 그대로 두고(stats-panel의 itemsPerPage 계산과 같은 방식 —
- * 정상 크기 기준으로 몇 줄이 들어가는지만 본다), 정상 크기로 1열에 다 안 들어가면(=마지막
- * 행이 가려짐) bc-two-col로 2열 전환한다.
+ * 정상 크기 기준으로 몇 줄이 들어가는지만 본다), 1열에 다 안 들어가면(=마지막 행이 가려짐)
+ * bc-two-col로 2열 전환한다.
  * columns: 2; column-fill: auto 로 왼쪽 컬럼을 끝까지 채우고 넘치는 만큼만 오른쪽으로 보낸다
  * (balance는 균등하게 나누지만 굳이 안 옮겨도 될 줄까지 오른쪽으로 끌고 가는 단점이 있어 폐기).
+ *
+ * 예전엔 선수 수가 BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS(15명) 이하면 실측 없이 곧장 1열/스크롤
+ * 없음으로 확정했는데, 이는 "패널이 기본 크기일 때 15명 이하는 항상 들어간다"는 가정이라
+ * 사용자가 패널 자체를 수동으로 작게 리사이즈하면(교체명단은 보통 12명 이하라 항상 이 조건에
+ * 걸림) 실제로는 넘치는데도 스크롤 모드가 절대 켜지지 않는 버그가 있었다. 인원 수와 무관하게
+ * 항상 실측하도록 변경.
  */
 function lpBenchCycleRebalance(panel) {
   lpFitBenchCycleTitle(panel?.querySelector('.bc-cycle-title'));
 
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
-
-  const rowCount = Array.from(body.children)
-    .filter(child => child.classList?.contains('dp-item'))
-    .length;
-  if (rowCount <= BENCH_CYCLE_SINGLE_COLUMN_MAX_ROWS) {
-    body.classList.remove('bc-two-col', 'bc-scroll-mode');
-    panel.removeAttribute('data-bench-scroll');
-    return;
-  }
-
   if (!body.getClientRects().length || body.clientHeight <= 0) return;
 
   // 1열 상태에서 overflow 측정
@@ -884,9 +950,15 @@ function lpBenchCycleRebalance(panel) {
   const overflows = body.scrollHeight > body.clientHeight + BENCH_CYCLE_OVERFLOW_EPSILON_PX;
   if (!overflows) return;
 
-  // 2열로 전환 후 여전히 overflow이면 1열 + 자동 스크롤 폴백
+  // 2열로 전환 후에도 다 안 들어가면(=3번째 이상의 "overflow column"이 필요한 상태) 1열 +
+  // 자동 스크롤 폴백. CSS 멀티컬럼(column-count 고정 + column-fill:auto)은 세로 공간이
+  // 모자라면 scrollHeight를 늘리는 대신 열을 옆으로 추가 생성해(스펙상 overflow column은
+  // 항상 inline 방향, 즉 가로로 생김) 뒤쪽 항목을 감춰버린다 — 그래서 scrollHeight 비교로는
+  // 이 상태를 못 잡는다(패널을 극단적으로 줄이면 스크롤이 전혀 안 뜨던 버그의 원인).
+  // 대신 scrollWidth(숨겨진 추가 열까지 포함한 실제 콘텐츠 폭)가 clientWidth를 넘는지로
+  // 판정해야 정확하다.
   body.classList.add('bc-two-col');
-  const twoColOverflows = body.scrollHeight > body.clientHeight + BENCH_CYCLE_OVERFLOW_EPSILON_PX;
+  const twoColOverflows = body.scrollWidth > body.clientWidth + BENCH_CYCLE_OVERFLOW_EPSILON_PX;
   if (twoColOverflows) {
     body.classList.remove('bc-two-col');
     body.classList.add('bc-scroll-mode');

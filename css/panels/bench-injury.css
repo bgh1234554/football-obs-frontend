@@ -338,35 +338,33 @@ body.greenscreen-mode .dp-item-name.is-sub-in { color: #7cb1fc; }
   border-bottom-color: rgba(255,255,255,.55);
 }
 
-/* ===== 벤치 패널 — 푸터 (감독 / 주심 / 감독) ===== */
+/* ===== 벤치 패널 — 푸터 (감독 좌/우) ===== */
+/* 후보 명단(.dp-split)이 짧아 남는 세로 공간은 여기서 흡수하지 않고 아래 .dp-bench-info가
+   흡수한다(#benchPanel .dp-split 오버라이드 참고) — 감독 줄 자체는 항상 고정 높이. */
 .dp-bench-footer {
   flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr) minmax(0, 0.9fr);
-  gap: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   padding: 6px 2px 2px;
   margin-top: 4px;
   border-top: 1px solid rgba(255,255,255,.12);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.3;
   color: rgba(255,255,255,.75);
 }
 .dp-bench-footer > div {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
-  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.dp-bench-footer .dp-label {
-  color: #ff9900;
-  font-weight: 700;
-  flex: 0 0 auto;
-  margin-right: 0;
+.dp-bench-footer [data-bench-coach="away"] {
+  flex-direction: row-reverse;
+  text-align: right;
 }
 .dp-coach-name,
 .dp-referee-name {
@@ -376,106 +374,33 @@ body.greenscreen-mode .dp-item-name.is-sub-in { color: #7cb1fc; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.dp-bench-footer [data-bench-referee] {
-  gap: 4px;
-}
-.dp-bench-footer [data-bench-referee] .dp-referee-name {
-  white-space: normal;
-  overflow: hidden;
-  text-overflow: clip;
-  line-height: 1.15;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+/* 감독 이름 값 — 라벨(팀 컬러)과 대비되게 흰색으로 고정. .dp-bench-footer의 기본 텍스트 색
+   (rgba(255,255,255,.75))보다 밝게 강조. */
+.dp-bench-footer .dp-coach-name {
+  color: #fff;
 }
 
-/* 감독/주심 줄 아래 대회/경기장 이름 */
-.dp-bench-venue {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  align-items: start;
-  gap: 6px;
-  padding: 4px 4px 2px;
-  font-size: 11px;
-  color: rgba(255,255,255,.55);
-}
-.dp-league-wrap {
+/* ===== 벤치 패널 — 정보 블록 (주심 / 대회 / 경기장 / 킥오프) =====
+   캠 큰 메뉴 경기 정보 패널(css/panels/stats-panel.css의 .mi-row/.mi-label/.mi-value)을
+   그대로 재사용 — 라벨 좌측, 값 우측인 한 줄짜리 행을 세로로 쌓는다.
+   flex:1 1 auto(기본값)는 후보 명단이 짧아 남는 공간이 있을 때만 의미가 있다 — 그 경우
+   lpBenchPanelRebalanceInfoSpace(js/lineup/lineup-render.js)가 .dp-split을 실제 필요한
+   높이로 고정해 이 블록이 남는 공간을 자동으로 흡수하게 한다(세로 중앙 정렬).
+   반대로 명단이 공간을 다 쓰거나 넘치면(스크롤 필요) 같은 함수가 이 블록에 flex:0 0 auto를
+   인라인으로 강제해 명단 공간을 침범하지 않고 자기 콘텐츠 높이만 차지하도록 만든다. */
+.dp-bench-info {
+  flex: 1 1 auto;
   display: flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-  text-align: left;
-}
-.dp-league-wrap .dp-label {
-  color: #ff9900;
-  font-weight: 700;
-  flex: 0 0 auto;
-}
-.dp-league-name,
-.dp-venue-wrap {
-  min-width: 0;
-  max-width: 100%;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-.dp-league-name {
-  text-align: left;
-  color: rgba(255,255,255,.75);
-}
-.dp-venue-wrap {
-  display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
-  gap: 4px;
-  overflow: visible;
-  text-align: right;
-  white-space: normal;
-}
-.dp-venue-wrap .dp-label {
-  color: #ff9900;
-  font-weight: 700;
-  flex: 0 0 auto;
-  margin-right: 0;
-}
-.dp-venue-name {
-  display: -webkit-box;
-  color: rgba(255,255,255,.75);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: keep-all;
-  line-height: 1.2;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.dp-bench-kickoff {
-  flex: 0 0 auto;
-  display: flex;
-  width: 100%;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
   gap: 4px;
-  padding: 2px 4px 0;
-  font-size: 11px;
-  line-height: 1.2;
-  color: rgba(255,255,255,.55);
-  text-align: center;
+  min-height: 0;
+  padding: 6px 2px 2px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  overflow-y: auto;
 }
-.dp-bench-kickoff .dp-label {
-  color: #ff9900;
-  font-weight: 700;
-  flex: 0 0 auto;
-}
-.dp-kickoff-time {
-  color: rgba(255,255,255,.78);
-  min-width: 0;
+.dp-bench-info .mi-value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

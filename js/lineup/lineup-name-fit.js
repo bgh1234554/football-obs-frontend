@@ -697,70 +697,21 @@ function fitLineupNamesAgainstNodeCircles(labels) {
   });
 }
 
-/** 벤치 패널 하단(감독/주심/경기장) 텍스트가 넘치면 폰트를 점진 축소. */
+/**
+ * 벤치 패널 하단 감독 이름(홈/원정 두 칸이 한 줄을 나눠 씀) 텍스트가 넘치면 폰트를 점진 축소.
+ *
+ * 주심/대회/경기장/킥오프는 더 이상 이 폭 좁은 다단 레이아웃을 쓰지 않는다 — 캠 큰 메뉴
+ * 경기 정보 패널과 동일하게 .dp-bench-info 안에서 한 줄씩(.mi-row/.mi-value) 표시되고,
+ * .mi-value 자체가 CSS로 overflow:hidden + text-overflow:ellipsis를 처리하므로
+ * (css/panels/bench-injury.css: .dp-bench-info .mi-value) 별도의 JS 폰트 축소가 필요 없다.
+ */
 function fitBenchFooterNames(root) {
   const scope = root || document;
-  scope.querySelectorAll('.dp-bench-footer .dp-coach-name, .dp-bench-footer .dp-referee-name').forEach(nameEl => {
-    if (!nameEl || nameEl.classList.contains('dp-coach-editing') || nameEl.classList.contains('dp-referee-editing')) return;
+  scope.querySelectorAll('.dp-bench-footer .dp-coach-name').forEach(nameEl => {
+    if (!nameEl || nameEl.classList.contains('dp-coach-editing')) return;
     nameEl.style.fontSize = '';
     if (!canMeasureTextElement(nameEl)) return;
 
-    const isReferee = nameEl.classList.contains('dp-referee-name');
-    let safety = 0;
-    while (safety < 12) {
-      const overflow = isReferee
-        ? (nameEl.scrollHeight > nameEl.clientHeight + 0.5 || nameEl.scrollWidth > nameEl.clientWidth + 0.5)
-        : nameEl.scrollWidth > nameEl.clientWidth + 0.5;
-      if (!overflow) break;
-      if (!shrinkTextElement(nameEl, BENCH_FOOTER_MIN_FONT_PX)) break;
-      safety += 1;
-    }
-  });
-
-  // 경기장 이름 — 2줄 line-clamp 후에도 잘리거나 가로 넘침이면 폰트 점진 축소.
-  scope.querySelectorAll('.dp-bench-venue .dp-league-name').forEach(nameEl => {
-    if (!nameEl) return;
-    nameEl.style.fontSize = '';
-    if (!canMeasureTextElement(nameEl)) return;
-    let safety = 0;
-    while (safety < 12) {
-      const overflow = nameEl.scrollWidth > nameEl.clientWidth + 0.5;
-      if (!overflow) break;
-      if (!shrinkTextElement(nameEl, BENCH_FOOTER_MIN_FONT_PX)) break;
-      safety += 1;
-    }
-  });
-
-  // 경기장 이름은 'overflow-wrap: anywhere' + 'line-clamp: 2'라 자연스럽게 줄바꿈되며
-  // scrollWidth ≤ clientWidth가 되어 일반적인 overflow 검사로는 줄바꿈을 못 잡는다.
-  // → 단일 줄(white-space:nowrap) 자연 폭을 측정해 컨테이너 폭과 비교, 가능한 한 1줄에
-  // 맞도록 폰트를 점진 축소. 최소 폰트(8px)에 도달했는데도 1줄에 못 들어가면 그대로 wrap 허용.
-  scope.querySelectorAll('.dp-bench-venue .dp-venue-name').forEach(nameEl => {
-    if (!nameEl) return;
-    nameEl.style.fontSize = '';
-    if (!canMeasureTextElement(nameEl)) return;
-    let safety = 0;
-    while (safety < 16) {
-      const containerWidth = nameEl.clientWidth;
-      if (!containerWidth) break;
-      // 임시로 nowrap 적용해 단일 줄 자연 폭 측정.
-      const prevWhiteSpace = nameEl.style.whiteSpace;
-      nameEl.style.whiteSpace = 'nowrap';
-      const naturalWidth = nameEl.scrollWidth;
-      nameEl.style.whiteSpace = prevWhiteSpace;
-      // 1줄에 들어가거나 추가 오버플로우 없으면 종료.
-      const wrapNeeded = naturalWidth > containerWidth + 0.5;
-      const heightOverflow = nameEl.scrollHeight > nameEl.clientHeight + 0.5;
-      if (!wrapNeeded && !heightOverflow) break;
-      if (!shrinkTextElement(nameEl, BENCH_FOOTER_MIN_FONT_PX)) break;
-      safety += 1;
-    }
-  });
-
-  scope.querySelectorAll('.dp-bench-kickoff .dp-kickoff-time').forEach(nameEl => {
-    if (!nameEl) return;
-    nameEl.style.fontSize = '';
-    if (!canMeasureTextElement(nameEl)) return;
     let safety = 0;
     while (safety < 12) {
       const overflow = nameEl.scrollWidth > nameEl.clientWidth + 0.5;
@@ -867,8 +818,25 @@ function resetBenchInjuryPanelHeights() {
   }
 }
 
-/** 벤치/부상 패널 중 한쪽이 모자라고 다른 쪽이 남으면 height를 옮겨 균형을 맞춘다. */
+/**
+ * 벤치/부상 패널 중 한쪽이 모자라고 다른 쪽이 남으면 height를 옮겨 균형을 맞춘다.
+ * 이 함수가 두 패널 "사이" 공간을 먼저 정리한 뒤, 마지막에 항상(중간의 어느 return 경로를
+ * 타든) #benchPanel "안"의 후보명단/정보 블록 공간을 재분배(lpBenchPanelRebalanceInfoSpace,
+ * js/lineup/lineup-render.js)한다 — 순서가 바뀌면 그 함수가 먼저 .dp-split을 줄여버려
+ * 여기서 "벤치가 여유있다"고 오판하게 된다. 얇은 wrapper로 분리해 아래 로직의 여러 early
+ * return을 건드리지 않고도 항상 호출을 보장한다.
+ */
 function balanceBenchInjuryPanelHeights() {
+  try {
+    balanceBenchInjuryPanelHeightsImpl();
+  } finally {
+    if (typeof lpBenchPanelRebalanceInfoSpace === 'function') {
+      lpBenchPanelRebalanceInfoSpace(document.getElementById('benchPanel'));
+    }
+  }
+}
+
+function balanceBenchInjuryPanelHeightsImpl() {
   const {
     benchPanel,
     injuryPanel,

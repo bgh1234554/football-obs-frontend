@@ -12,4 +12,4 @@ docs/fsm-integration-guide.md
 package-lock.json
 package.json
 /tools
-/tests
+tests/

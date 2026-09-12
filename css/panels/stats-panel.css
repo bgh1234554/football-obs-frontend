@@ -178,6 +178,23 @@
     /* 2열도 overflow일 때 폴백 — 1열 유지 + 세로 스크롤 (stat-cycle.js가 자동 스크롤 처리) */
     .lp-stat .bc-body.bc-scroll-mode {
       overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    /* css/core/layout.css의 ".lp *::-webkit-scrollbar{display:none}"(다른 lp-stat 자동
+       스크롤 패널들은 스크롤바 없이 애니메이션으로만 보여주는 게 기본 정책)을, 스크롤 모드일
+       때만 .dp-list와 동일한 얇은 스크롤바로 재노출 — 클래스 3개짜리 셀렉터라 specificity가
+       더 높아 로드 순서와 무관하게 항상 이 규칙이 적용된다. */
+    .lp-stat .bc-body.bc-scroll-mode::-webkit-scrollbar {
+      display: block;
+      width: 6px;
+    }
+    .lp-stat .bc-body.bc-scroll-mode::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,.25);
+      border-radius: 3px;
+    }
+    .lp-stat .bc-body.bc-scroll-mode::-webkit-scrollbar-track {
+      background: transparent;
     }
     /* 이름은 1줄로 끝나면 1줄 높이만, 너무 길면 2줄로 wrap (말줄임표로 정보 손실 없음).
        -webkit-line-clamp는 1줄로 끝나도 항상 2줄 높이를 강제 예약해버려(약 39px) 1열에 들어갈
@@ -529,6 +546,22 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    /* css/core/layout.css의 ".lp *::-webkit-scrollbar{display:none}"을 재노출 — 교체명단
+       스크롤 모드(.bc-body.bc-scroll-mode)와 동일한 스크롤바 스타일. 클래스 2개짜리
+       셀렉터라 specificity가 더 높아 로드 순서와 무관하게 항상 이 규칙이 적용된다. */
+    .lp-stat .mi-body::-webkit-scrollbar {
+      display: block;
+      width: 6px;
+    }
+    .lp-stat .mi-body::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,.25);
+      border-radius: 3px;
+    }
+    .lp-stat .mi-body::-webkit-scrollbar-track {
+      background: transparent;
     }
     .mi-section {
       display: flex;
