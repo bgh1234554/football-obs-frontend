@@ -33,6 +33,13 @@
     .td-name-size-slider {
       width: 96px;
     }
+    /* 선수 바둑알 크기 슬라이더 (태블릿 등 작은 화면 대응) — 라벨 크기 컨트롤과 동일 스타일 */
+    .td-token-size-control {
+      padding-left: 0;
+    }
+    .td-token-size-slider {
+      width: 96px;
+    }
     .td-alpha-value {
       min-width: 40px;
       text-align: right;
@@ -68,6 +75,12 @@
       background: transparent !important;
       position: relative;
       isolation: isolate;
+      /* 터치 드래그 대응 — 기본값(auto)이면 모바일/태블릿에서 브라우저가 손가락 이동을
+         "화면 스크롤/핀치줌" 제스처로 먼저 가로채 pointermove가 끊기거나 pointercancel이
+         발생해 선수 토큰/공/드로잉 드래그가 시작되자마자 취소된다. 피치 영역 전체를
+         touch-action:none으로 지정해 네이티브 제스처를 끄고 pointerdown/move/up이
+         그대로 전달되게 한다(선수 토큰, 그리기 레이어, 선택 박스 드래그 전부 해당). */
+      touch-action: none;
     }
     #tactics-pitch::before {
       content: '';
@@ -288,24 +301,36 @@
       margin-bottom: 4px;
     }
 
-    /* 풀스크린 토글 버튼 — 일반 모드에서는 숨김. 도구 사이드바 하단에 배치됨. */
-    #td-timeline-toggle {
+    /* 풀스크린 전용 패널 토글 컨테이너 — 상단바(topbar) 남는 공간에 배치.
+       일반 모드에서는 타임라인/그리기 도구 패널이 항상 인라인으로 보이므로 완전히 숨김
+       (상단바 자체 높이에는 영향 없음 — display:none이라 자리를 차지하지 않음). */
+    #td-fullscreen-panel-toggles {
       display: none;
-      margin-top: 4px;
+      gap: 6px;
+      align-items: center;
+    }
+    #page-tactics:fullscreen #td-fullscreen-panel-toggles {
+      display: inline-flex;
+    }
+    #td-timeline-toggle,
+    #td-drawtools-toggle {
       background: #1e40af;
       color: #fff;
       border: none;
-      border-radius: 6px;
-      padding: 6px 8px;
+      border-radius: 7px;
+      padding: 4px 10px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
-      text-align: center;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
-    #td-timeline-toggle:hover { background: #2952c8; }
+    #td-timeline-toggle:hover,
+    #td-drawtools-toggle:hover { background: #2952c8; }
 
     /* 패널 닫기 버튼 — 풀스크린 모드에서만 보임. 패널 우상단 absolute. */
-    #td-timeline-close {
+    #td-timeline-close,
+    #td-drawtools-close {
       display: none;
       position: absolute;
       top: 6px;
@@ -323,16 +348,17 @@
       z-index: 110;
       padding: 0;
     }
-    #td-timeline-close:hover {
+    #td-timeline-close:hover,
+    #td-drawtools-close:hover {
       background: rgba(255,255,255,.12);
       color: #fff;
     }
     #tactics-timeline-panel { position: relative; }
 
     /* 풀스크린 모드: 타임라인 패널을 우측 슬라이드 패널로 전환 */
-    #page-tactics:fullscreen #td-timeline-toggle { display: block; }
-    #page-tactics:fullscreen #td-timeline-close { display: block; }
-    /* 풀스크린에서 타임라인 패널이 position:fixed로 빠져나간 빈 자리는
+    #page-tactics:fullscreen #td-timeline-close,
+    #page-tactics:fullscreen #td-drawtools-close { display: block; }
+    /* 풀스크린에서 타임라인/그리기 도구 패널 둘 다 position:fixed 오버레이로 빠져나간 빈 자리는
        피치 래퍼가 flex:1로 확장돼 채우게 한다 — 가운데에 큰 빈 공간 방지.
        피치 래퍼의 인라인 style(flex:0 0 auto)을 덮으려면 !important 필요. */
     #page-tactics:fullscreen #tactics-pitch-wrap {
@@ -364,7 +390,29 @@
        동시에 필터 popover도 같은 양만큼 좌측으로 이동해 화면 밖으로 빠지지 않도록 보정. */
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
+
+    /* 풀스크린 모드: 그리기 도구 패널도 타임라인과 동일한 방식(우측 슬라이드)으로 전환.
+       타임라인 패널과 같은 우측 자리를 쓰므로 js(tactics.js/tactics-timeline.js)가
+       하나를 열 때 다른 하나를 자동으로 닫아 겹치지 않게 한다(is-open 상호 배타). */
+    #page-tactics:fullscreen #tactics-draw-toolbar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 176px;
+      max-width: 60vw;
+      height: 100vh;
+      z-index: 100;
+      transform: translateX(100%);
+      transition: transform .22s ease;
+      box-shadow: -4px 0 20px rgba(0,0,0,.45);
+      border-left: 1px solid rgba(255,255,255,.12);
+    }
+    #page-tactics:fullscreen #tactics-draw-toolbar.is-open {
+      transform: translateX(0);
+    }
     #tactics-draw-toolbar {
+      position: relative;
       background: var(--panel-bg);
       padding: 8px 7px 6px !important;
       gap: 4px !important;
@@ -374,6 +422,14 @@
       min-height: 28px !important;
       font-size: 12px !important;
       line-height: 1.2 !important;
+    }
+    /* 위 규칙이 도구 버튼 전체에 padding/font-size를 강제하므로, 원형 닫기(×) 버튼은
+       id 셀렉터(specificity 우위)로 되돌려 26x26 원형 스타일을 유지한다. */
+    #tactics-draw-toolbar > #td-drawtools-close {
+      padding: 0 !important;
+      min-height: 26px !important;
+      font-size: 18px !important;
+      line-height: 1 !important;
     }
     #tactics-draw-toolbar .tactics-draw-title,
     #tactics-draw-toolbar .tactics-draw-subtitle {

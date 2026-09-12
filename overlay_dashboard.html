@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>OBS Football Dashboard</title>
+  <!-- Windows 디스플레이 배율 보정: head 맨 앞에서 동기 실행해 본문 레이아웃이 그려지기 전에 적용 -->
+  <script src="js/core/display-scale.js"></script>
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet"/>
   <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet"/>
@@ -242,8 +244,8 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">벤치/부상자 이름 풀네임</span>
-              <span class="sp-label-sub">벤치·부상자 이름을 풀네임으로 표시합니다.</span>
+              <span class="sp-label-main">벤치/미출전 선수 이름 풀네임</span>
+              <span class="sp-label-sub">벤치·미출전 선수 이름을 풀네임으로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
@@ -465,6 +467,38 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
+          <div class="sp-row sp-row-manual-reset sp-row-panel-modes">
+            <div class="sp-row-label">
+              <span class="sp-label-main">자동 전환 시 표시할 패널</span>
+              <span class="sp-label-sub">경기 데이터 자체가 없는 패널(예: 스탯 미제공 리그)은 체크돼 있어도 자동으로 건너뜁니다.</span>
+              <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap">
+                <label class="sp-mini-toggle-item" title="경기 스탯">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeStats" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">스탯</span>
+                </label>
+                <label class="sp-mini-toggle-item" title="문자중계 이벤트">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeEvents" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">이벤트</span>
+                </label>
+                <label class="sp-mini-toggle-item" title="상대전적">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeHth" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">상대전적</span>
+                </label>
+                <label class="sp-mini-toggle-item" title="홈팀 교체 명단">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeBenchHome" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">홈 교체</span>
+                </label>
+                <label class="sp-mini-toggle-item" title="원정팀 교체 명단">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeBenchAway" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">원정 교체</span>
+                </label>
+                <label class="sp-mini-toggle-item" title="경기 정보(경기장/심판 등)">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeMatchInfo" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">경기 정보</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
           <div class="sp-section-title">이벤트/스탯 표시</div>
           <div class="sp-row">
@@ -560,7 +594,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">데이터 패널 투명도</span>
-              <span class="sp-label-sub">이벤트·스탯·교체·부상자 명단 배경 투명도입니다. 높을수록 더 투명합니다.</span>
+              <span class="sp-label-sub">이벤트·스탯·교체·미출전 선수 명단 배경 투명도입니다. 높을수록 더 투명합니다.</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="0" max="100" step="5" data-settings-slider="panelAlpha" />
@@ -652,7 +686,7 @@
             <div class="sp-row">
               <div class="sp-row-label">
                 <span class="sp-label-main">캐시 초기화</span>
-                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다. 포메이션/라인업/벤치/부상자/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
+                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다. 포메이션/라인업/벤치/미출전 선수/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="cacheResetBtn">초기화</button>
             </div>
@@ -676,9 +710,9 @@
                     <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetBench" checked/><span class="sp-switch-slider"></span></span>
                     <span class="sp-mini-toggle-label">벤치</span>
                   </label>
-                  <label class="sp-mini-toggle-item" title="부상/결장 명단">
+                  <label class="sp-mini-toggle-item" title="미출전 선수 명단">
                     <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetInjuries" checked/><span class="sp-switch-slider"></span></span>
-                    <span class="sp-mini-toggle-label">부상자</span>
+                    <span class="sp-mini-toggle-label">미출전</span>
                   </label>
                   <label class="sp-mini-toggle-item" title="홈/원정 감독 이름">
                     <span class="sp-switch sp-switch-mini"><input type="checkbox" id="mrResetCoach" checked/><span class="sp-switch-slider"></span></span>
@@ -948,17 +982,34 @@
       <input id="tactics-name-size-slider" class="td-alpha-slider td-name-size-slider" type="range" min="7" max="18" step="1" data-settings-slider="tacticsNameSize" aria-label="전술판 선수 이름 라벨 크기">
       <span class="td-alpha-value td-name-size-value" data-settings-slider-value="tacticsNameSize">12px</span>
     </div>
+    <div class="td-token-size-control" title="전술판 선수 바둑알 크기 (태블릿 등 작은 화면에서 축소 권장)">
+      <label for="tactics-token-size-slider" class="td-alpha-label">선수 크기</label>
+      <input id="tactics-token-size-slider" class="td-alpha-slider td-token-size-slider" type="range" min="50" max="150" step="5" data-settings-slider="tacticsTokenScale" aria-label="전술판 선수 바둑알 크기">
+      <span class="td-alpha-value td-token-size-value" data-settings-slider-value="tacticsTokenScale">100%</span>
+    </div>
     <span style="font-size:11px;color:#64748b;font-weight:700;">HOME</span>
-    <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
+    <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-2-1-3">4-2-1-3</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
     <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
     <span style="font-size:11px;color:#64748b;font-weight:700;">AWAY</span>
-    <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
+    <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-2-1-3">4-2-1-3</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-3-2">4-1-3-2</option></select>
     <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
     <button id="btn-tactics-manual-names" onclick="openTacticsNamesPanel()" title="경기 ID가 없을 때 포지션별로 선수 이름을 직접 입력합니다." style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 이름 입력</button>
-    <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 위치 초기화</button>
+    <button onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 원위치</button>
+    <div style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
+    <!-- 되돌리기/다시 실행/전체 지우기 — 그리기 도구 패널(<< 로 접힘) 안이 아니라 상단바에 항상 노출.
+         태블릿 등 물리 키보드가 없는 환경에선 Ctrl+Z/Ctrl+Y를 쓸 수 없으므로 버튼이 유일한 접근 경로. -->
+    <button id="td-undo-btn" onclick="tacticsDrawUndo()" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:3px 9px;font-size:15px;line-height:1;cursor:pointer;">↺</button>
+    <button id="td-redo-btn" onclick="tacticsDrawRedo()" title="다시 실행 (Ctrl+Y)" aria-label="다시 실행" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:3px 9px;font-size:15px;line-height:1;cursor:pointer;">↻</button>
+    <button onclick="tacticsDrawClear()" title="그려진 도형(선/화살표/도형 등)을 전체 지웁니다." style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">전체 지우기</button>
     <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;"><input type="checkbox" id="tactics-show-names" checked> 이름 표시</label>
     <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;"><input type="checkbox" id="tactics-show-ball"> 공 표시</label>
     <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 같은 라인에 묶인 선수들이 함께 이동합니다."><input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지</label>
+    <!-- 풀스크린 전용 — 타임라인/이벤트 패널, 그리기 도구 패널을 우측에서 슬라이드로 여는 토글.
+         일반 모드에선 두 패널이 항상 인라인으로 보이므로 숨김(css/tactics/tactics-timeline.css). -->
+    <div id="td-fullscreen-panel-toggles">
+      <button id="td-timeline-toggle" type="button" title="타임라인 / 이벤트 열기/닫기">‹‹ 타임라인</button>
+      <button id="td-drawtools-toggle" type="button" title="그리기 도구 열기/닫기">‹‹ 그리기 도구</button>
+    </div>
     <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⤢ 전체화면 (\)</button>
   </div>
   <!-- 메인 영역: 피치(좌) + 타임라인&이벤트(가운데) + 드로잉 도구(우) 3열 -->
@@ -1030,6 +1081,8 @@
     </div>
     <!-- 우측 드로잉 도구 패널 -->
     <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
+      <!-- 풀스크린 모드 전용 닫기 버튼 — 패널 우상단 absolute 위치. 일반 모드에선 CSS로 숨김. -->
+      <button id="td-drawtools-close" type="button" title="그리기 도구 닫기" aria-label="닫기">×</button>
       <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
       <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
       <button id="td-tool-pencil" onclick="tacticsDrawSetTool('pencil')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✎ 펜</button>
@@ -1062,8 +1115,6 @@
       <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
       <button onclick="tacticsDrawUndo()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">되돌리기</button>
       <button onclick="tacticsDrawClear()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">전체 지우기</button>
-      <!-- 풀스크린 모드 전용: 타임라인/이벤트 패널 슬라이드 토글 (Iter 5-8) -->
-      <button id="td-timeline-toggle" type="button" title="타임라인 / 이벤트 열기/닫기">‹‹ 타임라인</button>
     </div>
   </div>
 </div>
@@ -1190,7 +1241,7 @@
   js/core/keyboard.js              — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
   js/tactics/tactics.js            — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
   js/tactics/tactics-manual-names.js — 경기 ID 미연동 시 전술판 포지션별 선수 이름 수동 입력 모달 (홈/원정 탭). 경기 ID 로딩 시 자동 소멸
-  js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension 판별
+  js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension/isOffRoster 판별(선수단 미등록은 부상/징계와 별도 카테고리, 빨간 X 아이콘)
   js/settings/settings-popup.js    — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
   js/lineup/lineup-manual-store.js — 공통 유틸(dpEscape/clonePlayers 등) + lineupPanelState + fixture 단위 수동 override localStorage CRUD
   js/lineup/lineup-data.js         — buildEffectiveFixtureData(API+수동override 합성) + 그리드/포메이션/색상 변환 헬퍼

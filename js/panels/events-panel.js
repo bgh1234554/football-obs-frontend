@@ -100,6 +100,11 @@ function evDetailIs(detail, target) {
   return String(detail || '').trim().toLowerCase() === String(target || '').trim().toLowerCase();
 }
 
+/** comments가 Penalty Shootout이면 elapsed가 잘못 들어와도 승부차기 시점으로 취급. */
+function evIsPenaltyShootoutEvent(ev) {
+  return String(ev?.comments || '').trim().toLowerCase() === 'penalty shootout';
+}
+
 /**
  * VAR detail 문자열을 파싱해 4종 필터 키 + 표시용 텍스트로 분리.
  * "Goal cancelled - Offside" → { key: 'goal-cancel', displayDetail: 'Goal cancelled', displayComment: 'Offside' }
@@ -207,6 +212,23 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
 }
 
 /**
+ * '?' 버튼으로 채운(override로 저장된) 교체 선수 이름 표시용 — 클릭하면 evOpenSubstPicker를
+ * 다시 열어 선택을 바꿀 수 있게 함. API가 원래 제공한 이름(override 없음)은 고정 텍스트로 둠.
+ */
+function evCreateSubstEditableName(ev, field, fixtureData, name) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ev-text-name ev-subst-name-editable';
+  btn.title = field === 'player' ? '클릭해서 OUT 선수 다시 선택' : '클릭해서 IN 선수 다시 선택';
+  btn.textContent = name;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    evOpenSubstPicker(ev, field, fixtureData);
+  });
+  return btn;
+}
+
+/**
  * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
  * lineup-data.js의 buildEffectiveFixtureData에서 호출해
  * subReflect 교체 swap이 override를 반영하도록 함.
@@ -272,6 +294,8 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   list.className = 'ev-subst-picker-list';
 
   let selectedPlayer = null;
+  // 재선택(수정)인 경우 기존 override 값을 미리 선택된 상태로 보여줌.
+  const existingOverride = evGetSubstOverride(fixtureId, ev, field);
 
   if (!allPlayers.length) {
     const empty = document.createElement('div');
@@ -301,6 +325,10 @@ function evOpenSubstPicker(ev, field, fixtureData) {
       posEl.textContent = player.pos || '';
 
       item.append(num, nameEl, posEl);
+      if (existingOverride && Number(existingOverride.playerId) === Number(player.playerId)) {
+        item.classList.add('is-selected');
+        selectedPlayer = { playerId: player.playerId, name: displayName };
+      }
       item.addEventListener('click', () => {
         list.querySelectorAll('.ev-subst-picker-item.is-selected')
           .forEach(el => el.classList.remove('is-selected'));
@@ -325,6 +353,12 @@ function evOpenSubstPicker(ev, field, fixtureData) {
     evRerenderCurrentPanel();
     if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
       applyLineupPanels(window._eventsLastData);
+    }
+    // 전술판 타임라인은 buildEffectiveFixtureData를 안 거치는 별도 fixture 스냅샷을 쓰므로
+    // 이 override가 자동으로 반영되지 않는다 — 패치된 events로 직접 갱신해준다.
+    if (typeof window.ttRefreshEventsData === 'function' && window._eventsLastData) {
+      const patchedEvents = evPatchSubstEvents(window._eventsLastData.events, fixtureId);
+      window.ttRefreshEventsData({ ...window._eventsLastData, events: patchedEvents });
     }
   });
 
@@ -771,9 +805,19 @@ function evIconHtml(iconKey) {
 // API가 이런 경계를 별도 이벤트로 안 주기 때문에 matchInfo.status/elapsed 전이로
 // 추론해서 합성한 "가짜 이벤트"를 실제 이벤트 사이에 끼워 넣는다.
 const EV_PERIOD_MARKER_SORT_PADDING = 50; // 같은 분(elapsed)의 실제 추가시간 이벤트보다 항상 뒤(=더 늦은 시점)로 보내는 패딩
+const EV_PENALTY_SHOOTOUT_SORT_ELAPSED = 121; // 승부차기는 연장 후반 종료(120') 마커 이후에 배치
 // 하프타임 마커 표시 허용 status — "NS/1H가 아니면 전부"식 부정 조건은 PST/CANC/SUSP/INT/ABD/AWD/WO
 // 같은 비정상 status에도 걸려 하프타임 마커가 잘못 붙었음. 진행된 상태만 명시적으로 허용한다.
 const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'PSO', 'FT']);
+
+function evSortKey(ev) {
+  const elapsed = evIsPenaltyShootoutEvent(ev)
+    ? EV_PENALTY_SHOOTOUT_SORT_ELAPSED
+    : Number(ev?.elapsed ?? 0);
+  const extra = Number(ev?.extra ?? 0);
+  return (Number.isFinite(elapsed) ? elapsed : 0) * 100
+    + (Number.isFinite(extra) ? extra : 0);
+}
 
 /**
  * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 두 쌍(후반종료/풀타임,
@@ -788,18 +832,24 @@ const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'PSO', '
  * 105를 넘었는지/승부차기 스코어가 있는지로 사후 추정한다 — 생방송 중에는 ET1/ET2/PSO 상태를
  * 직접 거치므로 이 추정이 필요 없다.
  */
-function evBuildPeriodMarkers(matchInfo) {
-  if (!matchInfo) return [];
+function evBuildPeriodMarkers(matchInfo, events = []) {
+  const hasShootoutEvents = Array.isArray(events) && events.some(evIsPenaltyShootoutEvent);
+  if (!matchInfo && !hasShootoutEvents) return [];
+  matchInfo = matchInfo || {}; // hasShootoutEvents만으로 통과한 경우 matchInfo가 없을 수 있음
 
   const status = String(matchInfo.status || '').toUpperCase();
   const elapsed = Number(matchInfo.elapsed ?? 0);
-  const hadPenalties = matchInfo.homePenaltyScore != null || matchInfo.awayPenaltyScore != null;
+  const isPenaltyStatus = status === 'PSO' || status === 'P' || status === 'PEN';
+  const hadPenalties = matchInfo.homePenaltyScore != null
+    || matchInfo.awayPenaltyScore != null
+    || isPenaltyStatus
+    || hasShootoutEvents;
 
-  const isLiveExtraTime = status === 'ET1' || status === 'ET2' || status === 'PSO';
+  const isLiveExtraTime = status === 'ET1' || status === 'ET2' || isPenaltyStatus;
   const ftLooksLikeExtraTime = status === 'FT' && (elapsed > 105 || hadPenalties);
-  const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime;
-  const reachedEt2 = status === 'ET2' || status === 'PSO' || ftLooksLikeExtraTime;
-  const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status);
+  const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime || hasShootoutEvents;
+  const reachedEt2 = status === 'ET2' || isPenaltyStatus || ftLooksLikeExtraTime || hasShootoutEvents;
+  const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status) || hasShootoutEvents;
 
   const markers = [];
   const addMarker = (label, sortElapsed) => markers.push({
@@ -814,7 +864,7 @@ function evBuildPeriodMarkers(matchInfo) {
   if (extraTimePlayed) {
     addMarker('후반종료', 90);
     if (reachedEt2) addMarker('연장 전반 종료', 105);
-    if (status === 'PSO' || hadPenalties) addMarker('연장 후반 종료', 120);
+    if (isPenaltyStatus || hadPenalties) addMarker('연장 후반 종료', 120);
     else if (status === 'FT') addMarker('풀타임', 120);
   } else if (status === 'FT') {
     addMarker('풀타임', 90);
@@ -829,13 +879,19 @@ function evBuildPeriodMarkers(matchInfo) {
  * EV_PERIOD_MARKER_SORT_PADDING을 더해 같은 분의 실제 이벤트보다 항상 늦게(=내림차순에서 더 위로) 배치.
  */
 function evMergeWithPeriodMarkers(eventsDesc, markers) {
-  const eventItems = eventsDesc.map(ev => ({ kind: 'event', ev }));
-  if (!markers.length) return eventItems;
+  const renderKeys = evBuildRenderKeys(eventsDesc);
+  const eventItems = eventsDesc.map((ev, index) => ({
+    kind: 'event',
+    ev,
+    renderKey: renderKeys[index],
+  }));
 
-  const markerItems = markers.map(marker => ({ kind: 'marker', marker }));
+  const markerItems = (Array.isArray(markers) ? markers : []).map(marker => ({ kind: 'marker', marker }));
   const sortKeyOf = item => {
     const src = item.kind === 'marker' ? item.marker : item.ev;
-    return Number(src?.elapsed ?? 0) * 100 + Number(src?.extra ?? 0);
+    return item.kind === 'marker'
+      ? Number(src?.elapsed ?? 0) * 100 + Number(src?.extra ?? 0)
+      : evSortKey(src);
   };
 
   return [...eventItems, ...markerItems]
@@ -930,16 +986,24 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
     inLine.className = 'ev-text-line ev-text-in';
     inLine.append('IN: ');
     const inName = evGetSubstDisplayName(ev, 'assist', fixtureId);
-    if (inName) appendName(inLine, inName);
-    else inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
+    if (inName) {
+      if (evGetSubstOverride(fixtureId, ev, 'assist')) inLine.appendChild(evCreateSubstEditableName(ev, 'assist', fixtureData, inName));
+      else appendName(inLine, inName);
+    } else {
+      inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
+    }
     appendInlineComment(inLine); // subst의 코멘트는 IN 라인 옆에
 
     const outLine = document.createElement('span');
     outLine.className = 'ev-text-line ev-text-out';
     outLine.append('OUT: ');
     const outName = evGetSubstDisplayName(ev, 'player', fixtureId);
-    if (outName) appendName(outLine, outName);
-    else outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
+    if (outName) {
+      if (evGetSubstOverride(fixtureId, ev, 'player')) outLine.appendChild(evCreateSubstEditableName(ev, 'player', fixtureData, outName));
+      else appendName(outLine, outName);
+    } else {
+      outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
+    }
 
     stack.appendChild(inLine);
     stack.appendChild(outLine);
@@ -1227,7 +1291,7 @@ function applyEventsPanel(fixtureData, options = {}) {
   const filterOptions = evBuildFilterOptions(processedEvents);
   if (!filterOptions.length) eventsPanelFilterState.isOpen = false;
   const events = evFilterEvents(processedEvents);
-  const periodMarkers = evBuildPeriodMarkers(fixtureData?.matchInfo);
+  const periodMarkers = evBuildPeriodMarkers(fixtureData?.matchInfo, processedEvents);
   const renderItems = evMergeWithPeriodMarkers(events, periodMarkers);
 
   containers.forEach(container => {
@@ -1266,15 +1330,12 @@ function applyEventsPanel(fixtureData, options = {}) {
 
     const list = document.createElement('div');
     list.className = 'ev-list';
-    const renderKeys = evBuildRenderKeys(events);
-    let eventKeyIndex = 0;
     renderItems.forEach(item => {
       if (item.kind === 'marker') {
         list.appendChild(evCreateMarkerRow(item.marker));
         return;
       }
-      list.appendChild(evCreateRow(item.ev, fixtureData, renderKeys[eventKeyIndex]));
-      eventKeyIndex += 1;
+      list.appendChild(evCreateRow(item.ev, fixtureData, item.renderKey || ''));
     });
     container.replaceChildren(titleBar, list);
     container.dataset.evFixtureId = nextFixtureId;

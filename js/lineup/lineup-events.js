@@ -85,7 +85,8 @@ function lpFindLineupPlayerIndex(players, matcher) {
 /**
  * fixtureData.events를 선수별로 집계.
  * 반환 Map<playerIdString, {
- *   goals: [{ time, isPenalty, isOwnGoal }],
+ *   goals: [{ time, isPenalty, isOwnGoal }],  // 정규 득점만 (자책골 제외)
+ *   ownGoals: [{ time }],                     // 이 선수의 자책골
  *   assists: [{ time }],
  *   yellow: { time, total },          // 1회만 (두 번째는 second-yellow로 별도)
  *   red: { time, isCumulative },      // Red 또는 Second Yellow (퇴장)
@@ -94,7 +95,8 @@ function lpFindLineupPlayerIndex(players, matcher) {
  * }>
  *
  * Penalty Shootout 이벤트(comments==='Penalty Shootout')는 제외.
- * Own Goal은 해당 선수의 골로 간주하지 않음 — 골 이모티콘 안 띄움.
+ * Own Goal은 goals가 아닌 별도의 ownGoals에 집계 — 정규 득점과 구분해서 표시하기 위함
+ * (lpBuildNodeBadgesHtml이 자책골 카운트를 빨간 배경 배지로 별도 표시).
  */
 function lpAggregatePlayerEvents(events) {
   const map = new Map();
@@ -103,7 +105,7 @@ function lpAggregatePlayerEvents(events) {
   function ensure(pid) {
     const key = String(pid);
     if (!map.has(key)) {
-      map.set(key, { goals: [], assists: [], yellow: null, red: null, subIn: null, subOut: null });
+      map.set(key, { goals: [], ownGoals: [], assists: [], yellow: null, red: null, subIn: null, subOut: null });
     }
     return map.get(key);
   }
@@ -125,7 +127,9 @@ function lpAggregatePlayerEvents(events) {
       if (detail === 'Missed Penalty') return;
       const isOwn = detail === 'Own Goal';
       const isPenalty = detail === 'Penalty';
-      if (!isOwn) {
+      if (isOwn) {
+        ensure(ev.playerId).ownGoals.push({ time });
+      } else {
         ensure(ev.playerId).goals.push({ time, isPenalty, isOwnGoal: false });
       }
       // 어시스트는 Own Goal만 제외. 페널티는 보통 assistId가 없어 기록되지 않지만, 있으면 그대로 반영.

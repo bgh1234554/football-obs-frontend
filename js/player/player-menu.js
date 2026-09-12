@@ -159,6 +159,13 @@ function pmShowMenu(playerId, clientX, clientY) {
   const subNameRow = fullName && fullName !== displayName
     ? `<div class="pm-subname">${pmEsc(fullName)}</div>`
     : '';
+  // 부상자 명단 선수만 — hover 툴팁이 잘 안 보이는 환경 대비 사유를 메뉴에도 노출.
+  const injuryReasonText = player._kind === 'injury'
+    ? (typeof getInjuryReasonDisplayText === 'function' ? getInjuryReasonDisplayText(player.reason, player.type) : '')
+    : '';
+  const injuryReasonRow = injuryReasonText
+    ? `<div class="pm-injury-reason">${pmEsc(injuryReasonText)}</div>`
+    : '';
 
   pmContainer().innerHTML = `
 <div class="pm-popup" id="pmPopup" role="dialog">
@@ -169,6 +176,7 @@ function pmShowMenu(playerId, clientX, clientY) {
       <div class="pm-name"><span class="pm-num">${pmEsc(number)}</span>${pmEsc(displayName)}</div>
       ${subNameRow}
       ${nicknameRow}
+      ${injuryReasonRow}
       <div class="pm-pos" style="display:flex;align-items:center;gap:5px">
         <span>포지션: ${pmEsc(pos)}</span>
         <button class="pm-btn" id="pmBtnIdLink" style="padding:1px 6px;font-size:10px;line-height:1.5;margin:0;opacity:.75">ID 입력</button>
@@ -586,10 +594,16 @@ function pmBuildMatchStatRows(s) {
   const tackleLabel = [lbl('tacklesTotal'), lbl('tacklesBlocks'), lbl('tacklesInterceptions')].join(' / ');
   const tackleVal = tackleAllNull ? null : tackleParts.map(v => v ?? '-').join(' / ');
 
+  // 평점은 다른 스탯과 달리 순수 텍스트가 아니라 포메이션 라인업 평점 배지와 동일한
+  // 배경색(_pmRatingHtml — lpRatingColor와 같은 구간 기준)을 입혀야 하므로 row()를 안 거친다.
+  const ratingRow = (s.rating != null && s.rating !== '')
+    ? `<tr><td class="pm-st-label">${pmEsc(lbl('rating'))}</td><td class="pm-st-val">${_pmRatingHtml(s.rating)}</td></tr>`
+    : '';
+
   return [
     row('minutes',  s.minutes != null ? `${s.minutes}분` : null),
     row('position', pmPosKo(s.position)),
-    row('rating',   s.rating),
+    ratingRow,
     // 슛을 한 행으로 묶어 표시 (총 / 유효)
     `${row('shotsTotal', s.shotsTotal)}${row('shotsOn', s.shotsOn)}`,
     row('goalsScored', s.goalsScored),

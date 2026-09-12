@@ -100,44 +100,14 @@ body.lp-small-resizing * {
   justify-content: stretch;
 }
 
+/* 팬 반응 OFF — 캠 큼(.lp-chat-big)/캠 작음(.lp-cam-chat) 둘 다 자리(칼럼 폭·높이)는 그대로
+   두고 완전히 투명하게만 만든다. 다른 컬럼/패널의 크기·분할 비율에 영향을 주지 않기 위해
+   display:none 대신 opacity:0을 사용 — 레이아웃 흐름에서 빠지지 않아 스탯 패널이 그
+   자리를 차지하러 늘어나지 않는다. */
 body.no-fan-reaction .layout-big .lp-chat-big,
 body.no-fan-reaction .layout-small .lp-cam-chat {
+  opacity: 0;
   pointer-events: none;
-  opacity: .34;
-  filter: grayscale(1) saturate(.18);
-}
-
-body.no-fan-reaction .layout-big .lp-chat-big .dp-panel,
-body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel {
-  position: relative;
-  background:
-    repeating-linear-gradient(
-      -45deg,
-      rgba(255,255,255,.035) 0 10px,
-      rgba(255,255,255,0) 10px 20px
-    );
-}
-
-body.no-fan-reaction .layout-big .lp-chat-big .dp-title,
-body.no-fan-reaction .layout-small .lp-cam-chat .dp-title {
-  color: rgba(255,255,255,.42);
-  border-bottom-color: rgba(255,255,255,.08);
-}
-
-body.no-fan-reaction .layout-big .lp-chat-big .dp-panel::after,
-body.no-fan-reaction .layout-small .lp-cam-chat .dp-panel::after {
-  content: 'OFF';
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(8, 12, 18, .66);
-  color: rgba(255,255,255,.58);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .08em;
 }
 
 /* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.
@@ -205,6 +175,42 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 .layout-big .lp-lineup .dp-lineup-avatar {
   width: calc(44px * var(--lp-node-scale, 1));
   height: calc(44px * var(--lp-node-scale, 1));
+}
+/* 노드 배지(평점/카드/골/어시/교체시간)는 여태 --lp-node-scale과 무관한 고정 px였다.
+   패널을 극단적으로 축소하면(예: 캠 큰 라인업 코너 핸들 최소치) 노드/이름표는 같이
+   작아지는데 배지만 원래 크기 그대로 남아, 특히 노드 바로 아래에 붙는 평점 배지가
+   그 밑 이름 pill과 겹쳐 뭉개져 보이는 문제가 있었다. 노드/원/아바타와 같은 배율로 맞춘다. */
+.layout-big .lp-lineup .dp-node-rating {
+  min-width: calc(26px * var(--lp-node-scale, 1));
+  height: calc(14px * var(--lp-node-scale, 1));
+  padding: 0 calc(4px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1));
+  border-radius: calc(3px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-badge {
+  font-size: calc(11px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-sub-in,
+.layout-big .lp-lineup .dp-node-sub-out {
+  padding: calc(1px * var(--lp-node-scale, 1)) calc(4px * var(--lp-node-scale, 1));
+  border-radius: calc(6px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1));
+  gap: calc(2px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-assist,
+.layout-big .lp-lineup .dp-node-goal {
+  width: calc(16px * var(--lp-node-scale, 1));
+  height: calc(16px * var(--lp-node-scale, 1));
+  font-size: calc(13px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-count {
+  min-width: calc(12px * var(--lp-node-scale, 1));
+  height: calc(12px * var(--lp-node-scale, 1));
+  font-size: calc(9px * var(--lp-node-scale, 1));
+}
+.layout-big .lp-lineup .dp-node-card .dp-card {
+  width: calc(8px * var(--lp-node-scale, 1));
+  height: calc(11px * var(--lp-node-scale, 1));
 }
 /* 이름 pill — 축소 시 폭/패딩은 줄이되, 폰트는 base 크기를 유지하고 실제 충돌 시 JS가 별도로 축소 */
 .layout-big .lp-lineup .dp-lineup-name {
