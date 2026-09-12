@@ -5,6 +5,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* 기존 .board의 padding이 테마 로딩 전후 높이를 바꾸지 않도록 공통 초기화. */
+  padding: 0;
 }
 
 /* clockEditor: .board 바깥으로 이동했으므로 #clock 위에 겹쳐 보이도록 */
