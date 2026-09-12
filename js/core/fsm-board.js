@@ -33,14 +33,50 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
 };
 
 var oldlink = document.getElementById('fsm-theme-link');
+var pendingThemeLink = null;
 
 function changeCSS(cssFile) {
-  var newlink = document.createElement("link");
-  newlink.setAttribute("rel", "stylesheet");
-  newlink.setAttribute("href", cssFile);
-  newlink.id = 'fsm-theme-link';
-  document.head.replaceChild(newlink, oldlink);
-  oldlink = newlink;  // 다음 교체를 위해 참조 갱신
+  const href = new URL(cssFile, document.baseURI).href;
+  if (pendingThemeLink?.href === href) return;
+
+  // 연속 테마 변경 시 이전 요청이 늦게 완료되어 최신 테마를 덮어쓰지 않게 한다.
+  if (pendingThemeLink) {
+    pendingThemeLink.onload = pendingThemeLink.onerror = null;
+    pendingThemeLink.remove();
+    pendingThemeLink = null;
+  }
+  if (oldlink?.href === href) return;
+
+  const newlink = document.createElement('link');
+  newlink.rel = 'stylesheet';
+  newlink.href = href;
+  // 새 CSS가 준비될 때까지 현재 테마를 유지한다. 로딩 중 스타일이 사라지면
+  // initBoardScale()이 로고의 원본 크기 등을 측정해 패널 높이를 0으로 만들 수 있다.
+  newlink.media = 'not all';
+  pendingThemeLink = newlink;
+  newlink.onload = () => {
+    if (pendingThemeLink !== newlink) return;
+    newlink.onload = newlink.onerror = null;
+    oldlink?.remove();
+    newlink.id = 'fsm-theme-link';
+    newlink.media = 'all';
+    oldlink = newlink;
+    pendingThemeLink = null;
+    requestAnimationFrame(() => {
+      autoLayoutNotes();
+      initBoardScale();
+    });
+  };
+  newlink.onerror = () => {
+    if (pendingThemeLink !== newlink) return;
+    newlink.onload = newlink.onerror = null;
+    newlink.remove();
+    pendingThemeLink = null;
+    console.warn('Scoreboard theme stylesheet failed to load:', href);
+  };
+  // 기존 link 바로 뒤에 넣어 다른 스타일시트와의 우선순위도 유지한다.
+  if (oldlink) oldlink.after(newlink);
+  else document.head.appendChild(newlink);
 }
 
 function applyTheme(theme, logoUrl) {
