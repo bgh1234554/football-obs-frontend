@@ -327,6 +327,20 @@ function ttUpdateTimeLabel() {
 }
 
 /**
+ * evOpenSubstPicker로 저장한 교체 선수 override를 fixtureData.events에 적용한 새 객체를
+ * 반환. fixture.js는 폴링마다 applyTacticsTimeline(data)를 raw data로 호출하므로(이벤트
+ * 패널용 eventsPanelData=buildEffectiveFixtureData(data)와는 별개 경로), 여기서 매번
+ * 다시 패치해두지 않으면 다음 폴링에서 tacticsTimelineState.fixture가 override 없는
+ * raw events로 덮어써져 ttRefreshEventsData로 반영했던 수동 선택이 되돌아간다.
+ */
+function ttApplySubstOverrides(fixtureData) {
+  if (!fixtureData || !Array.isArray(fixtureData.events)) return fixtureData;
+  const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
+  if (!fixtureId || typeof window.evPatchSubstEvents !== 'function') return fixtureData;
+  return { ...fixtureData, events: window.evPatchSubstEvents(fixtureData.events, fixtureId) };
+}
+
+/**
  * 외부 진입점 — 새 fixture data가 도착하면 호출되어 타임라인 패널과 이벤트 패널을 갱신.
  * fixture.js의 fetchAndApplyFixtureData에서 applyEventsPanel 직후에 호출되도록 wire up 필요.
  */
@@ -348,6 +362,7 @@ function applyTacticsTimeline(fixtureData) {
     return;
   }
 
+  fixtureData = ttApplySubstOverrides(fixtureData);
   tacticsTimelineState.fixture = fixtureData;
   tacticsTimelineState.events = ttCollectLineupEvents(fixtureData.events);
   tacticsTimelineState.maxElapsed = ttComputeMaxElapsed(tacticsTimelineState.events);

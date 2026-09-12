@@ -835,6 +835,7 @@ function evSortKey(ev) {
 function evBuildPeriodMarkers(matchInfo, events = []) {
   const hasShootoutEvents = Array.isArray(events) && events.some(evIsPenaltyShootoutEvent);
   if (!matchInfo && !hasShootoutEvents) return [];
+  matchInfo = matchInfo || {}; // hasShootoutEvents만으로 통과한 경우 matchInfo가 없을 수 있음
 
   const status = String(matchInfo.status || '').toUpperCase();
   const elapsed = Number(matchInfo.elapsed ?? 0);

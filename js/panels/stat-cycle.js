@@ -496,7 +496,12 @@ function lpStatEnsureModeReady(mode) {
 }
 function lpStatUpdateVisibility() {
   const available = lpStatAvailableModes();
-  if (!available.includes(_lpStatCycle.mode)) _lpStatCycle.mode = 'stats';
+  // 'stats'가 available에 없을 수 있다(리그가 팀 스탯을 안 주는 경우) — 그때 무조건 'stats'로
+  // 되돌리면 실제로 보여줄 데이터가 없는 모드로 고정돼 모든 패널이 숨어버린다. available이
+  // 비어있지 않으면 그 중 첫 번째로, 완전히 비어있을 때만(모든 패널이 데이터 없음) 'stats'로.
+  if (!available.includes(_lpStatCycle.mode)) {
+    _lpStatCycle.mode = available.length ? available[0] : 'stats';
+  }
   const mode = _lpStatCycle.mode;
 
   document.querySelectorAll('.lp-stat [data-stat-panel]').forEach(el => {
