@@ -126,6 +126,10 @@
   white-space: normal;
   word-break: keep-all;
 }
+/* 출전 여부 미정(Questionable) — bench-injury.css의 dp-icon-questionable과 동일한 노란색 */
+.pm-injury-reason.pm-injury-reason-questionable {
+  color: #FFD93D;
+}
 
 .pm-pos {
   font-size: 11px;

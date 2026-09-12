@@ -378,20 +378,26 @@ function buildBenchListHtml(players, lineupExists) {
   return players.map(player => lpBuildRosterRowHtml(player, 'bench')).join('');
 }
 
-/** 미출전 선수 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지/미등록) + 한글 사유 툴팁. 미등록은 맨 밑으로 정렬. */
+/** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/미등록=3)을 매긴다. */
+function getInjuryCategoryRank(injury) {
+  if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) return 3;
+  if (isQuestionableInjuryReason(injury.reason, injury.type)) return 1;
+  if (typeof isSuspension === 'function' && isSuspension(injury.reason)) return 2;
+  return 0;
+}
+
+/** 미출전 선수 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지/미등록) + 한글 사유 툴팁. 아이콘 표시 순서(부상→의심→출장정지→미등록)대로 정렬. */
 function buildInjuryListHtml(injuries, provided) {
   if (!injuries || injuries.length === 0) {
     return buildEmptyHtml(provided ? '결장자 없음' : '부상 정보 미제공');
   }
 
-  // 선수단 미등록(Off the roster)은 부상/의심/출장정지와 성격이 달라 맨 밑으로 몰아서 표시.
-  // 그 외 순서는 원본 순서 그대로 유지(안정 정렬).
+  // 카테고리별로 묶어서 정렬하되, 같은 카테고리 안에서는 원본 순서 그대로 유지(안정 정렬).
   const sortedInjuries = injuries
     .map((injury, index) => ({ injury, index }))
     .sort((a, b) => {
-      const aOff = (typeof isOffRoster === 'function' && isOffRoster(a.injury.reason)) ? 1 : 0;
-      const bOff = (typeof isOffRoster === 'function' && isOffRoster(b.injury.reason)) ? 1 : 0;
-      if (aOff !== bOff) return aOff - bOff;
+      const rankDiff = getInjuryCategoryRank(a.injury) - getInjuryCategoryRank(b.injury);
+      if (rankDiff !== 0) return rankDiff;
       return a.index - b.index;
     })
     .map(entry => entry.injury);

@@ -934,10 +934,11 @@ function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
   // 포메이션 pill만 원본 경계를 받아 피팅 단계에서 사용한다.
   const display = name => preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name);
   // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
+  // 닉네임은 사용자가 자유 입력한 텍스트라 성 경계 하이픈 규칙 대상이 아니다 — 그대로 반환.
   const pid = player.playerId || player.id;
   if (pid && Number(pid) !== 0 && typeof getPlayerNickname === 'function') {
     const nick = getPlayerNickname(pid);
-    if (nick) return display(nick);
+    if (nick) return nick;
   }
   const shortName = player.name || player.playerName || '';
   const longName = player.nameKoLong || player.playerNameKoLong || '';

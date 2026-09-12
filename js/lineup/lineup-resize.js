@@ -181,7 +181,9 @@ function resetSmallLayoutResize(layout = null) {
 }
 
 /**
- * 작은 캠 layout의 events-stat 칼럼 우측 경계에 리사이즈 핸들 1회 생성.
+ * 작은 캠 layout의 events-stat 칼럼 우측 경계 + cam-chat 칼럼 좌측 경계에 리사이즈 핸들 생성.
+ * 가운데 두 패널(라인업/벤치)은 고정 폭이라, 어느 쪽 핸들을 드래그해도 좌(events)/우(chat)
+ * 비율이 완전히 같은 방식으로 조정된다(합이 일정하므로 handle 위치와 무관하게 동일한 로직).
  * - pointerdown → 드래그 세션 시작.
  * - dblclick → 기본 비율 복원.
  */
@@ -196,23 +198,34 @@ function ensureSmallLayoutResizeHandles() {
     handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
     panel.appendChild(handle);
   });
+  document.querySelectorAll('.layout-small .lp-cam-chat').forEach(panel => {
+    if (panel.querySelector(':scope > .lp-small-col-resize-end')) return;
+    const handle = document.createElement('div');
+    handle.className = 'lp-small-col-resize-end';
+    handle.setAttribute('aria-hidden', 'true');
+    handle.title = '칼럼 크기 조정';
+    handle.addEventListener('pointerdown', startSmallLayoutResize);
+    handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
+    panel.appendChild(handle);
+  });
 }
 
-/** 핸들 더블클릭 → 저장된 비율 제거 + 해당 layout만 default로 복원. */
+/** 핸들 더블클릭 → 저장된 비율 제거 + 해당 layout만 default로 복원. (events-stat/cam-chat 핸들 공용) */
 function resetSmallLayoutResizeFromHandle(event) {
   event.preventDefault();
   event.stopPropagation();
   const handle = event.currentTarget;
-  const eventsCol = handle.closest('.lp-col-events-stat');
-  const layout = eventsCol?.closest('.layout-small');
+  const layout = handle.closest('.layout-small');
   clearSmallLayoutResizeRatio();
   resetSmallLayoutResize(layout);
 }
 
 /**
- * 작은 캠 칼럼 리사이즈 드래그 세션.
+ * 작은 캠 칼럼 리사이즈 드래그 세션. events-stat 우측 핸들 / cam-chat 좌측 핸들 공용.
  * 1) 좌클릭이 아니면 무시. 메트릭 못 구하면 무시.
  * 2) 시작 시점의 events 폭 + clientX를 기록해 dragX 기준점으로 사용.
+ *    (두 핸들 모두 "핸들을 오른쪽으로 끌면 좌측 폭이 늘어난다"는 방향이 동일 — 가운데
+ *    라인업/벤치가 고정폭이라 좌우 합이 일정하기 때문에 별도 부호 반전 없이 그대로 재사용)
  * 3) onMove: 새 메트릭으로 매번 sideWidth 재산출 후 좌측 폭을 [leftMin, sideWidth-rightMin]로 클램프.
  * 4) onUp: 핸들러 정리 + 마지막으로 적용된 비율(lastRatio)을 storage에 저장.
  *
@@ -224,8 +237,8 @@ function startSmallLayoutResize(event) {
   event.stopPropagation();
 
   const handle = event.currentTarget;
-  const eventsCol = handle.closest('.lp-col-events-stat');
-  const layout = eventsCol?.closest('.layout-small');
+  const layout = handle.closest('.layout-small');
+  const eventsCol = layout?.querySelector('.lp-col-events-stat');
   const metrics = getSmallLayoutResizeMetrics(layout);
   if (!handle || !eventsCol || !layout || !metrics) return;
 

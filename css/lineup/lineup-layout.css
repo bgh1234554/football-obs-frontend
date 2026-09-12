@@ -41,6 +41,7 @@
 [data-dp-role="lineup"] { padding: 0; }
 .layout-small .lp-cam-chat {
   flex: 0 0 19.2%;
+  position: relative;
 }
 .layout-small.lp-small-columns-custom .lp-cam-chat {
   flex: 0 0 var(--lp-small-chat-width);
@@ -50,6 +51,19 @@
   position: absolute;
   top: 0;
   right: -6px;
+  width: 12px;
+  height: 100%;
+  z-index: 8;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+/* 맨 오른쪽(팬 반응) 칼럼 좌측 경계 핸들 — events-stat 쪽과 동일한 좌/우 비율을
+   공유하므로(가운데 라인업/벤치는 고정) 위치만 반대쪽(left)이고 로직은 완전히 동일. */
+.layout-small .lp-small-col-resize-end {
+  position: absolute;
+  top: 0;
+  left: -6px;
   width: 12px;
   height: 100%;
   z-index: 8;
