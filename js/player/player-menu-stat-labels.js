@@ -23,10 +23,9 @@ const PLAYER_MATCH_STAT_LABELS = {
   goalsConceded:      '실점',
 
   // 패스
-  passesTotal:        '전체 패스',
-  passesKey:          '키패스',
-  passesSuccessful:   '패스 성공',
+  passesTotal:        '전체패스(패스성공)',
   passesAccuracy:     '패스 성공률',
+  passesKey:          '키패스',
 
   // 수비
   tacklesTotal:       '태클',

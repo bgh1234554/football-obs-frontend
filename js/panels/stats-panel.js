@@ -88,8 +88,6 @@ function stDisplayValue(val) {
 
 /**
  * passesPercent가 null이면 passesAccurate/totalPasses로 계산한 % 반환.
- * passesCombined는 totalPasses/passesAccurate를 "전체패스(패스성공)" 한 줄로 합쳐서 반환
- * (막대 비율/강조는 stParseNumber가 앞자리 숫자만 읽으므로 totalPasses 기준으로 자동 계산됨).
  * 그 외 키는 stats 객체에서 그대로 꺼냄.
  */
 function stResolveValue(stats, key) {
@@ -100,16 +98,6 @@ function stResolveValue(stats, key) {
     const accurate = stParseNumber(stats.passesAccurate);
     if (total && accurate != null) return Math.round((accurate / total) * 100) + '%';
     return null;
-  }
-  if (key === 'passesCombined') {
-    const total = stats.totalPasses;
-    const accurate = stats.passesAccurate;
-    const totalEmpty = total == null || String(total).trim() === '';
-    const accurateEmpty = accurate == null || String(accurate).trim() === '';
-    if (totalEmpty && accurateEmpty) return null;
-    if (accurateEmpty) return String(total);
-    if (totalEmpty) return `-(${accurate})`;
-    return `${total}(${accurate})`;
   }
   return stats[key] ?? null;
 }
