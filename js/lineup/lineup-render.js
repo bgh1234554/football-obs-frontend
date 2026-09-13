@@ -114,11 +114,14 @@ function lpBuildRosterRowHtml(player, kind) {
   const subHtml = lpBuildSubMarkerHtml(events, kind);
   const goalsAssistsHtml = lpBuildGoalsAssistsHtml(events);
   const ratingHtml = lpBuildRatingHtml(player.playerId);
+  const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player.playerId)
+    ? '<span class="dp-roster-captain" title="주장">C</span>'
+    : '';
 
   return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
-      <span class="${nameClass}"${title}>${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}</span>
+      <span class="${nameClass}"${title}>${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}${captainHtml}</span>
       ${cardsHtml}
       ${subHtml}
       ${goalsAssistsHtml}

@@ -1020,9 +1020,35 @@ function balanceBenchInjuryPanelHeights() {
     balanceBenchInjuryPanelHeightsImpl();
   } finally {
     if (typeof lpBenchPanelRebalanceInfoSpace === 'function') {
-      lpBenchPanelRebalanceInfoSpace(document.getElementById('benchPanel'));
+      const benchPanel = document.getElementById('benchPanel');
+      lpBenchPanelRebalanceInfoSpace(benchPanel);
+      reclaimBenchListOverflowHeight(benchPanel);
     }
   }
+}
+
+/** 실제 교체 목록이 아직 스크롤되면 미출전 패널에서 초과 높이만 회수한다. */
+function reclaimBenchListOverflowHeight(benchPanel) {
+  if (!benchPanel) return;
+  const { injuryPanel, injurySection } = getBenchPanelSections();
+  const lists = Array.from(benchPanel.querySelectorAll('.dp-list'));
+  const overflow = Math.max(0, ...lists.map(list => list.scrollHeight - list.clientHeight));
+  if (overflow <= DETAIL_PANEL_BALANCE_EPSILON_PX || !injuryPanel || !injurySection) return;
+
+  const injuryRect = injurySection.getBoundingClientRect();
+  const injuryMinimum = getPanelChromeHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
+  const available = Math.max(0, injuryRect.height - injuryMinimum);
+  const transfer = Math.min(Math.ceil(overflow), Math.floor(available));
+  if (transfer <= DETAIL_PANEL_BALANCE_EPSILON_PX) return;
+
+  const benchSection = benchPanel.closest('.lp-bench');
+  if (!benchSection) return;
+  const nextBenchHeight = benchSection.getBoundingClientRect().height + transfer;
+  const nextInjuryHeight = injuryRect.height - transfer;
+  benchSection.style.flex = `0 0 ${nextBenchHeight}px`;
+  benchSection.style.height = `${nextBenchHeight}px`;
+  injurySection.style.flex = `0 0 ${nextInjuryHeight}px`;
+  injurySection.style.height = `${nextInjuryHeight}px`;
 }
 
 function balanceBenchInjuryPanelHeightsImpl() {
@@ -1054,12 +1080,9 @@ function balanceBenchInjuryPanelHeightsImpl() {
   let sourceSpare = 0;
   let targetDeficit = 0;
 
-  if (injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
-    && benchMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
-    transferTarget = 'injury';
-    sourceSpare = benchMetrics.spare;
-    targetDeficit = injuryMetrics.deficit;
-  } else if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
+  // 미출전 명단은 부족한 높이를 자체 스크롤로 처리한다. 교체 명단이 잘리지 않도록
+  // 교체 명단이 부족할 때만 미출전 패널의 여유 공간을 가져온다.
+  if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
     transferTarget = 'bench';
     sourceSpare = injuryMetrics.spare;

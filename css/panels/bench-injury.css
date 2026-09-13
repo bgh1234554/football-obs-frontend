@@ -113,6 +113,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.dp-roster-captain {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #FFD400;
+  color: #111;
+  font-size: .82em;
+  font-weight: 800;
+  line-height: 1.2;
+  vertical-align: 1px;
+}
 
 /* 벤치/부상 패널은 폭이 좁아지면 이름과 보조 UI가 다음 줄로 내려갈 수 있게 둔다. */
 #benchPanel .dp-item,
