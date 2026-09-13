@@ -385,7 +385,10 @@
         s.weight += pts[i].weight;
       }
       for (let c = 0; c < centroids.length; c++) {
-        if (sums[c].weight === 0) continue;
+        if (sums[c].weight === 0) {
+          centroids[c].weight = 0;
+          continue;
+        }
         const r = sums[c].r / sums[c].weight, g = sums[c].g / sums[c].weight, b = sums[c].b / sums[c].weight;
         centroids[c].r = r;
         centroids[c].g = g;

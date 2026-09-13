@@ -1397,13 +1397,6 @@ function fitLineupNamePills(root) {
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'))
     .filter(nameEl => !!(nameEl && nameEl.firstChild));
 
-  // 0-a) 주장 완장 배지가 있는 라벨은 "등번호 왼쪽" vs "번호+이름 뒤" 중 이름이 더 크게
-  // 표시되는 배치로 먼저 확정한다. 이후 단계(자연 1줄/2줄/축소)가 이 확정된 순서를 그대로
-  // 측정 대상으로 삼으므로 반드시 다른 fit보다 먼저 실행한다.
-  labels.forEach(nameEl => {
-    resolveLineupCaptainBadgePlacement(nameEl, labels);
-  });
-
   // 0) 모든 라벨을 먼저 CSS 기본 상태로 되돌린다 — 이 reset과 아래 1)의 처리를 같은 루프
   // 안에서 하면, 처리 순서상 앞선 라벨이 아직 reset 안 된(직전 렌더의 낡은 크기로 남아있는)
   // 뒤쪽 라벨을 기준으로 충돌을 판정하게 되어 — 폰트 크기 등 조건이 바뀐 직후엔 그 낡은
@@ -1419,6 +1412,13 @@ function fitLineupNamePills(root) {
     nameEl.style.whiteSpace = '';
     nameEl.style.display = '';
     nameEl.style.flexShrink = '';
+  });
+
+  // 0-a) 주장 완장 배지가 있는 라벨은 reset된 측정값을 기준으로 "등번호 왼쪽" vs
+  // "번호+이름 뒤" 중 이름이 더 크게 표시되는 배치로 확정한다. 이후 단계(자연 1줄/2줄/축소)가
+  // 이 확정된 순서를 그대로 측정 대상으로 삼는다.
+  labels.forEach(nameEl => {
+    resolveLineupCaptainBadgePlacement(nameEl, labels);
   });
 
   // 1) 먼저 자연 1줄 폭이 안전한지 시도하고(주변과 안 겹치면 그대로 유지), 안전하지 않으면
