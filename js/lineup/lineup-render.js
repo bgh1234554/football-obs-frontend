@@ -574,7 +574,10 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player?.playerId)
     ? '<span class="dp-lineup-captain-badge" title="주장">C</span>'
     : '';
-  return `<span class="${nameClass}"${title}>${captainHtml}${numberHtml}<span class="dp-lineup-name-text"${surnameAttr}>${safeName}</span></span>`;
+  const prefixHtml = captainHtml || numberHtml
+    ? `<span class="dp-lineup-name-prefix">${captainHtml}${numberHtml}</span>&#8288;`
+    : '';
+  return `<span class="${nameClass}"${title}>${prefixHtml}<span class="dp-lineup-name-text"${surnameAttr}>${safeName}</span></span>`;
 }
 
 // 두 패스 렌더링 — 원/아바타와 이름 라벨을 분리해 HTML 두 덩어리로 반환.

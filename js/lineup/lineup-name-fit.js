@@ -72,10 +72,11 @@ function tryLineupSurnameBreaks(nameEl) {
   if (!textEl) return false;
   const lines = computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks);
   if (!lines) return false;
-  const font = getPreferredLineupSurnameFont(nameEl, lines);
-  if (font === null) return false;
+  const candidate = getPreferredLineupSurnameCandidate(nameEl, lines);
+  if (!candidate) return false;
+  applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
   applyLineupSurnameLines(nameEl, lines);
-  nameEl.style.fontSize = `${font}px`;
+  nameEl.style.fontSize = `${candidate.font}px`;
   return true;
 }
 
@@ -99,15 +100,56 @@ function applyLineupSurnameLines(nameEl, lines) {
 
 /** 2줄/성 경계 줄바꿈 중 안전하게 표시 가능한 폰트가 큰 쪽. 동률이면 기본 2줄. */
 function getPreferredLineupSurnameFont(nameEl, lines) {
+  return getPreferredLineupSurnameCandidate(nameEl, lines)?.font ?? null;
+}
+
+function getPreferredLineupSurnameCandidate(nameEl, lines) {
   if (!canMeasureTextElement(nameEl)) return null;
   const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
   const scope = nameEl.closest('.dp-lineup-vertical-pitch') || wrap;
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'));
   const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const twoLineFont = measureLineupNameCandidateFont(nameEl, null, targets);
-  const surnameFont = measureLineupNameCandidateFont(nameEl, lines, targets);
-  return surnameFont !== null && (twoLineFont === null || surnameFont > twoLineFont)
-    ? surnameFont : null;
+  const twoLine = getCaptainPlacementCandidate(nameEl, null, targets);
+  const surname = getCaptainPlacementCandidate(nameEl, lines, targets);
+  if (surname.font === null || (twoLine.font !== null && surname.font <= twoLine.font)) return null;
+  return surname;
+}
+
+function getCaptainPlacementCandidate(nameEl, lines, targets) {
+  const prefixFont = measureLineupNameCandidateFont(nameEl, lines, targets);
+  const suffixFont = measureLineupNameCandidateFont(
+    nameEl,
+    lines,
+    targets,
+    clone => moveLineupCaptainBadgeToLastToken(clone)
+  );
+  if (suffixFont !== null && (prefixFont === null || suffixFont > prefixFont)) {
+    return { font: suffixFont, placement: 'suffix' };
+  }
+  return { font: prefixFont, placement: 'prefix' };
+}
+
+function moveLineupCaptainBadgeToPrefix(nameEl) {
+  const badge = nameEl.querySelector('.dp-lineup-captain-badge');
+  if (!badge) return;
+  const prefix = nameEl.querySelector('.dp-lineup-name-prefix');
+  if (!prefix) return;
+  prefix.insertBefore(badge, prefix.firstChild);
+}
+
+function moveLineupCaptainBadgeToLastToken(nameEl) {
+  const badge = nameEl.querySelector('.dp-lineup-captain-badge');
+  const textEl = nameEl.querySelector('.dp-lineup-name-text');
+  if (!badge || !textEl) return;
+  const prefix = badge.closest('.dp-lineup-name-prefix');
+  if (prefix) prefix.removeChild(badge);
+  const lastToken = textEl.querySelector('.dp-lineup-surname-part:last-of-type');
+  (lastToken || textEl).appendChild(badge);
+}
+
+function applyLineupCaptainBadgePlacement(nameEl, placement) {
+  if (placement === 'suffix') moveLineupCaptainBadgeToLastToken(nameEl);
+  else moveLineupCaptainBadgeToPrefix(nameEl);
 }
 
 /**
@@ -247,12 +289,24 @@ function canStayWithinLineupNameClamp(nameEl) {
   return nameEl.scrollHeight <= nameEl.clientHeight + 0.5;
 }
 
+/** 주장 배지가 이름 텍스트와 별도 줄로 밀리면 클램프 높이 계산만으로는 잘림을 감지하지 못한다. */
+function lineupCaptainBadgeSharesTextLine(nameEl) {
+  const badge = nameEl.querySelector('.dp-lineup-captain-badge');
+  const textEl = nameEl.querySelector(':scope > .dp-lineup-name-text');
+  if (!badge || !canMeasureTextElement(textEl)) return true;
+  const badgeRect = badge.getBoundingClientRect();
+  return getMergedTextLines(textEl).some(line => (
+    badgeRect.top < line.bottom - 0.5 && badgeRect.bottom > line.top + 0.5
+  ));
+}
+
 // tryLineupNameNaturalSingleLine이 white-space:nowrap 1줄 모드로 확정한 라벨은 폭을 줄여도
 // 줄바꿈이 일어나지 않아 scrollHeight가 절대 안 변한다 — canStayWithinLineupNameClamp가 항상
 // true를 반환해, 실제로는 안 맞는 폭까지 깎여 overflow:hidden에 텍스트가 잘려 보이는 사고로
 // 이어진다(예: "스티븐 안투네스" -> "스티"). nowrap 상태에서는 scrollWidth <= clientWidth로
 // 실제 텍스트가 박스 안에 들어가는지 직접 검사한다.
 function canStayWithinLineupNameLayout(nameEl) {
+  if (!lineupCaptainBadgeSharesTextLine(nameEl)) return false;
   if (getComputedStyle(nameEl).whiteSpace === 'nowrap') {
     return nameEl.scrollWidth <= nameEl.clientWidth + 0.5;
   }
@@ -1101,8 +1155,9 @@ function getLineupNameNaturalWidthCollisionTargets(nameEl, labels) {
  * 아직 기본 렌더 상태일 때 한 번만 호출한다(fitLineupNamePills 맨 앞).
  */
 function resolveLineupCaptainBadgePlacement(nameEl, labels) {
-  const badge = nameEl.querySelector(':scope > .dp-lineup-captain-badge');
+  const badge = nameEl.querySelector('.dp-lineup-captain-badge');
   if (!badge || !canMeasureTextElement(nameEl)) return;
+  moveLineupCaptainBadgeToPrefix(nameEl);
 
   // 이 fit 호출이 라벨을 새로 렌더한 직후가 아니라 리사이즈 등으로 같은 DOM에 재실행되는
   // 경우, 배지가 이미 지난 판정으로 "끝"에 가 있을 수 있다 — 매번 "왼쪽" 기준선으로 되돌린
@@ -1110,17 +1165,8 @@ function resolveLineupCaptainBadgePlacement(nameEl, labels) {
   if (nameEl.firstChild !== badge) nameEl.insertBefore(badge, nameEl.firstChild);
 
   const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const moveBadgeToEnd = clone => {
-    const cloneBadge = clone.querySelector(':scope > .dp-lineup-captain-badge');
-    if (cloneBadge) clone.appendChild(cloneBadge);
-  };
-
-  const prefixFont = measureLineupNameCandidateFont(nameEl, null, targets);
-  const suffixFont = measureLineupNameCandidateFont(nameEl, null, targets, moveBadgeToEnd);
-
-  if (suffixFont !== null && (prefixFont === null || suffixFont > prefixFont)) {
-    nameEl.appendChild(badge); // 실제 라벨도 같은 방식으로 맨 끝으로 이동
-  }
+  const candidate = getCaptainPlacementCandidate(nameEl, null, targets);
+  applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
 }
 
 /** 두 DOMRect가 실제로 겹치는지 (1px 여유). wrapsOverlap과 동일 기준, 가상 rect에도 사용 가능. */
