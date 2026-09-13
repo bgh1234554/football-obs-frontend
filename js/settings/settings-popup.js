@@ -90,6 +90,7 @@ const SETTINGS_DEFAULTS = {
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   0,
+  tacticsFullscreenAlign: 'center', // 전술판 전체화면 피치 정렬: left / center / right
   tacticsNameSize: 12, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
   tacticsTokenScale: 100, // 전술판 선수 바둑알 크기 배율(%). 전술판 상단 슬라이더로 조정. 태블릿 등 작은 화면 대응.
   // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
@@ -356,6 +357,7 @@ function isValidSetting(category, value) {
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
+  if (category === 'tacticsFullscreenAlign') return ['left', 'center', 'right'].includes(value);
   if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return value === 'on' || value === 'off';
   }
@@ -547,7 +549,7 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale') applyLayoutSettings();
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsFullscreenAlign') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -687,6 +689,15 @@ function applyLayoutSettings() {
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
   root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
+  root.style.setProperty('--td-fullscreen-align', {
+    left: 'flex-start',
+    center: 'center',
+    right: 'flex-end',
+  }[getSetting('tacticsFullscreenAlign')] || 'center');
+  document.getElementById('page-tactics')?.classList.toggle(
+    'tactics-fullscreen-panels-left',
+    getSetting('tacticsFullscreenAlign') === 'right'
+  );
   // 그린스크린 ON일 때 피치 톤의 모든 색을 시안으로 자동 치환 (gradient/단색 모두 처리).
   // 사용자가 'green' 톤을 골라뒀어도 OBS 크로마키와 충돌하지 않게 보호.
   root.style.setProperty('--lp-pitch-bg',          chromaSafeGradient(pitchTone.background));

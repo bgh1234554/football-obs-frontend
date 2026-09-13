@@ -612,6 +612,21 @@
   // [전술판 - 포메이션] 포메이션 선택 변경 처리, 전술판 초기화
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+  /** 전술판 포메이션 select를 수동 라인업 창과 같은 숫자 기준으로 정렬한다. */
+  function tacticsSortFormationSelect(select) {
+    if (!select) return;
+    const selected = select.value;
+    [...select.options]
+      .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }))
+      .forEach(option => select.appendChild(option));
+    select.value = selected;
+  }
+
+  function tacticsSortFormationSelects() {
+    tacticsSortFormationSelect(document.getElementById('tactics-home-fm'));
+    tacticsSortFormationSelect(document.getElementById('tactics-away-fm'));
+  }
+
   /** 홈/어웨이 포메이션 select 변경 시 호출 — lineup 포메이션을 업데이트하고 전술판 재렌더 */
   function tacticsApplyFm() {
     const homeFm = document.getElementById('tactics-home-fm')?.value || '4-3-3';
@@ -718,6 +733,7 @@
    * 드래그 레이어 비활성화. DOMContentLoaded 또는 즉시 호출.
    */
   function tacticsInitDefaultSelect() {
+    tacticsSortFormationSelects();
     tacticsApplyLineup(TACTICS_MOCK_LINEUP);
     tacticsDrawSetTool('select');
     const layer = document.getElementById('tactics-draw-layer');
