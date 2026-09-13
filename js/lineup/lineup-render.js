@@ -8,9 +8,9 @@
 // ─── Iter 5-3: 라인업 이벤트/평점 표시 헬퍼 ───────────────────────────────
 // 노드(피치) + 벤치 행 + 선발 리스트 행에서 공통으로 사용.
 
-/** rerenderLineupPanels가 매 렌더마다 채워두는 이벤트/평점 lookup 캐시. 없으면 빈 Map. */
+/** rerenderLineupPanels가 매 렌더마다 채워두는 이벤트/평점/주장 lookup 캐시. 없으면 빈 Map/Set. */
 function lpGetContext() {
-  return lineupPanelState.context || { eventsByPlayer: new Map(), ratingByPlayer: new Map() };
+  return lineupPanelState.context || { eventsByPlayer: new Map(), ratingByPlayer: new Map(), captainSet: new Set() };
 }
 
 /** 선수 1명의 집계된 골/어시/카드/교체 이벤트. 없으면 null. */
@@ -24,6 +24,12 @@ function lpGetPlayerRating(playerId) {
   if (playerId == null) return null;
   const map = lpGetContext().ratingByPlayer;
   return map.has(String(playerId)) ? map.get(String(playerId)) : null;
+}
+
+/** 선수 1명이 이 경기의 주장인지 — playerStats.captain 기준. */
+function lpIsCaptain(playerId) {
+  if (playerId == null) return false;
+  return lpGetContext().captainSet.has(String(playerId));
 }
 
 /** 카드 마커 HTML — yellow / red / 누적(yellow+red) / null */
@@ -545,7 +551,7 @@ function getLineupNameWithSurnameBreaks(player, name) {
   return prefix + surname;
 }
 
-/** 이름 라벨 내부 HTML — (사진 모드면) 등번호 + 이름 텍스트. */
+/** 이름 라벨 내부 HTML — (사진 모드면) 등번호 + 이름 텍스트. 주장이면 등번호 앞에 완장 배지. */
 function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const rawName = getLineupNameWithSurnameBreaks(player, name);
   const visibleName = stripKoreanSurnameBreaks(rawName);
@@ -556,7 +562,10 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const numberHtml = showNumber
     ? `<span class="dp-lineup-name-num">${dpEscape(rawNumber)}</span>`
     : '';
-  return `<span class="${nameClass}"${title}>${numberHtml}<span class="dp-lineup-name-text"${surnameAttr}>${safeName}</span></span>`;
+  const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player?.playerId)
+    ? '<span class="dp-lineup-captain-badge" title="주장">C</span>'
+    : '';
+  return `<span class="${nameClass}"${title}>${captainHtml}${numberHtml}<span class="dp-lineup-name-text"${surnameAttr}>${safeName}</span></span>`;
 }
 
 // 두 패스 렌더링 — 원/아바타와 이름 라벨을 분리해 HTML 두 덩어리로 반환.
@@ -1346,6 +1355,7 @@ function rerenderLineupPanels() {
   lineupPanelState.context = {
     eventsByPlayer: typeof lpAggregatePlayerEvents === 'function' ? lpAggregatePlayerEvents(markerEvents) : new Map(),
     ratingByPlayer: typeof lpBuildRatingMap === 'function' ? lpBuildRatingMap(rawPlayerStats) : new Map(),
+    captainSet: typeof lpBuildCaptainSet === 'function' ? lpBuildCaptainSet(rawPlayerStats) : new Set(),
   };
 
   // 2) 상세 패널 3종과 전술판을 같은 기준 데이터로 동시에 갱신한다.

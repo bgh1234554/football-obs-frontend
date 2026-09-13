@@ -616,7 +616,8 @@ function pmBuildMatchStatRows(s) {
     row('goalsConceded', s.goalsConceded),
     row('passesTotal', s.passesTotal),
     row('passesKey',   s.passesKey),
-    row('passesAccuracy', s.passesAccuracy ? `${s.passesAccuracy}%` : null),
+    row('passesSuccessful', s.passesSuccessful),
+    row('passesAccuracy', s.passesAccuracy != null ? `${s.passesAccuracy}%` : null),
     // 태클/블록/인터셉트 한 행
     tackleVal ? `<tr><td class="pm-st-label">${pmEsc(tackleLabel)}</td><td class="pm-st-val">${pmEsc(tackleVal)}</td></tr>` : '',
     row('dribblesAttempts', s.dribblesAttempts),

@@ -86,12 +86,17 @@ function getPreferredLineupSurnameFont(nameEl, lines) {
     ? surnameFont : null;
 }
 
-/** 원본에 손대지 않고 각 후보의 최대 폰트를 피치 경계/라벨/원/배지 충돌까지 검사한다. */
-function measureLineupNameCandidateFont(nameEl, lines, targets) {
+/**
+ * 원본에 손대지 않고 각 후보의 최대 폰트를 피치 경계/라벨/원/배지 충돌까지 검사한다.
+ * prepare(clone)을 넘기면 lines 적용 직후, 나머지 측정 준비 전에 클론만 추가로 변형할 수 있다
+ * (예: resolveLineupCaptainBadgePlacement이 주장 완장 배지 위치를 바꿔서 비교할 때 사용).
+ */
+function measureLineupNameCandidateFont(nameEl, lines, targets, prepare) {
   const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
   const clone = nameEl.cloneNode(true);
   if (lines) applyLineupSurnameLines(clone, lines);
   else resetLineupSurnameBreaks(clone);
+  if (typeof prepare === 'function') prepare(clone);
   clone.style.whiteSpace = '';
   clone.style.display = '';
   clone.style.flexShrink = '';
@@ -1064,6 +1069,36 @@ function getLineupNameNaturalWidthCollisionTargets(nameEl, labels) {
   ];
 }
 
+/**
+ * 주장 완장 배지(.dp-lineup-captain-badge) 위치를 두 후보 중 이름이 더 큰 폰트로 표시되는
+ * 쪽으로 확정한다 — (A) 기본 렌더 순서인 "등번호 왼쪽"(완장→번호→이름) vs (B) 완장을
+ * 맨 끝(번호→이름→완장)으로 옮긴 경우, measureLineupNameCandidateFont로 각각의 최대 허용
+ * 폰트를 재서 비교. 완장이 없는 라벨은 그대로 둔다. 다른 fit 단계가 시작되기 전, 라벨이
+ * 아직 기본 렌더 상태일 때 한 번만 호출한다(fitLineupNamePills 맨 앞).
+ */
+function resolveLineupCaptainBadgePlacement(nameEl, labels) {
+  const badge = nameEl.querySelector(':scope > .dp-lineup-captain-badge');
+  if (!badge || !canMeasureTextElement(nameEl)) return;
+
+  // 이 fit 호출이 라벨을 새로 렌더한 직후가 아니라 리사이즈 등으로 같은 DOM에 재실행되는
+  // 경우, 배지가 이미 지난 판정으로 "끝"에 가 있을 수 있다 — 매번 "왼쪽" 기준선으로 되돌린
+  // 뒤 두 후보를 비교해야 나중에 조건이 바뀌었을 때 다시 "왼쪽"으로도 돌아올 수 있다.
+  if (nameEl.firstChild !== badge) nameEl.insertBefore(badge, nameEl.firstChild);
+
+  const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
+  const moveBadgeToEnd = clone => {
+    const cloneBadge = clone.querySelector(':scope > .dp-lineup-captain-badge');
+    if (cloneBadge) clone.appendChild(cloneBadge);
+  };
+
+  const prefixFont = measureLineupNameCandidateFont(nameEl, null, targets);
+  const suffixFont = measureLineupNameCandidateFont(nameEl, null, targets, moveBadgeToEnd);
+
+  if (suffixFont !== null && (prefixFont === null || suffixFont > prefixFont)) {
+    nameEl.appendChild(badge); // 실제 라벨도 같은 방식으로 맨 끝으로 이동
+  }
+}
+
 /** 두 DOMRect가 실제로 겹치는지 (1px 여유). wrapsOverlap과 동일 기준, 가상 rect에도 사용 가능. */
 function rectsOverlap(rectA, rectB) {
   return rectA.left < rectB.right - 1
@@ -1337,6 +1372,13 @@ function fitLineupNamePills(root) {
   const scope = root || document;
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'))
     .filter(nameEl => !!(nameEl && nameEl.firstChild));
+
+  // 0-a) 주장 완장 배지가 있는 라벨은 "등번호 왼쪽" vs "번호+이름 뒤" 중 이름이 더 크게
+  // 표시되는 배치로 먼저 확정한다. 이후 단계(자연 1줄/2줄/축소)가 이 확정된 순서를 그대로
+  // 측정 대상으로 삼으므로 반드시 다른 fit보다 먼저 실행한다.
+  labels.forEach(nameEl => {
+    resolveLineupCaptainBadgePlacement(nameEl, labels);
+  });
 
   // 0) 모든 라벨을 먼저 CSS 기본 상태로 되돌린다 — 이 reset과 아래 1)의 처리를 같은 루프
   // 안에서 하면, 처리 순서상 앞선 라벨이 아직 reset 안 된(직전 렌더의 낡은 크기로 남아있는)
