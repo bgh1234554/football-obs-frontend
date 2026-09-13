@@ -522,6 +522,10 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.dp-lineup-name-prefix {
+  display: inline-block;
+  white-space: nowrap;
+}
 /* 주장 완장 배지 — 노란 직사각형 + 검정 C. 등번호 왼쪽 또는 번호+이름 뒤(맨 끝) 중 이름이
    더 크게 표시되는 쪽에 붙는다(resolveLineupCaptainBadgePlacement). 양쪽 margin을 둬서
    어느 위치에 와도(번호 앞/이름 뒤) 인접 요소와 자연스러운 간격이 생기게 한다. */
