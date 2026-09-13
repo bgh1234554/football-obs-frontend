@@ -246,6 +246,17 @@ function lpBuildRatingMap(players) {
   return map;
 }
 
+/** fixtureData.players(PlayerStats)에서 captain=true인 playerId 집합. 주장 완장 배지 표시용. */
+function lpBuildCaptainSet(players) {
+  const set = new Set();
+  if (!Array.isArray(players)) return set;
+  players.forEach(p => {
+    if (!p || p.playerId == null || Number(p.playerId) === 0) return;
+    if (p.captain) set.add(String(p.playerId));
+  });
+  return set;
+}
+
 // 평점 색상 기본 팔레트. settings에 사용자 override가 없을 때만 사용.
 // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 변경 가능.
 // settings-popup.js의 SETTINGS_DEFAULTS와 같은 값(소문자)으로 유지 — color input 호환성.

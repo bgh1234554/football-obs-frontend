@@ -30,6 +30,7 @@ window.STATS_CONFIG = {
     totalPasses:      '패스 횟수',
     passesPercent:    '패스정확도',  // null이면 passesAccurate / totalPasses로 계산해서 % 표시
     passesAccurate:   '정확한 패스',
+    passesCombined:   '전체패스(패스성공)',  // totalPasses(passesAccurate) 한 줄로 합친 표시 전용 (stResolveValue에서 조립)
     shotsOffGoal:     '무효슈팅',
     blockedShots:     '블록된 슈팅',
     shotsInsidebox:   '박스 안 슈팅',
@@ -42,7 +43,7 @@ window.STATS_CONFIG = {
   order: [
     'expectedGoals', 'ballPossession', 'totalShots', 'shotsOnGoal',
     'yellowCards', 'redCards', 'fouls', 'cornerKicks', 'offsides', 'freeKicks',
-    'totalPasses', 'passesPercent', 'passesAccurate',
+    'passesCombined', 'passesPercent',
     'shotsOffGoal', 'blockedShots', 'shotsInsidebox', 'shotsOutsidebox',
     'goalkeeperSaves', 'goalsPrevented',
   ],

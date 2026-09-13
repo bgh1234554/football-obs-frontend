@@ -67,6 +67,7 @@
     'Virus':             '바이러스',
     'Fever':             '발열',
     'Fitness':           '몸상태 문제',
+    'Lacking Match Fitness': '경기 감각 부족',
     'Health problems':   '건강 문제',
     'Personal Reasons':  '개인 사정',
     'Coach\'s Decision': '감독 결정',

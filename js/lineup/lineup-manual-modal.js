@@ -90,17 +90,58 @@ function buildInjuryReasonOptionsHtml(reason, type) {
     </optgroup>`;
 }
 
+/**
+ * 수동 입력 모달(풀폼/벤치)이 기준으로 삼을 라인업 데이터 소스.
+ * subReflect(교체 반영) 설정이 켜져 있으면 rerenderLineupPanels가 만들어둔
+ * lastEffectiveData(수동 override + 교체 이벤트 swap까지 반영된 상태)를 그대로 쓴다.
+ * subReflect가 꺼져있으면 lastEffectiveData는 buildEffectiveFixtureData 결과와 동일하므로
+ * 항상 이 값을 우선 사용해도 안전하다. 아직 계산 전이면(방어적으로) 그 자리에서 새로 합성한다.
+ * 주의: 그리드 모드(initGridState/recomputeGridSlotsForFormation)는 저장 키를 원본 API
+ * playerId에 고정해야 하므로 이 함수를 쓰지 않는다 — buildLineupDisplayOverlay 참고.
+ */
+function getManualModalEffectiveData() {
+  return lineupPanelState.lastEffectiveData || buildEffectiveFixtureData(lineupPanelState.lastFixture);
+}
+
+/**
+ * 그리드 모드 전용: 원본 API startXi(식별자 기준, 인덱스 정렬)에 subReflect로 같은 자리에
+ * 들어온 교체 선수의 "표시용" 정보(이름/번호/사진/포지션)만 덮어씌운 배열을 만든다.
+ * playerId는 원본 그대로 유지한다 — buildEffectiveFixtureData의 그리드 override 재적용이
+ * `grids[buildLineupRosterKey(원본 선수, idx)]`로 원본 배열을 다시 순회하므로, 저장 키가
+ * 교체 선수 ID로 바뀌면 그 슬롯의 override가 원본 선수와 매칭되지 않아 무시된다
+ * (포메이션/드래그 변경이 저장 후 적용되지 않는 버그의 원인). lpApplySubReflectToLineup이
+ * 같은 배열 인덱스에서 in-place로 선수만 바꿔치기하므로 인덱스로 짝지으면 항상 안전하다.
+ */
+function buildLineupDisplayOverlay(side) {
+  const rawStartXi = lineupPanelState.lastFixture?.[`${side}Lineup`]?.startXi || [];
+  const effectiveStartXi = getManualModalEffectiveData()?.[`${side}Lineup`]?.startXi || [];
+  return clonePlayers(rawStartXi).map((p, idx) => {
+    const display = effectiveStartXi[idx];
+    if (!display || Number(display.playerId) === Number(p.playerId)) return p;
+    return {
+      ...p,
+      name: display.name,
+      nameKoLong: display.nameKoLong,
+      origName: display.origName,
+      number: display.number,
+      photoUrl: display.photoUrl,
+      pos: display.pos || p.pos,
+      // 저장 키(playerId)는 원본 유지 — 교체 IN 마커 표시용으로만 실제 선수 ID를 따로 들고 있는다.
+      _subEventPlayerId: display.playerId,
+    };
+  });
+}
+
 // ─── 그리드 모드 (API 라인업 보존, 포메이션 + 선수별 grid만 override) ───────
 // 모달 오픈 시 호출 — gridState 초기화. 저장된 gridByPlayerId override 있으면 복원.
 function initGridState(side) {
   const fixtureId = getActiveFixtureId();
-  const apiStartXi = lineupPanelState.lastFixture?.[`${side}Lineup`]?.startXi || [];
-  const players = clonePlayers(apiStartXi);
+  const apiLineup = lineupPanelState.lastFixture?.[`${side}Lineup`];
+  const players = buildLineupDisplayOverlay(side);
   const playersById = Object.fromEntries(players.map((p, idx) => [buildLineupRosterKey(p, idx), p]));
 
   const stored = getManualSideData(fixtureId, side)?.lineup;
   // 포메이션 우선순위: 저장된 수동값 > API 응답 > default(4-3-3)
-  const apiLineup = lineupPanelState.lastFixture?.[`${side}Lineup`];
   let formation = stored?.formation || apiLineup?.formation;
   if (!formation || !getTacticsFormationMap()[formation]) formation = DETAIL_DEFAULT_FORMATION;
 
@@ -142,6 +183,10 @@ function initGridState(side) {
  * 그리드 모드에서 포메이션 select를 바꿀 때 호출 — initGridState의 2)/3) 단계(API grid 매칭 +
  * 빈 슬롯 순서대로 채우기)를 그대로 재사용해, 매번 lineupPanelState.lastFixture의 원본 API
  * startXi 기준으로 새로 계산한다. 직전 슬롯 순서(드래그로 바뀌었을 수 있음)는 베이스로 쓰지 않는다.
+ * initGridState와 마찬가지로 반드시 원본 API 식별자(playerId) 기준으로 계산해야 한다 —
+ * buildLineupDisplayOverlay 설명 참고(교체 선수 ID로 계산하면 저장된 override가 원본
+ * 선수와 매칭되지 않아 무시된다). 화면에 보여줄 이름/사진은 initGridState가 이미 채워둔
+ * lineupPanelState.gridState.players(overlay 적용됨)를 그대로 재사용하므로 여기선 필요 없다.
  *
  * 예전엔 포메이션을 바꿔도 슬롯 라벨만 갱신하고 선수 순서는 그대로 유지했는데, 그 결과
  * 포메이션을 여러 번 바꿨다가 원래 포메이션으로 되돌려도 (예: 4-2-3-1 → 4-4-2 → 4-2-3-1)
@@ -183,6 +228,8 @@ function recomputeGridSlotsForFormation(side, formation) {
  * 이런 경우 이름 자리에 직접 입력 가능한 input을 대신 렌더해 이름을 채울 수 있게 한다
  * (saveManualGridPlayerName). 저장된 이름은 player-id-resolve.js의 id-key override로
  * 들어가 /detail 패널 표시뿐 아니라 이후 이벤트 fuzzy 자동 연계 후보로도 쓰인다.
+ * subReflect로 이 슬롯에 교체 선수가 표시 중이면(buildLineupDisplayOverlay), 라인업
+ * 패널/벤치 행과 같은 "교체 IN" 마커(lpBuildSubMarkerHtml)를 이름 오른쪽에 그대로 붙인다.
  */
 function buildGridRowHtml(pidStr, slotIndex) {
   const { formation, players } = lineupPanelState.gridState;
@@ -193,11 +240,17 @@ function buildGridRowHtml(pidStr, slotIndex) {
   const num = p ? dpEscape(p.number ?? '') : '';
   const resolvedName = p ? (pickName(p, 'lineup') || p.name || '') : '';
   const isNamelessPlayer = !!p && !resolvedName && Number(p.playerId) > 0;
+  const subEvents = p?._subEventPlayerId != null && typeof lpGetPlayerEvents === 'function'
+    ? lpGetPlayerEvents(p._subEventPlayerId)
+    : null;
+  const subHtml = subEvents && typeof lpBuildSubMarkerHtml === 'function'
+    ? lpBuildSubMarkerHtml(subEvents, 'starter')
+    : '';
   const nameHtml = !p
     ? '(빈 슬롯)'
     : isNamelessPlayer
       ? `<input type="text" class="dp-input dp-grid-name-input" data-player-id="${p.playerId}" placeholder="선수 이름 입력 (이벤트 자동 연계용)" value="" draggable="false">`
-      : dpEscape(resolvedName);
+      : `${dpEscape(resolvedName)}${subHtml ? ` ${subHtml}` : ''}`;
   const emptyCls = p ? '' : ' dp-grid-empty'; // "(빈 슬롯)" 텍스트 전용 — 입력창 렌더링일 땐 부여 안 함
   return `<div class="dp-grid-row" data-slot-index="${slotIndex}" draggable="true">
     <span class="dp-grid-handle" aria-hidden="true">⠿</span>
@@ -405,7 +458,7 @@ function hasManualOverrideForKind(fixtureId, side, kind) {
  */
 function renderManualPanelForm(kind, side) {
   const fixtureId = getActiveFixtureId();
-  const effectiveData = buildEffectiveFixtureData(lineupPanelState.lastFixture);
+  const effectiveData = getManualModalEffectiveData();
   const content = document.getElementById('manualPanelContent');
   const meta = document.getElementById('manualPanelMeta');
   const resetBtn = document.getElementById('manualPanelReset');

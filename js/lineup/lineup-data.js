@@ -269,11 +269,76 @@ function isGridMode(rawData, side) {
   return !!lineup && hasStartXi(lineup);
 }
 
-/** 포메이션의 슬롯별 포지션 라벨(GK/CB/RB/...). 알 수 없는 포메이션이면 1~11 숫자 fallback. */
+/**
+ * 같은 라벨이 여러 슬롯에 나올 때(예: 4-3-3의 CB/CB, CM/CM/CM) 실제 포메이션 표기에서
+ * 쓰는 좌우 구분 코드로 치환하는 표. 값 배열은 TACTICS_FM의 y좌표 오름차순(오른쪽→왼쪽)
+ * 순서와 일치해야 한다. 3명이 겹치는 중앙 미드필더 라인은 가운데를 홀딩 미드필더 역할인
+ * CDM으로 표기(RCM/CDM/LCM), 백3의 중앙 CB는 그냥 CB로 남긴다(RCB/CB/LCB).
+ * 더블 볼란치(DM/DM)는 수비형이 아니라 중앙 미드필더 두 명으로 보고 RCM/LCM 표기.
+ * AM/ST는 현재 데이터상 최대 2명까지만 겹치므로 3인 항목은 없음.
+ */
+const FORMATION_DUP_LABEL_OVERRIDES = {
+  CB: { 2: ['RCB', 'LCB'], 3: ['RCB', 'CB', 'LCB'] },
+  CM: { 2: ['RCM', 'LCM'], 3: ['RCM', 'CDM', 'LCM'] },
+  DM: { 2: ['RCM', 'LCM'] },
+  AM: { 2: ['RAM', 'LAM'] },
+  ST: { 2: ['RS', 'LS'] },
+};
+
+/** 겹치지 않고 혼자 나오는 라벨의 실제 표기 치환. 단독 수비형/공격형 미드필더는 CDM/CAM으로. */
+const FORMATION_SOLO_LABEL_OVERRIDES = {
+  DM: 'CDM',
+  AM: 'CAM',
+};
+
+/**
+ * 포메이션의 슬롯별 포지션 라벨(GK/CB/RB/...). 알 수 없는 포메이션이면 1~11 숫자 fallback.
+ * 같은 라벨이 한 포메이션에 여러 번 나오면 수동 입력 시 어느 슬롯이 어느 자리인지
+ * 헷갈리므로 FORMATION_DUP_LABEL_OVERRIDES 기준으로 좌우 구분 코드를 붙여 구분한다.
+ * 전술판 토큰(TACTICS_LABELS 원본)은 그대로 두고, 이 함수 반환값을 쓰는 수동 입력 모달에만 적용.
+ */
 function getFormationSlotLabels(formation) {
   const labels = getTacticsLabelMap()[formation];
-  if (Array.isArray(labels) && labels.length) return labels;
-  return Array.from({ length: 11 }, (_, index) => `${index + 1}`);
+  if (!Array.isArray(labels) || !labels.length) {
+    return Array.from({ length: 11 }, (_, index) => `${index + 1}`);
+  }
+  return disambiguateFormationLabels(formation, labels);
+}
+
+/** 같은 라벨이 가리키는 슬롯들을 TACTICS_FM의 y좌표(피치 좌우 위치) 순으로 정렬해 실제 표기로 치환한다. */
+function disambiguateFormationLabels(formation, labels) {
+  const coords = getTacticsFormationMap()[formation] || [];
+  if (coords.length !== labels.length) return labels; // 좌표 개수가 안 맞으면 원본 그대로
+
+  const indicesByLabel = {};
+  labels.forEach((label, index) => {
+    (indicesByLabel[label] = indicesByLabel[label] || []).push(index);
+  });
+
+  const result = labels.slice();
+  Object.entries(indicesByLabel).forEach(([label, indices]) => {
+    if (indices.length === 1) {
+      // 겹치지 않는 단독 라벨(예: 4-2-3-1의 AM 한 명)도 실제 표기로 바꿔줄 게 있으면 적용.
+      const solo = FORMATION_SOLO_LABEL_OVERRIDES[label];
+      if (solo) result[indices[0]] = solo;
+      return;
+    }
+    const sorted = indices.slice().sort((a, b) => coords[a].y - coords[b].y);
+    // 표에 없는 조합(예상 밖 라벨/인원수)은 "라벨(R/C/L)" 형태로 안전하게 폴백.
+    const replacements = FORMATION_DUP_LABEL_OVERRIDES[label]?.[sorted.length]
+      || sorted.map((_, order) => `${label}(${formationSlotSuffixes(sorted.length)[order]})`);
+    sorted.forEach((slotIndex, order) => {
+      result[slotIndex] = replacements[order] ?? labels[slotIndex];
+    });
+  });
+  return result;
+}
+
+/** FORMATION_DUP_LABEL_OVERRIDES에 없는 조합의 폴백 접미사. 2개=R/L, 3개=R/C/L, 그 이상은 좌→우 순번 숫자. */
+function formationSlotSuffixes(count) {
+  if (count === 2) return ['R', 'L'];
+  if (count === 3) return ['R', 'C', 'L'];
+  return Array.from({ length: count }, (_, index) => `${index + 1}`);
 }
 
 /** 라벨 텍스트(GK/CB/CDM 등)에서 G/D/M/F 큰 분류 추출. 노드 색/그룹화 등 폴백 사용. */

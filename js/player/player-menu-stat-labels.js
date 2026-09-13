@@ -25,6 +25,7 @@ const PLAYER_MATCH_STAT_LABELS = {
   // 패스
   passesTotal:        '전체 패스',
   passesKey:          '키패스',
+  passesSuccessful:   '패스 성공',
   passesAccuracy:     '패스 성공률',
 
   // 수비

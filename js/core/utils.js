@@ -172,12 +172,17 @@
     return Math.sqrt(dr * dr + dg * dg + db * db);
   }
 
+  // 백엔드 FixtureService.resolveNumberColor의 3~4단계와 동일한 체인:
+  // 검정/흰색 중 대비가 더 좋은 쪽을 먼저 시도하고, 그마저 3:1 기준 미달이면(중간 톤 회색 등
+  // 드문 경우) 보색으로 폴백한다. 가능하면 항상 검정/흰색 중 하나가 되도록 함.
   function teamColorReadableText(value) {
     const bg = normalizeTeamColorHex(value);
     if (!bg) return '#ffffff';
-    return teamColorContrastRatio(bg, '#000000') >= teamColorContrastRatio(bg, '#ffffff')
-      ? '#000000'
-      : '#ffffff';
+    const blackContrast = teamColorContrastRatio(bg, '#000000');
+    const whiteContrast = teamColorContrastRatio(bg, '#ffffff');
+    const best = blackContrast >= whiteContrast ? '#000000' : '#ffffff';
+    if (Math.max(blackContrast, whiteContrast) >= TEAM_COLOR_MIN_TEXT_CONTRAST) return best;
+    return teamColorComplementHex(bg) || best;
   }
   // RGB 거리는 사람이 느끼는 색 차이와 잘 맞지 않으므로, 시각적 유사도는 CIELAB Delta E로 본다.
   // 여기서는 CIE76 거리(유클리드 Delta E)를 쓴다. 구현이 짧고 triangle inequality가 성립해
@@ -275,56 +280,132 @@
     });
   }
 
-  function logoPaletteFamilyKey(r, g, b) {
-    const { h, s, l } = rgbToHsl(r, g, b);
-    const chromatic = s >= 0.12 && l > 0.06 && l < 0.94;
-    if (!chromatic) {
-      if (l >= 0.88) return { key: 'neutral:light', chromatic: false };
-      if (l <= 0.14) return { key: 'neutral:dark', chromatic: false };
-      return { key: `neutral:${Math.round(l * 5)}`, chromatic: false };
-    }
-    return { key: `hue:${Math.round(h / 30) % 12}`, chromatic: true };
-  }
-
-  function logoPaletteFamilies(imageData) {
-    const families = new Map();
+  // 로고 픽셀을 CIELAB 공간에서 k-means로 클러스터링해 색상 클러스터 목록을 반환한다.
+  //
+  // [왜 median-cut이 아니라 k-means인가]
+  // 작은 아이콘/로고에서 대표 색을 뽑는 용도로는 median-cut류(Android Palette API, ColorThief —
+  // 빠르지만 "원본에 없던 색"이 섞여 나올 수 있다고 알려져 있음)보다 k-means가 더 적합하다는 게
+  // 색상 정량화 분야에서 일반적으로 통용되는 내용이다. 실제로 Android Palette API의 실제 구현
+  // (ColorCutQuantizer, median-cut-by-volume 방식)을 그대로 포팅해서 맨유 로고에 돌려본 결과로
+  // 확인했다 — 맨유 로고는 전 픽셀이 B채널 0(빨강 R≈240,G≈0,B=0 / 골드 R≈255,G≈240,B=0)인데,
+  // median-cut은 매 분할마다 "R/G/B 중 값의 범위(최댓값-최솟값)가 제일 넓은 축 하나"를 골라
+  // 그 축의 인구 중앙값에서 자른다. 이때 R의 범위(0~255)가 G의 범위(0~242)보다 13만큼 근소하게
+  // 넓다는 이유만으로 R축을 고르는데, 정작 빨강과 골드를 가르는 축은 G다(R은 둘 다 높음). R로
+  // 자르면 안 갈리고, 16번을 분할해도 "반은 빨강 반은 골드"인 박스가 여러 개 남아 그 평균이
+  // 실존하지 않는 주황(#f77a00)이 되어버렸다.
+  //
+  // k-means가 이 문제를 피하는 이유 세 가지:
+  // 1) "분할 축을 하나 고르는" 단계 자체가 없다. 픽셀마다 Lab 공간(L=밝기, a=빨강↔초록,
+  //    b=노랑↔파랑) 3축을 동시에 써서 모든 중심점까지의 거리를 계산하고 제일 가까운 곳에
+  //    배정한다. R 채널 하나만 보면 안 갈리는 색도, 색 전체(a/b, 즉 색상 방향)를 같이 보면
+  //    정확히 갈린다.
+  // 2) 한 번 정하고 끝이 아니라 계속 고친다(Lloyd's 알고리즘). "배정 -> 중심점 재계산 -> 그 새
+  //    중심점 기준으로 전체 재배정"을 더 안 바뀔 때까지 반복하므로, 초반에 애매하게 배정된
+  //    픽셀도 중심점이 진짜 빨강/진짜 골드 쪽으로 이동하면서 다음 라운드에 재배정된다.
+  //    median-cut은 위에서 아래로 한 번 자르면 되돌릴 방법이 없다.
+  // 3) 초기 중심점을 아무렇게나 안 잡는다(아래 farthest-first 참고) — 시작부터 로고 안에서
+  //    서로 가장 다르게 생긴 색 근처에서 출발하므로 median-cut처럼 "어디가 진짜 클러스터인지"
+  //    전혀 모르는 채로 기계적으로 반씩 자르는 것보다 유리하다.
+  //
+  // [초기 중심점: 결정적 farthest-first]
+  // 확률적 k-means++ 대신 무게가 제일 큰 픽셀에서 시작해 매번 기존 중심점들과 가장 먼 점을
+  // 순서대로 추가하는 결정적 방식을 쓴다 — 같은 로고면 페이지를 새로고침해도 항상 같은 팀
+  // 컬러가 나와야 하므로 난수를 쓰지 않는다.
+  //
+  // [k=12인 이유]
+  // 20개 팀 로고로 실측 검증한 값. k가 10~11이면 원래 다른 색인 두 클러스터(예: 사우샘프턴의
+  // 빨강 vs 진회색)가 하나로 뭉쳐 엉뚱한 색이 1등이 되고, 12 이상부터 16까지는 전부 같은 결과로
+  // 안정적이다(턱걸이로 겨우 맞은 경계값이 아니라 안정된 구간이라는 뜻). 유일한 예외는 맨시티 —
+  // 방패 안 하늘색이 그라데이션으로 넓게 퍼져 있고 테두리/리본의 남색 계열도 실제로 꽤 넓어서,
+  // k를 아무리 조절해도 평균이 하늘색보다 남색 쪽에 더 가깝게 나온다. 이건 알고리즘의 결함이
+  // 아니라 그 로고 자체가 실제로 그렇게 칠해져 있기 때문(원본 해상도로 픽셀을 직접 세어 확인함).
+  function logoPaletteFamilies(imageData, k = 12, maxIter = 25) {
     const data = imageData.data;
 
+    const pts = [];
     for (let i = 0; i < data.length; i += 4) {
       const alpha = data[i + 3];
       if (alpha < 96) continue;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      pts.push({ r, g, b, weight: alpha / 255, lab: teamColorLab(rgbToHex(r, g, b)) });
+    }
+    if (!pts.length) return [];
 
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const hex = rgbToHex(r, g, b);
-      const { key, chromatic } = logoPaletteFamilyKey(r, g, b);
-      const weight = alpha / 255;
-      const family = families.get(key) || {
-        key,
-        chromatic,
-        score: 0,
-        hexCounts: new Map(),
-      };
-      family.score += weight;
-      family.hexCounts.set(hex, (family.hexCounts.get(hex) || 0) + weight);
-      families.set(key, family);
+    const labDist2 = (a, b) => {
+      const dl = a.l - b.l, da = a.a - b.a, db = a.b - b.b;
+      return dl * dl + da * da + db * db;
+    };
+
+    // 픽셀 수가 k 이하면 클러스터링할 필요 없이 픽셀 하나하나가 그대로 클러스터.
+    if (pts.length <= k) {
+      return pts.map(p => {
+        const { s, l } = rgbToHsl(p.r, p.g, p.b);
+        return { hex: rgbToHex(p.r, p.g, p.b), weight: p.weight, chromatic: s >= 0.12 && l > 0.06 && l < 0.94 };
+      }).sort((a, b) => b.weight - a.weight);
     }
 
-    return Array.from(families.values())
-      .map(family => {
-        let hex = null;
-        let hexScore = -1;
-        for (const [candidateHex, score] of family.hexCounts.entries()) {
-          if (score > hexScore) {
-            hex = candidateHex;
-            hexScore = score;
-          }
+    // farthest-first 초기화
+    const centroids = [];
+    let first = pts[0];
+    for (const p of pts) if (p.weight > first.weight) first = p;
+    centroids.push({ lab: first.lab });
+    while (centroids.length < k) {
+      let farthest = null, farthestD = -1;
+      for (const p of pts) {
+        let minD = Infinity;
+        for (const c of centroids) {
+          const d = labDist2(p.lab, c.lab);
+          if (d < minD) minD = d;
         }
-        return { ...family, hex, hexScore };
+        if (minD > farthestD) { farthestD = minD; farthest = p; }
+      }
+      centroids.push({ lab: farthest.lab });
+    }
+
+    // Lloyd's 알고리즘: 배정 -> 중심점 재계산 반복, 더 이상 배정이 안 바뀌면 종료
+    const assign = new Array(pts.length).fill(-1);
+    for (let iter = 0; iter < maxIter; iter++) {
+      let changed = false;
+      for (let i = 0; i < pts.length; i++) {
+        let best = 0, bestD = Infinity;
+        for (let c = 0; c < centroids.length; c++) {
+          const d = labDist2(pts[i].lab, centroids[c].lab);
+          if (d < bestD) { bestD = d; best = c; }
+        }
+        if (assign[i] !== best) { assign[i] = best; changed = true; }
+      }
+      if (!changed && iter > 0) break;
+
+      const sums = centroids.map(() => ({ r: 0, g: 0, b: 0, weight: 0 }));
+      for (let i = 0; i < pts.length; i++) {
+        const s = sums[assign[i]];
+        s.r += pts[i].r * pts[i].weight;
+        s.g += pts[i].g * pts[i].weight;
+        s.b += pts[i].b * pts[i].weight;
+        s.weight += pts[i].weight;
+      }
+      for (let c = 0; c < centroids.length; c++) {
+        if (sums[c].weight === 0) {
+          centroids[c].weight = 0;
+          continue;
+        }
+        const r = sums[c].r / sums[c].weight, g = sums[c].g / sums[c].weight, b = sums[c].b / sums[c].weight;
+        centroids[c].r = r;
+        centroids[c].g = g;
+        centroids[c].b = b;
+        centroids[c].weight = sums[c].weight;
+        centroids[c].lab = teamColorLab(rgbToHex(Math.round(r), Math.round(g), Math.round(b)));
+      }
+    }
+
+    return centroids
+      .filter(c => c.weight > 0)
+      .map(c => {
+        const r = Math.round(c.r), g = Math.round(c.g), b = Math.round(c.b);
+        const { s, l } = rgbToHsl(r, g, b);
+        return { hex: rgbToHex(r, g, b), weight: c.weight, chromatic: s >= 0.12 && l > 0.06 && l < 0.94 };
       })
-      .filter(family => family.hex)
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => b.weight - a.weight);
   }
 
   function extractTeamColorsFromLogoImage(img) {
@@ -349,7 +430,7 @@
     const primaryFamily = (chromaticFamilies[0] || families[0]);
     const primary = primaryFamily.hex;
     const numberFamily = families.find(family => (
-      family.key !== primaryFamily.key &&
+      family !== primaryFamily &&
       teamColorsVisuallyDistinct(primary, family.hex) &&
       teamColorContrastRatio(primary, family.hex) >= TEAM_COLOR_MIN_TEXT_CONTRAST
     ));
