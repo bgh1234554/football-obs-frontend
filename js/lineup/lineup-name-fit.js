@@ -37,17 +37,41 @@ function shrinkTextElement(el, minFontPx) {
   return true;
 }
 
-/** 폰트를 줄이기 직전에 이니셜 / 첫 성 / 둘째 성으로 최대 3줄을 시도한다. */
+/**
+ * 3줄 분리 후보 라인 배열 계산.
+ * 1) 하이픈 성 경계(예: "A. 메인틀런드-나일스")가 있으면 기존 방식대로 [이니셜/앞부분,
+ *    첫 성, 둘째 성] 또는(앞부분에 공백이 없으면) [앞부분, 성] 2줄.
+ * 2) 하이픈이 없어도 공백 2개 이상(3토큰 이상 — "후안 마누엘 보셀리"처럼 중간 이름이 있는
+ *    경우)이면 공백 기준으로 최대 3줄 분리. 4토큰 이상인 드문 경우는 마지막 두 토큰을
+ *    둘째/셋째 줄로 두고 나머지를 첫 줄에 몰아준다.
+ * 둘 다 해당 없으면 null.
+ */
+function computeLineupSurnameBreakLines(raw) {
+  const text = String(raw || '');
+  const hyphenParts = text.split(/(?<=[가-힣])-(?=[가-힣])/);
+  if (hyphenParts.length === 2 && hyphenParts.every(part => part.trim())) {
+    const prefixEnd = hyphenParts[0].lastIndexOf(' ');
+    return prefixEnd > 0
+      ? [hyphenParts[0].slice(0, prefixEnd), hyphenParts[0].slice(prefixEnd + 1), hyphenParts[1]]
+      : hyphenParts;
+  }
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length >= 3) {
+    const last = tokens[tokens.length - 1];
+    const secondLast = tokens[tokens.length - 2];
+    const rest = tokens.slice(0, -2).join(' ');
+    return [rest, secondLast, last];
+  }
+  return null;
+}
+
+/** 폰트를 줄이기 직전에 (이니셜/중간 이름 등을 나눈) 최대 3줄을 시도한다. */
 function tryLineupSurnameBreaks(nameEl) {
   if (nameEl.classList.contains('has-surname-breaks')) return false;
   const textEl = nameEl.querySelector('.dp-lineup-name-text[data-surname-breaks]');
   if (!textEl) return false;
-  const parts = textEl.dataset.surnameBreaks.split(/(?<=[가-힣])-(?=[가-힣])/);
-  if (parts.length !== 2 || parts.some(part => !part.trim())) return false;
-  const prefixEnd = parts[0].lastIndexOf(' ');
-  const lines = prefixEnd > 0
-    ? [parts[0].slice(0, prefixEnd), parts[0].slice(prefixEnd + 1), parts[1]]
-    : parts;
+  const lines = computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks);
+  if (!lines) return false;
   const font = getPreferredLineupSurnameFont(nameEl, lines);
   if (font === null) return false;
   applyLineupSurnameLines(nameEl, lines);

@@ -551,12 +551,21 @@ function getLineupNameWithSurnameBreaks(player, name) {
   return prefix + surname;
 }
 
+/** 공백으로 3토큰 이상 나뉘는 이름인지 — 후안 마누엘 보셀리처럼 중간 이름이 있는 경우.
+ *  하이픈 성 경계가 없어도 이런 이름은 fitLineupNamePills의 3줄 후보 비교 대상이 된다. */
+function hasLineupNameMultiSpaceBreakCandidate(name) {
+  return String(name || '').trim().split(/\s+/).filter(Boolean).length >= 3;
+}
+
 /** 이름 라벨 내부 HTML — (사진 모드면) 등번호 + 이름 텍스트. 주장이면 등번호 앞에 완장 배지. */
 function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const rawName = getLineupNameWithSurnameBreaks(player, name);
   const visibleName = stripKoreanSurnameBreaks(rawName);
   const safeName = dpEscape(visibleName);
-  const surnameAttr = visibleName !== rawName ? ` data-surname-breaks="${dpEscape(rawName)}"` : '';
+  // data-surname-breaks는 "이 라벨에 3줄 분리 후보가 있다"는 표시 — 하이픈 성 경계뿐 아니라
+  // 하이픈 없이 공백 2개 이상(중간 이름)인 이름도 대상에 포함한다.
+  const hasBreakCandidate = visibleName !== rawName || hasLineupNameMultiSpaceBreakCandidate(visibleName);
+  const surnameAttr = hasBreakCandidate ? ` data-surname-breaks="${dpEscape(rawName)}"` : '';
   const rawNumber = String(player?.number ?? '').trim();
   const showNumber = shouldShowLineupNameNumber() && rawNumber !== '';
   const numberHtml = showNumber
