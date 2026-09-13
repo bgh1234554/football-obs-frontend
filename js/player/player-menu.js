@@ -592,6 +592,14 @@ function pmBuildMatchStatRows(s) {
     return `<tr><td class="pm-st-label">${pmEsc(lbl(key))}</td><td class="pm-st-val">${pmEsc(String(val))}</td></tr>`;
   };
   const frac = (a, b) => (a != null && b != null) ? `${a} / ${b}` : (a != null ? String(a) : null);
+  const passValue = (total, successful) => {
+    const totalEmpty = total == null || String(total).trim() === '';
+    const successfulEmpty = successful == null || String(successful).trim() === '';
+    if (totalEmpty && successfulEmpty) return null;
+    if (successfulEmpty) return String(total);
+    if (totalEmpty) return `-(${successful})`;
+    return `${total}(${successful})`;
+  };
 
   const tackleParts = [s.tacklesTotal, s.tacklesBlocks, s.tacklesInterceptions];
   const tackleAllNull = tackleParts.every(v => v == null);
@@ -614,10 +622,9 @@ function pmBuildMatchStatRows(s) {
     row('assists',     s.assists),
     row('saves',       s.saves),
     row('goalsConceded', s.goalsConceded),
-    row('passesTotal', s.passesTotal),
-    row('passesKey',   s.passesKey),
-    row('passesSuccessful', s.passesSuccessful),
+    row('passesTotal', passValue(s.passesTotal, s.passesSuccessful)),
     row('passesAccuracy', s.passesAccuracy != null ? `${s.passesAccuracy}%` : null),
+    row('passesKey',   s.passesKey),
     // 태클/블록/인터셉트 한 행
     tackleVal ? `<tr><td class="pm-st-label">${pmEsc(tackleLabel)}</td><td class="pm-st-val">${pmEsc(tackleVal)}</td></tr>` : '',
     row('dribblesAttempts', s.dribblesAttempts),
