@@ -158,10 +158,9 @@
     const availableHeight = Math.max(0, main.clientHeight - padTop - padBottom);
     const toolbar = document.getElementById('tactics-draw-toolbar');
     // 풀스크린에서는 그리기 도구 패널도 타임라인 패널처럼 position:fixed 오버레이 슬라이드 패널로
-    // 전환되어 평소엔 화면 밖(translateX(100%))에 숨어있다 — getBoundingClientRect().width는
-    // transform과 무관하게 레이아웃 상자 크기를 그대로 반환하므로, 닫혀 있어도 폭을 빼버리면
-    // 피치가 실제로 비어있는 공간만큼 불필요하게 작아진다. 풀스크린에선 예약 폭 0으로 취급.
-    const toolbarWidth = (toolbar && !document.fullscreenElement) ? Math.ceil(toolbar.getBoundingClientRect().width) : 0;
+    // 전환되어 평소엔 화면 밖(translateX(100%))에 숨어있다. 풀스크린에선 예약 폭 0으로 취급.
+    // main.clientWidth와 같은 zoom 적용 전 레이아웃 단위로 폭을 뺀다.
+    const toolbarWidth = (toolbar && !document.fullscreenElement) ? toolbar.offsetWidth : 0;
     const reservedPanelWidth = document.fullscreenElement ? 0 : 240;
     const maxPitchWidth = Math.max(0, main.clientWidth - toolbarWidth - reservedPanelWidth - padLeft - padRight);
     const pitchWidthByHeight = availableHeight * (105 / 68);
@@ -746,6 +745,7 @@
 
   // [이벤트 등록] 피치 크기 변화 시 --td-scale 갱신 → 토큰/배지/공/지우개 크기 자동 비례
   {
+    // 모든 기기가 동일한 물리 픽셀 레이아웃을 사용하므로 기존 선수 크기 계산을 공유한다.
     let tdPitchBaseWidth = 0;
     const tdPitchObserver = new ResizeObserver(entries => {
       const w = entries[0].contentRect.width;
@@ -1610,8 +1610,8 @@
       const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
       const ec = document.getElementById('td-eraser-cursor');
       if (ec) {
-        ec.style.left = (e.clientX - pitch.left) + 'px';
-        ec.style.top  = (e.clientY - pitch.top)  + 'px';
+        ec.style.left = ((e.clientX - pitch.left) / pitch.width * 100) + '%';
+        ec.style.top  = ((e.clientY - pitch.top) / pitch.height * 100) + '%';
       }
     }
     // 레이저 포인터 — hover 시 점 이동, 클릭+드래그 시 획 추가
@@ -1882,17 +1882,15 @@
   document.getElementById('tactics-pitch')?.addEventListener('pointermove', e => {
     if (!tdSelecting || !tdSelStart) return;
     const cur = tdGetPt(e);
-    const pitch = document.getElementById('tactics-pitch');
-    const pr = pitch.getBoundingClientRect();
     const rx1 = Math.min(tdSelStart.x, cur.x), ry1 = Math.min(tdSelStart.y, cur.y);
     const rx2 = Math.max(tdSelStart.x, cur.x), ry2 = Math.max(tdSelStart.y, cur.y);
     const rect = document.getElementById('td-select-rect');
     if (rect) {
       rect.style.display = 'block';
-      rect.style.left   = (rx1 / 100 * pr.width)  + 'px';
-      rect.style.top    = (ry1 / 100 * pr.height) + 'px';
-      rect.style.width  = ((rx2 - rx1) / 100 * pr.width)  + 'px';
-      rect.style.height = ((ry2 - ry1) / 100 * pr.height) + 'px';
+      rect.style.left   = rx1 + '%';
+      rect.style.top    = ry1 + '%';
+      rect.style.width  = (rx2 - rx1) + '%';
+      rect.style.height = (ry2 - ry1) + '%';
     }
     // 실시간 하이라이트 — 드래그 시작점 기준 가장 가까운 토큰의 팀만
     const highlighted = new Set(tdFilteredInRect(rx1, ry1, rx2, ry2, tdSelStart));

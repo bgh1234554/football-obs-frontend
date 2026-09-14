@@ -182,8 +182,8 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare) {
       clone.style.width = '';
       if (canStayWithinLineupNameLayout(clone)) {
         lockLineupNameWidth(clone);
-        const size = clone.getBoundingClientRect();
-        const wrapRect = wrap.getBoundingClientRect();
+        const size = getDisplayLayoutRect(clone);
+        const wrapRect = getDisplayLayoutRect(wrap);
         const centerX = wrapRect.left + wrapRect.width / 2;
         const candidate = {
           left: centerX - size.width / 2,
@@ -192,7 +192,7 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare) {
           bottom: wrapRect.top + size.height,
         };
         const outsidePitch = hasLineupNamePitchOverflowForRect(candidate, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
-        const overlaps = targets.some(target => canMeasureTextElement(target) && rectsOverlap(candidate, target.getBoundingClientRect()));
+        const overlaps = targets.some(target => canMeasureTextElement(target) && rectsOverlap(candidate, getDisplayLayoutRect(target)));
         if (!outsidePitch && !overlaps) return font;
       }
       const next = Math.max(LINEUP_NAME_MIN_FONT_PX, font - TEXT_FIT_FONT_STEP_PX);
@@ -217,7 +217,7 @@ function getTextLineRects(el) {
   const range = document.createRange();
   try {
     range.selectNodeContents(el);
-    return Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+    return Array.from(range.getClientRects(), toDisplayLayoutRect).filter(rect => rect.width > 0 && rect.height > 0);
   } finally {
     range.detach && range.detach();
   }
@@ -294,7 +294,7 @@ function lineupCaptainBadgeSharesTextLine(nameEl) {
   const badge = nameEl.querySelector('.dp-lineup-captain-badge');
   const textEl = nameEl.querySelector(':scope > .dp-lineup-name-text');
   if (!badge || !canMeasureTextElement(textEl)) return true;
-  const badgeRect = badge.getBoundingClientRect();
+  const badgeRect = getDisplayLayoutRect(badge);
   return getMergedTextLines(textEl).some(line => (
     badgeRect.top < line.bottom - 0.5 && badgeRect.bottom > line.top + 0.5
   ));
@@ -328,7 +328,7 @@ function canStayWithinTwoTextLines(el) {
 /** 이분탐색으로 el의 width를 canFitFn이 통과하는 한도 내 최소값까지 줄인다. */
 function tightenTextElementWidth(el, minWidthPx, canFitFn) {
   if (!canMeasureTextElement(el) || typeof canFitFn !== 'function') return false;
-  const currentWidth = Math.ceil(el.getBoundingClientRect().width);
+  const currentWidth = Math.ceil(getDisplayLayoutRect(el).width);
   if (!Number.isFinite(currentWidth) || currentWidth <= minWidthPx) return false;
 
   let low = minWidthPx;
@@ -380,7 +380,7 @@ function isBigLineupName(nameEl) {
 /** 큰 캠 이름 라벨의 최소 폭 — wrap 폭의 58%, 단 30~44px 범위로 clamp. */
 function getBigLineupNameMinWidthPx(nameEl) {
   const wrap = nameEl?.closest('.dp-lineup-name-wrap');
-  const wrapWidth = wrap ? Math.floor(wrap.getBoundingClientRect().width) : 0;
+  const wrapWidth = wrap ? Math.floor(getDisplayLayoutRect(wrap).width) : 0;
   if (!Number.isFinite(wrapWidth) || wrapWidth <= 0) return LINEUP_NAME_MIN_WIDTH_PX;
   return Math.max(30, Math.min(LINEUP_NAME_MIN_WIDTH_PX, Math.floor(wrapWidth * 0.58)));
 }
@@ -435,8 +435,8 @@ function getLineupNamePitchOverflow(nameEl, paddingPx = LINEUP_NAME_PITCH_PADDIN
   const pitch = wrap?.closest('.dp-lineup-vertical-pitch');
   if (!wrap || !pitch || !canMeasureTextElement(nameEl) || !canMeasureTextElement(pitch)) return null;
 
-  const wrapRect = nameEl.getBoundingClientRect();
-  const pitchRect = pitch.getBoundingClientRect();
+  const wrapRect = getDisplayLayoutRect(nameEl);
+  const pitchRect = getDisplayLayoutRect(pitch);
   return {
     left: Math.max(0, (pitchRect.left + paddingPx) - wrapRect.left),
     right: Math.max(0, wrapRect.right - (pitchRect.right - paddingPx)),
@@ -535,8 +535,8 @@ function fitLineupNameWithinPitchBounds(nameEl) {
 
 /** 두 라벨(또는 wrap)의 bounding rect가 실제로 겹치는지 (1px 여유). */
 function wrapsOverlap(leftWrap, rightWrap) {
-  const leftRect = leftWrap.getBoundingClientRect();
-  const rightRect = rightWrap.getBoundingClientRect();
+  const leftRect = getDisplayLayoutRect(leftWrap);
+  const rightRect = getDisplayLayoutRect(rightWrap);
   return leftRect.left < rightRect.right - 1
     && leftRect.right > rightRect.left + 1
     && leftRect.top < rightRect.bottom - 1
@@ -545,8 +545,8 @@ function wrapsOverlap(leftWrap, rightWrap) {
 
 /** 겹치는 두 라벨 중 먼저 줄여야 할 쪽 — 더 넓은 쪽, 동률이면 텍스트 더 긴 쪽, 그래도 같으면 더 아래쪽. */
 function chooseWrapToShrink(leftWrap, rightWrap) {
-  const leftRect = leftWrap.getBoundingClientRect();
-  const rightRect = rightWrap.getBoundingClientRect();
+  const leftRect = getDisplayLayoutRect(leftWrap);
+  const rightRect = getDisplayLayoutRect(rightWrap);
   if (Math.abs(leftRect.width - rightRect.width) > 1) {
     return leftRect.width > rightRect.width ? leftWrap : rightWrap;
   }
@@ -834,8 +834,8 @@ function fitBigLineupNameAgainstOpposingBadges(labels) {
 //   - AABB만 쓰면 코너 투명 공간 때문에 false positive가 발생하므로 이 방식이 정확함
 function nameOverlapsNodeCircleSignificantly(nameEl, nodeEl) {
   if (!canMeasureTextElement(nameEl) || !canMeasureTextElement(nodeEl)) return false;
-  const nr = nameEl.getBoundingClientRect();
-  const cr = nodeEl.getBoundingClientRect();
+  const nr = getDisplayLayoutRect(nameEl);
+  const cr = getDisplayLayoutRect(nodeEl);
   // pill 패딩 제외한 텍스트 표시 영역
   const tL = nr.left + 6, tR = nr.right - 6;
   const tT = nr.top + 2,  tB = nr.bottom - 2;
@@ -919,7 +919,7 @@ function fitBenchFooterNames(root) {
 function getPanelOuterHeight(el) {
   if (!el) return 0;
   const style = getComputedStyle(el);
-  return el.getBoundingClientRect().height
+  return getDisplayLayoutRect(el).height
     + (parseFloat(style.marginTop) || 0)
     + (parseFloat(style.marginBottom) || 0);
 }
@@ -938,11 +938,11 @@ function getListContentHeight(list) {
   const paddingY = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
   const children = Array.from(list.children);
   if (!children.length) return paddingY;
-  const listRect = list.getBoundingClientRect();
+  const listRect = getDisplayLayoutRect(list);
   const measuredBottom = children.reduce((maxBottom, child) => (
     Math.max(
       maxBottom,
-      (child.getBoundingClientRect().bottom - listRect.top) + list.scrollTop
+      (getDisplayLayoutRect(child).bottom - listRect.top) + list.scrollTop
     )
   ), 0);
   return Math.max(paddingY, measuredBottom + (parseFloat(style.paddingBottom) || 0));
@@ -965,7 +965,7 @@ function getPanelSplitMinHeight(splitEl) {
 function getPanelSplitMetrics(panel) {
   const split = panel?.querySelector('.dp-split');
   if (!split) return { current: 0, required: 0, spare: 0, deficit: 0 };
-  const current = split.getBoundingClientRect().height;
+  const current = getDisplayLayoutRect(split).height;
   const required = getPanelSplitMinHeight(split);
   return {
     current,
@@ -979,8 +979,8 @@ function getPanelSplitMetrics(panel) {
 function getPanelChromeHeight(panel) {
   if (!panel) return 0;
   const split = panel.querySelector('.dp-split');
-  const panelHeight = panel.getBoundingClientRect().height;
-  const splitHeight = split ? split.getBoundingClientRect().height : 0;
+  const panelHeight = getDisplayLayoutRect(panel).height;
+  const splitHeight = split ? getDisplayLayoutRect(split).height : 0;
   return Math.max(0, panelHeight - splitHeight);
 }
 
@@ -1016,14 +1016,18 @@ function resetBenchInjuryPanelHeights() {
  * return을 건드리지 않고도 항상 호출을 보장한다.
  */
 function balanceBenchInjuryPanelHeights() {
+  let manualHeight = false;
   try {
-    balanceBenchInjuryPanelHeightsImpl();
+    manualHeight = typeof applySmallBenchHeightOverride === 'function' && applySmallBenchHeightOverride();
+    if (!manualHeight) balanceBenchInjuryPanelHeightsImpl();
   } finally {
     if (typeof lpBenchPanelRebalanceInfoSpace === 'function') {
       const benchPanel = document.getElementById('benchPanel');
       lpBenchPanelRebalanceInfoSpace(benchPanel);
-      reclaimBenchListOverflowHeight(benchPanel);
+      // 수동 분할에서는 목록이 넘치면 스크롤한다. 자동 높이 회수가 드래그를 되돌리면 안 된다.
+      if (!manualHeight) reclaimBenchListOverflowHeight(benchPanel);
     }
+    if (typeof updateSmallBenchHeightHandle === 'function') updateSmallBenchHeightHandle();
   }
 }
 
@@ -1035,7 +1039,7 @@ function reclaimBenchListOverflowHeight(benchPanel) {
   const overflow = Math.max(0, ...lists.map(list => list.scrollHeight - list.clientHeight));
   if (overflow <= DETAIL_PANEL_BALANCE_EPSILON_PX || !injuryPanel || !injurySection) return;
 
-  const injuryRect = injurySection.getBoundingClientRect();
+  const injuryRect = getDisplayLayoutRect(injurySection);
   const injuryMinimum = getPanelChromeHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
   const available = Math.max(0, injuryRect.height - injuryMinimum);
   const transfer = Math.min(Math.ceil(overflow), Math.floor(available));
@@ -1043,7 +1047,7 @@ function reclaimBenchListOverflowHeight(benchPanel) {
 
   const benchSection = benchPanel.closest('.lp-bench');
   if (!benchSection) return;
-  const nextBenchHeight = benchSection.getBoundingClientRect().height + transfer;
+  const nextBenchHeight = getDisplayLayoutRect(benchSection).height + transfer;
   const nextInjuryHeight = injuryRect.height - transfer;
   benchSection.style.flex = `0 0 ${nextBenchHeight}px`;
   benchSection.style.height = `${nextBenchHeight}px`;
@@ -1067,8 +1071,8 @@ function balanceBenchInjuryPanelHeightsImpl() {
   const page = benchColumn.closest('.page');
   if (page && !page.classList.contains('active')) return;
 
-  const benchRect = benchSection.getBoundingClientRect();
-  const injuryRect = injurySection.getBoundingClientRect();
+  const benchRect = getDisplayLayoutRect(benchSection);
+  const injuryRect = getDisplayLayoutRect(injurySection);
   if (benchRect.height <= DETAIL_PANEL_BALANCE_EPSILON_PX
     || injuryRect.height <= DETAIL_PANEL_BALANCE_EPSILON_PX) {
     return;
@@ -1221,7 +1225,7 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
   clone.style.display = 'inline-block';
   nameEl.parentNode.appendChild(clone);
   const width = clone.scrollWidth;
-  const height = clone.getBoundingClientRect().height;
+  const height = getDisplayLayoutRect(clone).height;
   clone.remove();
   return { width, height };
 }
@@ -1230,7 +1234,7 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
 function hasLineupNamePitchOverflowForRect(rect, nameEl, paddingPx) {
   const pitch = getLineupNameWrap(nameEl)?.closest('.dp-lineup-vertical-pitch');
   if (!pitch || !canMeasureTextElement(pitch)) return false;
-  const pitchRect = pitch.getBoundingClientRect();
+  const pitchRect = getDisplayLayoutRect(pitch);
   return rect.left < pitchRect.left + paddingPx - 0.5
     || rect.right > pitchRect.right - paddingPx + 0.5
     || rect.top < pitchRect.top + paddingPx - 0.5
@@ -1257,7 +1261,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 
   const wrap = getLineupNameWrap(nameEl);
   if (!wrap) return false;
-  const wrapRect = wrap.getBoundingClientRect();
+  const wrapRect = getDisplayLayoutRect(wrap);
   const centerX = wrapRect.left + (wrapRect.width / 2);
   const top = wrapRect.top;
 
@@ -1273,7 +1277,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 
   const fitsWithinPitch = !hasLineupNamePitchOverflowForRect(hypotheticalRect, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
   const collisionTargets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const overlapsAnything = collisionTargets.some(target => canMeasureTextElement(target) && rectsOverlap(hypotheticalRect, target.getBoundingClientRect()));
+  const overlapsAnything = collisionTargets.some(target => canMeasureTextElement(target) && rectsOverlap(hypotheticalRect, getDisplayLayoutRect(target)));
 
   if (!fitsWithinPitch || overlapsAnything) return false; // nameEl 자체는 한 번도 안 건드림
 

@@ -223,9 +223,9 @@
   border: 1px solid rgba(255,255,255,.16);
   border-radius: 12px;
   width: 520px;
-  max-width: calc(100vw - 32px);
+  max-width: calc(calc(var(--display-vw, 1vw) * 100) - 32px);
   /* 고정 높이 지정 — body가 flex:1로 남은 공간 채울 수 있도록 */
-  height: min(85vh, 600px);
+  height: min(calc(var(--display-vh, 1vh) * 85), 600px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 40px rgba(0,0,0,.75);
@@ -237,9 +237,9 @@
 .pm-modal.pm-modal-wide {
   width: fit-content;
   min-width: 320px;
-  max-width: min(90vw, 820px);
+  max-width: min(calc(var(--display-vw, 1vw) * 90), 820px);
   height: auto;
-  max-height: min(85vh, 600px);
+  max-height: min(calc(var(--display-vh, 1vh) * 85), 600px);
 }
 /* wide 모달 body: 내용이 길면 스크롤, 짧으면 자연 높이 */
 .pm-modal.pm-modal-wide .pm-modal-body {
@@ -400,9 +400,9 @@
 
 /* ── 시즌 스탯 wide modal ── */
 .pm-modal.pm-modal-szn {
-  width: 55vw;
-  min-width: min(400px, calc(100vw - 32px));
-  height: min(85vh, 700px);
+  width: calc(var(--display-vw, 1vw) * 55);
+  min-width: min(400px, calc(calc(var(--display-vw, 1vw) * 100) - 32px));
+  height: min(calc(var(--display-vh, 1vh) * 85), 700px);
 }
 
 .pm-modal-body.pm-body-split {

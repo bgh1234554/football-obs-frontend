@@ -217,8 +217,9 @@ function pmShowMenu(playerId, clientX, clientY) {
 }
 
 function pmPositionPopup(el, cx, cy) {
-  el.style.left = (cx + 12) + 'px';
-  el.style.top  = (cy + 12) + 'px';
+  const point = toDisplayLayoutPoint(cx, cy);
+  el.style.left = (point.x + 12) + 'px';
+  el.style.top  = (point.y + 12) + 'px';
   pmClampPopupToViewport(el);
 }
 
@@ -234,8 +235,8 @@ function pmPositionPopup(el, cx, cy) {
 function pmClampPopupToViewport(el, margin = 8) {
   if (!el) el = document.getElementById('pmPopup');
   if (!el) return;
-  const rect = el.getBoundingClientRect();
-  const W = window.innerWidth, H = window.innerHeight;
+  const rect = getDisplayLayoutRect(el);
+  const W = document.body.clientWidth, H = document.body.clientHeight;
   let dx = 0, dy = 0;
   if (rect.right > W - margin) dx = (W - margin) - rect.right;
   if (rect.left + dx < margin) dx = margin - rect.left;

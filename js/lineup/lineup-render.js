@@ -872,7 +872,7 @@ function lpBenchPanelRebalanceInfoSpace(panel) {
   info.style.flex = '';
   if (!split.getClientRects().length || split.clientHeight <= 0) return;
 
-  const headerHeight = split.querySelector('.dp-side-header')?.getBoundingClientRect().height || 0;
+  const headerHeight = toDisplayLayoutPixels(split.querySelector('.dp-side-header')?.getBoundingClientRect().height || 0);
   const homeList = split.querySelector('[data-bench-side="home"] .dp-list');
   const awayList = split.querySelector('[data-bench-side="away"] .dp-list');
   const contentHeight = Math.max(homeList?.scrollHeight || 0, awayList?.scrollHeight || 0);
@@ -935,14 +935,14 @@ function bcMeasureTitleWidth(text, fontSizePx, sampleEl) {
 function lpFitBenchCycleTitle(titleEl) {
   if (!titleEl) return;
   const lpStat = titleEl.closest('.lp-stat');
-  const panelRect = lpStat?.getBoundingClientRect();
+  const panelRect = lpStat && getDisplayLayoutRect(lpStat);
   if (!lpStat || !panelRect?.width) { titleEl.style.fontSize = ''; return; }
 
   const isVisible = el => !!el && el.offsetParent !== null;
   const btnEdgeFrom = (selectors, pick) => selectors.reduce((acc, sel) => {
     const el = lpStat.querySelector(sel);
     if (!isVisible(el)) return acc;
-    return pick(acc, el.getBoundingClientRect());
+    return pick(acc, getDisplayLayoutRect(el));
   }, 0);
   const leftEdge = btnEdgeFrom(BC_CYCLE_TITLE_LEFT_BTN_SELECTORS,
     (acc, r) => Math.max(acc, r.right - panelRect.left));

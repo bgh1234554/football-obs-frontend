@@ -296,8 +296,8 @@
       text-align: center;
     }
     .scoreaxis-standings-modal {
-      width: min(980px, calc(100vw - 48px));
-      height: min(820px, calc(100vh - 48px));
+      width: min(980px, calc(calc(var(--display-vw, 1vw) * 100) - 48px));
+      height: min(820px, calc(calc(var(--display-vh, 1vh) * 100) - 48px));
       border-radius: 12px;
       background: #0B1220;
     }

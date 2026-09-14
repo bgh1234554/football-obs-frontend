@@ -233,8 +233,8 @@
       border: 1px solid rgba(255,255,255,.14);
       border-radius: 10px;
       width: 320px;
-      max-width: calc(100vw - 32px);
-      height: clamp(260px, 55vh, 480px);
+      max-width: calc(calc(var(--display-vw, 1vw) * 100) - 32px);
+      height: clamp(260px, calc(var(--display-vh, 1vh) * 55), 480px);
       display: flex;
       flex-direction: column;
       overflow: hidden;

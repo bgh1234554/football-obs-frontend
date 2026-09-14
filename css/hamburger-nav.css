@@ -55,7 +55,7 @@ body.sidebar-open .sidebar-backdrop {
   left: 0;
   bottom: 0;
   width: 220px;
-  max-width: 82vw;
+  max-width: calc(var(--display-vw, 1vw) * 82);
   background: #0b1220;
   border-right: 1px solid rgba(255,255,255,.12);
   z-index: 100;

@@ -27,6 +27,29 @@
    1.45 → 1.55 (벤치 +)/ 1 → 0.95 (부상 -). 부상은 보통 3-5명이라 줄어들어도 영향 적음. */
 .layout-small .lp-col-bench .lp-bench  { flex: 1.62; }
 .layout-small .lp-col-bench .lp-injury { flex: 0.88; }
+.layout-small .lp-col-bench { position: relative; }
+.lp-small-bench-height-resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  transform: translateY(-50%);
+  z-index: 9;
+  cursor: row-resize;
+  touch-action: none;
+}
+.lp-small-bench-height-resize:focus-visible {
+  background: rgba(96, 165, 250, .18);
+  outline: none;
+}
+body.lp-small-bench-height-resizing,
+body.lp-small-bench-height-resizing * {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+/* 명단 높이가 부족한 동안만 스크롤바를 표시한다(상위 .lp의 숨김 규칙 해제). */
+.layout-small .lp-col-bench .dp-list { scrollbar-width: thin; }
+.layout-small .lp-col-bench .dp-list::-webkit-scrollbar { display: block; }
 /* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
    컬럼 = 피치 가득 채움 → 옆에 빈 공간 안 생김. */
 .layout-small .lp-lineup-s {

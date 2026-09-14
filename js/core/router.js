@@ -94,11 +94,12 @@
   const ROUTE_TO_PAGE = Object.freeze(Object.fromEntries(
     Object.entries(PAGE_TO_ROUTE).map(([page, route]) => [route, page])
   ));
-  // 로컬 개발 환경(127.0.0.1, localhost)이나 file:// 프로토콜은 path-based 라우팅을 못 쓰므로 hash 모드로 fallback.
-  // 배포 환경(http(s) + 외부 호스트)에서만 깔끔한 path-based 라우팅 사용.
-  const LOCAL_ROUTE_HOSTS = new Set(['127.0.0.1', 'localhost']);
+  // Live Server는 LAN IP/PC 이름으로도 접속한다. HTML 파일로 진입하면 호스트와 무관하게
+  // hash 모드를 유지해야 탭 이동 후 새로고침해도 /schedule 등의 404가 발생하지 않는다.
+  const LOCAL_ROUTE_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+  const STATIC_HTML_ENTRY = /\/[^/]+\.html$/i.test(window.location.pathname);
   const ROUTING_MODE = ((window.location.protocol === 'http:' || window.location.protocol === 'https:')
-    && !LOCAL_ROUTE_HOSTS.has(window.location.hostname))
+    && !LOCAL_ROUTE_HOSTS.has(window.location.hostname) && !STATIC_HTML_ENTRY)
     ? 'path'
     : 'hash';
 

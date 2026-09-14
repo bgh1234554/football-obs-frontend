@@ -49,8 +49,8 @@
 
 /* ===== 모달 카드 ===== */
 .sp-modal {
-  width: min(720px, calc(100vw - 32px));
-  max-height: min(820px, calc(100vh - 24px));
+  width: min(720px, calc(calc(var(--display-vw, 1vw) * 100) - 32px));
+  max-height: min(820px, calc(calc(var(--display-vh, 1vh) * 100) - 24px));
   background: #1c1d22;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 14px;
@@ -618,10 +618,10 @@
   background: rgba(76,217,100,.30);
 }
 
-@media (max-width: 740px) {
+@container display-viewport (max-width: 740px) {
   .sp-modal {
-    width: min(560px, calc(100vw - 20px));
-    max-height: calc(100vh - 20px);
+    width: min(560px, calc(calc(var(--display-vw, 1vw) * 100) - 20px));
+    max-height: calc(calc(var(--display-vh, 1vh) * 100) - 20px);
   }
 
   .sp-row,
@@ -662,7 +662,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@container display-viewport (max-width: 560px) {
   .sp-tabs {
     display: flex;
     flex-wrap: nowrap;

@@ -31,6 +31,154 @@ const SMALL_LAYOUT_RATIO_MIN = 0.2;
 const SMALL_LAYOUT_RATIO_MAX = 0.8;
 const SMALL_LAYOUT_LEFT_MIN_PX = 220;
 const SMALL_LAYOUT_RIGHT_MIN_PX = 220;
+const SMALL_BENCH_HEIGHT_KEY = 'obs.smallLayout.benchHeightRatio.v1';
+let smallBenchHeightRatio = (() => {
+  try {
+    const value = Number(localStorage.getItem(SMALL_BENCH_HEIGHT_KEY));
+    return value > 0 && value < 1 ? value : null;
+  } catch { return null; }
+})();
+let smallBenchHeightDrag = null;
+
+/** 교체/미출전 패널은 논리 높이의 비율을 저장해 DPI·해상도 변경에도 분할을 유지한다. */
+function getSmallBenchHeightMetrics() {
+  const sections = getBenchPanelSections();
+  const { benchColumn, benchPanel, injuryPanel } = sections;
+  if (!benchColumn || !benchPanel || !injuryPanel || !benchColumn.clientHeight) return null;
+  const style = getComputedStyle(benchColumn);
+  const gap = parseFloat(style.rowGap) || 0;
+  const available = benchColumn.clientHeight - getPanelPaddingY(benchColumn) - gap;
+  if (available <= 0) return null;
+  const minimum = panel => {
+    const title = panel.querySelector('.dp-title');
+    const header = panel.querySelector('.dp-side-header');
+    const footer = panel.querySelector('.dp-bench-footer');
+    const info = panel.querySelector('.dp-bench-info');
+    let infoHeight = 0;
+    if (info) {
+      const infoStyle = getComputedStyle(info);
+      infoHeight = Array.from(info.children).reduce((sum, row) => sum + getPanelOuterHeight(row), 0)
+        + Math.max(0, info.children.length - 1) * (parseFloat(infoStyle.rowGap) || 0)
+        + getPanelPaddingY(info) + (parseFloat(infoStyle.marginTop) || 0)
+        + (parseFloat(infoStyle.borderTopWidth) || 0);
+    }
+    // 제목·경기 정보와 최소 한 줄의 명단을 남겨 핸들이 패널을 완전히 접지 못하게 한다.
+    return getPanelPaddingY(panel) + getPanelOuterHeight(title) + getPanelOuterHeight(header)
+      + getPanelOuterHeight(footer) + infoHeight + 34;
+  };
+  const benchMin = minimum(benchPanel);
+  const injuryMin = minimum(injuryPanel);
+  const fit = Math.min(1, available / (benchMin + injuryMin));
+  return { ...sections, available, gap, benchMin: benchMin * fit, injuryMin: injuryMin * fit };
+}
+
+/** 자동 균형 계산의 진입점에서 호출한다. 저장값이 없으면 기존 자동 계산을 그대로 사용한다. */
+function applySmallBenchHeightOverride() {
+  if (smallBenchHeightRatio == null) return false;
+  const metrics = getSmallBenchHeightMetrics();
+  if (!metrics) return false;
+  const benchHeight = Math.max(metrics.benchMin,
+    Math.min(metrics.available - metrics.injuryMin, metrics.available * smallBenchHeightRatio));
+  for (const [panel, height] of [[metrics.benchSection, benchHeight], [metrics.injurySection, metrics.available - benchHeight]]) {
+    panel.style.flex = `0 0 ${height}px`;
+    panel.style.height = `${height}px`;
+  }
+  return true;
+}
+
+function updateSmallBenchHeightHandle() {
+  const { benchColumn, benchSection } = getBenchPanelSections();
+  const handle = benchColumn?.querySelector('.lp-small-bench-height-resize');
+  if (!handle || !benchSection || !benchColumn.clientHeight) return;
+  const columnRect = getDisplayLayoutRect(benchColumn);
+  const benchRect = getDisplayLayoutRect(benchSection);
+  const gap = parseFloat(getComputedStyle(benchColumn).rowGap) || 0;
+  handle.style.top = `${benchRect.bottom - columnRect.top + gap / 2}px`;
+  handle.setAttribute('aria-valuenow', String(Math.round(benchRect.height / (benchColumn.clientHeight - gap) * 100)));
+}
+
+function resetSmallBenchHeight() {
+  smallBenchHeightRatio = null;
+  try { localStorage.removeItem(SMALL_BENCH_HEIGHT_KEY); } catch {}
+  balanceBenchInjuryPanelHeights();
+}
+
+function ensureSmallBenchHeightHandle() {
+  const { benchColumn } = getBenchPanelSections();
+  if (!benchColumn || benchColumn.querySelector('.lp-small-bench-height-resize')) return;
+  const handle = document.createElement('div');
+  handle.className = 'lp-small-bench-height-resize';
+  handle.title = '위아래로 드래그: 높이 조절 · 더블클릭: 자동 높이';
+  handle.tabIndex = 0;
+  handle.setAttribute('role', 'separator');
+  handle.setAttribute('aria-label', '교체 명단과 미출전 선수 명단 높이 조절');
+  handle.setAttribute('aria-orientation', 'horizontal');
+  handle.setAttribute('aria-controls', 'benchPanel injuryPanel');
+  handle.addEventListener('dblclick', event => {
+    event.preventDefault();
+    resetSmallBenchHeight();
+  });
+  handle.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || smallBenchHeightDrag !== null) return;
+    const metrics = getSmallBenchHeightMetrics();
+    if (!metrics) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const originalRatio = smallBenchHeightRatio;
+    const startY = toDisplayLayoutPixels(event.clientY);
+    const startHeight = getDisplayLayoutRect(metrics.benchSection).height;
+    let moved = false;
+    smallBenchHeightDrag = event.pointerId;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add('lp-small-bench-height-resizing');
+    const move = next => {
+      if (next.pointerId !== smallBenchHeightDrag) return;
+      const current = getSmallBenchHeightMetrics();
+      if (!current) return;
+      const delta = toDisplayLayoutPixels(next.clientY) - startY;
+      if (!moved && Math.abs(delta) < 1) return;
+      moved = true;
+      const height = Math.max(current.benchMin, Math.min(current.available - current.injuryMin, startHeight + delta));
+      smallBenchHeightRatio = height / current.available;
+      balanceBenchInjuryPanelHeights();
+    };
+    const finish = next => {
+      if (next.pointerId !== smallBenchHeightDrag) return;
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', finish);
+      handle.removeEventListener('pointercancel', finish);
+      handle.removeEventListener('lostpointercapture', finish);
+      const pointerId = smallBenchHeightDrag;
+      smallBenchHeightDrag = null;
+      if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+      document.body.classList.remove('lp-small-bench-height-resizing');
+      if (next.type !== 'pointerup') smallBenchHeightRatio = originalRatio;
+      else if (moved) {
+        try { localStorage.setItem(SMALL_BENCH_HEIGHT_KEY, String(smallBenchHeightRatio)); } catch {}
+      }
+      balanceBenchInjuryPanelHeights();
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+    handle.addEventListener('lostpointercapture', finish);
+  });
+  handle.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); resetSmallBenchHeight(); return; }
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    const metrics = getSmallBenchHeightMetrics();
+    if (!metrics) return;
+    event.preventDefault();
+    const height = getDisplayLayoutRect(metrics.benchSection).height + (event.key === 'ArrowUp' ? -10 : 10);
+    smallBenchHeightRatio = Math.max(metrics.benchMin, Math.min(metrics.available - metrics.injuryMin, height)) / metrics.available;
+    try { localStorage.setItem(SMALL_BENCH_HEIGHT_KEY, String(smallBenchHeightRatio)); } catch {}
+    balanceBenchInjuryPanelHeights();
+  });
+  benchColumn.appendChild(handle);
+  // 경기 데이터를 아직 불러오지 않은 상태에서도 창 크기/탭 전환에 분할을 재적용한다.
+  initBenchInjuryPanelObserver();
+  updateSmallBenchHeightHandle();
+}
 
 // 윈도우 리사이즈/패널 폭 변화 시 저장된 비율을 다시 적용하기 위한 옵저버.
 // ResizeObserver가 없는 구형 환경은 window resize 이벤트로 fallback.
@@ -105,8 +253,8 @@ function getSmallLayoutResizeMetrics(layout) {
   const innerWidth = layout.clientWidth - paddingLeft - paddingRight;
   if (innerWidth <= 0) return null;
 
-  const lineupWidth = lineup.getBoundingClientRect().width;
-  const benchWidth = bench.getBoundingClientRect().width;
+  const lineupWidth = getDisplayLayoutRect(lineup).width;
+  const benchWidth = getDisplayLayoutRect(bench).width;
   const sideWidth = innerWidth - lineupWidth - benchWidth - (gapPx * 3);
   if (sideWidth <= 0) return null;
 
@@ -249,8 +397,8 @@ function startSmallLayoutResize(event) {
   // CSS 변수를 동시에 덮어써 값이 튀는 문제가 생긴다.
   if (smallLayoutActiveResizePointers.has(layout)) return;
 
-  const startLeft = eventsCol.getBoundingClientRect().width;
-  const startX = event.clientX;
+  const startLeft = getDisplayLayoutRect(eventsCol).width;
+  const startX = toDisplayLayoutPixels(event.clientX);
   const pointerId = event.pointerId;
   let lastRatio = clampSmallLayoutResizeRatio(metrics, startLeft / metrics.sideWidth);
   if (lastRatio == null) return;
@@ -264,7 +412,7 @@ function startSmallLayoutResize(event) {
     if (e.pointerId !== pointerId) return;
     const nextMetrics = getSmallLayoutResizeMetrics(layout);
     if (!nextMetrics) return;
-    const deltaX = e.clientX - startX;
+    const deltaX = toDisplayLayoutPixels(e.clientX) - startX;
     const nextLeft = Math.max(
       nextMetrics.leftMin,
       Math.min(nextMetrics.sideWidth - nextMetrics.rightMin, startLeft + deltaX)
@@ -337,7 +485,7 @@ function startLineupResize(event) {
   const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
   const hasEdgeOverride = panel.classList.contains('has-w-override')
     || panel.classList.contains('has-h-override');
-  const currentHeightPct = Math.round((panel.getBoundingClientRect().height / layoutHeight) * 100);
+  const currentHeightPct = Math.round((getDisplayLayoutRect(panel).height / layoutHeight) * 100);
   const startScalePct = hasEdgeOverride
     ? Math.max(
       LINEUP_RESIZE_MIN,
@@ -345,7 +493,7 @@ function startLineupResize(event) {
     )
     : storedScalePct;
   const saveBaselinePct = hasEdgeOverride ? startScalePct : storedScalePct;
-  const startY = event.clientY;
+  const startY = toDisplayLayoutPixels(event.clientY);
 
   panel.classList.add('is-resizing');
   document.body.classList.add('lp-lineup-resizing');
@@ -357,7 +505,7 @@ function startLineupResize(event) {
   const onMove = (e) => {
     // 1) 포인터 이동량을 layout 높이 기준 백분율로 환산한다.
     // 위로 드래그(deltaY > 0) → 확장, 아래로 드래그(deltaY < 0) → 축소.
-    const deltaY = startY - e.clientY;
+    const deltaY = startY - toDisplayLayoutPixels(e.clientY);
     const deltaPct = (deltaY / layoutHeight) * 100;
     let next = startScalePct + deltaPct;
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
@@ -534,7 +682,7 @@ function _applyLinkedMode(col) {
   col.classList.add('is-big-linked');
   _clearPanelAbsolute(chatPanel);
   _clearPanelAbsolute(statPanel);
-  const colH = col.getBoundingClientRect().height;
+  const colH = getDisplayLayoutRect(col).height;
   const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
   if (colH > 0) {
     // 비율(fraction) 기준 우선(드래그 후 저장) → 없으면 절대 px → 없으면 50/50
@@ -570,8 +718,8 @@ function _applyIndependentMode(col) {
   chatPanel.style.removeProperty('flex');
   statPanel.style.removeProperty('flex');
 
-  const colH   = col.getBoundingClientRect().height;
-  const colRect = col.getBoundingClientRect();
+  const colH   = getDisplayLayoutRect(col).height;
+  const colRect = getDisplayLayoutRect(col);
   const layout = col.closest('.layout-big');
   const defaultH = colH > 0 ? Math.max(BIG_PANEL_MIN_H, Math.floor(colH / 2)) : 200;
   const defaultW = (() => {
@@ -632,7 +780,7 @@ function applyStoredBigPanelHeights() {
         if (layout) applyBigColWidth(layout, newColW);
         _bigSave(BIG_COL_WIDTH_KEY, newColW);
       }
-      const colH = col.getBoundingClientRect().height;
+      const colH = getDisplayLayoutRect(col).height;
       if (colH > 0) _bigSave(BIG_CHAT_H_KEY, Math.floor((colH - BIG_COL_GAP) / 2));
     }
 
@@ -648,15 +796,15 @@ function startBigColWidthDrag(event, col) {
   event.preventDefault();
   const layout = col.closest('.layout-big');
   if (!layout) return;
-  const startX = event.clientX;
-  const startW = col.getBoundingClientRect().width;
+  const startX = toDisplayLayoutPixels(event.clientX);
+  const startW = getDisplayLayoutRect(col).width;
   const maxW   = layout.clientWidth * 0.65;
   let lastW = startW;
   const handle = event.currentTarget;
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-big-col-resizing');
   const onMove = (e) => {
-    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - e.clientX)));
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - toDisplayLayoutPixels(e.clientX))));
     lastW = newW;
     applyBigColWidth(layout, newW);
   };
@@ -688,8 +836,8 @@ function startBigPanelWidthDrag(event, col, which) {
   const wKey   = which === 'chat' ? BIG_CHAT_W_KEY : BIG_STAT_W_KEY;
   const layout = col.closest('.layout-big');
   if (!layout) return;
-  const startX = event.clientX;
-  const startW = panel.getBoundingClientRect().width;
+  const startX = toDisplayLayoutPixels(event.clientX);
+  const startW = getDisplayLayoutRect(panel).width;
   const maxW   = layout.clientWidth * 0.9;
   let lastW = startW;
   const handle = event.currentTarget;
@@ -697,10 +845,10 @@ function startBigPanelWidthDrag(event, col, which) {
   document.body.classList.add('lp-big-col-resizing');
   const otherPanel = which === 'chat' ? statPanel : chatPanel;
   const onMove = (e) => {
-    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - e.clientX)));
+    const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - toDisplayLayoutPixels(e.clientX))));
     lastW = newW;
     panel.style.width = `${Math.round(newW)}px`;
-    applyBigColWidth(layout, Math.max(newW, otherPanel.getBoundingClientRect().width));
+    applyBigColWidth(layout, Math.max(newW, getDisplayLayoutRect(otherPanel).width));
   };
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
@@ -709,7 +857,7 @@ function startBigPanelWidthDrag(event, col, which) {
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-big-col-resizing');
     _bigSave(wKey, lastW);
-    _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+    _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, getDisplayLayoutRect(otherPanel).width));
     requestAnimationFrame(() => {
       window.stRerenderActivePanels?.();
       window.lpBenchCycleRebalanceAll?.();
@@ -736,10 +884,10 @@ function startBigPanelHeightDrag(event, col, origin) {
   const statPanel = col.querySelector('.lp-stat');
   if (!chatPanel || !statPanel) return;
   const linked     = isBigPanelLinked();
-  const startY     = event.clientY;
-  const startChatH = chatPanel.getBoundingClientRect().height;
-  const startStatH = statPanel.getBoundingClientRect().height;
-  const colH       = col.getBoundingClientRect().height;
+  const startY     = toDisplayLayoutPixels(event.clientY);
+  const startChatH = getDisplayLayoutRect(chatPanel).height;
+  const startStatH = getDisplayLayoutRect(statPanel).height;
+  const colH       = getDisplayLayoutRect(col).height;
   const usable     = colH - BIG_COL_GAP;
   let lastChatH = startChatH;
   let lastStatH = startStatH;
@@ -748,7 +896,7 @@ function startBigPanelHeightDrag(event, col, origin) {
   document.body.classList.add('lp-big-h-resizing');
 
   const onMove = (e) => {
-    const delta = e.clientY - startY;
+    const delta = toDisplayLayoutPixels(e.clientY) - startY;
     if (origin === 'chatBottom') {
       const maxChat = linked ? usable - BIG_PANEL_MIN_H : colH - startStatH;
       const newChatH = Math.max(BIG_PANEL_MIN_H, Math.min(maxChat, startChatH + delta));
@@ -801,14 +949,14 @@ function startBigCornerDrag(event, col, panelSide) {
   if (!chatPanel || !statPanel) return;
   const linked     = isBigPanelLinked();
   const layout     = col.closest('.layout-big');
-  const startX     = event.clientX;
-  const startY     = event.clientY;
+  const startX     = toDisplayLayoutPixels(event.clientX);
+  const startY     = toDisplayLayoutPixels(event.clientY);
   const panel      = panelSide === 'chat' ? chatPanel : statPanel;
   const otherPanel = panelSide === 'chat' ? statPanel : chatPanel;
-  const startW     = linked ? col.getBoundingClientRect().width : panel.getBoundingClientRect().width;
-  const startChatH = chatPanel.getBoundingClientRect().height;
-  const startStatH = statPanel.getBoundingClientRect().height;
-  const colH       = col.getBoundingClientRect().height;
+  const startW     = linked ? getDisplayLayoutRect(col).width : getDisplayLayoutRect(panel).width;
+  const startChatH = getDisplayLayoutRect(chatPanel).height;
+  const startStatH = getDisplayLayoutRect(statPanel).height;
+  const colH       = getDisplayLayoutRect(col).height;
   const usable     = colH - BIG_COL_GAP;
   const maxW       = layout ? (linked ? _bigColMaxWidth(layout) : _bigPanelMaxWidth(layout)) : window.innerWidth;
   let lastW = startW, lastChatH = startChatH, lastStatH = startStatH;
@@ -817,8 +965,8 @@ function startBigCornerDrag(event, col, panelSide) {
   document.body.classList.add('lp-big-col-resizing', 'lp-big-h-resizing');
 
   const onMove = (e) => {
-    const dx = startX - e.clientX; // 왼쪽 드래그 = 너비 증가
-    const dy = e.clientY - startY; // 아래 드래그 = 양수
+    const dx = startX - toDisplayLayoutPixels(e.clientX); // 왼쪽 드래그 = 너비 증가
+    const dy = toDisplayLayoutPixels(e.clientY) - startY; // 아래 드래그 = 양수
 
     // 너비
     const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + dx));
@@ -827,7 +975,7 @@ function startBigCornerDrag(event, col, panelSide) {
       if (layout) applyBigColWidth(layout, newW);
     } else {
       panel.style.width = `${Math.round(newW)}px`;
-      if (layout) applyBigColWidth(layout, Math.max(newW, otherPanel.getBoundingClientRect().width));
+      if (layout) applyBigColWidth(layout, Math.max(newW, getDisplayLayoutRect(otherPanel).width));
     }
 
     // 높이
@@ -866,7 +1014,7 @@ function startBigCornerDrag(event, col, panelSide) {
       _bigSave(BIG_COL_WIDTH_KEY, lastW);
     } else {
       _bigSave(panelSide === 'chat' ? BIG_CHAT_W_KEY : BIG_STAT_W_KEY, lastW);
-      _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, otherPanel.getBoundingClientRect().width));
+      _bigSave(BIG_COL_WIDTH_KEY, Math.max(lastW, getDisplayLayoutRect(otherPanel).width));
     }
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
@@ -1042,7 +1190,7 @@ function _lineupApplyWidthOverride(panel, px, knownHeight = null) {
   panel.classList.add('has-w-override');
   panel.classList.add('has-edge-override');
   // --lp-lineup-x-scale: 너비/자연너비 비율 → 이름 라벨 폭 비례 확장
-  const h = Number(knownHeight) || panel.getBoundingClientRect().height;
+  const h = Number(knownHeight) || getDisplayLayoutRect(panel).height;
   const naturalW = h > 0 ? h * _lineupNaturalAspectRatio(panel) : px;
   // 높이를 크게 늘렸다고 이름 pill 기본 폭까지 같이 줄어들면,
   // 실제로는 공간이 충분한 라벨도 억지로 두 줄이 된다. 기본 폭(1)보다 작게는 줄이지 않는다.
@@ -1070,7 +1218,7 @@ function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
   // 위쪽 엣지는 높이 전용이다. 기존 aspect-ratio가 너비까지 끌고 가지 않게
   // 사용자가 너비를 따로 조절하지 않은 상태라면 현재 너비를 임시로 고정한다.
   if (!panel.classList.contains('has-w-override') && !panel.classList.contains('has-h-frozen-width')) {
-    const frozenWidth = Number(knownWidth) || panel.getBoundingClientRect().width;
+    const frozenWidth = Number(knownWidth) || getDisplayLayoutRect(panel).width;
     if (frozenWidth > 0) {
       panel.style.width = `${Math.round(frozenWidth)}px`;
       panel.dataset.lineupFrozenWidth = `${Math.round(frozenWidth)}px`;
@@ -1123,9 +1271,9 @@ function startLineupWidthDrag(event, panel) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
-  const startX  = event.clientX;
-  const startW  = panel.getBoundingClientRect().width;
-  const startH  = panel.getBoundingClientRect().height;
+  const startX  = toDisplayLayoutPixels(event.clientX);
+  const startW  = getDisplayLayoutRect(panel).width;
+  const startH  = getDisplayLayoutRect(panel).height;
   const layoutW = (panel.closest('.layout-wrap') || document.body).clientWidth;
   const maxW    = layoutW * 0.8;
   let lastW = startW;
@@ -1136,7 +1284,7 @@ function startLineupWidthDrag(event, panel) {
   document.body.classList.add('lp-lineup-w-resizing');
 
   const onMove = (e) => {
-    const newW = Math.max(LINEUP_EDGE_MIN_W, Math.min(maxW, startW + (e.clientX - startX)));
+    const newW = Math.max(LINEUP_EDGE_MIN_W, Math.min(maxW, startW + (toDisplayLayoutPixels(e.clientX) - startX)));
     lastW = newW;
     pendingW = newW;
     if (rafId) return;
@@ -1169,9 +1317,9 @@ function startLineupHeightDrag(event, panel) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
-  const startY  = event.clientY;
-  const startH  = panel.getBoundingClientRect().height;
-  const startW  = panel.getBoundingClientRect().width;
+  const startY  = toDisplayLayoutPixels(event.clientY);
+  const startH  = getDisplayLayoutRect(panel).height;
+  const startW  = getDisplayLayoutRect(panel).width;
   const maxH    = _lineupGetMaxHeight(panel);
   let lastH = startH;
   let pendingH = startH;
@@ -1182,7 +1330,7 @@ function startLineupHeightDrag(event, panel) {
 
   const onMove = (e) => {
     // 위로 드래그(dy < 0) = 높이 증가
-    const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (e.clientY - startY)));
+    const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (toDisplayLayoutPixels(e.clientY) - startY)));
     lastH = newH;
     pendingH = newH;
     if (rafId) return;
@@ -1279,6 +1427,7 @@ document.addEventListener('DOMContentLoaded', ensureLineupResizeHandles);
 document.addEventListener('DOMContentLoaded', () => {
   // 캠 작음 리사이즈
   ensureSmallLayoutResizeHandles();
+  ensureSmallBenchHeightHandle();
   applyStoredSmallLayoutResize();
   observeSmallLayoutResize();
 
@@ -1293,7 +1442,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 이 시점은 항상 창 모드이므로 colH 기준으로 안전하게 비율 계산 가능.
     if (_bigLoadFraction(BIG_CHAT_FRACTION_KEY) == null) {
       document.querySelectorAll('.layout-big .lp-col').forEach(col => {
-        const colH = col.getBoundingClientRect().height;
+        const colH = getDisplayLayoutRect(col).height;
         if (colH <= 0) return;
         const usable = colH - BIG_COL_GAP;
         const chatH = _bigLoad(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H);
@@ -1398,6 +1547,7 @@ window.resetAllLayoutSizes = function resetAllLayoutSizes() {
     BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY,
     BIG_LAYOUT_MIGRATED_KEY,
     SMALL_LAYOUT_RESIZE_STORAGE_KEY,
+    SMALL_BENCH_HEIGHT_KEY,
     LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
   ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
 
@@ -1407,6 +1557,7 @@ window.resetAllLayoutSizes = function resetAllLayoutSizes() {
 
   // 3) 캠 작은 칼럼 비율 기본 복원
   resetSmallLayoutResize();
+  resetSmallBenchHeight();
 
   // 4) 라인업 엣지 오버라이드 인라인 스타일 제거
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
