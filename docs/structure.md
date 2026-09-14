@@ -2,7 +2,9 @@
 
 ## 진입점
 
-`overlay_dashboard.html` — HTML 셸. CSS/JS는 모두 외부 파일로 분리.
+`overlay_dashboard.html` — HTML 셸과 메뉴/설정/전술판 마크업. 주요 CSS/JS는 외부 파일로 분리하며 일부 인라인 스타일·이벤트 연결이 남아 있다.
+
+`about.md`는 사용자용 안내서다. `js/core/init.js`에서 불러와 Markdown을 렌더링하고 DOMPurify로 정제한 뒤 About 탭에 표시한다. 이 구조 문서는 현재 브랜치의 실제 파일을 기준으로 한다.
 
 ---
 
@@ -14,9 +16,9 @@
 
 | 파일 | 설명 |
 |---|---|
-| `variables.css` | `:root` CSS 변수 전체. 팀 컬러(`--home-bg` 등), 점수판 치수(`--board-width`), 폰트, 패널 배경 알파 등 약 90줄. |
+| `variables.css` | `:root` CSS 변수. 팀 컬러(`--home-bg` 등), 점수판 치수(`--board-width`), 폰트, 패널 배경 알파 등. |
 | `board.css` | 점수판 핵심 컴포넌트. `.board`, `.team`, `.logo-box`, `.score`, `.digits`, `.timer`, `.pk-wrap`, `.rc-rail`. 득점자 박스 수동 편집 인터랙션 포함. **모든 선택자는 `.board` 하위에서만 적용** (위젯 오염 방지). |
-| `layout.css` | 전체 레이아웃 기반. `html/body` 리셋, `board-stage`, `.note-side/.note`, 탭 바, 수동 모드 섹션, 페이지 영역, `panel-box`, 위젯 CSS 격리(`--home-bg: initial` 블록), 테마 탭 패널, 마크다운 렌더러, `.layout-wrap/.lp-col/.lp`, 캠 큰/작음 레이아웃. |
+| `layout.css` | 전체 레이아웃과 body 화면 배율, `display-viewport` 컨테이너, 전술판 전체화면 내부 래퍼, 스크롤 경계. `board-stage`, `.note-side/.note`, 페이지·테마·About 영역, 위젯 CSS 격리, `.layout-wrap/.lp-col/.lp` 캠 큰/작음 레이아웃. |
 
 ### css/tactics/
 
@@ -37,7 +39,7 @@
 
 | 파일 | 설명 |
 |---|---|
-| `lineup-layout.css` | 라인업 레이아웃 보정 + 리사이즈 핸들. `layout-small` 컬럼 비율, `.lp-lineup-resize`, `dp-side-header` 인라인 편집, 캠 큼 리사이즈 핸들(`.lp-big-col-*`), 라인업 독립 edge 리사이즈(`.lp-lineup-right/top-edge`). |
+| `lineup-layout.css` | 라인업 레이아웃과 리사이즈 핸들. 캠 작은 좌우 칼럼 너비·교체/미출전 높이 경계(`.lp-small-bench-height-resize`), 명단 스크롤바, 캠 큰 패널 너비/높이 및 라인업 모서리·축별 핸들. |
 | `lineup-pitch.css` | 라인업 피치 렌더링. `.dp-lineup-body`, `.dp-lineup-vertical-pitch`, 피치 마킹 SVG, `.dp-lineup-league-wash`, `.dp-lineup-team-chip`, `.dp-lineup-node`, `.dp-node-badge`(평점 뱃지), `.dp-lineup-name`. |
 | `lineup-manual.css` | 수동 입력 모달 + 그리드 모드. `.dp-manual-backdrop/modal/header/footer/body`, `.dp-field`, `.dp-manual-grid`, `.dp-grid-*`, `.sp-radio-cluster`, `.tn-tabs`(전술판 선수 이름 입력 모달). |
 
@@ -64,19 +66,20 @@
 ## js/
 
 로드 순서는 `overlay_dashboard.html`의 `<script>` 태그 순서와 동일. 전역 스코프를 공유(non-module).  
-`init.js`는 반드시 마지막에 로드.
+`display-scale.js`는 head에서 동기 실행해 본문 측정 전에 좌표 헬퍼와 배율을 준비한다. `init.js`는 상태·렌더·패널 모듈 뒤에서 초기화하며, 현재 마크업에서는 `sidebar.js`가 그 다음에 로드된다.
 
 ### js/core/
 
 | 파일 | 역할 | 주요 함수/변수 |
 |---|---|---|
+| `display-scale.js` | 1920px 기준 전체 UI 배율, DPI/뷰포트 변경 감지, 빈 배경 터치 스크롤 방지 | `toDisplayLayoutPixels/Point/Rect()`, `getDisplayLayoutRect()`, `--display-*` CSS 변수 |
 | `utils.js` | 공통 유틸 | `$()`, `setCSS()`, `getCSS()`, `fmtClock()`, `clampNum()`, `downloadBlob()` |
 | `state.js` | 전역 상태 | `state` (점수·로고·색상·half·timer 등), `el` (DOM 참조), `persist()`, `restore()` |
 | `render.js` | 점수판 렌더링 | `render()`, `formatScorers()`, `applyBoardScale()`, `pkPush/Undo/Reset()`, `setMatchHalf()`, `flashElement()` |
 | `timer.js` | 경기 시간 타이머 | `startClockTimer()`, `pauseClockTimer()`, `setClockSeconds()`, `syncRunningClockToNow()`, 인라인 시간 편집기 |
-| `fixture.js` | 경기 ID 연동 + 폴링 | `fetchAndApplyFixtureData()`, `buildScorers()`, `schedulePoll()`, `forceRefreshCurrentFixture()`. 진행 중 15초 / FT 후 1분 / INT 5분 간격 |
+| `fixture.js` | 경기 ID 연동 + 폴링 | `fetchAndApplyFixtureData()`, `buildScorers()`, `schedulePoll()`, `forceRefreshCurrentFixture()`. 진행 중 20초 / FT 감지 후 3분간 1분 간격 / INT 5분 간격(30분 후 중단) |
 | `api.js` | 백엔드 fetch | `fetchFixture()`, `fetchPlayerStats()`, `fetchHeadToHead()`, `ApiError` |
-| `router.js` | 탭/URL 동기화 | `activatePage()`, path-based URL (`/detail`, `/theme`, `/schedule`, `/tactics`, `/about`). 일정 탭 위젯 lazy mount + API 폴링 차단 |
+| `router.js` | 탭/URL 동기화 | `activatePage()`. 배포 환경에서는 `/detail`, `/theme`, `/schedule` 등의 경로, localhost·명시적 HTML 진입점에서는 `#/detail` 등의 hash를 사용. LAN Live Server의 HTML 경로를 보존. 일정 위젯 lazy mount와 API 폴링 제어 |
 | `keyboard.js` | 전역 단축키 | `window keydown` 핸들러 — Space/R/E/[/]/H/T/1~8/Q/W/A/S/F/Z/X/Ctrl+Z·Y 등 |
 | `init.js` | 초기화 | `restore()` → `render()` → `initBoardScale()` → 이벤트 핸들러 등록 |
 
@@ -119,9 +122,9 @@
 | `lineup-manual-store.js` | 공통 유틸(`dpEscape/clonePlayers`) + `lineupPanelState` + fixture 단위 수동 override localStorage CRUD |
 | `lineup-data.js` | `buildEffectiveFixtureData()` — API 응답 + 수동 override 합성, 그리드/포메이션/색상 변환 |
 | `lineup-render.js` | 벤치/부상/라인업 패널 HTML 빌더 + 렌더 + 교체명단 사이클 패널 + 전술판 동기화. 진입점: `applyLineupPanels()` |
-| `lineup-name-fit.js` | 이름 pill/팀칩/벤치 텍스트 충돌 보정. `fitLineupNamePills()` 4단계 알고리즘 |
+| `lineup-name-fit.js` | 이름 pill·팀칩·벤치 텍스트 충돌 보정(`fitLineupNamePills`), 교체/미출전 자동 높이 배분(`balanceBenchInjuryPanelHeights`), 칼럼 ResizeObserver. 화면 사각형을 논리 좌표로 변환해 측정 |
 | `lineup-manual-modal.js` | 수동 입력 모달(그리드 모드 + 라인업/벤치/부상자 풀폼) + 감독/주심 인라인 편집 |
-| `lineup-resize.js` | 캠 큰 `.lp-lineup` 우상단 핸들 드래그 — height 배율(`--lp-lineup-scale`) 조정 + localStorage 저장 |
+| `lineup-resize.js` | 캠 큰 라인업 크기·축별 조절, 우측 패널 연결/독립 너비·높이, 캠 작은 좌우 너비·교체/미출전 높이 비율. 포인터 좌표 변환, localStorage 저장, 더블클릭 초기화와 `resetAllLayoutSizes()` |
 
 ### js/panels/
 
@@ -131,8 +134,8 @@
 | `events-panel.js` | 이벤트 타임라인 렌더 (`lp-events-s` 전용). 시간 내림차순, 구간 구분자, 필터 UI |
 | `hth-panel.js` | 상대 전적 패널 렌더. `/api/hth` 호출 → 결과 카드 |
 | `stats-panel.js` | 경기 스탯 패널 (`lp-stat` + `lp-stat-s`). 동적 페이지네이션, 막대 비율, 자동 스와이프 |
-| `stat-cycle.js` | 캠 큰 패널 모드 순환 — 스탯/이벤트/HTH/홈교체/원정교체/순위표. 자동 전환 타이머 |
-| `scoreaxis-standings-panel.js` | ScoreAxis 실시간 순위 위젯 패널 (Iter 14). `<iframe srcdoc>` 렌더 |
+| `stat-cycle.js` | 캠 큰 패널 모드 순환 — 스탯/이벤트/HTH/홈교체/원정교체/경기 정보. 데이터 유무·사용자 포함 설정에 따른 자동 전환과 스크롤. 순위표는 별도 팝업 |
+| `scoreaxis-standings-panel.js` | ScoreAxis 실시간 순위 위젯의 캠 작은 패널 및 공용 팝업. `<iframe srcdoc>` 렌더 |
 
 ### js/player/
 
@@ -140,7 +143,7 @@
 |---|---|
 | `player-menu-stat-labels.js` | 경기별 스탯 한글 레이블 매핑 (사용자 편집용) |
 | `player-menu-szn-labels.js` | 시즌별 스탯 한글 레이블 매핑 (사용자 편집용) |
-| `player-menu.js` | 선수 컨텍스트 메뉴 (Iter 6). 등번호·이름·포지션 + 닉네임/경기스탯/시즌스탯 3개 버튼 |
+| `player-menu.js` | 선수 컨텍스트 메뉴. 등번호·이름·포지션·닉네임·ID 연결 진입·경기/시즌 스탯. 전체 UI 배율을 고려한 팝업 위치와 화면 안 배치 |
 | `player-id-resolve.js` | id=0 선수 ID 연결 (Iter 10). alt ID 수동/자동 연결, 유사도 매칭(Jaro-Winkler) |
 
 ### js/sidebar/
@@ -168,6 +171,7 @@
 | `\` | 전술판 전체화면 토글 (전술판 탭 활성화 시에만) |
 | `1` ~ `6` | 탭 직접 전환 (메인 큰/작음, 테마, 일정, 전술판, 어바웃) |
 | `7` | 경기 ID 입력 오버레이 열기 |
+| `8` | Buy me a coffee 페이지 열기 |
 | `Ctrl+Z` / `Ctrl+Y` | 전술판 Undo / Redo |
 | `Q` / `A` | 수동 모드: 홈 점수 +1 / -1. PK: 홈 골(G) / 실축(M) |
 | `W` / `S` | 수동 모드: 어웨이 점수 +1 / -1. PK: 어웨이 골(G) / 실축(M) |
@@ -201,4 +205,31 @@ state.lastRunningTickMs     // 새로고침 사이 타이머 drift 보정용 (Da
 | `GET /api/playerStats/{playerId}` | 선수 시즌별 대회별 스탯 |
 | `GET /api/hth?teamA={id}&teamB={id}` | 상대 전적 |
 
-응답 → state 매핑, 득점자/카드 가공 로직은 `CLAUDE.md` "백엔드 연동 시 프런트엔드 구현 사항" 참조.
+응답 구조는 [api-endpoints.md](api-endpoints.md), 실제 호출은 `js/core/api.js`, 응답 → state 및 득점자/카드 가공은 `js/core/fixture.js`, 라인업 수동값 합성은 `js/lineup/lineup-data.js`를 확인한다.
+
+---
+
+## 화면 배율과 좌표
+
+가로 1920px의 기존 UI가 기준이다. `display-scale.js`가 `가용 CSS 뷰포트 폭 / 1920`을 전체 배율로 정하고 body를 변환한다. 논리 높이는 `가용 높이 / 전체 배율`로 계산하므로 주소창 때문에 높이가 줄어도 글씨까지 축소하지 않는다. 같은 화면비의 4K는 FHD의 2배, 다른 화면비는 패널이 남는 높이를 채운다. 피치·이미지는 종횡비를 유지한다.
+
+- `clientWidth/Height`, `offsetWidth/Height`, `scrollWidth/Height`는 논리 레이아웃 값이다. 화면 bbox를 이 값과 섞을 때는 `getDisplayLayoutRect()`를 사용한다.
+- 포인터를 CSS 위치에 넣을 때는 `toDisplayLayoutPoint()`, 길이·이동량에는 `toDisplayLayoutPixels()`를 사용한다. 화면 좌표끼리 비교하는 히트 테스트는 그대로 비교한다.
+- CSS의 뷰포트 기준 치수는 `--display-vw/--display-vh`, 반응형 분기는 `@container display-viewport`를 확인한다.
+- 사용자 점수판 배율은 `applyBoardScale()`이 별도로 담당한다. 전체 배율을 점수판 내부에 다시 곱하지 않는다. 좌표 헬퍼는 body 배율만 제거하며 내부 요소의 별도 transform까지 제거하지 않는다.
+- 전술판 전체화면은 top layer에서 body 변환을 벗어나므로 `.tactics-viewport` 내부 래퍼에 같은 화면 보정을 적용한다.
+- DPR < 1의 layout zoom은 테두리·스크롤바의 최소 픽셀 반올림 보정용이다. 모든 기기에 `zoom = 1 / DPR`만 적용하는 이전 구현으로 돌아가지 않는다.
+
+## 패널 크기 저장과 자동 높이
+
+캠 큰 우측 너비는 `obs.bigLayout.colWidth.v1`, 개별 패널 크기와 높이 비율은 같은 접두어의 키에 저장한다. 캠 작은 좌우 비율은 `obs.smallLayout.eventsStatRatio.v1`, 교체/미출전 세로 비율은 `obs.smallLayout.benchHeightRatio.v1`이다. 화면 bbox를 그대로 저장해 다음 로드에서 또 확대하지 않도록 논리 크기 또는 비율을 저장한다.
+
+교체/미출전 높이는 저장값이 없으면 기존 자동 배분을 사용한다. 수동 비율이 있으면 그 비율을 먼저 적용하고 명단 내부 스크롤을 허용한다. 이후 `lpBenchPanelRebalanceInfoSpace()`가 교체 패널 내부 명단/경기 정보 공간만 배분한다. 자동 높이 회수(`reclaimBenchListOverflowHeight`)는 수동 분할을 덮어쓰지 않는다. 경계 더블클릭은 저장값을 제거해 현재 내용에 맞는 자동 높이로 복원한다.
+
+## 로컬 검증
+
+별도 빌드 없이 Live Server 등 정적 서버에서 `overlay_dashboard.html`을 연다. 명시적 HTML 진입점에서는 `overlay_dashboard.html#/tactics`처럼 hash 경로를 유지해야 새로고침이 정적 서버의 404로 이어지지 않는다.
+
+로컬 `tests/display-viewport.cjs`는 DPR·해상도·전체화면·태블릿 스크롤·펜 좌표를, `tests/display-scale-layout.cjs`는 라인업·패널 크기·저장값·세로 핸들·초기화를 검증한다. Playwright/Chromium이 필요하며 실제 Windows 설정 변경이나 실제 OBS CEF 검증을 대신하지는 않는다.
+
+`tools/`, `tests/`, 스크린샷은 현재 Git 제외 대상이다. 이 작업 폴더에는 `tools/testMethod/tablet-live-test.md`(연결 방법), `tools/testMethod/display-verification.md`(검증 기록), `tools/fsm-display-scale-notes.md`(`feature/Indvel` 점수판 통합 메모)가 있다. 새 clone에는 포함되지 않으므로 로컬 파일 존재 여부를 확인한다.
