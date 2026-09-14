@@ -21,7 +21,7 @@
 }
 .dp-manual-modal {
   width: min(760px, 100%);
-  max-height: calc(100vh - 36px);
+  max-height: calc(calc(var(--display-vh, 1vh) * 100) - 36px);
   display: flex;
   flex-direction: column;
   background: #181a20;
@@ -326,7 +326,7 @@
   font-size: 12px;
   width: 100%;
 }
-@media (max-width: 900px) {
+@container display-viewport (max-width: 900px) {
   .dp-manual-row,
   .dp-manual-row.is-injury {
     grid-template-columns: 1fr;

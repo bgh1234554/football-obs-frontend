@@ -4,7 +4,7 @@
 
   /** scorePanel 너비를 --score-col CSS 변수에 동기화 (득점자 박스 너비 연동) */
   function syncScoreCol(){
-    const w = el.scorePanel?.getBoundingClientRect().width || 180;
+    const w = el.scorePanel ? getDisplayLayoutRect(el.scorePanel).width || 180 : 180;
     setCSS('--score-col', w + 'px');
   }
   if (window.ResizeObserver && el.scorePanel){
@@ -94,7 +94,7 @@
     }
     if (activeNoteEditor) closeNoteEditor({ save: true });
 
-    const lockedWidth = Math.max(Math.ceil(noteSide.getBoundingClientRect().width || 0), 220);
+    const lockedWidth = Math.max(Math.ceil(getDisplayLayoutRect(noteSide).width || 0), 220);
     const editorWrap = document.createElement('div');
     const textarea = document.createElement('textarea');
     const confirmBtn = document.createElement('button');

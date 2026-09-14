@@ -4,6 +4,16 @@
     #tactics-topbar {
       background: var(--panel-bg);
     }
+    /* 좁은 태블릿에서도 버튼/라벨 내부 글자를 쪼개지 않고 컨트롤 단위로 줄바꿈한다. */
+    #tactics-topbar > * {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    #tactics-topbar .td-token-size-control,
+    #tactics-topbar .td-alpha-control,
+    #tactics-topbar .td-name-size-control {
+      flex-wrap: nowrap;
+    }
     .td-alpha-control,
     .td-name-size-control {
       display: inline-flex;
@@ -363,26 +373,78 @@
        피치 래퍼의 인라인 style(flex:0 0 auto)을 덮으려면 !important 필요. */
     #page-tactics:fullscreen #tactics-pitch-wrap {
       flex: 1 1 auto !important;
-      justify-content: center !important;
+      justify-content: var(--td-fullscreen-align, center) !important;
     }
     #page-tactics:fullscreen #tactics-timeline-panel {
       position: fixed;
       top: 0;
       right: 0;
       bottom: 0;
-      width: min(420px, 38vw);
-      height: 100vh;
+      width: min(420px, calc(var(--display-vw, 1vw) * 38));
+      height: auto;
       max-height: none;
       z-index: 100;
       transform: translateX(100%);
       transition: transform .22s ease;
-      background: var(--panel-bg);
+      background: #0b1220 !important;
       box-shadow: -4px 0 20px rgba(0,0,0,.45);
       border-left: 1px solid rgba(255,255,255,.12);
       border-top: none;
+      --panel-alpha: 1;
+      --panel-bg: #0b1220;
+    }
+    #page-tactics:fullscreen #tactics-timeline-panel #tactics-timeline-bar,
+    #page-tactics:fullscreen #tactics-timeline-panel #tactics-events-host > [data-events-panel] {
+      background: #0b1220 !important;
+    }
+    #page-tactics:fullscreen #tactics-topbar {
+      flex-wrap: wrap !important;
+      gap: 5px !important;
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+      overflow: visible;
+    }
+    #page-tactics:fullscreen #tactics-topbar .td-alpha-control,
+    #page-tactics:fullscreen #tactics-topbar .td-name-size-control,
+    #page-tactics:fullscreen #tactics-topbar .td-token-size-control {
+      flex: 0 0 auto;
+      gap: 4px;
+    }
+    #page-tactics:fullscreen #tactics-topbar .td-alpha-slider {
+      width: 82px;
+    }
+    #page-tactics:fullscreen #tactics-topbar .td-name-size-slider,
+    #page-tactics:fullscreen #tactics-topbar .td-token-size-slider {
+      width: 72px;
     }
     #page-tactics:fullscreen #tactics-timeline-panel.is-open {
       transform: translateX(0);
+    }
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #tactics-timeline-panel,
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #tactics-draw-toolbar {
+      left: 0;
+      right: auto;
+      border-left: none;
+      border-right: 1px solid rgba(255,255,255,.12);
+      box-shadow: 4px 0 20px rgba(0,0,0,.45);
+      transform: translateX(-100%);
+    }
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #tactics-timeline-panel.is-open,
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #tactics-draw-toolbar.is-open {
+      transform: translateX(0);
+    }
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #td-timeline-close,
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #td-drawtools-close {
+      left: 8px;
+      right: auto;
+    }
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #tactics-timeline-panel .ev-filter-shell {
+      margin-right: 0;
+      margin-left: 36px;
+    }
+    #page-tactics:fullscreen.tactics-fullscreen-panels-left #tactics-timeline-panel .ev-filter-popover {
+      left: 0;
+      right: auto;
     }
     /* 풀스크린 우측 슬라이드 패널에서, 이벤트 패널 title-bar의 필터 버튼이
        우상단 닫기(×) 버튼(top:6 right:8 / 26x26)과 겹치는 문제 해결.
@@ -400,8 +462,8 @@
       right: 0;
       bottom: 0;
       width: 176px;
-      max-width: 60vw;
-      height: 100vh;
+      max-width: calc(var(--display-vw, 1vw) * 60);
+      height: auto;
       z-index: 100;
       transform: translateX(100%);
       transition: transform .22s ease;

@@ -565,6 +565,17 @@
               <span class="sp-slider-value">25%</span>
             </div>
           </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">전술판 전체화면 시 정렬</span>
+              <span class="sp-label-sub">전술판 전체화면에서 피치를 왼쪽, 가운데, 오른쪽 중 어디에 둘지 정합니다.</span>
+            </div>
+            <select class="sp-select" data-settings-select="tacticsFullscreenAlign">
+              <option value="left">왼쪽</option>
+              <option value="center">가운데</option>
+              <option value="right">오른쪽</option>
+            </select>
+          </div>
 
           <div class="sp-section-title">크로마키</div>
           <div class="sp-row">
@@ -918,6 +929,7 @@
 
 <!-- ========== 전술판 ========== -->
 <div id="page-tactics" class="page" style="flex-direction:column;">
+  <div class="tactics-viewport">
   <!-- 컨트롤 바 -->
   <div id="tactics-topbar" style="flex-shrink:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
     <div class="td-alpha-control" title="전술판 투명도">
@@ -1065,7 +1077,8 @@
       <button onclick="tacticsDrawClear()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">전체 지우기</button>
     </div>
   </div>
-</div>
+</div><!-- /tactics-viewport -->
+</div><!-- /page-tactics -->
 
 <!-- ABOUT -->
 <div id="page-about" class="page">

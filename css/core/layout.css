@@ -1,8 +1,44 @@
 ﻿    /* ========== 전체 레이아웃 ========== */
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; overflow: hidden; overflow-x: hidden; }
+    html {
+      background-color: var(--bg-ui, #111827);
+      overflow: clip;
+    }
+    html, body { overscroll-behavior: none; touch-action: pan-x pan-y pinch-zoom; }
+    /* 루트 자체를 크게 만들면 모바일 브라우저가 빈 영역까지 스크롤하게 된다.
+       1920×1080 기준 UI 배율로 body를 맞추고 여분의 방향은 flex/grid가 채운다. */
+    html[data-display-scaled] body {
+      position: fixed;
+      inset: var(--display-top) auto auto var(--display-left);
+      width: var(--display-width);
+      height: var(--display-height);
+      transform: scale(var(--display-transform));
+      transform-origin: top left;
+    }
+    .tactics-viewport {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+    /* 전체화면 요소 자체는 UA의 transform:none !important가 적용된다.
+       내부 래퍼에서 보정해야 글씨/도구까지 일반 화면과 같은 물리 크기를 유지한다. */
+    html[data-display-scaled] #page-tactics:fullscreen > .tactics-viewport {
+      position: absolute;
+      inset: var(--display-top) auto auto var(--display-left);
+      width: var(--display-width);
+      height: var(--display-height);
+      flex: none;
+      transform: scale(var(--display-transform));
+      transform-origin: top left;
+    }
     body {
-      height: 100vh;
+      container-type: inline-size;
+      container-name: display-viewport;
+      /* 루트의 레이아웃 높이를 채운다. */
+      height: 100%;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -587,7 +623,7 @@
     }
     .overlay-backdrop.open { display: flex; }
     .overlay-card {
-      width: min(1200px, calc(100vw - 24px));
+      width: min(1200px, calc(calc(var(--display-vw, 1vw) * 100) - 24px));
       background: var(--panel-bg); border: 1px solid var(--line);
       border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.55);
     }
@@ -615,4 +651,4 @@
       line-height: 0;
     }
 
-    @media (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
+    @container display-viewport (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
