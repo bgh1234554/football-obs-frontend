@@ -122,11 +122,26 @@
     }
     #homeCard .logo-img {
       transform: translate(calc(-50% + var(--home-logo-x)), calc(-50% + var(--home-logo-y)))
-                scale(var(--home-logo-scale, 1));
+                scale(var(--home-logo-scale, 1))
+                translate(var(--logo-trim-x, 0%), var(--logo-trim-y, 0%));
     }
     #awayCard .logo-img {
       transform: translate(calc(-50% + var(--away-logo-x)), calc(-50% + var(--away-logo-y)))
-                scale(var(--away-logo-scale, 1));
+                scale(var(--away-logo-scale, 1))
+                translate(var(--logo-trim-x, 0%), var(--logo-trim-y, 0%));
+    }
+    /* 자동 여백 보정: logo-trim.js가 계산한 경계를 48×48 로고 영역에 맞춘다.
+       width/height는 원본 이미지 전체의 크기이므로 투명 여백이 많으면 100%보다 커질 수 있다.
+       원본 SVG/PNG의 src는 유지하고 크기와 중심만 조절하며, 그림 자체를 잘라내지 않는다.
+       위 transform은 오른쪽부터 적용된다. 자동 중심 이동 → 수동 배율 → 수동 위치 순서여야
+       비대칭 여백이 있는 로고도 배율을 바꿨을 때 중심이 어긋나지 않는다.
+       늘어난 투명 영역이 주변 클릭을 가로채지 않도록 pointer-events를 비활성화한다. */
+    .board .logo-img.logo-trimmed {
+      width: var(--logo-trim-width);
+      height: var(--logo-trim-height);
+      max-width: none;
+      max-height: none;
+      pointer-events: none;
     }
     /* will-change: transform 제거 — GPU 레이어 사전 래스터화로 인한 SVG 화질 저하 방지.
        position은 .logo-img의 absolute를 그대로 두기 위해 override 안 함 — relative로 덮으면
