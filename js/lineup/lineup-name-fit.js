@@ -157,9 +157,10 @@ function applyLineupCaptainBadgePlacement(nameEl, placement) {
  * prepare(clone)을 넘기면 lines 적용 직후, 나머지 측정 준비 전에 클론만 추가로 변형할 수 있다
  * (예: resolveLineupCaptainBadgePlacement이 주장 완장 배지 위치를 바꿔서 비교할 때 사용).
  */
-function measureLineupNameCandidateFont(nameEl, lines, targets, prepare) {
+function measureLineupNameCandidateFont(nameEl, lines, targets, prepare, maxFont) {
   const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
   const clone = nameEl.cloneNode(true);
+  if (maxFont !== undefined) moveLineupCaptainBadgeToPrefix(clone);
   if (lines) applyLineupSurnameLines(clone, lines);
   else resetLineupSurnameBreaks(clone);
   if (typeof prepare === 'function') prepare(clone);
@@ -175,7 +176,7 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare) {
   clone.style.maxWidth = `${wrap.clientWidth}px`;
   wrap.appendChild(clone);
   try {
-    let font = parseFloat(getComputedStyle(nameEl).fontSize);
+    let font = maxFont ?? parseFloat(getComputedStyle(nameEl).fontSize);
     if (!Number.isFinite(font)) return null;
     while (font >= LINEUP_NAME_MIN_FONT_PX) {
       clone.style.fontSize = `${font}px`;
@@ -206,9 +207,55 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare) {
 }
 
 function resetLineupSurnameBreaks(nameEl) {
+  if (nameEl.classList.contains('has-number-line-break')) {
+    moveLineupCaptainBadgeToPrefix(nameEl);
+    nameEl.querySelector('.dp-lineup-name-text').textContent = nameEl.dataset.numberLineOriginal;
+    delete nameEl.dataset.numberLineOriginal;
+    nameEl.querySelector('.dp-lineup-number-break')?.remove();
+    nameEl.classList.remove('has-number-line-break', 'has-four-name-lines');
+  }
   const textEl = nameEl.querySelector('.dp-lineup-name-text[data-surname-breaks]');
   if (textEl) textEl.textContent = stripKoreanSurnameBreaks(textEl.dataset.surnameBreaks);
   nameEl.classList.remove('has-surname-breaks');
+}
+
+/** 기존 피팅을 끝낸 뒤, 등번호를 독립된 첫 줄로 두면 폰트가 더 커질 때만 채택한다. */
+function improveLineupNameWithNumberLine(nameEl, labels, maxFont) {
+  if (!canMeasureTextElement(nameEl) || !nameEl.querySelector('.dp-lineup-name-num')) return;
+  const currentFont = parseFloat(getComputedStyle(nameEl).fontSize);
+  if (!Number.isFinite(maxFont) || currentFont >= maxFont) return;
+  const textEl = nameEl.querySelector('.dp-lineup-name-text');
+  if (!textEl) return;
+  const nameText = textEl.cloneNode(true);
+  nameText.querySelector('.dp-lineup-captain-badge')?.remove();
+  const raw = textEl.dataset.surnameBreaks || nameText.textContent;
+  const lines = computeLineupSurnameBreakLines(raw) || raw.trim().split(/\s+/);
+  // 이름 자체가 2~3줄로 나뉘는 경우에만 번호 한 줄을 추가한다.
+  if (lines.length < 2 || lines.length > 3) return;
+  const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
+  const prepare = clone => applyLineupNumberLine(clone, lines);
+  const font = measureLineupNameCandidateFont(nameEl, null, targets, prepare, maxFont);
+  if (font === null || font <= currentFont) return;
+  applyLineupNumberLine(nameEl, lines);
+  nameEl.style.fontSize = `${font}px`;
+  const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
+  nameEl.style.maxWidth = `${wrap.clientWidth}px`;
+  lockLineupNameWidth(nameEl);
+}
+
+function applyLineupNumberLine(nameEl, lines) {
+  const textEl = nameEl.querySelector('.dp-lineup-name-text');
+  // 이름 끝에 있던 주장 배지가 텍스트 재구성 중 사라지지 않도록 잠시 옮긴다.
+  moveLineupCaptainBadgeToPrefix(nameEl);
+  nameEl.dataset.numberLineOriginal = stripKoreanSurnameBreaks(textEl.dataset.surnameBreaks || textEl.textContent);
+  applyLineupSurnameLines(nameEl, lines);
+  // 첫 줄에는 등번호만 표시하고 주장 배지는 이름 끝에 유지한다.
+  moveLineupCaptainBadgeToLastToken(nameEl);
+  const lineBreak = document.createElement('br');
+  lineBreak.className = 'dp-lineup-number-break';
+  textEl.before(lineBreak);
+  nameEl.classList.add('has-number-line-break');
+  nameEl.classList.toggle('has-four-name-lines', lines.length === 3);
 }
 
 /** Range API로 el 안 텍스트가 실제로 몇 개의 줄 사각형으로 렌더됐는지 읽어온다. */
@@ -1469,6 +1516,7 @@ function fitLineupNamePills(root) {
   const scope = root || document;
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'))
     .filter(nameEl => !!(nameEl && nameEl.firstChild));
+  const configuredFonts = new Map();
 
   // 0) 모든 라벨을 먼저 CSS 기본 상태로 되돌린다 — 이 reset과 아래 1)의 처리를 같은 루프
   // 안에서 하면, 처리 순서상 앞선 라벨이 아직 reset 안 된(직전 렌더의 낡은 크기로 남아있는)
@@ -1485,6 +1533,7 @@ function fitLineupNamePills(root) {
     nameEl.style.whiteSpace = '';
     nameEl.style.display = '';
     nameEl.style.flexShrink = '';
+    configuredFonts.set(nameEl, parseFloat(getComputedStyle(nameEl).fontSize));
   });
 
   // 0-a) 주장 완장 배지가 있는 라벨은 reset된 측정값을 기준으로 "등번호 왼쪽" vs
@@ -1574,6 +1623,8 @@ function fitLineupNamePills(root) {
   fitLineupNamesAgainstNodeCircles(labels);
   labels.forEach(nameEl => { fitLineupNameWithinPitchBounds(nameEl); });
   fitBigLineupTeamChips(scope);
+  // 기존 결과가 우선이다. 모든 충돌 보정 이후 더 큰 폰트가 안전하게 들어갈 때만 개선한다.
+  labels.forEach(nameEl => improveLineupNameWithNumberLine(nameEl, labels, configuredFonts.get(nameEl)));
 }
 
 // 라인업 리사이즈/설정 변경 후 외부에서 다시 fit을 호출할 수 있도록 노출
