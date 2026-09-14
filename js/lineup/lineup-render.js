@@ -121,7 +121,7 @@ function lpBuildRosterRowHtml(player, kind) {
   return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
-      <span class="${nameClass}"${title}>${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}${captainHtml}</span>
+      <span class="${nameClass}"${title}>${captainHtml}${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}</span>
       ${cardsHtml}
       ${subHtml}
       ${goalsAssistsHtml}

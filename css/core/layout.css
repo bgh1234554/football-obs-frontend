@@ -5,7 +5,7 @@
       background-color: var(--bg-ui, #111827);
       overflow: clip;
     }
-    html, body { overscroll-behavior: none; touch-action: pan-x pan-y; }
+    html, body { overscroll-behavior: none; touch-action: pan-x pan-y pinch-zoom; }
     /* 루트 자체를 크게 만들면 모바일 브라우저가 빈 영역까지 스크롤하게 된다.
        1920×1080 기준 UI 배율로 body를 맞추고 여분의 방향은 flex/grid가 채운다. */
     html[data-display-scaled] body {
