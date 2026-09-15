@@ -932,6 +932,11 @@
   <div class="tactics-viewport">
   <!-- 컨트롤 바 -->
   <div id="tactics-topbar" style="flex-shrink:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
+    <div class="td-topbar-size-control" title="전체화면 상단바 버튼과 글자 크기">
+      <label for="tactics-topbar-scale-slider" class="td-alpha-label">상단바 크기</label>
+      <input id="tactics-topbar-scale-slider" class="td-alpha-slider" type="range" min="100" max="200" step="5" data-settings-slider="tacticsTopbarScale" aria-label="전체화면 상단바 크기">
+      <span class="td-alpha-value" data-settings-slider-value="tacticsTopbarScale">100%</span>
+    </div>
     <div class="td-alpha-control" title="전술판 투명도">
       <label for="tactics-alpha-slider" class="td-alpha-label">전술판 투명도</label>
       <input id="tactics-alpha-slider" class="td-alpha-slider" type="range" min="0" max="100" step="5" data-settings-slider="tacticsAlpha" aria-label="전술판 투명도">
@@ -1040,10 +1045,16 @@
       <div id="tactics-events-host"><div data-events-panel data-events-panel-source="tactics"></div></div>
     </div>
     <!-- 우측 드로잉 도구 패널 -->
+    <div id="td-drawtools-backdrop" hidden aria-hidden="true"></div>
     <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
       <!-- 풀스크린 모드 전용 닫기 버튼 — 패널 우상단 absolute 위치. 일반 모드에선 CSS로 숨김. -->
       <button id="td-drawtools-close" type="button" title="그리기 도구 닫기" aria-label="닫기">×</button>
       <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
+      <div class="td-drawtools-size-control">
+        <label for="tactics-drawtools-scale-slider" class="td-alpha-label">도구 크기</label>
+        <span class="td-alpha-value" data-settings-slider-value="tacticsDrawtoolsScale">100%</span>
+        <input id="tactics-drawtools-scale-slider" class="td-alpha-slider" type="range" min="100" max="200" step="5" data-settings-slider="tacticsDrawtoolsScale" aria-label="전체화면 그리기 도구 크기" title="손을 놓으면 그리기 도구 크기가 적용됩니다">
+      </div>
       <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
       <button id="td-tool-pencil" onclick="tacticsDrawSetTool('pencil')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✎ 펜</button>
       <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
@@ -1068,7 +1079,7 @@
         <button data-clr="#22c55e" onclick="tacticsDrawSetColor('#22c55e')" style="width:22px;height:22px;border-radius:50%;background:#22c55e;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="초록"></button>
         <button data-clr="#f97316" onclick="tacticsDrawSetColor('#f97316')" style="width:22px;height:22px;border-radius:50%;background:#f97316;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="주황"></button>
         <button data-clr="#a855f7" onclick="tacticsDrawSetColor('#a855f7')" style="width:22px;height:22px;border-radius:50%;background:#a855f7;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="보라"></button>
-        <button data-clr="#1e293b" onclick="tacticsDrawSetColor('#1e293b')" style="width:22px;height:22px;border-radius:50%;background:#1e293b;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="검정"></button>
+        <button data-clr="#000000" onclick="tacticsDrawSetColor('#000000')" style="width:22px;height:22px;border-radius:50%;background:#000000;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="검정"></button>
         <button data-clr="#ec4899" onclick="tacticsDrawSetColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="분홍"></button>
         <button data-clr="#92400e" onclick="tacticsDrawSetColor('#92400e')" style="width:22px;height:22px;border-radius:50%;background:#92400e;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="갈색"></button>
       </div>
