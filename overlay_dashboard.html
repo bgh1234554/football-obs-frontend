@@ -480,7 +480,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">전환 간격</span>
-              <span class="sp-label-sub">페이지가 바뀌기 전 대기 시간입니다.</span>
+              <span class="sp-label-sub">페이지가 바뀌기 전 대기 시간입니다. 스탯 패널의 경우 스탯이 적게 표시되면 비례해서 줄어듭니다.</span>
             </div>
             <div class="sp-num-cluster">
               <button type="button" class="sp-num-step-btn" data-num-step="-1" aria-label="전환 간격 감소">−</button>
@@ -1151,6 +1151,8 @@
 <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="bgh1234554" data-description="Support me on Buy me a coffee!" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/state.js"></script>
+<!-- 점수판 render가 LogoTrim을 사용하므로 로고 경계 분석·캐시 모듈을 먼저 로드한다. -->
+<script src="js/core/logo-trim.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/core/timer.js"></script>
 <script src="js/core/fixture.js"></script>

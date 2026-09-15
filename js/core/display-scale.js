@@ -20,33 +20,41 @@
   var baseWidth = 1920;
   // 화면 좌표를 CSS 레이아웃에 다시 넣을 때만 변환한다.
   // 포인터와 DOMRect를 직접 비교하는 히트 테스트는 기존 화면 좌표를 그대로 사용한다.
+  /** 화면상의 길이 또는 좌표 차이를 현재 배율로 나눠 레이아웃 단위로 변환한다. */
   window.toDisplayLayoutPixels = function(value){ return value / displayScale; };
+  /** 화면상의 점에서 원점 오프셋을 제거하고 배율을 나눠 레이아웃 좌표를 반환한다. */
   window.toDisplayLayoutPoint = function(x, y){
     return { x: (x - offsetX) / displayScale, y: (y - offsetY) / displayScale };
   };
+  /** 화면 DOMRect의 위치와 크기를 레이아웃 기준 DOMRect로 변환한다. */
   window.toDisplayLayoutRect = function(rect){
     return new DOMRect((rect.x - offsetX) / displayScale, (rect.y - offsetY) / displayScale,
       rect.width / displayScale, rect.height / displayScale);
   };
+  /** 요소의 화면 경계를 측정한 뒤 배율 보정된 레이아웃 좌표로 반환한다. */
   window.getDisplayLayoutRect = function(element){
     return window.toDisplayLayoutRect(element.getBoundingClientRect());
   };
   var root = document.documentElement;
   root.setAttribute('data-display-scaled', '');
 
+  /** 뷰포트와 DPR로 FHD 기준 배율을 계산하고 레이아웃 크기·변환·뷰포트 단위 CSS 변수를 갱신한다. */
   function applyDisplayScale(){
+    // 1) 현재 뷰포트와 DPR을 읽는다. 아직 화면 크기를 알 수 없으면 이전 배율을 유지한다.
     var dpr = window.devicePixelRatio;
     if (!Number.isFinite(dpr) || dpr <= 0) dpr = 1;
     var viewport = window.visualViewport;
     var width = viewport ? viewport.width * viewport.scale : window.innerWidth;
     var height = viewport ? viewport.height * viewport.scale : window.innerHeight;
     if (!(width > 0 && height > 0)) return;
+    // 2) 가로 1920을 기준으로 배율을 정하고, 세로는 남은 화면을 채우는 논리 높이로 환산한다.
     // 브라우저 주소창 때문에 높이가 줄어도 기존 FHD 글씨/점수판까지 작아지면 안 된다.
     displayScale = width / baseWidth;
     var canvasWidth = width / displayScale;
     var canvasHeight = height / displayScale;
     offsetX = 0;
     offsetY = 0;
+    // 3) DPR이 1보다 작을 때 선 두께 보정용 zoom을 분리하고 CSS에 최종 크기·배율을 전달한다.
     // 100% 미만에서는 paint 후 확대 시 최소 1px 테두리도 함께 굵어진다.
     // 이 구간은 layout zoom으로 먼저 확대해 선의 최소 두께 계산 전에 상쇄한다.
     var layoutZoom = dpr < 1 ? 1 / dpr : 1;
@@ -67,8 +75,10 @@
   // transform은 뷰포트 크기를 바꾸지 않는다. 창 크기와 DPR 변경을 각각 반영한다.
   window.addEventListener('resize', applyDisplayScale);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', applyDisplayScale);
+  /** 현재 DPR에 대한 미디어 쿼리를 구독하고, 배율이 변하면 새 DPR 기준으로 구독을 교체한다. */
   function watchDpr(){
     var mql = window.matchMedia('(resolution: ' + window.devicePixelRatio + 'dppx)');
+    /** 화면 배율을 갱신한 뒤 이전 DPR 리스너를 해제하고 다음 변경을 감시한다. */
     function onChange(){
       applyDisplayScale();
       mql.removeEventListener('change', onChange);

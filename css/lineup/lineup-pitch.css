@@ -549,6 +549,13 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
   -webkit-line-clamp: 3;
   line-clamp: 3;
 }
+.dp-lineup-name.has-number-line-break.has-four-name-lines {
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+.has-number-line-break .dp-lineup-name-num {
+  margin-right: 0;
+}
 .dp-lineup-surname-part {
   white-space: nowrap;
 }

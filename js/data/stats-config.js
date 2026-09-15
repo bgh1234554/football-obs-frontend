@@ -47,7 +47,7 @@ window.STATS_CONFIG = {
     'goalkeeperSaves', 'goalsPrevented',
   ],
 
-  itemsPerPage: 6,
+  itemsPerPage: 9,
   autoSwipeIntervalMs: 10000,
-  autoSwipeBaselineItemsPerPage: 8,
+  autoSwipeBaselineItemsPerPage: 9,
 };

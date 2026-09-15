@@ -71,14 +71,16 @@ function lpBuildSubMarkerHtml(events, kind) {
   return '';
 }
 
-/** 골/어시 이모티콘 — 횟수만큼 반복 (벤치/리스트 행용) */
+/** 골/어시 이모티콘 — 정규 득점·도움은 반복, 자책골은 피치와 같은 빨간 횟수 배지. */
 function lpBuildGoalsAssistsHtml(events) {
   if (!events) return '';
   const goalCount = events.goals?.length || 0;
+  const ownGoalCount = events.ownGoals?.length || 0;
   const assistCount = events.assists?.length || 0;
-  if (!goalCount && !assistCount) return '';
+  if (!goalCount && !ownGoalCount && !assistCount) return '';
   let html = '';
   for (let i = 0; i < goalCount; i++) html += '<span class="dp-event-icon dp-event-goal" title="득점">⚽</span>';
+  if (ownGoalCount) html += `<span class="dp-event-icon dp-event-goal dp-event-own-goal" title="자책골 ${ownGoalCount}회">⚽<span class="dp-event-own-goal-count">${ownGoalCount}</span></span>`;
   for (let i = 0; i < assistCount; i++) html += '<span class="dp-event-icon dp-event-assist" title="도움">👟</span>';
   return html;
 }

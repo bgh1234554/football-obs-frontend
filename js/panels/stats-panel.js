@@ -11,7 +11,7 @@
 //   더 큰 값 쪽은 팀 컬러 원으로 강조 (homeBg/awayBg). 0:0이거나 동률은 강조 X.
 //
 // 페이지네이션:
-//   - 항목 6개씩(기본). 페이지 < 2면 컨트롤 숨김.
+//   - 항목 9개씩(기본 높이). 페이지 < 2면 컨트롤 숨김.
 //   - 좌우 화살표 버튼 + 점(dot) 인디케이터.
 //   - 자동 스와이프 토글 ON일 때 STATS_CONFIG.autoSwipeIntervalMs 간격으로 자동 전환.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -268,9 +268,9 @@ function stIsAutoSwipeEnabled() {
  * - 없으면 STATS_CONFIG.autoSwipeIntervalMs 기본값.
  * - state.paused가 true이면 ON이어도 타이머 시작 안 함 (사용자가 일시정지 누른 상태).
  * - currentPageItemCount(현재 페이지에 실제로 표시되는 항목 수, 페이지당 최대 수용치가 아님)가
- *   STATS_CONFIG.autoSwipeBaselineItemsPerPage(기본 8)보다 적으면, 설정된 간격을 그 비율만큼
+ *   STATS_CONFIG.autoSwipeBaselineItemsPerPage(기본 9)보다 적으면, 설정된 간격을 그 비율만큼
  *   줄인다 — 항목 하나당 노출 시간을 페이지 크기와 무관하게 일정하게 유지하기 위함. 예를 들어
- *   8,8,1로 나뉜 마지막 페이지(1개)는 8개짜리 페이지와 같은 시간을 기다리지 않고 비례 축소된다.
+ *   9,8로 나뉜 마지막 페이지(8개)는 9개짜리 페이지 대기 시간의 8/9만큼 표시한다.
  *   그 이상 들어갈 때는 설정값을 그대로 사용(줄어들 때만 비례 적용, 요청 범위 밖의
  *   "늘어날 때" 동작은 건드리지 않음). 최종 값은 STATS_SWIPE_SEC_MIN(기본 2.5초) 밑으로는
  *   내려가지 않도록 하한을 둔다.
@@ -286,7 +286,7 @@ function stSetupAutoSwipe(panel, state, totalPages, currentPageItemCount) {
   const minSec = typeof STATS_SWIPE_SEC_MIN === 'number' ? STATS_SWIPE_SEC_MIN : 2.5;
   let intervalMs = Number.isFinite(userSec) && userSec >= minSec ? Math.round(userSec * 1000) : cfgInterval;
 
-  const baselineItems = window.STATS_CONFIG?.autoSwipeBaselineItemsPerPage || 8;
+  const baselineItems = window.STATS_CONFIG?.autoSwipeBaselineItemsPerPage || 9;
   if (Number.isFinite(currentPageItemCount) && currentPageItemCount > 0 && currentPageItemCount < baselineItems) {
     intervalMs = Math.max(Math.round(minSec * 1000), Math.round(intervalMs * currentPageItemCount / baselineItems));
   }
@@ -330,11 +330,50 @@ function stCreateControlsProbe() {
   return controls;
 }
 
+/** 데이터 유무와 관계없이 제목·9줄·페이지 버튼의 실제 높이로 기본 패널 크기를 구한다. */
+function stDefaultPanelHeight(panel) {
+  const probe = document.createElement('div');
+  probe.className = panel.className;
+  Object.assign(probe.style, {
+    position: 'absolute', visibility: 'hidden', pointerEvents: 'none',
+    width: `${panel.clientWidth || 300}px`, height: 'auto', flex: 'none',
+  });
+  const body = document.createElement('div');
+  body.setAttribute('data-stat-panel', '');
+  body.style.height = 'auto';
+  const title = document.createElement('div');
+  title.className = 'st-title-bar';
+  title.textContent = '경기 스탯';
+  const wrap = document.createElement('div');
+  wrap.className = 'st-wrap';
+  wrap.style.flex = 'none';
+  const page = document.createElement('div');
+  page.className = 'st-page';
+  page.style.flex = 'none';
+  for (let i = 0; i < (window.STATS_CONFIG?.itemsPerPage || 9); i++) {
+    page.appendChild(stCreateRow({ label: '스탯', homeVal: 1, awayVal: 0 }, null));
+  }
+  wrap.append(page, stCreateControlsProbe());
+  body.append(title, wrap);
+  probe.appendChild(body);
+  panel.parentElement.appendChild(probe);
+  const height = Math.ceil(getDisplayLayoutRect(probe).height - 0.01) + 1;
+  probe.remove();
+  return height;
+}
+
+/**
+ * 실제 스탯 행을 숨겨서 렌더링해 패널에 들어가는 항목 수를 구한다.
+ * reserveControls가 true이면 페이지 버튼 공간을 확보하며, 측정 불가 시 설정값(기본 9개)을 반환한다.
+ * 측정 결과는 공간이 부족해도 최소 1개를 보장한다.
+ */
 function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
+  // 1) 패널 높이나 표시할 데이터가 없으면 실측 대신 설정된 기본 개수를 사용한다.
   const cfg = window.STATS_CONFIG;
-  const fallback = cfg?.itemsPerPage || 6;
+  const fallback = cfg?.itemsPerPage || 9;
   if (!panel?.clientHeight || !Array.isArray(rows) || !rows.length) return fallback;
 
+  // 2) 실제 패널 안에 숨겨진 측정용 DOM을 만든다. 필요하면 페이지 버튼 공간도 미리 확보한다.
   // 고정 rowH 추정으로는 브라우저별 line-height 반올림을 못 따라가 마지막 행이 반쯤 보일 수 있다.
   // 실제 렌더 트리를 숨겨서 한 행씩 넣어 보고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
   const wrap = document.createElement('div');
@@ -351,6 +390,7 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
 
   panel.appendChild(wrap);
 
+  // 3) 한 행씩 추가하다가 높이를 초과하면 중단한다. 넘친 마지막 행은 수용 개수에 포함하지 않는다.
   let fits = 0;
   for (const row of rows) {
     page.appendChild(stCreateRow(row, fixtureData));
@@ -361,6 +401,7 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
     fits += 1;
   }
 
+  // 4) 측정용 DOM을 제거하고 최소 1개를 보장한 결과를 반환한다.
   wrap.remove();
   // 이 지점에 도달했다면 panel.clientHeight와 rows.length는 이미 보장됨(위 가드) — 측정은 항상 시도된 상태.
   // fits===0(첫 행부터 넘침)이어도 fallback으로 되돌리지 않고 최소 1행은 보여준다.

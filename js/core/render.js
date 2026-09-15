@@ -222,11 +222,12 @@
     if(el.aggHomeBase) el.aggHomeBase.value = state.aggHomeBase;
     if(el.aggAwayBase) el.aggAwayBase.value = state.aggAwayBase;
 
-    // 3. 팀 로고 표시/숨김
-    if(state.homeLogo){ el.homeLogo.src=state.homeLogo; el.homeLogo.classList.remove('hidden'); }
-    else { el.homeLogo.removeAttribute('src'); el.homeLogo.classList.add('hidden'); }
-    if(state.awayLogo){ el.awayLogo.src=state.awayLogo; el.awayLogo.classList.remove('hidden'); }
-    else { el.awayLogo.removeAttribute('src'); el.awayLogo.classList.add('hidden'); }
+    // 3. 팀 로고 표시/숨김 및 바깥 투명 여백 보정.
+    // LogoTrim이 URL별 경계를 30일 동안 캐시하고, 미분석·만료 로고만 비동기로 분석한다.
+    // 원본 src는 유지하며 별·반투명 테두리까지 포함한 경계에 맞춰 크기와 중심을 조절한다.
+    // URL 교체 시 이전 보정을 초기화하고, 분석 실패 시 원본을 표시하는 처리도 모듈에 위임한다.
+    LogoTrim.render(el.homeLogo, state.homeLogo);
+    LogoTrim.render(el.awayLogo, state.awayLogo);
 
     // 4. 색상 CSS 변수 일괄 적용. greenscreen ON일 때는 chromaSafe()로 초록 계열만 시안으로 치환.
     //    --bg-ui는 settings-popup.js의 applyBackgroundSettings가 별도 관리하므로 여기선 건너뜀.

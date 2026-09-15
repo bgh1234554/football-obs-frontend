@@ -7,6 +7,11 @@
   const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
+  // setFixtureId가 저장값을 바꾸기 전에 복원된 타이머의 경기 ID를 보관한다.
+  const initialFixtureId = (() => {
+    try { return String(localStorage.getItem('last_fixture_id') ?? '').trim(); }
+    catch { return ''; }
+  })();
   let toastTimer = null;
 
   /** 화면 하단에 토스트 메시지를 1.8초 동안 표시 */
@@ -719,7 +724,7 @@
    * 1) 입력 정규화 — 빈 ID면 reset 후 종료. 수동 모드면 적용 건너뜀.
    * 2) silent 옵션 분기 — 폴링용 갱신은 로딩 오버레이/배지 안 띄움.
    * 3) fetchFixture로 데이터 조회. _fetchSeq 비교로 stale 응답 폐기(같은 fixtureId로 겹쳐 호출돼도 구분됨).
-   * 4) fixture 전환 감지 — 이전 ID와 다르면 팀컬러 override / PK / flash 스냅샷 리셋.
+   * 4) fixture 전환 감지 — 이전 ID와 다르면 타이머 / 팀컬러 override / PK / flash 스냅샷 리셋.
    *    같은 ID면 사용자가 켠 타이머를 보존하는 preserveRunningOnRefresh 플래그 set.
    * 5) applyFixtureToState로 state 매핑 + maybeTriggerFixtureFlash로 변경 부위 깜빡임.
    * 6) leagueId 매칭되는 템플릿이 있으면 자동 적용(silent=false일 때만 — 폴링 중 컬러 보호).
@@ -793,6 +798,7 @@
       _lastFixtureData = data;
       // 진행 중인 같은 경기의 수동 타이머는 보존하되, 새 응답의 HT/FT는 항상 시각을 보정한다.
       applyFixtureToState(data, {
+        resetClock: (previousFixtureId || initialFixtureId) !== normalizedFixtureId,
         resetRunning: !preserveRunningOnRefresh,
         syncClockFromFixture: true,
       });
@@ -884,7 +890,7 @@
    * 8) 페널티 슛아웃 — events에서 PK 시퀀스 재구성. 단, 새 시퀀스가 더 짧으면 기존 값 유지.
    * 9) 득점자/레드카드 — applyScorersAndCards에서 events 가공.
    * 10) 타이머 — 새 응답의 HT는 45:00, FT 계열/90분 BT는 90:00으로 보정하고 정지.
-   *     진행 중 폴링과 설정 변경에 따른 재적용은 수동 시계를 보존한다.
+   *     다른 경기를 조회하면 00:00으로 초기화하고, 같은 경기 갱신/설정 재적용은 수동 시계를 보존한다.
    */
   function applyFixtureToState(data, options){
     const m = data?.matchInfo || {};
@@ -972,14 +978,16 @@
     const stoppedSeconds = status === 'HT' ? 45 * 60
       : (FT_LIKE_STATUSES.has(status) || (status === 'BT' && Number(m.elapsed) === 90)) ? 90 * 60
       : null;
-    if (stoppedSeconds !== null
+    // 새 경기에는 이전 경기의 시간을 넘기지 않는다. HT/FT의 고정 시각은 우선 적용한다.
+    const nextClockSeconds = stoppedSeconds ?? (options?.resetClock === true ? 0 : null);
+    if (nextClockSeconds !== null
       && (options?.syncClockFromFixture === true || options?.resetRunning !== false)) {
-      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(stoppedSeconds);
+      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(nextClockSeconds);
       else {
-        state.seconds = stoppedSeconds;
+        state.seconds = nextClockSeconds;
         state.running = false;
         state.lastRunningTickMs = 0;
-        if (el.clock) el.clock.textContent = fmtClock(stoppedSeconds);
+        if (el.clock) el.clock.textContent = fmtClock(nextClockSeconds);
       }
     } else if (options?.resetRunning !== false) {
       const LIVE_STATUSES = new Set(['1H','2H','ET1','ET2','PSO']);
