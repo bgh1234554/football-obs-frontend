@@ -21,7 +21,7 @@
 //       더블클릭 → 18% 기본값 복원.  obs.bigLayout.colWidth.v1 에 영속화.
 //   (b) 패널별 개별 핸들: lp-chat-big 하단(.lp-big-chat-resize) + lp-stat 상단(.lp-big-stat-resize).
 //       각 패널에서 독립적으로 높이 조정. 상대 패널은 남은 공간을 자동 흡수(겹침 불가).
-//       더블클릭 → 50/50 기본값 복원.  obs.bigLayout.colSplit.v1 에 영속화.
+//       더블클릭 → 스탯 9줄 기본 높이 복원.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const LINEUP_RESIZE_MIN = 50;
@@ -178,6 +178,126 @@ function ensureSmallBenchHeightHandle() {
   // 경기 데이터를 아직 불러오지 않은 상태에서도 창 크기/탭 전환에 분할을 재적용한다.
   initBenchInjuryPanelObserver();
   updateSmallBenchHeightHandle();
+}
+
+// 캠 작음 이벤트/스탯 경계: 기본 스탯 9줄, 수동 조절 후에는 화면 높이 비율을 유지한다.
+const SMALL_STATS_HEIGHT_KEY = 'obs.smallLayout.statsHeightRatio.v1';
+let smallStatsHeightRatio = _bigLoadFraction(SMALL_STATS_HEIGHT_KEY);
+let smallStatsHeightDrag = null;
+
+function getSmallStatsHeightMetrics() {
+  const column = document.querySelector('.layout-small .lp-col-events-stat');
+  const eventsPanel = column?.querySelector('.lp-events-s');
+  const statPanel = column?.querySelector('.lp-stat-s');
+  if (!column?.clientHeight || !eventsPanel || !statPanel) return null;
+  const gap = parseFloat(getComputedStyle(column).rowGap) || 0;
+  const available = column.clientHeight - gap;
+  return { column, eventsPanel, statPanel, gap, available, minimum: Math.min(100, available / 2) };
+}
+
+function applySmallStatsHeight() {
+  const metrics = getSmallStatsHeightMetrics();
+  if (!metrics) return;
+  const { column, eventsPanel, statPanel, available, minimum, gap } = metrics;
+  const requested = smallStatsHeightRatio == null ? stDefaultPanelHeight(statPanel) : available * smallStatsHeightRatio;
+  const statHeight = Math.max(minimum, Math.min(available - minimum, requested));
+  eventsPanel.style.flex = `0 0 ${available - statHeight}px`;
+  statPanel.style.flex = `0 0 ${statHeight}px`;
+  const handle = column.querySelector('.lp-small-stats-height-resize');
+  if (handle) {
+    handle.style.top = `${available - statHeight + gap / 2}px`;
+    handle.setAttribute('aria-valuenow', String(Math.round(statHeight / available * 100)));
+  }
+  window.stRerenderActivePanels?.();
+}
+
+function resetSmallStatsHeight() {
+  smallStatsHeightRatio = null;
+  try { localStorage.removeItem(SMALL_STATS_HEIGHT_KEY); } catch {}
+  applySmallStatsHeight();
+}
+
+function ensureSmallStatsHeightHandle() {
+  const column = document.querySelector('.layout-small .lp-col-events-stat');
+  if (!column || column.querySelector('.lp-small-stats-height-resize')) return;
+  const handle = document.createElement('div');
+  handle.className = 'lp-small-stats-height-resize';
+  handle.title = '위아래로 드래그: 높이 조절 · 더블클릭: 스탯 9개 기본 높이';
+  handle.tabIndex = 0;
+  handle.setAttribute('role', 'separator');
+  handle.setAttribute('aria-label', '이벤트와 경기 스탯 높이 조절');
+  handle.setAttribute('aria-orientation', 'horizontal');
+  const save = () => {
+    try { localStorage.setItem(SMALL_STATS_HEIGHT_KEY, String(smallStatsHeightRatio)); } catch {}
+  };
+  const setHeight = height => {
+    const metrics = getSmallStatsHeightMetrics();
+    if (!metrics) return;
+    smallStatsHeightRatio = Math.max(metrics.minimum, Math.min(metrics.available - metrics.minimum, height)) / metrics.available;
+    applySmallStatsHeight();
+  };
+  handle.addEventListener('dblclick', event => {
+    event.preventDefault();
+    resetSmallStatsHeight();
+  });
+  handle.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || smallStatsHeightDrag !== null) return;
+    const metrics = getSmallStatsHeightMetrics();
+    if (!metrics) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const originalRatio = smallStatsHeightRatio;
+    const startY = toDisplayLayoutPixels(event.clientY);
+    const startHeight = getDisplayLayoutRect(metrics.statPanel).height;
+    let moved = false;
+    smallStatsHeightDrag = event.pointerId;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add('lp-small-stats-height-resizing');
+    const move = next => {
+      if (next.pointerId !== smallStatsHeightDrag) return;
+      const delta = toDisplayLayoutPixels(next.clientY) - startY;
+      if (!moved && Math.abs(delta) < 1) return;
+      moved = true;
+      setHeight(startHeight - delta);
+    };
+    const finish = next => {
+      if (next.pointerId !== smallStatsHeightDrag) return;
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', finish);
+      handle.removeEventListener('pointercancel', finish);
+      handle.removeEventListener('lostpointercapture', finish);
+      const pointerId = smallStatsHeightDrag;
+      smallStatsHeightDrag = null;
+      if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+      document.body.classList.remove('lp-small-stats-height-resizing');
+      if (next.type !== 'pointerup') smallStatsHeightRatio = originalRatio;
+      else if (moved) save();
+      applySmallStatsHeight();
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+    handle.addEventListener('lostpointercapture', finish);
+  });
+  handle.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); resetSmallStatsHeight(); return; }
+    if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    const metrics = getSmallStatsHeightMetrics();
+    if (!metrics) return;
+    event.preventDefault();
+    setHeight(getDisplayLayoutRect(metrics.statPanel).height + (event.key === 'ArrowUp' ? 10 : -10));
+    save();
+  });
+  column.appendChild(handle);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(applySmallStatsHeight).observe(column);
+  else window.addEventListener('resize', applySmallStatsHeight);
+  document.addEventListener('page:activated', () => requestAnimationFrame(applySmallStatsHeight));
+  document.fonts?.ready.then(() => {
+    applySmallStatsHeight();
+    applyStoredBigPanelHeights();
+    window.stRerenderActivePanels?.();
+  });
+  applySmallStatsHeight();
 }
 
 // 윈도우 리사이즈/패널 폭 변화 시 저장된 비율을 다시 적용하기 위한 옵저버.
@@ -685,7 +805,7 @@ function _applyLinkedMode(col) {
   const colH = getDisplayLayoutRect(col).height;
   const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
   if (colH > 0) {
-    // 비율(fraction) 기준 우선(드래그 후 저장) → 없으면 절대 px → 없으면 50/50
+    // 비율(fraction) 기준 우선(드래그 후 저장) → 없으면 절대 px → 없으면 스탯 9줄
     // fraction은 드래그 onUp에서만 저장 — 자동 초기화 없음 (전체화면 시 잘못된 px 기반 fraction 방지)
     let chatH;
     const fraction = _bigLoadFraction(BIG_CHAT_FRACTION_KEY);
@@ -693,7 +813,7 @@ function _applyLinkedMode(col) {
       chatH = Math.round(usable * fraction);
     } else {
       chatH = _bigLoadClamped(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H, usable - BIG_PANEL_MIN_H);
-      if (chatH == null) chatH = Math.floor(usable / 2);
+      if (chatH == null) chatH = usable - stDefaultPanelHeight(statPanel);
     }
     chatH = Math.max(BIG_PANEL_MIN_H, Math.min(usable - BIG_PANEL_MIN_H, chatH));
     const statH = usable - chatH;
@@ -721,7 +841,8 @@ function _applyIndependentMode(col) {
   const colH   = getDisplayLayoutRect(col).height;
   const colRect = getDisplayLayoutRect(col);
   const layout = col.closest('.layout-big');
-  const defaultH = colH > 0 ? Math.max(BIG_PANEL_MIN_H, Math.floor(colH / 2)) : 200;
+  const defaultStatH = Math.max(BIG_PANEL_MIN_H, Math.min(colH - BIG_PANEL_MIN_H, stDefaultPanelHeight(statPanel)));
+  const defaultChatH = Math.max(BIG_PANEL_MIN_H, colH - BIG_COL_GAP - defaultStatH);
   const defaultW = (() => {
     const stored = _bigLoadClamped(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W, _bigStoredColMaxWidth(layout));
     if (stored) return stored;
@@ -734,13 +855,13 @@ function _applyIndependentMode(col) {
     BIG_PANEL_MIN_H,
     colH > 0 ? colH - BIG_PANEL_MIN_H : Infinity,
   );
-  let chatH = storedChatH ?? defaultH;
+  let chatH = storedChatH ?? defaultChatH;
   const storedStatH = _bigLoadClamped(
     BIG_STAT_H_KEY,
     BIG_PANEL_MIN_H,
     colH > 0 ? colH - chatH : Infinity,
   );
-  let statH = storedStatH ?? defaultH;
+  let statH = storedStatH ?? defaultStatH;
   let chatW = _bigLoadClamped(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW) ?? defaultW;
   let statW = _bigLoadClamped(BIG_STAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW) ?? defaultW;
   if (colH > 0 && chatH + statH > colH) {
@@ -769,7 +890,7 @@ function applyStoredBigPanelHeights() {
     const statPanel = col.querySelector('.lp-stat');
     if (!chatPanel || !statPanel) return;
 
-    // OFF → ON 전환: 너비는 둘 중 좁은 것 기준, 높이는 반반
+    // OFF → ON 전환: 저장된 너비가 있으면 둘 중 좁은 것 기준으로 맞춘다.
     if (linked && !col.classList.contains('is-big-linked')) {
       const layout = col.closest('.layout-big');
       const maxPanelW = _bigPanelMaxWidth(layout);
@@ -780,8 +901,6 @@ function applyStoredBigPanelHeights() {
         if (layout) applyBigColWidth(layout, newColW);
         _bigSave(BIG_COL_WIDTH_KEY, newColW);
       }
-      const colH = getDisplayLayoutRect(col).height;
-      if (colH > 0) _bigSave(BIG_CHAT_H_KEY, Math.floor((colH - BIG_COL_GAP) / 2));
     }
 
     if (linked) _applyLinkedMode(col);
@@ -1428,6 +1547,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 캠 작음 리사이즈
   ensureSmallLayoutResizeHandles();
   ensureSmallBenchHeightHandle();
+  ensureSmallStatsHeightHandle();
   applyStoredSmallLayoutResize();
   observeSmallLayoutResize();
 
@@ -1437,8 +1557,7 @@ document.addEventListener('DOMContentLoaded', () => {
   applyStoredBigColWidth();
   requestAnimationFrame(() => {
     // fraction 초기화: applyStoredBigPanelHeights 보다 먼저 실행.
-    // applyStoredBigPanelHeights 내부의 OFF→ON 전환 분기가 BIG_CHAT_H_KEY를 50/50으로
-    // 덮어쓰기 전에 기존 chatH px → fraction으로 변환해야 사용자 비율이 보존된다.
+    // 기존 chatH px → fraction으로 변환해 사용자 비율을 보존한다.
     // 이 시점은 항상 창 모드이므로 colH 기준으로 안전하게 비율 계산 가능.
     if (_bigLoadFraction(BIG_CHAT_FRACTION_KEY) == null) {
       document.querySelectorAll('.layout-big .lp-col').forEach(col => {
@@ -1551,13 +1670,14 @@ window.resetAllLayoutSizes = function resetAllLayoutSizes() {
     LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
   ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
 
-  // 2) 캠 큰 우측 칼럼 CSS 변수 + 패널 인라인 스타일 제거 후 5:5 재적용
+  // 2) 캠 큰 우측 칼럼 CSS 변수 + 기본 스탯 9줄 높이 재적용
   document.querySelectorAll('.layout-big').forEach(layout => resetBigColWidth(layout));
   applyStoredBigPanelHeights();
 
   // 3) 캠 작은 칼럼 비율 기본 복원
   resetSmallLayoutResize();
   resetSmallBenchHeight();
+  resetSmallStatsHeight();
 
   // 4) 라인업 엣지 오버라이드 인라인 스타일 제거
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {

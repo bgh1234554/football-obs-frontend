@@ -219,6 +219,25 @@ body.greenscreen-mode .dp-sub-marker.is-in {
   line-height: 1;
 }
 .dp-event-icon.dp-event-assist { font-size: 11px; }
+.dp-event-own-goal { position: relative; margin-right: 6px; }
+.dp-event-own-goal-count {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  text-shadow: none;
+}
 
 /* 평점 박스 — 행의 우측 끝. flex outer에 있어 content가 wrap돼도 첫 줄 유지. */
 .dp-rating {
