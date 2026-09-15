@@ -7,6 +7,11 @@
   const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
+  // setFixtureId가 저장값을 바꾸기 전에 복원된 타이머의 경기 ID를 보관한다.
+  const initialFixtureId = (() => {
+    try { return String(localStorage.getItem('last_fixture_id') ?? '').trim(); }
+    catch { return ''; }
+  })();
   let toastTimer = null;
 
   /** 화면 하단에 토스트 메시지를 1.8초 동안 표시 */
@@ -793,7 +798,7 @@
       _lastFixtureData = data;
       // 진행 중인 같은 경기의 수동 타이머는 보존하되, 새 응답의 HT/FT는 항상 시각을 보정한다.
       applyFixtureToState(data, {
-        resetClock: previousFixtureId !== normalizedFixtureId,
+        resetClock: (previousFixtureId || initialFixtureId) !== normalizedFixtureId,
         resetRunning: !preserveRunningOnRefresh,
         syncClockFromFixture: true,
       });

@@ -86,6 +86,7 @@ function applySmallBenchHeightOverride() {
   return true;
 }
 
+/** 교체 명단의 실제 하단 위치에 높이 조절 핸들을 맞추고 현재 분할 비율을 접근성 속성에 반영한다. */
 function updateSmallBenchHeightHandle() {
   const { benchColumn, benchSection } = getBenchPanelSections();
   const handle = benchColumn?.querySelector('.lp-small-bench-height-resize');
@@ -97,13 +98,16 @@ function updateSmallBenchHeightHandle() {
   handle.setAttribute('aria-valuenow', String(Math.round(benchRect.height / (benchColumn.clientHeight - gap) * 100)));
 }
 
+/** 교체·미출전 패널의 저장 비율을 지우고 콘텐츠 기반 자동 높이 계산으로 돌아간다. */
 function resetSmallBenchHeight() {
   smallBenchHeightRatio = null;
   try { localStorage.removeItem(SMALL_BENCH_HEIGHT_KEY); } catch {}
   balanceBenchInjuryPanelHeights();
 }
 
+/** 교체·미출전 명단 사이에 드래그·키보드 조절 및 자동 높이 복원 핸들을 한 번 생성한다. */
 function ensureSmallBenchHeightHandle() {
+  // 1) 중복 핸들을 막고 포커스·접근성 정보와 더블클릭 초기화를 설정한다.
   const { benchColumn } = getBenchPanelSections();
   if (!benchColumn || benchColumn.querySelector('.lp-small-bench-height-resize')) return;
   const handle = document.createElement('div');
@@ -118,6 +122,7 @@ function ensureSmallBenchHeightHandle() {
     event.preventDefault();
     resetSmallBenchHeight();
   });
+  // 2) 드래그 시작 비율과 좌표를 보관한다. 종료가 취소되면 이 비율로 돌아간다.
   handle.addEventListener('pointerdown', event => {
     if (event.button !== 0 || smallBenchHeightDrag !== null) return;
     const metrics = getSmallBenchHeightMetrics();
@@ -131,6 +136,7 @@ function ensureSmallBenchHeightHandle() {
     smallBenchHeightDrag = event.pointerId;
     handle.setPointerCapture(event.pointerId);
     document.body.classList.add('lp-small-bench-height-resizing');
+    // 2-a) 양쪽 콘텐츠의 최소 높이를 확보하면서 교체 명단에 배분할 비율을 갱신한다.
     const move = next => {
       if (next.pointerId !== smallBenchHeightDrag) return;
       const current = getSmallBenchHeightMetrics();
@@ -142,6 +148,7 @@ function ensureSmallBenchHeightHandle() {
       smallBenchHeightRatio = height / current.available;
       balanceBenchInjuryPanelHeights();
     };
+    // 2-b) 포인터 추적을 정리하고, 실제로 움직인 정상 종료만 저장한다. 취소·캡처 상실은 복원한다.
     const finish = next => {
       if (next.pointerId !== smallBenchHeightDrag) return;
       handle.removeEventListener('pointermove', move);
@@ -163,6 +170,7 @@ function ensureSmallBenchHeightHandle() {
     handle.addEventListener('pointercancel', finish);
     handle.addEventListener('lostpointercapture', finish);
   });
+  // 3) 키보드 조절은 즉시 저장하며, Enter는 자동 높이로 초기화한다.
   handle.addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); resetSmallBenchHeight(); return; }
     if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
@@ -185,6 +193,7 @@ const SMALL_STATS_HEIGHT_KEY = 'obs.smallLayout.statsHeightRatio.v1';
 let smallStatsHeightRatio = _bigLoadFraction(SMALL_STATS_HEIGHT_KEY);
 let smallStatsHeightDrag = null;
 
+/** 캠 작음 이벤트·스탯 패널의 가용 높이와 최소 높이를 구하며, 측정할 수 없으면 null을 반환한다. */
 function getSmallStatsHeightMetrics() {
   const column = document.querySelector('.layout-small .lp-col-events-stat');
   const eventsPanel = column?.querySelector('.lp-events-s');
@@ -195,6 +204,7 @@ function getSmallStatsHeightMetrics() {
   return { column, eventsPanel, statPanel, gap, available, minimum: Math.min(100, available / 2) };
 }
 
+/** 저장된 비율 또는 기본 스탯 높이로 두 패널을 배분하고 조절 핸들과 스탯 표시를 갱신한다. */
 function applySmallStatsHeight() {
   const metrics = getSmallStatsHeightMetrics();
   if (!metrics) return;
@@ -211,13 +221,16 @@ function applySmallStatsHeight() {
   window.stRerenderActivePanels?.();
 }
 
+/** 캠 작음 스탯의 저장된 높이 비율을 지우고 기본 높이를 다시 적용한다. */
 function resetSmallStatsHeight() {
   smallStatsHeightRatio = null;
   try { localStorage.removeItem(SMALL_STATS_HEIGHT_KEY); } catch {}
   applySmallStatsHeight();
 }
 
+/** 캠 작음 이벤트·스탯 높이 조절 핸들을 한 번 생성하고 드래그·키보드·크기 변경 처리를 연결한다. */
 function ensureSmallStatsHeightHandle() {
+  // 1) 중복 생성을 막고, 키보드로도 접근할 수 있는 패널 경계 핸들을 준비한다.
   const column = document.querySelector('.layout-small .lp-col-events-stat');
   if (!column || column.querySelector('.lp-small-stats-height-resize')) return;
   const handle = document.createElement('div');
@@ -227,6 +240,7 @@ function ensureSmallStatsHeightHandle() {
   handle.setAttribute('role', 'separator');
   handle.setAttribute('aria-label', '이벤트와 경기 스탯 높이 조절');
   handle.setAttribute('aria-orientation', 'horizontal');
+  // 2) 높이는 두 패널의 최소 크기 안으로 제한한다. 저장은 가용 높이에 대한 비율로 한다.
   const save = () => {
     try { localStorage.setItem(SMALL_STATS_HEIGHT_KEY, String(smallStatsHeightRatio)); } catch {}
   };
@@ -236,10 +250,12 @@ function ensureSmallStatsHeightHandle() {
     smallStatsHeightRatio = Math.max(metrics.minimum, Math.min(metrics.available - metrics.minimum, height)) / metrics.available;
     applySmallStatsHeight();
   };
+  // 3) 더블클릭은 저장된 비율을 지워 스탯 기본 높이로 복원한다.
   handle.addEventListener('dblclick', event => {
     event.preventDefault();
     resetSmallStatsHeight();
   });
+  // 4) 드래그 시작값을 보관하고 포인터를 캡처해 핸들 밖에서도 이동·종료를 받는다.
   handle.addEventListener('pointerdown', event => {
     if (event.button !== 0 || smallStatsHeightDrag !== null) return;
     const metrics = getSmallStatsHeightMetrics();
@@ -253,6 +269,7 @@ function ensureSmallStatsHeightHandle() {
     smallStatsHeightDrag = event.pointerId;
     handle.setPointerCapture(event.pointerId);
     document.body.classList.add('lp-small-stats-height-resizing');
+    // 4-a) 화면 좌표를 레이아웃 좌표로 환산한다. 경계를 위로 끌면 아래 스탯이 커진다.
     const move = next => {
       if (next.pointerId !== smallStatsHeightDrag) return;
       const delta = toDisplayLayoutPixels(next.clientY) - startY;
@@ -260,6 +277,7 @@ function ensureSmallStatsHeightHandle() {
       moved = true;
       setHeight(startHeight - delta);
     };
+    // 4-b) 리스너와 캡처를 해제한다. 정상 종료 시 변경값을 저장하고, 취소 시 시작값으로 되돌린다.
     const finish = next => {
       if (next.pointerId !== smallStatsHeightDrag) return;
       handle.removeEventListener('pointermove', move);
@@ -279,6 +297,7 @@ function ensureSmallStatsHeightHandle() {
     handle.addEventListener('pointercancel', finish);
     handle.addEventListener('lostpointercapture', finish);
   });
+  // 5) 방향키는 높이를 10씩 조절해 저장하고, Enter는 더블클릭과 같은 초기화를 수행한다.
   handle.addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); resetSmallStatsHeight(); return; }
     if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
@@ -288,6 +307,7 @@ function ensureSmallStatsHeightHandle() {
     setHeight(getDisplayLayoutRect(metrics.statPanel).height + (event.key === 'ArrowUp' ? 10 : -10));
     save();
   });
+  // 6) 컬럼 크기·페이지·폰트가 바뀌면 다시 측정한다. 숨겨진 페이지나 폰트 로딩 전 측정값을 보정한다.
   column.appendChild(handle);
   if (typeof ResizeObserver === 'function') new ResizeObserver(applySmallStatsHeight).observe(column);
   else window.addEventListener('resize', applySmallStatsHeight);
@@ -692,11 +712,13 @@ const BIG_PANEL_MIN_H        = 60;
 const BIG_PANEL_MIN_W        = 100;
 const BIG_COL_GAP            = 6; // .lp-col { gap: 6px } — ON 모드 높이 계산 시 차감
 
+/** 캠 큼 패널 연동 설정이 켜져 있는지 반환한다. 설정 모듈이 없으면 독립 모드를 사용한다. */
 function isBigPanelLinked() {
   return typeof getSetting === 'function' ? getSetting('bigPanelLinked') !== 'off' : false;
 }
 
 // ── localStorage 헬퍼 ──
+/** 저장된 패널 크기를 숫자로 읽는다. 값이 없거나 최소값 미만·비정상 숫자이면 null을 반환한다. */
 function _bigLoad(key, min) {
   try {
     const raw = localStorage.getItem(key);
@@ -705,12 +727,15 @@ function _bigLoad(key, min) {
     return Number.isFinite(v) && v >= min ? v : null;
   } catch { return null; }
 }
+/** 패널 크기를 정수 픽셀로 반올림해 저장한다. 저장소 접근 오류는 무시한다. */
 function _bigSave(key, px) {
   try { localStorage.setItem(key, String(Math.round(px))); } catch {}
 }
+/** 지정한 패널 크기 저장 키를 제거한다. 저장소 접근 오류는 무시한다. */
 function _bigClear(key) {
   try { localStorage.removeItem(key); } catch {}
 }
+/** 저장된 분할 비율이 0과 1 사이의 유한수일 때만 반환하며, 나머지는 null로 처리한다. */
 function _bigLoadFraction(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -720,11 +745,13 @@ function _bigLoadFraction(key) {
   } catch { return null; }
 }
 // fraction은 소수점 값이라 _bigSave(Math.round) 경유 불가 — 직접 저장
+/** 채팅 분할 비율을 소수 넷째 자리까지 저장해 창 크기가 바뀌어도 높이 비율을 유지한다. */
 function _bigSaveFraction(f) {
   try { localStorage.setItem(BIG_CHAT_FRACTION_KEY, f.toFixed(4)); } catch {}
 }
 // 구버전에서 fraction이 Math.round로 "1"로 잘못 저장되던 버그 대응.
-// 첫 로드 시 1회만 실행 — 깨진 값 감지 시 big layout 키 전체 초기화해 5:5 기본값으로 복구.
+// 첫 로드 시 1회만 실행 — 깨진 값 감지 시 관련 크기 저장값을 지워 현재 기본 배치로 복구.
+/** 구버전에서 0 또는 1로 잘못 저장한 분할 비율과 관련 레이아웃 크기를 한 번만 정리한다. */
 function _bigMigrateOnce() {
   try {
     if (localStorage.getItem(BIG_LAYOUT_MIGRATED_KEY)) return;
@@ -771,14 +798,17 @@ function _bigStoredColMaxWidth(layout) {
 }
 
 // ── CSS 변수로 칼럼 너비 적용 ──
+/** 캠 큼 컬럼의 공유 너비를 정수 픽셀 CSS 변수로 적용한다. */
 function applyBigColWidth(layout, px) {
   if (!layout) return;
   layout.style.setProperty('--lp-big-col-width', `${Math.round(px)}px`);
 }
+/** 캠 큼 컬럼의 수동 너비 변수를 제거해 CSS 기본 너비로 복원한다. */
 function resetBigColWidth(layout) {
   if (!layout) return;
   layout.style.removeProperty('--lp-big-col-width');
 }
+/** 저장된 컬럼 너비를 현재 모드의 허용 범위로 보정해 적용하고, 없으면 기본 너비로 복원한다. */
 function applyStoredBigColWidth() {
   document.querySelectorAll('.layout-big').forEach(layout => {
     const px = _bigLoadClamped(BIG_COL_WIDTH_KEY, BIG_PANEL_MIN_W, _bigStoredColMaxWidth(layout));
@@ -788,6 +818,7 @@ function applyStoredBigColWidth() {
 }
 
 // ── 패널 absolute 스타일 초기화 ──
+/** 독립 배치에서 지정한 위치·크기 인라인 스타일을 제거해 flex 모드 전환을 준비한다. */
 function _clearPanelAbsolute(panel) {
   ['position','top','bottom','left','right','width','height','marginTop'].forEach(p => {
     panel.style.removeProperty(p);
@@ -795,7 +826,9 @@ function _clearPanelAbsolute(panel) {
 }
 
 // ── ON 모드: flex 기반 연동 레이아웃 ──
+/** 캠 큼 채팅·스탯을 flex로 연동 배치하고, 저장된 높이가 없으면 스탯 기본 높이로 공간을 나눈다. */
 function _applyLinkedMode(col) {
+  // 1) 독립 모드의 absolute 크기·위치 지정을 제거해 flex 배치로 전환한다.
   const chatPanel = col.querySelector('.lp-chat-big');
   const statPanel = col.querySelector('.lp-stat');
   if (!chatPanel || !statPanel) return;
@@ -805,7 +838,7 @@ function _applyLinkedMode(col) {
   const colH = getDisplayLayoutRect(col).height;
   const usable = colH - BIG_COL_GAP; // gap을 제외한 실제 패널 배분 가능 높이
   if (colH > 0) {
-    // 비율(fraction) 기준 우선(드래그 후 저장) → 없으면 절대 px → 없으면 스탯 9줄
+    // 2) 저장된 비율 → 저장된 절대 높이 → 스탯 기본 높이 순으로 채팅에 배분할 높이를 결정한다.
     // fraction은 드래그 onUp에서만 저장 — 자동 초기화 없음 (전체화면 시 잘못된 px 기반 fraction 방지)
     let chatH;
     const fraction = _bigLoadFraction(BIG_CHAT_FRACTION_KEY);
@@ -815,6 +848,7 @@ function _applyLinkedMode(col) {
       chatH = _bigLoadClamped(BIG_CHAT_H_KEY, BIG_PANEL_MIN_H, usable - BIG_PANEL_MIN_H);
       if (chatH == null) chatH = usable - stDefaultPanelHeight(statPanel);
     }
+    // 3) 양쪽 최소 높이를 확보하고 남은 공간을 스탯에 배분한다.
     chatH = Math.max(BIG_PANEL_MIN_H, Math.min(usable - BIG_PANEL_MIN_H, chatH));
     const statH = usable - chatH;
     chatPanel.style.flex = `0 0 ${chatH}px`;
@@ -822,6 +856,7 @@ function _applyLinkedMode(col) {
     statPanel.style.flex = `0 0 ${statH}px`;
     statPanel.style.height = `${statH}px`;
   } else {
+    // 높이를 측정할 수 없는 동안은 이전 고정 크기를 해제해 CSS 기본 배치를 사용한다.
     chatPanel.style.removeProperty('flex');
     chatPanel.style.removeProperty('height');
     statPanel.style.removeProperty('flex');
@@ -830,7 +865,9 @@ function _applyLinkedMode(col) {
 }
 
 // ── OFF 모드: absolute 독립 레이아웃 ──
+/** 캠 큼 채팅·스탯의 개별 크기를 복원해 위아래에 절대 배치하고, 컬럼 폭을 더 넓은 패널에 맞춘다. */
 function _applyIndependentMode(col) {
+  // 1) 연동 모드의 flex 지정을 해제해 각 패널에 별도 크기를 적용할 준비를 한다.
   const chatPanel = col.querySelector('.lp-chat-big');
   const statPanel = col.querySelector('.lp-stat');
   if (!chatPanel || !statPanel) return;
@@ -838,6 +875,7 @@ function _applyIndependentMode(col) {
   chatPanel.style.removeProperty('flex');
   statPanel.style.removeProperty('flex');
 
+  // 2) 저장값이 없을 때 사용할 크기를 계산한다. 스탯 기본 높이를 먼저 확보하고 채팅에 나머지를 준다.
   const colH   = getDisplayLayoutRect(col).height;
   const colRect = getDisplayLayoutRect(col);
   const layout = col.closest('.layout-big');
@@ -849,6 +887,7 @@ function _applyIndependentMode(col) {
     return colRect.width > 0 ? colRect.width : 250;
   })();
 
+  // 3) 저장된 패널별 크기를 허용 범위 안에서 복원한다. 채팅 높이부터 정해 스탯의 최대 높이를 제한한다.
   const maxPanelW = _bigPanelMaxWidth(layout);
   const storedChatH = _bigLoadClamped(
     BIG_CHAT_H_KEY,
@@ -864,11 +903,13 @@ function _applyIndependentMode(col) {
   let statH = storedStatH ?? defaultStatH;
   let chatW = _bigLoadClamped(BIG_CHAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW) ?? defaultW;
   let statW = _bigLoadClamped(BIG_STAT_W_KEY, BIG_PANEL_MIN_W, maxPanelW) ?? defaultW;
+  // 4) 합산 높이가 컬럼을 넘으면 스탯을 줄이고, 기존 저장값이 있었다면 보정된 높이를 저장한다.
   if (colH > 0 && chatH + statH > colH) {
     statH = Math.max(BIG_PANEL_MIN_H, colH - chatH);
     if (storedStatH != null) _bigSave(BIG_STAT_H_KEY, statH);
   }
 
+  // 5) 채팅은 오른쪽 위, 스탯은 오른쪽 아래에 고정하고 각자 복원한 크기를 적용한다.
   Object.assign(chatPanel.style, {
     position: 'absolute', top: '0', right: '0', bottom: '', left: '',
     width: `${Math.round(chatW)}px`, height: `${Math.round(chatH)}px`,
@@ -878,19 +919,21 @@ function _applyIndependentMode(col) {
     width: `${Math.round(statW)}px`, height: `${Math.round(statH)}px`,
   });
 
-  // 칼럼 너비 = 두 패널 중 넓은 것
+  // 6) 더 넓은 패널에 컬럼 너비를 맞춰 두 패널이 모두 들어가도록 한다.
   if (layout) applyBigColWidth(layout, Math.max(chatW, statW));
 }
 
 // ── 통합 적용 함수 (mode 전환 포함) ──
+/** 캠 큼 패널의 연동 설정에 맞는 배치와 저장 크기를 적용하고, 연동 전환 시 저장된 너비를 맞춘다. */
 function applyStoredBigPanelHeights() {
+  // 1) 현재 연동 설정을 읽고 채팅·스탯이 모두 있는 컬럼만 처리한다.
   const linked = isBigPanelLinked();
   document.querySelectorAll('.layout-big .lp-col').forEach(col => {
     const chatPanel = col.querySelector('.lp-chat-big');
     const statPanel = col.querySelector('.lp-stat');
     if (!chatPanel || !statPanel) return;
 
-    // OFF → ON 전환: 저장된 너비가 있으면 둘 중 좁은 것 기준으로 맞춘다.
+    // 2) OFF → ON 전환 시 두 너비가 모두 저장돼 있으면 좁은 쪽을 기준으로 공통 너비를 저장한다.
     if (linked && !col.classList.contains('is-big-linked')) {
       const layout = col.closest('.layout-big');
       const maxPanelW = _bigPanelMaxWidth(layout);
@@ -903,6 +946,7 @@ function applyStoredBigPanelHeights() {
       }
     }
 
+    // 3) 선택된 모드에서 높이 복원과 실제 배치를 수행한다.
     if (linked) _applyLinkedMode(col);
     else _applyIndependentMode(col);
   });
@@ -910,7 +954,9 @@ function applyStoredBigPanelHeights() {
 window.applyStoredBigPanelHeights = applyStoredBigPanelHeights;
 
 // ── 드래그: 칼럼 너비 (ON 모드 — lp-col 왼쪽 엣지) ──
+/** 연동 모드의 공유 컬럼 너비를 왼쪽 경계 드래그로 조절하고 종료 시 크기를 저장한다. */
 function startBigColWidthDrag(event, col) {
+  // 1) 시작 좌표와 컬럼 너비를 레이아웃 단위로 보관하고 최대 너비를 계산한다.
   if (event.button !== 0) return;
   event.preventDefault();
   const layout = col.closest('.layout-big');
@@ -922,11 +968,13 @@ function startBigColWidthDrag(event, col) {
   const handle = event.currentTarget;
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-big-col-resizing');
+  // 2) 오른쪽 경계는 고정하고 왼쪽 이동량만 너비에 더해 CSS 변수에 적용한다.
   const onMove = (e) => {
     const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - toDisplayLayoutPixels(e.clientX))));
     lastW = newW;
     applyBigColWidth(layout, newW);
   };
+  // 3) 종료·취소 시 추적을 해제하고 최종 너비를 저장한 뒤 콘텐츠 배치를 갱신한다.
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
@@ -945,7 +993,9 @@ function startBigColWidthDrag(event, col) {
 }
 
 // ── 드래그: 패널 너비 (OFF 모드 — 각 패널 왼쪽 엣지) ──
+/** 독립 모드의 지정 패널 너비만 조절하며, 공유 컬럼은 두 패널 중 넓은 너비를 유지한다. */
 function startBigPanelWidthDrag(event, col, which) {
+  // 1) 대상 패널과 저장 키를 선택하고 시작 크기·최대 너비를 보관한다.
   if (event.button !== 0) return;
   event.preventDefault();
   const chatPanel = col.querySelector('.lp-chat-big');
@@ -963,12 +1013,14 @@ function startBigPanelWidthDrag(event, col, which) {
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-big-col-resizing');
   const otherPanel = which === 'chat' ? statPanel : chatPanel;
+  // 2) 대상 패널만 늘리되 다른 패널이 컬럼 밖으로 밀리지 않도록 공통 컬럼 너비도 맞춘다.
   const onMove = (e) => {
     const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + (startX - toDisplayLayoutPixels(e.clientX))));
     lastW = newW;
     panel.style.width = `${Math.round(newW)}px`;
     applyBigColWidth(layout, Math.max(newW, getDisplayLayoutRect(otherPanel).width));
   };
+  // 3) 종료 시 개별 너비와 공유 컬럼 너비를 각각 저장하고 스탯·벤치 배치를 다시 계산한다.
   const onUp = () => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
@@ -988,6 +1040,7 @@ function startBigPanelWidthDrag(event, col, which) {
 }
 
 // ── 공유 헬퍼: 패널에 높이 적용 ──
+/** 패널 높이를 정수 픽셀로 적용한다. 연동 모드에서는 flex 기준 크기도 같은 값으로 고정한다. */
 function _bigSetH(panel, px, linked) {
   const v = `${Math.round(px)}px`;
   if (linked) panel.style.flex = `0 0 ${v}`;
@@ -996,7 +1049,9 @@ function _bigSetH(panel, px, linked) {
 }
 
 // ── 드래그: 패널 높이 (수직 엣지) origin: 'chatBottom' | 'statTop' ──
+/** 채팅 하단 또는 스탯 상단을 드래그해 높이를 조절하며, 연동 모드에서는 반대 패널에 남은 높이를 준다. */
 function startBigPanelHeightDrag(event, col, origin) {
+  // 1) 드래그 방향 계산에 쓸 시작 좌표·양쪽 높이와 모드별 가용 공간을 보관한다.
   if (event.button !== 0) return;
   event.preventDefault();
   const chatPanel = col.querySelector('.lp-chat-big');
@@ -1014,6 +1069,7 @@ function startBigPanelHeightDrag(event, col, origin) {
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-big-h-resizing');
 
+  // 2) 잡은 경계에 따라 높이 증감 방향을 결정한다. 독립 모드는 상대 높이를 고정하고 연동은 함께 조절한다.
   const onMove = (e) => {
     const delta = toDisplayLayoutPixels(e.clientY) - startY;
     if (origin === 'chatBottom') {
@@ -1045,6 +1101,7 @@ function startBigPanelHeightDrag(event, col, origin) {
     document.removeEventListener('pointercancel', onUp);
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-big-h-resizing');
+    // 3) 종료·취소 시 최종 높이를 저장한다. 연동 모드는 화면 크기 변경에 쓸 비율도 저장한다.
     _bigSave(BIG_CHAT_H_KEY, lastChatH);
     _bigSave(BIG_STAT_H_KEY, lastStatH);
     if (linked && usable > 0) _bigSaveFraction(lastChatH / usable);
@@ -1060,7 +1117,9 @@ function startBigPanelHeightDrag(event, col, origin) {
 
 // ── 드래그: 대각선 코너 (너비 + 높이 동시 조절) ──
 // panelSide: 'chat' → chat 하단-왼쪽 코너 / 'stat' → stat 상단-왼쪽 코너
+/** 패널 모서리 드래그로 너비·높이를 함께 조절하고, 연동 여부에 맞게 개별 크기 또는 공유 크기를 저장한다. */
 function startBigCornerDrag(event, col, panelSide) {
+  // 1) 대상 패널과 연동 모드, 시작 좌표·크기·허용 범위를 드래그 시작 시점에 고정한다.
   if (event.button !== 0) return;
   event.preventDefault();
   const chatPanel  = col.querySelector('.lp-chat-big');
@@ -1087,7 +1146,7 @@ function startBigCornerDrag(event, col, panelSide) {
     const dx = startX - toDisplayLayoutPixels(e.clientX); // 왼쪽 드래그 = 너비 증가
     const dy = toDisplayLayoutPixels(e.clientY) - startY; // 아래 드래그 = 양수
 
-    // 너비
+    // 2) 가로 이동은 연동 모드에서 컬럼 전체에, 독립 모드에서는 대상 패널에만 적용한다.
     const newW = Math.max(BIG_PANEL_MIN_W, Math.min(maxW, startW + dx));
     lastW = newW;
     if (linked) {
@@ -1097,7 +1156,7 @@ function startBigCornerDrag(event, col, panelSide) {
       if (layout) applyBigColWidth(layout, Math.max(newW, getDisplayLayoutRect(otherPanel).width));
     }
 
-    // 높이
+    // 3) 세로 이동은 채팅 하단/스탯 상단의 방향을 반영하고, 연동 모드에서는 상대 높이도 맞춘다.
     if (panelSide === 'chat') {
       // chat BL 코너: 아래로 드래그 = chat 높이 증가
       const maxChat = linked ? usable - BIG_PANEL_MIN_H : colH - startStatH;
@@ -1129,6 +1188,7 @@ function startBigCornerDrag(event, col, panelSide) {
     document.removeEventListener('pointercancel', onUp);
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-big-col-resizing', 'lp-big-h-resizing');
+    // 4) 추적 해제 후 모드별 너비와 양쪽 높이를 저장하고 내용물의 배치를 갱신한다.
     if (linked) {
       _bigSave(BIG_COL_WIDTH_KEY, lastW);
     } else {
@@ -1149,6 +1209,7 @@ function startBigCornerDrag(event, col, panelSide) {
 }
 
 // ── 핸들 삽입 ──
+/** 캠 큼 컬럼·개별 패널·모서리의 조절 핸들을 중복 없이 생성하고 공통 더블클릭 초기화를 연결한다. */
 function ensureBigPanelHandles() {
   document.querySelectorAll('.layout-big .lp-col').forEach(col => {
     const chatPanel = col.querySelector('.lp-chat-big');
@@ -1262,6 +1323,7 @@ const LINEUP_EDGE_MIN_H = 80;
 const LINEUP_RESET_SCALE_SPLIT_PCT = 100;
 const LINEUP_RESET_SCALE_COMBINED_PCT = 85;
 
+/** 라인업의 저장된 수동 크기를 읽고 최소값 이상의 유한수만 반환한다. 읽기 실패나 무효 값은 null. */
 function _lineupEdgeLoad(key, min) {
   try {
     const raw = localStorage.getItem(key);
@@ -1270,17 +1332,21 @@ function _lineupEdgeLoad(key, min) {
     return Number.isFinite(v) && v >= min ? v : null;
   } catch { return null; }
 }
+/** 라인업의 수동 너비 또는 높이를 정수 픽셀로 반올림해 저장한다. */
 function _lineupEdgeSave(key, px) {
   try { localStorage.setItem(key, String(Math.round(px))); } catch {}
 }
+/** 라인업의 지정된 수동 크기 저장 키를 제거한다. */
 function _lineupEdgeClear(key) {
   try { localStorage.removeItem(key); } catch {}
 }
 
+/** 분리 피치와 통합 피치의 기본 가로/세로 비율을 반환해 자연 너비 계산에 사용한다. */
 function _lineupNaturalAspectRatio(panel) {
   return panel?.classList.contains('dp-mode-split') ? (94 / 210) : (62 / 105);
 }
 
+/** 전체 크기 초기화 시 분리 피치는 100%, 통합 피치는 85%의 기본 높이 배율을 반환한다. */
 function _lineupResetScalePct(panel) {
   // split OFF combined 피치는 전체 높이 100%로 돌아가면 캠 영역을 너무 많이 먹는다.
   // 보내준 기준 화면에 맞춰 기본 축구장 비율은 유지하되, 전체 리셋 높이만 조금 낮춘다.
@@ -1289,6 +1355,7 @@ function _lineupResetScalePct(panel) {
     : LINEUP_RESET_SCALE_COMBINED_PCT;
 }
 
+/** 소속 레이아웃 또는 화면 높이로 라인업 최대 높이를 구하며 최소 허용 높이 이상을 보장한다. */
 function _lineupGetMaxHeight(panel) {
   const layout = panel?.closest('.layout-wrap') || document.body;
   return Math.max(
@@ -1304,6 +1371,7 @@ function _lineupGetMaxWidth(panel) {
   return Math.max(LINEUP_EDGE_MIN_W, width * 0.8);
 }
 
+/** 라인업 너비를 수동 고정하고 자연 너비 대비 1~4배 범위로 이름 라벨의 가로 배율을 조절한다. */
 function _lineupApplyWidthOverride(panel, px, knownHeight = null) {
   panel.style.width = `${Math.round(px)}px`;
   panel.classList.add('has-w-override');
@@ -1317,12 +1385,14 @@ function _lineupApplyWidthOverride(panel, px, knownHeight = null) {
   panel.style.setProperty('--lp-lineup-x-scale', xScale.toFixed(3));
 }
 
+/** 너비·높이 중 하나라도 수동 지정 상태이면 공통 엣지 조절 클래스를 유지한다. */
 function _lineupSyncEdgeOverrideClass(panel) {
   const hasWidthOverride = panel.classList.contains('has-w-override');
   const hasHeightOverride = panel.classList.contains('has-h-override');
   panel.classList.toggle('has-edge-override', hasWidthOverride || hasHeightOverride);
 }
 
+/** 수동 너비와 이름 배율을 해제한다. 높이 조절을 위해 임시 고정했던 너비가 있으면 복원한다. */
 function _lineupClearWidthOverride(panel) {
   panel.style.removeProperty('width');
   panel.style.removeProperty('--lp-lineup-x-scale');
@@ -1333,6 +1403,7 @@ function _lineupClearWidthOverride(panel) {
   _lineupSyncEdgeOverrideClass(panel);
 }
 
+/** 너비가 따라 변하지 않도록 현재 너비를 필요 시 고정한 뒤 라인업 높이만 수동 적용한다. */
 function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
   // 위쪽 엣지는 높이 전용이다. 기존 aspect-ratio가 너비까지 끌고 가지 않게
   // 사용자가 너비를 따로 조절하지 않은 상태라면 현재 너비를 임시로 고정한다.
@@ -1353,6 +1424,7 @@ function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
   panel.classList.add('has-edge-override');
 }
 
+/** 수동 높이와 그때 임시 고정한 너비를 해제한다. 사용자가 별도로 지정한 너비는 유지한다. */
 function _lineupClearHeightOverride(panel) {
   panel.style.removeProperty('height');
   panel.classList.remove('has-h-override');
@@ -1364,7 +1436,9 @@ function _lineupClearHeightOverride(panel) {
   _lineupSyncEdgeOverrideClass(panel);
 }
 
+/** 저장된 라인업 높이·너비를 현재 화면의 허용 범위로 보정해 적용하고 보정된 크기를 다시 저장한다. */
 function applyStoredLineupEdgeOverrides() {
+  // 높이를 먼저 적용한 뒤 너비를 적용해야 이름의 가로 배율 계산에 복원된 높이가 사용된다.
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
     const storedH = _lineupEdgeLoad(LINEUP_EDGE_H_KEY, LINEUP_EDGE_MIN_H);
     if (storedH != null) {
@@ -1386,7 +1460,9 @@ function applyStoredLineupEdgeOverrides() {
 }
 
 // ── 드래그: 오른쪽 엣지 → 너비 ──
+/** 라인업 오른쪽 경계를 드래그해 너비를 조절하며, 화면 반영은 프레임당 한 번으로 묶고 종료 시 저장한다. */
 function startLineupWidthDrag(event, panel) {
+  // 1) 시작 크기와 레이아웃 너비의 80% 상한을 구하고 드래그 포인터를 캡처한다.
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
@@ -1402,6 +1478,7 @@ function startLineupWidthDrag(event, panel) {
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-lineup-w-resizing');
 
+  // 2) 마지막 이동값만 보관해 다음 프레임에 적용한다. 포인터 이벤트마다 DOM을 갱신하지 않는다.
   const onMove = (e) => {
     const newW = Math.max(LINEUP_EDGE_MIN_W, Math.min(maxW, startW + (toDisplayLayoutPixels(e.clientX) - startX)));
     lastW = newW;
@@ -1418,6 +1495,7 @@ function startLineupWidthDrag(event, panel) {
     document.removeEventListener('pointercancel', onUp);
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-lineup-w-resizing');
+    // 3) 아직 실행되지 않은 프레임이 있으면 마지막 크기를 즉시 적용한 뒤 저장하고 이름을 다시 맞춘다.
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = 0;
@@ -1432,7 +1510,9 @@ function startLineupWidthDrag(event, panel) {
 }
 
 // ── 드래그: 위쪽 엣지 → 높이 (align-self:flex-end이므로 위로 드래그 = 높이 증가) ──
+/** 라인업 위쪽 경계를 드래그해 높이를 조절하고, 너비가 수동 고정된 경우 이름의 가로 배율도 갱신한다. */
 function startLineupHeightDrag(event, panel) {
+  // 1) 시작 너비를 보관해 높이 조절 중 피치의 가로 크기가 같이 변하지 않도록 한다.
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
@@ -1447,6 +1527,7 @@ function startLineupHeightDrag(event, panel) {
   handle.setPointerCapture?.(event.pointerId);
   document.body.classList.add('lp-lineup-h-resizing');
 
+  // 2) 이동을 프레임 단위로 합쳐 적용한다. 수동 너비가 있으면 바뀐 자연 너비를 기준으로 라벨 배율도 맞춘다.
   const onMove = (e) => {
     // 위로 드래그(dy < 0) = 높이 증가
     const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (toDisplayLayoutPixels(e.clientY) - startY)));
@@ -1470,6 +1551,7 @@ function startLineupHeightDrag(event, panel) {
     document.removeEventListener('pointercancel', onUp);
     handle.releasePointerCapture?.(event.pointerId);
     document.body.classList.remove('lp-lineup-h-resizing');
+    // 3) 대기 중인 프레임을 정리하고 최종 높이·배율을 적용한 뒤 저장과 이름 재배치를 수행한다.
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = 0;
@@ -1489,6 +1571,7 @@ function startLineupHeightDrag(event, panel) {
 }
 
 // ── 핸들 삽입 ──
+/** 라인업의 오른쪽·위쪽 조절 핸들을 한 번 생성하고 축별 드래그 및 더블클릭 초기화를 연결한다. */
 function ensureLineupEdgeHandles() {
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
     if (!panel.querySelector(':scope > .lp-lineup-right-edge')) {
@@ -1513,6 +1596,7 @@ function ensureLineupEdgeHandles() {
   });
 }
 
+/** 라인업 수동 너비만 초기화하고 다음 프레임에 선수 이름 배치를 다시 계산한다. */
 function resetLineupWidthOnly(event, panel) {
   event.preventDefault();
   event.stopPropagation();
@@ -1521,6 +1605,7 @@ function resetLineupWidthOnly(event, panel) {
   requestAnimationFrame(() => window.fitLineupNamePills?.());
 }
 
+/** 라인업 수동 높이만 초기화하고 다음 프레임에 선수 이름 배치를 다시 계산한다. */
 function resetLineupHeightOnly(event, panel) {
   event.preventDefault();
   event.stopPropagation();
@@ -1529,6 +1614,7 @@ function resetLineupHeightOnly(event, panel) {
   requestAnimationFrame(() => window.fitLineupNamePills?.());
 }
 
+/** 라인업 수동 너비·높이를 모두 지우고 피치 모드별 기본 배율을 적용한 뒤 이름 배치를 다시 계산한다. */
 function resetLineupAllSizes(event, panel) {
   event.preventDefault();
   event.stopPropagation();

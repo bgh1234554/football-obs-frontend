@@ -18,6 +18,7 @@
     state.lastRunningTickMs = nowWall;
   }
 
+  /** 정지된 시계를 시작하고 실제 경과 시간 계산의 기준 시각을 기록한다. 이미 실행 중이면 유지한다. */
   function startClockTimer() {
     if (state.running) return;
     state.running = true;
@@ -25,6 +26,7 @@
     el.clock.textContent = fmtClock(state.seconds);
   }
 
+  /** 정지 직전까지의 경과 시간을 반영한 뒤 실행 상태와 기준 시각을 초기화한다. */
   function pauseClockTimer() {
     if (state.running) syncRunningClockToNow();
     state.running = false;
@@ -32,11 +34,13 @@
     el.clock.textContent = fmtClock(state.seconds);
   }
 
+  /** 현재 실행 상태에 따라 시계를 일시정지하거나 시작한다. */
   function toggleClockRunning() {
     if (state.running) pauseClockTimer();
     else startClockTimer();
   }
 
+  /** 경기 시각을 음수가 아닌 초 단위 값으로 바꾼다. 기본은 정지하며 autoStart이면 실행을 요청한다. */
   function setClockSeconds(nextSeconds, { autoStart = false } = {}) {
     if (state.running) syncRunningClockToNow();
     state.seconds = Math.max(0, Number(nextSeconds) || 0);
@@ -63,6 +67,7 @@
 
   // 페이지 unload 직전(새로고침/탭 닫기) 또는 background 전환 시 최신 시각 한 번 더 기록 후 persist.
   // restore에서 이 값과 현재 Date.now() 차이만큼 state.seconds에 더해줘서 끊김 없이 이어감.
+  /** 실행 중인 타이머를 현재 시각까지 동기화하고 저장해 페이지 이탈 후에도 경과 시간을 복원하게 한다. */
   function _saveTimerCheckpoint() {
     if (state.running) {
       syncRunningClockToNow();
@@ -102,6 +107,7 @@
   let _cePresetHideTimer = null;
   let _ceSafeZoneMoveHandler = null;
 
+  /** 콜론과 프리셋 사이를 마우스로 이동할 때 드롭다운을 유지할 화면 영역을 구한다. 요소가 없으면 null. */
   function ceGetSafeZoneRect() {
     if (!ceColon || !cePresets) return null;
     const a = ceColon.getBoundingClientRect();
@@ -115,6 +121,7 @@
     };
   }
 
+  /** 안전 영역 안에서는 닫기 예약을 취소하고 밖에서는 예약하도록 마우스 이동 리스너를 한 번 등록한다. */
   function ceStartSafeZoneTracking() {
     if (_ceSafeZoneMoveHandler) return;
     _ceSafeZoneMoveHandler = (e) => {
@@ -128,12 +135,14 @@
     document.addEventListener('mousemove', _ceSafeZoneMoveHandler);
   }
 
+  /** 프리셋 안전 영역의 마우스 이동 리스너를 해제한다. */
   function ceStopSafeZoneTracking() {
     if (!_ceSafeZoneMoveHandler) return;
     document.removeEventListener('mousemove', _ceSafeZoneMoveHandler);
     _ceSafeZoneMoveHandler = null;
   }
 
+  /** 닫기 예약을 취소하고 프리셋 드롭다운과 마우스 안전 영역 추적을 활성화한다. */
   function ceShowPresets() {
     if (!cePresets) return;
     clearTimeout(_cePresetHideTimer);
@@ -141,6 +150,7 @@
     cePresets.classList.add('open');
     ceStartSafeZoneTracking();
   }
+  /** 중복 예약 없이 250ms 뒤에 프리셋을 닫고 안전 영역 추적을 해제한다. */
   function ceScheduleHidePresets() {
     // 이미 예약된 타이머가 있으면 새로 잡지 않는다 — 세이프존 밖에서 마우스가 계속
     // 움직이면 mousemove마다 이 함수가 불려서, 매번 250ms로 리셋되면 타이머가 영영
@@ -152,6 +162,7 @@
       ceStopSafeZoneTracking();
     }, 250);
   }
+  /** 대기 중인 닫기 예약을 취소하고 프리셋과 안전 영역 추적을 즉시 닫는다. */
   function ceHidePresetsNow() {
     clearTimeout(_cePresetHideTimer);
     _cePresetHideTimer = null;
@@ -185,6 +196,7 @@
     ceMin.select();
 
     // 3. 확인(Enter/버튼) 시 시간 적용 후 편집기 닫기
+    /** 입력한 분·초를 허용 범위로 보정해 시계를 시작하고 편집 UI·리스너 정리 후 상태를 저장한다. */
     function applyTime() {
       const mm = Math.max(0, parseInt(ceMin.value, 10) || 0);
       const ss = Math.min(59, Math.max(0, parseInt(ceSec.value, 10) || 0));
@@ -197,6 +209,7 @@
       persist();
     }
 
+    /** 편집기와 프리셋을 숨기고 시계 텍스트를 다시 표시한다. 이벤트 정리는 cleanup이 담당한다. */
     function closeClockEditor() {
       clockEditor.classList.remove('active');
       clockEl.style.display = '';
@@ -219,6 +232,7 @@
     };
 
     // 4. Enter로 확인, Escape로 취소 (편집 세션 키보드 이벤트)
+    /** Enter는 입력을 확정하고, Escape는 입력을 취소해 편집 전 타이머 실행 상태로 돌아간다. */
     function onKeyDown(e) {
       if (e.key === 'Enter') { e.preventDefault(); applyTime(); cleanup(); }
       if (e.key === 'Escape') {
@@ -230,6 +244,7 @@
     }
 
     // 5. 편집기 외부 클릭 시 취소
+    /** 편집기와 시계 밖을 클릭하면 입력을 취소하고 편집 전 실행 상태를 복원한다. */
     function onOutsideClick(e) {
       if (!clockEditor.contains(e.target) && e.target !== clockEl) {
         if (wasRunning) startClockTimer();
@@ -239,6 +254,7 @@
       }
     }
 
+    /** 편집 세션의 키보드 리스너를 제거하고 현재 클릭 처리가 끝난 뒤 외부 클릭 리스너를 해제한다. */
     function cleanup() {
       document.removeEventListener('keydown', onKeyDown);
       setTimeout(() => document.removeEventListener('mousedown', onOutsideClick), 0);

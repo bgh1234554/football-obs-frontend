@@ -80,6 +80,7 @@ function tryLineupSurnameBreaks(nameEl) {
   return true;
 }
 
+/** 이름을 지정된 줄별 span으로 다시 만들고 이전 고정 폭·단일 줄 스타일을 해제한다. */
 function applyLineupSurnameLines(nameEl, lines) {
   const textEl = nameEl.querySelector('.dp-lineup-name-text');
   textEl.replaceChildren();
@@ -103,6 +104,7 @@ function getPreferredLineupSurnameFont(nameEl, lines) {
   return getPreferredLineupSurnameCandidate(nameEl, lines)?.font ?? null;
 }
 
+/** 기본 줄바꿈보다 큰 폰트가 가능한 성 경계 줄바꿈·주장 배지 배치 후보만 반환한다. 개선이 없으면 null. */
 function getPreferredLineupSurnameCandidate(nameEl, lines) {
   if (!canMeasureTextElement(nameEl)) return null;
   const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
@@ -115,6 +117,7 @@ function getPreferredLineupSurnameCandidate(nameEl, lines) {
   return surname;
 }
 
+/** 주장 배지를 앞·뒤에 놓은 경우의 안전한 폰트를 비교한다. 더 큰 쪽을 고르고 동률이면 앞 배치를 유지한다. */
 function getCaptainPlacementCandidate(nameEl, lines, targets) {
   const prefixFont = measureLineupNameCandidateFont(nameEl, lines, targets);
   const suffixFont = measureLineupNameCandidateFont(
@@ -129,6 +132,7 @@ function getCaptainPlacementCandidate(nameEl, lines, targets) {
   return { font: prefixFont, placement: 'prefix' };
 }
 
+/** 주장 배지를 이름 접두부의 맨 앞으로 이동한다. 배지나 접두부가 없으면 아무 작업도 하지 않는다. */
 function moveLineupCaptainBadgeToPrefix(nameEl) {
   const badge = nameEl.querySelector('.dp-lineup-captain-badge');
   if (!badge) return;
@@ -137,6 +141,7 @@ function moveLineupCaptainBadgeToPrefix(nameEl) {
   prefix.insertBefore(badge, prefix.firstChild);
 }
 
+/** 주장 배지를 이름의 마지막 줄 토큰 뒤로 옮긴다. 줄별 토큰이 없으면 이름 텍스트 요소 끝에 붙인다. */
 function moveLineupCaptainBadgeToLastToken(nameEl) {
   const badge = nameEl.querySelector('.dp-lineup-captain-badge');
   const textEl = nameEl.querySelector('.dp-lineup-name-text');
@@ -147,6 +152,7 @@ function moveLineupCaptainBadgeToLastToken(nameEl) {
   (lastToken || textEl).appendChild(badge);
 }
 
+/** 후보의 suffix/prefix 값에 따라 주장 배지를 이름 뒤 또는 접두부로 이동한다. */
 function applyLineupCaptainBadgePlacement(nameEl, placement) {
   if (placement === 'suffix') moveLineupCaptainBadgeToLastToken(nameEl);
   else moveLineupCaptainBadgeToPrefix(nameEl);
@@ -206,6 +212,7 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare, maxFont
   }
 }
 
+/** 등번호·이름의 강제 줄바꿈을 제거하고 원래 이름 텍스트를 복원한다. */
 function resetLineupSurnameBreaks(nameEl) {
   if (nameEl.classList.contains('has-number-line-break')) {
     moveLineupCaptainBadgeToPrefix(nameEl);
@@ -243,6 +250,7 @@ function improveLineupNameWithNumberLine(nameEl, labels, maxFont) {
   lockLineupNameWidth(nameEl);
 }
 
+/** 등번호를 별도 첫 줄에 배치하고, 지정한 이름 줄과 마지막 토큰의 주장 배지를 적용한다. */
 function applyLineupNumberLine(nameEl, lines) {
   const textEl = nameEl.querySelector('.dp-lineup-name-text');
   // 이름 끝에 있던 주장 배지가 텍스트 재구성 중 사라지지 않도록 잠시 옮긴다.
@@ -352,6 +360,7 @@ function lineupCaptainBadgeSharesTextLine(nameEl) {
 // true를 반환해, 실제로는 안 맞는 폭까지 깎여 overflow:hidden에 텍스트가 잘려 보이는 사고로
 // 이어진다(예: "스티븐 안투네스" -> "스티"). nowrap 상태에서는 scrollWidth <= clientWidth로
 // 실제 텍스트가 박스 안에 들어가는지 직접 검사한다.
+/** 주장 배지가 이름과 같은 줄에 있고, 단일 줄 또는 줄 수 제한 내에서 가로 넘침 없이 표시되는지 검사한다. */
 function canStayWithinLineupNameLayout(nameEl) {
   if (!lineupCaptainBadgeSharesTextLine(nameEl)) return false;
   if (getComputedStyle(nameEl).whiteSpace === 'nowrap') {
@@ -403,6 +412,7 @@ function tightenLineupNameWidth(nameEl) {
 }
 
 // 1단계(tryLineupNameNaturalSingleLine)가 nowrap 1줄로 확정해둔 라벨인지 판별.
+/** 이름 라벨이 white-space:nowrap으로 자연스러운 한 줄 너비를 사용하는 상태인지 반환한다. */
 function isLineupNameInNaturalSingleLineMode(nameEl) {
   return !!nameEl && getComputedStyle(nameEl).whiteSpace === 'nowrap';
 }
@@ -410,6 +420,7 @@ function isLineupNameInNaturalSingleLineMode(nameEl) {
 // 폰트를 줄이기 전에 우선 시도: nowrap/inline-block/고정폭을 모두 풀어 2단계(설정 폰트
 // 그대로 2줄 클램프)로 되돌린다. 폰트 크기를 유지하는 게 한 줄 유지보다 우선이기 때문에,
 // 충돌 보정 루프에서 폭 좁히기가 실패하면 폰트 축소보다 이 복귀를 먼저 시도해야 한다.
+/** 자연 한 줄 모드의 인라인 폭·줄바꿈 설정을 해제하고 기본 줄 수 제한에 맞춰 이름을 다시 보정한다. */
 function revertLineupNameToClampMode(nameEl) {
   nameEl.style.maxWidth = '';
   nameEl.style.whiteSpace = '';
@@ -703,6 +714,7 @@ function getOwnTeamChipTargetsForLineupName(nameEl) {
 
 // 동일 피치 안에서 이 라벨의 선수를 제외한 나머지 선수 원(node 자체)을 반환한다.
 // name-wrap과 node는 동일한 data-player-id를 가지므로 이것으로 자기 원을 구분한다.
+/** 같은 피치에서 충돌을 검사할 다른 선수 원들을 모은다. 본인은 ID로, ID 0이면 원래 이름·진영으로 제외한다. */
 function getSiblingNodeCirclesForLabel(nameEl) {
   const nameWrap = getLineupNameWrap(nameEl);
   const playerId = nameWrap?.dataset?.playerId;
@@ -879,6 +891,7 @@ function fitBigLineupNameAgainstOpposingBadges(labels) {
 //   - 원의 border-radius:50% 코너 빈 공간은 실제 원-사각형 충돌 알고리즘으로 제외
 //     (중심점에서 텍스트 rect 최근접점까지의 거리 < 반지름 → 실제 겹침)
 //   - AABB만 쓰면 코너 투명 공간 때문에 false positive가 발생하므로 이 방식이 정확함
+/** 이름의 패딩을 뺀 텍스트 영역이 다른 선수 원의 반지름 절반 안쪽까지 침범하는지 판정한다. */
 function nameOverlapsNodeCircleSignificantly(nameEl, nodeEl) {
   if (!canMeasureTextElement(nameEl) || !canMeasureTextElement(nodeEl)) return false;
   const nr = getDisplayLayoutRect(nameEl);
@@ -1102,7 +1115,9 @@ function reclaimBenchListOverflowHeight(benchPanel) {
   injurySection.style.height = `${nextInjuryHeight}px`;
 }
 
+/** 기본 배치에서 교체 명단의 부족한 높이를 측정해 미출전 패널에서 공간을 가져오고 양쪽 높이를 고정한다. */
 function balanceBenchInjuryPanelHeightsImpl() {
+  // 1) 이전 높이 보정을 지우고 활성 페이지의 실제 패널 크기를 측정한다.
   const {
     benchPanel,
     injuryPanel,
@@ -1125,6 +1140,7 @@ function balanceBenchInjuryPanelHeightsImpl() {
     return;
   }
 
+  // 2) 콘텐츠 기준 여유·부족 높이를 비교한다. 교체 명단이 부족할 때만 공간을 이동한다.
   const benchMetrics = getPanelSplitMetrics(benchPanel);
   const injuryMetrics = getPanelSplitMetrics(injuryPanel);
   let transferTarget = null;
@@ -1140,6 +1156,7 @@ function balanceBenchInjuryPanelHeightsImpl() {
     targetDeficit = benchMetrics.deficit;
   } else if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    // 3-a) 양쪽 모두 부족하면 미출전 패널의 제목 등 최소 영역만 남기고 교체 명단에 우선 배분한다.
     const minInjuryHeight = getPanelChromeHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
     const maxTransferFromInjury = Math.max(0, injuryRect.height - minInjuryHeight);
     const transfer = Math.min(
@@ -1160,12 +1177,14 @@ function balanceBenchInjuryPanelHeightsImpl() {
     return;
   }
 
+  // 3-b) 미출전 패널에 여유가 있으면 그 여유와 교체 명단의 부족분 중 작은 만큼만 옮긴다.
   const transfer = Math.min(
     Math.floor(sourceSpare),
     Math.ceil(targetDeficit)
   );
   if (transfer <= DETAIL_PANEL_BALANCE_EPSILON_PX) return;
 
+  // 4) 두 패널의 합계 높이는 유지하면서 flex 기준 크기와 명시적 높이를 함께 갱신한다.
   const nextBenchHeight = transferTarget === 'bench'
     ? benchRect.height + transfer
     : benchRect.height - transfer;

@@ -1,12 +1,18 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [선수 컨텍스트 메뉴] Iter 6 — 선발/교체/부상 패널 선수 클릭 메뉴
 //   6-1: 닉네임 설정  6-2: 경기 스탯  6-3: 시즌 스탯
+//
+// 처리 흐름: 선수 클릭 → 연결 ID가 반영된 선수 조회 → 메뉴 → 닉네임/ID 편집 또는 스탯 모달.
+// 닉네임은 localStorage, ID 연결은 player-id-resolve.js가 관리한다.
+// 경기 스탯은 현재 경기 데이터로 먼저 표시하고 프로필만 추가 조회한다.
+// 시즌 스탯은 API 응답을 메모리에 보관해 시즌 전환 시 재조회 없이 렌더링한다.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const PLAYER_NICKNAME_KEY = 'obs.player.nicknames.v1';
 
 // ── 닉네임 CRUD ──────────────────────────────────────────────────────────────
 
+/** 유효한 선수 ID의 저장된 닉네임을 반환한다. 미등록·잘못된 ID·저장소 오류는 null로 처리한다. */
 function getPlayerNickname(playerId) {
   if (!playerId || Number(playerId) === 0) return null;
   try {
@@ -15,6 +21,7 @@ function getPlayerNickname(playerId) {
   } catch { return null; }
 }
 
+/** 선수 ID별 닉네임을 저장한다. 공백만 입력하면 해당 항목을 삭제하며 ID 0은 저장하지 않는다. */
 function setPlayerNickname(playerId, nickname) {
   if (!playerId || Number(playerId) === 0) return;
   try {
@@ -26,6 +33,7 @@ function setPlayerNickname(playerId, nickname) {
   } catch {}
 }
 
+/** 모든 닉네임을 삭제하고 라인업·득점자·이벤트 표시를 원래 이름으로 갱신한다. */
 function clearAllPlayerNicknames() {
   localStorage.removeItem(PLAYER_NICKNAME_KEY);
   if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
@@ -37,6 +45,7 @@ function clearAllPlayerNicknames() {
 
 // ── HTML escape ───────────────────────────────────────────────────────────────
 
+/** HTML에 삽입할 값을 문자열로 바꾸고 특수문자를 이스케이프한다. nullish 값은 빈 문자열이다. */
 function pmEsc(v) {
   return String(v ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -44,12 +53,14 @@ function pmEsc(v) {
 
 // ── 포지션 한글화 ─────────────────────────────────────────────────────────────
 
+/** API 포지션 G/D/M/F를 표시용 GK/DF/MF/FW로 바꾸고, 알 수 없는 값은 그대로 반환한다. */
 function pmPosKo(pos) {
   return ({ G: 'GK', D: 'DF', M: 'MF', F: 'FW' })[pos] || pos || '-';
 }
 
 // ── 선수 데이터 조회 ──────────────────────────────────────────────────────────
 
+/** 연결 ID가 반영된 명단에서 선수를 찾아 홈/원정과 선발/벤치/부상 구분을 붙여 반환한다. 없으면 null. */
 function pmFindPlayer(playerId) {
   // override 적용 후 real ID가 부여된 선수를 찾으려면 effective data(override 반영본)를 우선 사용.
   const data = typeof lineupPanelState !== 'undefined'
@@ -81,6 +92,7 @@ function pmFindPlayer(playerId) {
   return null;
 }
 
+/** 현재 경기의 선수별 스탯을 연결 ID 반영 데이터에서 우선 찾는다. 데이터나 해당 선수가 없으면 null. */
 function pmFindMatchStats(playerId) {
   const stats = typeof lineupPanelState !== 'undefined'
     ? (lineupPanelState.lastEffectiveData?.playerStats || lineupPanelState.lastFixture?.playerStats) : null;
@@ -110,6 +122,7 @@ function pmResolveLinkedProfileId(playerId, player) {
 let _pmActiveId = null;
 let _pmMatchRequestId = 0;
 
+/** 메뉴와 모달이 공유할 컨테이너를 반환하며, 처음 사용할 때 body에 생성한다. */
 function pmContainer() {
   let c = document.getElementById('pmContainer');
   if (!c) {
@@ -120,6 +133,7 @@ function pmContainer() {
   return c;
 }
 
+/** 선수 팝업 내용을 비우고 같은 선수 클릭 시 다시 열 수 있도록 활성 ID를 해제한다. */
 function pmHideAll() {
   pmContainer().innerHTML = '';
   _pmActiveId = null;
@@ -127,7 +141,9 @@ function pmHideAll() {
 
 // ── 컨텍스트 메뉴 팝업 ────────────────────────────────────────────────────────
 
+/** 클릭한 선수의 기본 정보와 편집·스탯 메뉴를 연다. 열린 메뉴의 같은 선수를 클릭하면 닫는다. */
 function pmShowMenu(playerId, clientX, clientY) {
+  // 1) ID와 토글 상태를 확인한 뒤 현재 명단에서 표시할 선수를 찾는다.
   const pid = Number(playerId);
   if (!pid) return;
 
@@ -138,6 +154,7 @@ function pmShowMenu(playerId, clientX, clientY) {
 
   _pmActiveId = pid;
 
+  // 2) 닉네임·원래 이름·사진·부상 사유와 경기 스탯 가용 여부를 모아 메뉴 내용을 구성한다.
   const nickname = getPlayerNickname(pid);
   const shortName = player.name || player.playerName || '';
   const longName  = player.nameKoLong || player.playerNameKoLong || '';
@@ -194,6 +211,7 @@ function pmShowMenu(playerId, clientX, clientY) {
   </div>
 </div>`;
 
+  // 3) 클릭 위치에 배치하고 화면 경계를 보정한 뒤 각 버튼을 편집기 또는 스탯 모달로 연결한다.
   pmPositionPopup(document.getElementById('pmPopup'), clientX, clientY);
 
   document.getElementById('pmClose').addEventListener('click', e => { e.stopPropagation(); pmHideAll(); });
@@ -216,6 +234,7 @@ function pmShowMenu(playerId, clientX, clientY) {
   });
 }
 
+/** 클릭한 화면 좌표를 레이아웃 좌표로 변환해 팝업을 옆에 배치하고 화면 경계 안으로 보정한다. */
 function pmPositionPopup(el, cx, cy) {
   const point = toDisplayLayoutPoint(cx, cy);
   el.style.left = (point.x + 12) + 'px';
@@ -249,6 +268,7 @@ function pmClampPopupToViewport(el, margin = 8) {
 // ── 선수 ID 인라인 입력 뷰 (pm-popup 내부에서 전환, 뒤로가기 지원) ─────────────
 /** pmPopup을 ID 입력 인라인 폼으로 전환 — 검색/미리보기/사진 유지·변경 토글/저장/연결 해제. */
 async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
+  // 1) 현재 경기·진영·원본 ID로 저장 키를 찾는다. ID 0에서 연결된 선수는 이름 키도 역탐색한다.
   const popup = document.getElementById('pmPopup');
   if (!popup) return;
 
@@ -277,6 +297,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     }
   }
 
+  // 2) 자동 연결 상태를 계산해 수동으로 저장된 연결 정보와 함께 입력 폼에 표시한다.
   // 이벤트의 다른 alt ID가 이 선수(currentApiId)로 자동 연결되고 있는지 확인 (pirAutoLinkAltToCanonical).
   // applyZeroIdOverrides와 동일한 조건으로 게이트 — 설정이 OFF면 실제로 적용되지 않으므로 배지도 안 보여준다.
   const autoLinkSettingOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
@@ -335,6 +356,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   const input = document.getElementById('pmIdInput');
   const preview = document.getElementById('pmIdPreview');
 
+  /** 원본과 검색 결과의 사진이 다를 때 사진 유지·변경 선택 UI의 HTML을 반환한다. */
   function renderPhotoToggle(newPhotoUrl) {
     // id≠0이고 양쪽 사진이 모두 있고 서로 다를 때만 before→after 비교 표시
     if (!newPhotoUrl || !_origPhotoUrl || newPhotoUrl === _origPhotoUrl) return '';
@@ -351,7 +373,9 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       `</div>`;
   }
 
+  /** 입력한 선수 ID를 조회해 미리보기와 사진 선택 UI를 갱신하고, 저장에 쓸 조회 결과를 보관한다. */
   async function doFetch() {
+    // 3-a) 양의 ID만 조회하고 검색 중에는 버튼을 잠근다.
     const newPid = parseInt(input.value, 10);
     if (!newPid || newPid <= 0) { preview.innerHTML = '<span style="color:#f88">유효한 ID를 입력하세요</span>'; return; }
     preview.innerHTML = '<span style="color:#aaa">로딩 중...</span>';
@@ -400,6 +424,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     }
   }
 
+  // 3) 검색 버튼과 Enter를 연결한다. 입력이 바뀌면 이전 검색 결과를 저장에 재사용하지 않는다.
   document.getElementById('pmIdFetch').addEventListener('click', doFetch);
   input.addEventListener('input', () => {
     _fetched = null;
@@ -410,6 +435,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     if (e.key === 'Escape') { e.stopPropagation(); pmShowMenu(pid, clientX, clientY); }
   });
 
+  // 4) 중복 연결을 검사한 뒤 현재 입력 ID와 일치하는 검색 결과만 이름·사진에 반영해 저장한다.
   document.getElementById('pmIdSave').addEventListener('click', () => {
     const newPid = parseInt(input.value, 10);
     if (!newPid || newPid <= 0 || !fixtureId) return;
@@ -443,6 +469,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
   });
 
+  // 5) 연결 해제는 처음 찾은 저장 키를 삭제한다. 저장·해제 후 라인업을 다시 그려 변경을 반영한다.
   const clearBtn = document.getElementById('pmIdClear');
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
@@ -461,6 +488,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
 
 // ── 닉네임 편집 ──────────────────────────────────────────────────────────────
 
+/** 현재 팝업을 닉네임 편집기로 바꾸고 저장·초기화·취소 및 Enter/Escape 처리를 연결한다. */
 function pmEditNickname(playerId, currentDisplay) {
   const popup = document.getElementById('pmPopup');
   if (!popup) return;
@@ -503,6 +531,7 @@ function pmEditNickname(playerId, currentDisplay) {
   });
 }
 
+/** 닉네임 변경을 라인업과 득점자·이벤트 패널에 반영하며 이벤트 등장 애니메이션은 생략한다. */
 function pmRefreshAfterNickname() {
   if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
   // 득점자 이름 / events-panel 갱신
@@ -514,7 +543,9 @@ function pmRefreshAfterNickname() {
 
 // ── 경기 스탯 모달 ────────────────────────────────────────────────────────────
 
+/** 경기 스탯과 기본 프로필을 즉시 표시하고, 연결 ID로 조회한 상세 프로필이 도착하면 보완한다. */
 async function pmShowMatchStats(playerId, player, stats) {
+  // 1) 현재 경기의 이름과 스탯으로 모달을 먼저 만든다. 프로필 API 실패 시에도 이 화면을 유지한다.
   const displayName = getPlayerNickname(playerId)
     || (typeof pickName === 'function' ? pickName(player, 'roster') : player.name || player.playerName || '');
 
@@ -541,6 +572,7 @@ async function pmShowMatchStats(playerId, player, stats) {
   });
 
   const profileId = pmResolveLinkedProfileId(playerId, player);
+  // 2) 요청 번호를 부여해 더 최근의 경기 스탯 조회가 시작되면 이전 응답을 무시한다.
   const myReqId = ++_pmMatchRequestId;
   try {
     const data = await (typeof fetchPlayerStats === 'function'
@@ -548,6 +580,7 @@ async function pmShowMatchStats(playerId, player, stats) {
       : Promise.reject(new Error('fetchPlayerStats not available')));
     if (!document.getElementById('pmBackdrop') || myReqId !== _pmMatchRequestId) return;
     if (data?.player) {
+      // 3) 상세 프로필과 제목만 갱신한다. 오른쪽 경기 스탯 표는 최초 경기 데이터로 유지한다.
       pmRenderSeasonProfile(data.player, player.number ?? '');
       const nick = getPlayerNickname(playerId);
       const fullName = nick || data.player.fullName || data.player.name || displayName;
@@ -559,6 +592,7 @@ async function pmShowMatchStats(playerId, player, stats) {
   }
 }
 
+/** 경기 명단에 있는 사진·등번호·닉네임·포지션으로 상세 조회 전의 기본 프로필을 표시한다. */
 function pmRenderMatchProfile(player, playerId) {
   const el = document.getElementById('pmSznProfile');
   if (!el) return;
@@ -584,7 +618,9 @@ function pmRenderMatchProfile(player, playerId) {
 </div>`;
 }
 
+/** 선수 경기 스탯 객체를 표 행 HTML로 변환한다. 빈 항목은 생략하고 평점은 색상 배지로 표시한다. */
 function pmBuildMatchStatRows(s) {
+  // 1) 라벨과 공통 값 포맷을 준비한다. 0은 유효한 기록이므로 일반 행에서 생략하지 않는다.
   const L = (typeof PLAYER_MATCH_STAT_LABELS !== 'undefined') ? PLAYER_MATCH_STAT_LABELS : {};
   const lbl = key => L[key] || key;
 
@@ -607,6 +643,7 @@ function pmBuildMatchStatRows(s) {
   const tackleLabel = [lbl('tacklesTotal'), lbl('tacklesBlocks'), lbl('tacklesInterceptions')].join(' / ');
   const tackleVal = tackleAllNull ? null : tackleParts.map(v => v ?? '-').join(' / ');
 
+  // 2) 복합 기록과 평점을 별도로 구성한 뒤 나머지 단일 기록과 정해진 순서로 합친다.
   // 평점은 다른 스탯과 달리 순수 텍스트가 아니라 포메이션 라인업 평점 배지와 동일한
   // 배경색(_pmRatingHtml — lpRatingColor와 같은 구간 기준)을 입혀야 하므로 row()를 안 거친다.
   const ratingRow = (s.rating != null && s.rating !== '')
@@ -645,7 +682,9 @@ let _pmSznKeys = [];
 let _pmSznIdx  = 0;
 let _pmSznRequestId = 0;
 
+/** 연결 ID의 시즌 스탯을 조회해 최신 시즌부터 표시한다. 로딩 상태와 조회 실패 메시지도 처리한다. */
 async function pmShowSeasonStats(playerId, player) {
+  // 1) 로딩 모달을 먼저 열고 닫기 동작을 연결한다.
   const displayName = getPlayerNickname(playerId)
     || (typeof pickName === 'function' ? pickName(player, 'roster') : player.name || player.playerName || '');
 
@@ -672,6 +711,7 @@ async function pmShowSeasonStats(playerId, player) {
   });
 
   const myReqId = ++_pmSznRequestId;
+  // 2) 원본 선수 ID에 연결된 프로필 ID로 조회한다. 다음 조회가 시작됐거나 모달이 닫히면 응답을 무시한다.
   const profileId = pmResolveLinkedProfileId(playerId, player);
   try {
     const data = await (typeof fetchPlayerStats === 'function'
@@ -680,6 +720,7 @@ async function pmShowSeasonStats(playerId, player) {
 
     if (!document.getElementById('pmBackdrop') || myReqId !== _pmSznRequestId) return;
 
+    // 3) 응답과 시즌 목록을 보관하고 최신 시즌을 선택한다. 이후 탐색은 캐시된 응답을 사용한다.
     _pmSznData = data;
     _pmSznKeys = Object.keys(data.statistics || {}).sort().reverse();
     _pmSznIdx  = 0;
@@ -691,6 +732,7 @@ async function pmShowSeasonStats(playerId, player) {
   }
 }
 
+/** 상세 선수 프로필의 사진·이름·국적·신체 정보·출생 정보를 값이 있는 항목만 표시한다. */
 function pmRenderSeasonProfile(p, number) {
   const el = document.getElementById('pmSznProfile');
   if (!el || !p) return;
@@ -725,6 +767,7 @@ function pmRenderSeasonProfile(p, number) {
 </div>`;
 }
 
+/** 평점을 소수 첫째 자리와 설정된 구간 색상의 배지로 반환한다. 빈 값은 '-', 숫자가 아니면 텍스트. */
 function _pmRatingHtml(r) {
   if (r == null || r === '') return '-';
   const n = Number(r);
@@ -742,7 +785,9 @@ function _pmRatingHtml(r) {
   return `<span class="pm-rating-badge"${bg}>${n.toFixed(1)}</span>`;
 }
 
+/** 선택한 시즌의 대회·팀별 기록 표와 이전/다음 시즌 탐색 버튼을 캐시된 응답으로 다시 그린다. */
 function pmRenderSeasonPage() {
+  // 1) 모달과 데이터 유무를 확인하고 현재 시즌 및 탐색 가능 방향을 결정한다.
   const body = document.getElementById('pmModalBody');
   if (!body || !_pmSznData) return;
 
@@ -758,6 +803,7 @@ function pmRenderSeasonPage() {
 
   const v = (x, sfx = '') => (x != null) ? `${x}${sfx}` : '-';
 
+  // 2) 대회·팀별 기록을 한 행씩 만든다. 누락 기록은 '-'로, 카드와 평점은 별도 표시 형식으로 변환한다.
   const tableRows = list.map(stat => {
     const lg = stat.league   || {};
     const tm = stat.team     || {};
@@ -806,6 +852,7 @@ function pmRenderSeasonPage() {
 </tr>`;
   }).join('');
 
+  // 3) 표시 라벨과 시즌 탐색 바를 준비한 뒤 그룹 헤더와 기록 행을 표에 배치한다.
   const L = (typeof PLAYER_SZN_LABELS !== 'undefined') ? PLAYER_SZN_LABELS : {};
   const sl = (k, fb) => L[k] != null ? L[k] : fb;
 
@@ -854,6 +901,7 @@ function pmRenderSeasonPage() {
   </table>
 </div>`;
 
+  // 4) 시즌 버튼은 인덱스만 바꿔 재렌더한다. API를 다시 호출하지 않는다.
   document.getElementById('pmNavOlder')?.addEventListener('click', () => {
     if (_pmSznIdx < _pmSznKeys.length - 1) { _pmSznIdx++; pmRenderSeasonPage(); }
   });
@@ -864,7 +912,9 @@ function pmRenderSeasonPage() {
 
 // ── 닉네임 목록 모달 ──────────────────────────────────────────────────────────
 
+/** 저장된 닉네임 목록을 모달로 표시하고 개별 삭제 시 목록 수와 관련 패널의 이름을 갱신한다. */
 function pmShowNicknameList() {
+  // 1) 저장소를 읽고 현재 경기에서 찾을 수 있는 선수는 원래 이름을 함께 표시한다.
   let map = {};
   try { map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}'); } catch {}
 
@@ -891,7 +941,7 @@ function pmShowNicknameList() {
         </tr>`;
       }).join('');
 
-  // 설정 팝업이 열려 있을 수 있으므로 pmContainer 대신 별도 모달 사용
+  // 2) 설정 팝업과 별도로 선수 메뉴 컨테이너 안에 목록 모달을 만든다.
   pmContainer().innerHTML = `
 <div class="pm-modal-backdrop" id="pmBackdrop">
   <div class="pm-modal pm-modal-wide">
@@ -920,6 +970,7 @@ function pmShowNicknameList() {
     if (e.target === e.currentTarget) pmHideAll();
   });
 
+  // 3) 삭제를 목록에 위임해 저장값·해당 행·제목의 개수를 갱신하고 경기 화면에도 반영한다.
   document.getElementById('pmNickListBody').addEventListener('click', e => {
     const btn = e.target.closest('.pm-nick-del');
     if (!btn) return;
@@ -936,6 +987,7 @@ function pmShowNicknameList() {
 
 // ── 클릭 이벤트 위임 ──────────────────────────────────────────────────────────
 
+/** 선수 클릭·외부 클릭·Escape를 위임 처리하고 설정 화면의 닉네임 초기화·목록 버튼을 연결한다. */
 function pmInit() {
   // 선수 요소 클릭 → 컨텍스트 메뉴
   document.addEventListener('click', e => {

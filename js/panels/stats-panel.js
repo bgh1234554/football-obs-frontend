@@ -362,11 +362,18 @@ function stDefaultPanelHeight(panel) {
   return height;
 }
 
+/**
+ * 실제 스탯 행을 숨겨서 렌더링해 패널에 들어가는 항목 수를 구한다.
+ * reserveControls가 true이면 페이지 버튼 공간을 확보하며, 측정 불가 시 설정값(기본 9개)을 반환한다.
+ * 측정 결과는 공간이 부족해도 최소 1개를 보장한다.
+ */
 function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
+  // 1) 패널 높이나 표시할 데이터가 없으면 실측 대신 설정된 기본 개수를 사용한다.
   const cfg = window.STATS_CONFIG;
   const fallback = cfg?.itemsPerPage || 9;
   if (!panel?.clientHeight || !Array.isArray(rows) || !rows.length) return fallback;
 
+  // 2) 실제 패널 안에 숨겨진 측정용 DOM을 만든다. 필요하면 페이지 버튼 공간도 미리 확보한다.
   // 고정 rowH 추정으로는 브라우저별 line-height 반올림을 못 따라가 마지막 행이 반쯤 보일 수 있다.
   // 실제 렌더 트리를 숨겨서 한 행씩 넣어 보고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
   const wrap = document.createElement('div');
@@ -383,6 +390,7 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
 
   panel.appendChild(wrap);
 
+  // 3) 한 행씩 추가하다가 높이를 초과하면 중단한다. 넘친 마지막 행은 수용 개수에 포함하지 않는다.
   let fits = 0;
   for (const row of rows) {
     page.appendChild(stCreateRow(row, fixtureData));
@@ -393,6 +401,7 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
     fits += 1;
   }
 
+  // 4) 측정용 DOM을 제거하고 최소 1개를 보장한 결과를 반환한다.
   wrap.remove();
   // 이 지점에 도달했다면 panel.clientHeight와 rows.length는 이미 보장됨(위 가드) — 측정은 항상 시도된 상태.
   // fits===0(첫 행부터 넘침)이어도 fallback으로 되돌리지 않고 최소 1행은 보여준다.
