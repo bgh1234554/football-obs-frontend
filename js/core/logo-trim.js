@@ -205,27 +205,36 @@ const LogoTrim = (() => {
    * 같은 URL의 처리 중·캐시 유효 상태에서는 불필요한 이미지 재설정과 분석을 생략한다.
    * 오래 열린 페이지도 호출 시 만료를 확인하며, 만료 좌표 대신 원본을 표시하면서 재분석한다.
    */
-  function render(img, source) {
+  function render(img, source, onReady) {
     if (!img) return;
     const url = String(source || '').trim();
     let current = elements.get(img);
     if (!current || current.url !== url) {
-      current = { url, expiresAt: 0, busy: false };
+      current = { url, expiresAt: 0, busy: false, ready: false };
       elements.set(img, current);
       clearLayout(img);
       if (url) img.src = url; else img.removeAttribute('src');
       img.classList.toggle('hidden', !url);
     }
-    if (!url || current.busy || current.expiresAt > Date.now()) return;
+    // 항상 최신 렌더의 콜백을 사용한다. 분석 중 색상만 바뀌어도 이전 색을 적용하지 않는다.
+    current.onReady = onReady;
+    if (!url || current.busy || current.expiresAt > Date.now()) {
+      current.onReady?.(current.ready);
+      return;
+    }
     // 캐시가 있으면 Promise를 기다리지 않고 즉시 적용해 반복 표시 시 크기 변화를 줄인다.
     const cached = readCache(url);
     if (cached) {
       applyLayout(img, cached.bounds);
       current.expiresAt = cached.expiresAt;
+      current.ready = !!cached.bounds;
+      current.onReady?.(current.ready);
       return;
     }
     clearLayout(img);
     current.busy = true;
+    current.ready = false;
+    current.onReady?.(false);
     getBounds(url).then(record => {
       // 분석 중 경기가 바뀌거나 로고를 지웠다면 이전 요청의 응답은 적용하지 않는다.
       // URL 문자열뿐 아니라 상태 객체 자체를 비교하므로 A→B→A로 바뀐 경우도 구분된다.
@@ -233,6 +242,8 @@ const LogoTrim = (() => {
       current.busy = false;
       current.expiresAt = record.expiresAt;
       applyLayout(img, record.bounds);
+      current.ready = !!record.bounds;
+      current.onReady?.(current.ready);
     });
   }
 
