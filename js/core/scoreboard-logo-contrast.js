@@ -154,10 +154,11 @@ const ScoreboardLogoContrast = (() => {
     if (!img || !card) return;
     const reset = () => card.classList.remove('logo-color-swapped');
     const url = img.getAttribute('src') || '';
+    const tracked = elements.get(img);
     // LogoTrim이 아직 이 로고의 최종 표시 크기를 확정하지 못했으면(로딩/분석 중) 대기한다.
     // 로고가 실제로 제거된 경우만 초기화한다.
     if (!ready || !url) {
-      if (!url) {
+      if (!url || !tracked || tracked.url !== url) {
         elements.delete(img);
         reset();
       }

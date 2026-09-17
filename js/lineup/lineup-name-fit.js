@@ -1488,7 +1488,8 @@ function tryTeamChipTwoTokenBreak(nameEl, collisionEls) {
   nameEl.style.width = `${Math.ceil(textWidth)}px`;
   nameEl.style.whiteSpace = '';
 
-  if (!elementOverlapsAny(nameEl.closest('.dp-lineup-team-main'), collisionEls)) {
+  if (canStayWithinTwoTextLines(nameEl)
+    && !elementOverlapsAny(nameEl.closest('.dp-lineup-team-main'), collisionEls)) {
     nameEl.dataset.teamNameOriginal = originalText;
     return true;
   }
@@ -1549,7 +1550,7 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
     // mainOverlaps/buttonOverlaps 둘 다 false라 아래 nudge/shrink 단계로 못 내려갔다.
     // 칩 전체 rect까지 같이 확인해 그 경우도 remediation 루프에 들어오게 한다.
     const chipOverlaps = elementOverlapsAny(chipEl, collisionEls);
-    if (!mainOverlaps && !buttonOverlaps && !chipOverlaps) break;
+    if (!mainOverlaps && !buttonOverlaps && !chipOverlaps && !nameIsClipped()) break;
 
     // 긴 팀명을 먼저 줄이지 않는다. 짧은 이름이 현재 폰트 크기로 안전하게 들어가면 그
     // 이름을 유지해 글자 크기를 보존한다(preferShrink/캠 큼-작음 무관, 위 설명 참조).
@@ -1566,7 +1567,7 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
       continue;
     }
 
-    if (preferShrink && mainOverlaps) {
+    if (preferShrink && (mainOverlaps || nameIsClipped())) {
       if (shrinkTeamChipMainText(nameEl, formationEl)) {
         safety += 1;
         continue;
@@ -1596,7 +1597,7 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
     }
 
     let changed = false;
-    if (mainOverlaps) {
+    if (mainOverlaps || nameIsClipped()) {
       changed = shrinkTeamChipMainText(nameEl, formationEl);
     }
     if (changed) {
@@ -1604,7 +1605,8 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
       continue;
     }
 
-    if (mainOverlaps && tightenTextElementWidth(nameEl, TEAM_CHIP_NAME_MIN_WIDTH_PX, canStayWithinTwoTextLines)) {
+    if ((mainOverlaps || nameIsClipped())
+      && tightenTextElementWidth(nameEl, TEAM_CHIP_NAME_MIN_WIDTH_PX, canStayWithinTwoTextLines)) {
       safety += 1;
       continue;
     }
