@@ -46,6 +46,7 @@
     'Hip Injury':        '엉덩이 부상',
     'Broken cheekbone':  '광대뼈 골절',
     'Head Injury':       '머리 부상',
+    'Ribs Injury':       '갈비뼈 부상',
     'Hernia':            '탈장',
     'Neck Injury':       '목 부상',
     'Rib Injury':        '갈비뼈 부상',

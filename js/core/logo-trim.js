@@ -23,7 +23,10 @@ const LogoTrim = (() => {
   // URL별 진행 중인 Promise: 홈·원정이 같은 로고를 요청해도 분석은 한 번만 수행한다.
   const pending = new Map();
   // 이미지 요소별 현재 요청 상태: DOM이 제거되면 별도 정리 없이 참조도 해제된다.
-  const elements = new WeakMap();
+  let elements = new WeakMap();
+  // 같은 URL의 CDN 파일이 교체돼도 페이지 진입 시 새 이미지 응답을 받도록 한다.
+  // 원본 source/state 값은 유지하고, 화면의 <img> 요청 URL에만 세션 단위 버전을 붙인다.
+  const SESSION_CACHE_BUSTER = `logo-v=${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   // 자동 보정용 속성만 관리한다. 사용자가 지정한 배율·위치 속성은 건드리지 않는다.
   const properties = ['--logo-trim-width', '--logo-trim-height', '--logo-trim-x', '--logo-trim-y'];
 
@@ -150,12 +153,12 @@ const LogoTrim = (() => {
     }
   }
 
-  /** 유효한 캐시 → 진행 중인 분석 공유 → 새 분석 순서로 결과를 얻는다. */
-  function getBounds(url) {
+  /** 원본 URL을 캐시 키로 사용하고, 이미지 분석 요청에만 cache-busted URL을 사용한다. */
+  function getBounds(url, requestUrl = url) {
     const cached = readCache(url);
     if (cached) return Promise.resolve(cached);
     if (pending.has(url)) return pending.get(url);
-    const task = analyse(url).then(bounds => writeCache(url, bounds)).catch(() => {
+    const task = analyse(requestUrl).then(bounds => writeCache(url, bounds)).catch(() => {
       // CORS·네트워크 등의 일시적 실패를 30일 동안 고정하지 않는다.
       // 실패 결과는 메모리에 1분만 두어 반복 요청을 막고, 이후 render 호출 시 재시도한다.
       // 별도 타이머로 1분 뒤 자동 재시도하는 방식은 아니다.
@@ -208,12 +211,15 @@ const LogoTrim = (() => {
   function render(img, source, onReady) {
     if (!img) return;
     const url = String(source || '').trim();
+    const displayUrl = url
+      ? `${url}${url.includes('?') ? '&' : '?'}${SESSION_CACHE_BUSTER}`
+      : '';
     let current = elements.get(img);
     if (!current || current.url !== url) {
       current = { url, expiresAt: 0, busy: false, ready: false };
       elements.set(img, current);
       clearLayout(img);
-      if (url) img.src = url; else img.removeAttribute('src');
+      if (displayUrl) img.src = displayUrl; else img.removeAttribute('src');
       img.classList.toggle('hidden', !url);
     }
     // 항상 최신 렌더의 콜백을 사용한다. 분석 중 색상만 바뀌어도 이전 색을 적용하지 않는다.
@@ -235,7 +241,7 @@ const LogoTrim = (() => {
     current.busy = true;
     current.ready = false;
     current.onReady?.(false);
-    getBounds(url).then(record => {
+    getBounds(url, displayUrl).then(record => {
       // 분석 중 경기가 바뀌거나 로고를 지웠다면 이전 요청의 응답은 적용하지 않는다.
       // URL 문자열뿐 아니라 상태 객체 자체를 비교하므로 A→B→A로 바뀐 경우도 구분된다.
       if (elements.get(img) !== current) return;
@@ -247,5 +253,19 @@ const LogoTrim = (() => {
     });
   }
 
-  return { render };
+  /** localStorage와 현재 페이지 메모리에 저장된 투명 여백 분석 결과를 모두 삭제한다. */
+  function clearCache() {
+    memory.clear();
+    pending.clear();
+    elements = new WeakMap();
+    try {
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key?.startsWith(PREFIX)) localStorage.removeItem(key);
+      }
+    } catch (_) { /* 저장소 접근이 제한돼도 메모리 캐시는 초기화한다. */ }
+  }
+
+  window.logoTrimClearCache = clearCache;
+  return { render, clearCache };
 })();
