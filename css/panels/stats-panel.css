@@ -440,7 +440,11 @@
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 1.5px;
+      /* 2px(짝수)로 고정 — translateX(-50%)의 이동량이 정확히 -1px(정수)가 되어, JS가
+         left를 정수 px로 스냅한 것과 합쳐지면 서브픽셀 안티앨리어싱이 전혀 생기지 않는다.
+         예전 1.5px는 그 자체로 -0.75px(소수) 이동이라 left를 아무리 정수로 맞춰도 폭
+         렌더링이 매번 미묘하게 달라 보였다(행마다 굵기가 들쭉날쭉하다는 피드백의 원인). */
+      width: 2px;
       transform: translateX(-50%);
       background: rgba(0,0,0,.5);
       pointer-events: none;

@@ -77,6 +77,9 @@
     }
     .team.home { background: var(--home-bg); color: var(--home-text); }
     .team.away { background: var(--away-bg); color: var(--away-text); }
+    /* 원본 팀 색상과 다른 패널은 유지하고 점수판 표시만 교환한다. */
+    .board .team.home.logo-color-swapped { background: var(--home-text); color: var(--home-bg); }
+    .board .team.away.logo-color-swapped { background: var(--away-text); color: var(--away-bg); }
     .team.home.outline-on { box-shadow: inset 0 0 0 var(--home-outline-w) var(--home-outline); }
     .team.away.outline-on { box-shadow: inset 0 0 0 var(--away-outline-w) var(--away-outline); }
 

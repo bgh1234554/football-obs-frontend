@@ -262,13 +262,18 @@ function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
 }
 
 /** 패널 안 한쪽 팀명 텍스트 + accent 컬러(팀칩 등) 갱신. */
-function setSideName(panel, dataAttrPrefix, side, teamName, accentColor) {
+function setSideName(panel, dataAttrPrefix, side, teamName, accentColor, accentTextColor) {
   const nameEl = panel?.querySelector(`[data-${dataAttrPrefix}-side="${side}"] .dp-side-name`);
   if (!nameEl) return;
   nameEl.textContent = teamName;
   nameEl.title = teamName;
-  if (accentColor) nameEl.style.setProperty('--dp-team-accent', accentColor);
-  else nameEl.style.removeProperty('--dp-team-accent');
+  if (accentColor) {
+    nameEl.style.setProperty('--dp-team-accent', accentColor);
+    nameEl.style.setProperty('--dp-team-text', accentTextColor || '#fff');
+  } else {
+    nameEl.style.removeProperty('--dp-team-accent');
+    nameEl.style.removeProperty('--dp-team-text');
+  }
 }
 
 /** lineup.coach에서 표시용 이름(닉네임 우선순위 pickName) 추출. */
@@ -585,6 +590,97 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   return `<span class="${nameClass}"${title}>${prefixHtml}<span class="dp-lineup-name-text"${surnameAttr}>${safeName}</span></span>`;
 }
 
+/** 선수 1명의 원/아바타 + 이름 라벨 HTML 쌍. 포메이션 그리드 노드와 OUT 배지 열(buildOutScorerColumnHtml)이 공유.
+ * extraClass는 CSS 타겟팅용 마커만 붙인다(크기/위치는 그리드 노드와 완전히 동일하게 유지). */
+function buildLineupNodePairHtml(player, effectiveData, side, position, extraClass = '') {
+  const nodeMode = getActiveLineupNodeMode();
+  const colors = getLineupSideColors(effectiveData, side);
+  const name = pickName(player, 'lineup', { preserveSurnameBreaks: true }) || player.name || '';
+  const title = player.nameKoLong && player.nameKoLong !== player.name
+    ? ` title="${dpEscape(player.nameKoLong)}"`
+    : '';
+  const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
+  const posStyle = `left:${position.left}%;top:${position.top}%;`;
+
+  const badge = nodeMode === 'photo' && player.photoUrl
+    ? `<span class="dp-lineup-avatar" style="background-image:url('${dpEscape(player.photoUrl)}')"></span>`
+    : `<span class="dp-lineup-circle">${dpEscape(player.number ?? '')}</span>`;
+
+  // Iter 5-3: 이벤트/평점 lookup
+  const events = lpGetPlayerEvents(player.playerId);
+  const isSentOff = !!(events?.red);
+  const badgesHtml = lpBuildNodeBadgesHtml(events);
+  const ratingHtml = lpBuildNodeRatingHtml(player.playerId);
+  const extraClassSuffix = extraClass ? ` ${extraClass}` : '';
+  const nodeClass = `dp-lineup-node is-${side}${extraClassSuffix}${isSentOff ? ' is-sent-off' : ''}`;
+  const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
+
+  // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
+  const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : '';
+  const circle = `<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`;
+  const nameHtml = `<div class="dp-lineup-name-wrap is-${side}${extraClassSuffix}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`;
+  return { circle, name: nameHtml };
+}
+
+/** subReflect=on일 때 교체 OUT 되면서 골/도움/자책골을 기록한 선수 목록. 가장 먼저 OUT된 선수가 배열 앞에 오도록 정렬. */
+function getOutScorerCandidates(lineup) {
+  if (typeof getSetting !== 'function' || getSetting('lineupShowOutScorers') !== 'on') return [];
+  if (getSetting('subReflect') !== 'on') return [];
+  if (!Array.isArray(lineup?.substitutes)) return [];
+
+  return lineup.substitutes
+    .map(player => {
+      const events = lpGetPlayerEvents(player?.playerId);
+      if (!events?.subOut) return null;
+      const contributions = (events.goals?.length || 0) + (events.ownGoals?.length || 0) + (events.assists?.length || 0);
+      if (!contributions) return null;
+      return { player, timeKey: lpEventTimeKey(events.subOut.time) };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.timeKey - b.timeKey)
+    .map(c => c.player);
+}
+
+/**
+ * subReflect=on일 때 교체 OUT 된 선수 중 공격포인트를 기록한 선수를 피치 "옆"(오른쪽 바깥)에
+ * 표시 (lineupShowOutScorers 설정, 캠 큼 전용). 그리드 노드를 그대로 옮겨온 것처럼 크기/라벨
+ * 로직을 동일하게 재사용(buildLineupNodePairHtml) — left%만 100을 넘겨 피치 밖으로 밀어낸다.
+ * 반드시 .dp-lineup-vertical-pitch(overflow:hidden)가 아니라 그걸 감싸는 overflow 제약 없는
+ * 컨테이너(.dp-lineup-pitch / .dp-lineup-pitch.is-split, 폭이 피치와 정확히 같음)의 형제로
+ * 삽입해야 피치 경계에서 잘리지 않는다.
+ * 세로 방향은 실제 포메이션 한 줄(최대 5명)과 같은 간격으로 배치 — 세로 5명이면 원래
+ * 한 줄에 다 들어가는 길이이므로, 그 5칸 간격 그대로 재사용한다.
+ */
+function buildOutScorerColumnHtml(lineup, effectiveData, side) {
+  const candidates = getOutScorerCandidates(lineup);
+  if (!candidates.length) return { circles: '', names: '' };
+
+  const isHome = side === 'home';
+  // combined 모드의 자기 진영 깊이 범위(mapFormationSlotToPitchPosition의 homeTop 8~47%)와
+  // 같은 기준 — split 모드에서도 같은 컨테이너 안에서 홈은 위쪽 절반, 원정은 아래쪽 절반을
+  // 차지하므로 동일하게 재사용 가능.
+  const [topMin, topMax] = isHome ? [6, 46] : [54, 94];
+  const ROWS_PER_COL = 5;
+  const COL_LEFT_BASE = 112; // % — 피치 폭 기준 오른쪽 바깥, 가장자리에서 살짝 띄운 첫 열
+  const COL_STEP_PCT = 22;   // 다음 열은 더 오른쪽으로
+
+  const circles = [];
+  const names = [];
+  candidates.forEach((player, i) => {
+    const col = Math.floor(i / ROWS_PER_COL);
+    const row = i % ROWS_PER_COL;
+    // 아래에서부터 쌓아 올라가는 순서 — 같은 열 안에서 가장 먼저 OUT된 선수(row=0)가
+    // topMax(맨 아래)에 오고, 이후 늦게 추가되는 선수일수록 위로 쌓인다. 한 명뿐이면
+    // 그 열의 맨 아래에 위치.
+    const top = topMax - row * ((topMax - topMin) / (ROWS_PER_COL - 1));
+    const left = COL_LEFT_BASE + col * COL_STEP_PCT;
+    const pair = buildLineupNodePairHtml(player, effectiveData, side, { left, top }, 'dp-lineup-outscorer');
+    circles.push(pair.circle);
+    names.push(pair.name);
+  });
+  return { circles: circles.join(''), names: names.join('') };
+}
+
 // 두 패스 렌더링 — 원/아바타와 이름 라벨을 분리해 HTML 두 덩어리로 반환.
 // 호출 측에서 모든 원을 먼저, 모든 이름을 나중에 DOM 삽입 → DOM 순서상 이름이 항상 위에 그려짐.
 // 결과: 홈/원정 양쪽 모두 이름이 인접 팀 얼굴 위로 나옴 (이전엔 home은 가려지고 away는 안 가림).
@@ -592,8 +688,6 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
 // pitchMode: 'combined' (default) — 양 팀 한 피치, 자기 진영만 사용
 //            'split'    — 한 팀이 풀 피치 사용 (캠 큼 splitLineup=on 전용)
 function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, options = {}) {
-  const nodeMode = getActiveLineupNodeMode();
-  const colors = getLineupSideColors(effectiveData, side);
   const circles = [];
   const names = [];
   // Iter 5-3: 노드 badge는 항상 모두 렌더 (양 캠 동일 DOM 공유).
@@ -601,32 +695,12 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
   const preFwDepth = pitchMode === 'split' ? getPreFwFormationDepth(lineup?.formation) : null;
 
   getFormationAssignments(lineup).forEach(({ slot, player }) => {
-    const name = pickName(player, 'lineup', { preserveSurnameBreaks: true }) || player.name || '';
-    const title = player.nameKoLong && player.nameKoLong !== player.name
-      ? ` title="${dpEscape(player.nameKoLong)}"`
-      : '';
     const position = pitchMode === 'split'
       ? mapFormationSlotToBigSplitPitchPosition(slot, side, { preFwDepth })
       : mapFormationSlotToPitchPosition(slot, side, options);
-    const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
-    const posStyle = `left:${position.left}%;top:${position.top}%;`;
-
-    const badge = nodeMode === 'photo' && player.photoUrl
-      ? `<span class="dp-lineup-avatar" style="background-image:url('${dpEscape(player.photoUrl)}')"></span>`
-      : `<span class="dp-lineup-circle">${dpEscape(player.number ?? '')}</span>`;
-
-    // Iter 5-3: 이벤트/평점 lookup
-    const events = lpGetPlayerEvents(player.playerId);
-    const isSentOff = !!(events?.red);
-    const badgesHtml = lpBuildNodeBadgesHtml(events);
-    const ratingHtml = lpBuildNodeRatingHtml(player.playerId);
-    const nodeClass = `dp-lineup-node is-${side}${isSentOff ? ' is-sent-off' : ''}`;
-    const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
-
-    // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
-    const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : '';
-    circles.push(`<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`);
-    names.push(`<div class="dp-lineup-name-wrap is-${side}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`);
+    const pair = buildLineupNodePairHtml(player, effectiveData, side, position);
+    circles.push(pair.circle);
+    names.push(pair.name);
   });
 
   return { circles: circles.join(''), names: names.join('') };
@@ -637,16 +711,43 @@ function buildLineupPitchTeamChipHtml(side, effectiveData, rawData, options = {}
   const lineup = effectiveData?.[`${side}Lineup`];
   const colors = getLineupSideColors(effectiveData, side);
   const formationOnly = options.formationOnly === true;
+  const matchInfo = effectiveData?.matchInfo || {};
+  const shortTeamName = String(side === 'home'
+    ? (matchInfo.homeTeamNameShort || '')
+    : (matchInfo.awayTeamNameShort || '')).trim();
+  const longTeamName = String(side === 'home'
+    ? (matchInfo.homeTeamName || '')
+    : (matchInfo.awayTeamName || '')).trim();
   const primaryLabel = formationOnly
     ? String(lineup?.formation || '').trim()
     : getTeamName(effectiveData, side);
   const primaryTitle = formationOnly ? primaryLabel : getTeamName(effectiveData, side);
+  const teamNameAttrs = formationOnly ? ''
+    : ` data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}"`;
   return `<div class="dp-lineup-team-chip is-${side}">
     <div class="dp-lineup-team-main${formationOnly ? ' is-formation-only' : ''}" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
-      <span class="dp-lineup-team-name" title="${dpEscape(primaryTitle)}">${dpEscape(primaryLabel)}</span>
+      <span class="dp-lineup-team-name"${teamNameAttrs} title="${dpEscape(primaryTitle)}">${dpEscape(primaryLabel)}</span>
       ${!formationOnly && lineup?.formation ? `<span class="dp-lineup-team-fm">${dpEscape(lineup.formation)}</span>` : ''}
     </div>
     ${shouldShowLineupManualButton(rawData, side) ? buildTitleActionButton('lineup', side) : ''}
+  </div>`;
+}
+
+/** 분할 모드(splitLineup=on) 전용 — 피치 왼쪽 위 팀 이름 라벨. 포메이션 chip과 같은 pill 스타일 재사용. */
+function buildLineupPitchTeamNameTagHtml(side, effectiveData) {
+  const colors = getLineupSideColors(effectiveData, side);
+  const teamName = getTeamName(effectiveData, side);
+  const matchInfo = effectiveData?.matchInfo || {};
+  const shortTeamName = String(side === 'home'
+    ? (matchInfo.homeTeamNameShort || '')
+    : (matchInfo.awayTeamNameShort || '')).trim();
+  const longTeamName = String(side === 'home'
+    ? (matchInfo.homeTeamName || '')
+    : (matchInfo.awayTeamName || '')).trim();
+  return `<div class="dp-lineup-team-name-tag is-${side}">
+    <div class="dp-lineup-team-main" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
+      <span class="dp-lineup-team-name" data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
+    </div>
   </div>`;
 }
 
@@ -669,7 +770,7 @@ function buildLineupPitchLeagueWashHtml(effectiveData, rawData) {
 // Iter 5-X: 분할 모드 한 팀 풀 피치 마크업. 마킹/리그 로고/팀 chip은 combined와 공유.
 function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
   const lineup = effectiveData?.[`${side}Lineup`];
-  const nodes = buildVerticalPitchNodesHtml(lineup, effectiveData, side, 'split');
+  const nodes = buildVerticalPitchNodesHtml(lineup, effectiveData, side, 'split', options);
   return `<div class="dp-lineup-vertical-pitch is-split is-${side}">
     ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
     <div class="dp-lineup-markings">
@@ -682,6 +783,7 @@ function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
       <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
       <div class="dp-lineup-marking dp-lineup-marking-bottom-arc"></div>
     </div>
+    ${buildLineupPitchTeamNameTagHtml(side, effectiveData)}
     ${buildLineupPitchTeamChipHtml(side, effectiveData, rawData, options)}
     ${nodes.circles}
     ${nodes.names}
@@ -690,9 +792,16 @@ function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
 
 /** splitLineup 모드 — 홈/원정 각자 풀 피치 2개를 나란히. */
 function buildLineupSplitPitchModeHtml(effectiveData, rawData, options = {}) {
+  // OUT 배지 열은 .dp-lineup-vertical-pitch(overflow:hidden) 내부가 아니라 그걸 감싸는
+  // .dp-lineup-pitch.is-split(클립 없음)의 형제로 둬야 피치 밖(진짜 옆 공간)으로 삐져나온다.
+  const emptyCol = { circles: '', names: '' };
+  const homeOut = options.showOutScorers ? buildOutScorerColumnHtml(effectiveData?.homeLineup, effectiveData, 'home') : emptyCol;
+  const awayOut = options.showOutScorers ? buildOutScorerColumnHtml(effectiveData?.awayLineup, effectiveData, 'away') : emptyCol;
   return `<div class="dp-lineup-pitch is-split">
     ${buildSingleSidePitchHtml('home', effectiveData, rawData, options)}
     ${buildSingleSidePitchHtml('away', effectiveData, rawData, options)}
+    ${homeOut.circles}${awayOut.circles}
+    ${homeOut.names}${awayOut.names}
   </div>`;
 }
 
@@ -712,6 +821,9 @@ function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
     'combined',
     options
   );
+  const emptyCol = { circles: '', names: '' };
+  const homeOut = options.showOutScorers ? buildOutScorerColumnHtml(effectiveData?.homeLineup, effectiveData, 'home') : emptyCol;
+  const awayOut = options.showOutScorers ? buildOutScorerColumnHtml(effectiveData?.awayLineup, effectiveData, 'away') : emptyCol;
   return `<div class="dp-lineup-pitch">
     <div class="dp-lineup-vertical-pitch">
       ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
@@ -732,6 +844,8 @@ function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
       ${homeNodes.names}
       ${awayNodes.names}
     </div>
+    ${homeOut.circles}${awayOut.circles}
+    ${homeOut.names}${awayOut.names}
   </div>`;
 }
 
@@ -788,10 +902,12 @@ function renderBenchPanel(effectiveData, rawData) {
     shouldShowBenchManualButton(rawData, 'away') ? buildTitleActionButton('bench', 'away') : '',
   ].filter(Boolean).join(''), buildBenchForceRefreshButtonHtml());
 
-  // 2) 팀명과 양쪽 리스트를 채운다 (팀 컬러는 chip 배경 accent에 사용).
+  // 2) 팀명과 양쪽 리스트를 채운다 (팀 컬러는 pill 배경/글자색에 사용).
   const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
-  setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'), cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')));
-  setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'), cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626')));
+  setSideName(panel, 'bench', 'home', getTeamName(effectiveData, 'home'),
+    cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')), cs(normalizeHexColor(state?.colors?.homeText, '#ffffff')));
+  setSideName(panel, 'bench', 'away', getTeamName(effectiveData, 'away'),
+    cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626')), cs(normalizeHexColor(state?.colors?.awayText, '#ffffff')));
 
   const homeLineupExists = !!effectiveData?.homeLineup;
   const awayLineupExists = !!effectiveData?.awayLineup;
@@ -1210,7 +1326,7 @@ function renderLineupGrid(effectiveData, rawData) {
   // 2) 사용할 마크업(pitch/list)과 이름 길이 모드를 고른다.
   // splitLineup 설정이 ON이면 layout-big에서만 두 피치로 분리 — layout-small은 항상 combined 모드.
   const splitOn = typeof getSetting === 'function' && getSetting('splitLineup') === 'on';
-  const bigPitchOptions = { awaySupportLiftPct: 3.5, awayFwLiftPct: 3, formationOnly: true };
+  const bigPitchOptions = { awaySupportLiftPct: 3.5, awayFwLiftPct: 3, formationOnly: true, showOutScorers: true };
   const bigCombinedHtml = usePitchMode
     ? buildLineupPitchModeHtml(effectiveData, rawData, bigPitchOptions)
     : buildLineupListModeHtml(effectiveData, rawData);
@@ -1218,7 +1334,7 @@ function renderLineupGrid(effectiveData, rawData) {
     ? buildLineupPitchModeHtml(effectiveData, rawData, { awaySupportLiftPct: 2, awayFwLiftPct: 2, homeFwLiftPct: 1.5 })
     : buildLineupListModeHtml(effectiveData, rawData);
   const splitHtml = (usePitchMode && splitOn)
-    ? buildLineupSplitPitchModeHtml(effectiveData, rawData, { formationOnly: true })
+    ? buildLineupSplitPitchModeHtml(effectiveData, rawData, { formationOnly: true, showOutScorers: true })
     : bigCombinedHtml;
 
   const longMode = typeof isLongName === 'function' && isLongName('lineup');
@@ -1480,7 +1596,7 @@ document.addEventListener('settings:change', event => {
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
     'lineupHideInitial', 'lineupShowNumber',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
-    'splitLineup', 'leagueLogoPos',
+    'lineupShowOutScorers', 'splitLineup', 'leagueLogoPos',
     'ratingColorBelow6', 'ratingColor6', 'ratingColor65',
     'ratingColor7', 'ratingColor8', 'ratingColor9', 'ratingColor95'];
   if (!re.includes(event.detail?.category)) return;

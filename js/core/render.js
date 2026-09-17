@@ -226,8 +226,7 @@
     // LogoTrim이 URL별 경계를 30일 동안 캐시하고, 미분석·만료 로고만 비동기로 분석한다.
     // 원본 src는 유지하며 별·반투명 테두리까지 포함한 경계에 맞춰 크기와 중심을 조절한다.
     // URL 교체 시 이전 보정을 초기화하고, 분석 실패 시 원본을 표시하는 처리도 모듈에 위임한다.
-    LogoTrim.render(el.homeLogo, state.homeLogo);
-    LogoTrim.render(el.awayLogo, state.awayLogo);
+    // 로고 렌더는 아래에서 색상·배율 적용 후 수행해 최종 표시 크기로 외곽색을 검사한다.
 
     // 4. 색상 CSS 변수 일괄 적용. greenscreen ON일 때는 chromaSafe()로 초록 계열만 시안으로 치환.
     //    --bg-ui는 settings-popup.js의 applyBackgroundSettings가 별도 관리하므로 여기선 건너뜀.
@@ -371,6 +370,12 @@
     renderPK();
     renderRedCards();
     syncScoreCol();
+    for (const side of ['home', 'away']) {
+      LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
+        ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
+          chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
+      });
+    }
     // 전술판 토큰 색상 동기화 — 팀 색상이 실제로 바뀐 경우에만 재렌더 (매 render() 호출 시 DOM 재생성하면 드래그/선택 상태가 깨짐)
     if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') {
       const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');

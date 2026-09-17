@@ -108,19 +108,24 @@ function hthRenderStatus(message) {
   });
 }
 
+// fixture.js의 FT_STALE_AFTER_MS(폴링 종료 기준)와 동일한 값 — "경기가 확실히 끝났다"고
+// 볼 수 있는 공통 기준을 두 곳에서 같이 쓴다.
+const HTH_PAST_MATCH_STALE_AFTER_MS = 4 * 60 * 60 * 1000;
+
 /**
- * 오늘 0시(로컬 자정) 이전에 킥오프한 경기만 상대 전적으로 유효.
- * API가 두 팀의 향후 예정 경기(같은 시즌 역대진 등)까지 목록에 섞어 내려주는 경우가 있는데,
- * 아직 열리지 않은 경기는 스코어가 확정되지 않아 상대 전적에 포함시키면 안 된다.
+ * 킥오프로부터 4시간이 지난 경기만 상대 전적으로 유효.
+ * API가 두 팀의 향후 예정 경기(같은 시즌 역대전 등)까지 목록에 섞어 내려주는 경우가 있는데,
+ * 아직 열리지 않았거나 진행 중인 경기는 스코어가 확정되지 않아 상대 전적에 포함시키면 안 된다.
+ * 이전에는 "오늘 0시 이전 킥오프"만 걸렀는데, 그러면 당일 킥오프한 경기는 이미 종료됐어도
+ * (예: 오전 경기가 저녁에 끝난 경우) 영원히 상대 전적에 반영되지 않는 버그가 있었다 —
+ * 날짜 대신 킥오프 후 경과 시간으로 판단해 당일 경기도 4시간 지나면 자연스럽게 포함된다.
  * 날짜 파싱이 안 되는 항목은 걸러낼 근거가 없으므로 안전하게 표시 쪽(true)으로 둔다.
  */
 function hthIsPastMatch(match) {
   if (!match?.date) return true;
   const d = new Date(match.date);
   if (isNaN(d.getTime())) return true;
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  return d.getTime() < todayStart.getTime();
+  return (Date.now() - d.getTime()) >= HTH_PAST_MATCH_STALE_AFTER_MS;
 }
 
 /** hthIsPastMatch 필터를 배열에 적용. 렌더링뿐 아니라 스크롤 속도 등 크기 계산도 이 결과를 공유한다. */

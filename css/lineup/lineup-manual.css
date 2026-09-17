@@ -343,6 +343,9 @@
 .layout-big .lp-lineup.dp-mode-split {
   aspect-ratio: 94 / 210;
 }
+.layout-big .lp-lineup.dp-mode-split.lp-width-locked {
+  aspect-ratio: unset;
+}
 .dp-lineup-pitch.is-split {
   display: flex;
   flex-direction: column;
@@ -369,14 +372,24 @@
   height: auto;
   aspect-ratio: auto;
 }
-/* split 모드에서는 양 팀 모두 GK가 피치 아래쪽에 있으므로 home chip도 아래로 내림 */
-.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+/* split 모드에서는 양 팀 모두 GK가 피치 아래쪽에 있으므로 home chip도 아래로 내림 —
+   away와 마찬가지로 bottom 앵커. 값은 px 대신 %를 써서(피치 자기 자신의 높이 기준) 패널이
+   작게 렌더될 때도 가장자리로부터의 상대적 거리가 유지되게 한다(px 고정값은 피치가 작을수록
+   상대적으로 안쪽으로 파고드는 것처럼 보였다 — 2026-09 피드백). 좌상단 팀명 라벨
+   (.dp-lineup-team-name-tag, top:1.5%)과 정확히 같은 값이라 하프라인 기준 상하 대칭도 보장.
+   1.5%는 피치 외곽 라인의 inset(.dp-lineup-markings::before)과 맞춰 라인 바로 안쪽까지
+   가장자리 쪽으로 당김(2026-09 피드백). */
+.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home,
+.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-away {
   top: auto;
-  bottom: 14px;
+  bottom: 1.5%;
 }
-.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+/* is-away의 일반 scale-tracking 규칙(lineup-layout.css)과 specificity가 같아 로드 순서에
+   기대지 않도록 .layout-big .lp-lineup을 더해 확실하게 위 규칙이 이기게 한다. */
+.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home,
+.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-away {
   top: auto;
-  bottom: calc(14px * var(--lp-node-scale, 1));
+  bottom: 1.5%;
 }
 
 /* ─── 리그 로고 워시 위치 (leagueLogoPos: center / left / right) ─────────

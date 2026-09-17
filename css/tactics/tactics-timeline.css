@@ -4,6 +4,15 @@
     #tactics-topbar {
       background: var(--panel-bg);
     }
+    .td-topbar-size-control {
+      display: none;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 4px;
+      order: 98;
+      margin-left: auto;
+      padding-left: 8px;
+    }
     /* 좁은 태블릿에서도 버튼/라벨 내부 글자를 쪼개지 않고 컨트롤 단위로 줄바꿈한다. */
     #tactics-topbar > * {
       flex-shrink: 0;
@@ -398,11 +407,19 @@
       background: #0b1220 !important;
     }
     #page-tactics:fullscreen #tactics-topbar {
+      /* zoom은 실제 버튼 영역과 줄바꿈 높이를 함께 키운다. */
+      zoom: var(--td-topbar-scale, 1);
       flex-wrap: wrap !important;
       gap: 5px !important;
       padding-left: 8px !important;
       padding-right: 8px !important;
       overflow: visible;
+    }
+    #page-tactics:fullscreen .td-topbar-size-control {
+      display: inline-flex;
+    }
+    #page-tactics:fullscreen #tactics-topbar .td-alpha-control {
+      margin-left: 0;
     }
     #page-tactics:fullscreen #tactics-topbar .td-alpha-control,
     #page-tactics:fullscreen #tactics-topbar .td-name-size-control,
@@ -453,6 +470,16 @@
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
     #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
 
+    #td-drawtools-backdrop {
+      display: none;
+    }
+    #page-tactics:fullscreen #td-drawtools-backdrop:not([hidden]) {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      touch-action: none;
+    }
     /* 풀스크린 모드: 그리기 도구 패널도 타임라인과 동일한 방식(우측 슬라이드)으로 전환.
        타임라인 패널과 같은 우측 자리를 쓰므로 js(tactics.js/tactics-timeline.js)가
        하나를 열 때 다른 하나를 자동으로 닫아 겹치지 않게 한다(is-open 상호 배타). */
@@ -461,7 +488,8 @@
       top: 0;
       right: 0;
       bottom: 0;
-      width: 176px;
+      /* 버튼 높이는 최대 2배, 패널 폭은 최대 25%만 늘려 피치 가림을 줄인다. */
+      width: calc(176px + 44px * (var(--td-drawtools-scale, 1) - 1)) !important;
       max-width: calc(var(--display-vw, 1vw) * 60);
       height: auto;
       z-index: 100;
@@ -472,6 +500,45 @@
     }
     #page-tactics:fullscreen #tactics-draw-toolbar.is-open {
       transform: translateX(0);
+    }
+    .td-drawtools-size-control {
+      display: none;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0 8px;
+    }
+    .td-drawtools-size-control .td-alpha-slider {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+    }
+    #page-tactics:fullscreen .td-drawtools-size-control {
+      display: grid;
+    }
+    #page-tactics:fullscreen #tactics-draw-toolbar > * {
+      flex-shrink: 0;
+    }
+    #page-tactics:fullscreen #tactics-draw-toolbar .tactics-draw-title {
+      min-height: calc(26px * var(--td-drawtools-scale, 1));
+      padding: 7px calc(28px * var(--td-drawtools-scale, 1)) 0;
+    }
+    #page-tactics:fullscreen #tactics-draw-toolbar > button {
+      min-height: calc(28px * var(--td-drawtools-scale, 1)) !important;
+      padding: calc(5px * var(--td-drawtools-scale, 1)) 8px !important;
+      font-size: calc(12px + 6px * (var(--td-drawtools-scale, 1) - 1)) !important;
+    }
+    #page-tactics:fullscreen #tactics-draw-toolbar > #td-drawtools-close {
+      width: calc(26px * var(--td-drawtools-scale, 1));
+      height: calc(26px * var(--td-drawtools-scale, 1));
+      min-height: calc(26px * var(--td-drawtools-scale, 1)) !important;
+      padding: 0 !important;
+      font-size: calc(18px * var(--td-drawtools-scale, 1)) !important;
+    }
+    #page-tactics:fullscreen #tactics-draw-toolbar .tactics-draw-swatches button {
+      width: calc(20px * var(--td-drawtools-scale, 1)) !important;
+      height: calc(20px * var(--td-drawtools-scale, 1)) !important;
     }
     #tactics-draw-toolbar {
       position: relative;

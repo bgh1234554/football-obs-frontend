@@ -65,6 +65,9 @@ const SETTINGS_DEFAULTS = {
   lineupShowRating: 'on',    // 평점 박스
   lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
+  // 교체 OUT 된 선수 중 골/도움/자책골을 기록한 선수를 피치 오른쪽에 별도 열로 표시.
+  // subReflect=on일 때만 동작(off면 OUT 선수가 이미 그리드에 그대로 남아있어 중복 표시 방지).
+  lineupShowOutScorers: 'off',
   // 점수판 양옆 득점자 박스에 골 외 이벤트를 함께 표시할지.
   noteShowPenaltyMisses: 'on',
   noteShowRedCards: 'on',
@@ -90,6 +93,8 @@ const SETTINGS_DEFAULTS = {
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   0,
+  tacticsTopbarScale: 100, // 전체화면 상단바 버튼·글자 크기 배율(%).
+  tacticsDrawtoolsScale: 100, // 전체화면 그리기 도구 패널 크기 배율(%).
   tacticsFullscreenAlign: 'center', // 전술판 전체화면 피치 정렬: left / center / right
   tacticsNameSize: 12, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
   tacticsTokenScale: 100, // 전술판 선수 바둑알 크기 배율(%). 전술판 상단 슬라이더로 조정. 태블릿 등 작은 화면 대응.
@@ -137,6 +142,10 @@ const TACTICS_NAME_SIZE_MAX = 18;
 // 전술판 선수 바둑알 크기 배율(%) — 태블릿 등 작은 화면에서 기본 44px 원이 너무 크다는 피드백으로 추가.
 const TACTICS_TOKEN_SCALE_MIN = 50;
 const TACTICS_TOKEN_SCALE_MAX = 150;
+const TACTICS_TOPBAR_SCALE_MIN = 100;
+const TACTICS_TOPBAR_SCALE_MAX = 200;
+const TACTICS_DRAWTOOLS_SCALE_MIN = 100;
+const TACTICS_DRAWTOOLS_SCALE_MAX = 200;
 const LINEUP_PITCH_TONE_STYLES = {
   green: {
     background: 'linear-gradient(135deg, #1a7a3a 0%, #15662f 25%, #1a7a3a 50%, #15662f 75%, #1a7a3a 100%)',
@@ -337,7 +346,7 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
-  'lineupShowSubTime', 'lineupShowNumber', 'noteShowPenaltyMisses',
+  'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
@@ -378,6 +387,12 @@ function isValidSetting(category, value) {
   }
   if (category === 'tacticsTokenScale') {
     return Number.isFinite(value) && value >= TACTICS_TOKEN_SCALE_MIN && value <= TACTICS_TOKEN_SCALE_MAX;
+  }
+  if (category === 'tacticsTopbarScale') {
+    return Number.isFinite(value) && value >= TACTICS_TOPBAR_SCALE_MIN && value <= TACTICS_TOPBAR_SCALE_MAX;
+  }
+  if (category === 'tacticsDrawtoolsScale') {
+    return Number.isFinite(value) && value >= TACTICS_DRAWTOOLS_SCALE_MIN && value <= TACTICS_DRAWTOOLS_SCALE_MAX;
   }
   if (category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
     return Number.isFinite(value) && value >= 0 && value <= 100;
@@ -549,7 +564,7 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsFullscreenAlign') applyLayoutSettings();
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -689,6 +704,14 @@ function applyLayoutSettings() {
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
   root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
+  root.style.setProperty('--td-topbar-scale', String(
+    Math.max(TACTICS_TOPBAR_SCALE_MIN, Math.min(TACTICS_TOPBAR_SCALE_MAX,
+      Number(getSetting('tacticsTopbarScale')) || SETTINGS_DEFAULTS.tacticsTopbarScale)) / 100
+  ));
+  root.style.setProperty('--td-drawtools-scale', String(
+    Math.max(TACTICS_DRAWTOOLS_SCALE_MIN, Math.min(TACTICS_DRAWTOOLS_SCALE_MAX,
+      Number(getSetting('tacticsDrawtoolsScale')) || SETTINGS_DEFAULTS.tacticsDrawtoolsScale)) / 100
+  ));
   root.style.setProperty('--td-fullscreen-align', {
     left: 'flex-start',
     center: 'center',
@@ -1226,6 +1249,17 @@ function initSettingsPopup() {
   document.querySelectorAll('input[data-settings-slider]').forEach(input => {
     const category = input.dataset.settingsSlider;
     syncSliderUi(category);
+    if (category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale') {
+      // 드래그 중 UI가 확대되면 슬라이더 위치도 이동하므로 놓을 때만 적용한다.
+      input.addEventListener('input', () => {
+        const label = document.querySelector(`[data-settings-slider-value="${category}"]`);
+        if (label) label.textContent = `${input.value}%`;
+      });
+      input.addEventListener('change', () => {
+        setSetting(category, Number(input.value));
+      });
+      return;
+    }
     input.addEventListener('input', () => {
       setSetting(category, Number(input.value));
     });

@@ -674,10 +674,12 @@
     const openBtn = document.getElementById('td-drawtools-toggle');
     const closeBtn = document.getElementById('td-drawtools-close');
     const panel = document.getElementById('tactics-draw-toolbar');
+    const backdrop = document.getElementById('td-drawtools-backdrop');
     if (!panel) return;
 
     const setOpen = (next) => {
       panel.classList.toggle('is-open', next);
+      if (backdrop) backdrop.hidden = !next;
       if (openBtn) openBtn.textContent = next ? '›› 그리기 도구' : '‹‹ 그리기 도구';
     };
 
@@ -696,7 +698,37 @@
       });
     }
 
-    // 풀스크린 + 패널이 열려있을 때만 외부 클릭으로 닫기 (일반 모드는 인라인이라 불필요).
+    // 첫 바깥 제스처 전체를 받아 그리기/지우기/선수 이동으로 전달되지 않게 한다.
+    // 포인터를 잡아두면 패널을 닫으려다 손가락이 움직여도 피치에 획이 남지 않는다.
+    if (backdrop) {
+      let dismissClickPending = false;
+      // pointerup에서 배경이 숨겨진 뒤 브라우저가 피치로 보내는 후속 click도 소비한다.
+      // 다음 실제 입력이 시작되면 해제해 다음 터치나 클릭은 정상 동작하게 한다.
+      document.addEventListener('pointerdown', () => { dismissClickPending = false; }, true);
+      document.addEventListener('click', (e) => {
+        if (!dismissClickPending) return;
+        dismissClickPending = false;
+        if (e.detail === 0) return; // 키보드로 실행한 클릭은 별도 입력이다.
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }, true);
+      backdrop.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        backdrop.setPointerCapture(e.pointerId);
+      });
+      const dismiss = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dismissClickPending = e.type === 'pointerup';
+        setOpen(false);
+      };
+      backdrop.addEventListener('pointerup', dismiss);
+      backdrop.addEventListener('pointercancel', dismiss);
+      backdrop.addEventListener('click', dismiss);
+    }
+
+    // 키보드 등 포인터를 거치지 않는 외부 클릭에도 닫기 동작 유지.
     document.addEventListener('click', (e) => {
       if (!document.fullscreenElement) return;
       if (!panel.classList.contains('is-open')) return;
@@ -1012,7 +1044,7 @@
       btn.style.border = '2px solid transparent';
       btn.style.boxShadow = btn.dataset.clr === '#ffffff' ? 'inset 0 0 0 1px rgba(0,0,0,0.2)'
                           : btn.dataset.clr === '#facc15' ? 'inset 0 0 0 1px rgba(0,0,0,0.15)'
-                          : btn.dataset.clr === '#1e293b' ? 'inset 0 0 0 1px rgba(255,255,255,0.15)'
+                          : btn.dataset.clr === '#000000' ? 'inset 0 0 0 1px rgba(255,255,255,0.15)'
                           : '';
     });
     const sel = document.querySelector(`[data-clr="${c}"]`);

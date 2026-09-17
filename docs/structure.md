@@ -77,7 +77,7 @@
 | `state.js` | 전역 상태 | `state` (점수·로고·색상·half·timer 등), `el` (DOM 참조), `persist()`, `restore()` |
 | `render.js` | 점수판 렌더링 | `render()`, `formatScorers()`, `applyBoardScale()`, `pkPush/Undo/Reset()`, `setMatchHalf()`, `flashElement()` |
 | `timer.js` | 경기 시간 타이머 | `startClockTimer()`, `pauseClockTimer()`, `setClockSeconds()`, `syncRunningClockToNow()`, 인라인 시간 편집기 |
-| `fixture.js` | 경기 ID 연동 + 폴링 | `fetchAndApplyFixtureData()`, `buildScorers()`, `schedulePoll()`, `forceRefreshCurrentFixture()`. 진행 중 20초 / FT 감지 후 3분간 1분 간격 / INT 5분 간격(30분 후 중단) |
+| `fixture.js` | 경기 ID 연동 + 폴링 | `fetchAndApplyFixtureData()`, `buildScorers()`, `schedulePoll()`, `forceRefreshCurrentFixture()`. 진행 중 15초 / FT 감지 후 3분간 1분 간격 / INT 5분 간격(30분 후 중단) |
 | `api.js` | 백엔드 fetch | `fetchFixture()`, `fetchPlayerStats()`, `fetchHeadToHead()`, `ApiError` |
 | `router.js` | 탭/URL 동기화 | `activatePage()`. 배포 환경에서는 `/detail`, `/theme`, `/schedule` 등의 경로, localhost·명시적 HTML 진입점에서는 `#/detail` 등의 hash를 사용. LAN Live Server의 HTML 경로를 보존. 일정 위젯 lazy mount와 API 폴링 제어 |
 | `keyboard.js` | 전역 단축키 | `window keydown` 핸들러 — Space/R/E/[/]/H/T/1~8/Q/W/A/S/F/Z/X/Ctrl+Z·Y 등 |
