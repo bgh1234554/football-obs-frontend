@@ -343,6 +343,9 @@
 .layout-big .lp-lineup.dp-mode-split {
   aspect-ratio: 94 / 210;
 }
+.layout-big .lp-lineup.dp-mode-split.lp-width-locked {
+  aspect-ratio: unset;
+}
 .dp-lineup-pitch.is-split {
   display: flex;
   flex-direction: column;

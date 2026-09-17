@@ -1838,23 +1838,56 @@ window.fitBenchFooterNames = fitBenchFooterNames;
 // 라벨을 다시 계산한다. 한 프레임만 기다리면 transform/zoom 적용 전 치수를 읽을 수
 // 있으므로 두 프레임을 건너뛴다.
 let lineupViewportFitRaf = 0;
+function syncBigLineupFullscreenGeometry() {
+  document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
+    // 사용자가 엣지 핸들로 폭을 직접 조절한 패널은 그 값을 보존한다.
+    if (panel.classList.contains('has-edge-override') || panel.classList.contains('has-w-override')) return;
+
+    let rememberedWidth = Number(panel.dataset.lineupWindowWidth);
+    if (!(rememberedWidth > 0)) {
+      rememberedWidth = typeof getDisplayLayoutRect === 'function'
+        ? getDisplayLayoutRect(panel).width
+        : panel.getBoundingClientRect().width;
+      if (rememberedWidth > 0) panel.dataset.lineupWindowWidth = String(rememberedWidth);
+    }
+    if (rememberedWidth > 0) {
+      panel.style.width = `${Math.round(rememberedWidth)}px`;
+      panel.classList.add('lp-width-locked');
+    }
+  });
+}
 function scheduleLineupViewportFit() {
   if (lineupViewportFitRaf) cancelAnimationFrame(lineupViewportFitRaf);
   lineupViewportFitRaf = requestAnimationFrame(() => {
     lineupViewportFitRaf = requestAnimationFrame(() => {
       lineupViewportFitRaf = 0;
+      syncBigLineupFullscreenGeometry();
       const activePage = document.querySelector('.page.active');
       const scope = activePage || document;
       scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePills(panel));
       fitBigLineupTeamChips(scope);
       fitBenchFooterNames(scope.querySelector('#benchPanel') || document.getElementById('benchPanel'));
       balanceBenchInjuryPanelHeights();
+
     });
   });
 }
 
 window.addEventListener('resize', scheduleLineupViewportFit);
 document.addEventListener('fullscreenchange', scheduleLineupViewportFit);
+
+// 첫 page:activated를 기다리면 사용자가 그 전에 F11을 눌렀을 때 원본 폭이
+// 저장되지 않을 수 있다. DOM이 이미 준비된 경우 즉시 한 프레임 안에서 폭을 잠근다.
+function initializeBigLineupWidthLock() {
+  requestAnimationFrame(() => {
+    syncBigLineupFullscreenGeometry();
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeBigLineupWidthLock, { once: true });
+} else {
+  initializeBigLineupWidthLock();
+}
 
 document.addEventListener('page:activated', () => {
   scheduleLineupViewportFit();

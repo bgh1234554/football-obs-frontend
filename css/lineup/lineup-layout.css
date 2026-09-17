@@ -169,11 +169,16 @@ body.no-fan-reaction .layout-small .lp-cam-chat {
    align-self: flex-end → 축소 시 컬럼이 아래로 정렬되어 윗 모서리에 위치한 resize handle을 위로 끌어 확장하기 자연스럽게.
    position: relative → 우상단 .lp-lineup-resize 핸들을 absolute로 띄우기 위함. */
 .layout-big .lp-lineup {
+  /* 최초 창 모드에서는 기존 비율로 폭을 계산한다. 실제 폭을 측정한 뒤
+    .lp-width-locked가 붙으면 aspect-ratio를 해제하고 높이만 변화시킨다. */
   flex: 0 0 auto;
   height: calc(100% * var(--lp-lineup-scale, 1));
   aspect-ratio: 62 / 105;
   align-self: flex-end;
   position: relative;
+}
+.layout-big .lp-lineup.lp-width-locked {
+  aspect-ratio: unset;
 }
 
 /* 라인업 우상단 resize 핸들 — 마우스 드래그로 라인업 크기 조정.
