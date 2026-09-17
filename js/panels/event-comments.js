@@ -47,6 +47,7 @@ window.EVENT_COMMENT_KO = {
   'misses next match':          '다음 경기 출장 정지',
   'Offside':                    '오프사이드',
   'Dissent':                    '판정 항의',
+  'Not Retreating':             '세트피스 거리 미준수',
   
   // 페널티 슛아웃
   'Penalty Shootout':             '승부차기',
