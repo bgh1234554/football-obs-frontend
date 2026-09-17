@@ -1834,11 +1834,29 @@ function fitLineupNamePills(root) {
 window.fitLineupNamePills = fitLineupNamePills;
 window.fitBenchFooterNames = fitBenchFooterNames;
 
-document.addEventListener('page:activated', () => {
-  requestAnimationFrame(() => {
-    document.querySelectorAll('.page.active [data-dp-role="lineup"]').forEach(panel => fitLineupNamePills(panel));
-    fitBenchFooterNames(document.querySelector('.page.active #benchPanel') || document.getElementById('benchPanel'));
-    balanceBenchInjuryPanelHeights();
+// 전체화면/창 모드 전환과 display-scale의 resize가 끝난 뒤 실제 피치 폭 기준으로
+// 라벨을 다시 계산한다. 한 프레임만 기다리면 transform/zoom 적용 전 치수를 읽을 수
+// 있으므로 두 프레임을 건너뛴다.
+let lineupViewportFitRaf = 0;
+function scheduleLineupViewportFit() {
+  if (lineupViewportFitRaf) cancelAnimationFrame(lineupViewportFitRaf);
+  lineupViewportFitRaf = requestAnimationFrame(() => {
+    lineupViewportFitRaf = requestAnimationFrame(() => {
+      lineupViewportFitRaf = 0;
+      const activePage = document.querySelector('.page.active');
+      const scope = activePage || document;
+      scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePills(panel));
+      fitBigLineupTeamChips(scope);
+      fitBenchFooterNames(scope.querySelector('#benchPanel') || document.getElementById('benchPanel'));
+      balanceBenchInjuryPanelHeights();
+    });
   });
+}
+
+window.addEventListener('resize', scheduleLineupViewportFit);
+document.addEventListener('fullscreenchange', scheduleLineupViewportFit);
+
+document.addEventListener('page:activated', () => {
+  scheduleLineupViewportFit();
 });
 
