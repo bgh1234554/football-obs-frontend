@@ -153,48 +153,64 @@ const ScoreboardLogoContrast = (() => {
   function render(img, card, background, number, ready) {
     if (!img || !card) return;
     const reset = () => card.classList.remove('logo-color-swapped');
+    const url = img.getAttribute('src') || '';
     // LogoTrim이 아직 이 로고의 최종 표시 크기를 확정하지 못했으면(로딩/분석 중) 대기한다.
-    if (!ready) {
-      elements.delete(img);
-      reset();
+    // 로고가 실제로 제거된 경우만 초기화한다.
+    if (!ready || !url) {
+      if (!url) {
+        elements.delete(img);
+        reset();
+      }
       return;
     }
-    const rect = img.getBoundingClientRect();
-    const width = Math.ceil(rect.width), height = Math.ceil(rect.height);
-    // 화면에 안 보이는 상태(width/height 0)이거나 비정상적으로 큰 수동 확대는 분석하지 않는다
-    // (메모리 사용량과 메인 스레드 작업 시간을 과도하게 늘리는 것을 방지).
-    if (!width || !height || width * height > 16 * 1024 * 1024) {
-      elements.delete(img);
-      reset();
-      return;
-    }
-    const url = img.getAttribute('src');
-    // URL과 표시 크기가 모두 같아야 같은 분석 결과를 재사용한다 — 수동 확대/화면 크기 변화로
-    // 표시 크기가 달라지면 가장자리 픽셀 구성도 달라질 수 있어 다시 분석해야 한다.
-    const key = `${url}|${width}|${height}`;
+
+    // 캐시 키는 URL만 쓴다 — 예전엔 표시 width/height까지 키에 포함해서, 포메이션 편집 등
+    // 레이아웃 재계산으로 로고 박스 폭이 서브픽셀 단위로 흔들릴 때마다(예: 41.6px → 42.1px
+    // 같은 반올림 차이) "표시 크기가 바뀌었다"고 오판해 매번 Canvas를 다시 그려 가장자리
+    // 픽셀을 재추출했다. 재추출마다 안티앨리어싱 표본이 미세하게 달라져 판정이 실행 중에
+    // 스스로 뒤집히거나(대기 중 자연 복귀), 포메이션/닉네임 편집처럼 잦은 재렌더가 몰리는
+    // 시점에 눈에 띄게 원래 배경으로 되돌아가는 원인이었다. 같은 로고 URL이면 어떤 CSS
+    // 크기로 그려도 가장자리 색 구성(그 결과인 스왑 판정)은 사실상 동일하므로, 분석은
+    // URL이 실제로 바뀔 때만 다시 수행하고, width/height는 최초 1회 분석을 그릴 캔버스
+    // 크기로만 쓴다.
     let current = elements.get(img);
-    if (!current || current.key !== key || current.retryAt <= Date.now()) {
-      current = { key, colors: null, retryAt: Infinity, background, number };
+    if (!current || current.url !== url) {
+      current = { url, colors: null, analyzing: false, retryAt: 0, background, number };
       elements.set(img, current);
       reset();
-      const request = current;
-      analyse(url, width, height).then(colors => {
-        // 분석 중 로고가 바뀌었으면(URL/크기 변경으로 새 request가 이미 등록됨) 낡은 결과는 버린다.
-        if (elements.get(img) !== request) return;
-        request.colors = colors;
-        card.classList.toggle('logo-color-swapped', shouldSwap(colors, request.background, request.number));
-      }).catch(() => {
-        if (elements.get(img) !== request) return;
-        // CORS·네트워크 등 일시적 실패는 배경 교체 없이(원본 그대로) 유지하고, 잠시 후 재시도한다.
-        request.retryAt = Date.now() + RETRY_MS;
-        reset();
-      });
     }
     current.background = background;
     current.number = number;
-    // 이미 색상 분석이 끝나 있으면(위에서 새로 시작한 분석이든 이전에 끝난 분석이든)
-    // 매 render 호출마다 최신 배경/번호색 기준으로 다시 판정해 즉시 반영한다.
-    if (current.colors) card.classList.toggle('logo-color-swapped', shouldSwap(current.colors, background, number));
+
+    if (current.colors) {
+      // 이미 이 URL의 가장자리 색을 알고 있으면 재분석 없이 최신 배경/번호색으로만 재판정한다
+      // (테마 탭에서 색만 바꾼 경우 등).
+      card.classList.toggle('logo-color-swapped', shouldSwap(current.colors, background, number));
+      return;
+    }
+    if (current.analyzing || current.retryAt > Date.now()) return;
+
+    const rect = img.getBoundingClientRect();
+    const width = Math.ceil(rect.width), height = Math.ceil(rect.height);
+    // 화면에 아직 자리를 못 잡았으면(레이아웃 재배치 중 잠깐 0px 등) 이번엔 건너뛴다 —
+    // retryAt은 그대로 두므로 유효한 크기가 나오는 다음 render() 호출에서 바로 재시도한다.
+    // 비정상적으로 큰 수동 확대도 마찬가지로 건너뛴다(메모리/메인 스레드 보호).
+    if (!width || !height || width * height > 16 * 1024 * 1024) return;
+
+    current.analyzing = true;
+    const request = current;
+    analyse(url, width, height).then(colors => {
+      request.analyzing = false;
+      // 분석 중 로고가 바뀌었으면(URL 변경으로 새 request가 이미 등록됨) 낡은 결과는 버린다.
+      if (elements.get(img) !== request) return;
+      request.colors = colors;
+      card.classList.toggle('logo-color-swapped', shouldSwap(colors, request.background, request.number));
+    }).catch(() => {
+      request.analyzing = false;
+      if (elements.get(img) !== request) return;
+      // CORS·네트워크 등 일시적 실패는 배경 교체 없이(원본 그대로) 유지하고, 잠시 후 재시도한다.
+      request.retryAt = Date.now() + RETRY_MS;
+    });
   }
 
   return { render };

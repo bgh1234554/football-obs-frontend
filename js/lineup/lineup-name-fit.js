@@ -376,9 +376,11 @@ function getRenderedTextLineCount(el) {
   return rects.length || 1;
 }
 
-/** 팀칩 텍스트가 2줄 이내로 들어가는지 — fitTeamChip의 canFitFn으로 사용. */
+/** 팀칩 텍스트가 2줄 이내로 잘리지 않고 들어가는지 — fitTeamChip의 canFitFn으로 사용. */
 function canStayWithinTwoTextLines(el) {
-  return getRenderedTextLineCount(el) <= 2;
+  return getRenderedTextLineCount(el) <= 2
+    && el.scrollHeight <= el.clientHeight + 0.5
+    && el.scrollWidth <= el.clientWidth + 0.5;
 }
 
 /** 이분탐색으로 el의 width를 canFitFn이 통과하는 한도 내 최소값까지 줄인다. */
@@ -452,9 +454,9 @@ function tightenBigLineupNameWidth(nameEl) {
 function fitLineupNameSelf(nameEl) {
   if (!canMeasureTextElement(nameEl) || !nameEl.firstChild) return;
   let safety = 0;
-  while (safety < 16 && !canStayWithinLineupNameLayout(nameEl)) {
-    if (!shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) break;
-    safety += 1;
+    while (safety < 16 && !canStayWithinLineupNameLayout(nameEl)) {
+      if (!shrinkTextElement(nameEl, LINEUP_NAME_MIN_FONT_PX)) break;
+      safety += 1;
   }
   lockLineupNameWidth(nameEl);
 }
@@ -560,10 +562,10 @@ function fitLineupNameWithinPitchBounds(nameEl) {
   const paddingPx = getLineupNamePitchPaddingPxForContext(nameEl);
   let changed = false;
   let safety = 0;
-  while (safety < 16 && hasLineupNamePitchOverflow(nameEl, paddingPx)) {
-    const overflow = getLineupNamePitchOverflow(nameEl, paddingPx);
-    const horizontalOverflow = overflow && (overflow.left > 0.5 || overflow.right > 0.5);
-    const verticalOverflow = overflow && (overflow.top > 0.5 || overflow.bottom > 0.5);
+    while (safety < 16 && hasLineupNamePitchOverflow(nameEl, paddingPx)) {
+      const overflow = getLineupNamePitchOverflow(nameEl, paddingPx);
+      const horizontalOverflow = overflow && (overflow.left > 0.5 || overflow.right > 0.5);
+      const verticalOverflow = overflow && (overflow.top > 0.5 || overflow.bottom > 0.5);
 
     if (horizontalOverflow && tightenLineupNameWidthForContext(nameEl)) {
       changed = true;
@@ -1359,8 +1361,11 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
   return true;
 }
 
-/** 팀칩을 위/아래 가장자리 쪽으로 1px씩 밀어, collisionEls와의 충돌이 풀리는 지점을 찾는다. */
-function nudgeTeamChipTowardEdge(chipEl, collisionEls) {
+/** 팀칩을 위/아래 가장자리 쪽으로 1px씩 밀어, collisionEls와의 충돌이 풀리는 지점을 찾는다.
+ * forceBottomAnchored를 명시하면 클래스 기반 추정 대신 그 값을 그대로 쓴다 — 항상 top으로
+ * 앵커링되는 .dp-lineup-team-name-tag(분할 모드 좌상단 팀명 라벨)처럼 is-home/away 클래스가
+ * 실제 CSS 앵커와 무관한 경우를 위함. */
+function nudgeTeamChipTowardEdge(chipEl, collisionEls, options = {}) {
   if (!chipEl || !Array.isArray(collisionEls) || !collisionEls.length) return false;
 
   // split 모드에서는 CSS가 home chip도 top이 아닌 bottom으로 앵커링한다(양 팀 GK가 모두
@@ -1368,8 +1373,10 @@ function nudgeTeamChipTowardEdge(chipEl, collisionEls) {
   // .dp-lineup-team-chip.is-home` 참고). is-away 여부만으로 prop을 고르면 split 모드의
   // home chip에 엉뚱하게 top을 인라인으로 써버려 (실제 앵커는 bottom인데) top+bottom이
   // 동시에 고정값이 되어 chip이 피치 중간까지 늘어나 버리는 버그가 있었다.
-  const isBottomAnchored = chipEl.classList.contains('is-away')
-    || (chipEl.classList.contains('is-home') && !!chipEl.closest('.dp-lineup-vertical-pitch.is-split'));
+  const isBottomAnchored = options.forceBottomAnchored != null
+    ? options.forceBottomAnchored
+    : (chipEl.classList.contains('is-away')
+      || (chipEl.classList.contains('is-home') && !!chipEl.closest('.dp-lineup-vertical-pitch.is-split')));
   const prop = isBottomAnchored ? 'bottom' : 'top';
   const currentOffset = parseFloat(getComputedStyle(chipEl)[prop]);
   const minOffset = 2;
@@ -1396,6 +1403,115 @@ function shrinkTeamChipMainText(nameEl, formationEl) {
   return changed;
 }
 
+/** 이전 피팅에서 적용한 팀 이름 줄바꿈을 제거해 리사이즈 시 새 조건으로 다시 판단한다. */
+function resetTeamChipNameBreak(nameEl) {
+  if (!nameEl?.classList.contains('has-team-name-break')) return;
+  nameEl.textContent = nameEl.dataset.teamNameOriginal || nameEl.textContent;
+  delete nameEl.dataset.teamNameOriginal;
+  nameEl.classList.remove('has-team-name-break');
+}
+
+/**
+ * text를 nameEl에 실제로 렌더한 뒤(줄바꿈 없이 1줄), 실제 DOM 기준으로 겹침/잘림이 없어질
+ * 때까지 폰트를 1px씩 낮춰 최종 정착한 폰트 크기를 반환한다. 0이면 최소 폰트(TEAM_CHIP_NAME_
+ * MIN_FONT_PX)에서도 못 풀린다는 뜻.
+ *
+ * 이전에는 clone을 따로 만들어 "이 폭에 들어갈 폰트"를 예측(clientWidth 자기참조, 예측한
+ * 폭과 실제 flex 레이아웃이 주는 폭의 불일치, line-clamp scrollHeight 오판정 등)했는데, 예측이
+ * 실제 렌더와 계속 어긋나 짧은 이름으로 끝내 안 바뀌는 문제가 반복됐다. 여기서는 nameEl 자체를
+ * 실제로 그 텍스트/폰트로 렌더해보고 실제 scrollWidth/충돌 여부를 그대로 판정 기준으로 쓰므로
+ * "쟀던 값과 실제 렌더가 다르다"는 불일치가 구조적으로 생길 수 없다.
+ */
+function settleTeamChipNameCandidate(nameEl, mainEl, collisionEls, text) {
+  nameEl.textContent = text;
+  nameEl.classList.remove('has-team-name-break');
+  nameEl.style.whiteSpace = 'nowrap';
+  nameEl.style.width = '';
+  nameEl.style.fontSize = '';
+  const baseFont = parseFloat(getComputedStyle(nameEl).fontSize);
+  if (!Number.isFinite(baseFont)) return 0;
+  for (let font = Math.round(baseFont); font >= TEAM_CHIP_NAME_MIN_FONT_PX; font -= 1) {
+    nameEl.style.fontSize = `${font}px`;
+    const fits = nameEl.scrollWidth <= nameEl.clientWidth + 0.5
+      && !elementOverlapsAny(mainEl, collisionEls);
+    if (fits) return font;
+  }
+  return 0;
+}
+
+/**
+ * 긴 이름과 짧은 이름 후보를 각각 실제로 1줄 렌더해보고(settleTeamChipNameCandidate), 더 큰
+ * 폰트로 정착하는 쪽을 최종 선택한다. 동점이면(둘 다 같은 폰트, 혹은 둘 다 0) 긴 이름을
+ * 유지한다 — teamName(풀네임) 설정이 ON일 때만 이 함수가 호출 대상이 되므로(currentName이
+ * 이미 longName인 경우만 진입), 굳이 우열이 없으면 설정을 그대로 따르는 게 맞다.
+ */
+function tryTeamChipBetterName(nameEl, mainEl, collisionEls) {
+  if (!nameEl || nameEl.dataset.teamNameShortTried === 'true') return false;
+  nameEl.dataset.teamNameShortTried = 'true';
+
+  const shortName = String(nameEl.dataset.teamNameShort || '').trim();
+  const longName = String(nameEl.dataset.teamNameLong || '').trim();
+  const currentName = String(nameEl.textContent || '').trim();
+  if (!shortName || !longName || shortName === longName || currentName !== longName) return false;
+
+  const longFont = settleTeamChipNameCandidate(nameEl, mainEl, collisionEls, longName);
+  const shortFont = settleTeamChipNameCandidate(nameEl, mainEl, collisionEls, shortName);
+  const preferShort = shortFont > longFont;
+
+  const finalText = preferShort ? shortName : longName;
+  const finalFont = preferShort ? shortFont : longFont;
+  nameEl.textContent = finalText;
+  nameEl.style.whiteSpace = '';
+  nameEl.style.width = '';
+  // finalFont가 0이면(최소 폰트로도 1줄에 안 들어감) 폰트를 강제하지 않고 이후 단계
+  // (tryTeamChipTwoTokenBreak의 2줄 나누기, 일반 축소 루프)에 판단을 맡긴다.
+  nameEl.style.fontSize = finalFont > 0 ? `${finalFont}px` : '';
+  return preferShort;
+}
+
+/** 팀 이름이 두 토큰이면 현재 폰트를 유지한 채 두 줄로 나눠, 더 큰 글자를 살릴 수 있는지 시도한다. */
+function tryTeamChipTwoTokenBreak(nameEl, collisionEls) {
+  if (!nameEl || nameEl.classList.contains('has-team-name-break')) return false;
+  const tokens = String(nameEl.textContent || '').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length !== 2) return false;
+
+  const originalText = nameEl.textContent;
+  const first = document.createElement('span');
+  const second = document.createElement('span');
+  first.textContent = tokens[0];
+  second.textContent = tokens[1];
+  nameEl.replaceChildren(first, document.createElement('br'), second);
+  nameEl.classList.add('has-team-name-break');
+  // max-content는 줄바꿈 이후에도 원래 한 줄의 폭을 유지할 수 있다. 두 줄 각각의
+  // 실제 렌더 폭을 재서 가장 긴 줄만 감싸도록 지정해야 pill 배경이 과하게 넓어지지 않는다.
+  const textWidth = Math.max(first.getBoundingClientRect().width, second.getBoundingClientRect().width);
+  nameEl.style.width = `${Math.ceil(textWidth)}px`;
+  nameEl.style.whiteSpace = '';
+
+  if (!elementOverlapsAny(nameEl.closest('.dp-lineup-team-main'), collisionEls)) {
+    nameEl.dataset.teamNameOriginal = originalText;
+    return true;
+  }
+
+  nameEl.textContent = originalText;
+  nameEl.style.width = '';
+  nameEl.classList.remove('has-team-name-break');
+  return false;
+}
+
+/** 자동 줄바꿈 라벨도 현재 렌더된 가장 긴 줄의 폭만 차지하도록 팀명 pill을 조인다. */
+function tightenTeamChipNameToRenderedLines(nameEl) {
+  if (!canMeasureTextElement(nameEl)) return false;
+  const lineWidth = measureMaxTextLineWidth(nameEl);
+  if (!Number.isFinite(lineWidth) || lineWidth <= 0) return false;
+
+  const nextWidth = Math.ceil(lineWidth);
+  const currentWidth = parseFloat(nameEl.style.width);
+  if (Number.isFinite(currentWidth) && Math.abs(currentWidth - nextWidth) < 0.5) return false;
+  nameEl.style.width = `${nextWidth}px`;
+  return true;
+}
+
 /** 팀칩이 collisionEls와 겹치면 (stacked 전환 → 가장자리 nudge → 폭/폰트 축소 순으로) 풀릴 때까지 보정. */
 function fitTeamChip(chipEl, collisionEls, options = {}) {
   const preferShrink = options?.preferShrink === true;
@@ -1407,7 +1523,21 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
     mainEl?.classList.contains('is-formation-only')
     && chipEl?.closest('.layout-big .lp-lineup')
   );
-  if (!mainEl || !nameEl || !Array.isArray(collisionEls) || !collisionEls.length) return;
+  if (!mainEl || !nameEl || !Array.isArray(collisionEls)) return;
+
+  resetTeamChipNameBreak(nameEl);
+  delete nameEl.dataset.teamNameShortTried;
+  const nameIsClipped = () => nameEl.scrollWidth > nameEl.clientWidth + 0.5
+    || nameEl.scrollHeight > nameEl.clientHeight + 0.5;
+
+  // 잘림/충돌 여부와 관계없이 먼저 긴 이름과 짧은 이름의 최대 폰트를 비교한다. 긴 이름이
+  // 2줄로는 보이더라도 짧은 이름이 더 큰 글자를 허용할 수 있다. preferShrink(작은 캠) 여부와
+  // 무관하게 항상 시도한다 — 분할 모드(splitLineup=on)의 팀 이름 라벨(.dp-lineup-team-name-tag)은
+  // 캠 큼에서만 나타나는데 이 비교가 preferShrink에 묶여 있으면 캠 큼에서는 전혀 동작하지
+  // 않았다(2026-09 피드백). tryTeamChipBetterName 내부 가드가 포메이션 전용 칩(짧은/긴 이름
+  // data 속성 자체가 없음)은 안전하게 스킵하므로 여기서 preferShrink로 막을 필요가 없다.
+  if (tryTeamChipBetterName(nameEl, mainEl, collisionEls)) return;
+  if (nameIsClipped() && tryTeamChipTwoTokenBreak(nameEl, collisionEls)) return;
 
   let safety = 0;
   while (safety < 32) {
@@ -1420,6 +1550,21 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
     // 칩 전체 rect까지 같이 확인해 그 경우도 remediation 루프에 들어오게 한다.
     const chipOverlaps = elementOverlapsAny(chipEl, collisionEls);
     if (!mainOverlaps && !buttonOverlaps && !chipOverlaps) break;
+
+    // 긴 팀명을 먼저 줄이지 않는다. 짧은 이름이 현재 폰트 크기로 안전하게 들어가면 그
+    // 이름을 유지해 글자 크기를 보존한다(preferShrink/캠 큼-작음 무관, 위 설명 참조).
+    if ((mainOverlaps || nameIsClipped())
+      && tryTeamChipBetterName(nameEl, mainEl, collisionEls)) {
+      safety += 1;
+      continue;
+    }
+
+    // 두 토큰 팀 이름은 먼저 두 줄로 나눠 본다. 같은(더 큰) 폰트에서 충돌이
+    // 풀리면 폰트를 줄이는 대신 이 상태를 유지하고, 실패하면 기존 보정으로 넘긴다.
+    if ((mainOverlaps || nameIsClipped()) && tryTeamChipTwoTokenBreak(nameEl, collisionEls)) {
+      safety += 1;
+      continue;
+    }
 
     if (preferShrink && mainOverlaps) {
       if (shrinkTeamChipMainText(nameEl, formationEl)) {
@@ -1438,7 +1583,8 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
       continue;
     }
 
-    if (nudgeTeamChipTowardEdge(chipEl, collisionEls)) {
+    if (options.allowNudge !== false
+      && nudgeTeamChipTowardEdge(chipEl, collisionEls, { forceBottomAnchored: options.forceBottomAnchored })) {
       safety += 1;
       continue;
     }
@@ -1475,6 +1621,8 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
 
 /** 큰/작은 캠 라인업 패널의 모든 팀칩에 대해 노드/이름라벨과의 충돌을 fitTeamChip으로 정리. */
 function fitBigLineupTeamChips(root) {
+  const TEAM_LABEL_REFERENCE_WIDTH_PX = 280;
+  const TEAM_LABEL_MIN_SCALE = 0.55;
   const scope = root || document;
   const panels = scope?.matches?.('[data-dp-role="lineup"]')
     ? [scope]
@@ -1489,6 +1637,12 @@ function fitBigLineupTeamChips(root) {
     if (!pitches.length) return;
 
     pitches.forEach(pitch => {
+      const pitchWidth = pitch.getBoundingClientRect().width;
+      const teamLabelScale = pitchWidth > 0
+        ? Math.max(TEAM_LABEL_MIN_SCALE, Math.min(1, pitchWidth / TEAM_LABEL_REFERENCE_WIDTH_PX))
+        : 1;
+      pitch.style.setProperty('--lp-team-label-scale', teamLabelScale.toFixed(3));
+
       pitch.querySelectorAll('.dp-lineup-team-name, .dp-lineup-team-chip .dp-side-edit-btn').forEach(el => {
         el.style.width = '';
         el.style.fontSize = '';
@@ -1499,17 +1653,47 @@ function fitBigLineupTeamChips(root) {
       pitch.querySelectorAll('.dp-lineup-team-main').forEach(el => {
         el.classList.remove('is-stacked');
       });
-      pitch.querySelectorAll('.dp-lineup-team-chip').forEach(chip => {
+      // .dp-lineup-team-name-tag(분할 모드 좌상단 팀명 라벨)도 같은 파이프라인으로 처리해야
+      // 포메이션 chip과 마찬가지로 노드/이름표와 겹칠 때 가장자리로 밀리며, 그래야 두 라벨의
+      // 실제 렌더 위치가 하프라인 기준 대칭을 유지한다 — 둘 다 겹침이 없으면 기본값(3%) 그대로,
+      // 겹치면 똑같은 규칙으로 안쪽으로 밀린다.
+      pitch.querySelectorAll('.dp-lineup-team-chip, .dp-lineup-team-name-tag').forEach(chip => {
         chip.style.top = '';
         chip.style.bottom = '';
       });
 
-      pitch.querySelectorAll('.dp-lineup-team-chip').forEach(chip => {
+      pitch.querySelectorAll('.dp-lineup-team-chip, .dp-lineup-team-name-tag').forEach(chip => {
         const collisionEls = Array.from(
           pitch.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap')
         ).filter(target => target !== chip && !chip.contains(target));
-        fitTeamChip(chip, collisionEls, { preferShrink: isSmallLayout });
+        const isNameTag = chip.classList.contains('dp-lineup-team-name-tag');
+        fitTeamChip(chip, collisionEls, {
+          preferShrink: isSmallLayout,
+          // 라벨의 기준점(팀명=좌상단, 포메이션=좌하단, 버튼=우하단)을 고정하고
+          // 충돌은 폭/폰트 축소로만 해결해 리사이즈 때 피치 안쪽으로 밀리지 않게 한다.
+          allowNudge: false,
+          // name-tag는 항상 top 앵커(CSS: .dp-lineup-team-name-tag { top:3% }) — chip처럼
+          // is-home/away 클래스로 top/bottom을 추정하면 안 된다.
+          forceBottomAnchored: isNameTag ? false : undefined,
+        });
+        tightenTeamChipNameToRenderedLines(chip.querySelector('.dp-lineup-team-name'));
       });
+
+      // 팀 이름 라벨(top 앵커)과 포메이션 chip(split 모드에서는 항상 bottom 앵커)은 기본값이
+      // 같아도(3%) 서로 다른 콘텐츠(윗줄 포워드 vs 아랫줄 GK)와 겹쳐서 각자 다른 만큼 밀릴 수
+      // 있다 — 그러면 더 이상 하프라인 기준 대칭이 아니게 된다. 둘 다 있으면 더 많이 밀린
+      // (=더 작은 오프셋) 쪽으로 강제 통일해 항상 대칭을 유지한다.
+      const nameTag = pitch.querySelector('.dp-lineup-team-name-tag');
+      const teamChip = pitch.querySelector('.dp-lineup-team-chip');
+      if (nameTag && teamChip) {
+        const tagOffset = parseFloat(getComputedStyle(nameTag).top);
+        const chipOffset = parseFloat(getComputedStyle(teamChip).bottom);
+        if (Number.isFinite(tagOffset) && Number.isFinite(chipOffset)) {
+          const unified = Math.min(tagOffset, chipOffset);
+          nameTag.style.top = `${unified}px`;
+          teamChip.style.bottom = `${unified}px`;
+        }
+      }
     });
   });
 }

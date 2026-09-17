@@ -65,6 +65,9 @@ const SETTINGS_DEFAULTS = {
   lineupShowRating: 'on',    // 평점 박스
   lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
+  // 교체 OUT 된 선수 중 골/도움/자책골을 기록한 선수를 피치 오른쪽에 별도 열로 표시.
+  // subReflect=on일 때만 동작(off면 OUT 선수가 이미 그리드에 그대로 남아있어 중복 표시 방지).
+  lineupShowOutScorers: 'off',
   // 점수판 양옆 득점자 박스에 골 외 이벤트를 함께 표시할지.
   noteShowPenaltyMisses: 'on',
   noteShowRedCards: 'on',
@@ -343,7 +346,7 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
-  'lineupShowSubTime', 'lineupShowNumber', 'noteShowPenaltyMisses',
+  'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',

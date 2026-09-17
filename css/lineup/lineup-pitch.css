@@ -20,10 +20,16 @@
   align-items: stretch;
   justify-content: center;
 }
+/* Iter 11-A후속: 교체 OUT 공격포인트 배지(.dp-lineup-node/.dp-lineup-name-wrap, buildOutScorerColumnHtml)는
+   그리드 노드와 완전히 같은 클래스를 재사용하고 left%만 100을 넘겨 피치 밖(오른쪽)으로
+   밀어낸다 — 새 CSS 불필요. 단, .dp-lineup-vertical-pitch(overflow:hidden) 안이 아니라
+   그걸 감싸는 .dp-lineup-pitch(여기, overflow 제약 없음)의 직속 자식으로 둬야 한다 — 이
+   컨테이너의 폭이 피치와 정확히 같아 100% 지점이 피치의 실제 오른쪽 가장자리와 일치한다. */
 /* 전술판 잔디 텍스처 — 135deg 대각 그라디언트 + 가로 흰줄 (opacity .08).
    배율은 전술판(가로형)과 동일하게 4.54% 간격 (대략 11줄). */
 .dp-lineup-vertical-pitch {
   position: relative;
+  --lp-team-label-scale: 1;
   height: 100%;
   max-width: 100%;
   max-height: 100%;
@@ -195,7 +201,7 @@
      GK 원에 가려지는 문제 방지. */
   z-index: 5;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
 }
@@ -205,26 +211,47 @@
 .dp-lineup-team-chip.is-away {
   bottom: 14px;
 }
+/* Iter 11-A후속: 분할 모드(splitLineup=on) 전용 — 피치 왼쪽 위 팀 이름 라벨.
+   .dp-lineup-team-main/.dp-lineup-team-name 스타일을 그대로 재사용, 위치만 다르다.
+   top은 px 대신 %(피치 자기 높이 기준)를 써서 패널이 작게 렌더돼도 가장자리로부터의
+   상대적 거리가 유지된다 — lineup-manual.css의 split 모드 포메이션 chip(bottom:1.5%)과
+   정확히 같은 값이라 하프라인 기준 상하 대칭도 보장된다. 1.5%는 피치 외곽 라인 자체의 inset
+   (.dp-lineup-markings::before의 inset: 1.5% 3%)과 맞춰 라벨이 그 라인 바로 안쪽에 붙도록
+   가장자리 쪽으로 당김(2026-09 피드백). left는 기존 chip과 동일하게 px 유지. */
+.dp-lineup-team-name-tag {
+  position: absolute;
+  top: 1.5%;
+  left: 14px;
+  z-index: 5;
+  max-width: 60%;
+}
 /* chip의 가로 영역(left:14 ~ right:14) 안에서 team-main이 shrink 가능하도록 flex 명시.
    inline-flex이면 shrink-to-fit 으로 동작해 chip 폭에 맞춰 줄어들지 않아 team-name이 wrap을
    못 했음 → team-main을 flex:0 1 auto + min-width:0으로 바꿔 좁은 chip에선 알아서 줄어듦. */
+/* Iter 11-A후속: 팀 스탯 패널의 .st-val.is-emphasized(팀컬러 배경+가독성 대비 글자색) pill과
+   같은 스타일로 통일 — 기존 반투명 검정 배경은 주목도가 떨어진다는 피드백으로 교체.
+   --dp-team-accent/--dp-team-text는 백엔드가 WCAG 대비 3:1 이상을 보장하는 number color라
+   항상 읽기 편하다(FixtureService.resolveNumberColor 참조). */
 .dp-lineup-team-main {
   min-width: 0;
   flex: 0 1 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
+  gap: calc(8px * var(--lp-team-label-scale, 1));
+  padding: calc(5px * var(--lp-team-label-scale, 1)) calc(10px * var(--lp-team-label-scale, 1));
   border-radius: 12px;
-  background: rgb(10 15 23 / calc(.55 * var(--lp-pitch-alpha, 1)));
-  border: 1px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 55%, transparent);
-  backdrop-filter: blur(3px);
+  background: var(--dp-team-accent, #1d4ed8);
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
+/* 포메이션 전용 라벨("3-5-2")은 짧은 단일 토큰이라 완전한 pill(원형 모서리)로 — .st-val과 동일 모양. */
+.dp-lineup-team-main.is-formation-only {
+  border-radius: 999px;
 }
 .dp-lineup-team-name {
   min-width: 0;
   flex: 0 1 auto;
   /* max-width 200px = 큰 화면 상한. 좁은 chip에선 자연스럽게 더 줄어듦. */
-  max-width: 200px;
+  max-width: calc(200px * var(--lp-team-label-scale, 1));
   overflow: hidden;
   /* 긴 팀이름은 2줄까지 wrap. 1줄에 맞으면 1줄. */
   display: -webkit-box;
@@ -235,15 +262,16 @@
   word-break: keep-all;
   overflow-wrap: anywhere;
   line-height: 1.1;
-  font-size: 11px;
+  font-size: calc(11px * var(--lp-team-label-scale, 1));
   font-weight: 800;
-  color: rgba(255,255,255,.92);
+  color: var(--dp-team-text, #fff);
 }
 .dp-lineup-team-fm {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: calc(10px * var(--lp-team-label-scale, 1));
   font-weight: 700;
-  color: rgba(255,255,255,.58);
+  color: var(--dp-team-text, #fff);
+  opacity: .72;
 }
 .dp-divider-h {
   flex: 0 0 1px;

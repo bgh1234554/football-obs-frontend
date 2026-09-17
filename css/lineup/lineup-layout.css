@@ -275,6 +275,14 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 .layout-big .lp-lineup .dp-mode-long .dp-lineup-name {
   font-size: var(--lp-name-base-size, 12px);
 }
+/* OUT 공격포인트 배지 열(buildOutScorerColumnHtml)의 이름표는 그리드 라벨과 달리 피치 경계
+   충돌 보정(fitLineupNamePills의 pitch-bounds 단계)이 적용되지 않는다 — 피치 "밖"에 떠 있어
+   .closest('.dp-lineup-vertical-pitch')가 null이라 그 보정 루틴이 그냥 스킵되기 때문. 그래서
+   바둑알(원)은 --lp-node-scale로 줄어드는데 이름 폰트만 base 크기 그대로 남아 상대적으로 안
+   줄어든 것처럼 보였다 — 여기서만 폰트도 원과 같은 비율로 직접 축소한다. */
+.layout-big .lp-lineup .dp-lineup-outscorer.dp-lineup-name-wrap .dp-lineup-name {
+  font-size: calc(12px * var(--lp-node-scale, 1));
+}
 
 /* 팀 chip(상단 home / 하단 away의 "팀명 + 포메이션" 패널) — 라인업 패널 축소 시 함께 축소 */
 .layout-big .lp-lineup .dp-lineup-team-chip {
@@ -323,12 +331,15 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   line-height: 1;
 }
 .layout-big .lp-lineup .dp-lineup-team-name {
-  font-size: calc(11px * var(--lp-node-scale, 1));
-  max-width: calc(150px * var(--lp-node-scale, 1));
-  display: block;
-  white-space: nowrap;
+  font-size: calc(11px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
+  max-width: calc(150px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 .layout-big .lp-lineup .dp-lineup-team-main.is-stacked .dp-lineup-team-name {
   max-width: none;
@@ -336,12 +347,12 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   text-overflow: clip;
 }
 .layout-big .lp-lineup .dp-lineup-team-fm {
-  font-size: calc(10px * var(--lp-node-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
 }
 .layout-big .lp-lineup .dp-lineup-team-chip .dp-side-edit-btn {
   min-width: 0;
-  padding: calc(2px * var(--lp-node-scale, 1)) calc(8px * var(--lp-node-scale, 1));
-  font-size: calc(10px * var(--lp-node-scale, 1));
+  padding: calc(2px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1)) calc(8px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
+  font-size: calc(10px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
   line-height: 1.15;
   word-break: keep-all;
   text-align: center;
@@ -386,13 +397,14 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 #injuryPanel .dp-side-header .dp-side-edit-btn {
   display: none;
 }
+/* Iter 11-A후속: .dp-lineup-team-main과 같은 pill 스타일(팀 primary 배경 + number color 글자)로
+   통일 — 기존 반투명 검정 + 얇은 accent 테두리는 캠 작음에서 특히 주목도가 떨어진다는 피드백. */
 #benchPanel .dp-side-name {
   padding: 5px 10px;
   border-radius: 12px;
-  background: rgb(10 15 23 / .55);
-  border: 1px solid color-mix(in srgb, var(--dp-team-accent, rgba(255,255,255,.28)) 55%, transparent);
-  backdrop-filter: blur(3px);
-  color: rgba(255,255,255,.92);
+  background: var(--dp-team-accent, #1d4ed8);
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+  color: var(--dp-team-text, #fff);
   text-transform: none;
   letter-spacing: normal;
   font-size: 11px;
