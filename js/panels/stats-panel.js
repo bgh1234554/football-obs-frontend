@@ -241,6 +241,16 @@ function stCreateRow(row, fixtureData) {
       divider.style.left = homePct.toFixed(2) + '%';
       divider.style.background = stInvertRgb(homeRgb);
       bar.appendChild(divider);
+      // %로 배치하면 막대 실제 폭에 따라 left가 소수점 px(예: 187.3px)가 되어, 폭 2px 선의
+      // 안티앨리어싱 정도가 행마다 미묘하게 달라 굵기가 들쭉날쭉해 보였다(2026-09 피드백).
+      // 이 시점엔 아직 bar가 문서에 붙기 전이라 실제 폭을 잴 수 없으므로, 다음 프레임에
+      // 확정된 실제 폭 기준으로 정수 px로 스냅한다.
+      requestAnimationFrame(() => {
+        if (!divider.isConnected) return;
+        const barWidth = bar.getBoundingClientRect().width;
+        if (!barWidth) return;
+        divider.style.left = `${Math.round(barWidth * homePct / 100)}px`;
+      });
     }
   }
   el.appendChild(bar);
