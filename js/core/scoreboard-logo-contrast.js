@@ -1,31 +1,54 @@
 /**
  * 점수판 홈/원정 로고와 카드 배경색이 거의 같아 보여 로고가 배경에 묻히는 경우를 감지하고,
- * 그런 경우에만 그 카드의 배경색과 등번호색을 화면 표시용으로만 맞바꾼다.
+ * 그런 경우에만 그 카드의 배경색을 화면 표시용으로만 다른 색으로 맞바꾼다.
  *
- * 처리 흐름: LogoTrim이 trim(투명 여백 제거) 후 실제 표시 크기를 확정한 뒤(ready=true) →
- * 그 표시 크기 그대로 별도 Canvas에 다시 그려 로고 가장자리 픽셀 색을 추출 →
- * 카드 배경색(homeBg/awayBg)·등번호색(homeText/awayText)과의 유사도·대비 비교 →
- * 등번호색을 배경으로 쓰는 쪽이 뚜렷하게 유리할 때만 CSS 클래스(logo-color-swapped)를 토글한다.
+ * 처리 흐름: LogoTrim이 trim(투명 여백 제거) 분석을 끝내면(ready=true) → 그 결과(경계 bounds)를
+ * 재사용해 원본 로고에서 투명 여백을 뺀 부분만 항상 일정한 해상도(ANALYSIS_SIZE)의 별도 Canvas에
+ * 다시 그려 가장자리 픽셀 색을 추출 → 지금 배경(primary)이 가장자리와 충분히 겹치면(로고가
+ * 묻히면) 후보를 순서대로 시도해(등번호색 → 검정 → 흰색 → primary의 보색) 가장자리와 안 겹치고
+ * 대비도 충분한 첫 번째 색을 --logo-swap-bg CSS 변수로 세팅하고 logo-color-swapped 클래스를
+ * 켠다(pickSwapBackground). 대표색 두 개(primary/number)가 전부 로고 자체에 쓰이는 2색 위주
+ * 엠블럼에서는 등번호색으로 바꿔도 다시 묻힐 수 있어, 로고에 없을 가능성이 높은 검정/흰색/보색
+ * 까지 순서대로 시도한다.
+ *
+ * 분석 해상도를 로고의 실제 화면 표시 크기(예전 방식)가 아니라 고정값으로 두는 이유: 캠 작은
+ * 메뉴 등에서는 로고가 30px 안팎으로 작게 표시되는데, 이 크기 그대로 분석하면 안티앨리어싱이
+ * 가장자리 색 구성에서 차지하는 비중이 커져 "묻힘" 판정 비율이 실제 화면 크기에 따라 흔들린다
+ * (실측: 같은 로고를 48px로 분석하면 45%인데 31px로 분석하면 39.4%). 고정 해상도 + LogoTrim의
+ * 경계값 재사용으로 화면 표시 크기와 무관하게 항상 같은 결과가 나오도록 한다.
  *
  * state.colors는 절대 변경하지 않는다. 설정 화면 색상 피커, 저장값, 전술판 등 다른 화면에는
  * 전혀 영향이 없고 오직 이 카드(.team.home/.team.away)의 화면 표시만 CSS로 바뀐다.
  *
  * 색상 유사도/대비 판정은 utils.js의 teamColorsVisuallySimilar(CIELAB Delta E)와
  * teamColorContrastRatio(WCAG 명도 대비)를 그대로 재사용해 팀 컬러 유사 판정 기준(홈/원정
- * 색상 충돌 감지 등)과 통일한다. 이 파일에서 별도 임계값을 새로 정의하지 않는다.
+ * 색상 충돌 감지 등)과 통일한다.
  *
  * 외부에는 render(img, card, background, number, ready)만 공개한다.
- * ready는 LogoTrim이 이 로고의 최종 표시 크기 계산을 끝냈는지 여부이며, 아직이면 분석하지
- * 않는다 — 표시 크기가 확정되기 전에 그리면 다른 비율로 분석되어 결과가 신뢰할 수 없다.
+ * ready는 LogoTrim이 이 로고의 경계 분석을 끝냈는지 여부이며, 아직이면 분석하지 않는다 —
+ * LogoTrim의 캐시된 경계(getCachedBounds)를 재사용해야 정확한 크롭이 가능하기 때문이다.
  */
 const ScoreboardLogoContrast = (() => {
   // 이미지 엘리먼트별 진행 상태(요청 키, 캐시된 색상, 재시도 시각, 최신 배경/번호색)를 보관한다.
   // DOM이 제거되면 별도 정리 없이 WeakMap 항목도 함께 해제된다.
   const elements = new WeakMap();
-  // 로고 가장자리 전체 가중치 중 배경색과 "비슷하다"고 판정된 비중이 이 값 이상이어야
-  // "로고가 배경에 묻힌다"고 판단한다. 가장자리 일부만 우연히 배경과 겹치는 경우(예: 로고 안의
-  // 작은 포인트 컬러)까지 교체 대상으로 삼지 않기 위한 안전장치다.
-  const MIN_SIMILAR_SHARE = 0.6;
+  // 로고 가장자리 전체 가중치 중 어떤 색과 "비슷하다"고 판정된 비중이 이 값 이상이면 그 색을
+  // 배경으로 쓸 때 로고가 묻힌다고 판단한다(현재 배경 판정에도, 교체 후보 판정에도 같은 기준을 쓴다).
+  // 원래 0.6이었다. 실제 로고 2건(둘 다 방패 전체가 대표색 2개로만 채워진 벨라루스 하위리그
+  // 클럽 엠블럼 — Arsenal Dzerzhinsk 45%, Belshina Bobruisk 58%)으로 검증하니 가장자리가 두
+  // 대표색으로 거의 반반 갈리는 경우가 흔해 60%는 너무 높았다. 분석 해상도를 고정하기 전에는
+  // 화면 표시 크기에 따라 이 비율 자체가 흔들리는 문제도 있었는데(예: 같은 로고가 31px로
+  // 표시되면 39.4%까지 떨어짐, ANALYSIS_SIZE 고정 도입으로 해결) 그 여유분까지 감안해 0.3으로 낮췄다.
+  const MIN_SIMILAR_SHARE = 0.3;
+  // 가장자리 색 분석에 쓰는 고정 Canvas 해상도(정사각형, px). 로고의 실제 화면 표시 크기와
+  // 무관하게 항상 이 해상도로 분석해 MIN_SIMILAR_SHARE 판정이 화면 크기에 따라 흔들리지 않게 한다.
+  const ANALYSIS_SIZE = 96;
+  // "이미 흰 배경이라 검사를 생략해도 되는지" 판정용 — 팀 컬러 간 유사 판정 기준인
+  // TEAM_COLOR_SIMILAR_DELTA_E(20)를 그대로 쓰면 크림/베이지처럼 흰색과는 뚜렷이 다른 색까지
+  // "거의 흰색"으로 오판한다(예: #ead6be는 흰색과 ΔE 19.85로 20 미만). 실측 사례(Arsenal
+  // Dzerzhinsk의 크림색 primary)로 발견 — "육안으로 거의 순백"인 경우만 걸러내도록 훨씬 좁은
+  // 값을 쓴다.
+  const NEAR_WHITE_DELTA_E = 8;
   // 이미지 분석(CORS 차단, 네트워크 실패 등)이 실패했을 때 재시도까지 대기하는 시간.
   // 매 render 호출마다 재시도하면 실패가 반복될 때마다 요청이 몰릴 수 있어 간격을 둔다.
   const RETRY_MS = 60000;
@@ -70,41 +93,90 @@ const ScoreboardLogoContrast = (() => {
     return [...colors];
   }
 
-  /**
-   * 가장자리 색상 목록을 카드 배경색·등번호색과 비교해 "지금 배경 대신 등번호색을 배경으로
-   * 써야 하는지" 판정한다. true면 render()가 카드에 logo-color-swapped 클래스를 붙인다.
-   */
-  function shouldSwap(colors, background, number) {
-    // 로고 구역 배경이 이미 흰색에 가까우면 어떤 로고와도 무난히 구분되므로 검사 자체를 생략한다.
-    // FSM(협업 프론트) 이식 후 로고 표시 구역이 항상 흰 배경으로 고정되면
-    // 이 조건에 항상 걸려 로직 전체가 자연히 비활성화된다(별도 분기 제거 불필요).
-    if (teamColorsVisuallySimilar(background, '#ffffff')) return false;
-    let total = 0, similar = 0, alternateSimilar = 0, contrast = 0, alternateContrast = 0;
-    for (const [hex, weight] of colors) {
+  /** 가장자리 색상 전체 가중치 중 hex와 "비슷하다"고 판정된 비중(0~1). */
+  function edgeSimilarShare(colors, hex) {
+    let total = 0, similar = 0;
+    for (const [edgeHex, weight] of colors) {
       total += weight;
-      // 지금 배경(팀 컬러)과 가장자리 색이 비슷한 비중.
-      if (teamColorsVisuallySimilar(hex, background)) similar += weight;
-      // 교체 후보(등번호색)와 가장자리 색이 비슷한 비중 — 이것도 높으면 바꿔봤자 소용없다.
-      if (teamColorsVisuallySimilar(hex, number)) alternateSimilar += weight;
-      contrast += teamColorContrastRatio(hex, background) * weight;
-      alternateContrast += teamColorContrastRatio(hex, number) * weight;
+      if (teamColorsVisuallySimilar(edgeHex, hex)) similar += weight;
     }
-    // 1) 가장자리의 60% 이상이 지금 배경과 비슷해야 "로고가 묻힌다"고 판단하고,
-    // 2) 등번호색으로 바꿨을 때 유사도가 지금보다 낮아야 하며(둘 다 비슷하면 그나마 덜 비슷한
-    //    쪽을 배경으로 쓰려는 것이므로 alternateSimilar < similar가 그 조건을 만족시킨다),
-    // 3) 대비도 최소 20% 이상 확실히 좋아질 때만 교체한다 — 애매한 차이로 화면이 자주
-    //    바뀌는 것을 막기 위한 여유값이다.
-    return total > 0 && similar / total >= MIN_SIMILAR_SHARE
-      && alternateSimilar < similar && alternateContrast > contrast * 1.2;
+    return total > 0 ? similar / total : 0;
   }
 
   /**
-   * 로고 URL을 화면에 실제로 표시되는 width x height 크기 그대로 별도 Canvas에 그린 뒤
-   * edgeColors()로 가장자리 색상을 추출한다. 화면에 보이는 <img>와는 별개의 Image를 새로
-   * 로드하므로 crossOrigin이 필요하며(픽셀을 읽으려면 CORS 허용 응답이 있어야 함),
-   * 실패해도 화면 표시(원본 로고)에는 영향이 없다.
+   * candidate를 배경으로 써도 안전한지 — (1) 로고 가장자리 자체에 그 색이 이미 많이 쓰이고
+   * 있지 않아야 하고(그렇지 않으면 로고가 새 배경에도 다시 묻힌다), (2) 지금 배경(primary,
+   * 교체 후 글자색으로 쓰임)과 대비가 최소 3:1은 나와야 그 위에 primary로 그려질 텍스트가 보인다.
    */
-  function analyse(url, width, height) {
+  function isSafeSwapCandidate(colors, background, candidate) {
+    if (!candidate) return false;
+    if (edgeSimilarShare(colors, candidate) >= MIN_SIMILAR_SHARE) return false;
+    return teamColorContrastRatio(background, candidate) >= TEAM_COLOR_MIN_TEXT_CONTRAST;
+  }
+
+  /**
+   * 가장자리 색상 목록을 보고 이 카드가 배경으로 써야 할 색을 정한다. null이면 지금 배경(primary)
+   * 그대로 둔다는 뜻이고, 값이 있으면 render()가 그 색을 --logo-swap-bg로 세팅해 교체한다.
+   *
+   * 1) 지금 배경이 가장자리와 충분히 겹치지 않으면(로고가 안 묻히면) 그대로 둔다.
+   * 2) 묻힌다면 후보를 순서대로 시도한다 — 등번호색(number) → 검정 → 흰색 → primary의 보색.
+   *    2색 위주 엠블럼(예: Arsenal Dzerzhinsk — 크림색 바탕에 빨간 장식만 있는 방패)처럼
+   *    대표색 두 개(primary/number)가 전부 로고 자체에 실존하는 색인 경우, number로 바꿔도
+   *    그 색 역시 로고 가장자리에 이미 널려 있어 다시 묻히는 일이 흔하다 — 그래서 로고에
+   *    없을 가능성이 높은 검정/흰색/보색까지 순서대로 더 시도한다.
+   * 3) 후보 각각은 isSafeSwapCandidate로 검사해, 가장자리와 안 겹치고 대비도 충분한 첫 번째
+   *    후보를 채택한다. 끝까지 하나도 안전하지 않으면 교체를 포기한다(묻힌 채로 두는 게 애매한
+   *    색으로 계속 바뀌는 것보다 낫다는 원래 설계 원칙을 유지).
+   */
+  function pickSwapBackground(colors, background, number) {
+    // 로고 구역 배경이 이미 흰색에 가까우면 어떤 로고와도 무난히 구분되므로 검사 자체를 생략한다.
+    // FSM(협업 프론트) 이식 후 로고 표시 구역이 항상 흰 배경으로 고정되면
+    // 이 조건에 항상 걸려 로직 전체가 자연히 비활성화된다(별도 분기 제거 불필요).
+    const whiteDeltaE = teamColorDeltaE(background, '#ffffff');
+    if (whiteDeltaE !== null && whiteDeltaE < NEAR_WHITE_DELTA_E) return null;
+    if (edgeSimilarShare(colors, background) < MIN_SIMILAR_SHARE) return null;
+
+    const candidates = [number, '#000000', '#ffffff', teamColorComplementHex(background)];
+    for (const candidate of candidates) {
+      if (isSafeSwapCandidate(colors, background, candidate)) return candidate;
+    }
+    return null;
+  }
+
+  /** 판정 결과를 카드에 반영. swapBg가 있으면 그 색을 --logo-swap-bg로 세팅하고 클래스를 켠다. */
+  function applySwapResult(card, swapBg) {
+    if (swapBg) {
+      card.style.setProperty('--logo-swap-bg', swapBg);
+      card.classList.add('logo-color-swapped');
+    } else {
+      card.style.removeProperty('--logo-swap-bg');
+      card.classList.remove('logo-color-swapped');
+    }
+  }
+
+  /**
+   * LogoTrim이 캐시해 둔 경계(bounds — 자신의 분석 캔버스 기준 픽셀 좌표)를 비율로 환산해,
+   * 지금 로드한 이미지의 naturalWidth/naturalHeight 기준 크롭 사각형(sx,sy,sw,sh)으로 변환한다.
+   * bounds가 없으면(캐시 미스, 완전 투명 이미지 등) 원본 전체를 그대로 쓴다.
+   */
+  function cropRectFromBounds(bounds, naturalWidth, naturalHeight) {
+    if (!bounds) return { sx: 0, sy: 0, sw: naturalWidth, sh: naturalHeight };
+    return {
+      sx: (bounds.left / bounds.width) * naturalWidth,
+      sy: (bounds.top / bounds.height) * naturalHeight,
+      sw: ((bounds.right - bounds.left) / bounds.width) * naturalWidth,
+      sh: ((bounds.bottom - bounds.top) / bounds.height) * naturalHeight,
+    };
+  }
+
+  /**
+   * 로고 URL을 항상 일정한 해상도(ANALYSIS_SIZE)의 별도 Canvas에 그린 뒤 edgeColors()로
+   * 가장자리 색상을 추출한다. LogoTrim의 캐시된 경계로 투명 여백을 먼저 잘라내(cropRectFromBounds)
+   * 실제 로고 그림 부분만 이 해상도를 꽉 채우도록 그린다. 화면에 보이는 <img>와는 별개의 Image를
+   * 새로 로드하므로 crossOrigin이 필요하며(픽셀을 읽으려면 CORS 허용 응답이 있어야 함), 실패해도
+   * 화면 표시(원본 로고)에는 영향이 없다.
+   */
+  function analyse(url) {
     return new Promise((resolve, reject) => {
       const image = new Image();
       const finish = (error, colors) => {
@@ -118,17 +190,18 @@ const ScoreboardLogoContrast = (() => {
       image.crossOrigin = 'anonymous';
       image.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = ANALYSIS_SIZE;
+        canvas.height = ANALYSIS_SIZE;
         try {
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          // 원본 이미지를 화면과 같은 contain 비율로, 즉 trim·수동 배율·화면 배율까지
-          // 반영된 최종 표시 크기 그대로 그린다. 실제로 시청자 눈에 보이는 크기/위치를
-          // 기준으로 가장자리를 판정해야 하므로 원본 픽셀 크기로 분석하지 않는다.
-          const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
-          const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
-          ctx.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
-          finish(null, edgeColors(ctx.getImageData(0, 0, width, height)));
+          const bounds = typeof LogoTrim !== 'undefined' ? LogoTrim.getCachedBounds(url) : null;
+          const { sx, sy, sw, sh } = cropRectFromBounds(bounds, image.naturalWidth, image.naturalHeight);
+          if (sw > 0 && sh > 0) {
+            const scale = Math.min(ANALYSIS_SIZE / sw, ANALYSIS_SIZE / sh);
+            const w = sw * scale, h = sh * scale;
+            ctx.drawImage(image, sx, sy, sw, sh, (ANALYSIS_SIZE - w) / 2, (ANALYSIS_SIZE - h) / 2, w, h);
+          }
+          finish(null, edgeColors(ctx.getImageData(0, 0, ANALYSIS_SIZE, ANALYSIS_SIZE)));
         } catch (error) {
           // getImageData는 캔버스가 오염된 경우(CORS 실패 등) SecurityError를 던진다.
           finish(error);
@@ -152,10 +225,10 @@ const ScoreboardLogoContrast = (() => {
    */
   function render(img, card, background, number, ready) {
     if (!img || !card) return;
-    const reset = () => card.classList.remove('logo-color-swapped');
+    const reset = () => applySwapResult(card, null);
     const url = img.getAttribute('src') || '';
     const tracked = elements.get(img);
-    // LogoTrim이 아직 이 로고의 최종 표시 크기를 확정하지 못했으면(로딩/분석 중) 대기한다.
+    // LogoTrim이 아직 이 로고의 경계 분석을 끝내지 못했으면(로딩/분석 중) 대기한다.
     // 로고가 실제로 제거된 경우만 초기화한다.
     if (!ready || !url) {
       if (!url || !tracked || tracked.url !== url) {
@@ -165,15 +238,9 @@ const ScoreboardLogoContrast = (() => {
       return;
     }
 
-    // 캐시 키는 URL만 쓴다 — 예전엔 표시 width/height까지 키에 포함해서, 포메이션 편집 등
-    // 레이아웃 재계산으로 로고 박스 폭이 서브픽셀 단위로 흔들릴 때마다(예: 41.6px → 42.1px
-    // 같은 반올림 차이) "표시 크기가 바뀌었다"고 오판해 매번 Canvas를 다시 그려 가장자리
-    // 픽셀을 재추출했다. 재추출마다 안티앨리어싱 표본이 미세하게 달라져 판정이 실행 중에
-    // 스스로 뒤집히거나(대기 중 자연 복귀), 포메이션/닉네임 편집처럼 잦은 재렌더가 몰리는
-    // 시점에 눈에 띄게 원래 배경으로 되돌아가는 원인이었다. 같은 로고 URL이면 어떤 CSS
-    // 크기로 그려도 가장자리 색 구성(그 결과인 스왑 판정)은 사실상 동일하므로, 분석은
-    // URL이 실제로 바뀔 때만 다시 수행하고, width/height는 최초 1회 분석을 그릴 캔버스
-    // 크기로만 쓴다.
+    // 캐시 키는 URL만 쓴다. 분석 해상도가 ANALYSIS_SIZE로 고정돼 있어(화면 표시 크기와 무관)
+    // 같은 로고 URL이면 언제 다시 render()가 불려도 같은 결과가 나오므로, 분석은 URL이 실제로
+    // 바뀔 때만 다시 수행한다.
     let current = elements.get(img);
     if (!current || current.url !== url) {
       current = { url, colors: null, analyzing: false, retryAt: 0, background, number };
@@ -186,26 +253,19 @@ const ScoreboardLogoContrast = (() => {
     if (current.colors) {
       // 이미 이 URL의 가장자리 색을 알고 있으면 재분석 없이 최신 배경/번호색으로만 재판정한다
       // (테마 탭에서 색만 바꾼 경우 등).
-      card.classList.toggle('logo-color-swapped', shouldSwap(current.colors, background, number));
+      applySwapResult(card, pickSwapBackground(current.colors, background, number));
       return;
     }
     if (current.analyzing || current.retryAt > Date.now()) return;
 
-    const rect = img.getBoundingClientRect();
-    const width = Math.ceil(rect.width), height = Math.ceil(rect.height);
-    // 화면에 아직 자리를 못 잡았으면(레이아웃 재배치 중 잠깐 0px 등) 이번엔 건너뛴다 —
-    // retryAt은 그대로 두므로 유효한 크기가 나오는 다음 render() 호출에서 바로 재시도한다.
-    // 비정상적으로 큰 수동 확대도 마찬가지로 건너뛴다(메모리/메인 스레드 보호).
-    if (!width || !height || width * height > 16 * 1024 * 1024) return;
-
     current.analyzing = true;
     const request = current;
-    analyse(url, width, height).then(colors => {
+    analyse(url).then(colors => {
       request.analyzing = false;
       // 분석 중 로고가 바뀌었으면(URL 변경으로 새 request가 이미 등록됨) 낡은 결과는 버린다.
       if (elements.get(img) !== request) return;
       request.colors = colors;
-      card.classList.toggle('logo-color-swapped', shouldSwap(colors, request.background, request.number));
+      applySwapResult(card, pickSwapBackground(colors, request.background, request.number));
     }).catch(() => {
       request.analyzing = false;
       if (elements.get(img) !== request) return;

@@ -266,6 +266,20 @@ const LogoTrim = (() => {
     } catch (_) { /* 저장소 접근이 제한돼도 메모리 캐시는 초기화한다. */ }
   }
 
+  /**
+   * 이미 분석이 끝나 캐시된 경계(bounds)를 동기적으로 반환한다. 새 분석은 시작하지 않는다
+   * — render()가 ready=true를 넘겨준 시점이면 이미 캐시가 있다고 보고 호출하는 용도.
+   * scoreboard-logo-contrast.js가 자기 분석 캔버스를 로고의 실제 화면 표시 크기가 아니라
+   * 항상 일정한 해상도로 그리면서, 투명 여백은 이 경계만큼 잘라내 같은 비율로 재사용한다.
+   * bounds의 left/top/right/bottom/width/height는 이 모듈이 분석에 사용한 캔버스 기준
+   * 픽셀 좌표이므로, 호출부는 자신의 이미지 크기에 맞춰 비율(0~1)로 환산해서 써야 한다.
+   * 캐시가 없거나 완전 투명한 이미지(bounds=null)면 null.
+   */
+  function getCachedBounds(url) {
+    const record = readCache(String(url || '').trim());
+    return record ? record.bounds : null;
+  }
+
   window.logoTrimClearCache = clearCache;
-  return { render, clearCache };
+  return { render, clearCache, getCachedBounds };
 })();
