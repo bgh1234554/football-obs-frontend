@@ -1392,8 +1392,24 @@ function _lineupSyncEdgeOverrideClass(panel) {
   panel.classList.toggle('has-edge-override', hasWidthOverride || hasHeightOverride);
 }
 
+/**
+ * lineup-name-fit.js의 syncBigLineupFullscreenGeometry()가 붙여놓은 "전체화면 폭 고정"
+ * 흔적(lp-width-locked 클래스 + dataset.lineupWindowWidth)을 지운다. 이 클래스가 붙어있으면
+ * CSS(css/lineup/lineup-layout.css)가 aspect-ratio를 unset시키고 width만으로 크기를 잡는데,
+ * 이 함수를 호출하는 쪽(_lineupClearWidthOverride/_lineupClearHeightOverride)이 그 width
+ * 인라인 스타일을 지워버리면 aspect-ratio도 없고 width도 없는 상태가 돼 패널이 0으로
+ * 붕괴한다. 리사이즈 override를 해제할 때는 항상 이 잠금도 함께 풀어 aspect-ratio 기반
+ * 자연 크기로 되돌린다 — 실제로 전체화면 중이었다면 다음 resize/fullscreenchange에서
+ * syncBigLineupFullscreenGeometry()가 새 크기 기준으로 다시 잠근다.
+ */
+function _lineupClearFullscreenWidthLock(panel) {
+  panel.classList.remove('lp-width-locked');
+  delete panel.dataset.lineupWindowWidth;
+}
+
 /** 수동 너비와 이름 배율을 해제한다. 높이 조절을 위해 임시 고정했던 너비가 있으면 복원한다. */
 function _lineupClearWidthOverride(panel) {
+  _lineupClearFullscreenWidthLock(panel);
   panel.style.removeProperty('width');
   panel.style.removeProperty('--lp-lineup-x-scale');
   panel.classList.remove('has-w-override');
@@ -1429,6 +1445,7 @@ function _lineupClearHeightOverride(panel) {
   panel.style.removeProperty('height');
   panel.classList.remove('has-h-override');
   if (panel.classList.contains('has-h-frozen-width') && !panel.classList.contains('has-w-override')) {
+    _lineupClearFullscreenWidthLock(panel);
     panel.style.removeProperty('width');
   }
   panel.classList.remove('has-h-frozen-width');
