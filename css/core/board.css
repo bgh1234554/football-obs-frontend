@@ -77,9 +77,12 @@
     }
     .team.home { background: var(--home-bg); color: var(--home-text); }
     .team.away { background: var(--away-bg); color: var(--away-text); }
-    /* 원본 팀 색상과 다른 패널은 유지하고 점수판 표시만 교환한다. */
-    .board .team.home.logo-color-swapped { background: var(--home-text); color: var(--home-bg); }
-    .board .team.away.logo-color-swapped { background: var(--away-text); color: var(--away-bg); }
+    /* 원본 팀 색상과 다른 패널은 유지하고 점수판 표시만 교환한다.
+       --logo-swap-bg는 scoreboard-logo-contrast.js가 pickSwapBackground로 고른 색을 카드별로
+       인라인 세팅한다(등번호색이 아닐 수도 있음 — 검정/흰색/보색까지 순서대로 시도). 아직
+       세팅 전이거나 구버전 캐시 등으로 못 받은 경우에만 기존처럼 등번호색으로 폴백한다. */
+    .board .team.home.logo-color-swapped { background: var(--logo-swap-bg, var(--home-text)); color: var(--home-bg); }
+    .board .team.away.logo-color-swapped { background: var(--logo-swap-bg, var(--away-text)); color: var(--away-bg); }
     .team.home.outline-on { box-shadow: inset 0 0 0 var(--home-outline-w) var(--home-outline); }
     .team.away.outline-on { box-shadow: inset 0 0 0 var(--away-outline-w) var(--away-outline); }
 

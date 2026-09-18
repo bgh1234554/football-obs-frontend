@@ -61,6 +61,9 @@
     currentFixtureId = id || null;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
     fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
+    if (panelFixtureLoadBtn && !_mainShowBtnBusy) {
+      panelFixtureLoadBtn.disabled = !currentFixtureId;
+    }
     if (currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
   }
   /**
@@ -161,10 +164,13 @@
   }
 
   /** 경기 ID 입력값으로 API 데이터를 가져와 스코어보드에 반영하는 메인 진입점 */
-  const mainInput      = $('main-fixture-input');
-  const mainShowBtn    = $('main-show-btn');
-  const mainUseLastBtn = $('main-use-last-btn');
-  const mainClearBtn   = $('main-clear-btn');
+  const mainInput          = $('main-fixture-input');
+  const mainShowBtn        = $('main-show-btn');
+  const mainUseLastBtn     = $('main-use-last-btn');
+  const mainClearBtn       = $('main-clear-btn');
+  // Details 패널의 "바로 불러오기" — 위젯에서 클릭으로 선택된 currentFixtureId를
+  // 오버레이를 거치지 않고 즉시 조회. 선택된 경기가 없으면 비활성화(setFixtureId에서 토글).
+  const panelFixtureLoadBtn = $('panel-fixture-load-btn');
 
   /**
    * 입력된 fixtureId로 fetchAndApplyFixtureData를 호출하고 오버레이를 닫음.
@@ -184,29 +190,34 @@
     return fetchAndApplyFixtureData(id);
   }
 
-  // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기)
-  // 메인 표시 버튼 — 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기/바로 불러오기)
+  // 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  // mainShowBtn(오버레이 안 "불러오기")과 panelFixtureLoadBtn(Details 패널 "바로 불러오기")이 공유.
   //
   // 중복 클릭 가드: 조회 중(_mainShowBtnBusy)에 다시 누르면 무시.
   // 원인 - fetchAndApplyFixtureData가 겹쳐 실행되면 FixtureService.buildInjuries()의
   // 선수별 프로필 API 호출(캐시가 비어있는 첫 로딩 시)이 그대로 2배로 나가는 게 확인됐음
   // (API-Football 대시보드에서 같은 playerId가 동시각에 정확히 2번씩 찍히는 패턴으로 발견).
   let _mainShowBtnBusy = false;
-  if(mainShowBtn)    mainShowBtn.addEventListener('click', ()=>{
+  function triggerFixtureLoad(fixtureId){
     if (_mainShowBtnBusy) return;
-    const result = renderMainGame(mainInput?.value);
+    const result = renderMainGame(fixtureId);
     if (result && typeof result.finally === 'function') {
       _mainShowBtnBusy = true;
-      mainShowBtn.disabled = true;
+      if (mainShowBtn) mainShowBtn.disabled = true;
+      if (panelFixtureLoadBtn) panelFixtureLoadBtn.disabled = true;
       result.finally(() => {
         _mainShowBtnBusy = false;
-        mainShowBtn.disabled = false;
+        if (mainShowBtn) mainShowBtn.disabled = false;
+        if (panelFixtureLoadBtn) panelFixtureLoadBtn.disabled = !currentFixtureId;
       });
     }
     closeOverlay();
     const target = (typeof getSetting === 'function' && getSetting('mainPage') === 'small') ? 'main-small' : 'main-big';
     if (typeof window.activatePage === 'function') window.activatePage(target);
-  });
+  }
+  if(mainShowBtn) mainShowBtn.addEventListener('click', ()=> triggerFixtureLoad(mainInput?.value));
+  if(panelFixtureLoadBtn) panelFixtureLoadBtn.addEventListener('click', ()=> triggerFixtureLoad(currentFixtureId));
   if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{ const last=localStorage.getItem('last_fixture_id'); if(!last) return; if(mainInput) mainInput.value=last; mainInput.focus(); });
   if(mainClearBtn)   mainClearBtn.addEventListener('click', ()=>{
     if(mainInput){

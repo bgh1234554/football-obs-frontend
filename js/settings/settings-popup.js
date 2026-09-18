@@ -641,6 +641,8 @@ function resetSettingsToDefaults() {
  * 없으면 sessionStorage/localStorage만 직접 청소(fallback).
  */
 function clearAppCaches() {
+  window.logoTrimClearCache?.();
+  window.ScoreboardLogoContrast?.clearCache?.();
   if (typeof resetFixtureDrivenState === 'function') {
     resetFixtureDrivenState({
       clearFixtureId: true,

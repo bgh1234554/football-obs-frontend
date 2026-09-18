@@ -37,7 +37,7 @@ function buildEffectiveFixtureData(data) {
     if (typeof window.applyZeroIdOverrides === 'function') {
       window.applyZeroIdOverrides(next, fixtureId);
     }
-    return next;
+    return applyInferredFormationsToFixtureData(next);
   }
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
@@ -122,7 +122,7 @@ function buildEffectiveFixtureData(data) {
     window.applyZeroIdOverrides(next, fixtureId);
   }
 
-  return next;
+  return applyInferredFormationsToFixtureData(next);
 }
 
 /**
@@ -259,6 +259,96 @@ function hasStartXi(lineup) {
 function hasValidFormation(lineup) {
   const formation = String(lineup?.formation || '').trim();
   return !!(formation && getTacticsFormationMap()[formation]);
+}
+
+// ─── 포메이션 미제공 시 포지션 개수 기반 추정 ─────────────────────────
+// API가 formation/grid를 아예 안 줄 때(하위 리그 등), startXi 각 선수의 pos(G/D/M/F)
+// 개수만으로 TACTICS_FM에 등록된 포메이션 중 가장 가까운 것을 골라 피치 렌더링을 시도한다.
+// 실제 formation/grid가 폴링으로 들어오면 hasValidFormation/hasAnyGrid 체크에 걸려
+// 이 추정 경로 자체가 스킵되므로, 별도 "복구" 로직 없이 API 데이터가 자연히 우선한다.
+const INFERABLE_FORMATION_PRIORITY = [
+  '4-2-3-1', '4-3-3', '4-4-2', '3-5-2', '3-4-3',
+  '4-1-4-1', '4-5-1', '4-4-1-1', '4-1-3-2', '4-3-1-2',
+  '4-2-2-2', '4-3-2-1', '4-1-2-3', '4-2-1-3',
+  '3-4-2-1', '3-1-4-2', '3-5-1-1', '3-3-1-3', '3-4-1-2',
+  '5-3-2', '5-4-1', '5-2-3',
+];
+
+/**
+ * startXi 11명의 pos(G/D/M/F) 개수만으로 가장 근접한 TACTICS_FM 포메이션 키를 찾는다.
+ * 11명이 아니거나, pos가 G/D/M/F가 아닌 값을 포함하거나, GK가 정확히 1명이 아니면
+ * 신뢰할 수 없는 데이터로 보고 추정하지 않는다(null). 같은 D/M/F 조합에 여러 포메이션이
+ * 걸리면 INFERABLE_FORMATION_PRIORITY 순서(실제 사용 빈도가 높은 쪽)로 먼저 매칭되는 것을 쓴다.
+ */
+function inferFormationFromPositions(startXi) {
+  const players = Array.isArray(startXi) ? startXi : [];
+  if (players.length !== 11) return null;
+
+  const counts = { G: 0, D: 0, M: 0, F: 0 };
+  for (const p of players) {
+    const pos = String(p?.pos || '').toUpperCase();
+    if (!(pos in counts)) return null;
+    counts[pos]++;
+  }
+  if (counts.G !== 1) return null;
+
+  for (const formation of INFERABLE_FORMATION_PRIORITY) {
+    const digits = formation.split('-').map(Number);
+    const d = digits[0];
+    const f = digits[digits.length - 1];
+    const m = digits.slice(1, -1).reduce((sum, n) => sum + n, 0);
+    if (d === counts.D && m === counts.M && f === counts.F) return formation;
+  }
+  return null;
+}
+
+/**
+ * 추정한 포메이션에 맞춰 grid가 없는 startXi에 합성 grid("line:col")를 부여한 새 배열을 반환한다.
+ * 같은 라인 안에서 실제 좌우 배치는 API가 주지 않아 알 수 없으므로, G/D/M/F 그룹 안에서는
+ * API가 내려준 startXi 원래 순서를 그대로 유지해 슬롯에 순서대로 채운다(완전하진 않지만
+ * 임의 배치보다는 낫다). TACTICS_FM 좌표 배열 자체가 이미 포지션 대분류(G→D→M→F) 순서로
+ * 정의돼 있어, 같은 순서로 그룹핑한 선수 목록을 slot 원본 인덱스에 그대로 맞추면 된다.
+ */
+function assignInferredFormationGrid(startXi, formation) {
+  const players = Array.isArray(startXi) ? startXi : [];
+  const groups = { G: [], D: [], M: [], F: [] };
+  players.forEach(p => {
+    const pos = String(p?.pos || '').toUpperCase();
+    (groups[pos] || groups.F).push(p);
+  });
+  const ordered = [...groups.G, ...groups.D, ...groups.M, ...groups.F];
+  const gridValues = buildManualGridValues(formation);
+  return ordered.map((p, index) => ({ ...p, grid: gridValues[index] || p.grid || null }));
+}
+
+/**
+ * lineup.formation이 없고(또는 알 수 없고) startXi 어느 선수에게도 grid가 없을 때만
+ * 포지션 개수 기반으로 formation/grid를 추정해 채운 새 lineup을 반환한다. formation이 이미
+ * 유효하거나, startXi가 없거나, grid가 하나라도 있으면(API가 부분적으로라도 제공) 원본을
+ * 그대로 돌려준다 — API가 실제 formation/grid를 내려주면 이 함수는 자연히 건너뛰어진다.
+ */
+function applyInferredFormation(lineup) {
+  if (!lineup || hasValidFormation(lineup) || !hasStartXi(lineup)) return lineup;
+  const hasAnyGrid = lineup.startXi.some(p => p?.grid);
+  if (hasAnyGrid) return lineup;
+
+  const formation = inferFormationFromPositions(lineup.startXi);
+  if (!formation) return lineup;
+
+  return {
+    ...lineup,
+    formation,
+    startXi: assignInferredFormationGrid(lineup.startXi, formation),
+    _inferredFormation: true,
+  };
+}
+
+/** buildEffectiveFixtureData의 반환 직전 공통 단계 — 홈/원정 라인업에 포메이션 추정을 적용. */
+function applyInferredFormationsToFixtureData(next) {
+  if (!next) return next;
+  next.homeLineup = applyInferredFormation(next.homeLineup);
+  next.awayLineup = applyInferredFormation(next.awayLineup);
+  return next;
 }
 
 // Iter 3: API 라인업(startXi)이 있는 모든 경우 — 그리드 모드. 사용자가 데이터 오류나
