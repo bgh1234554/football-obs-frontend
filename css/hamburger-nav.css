@@ -201,3 +201,12 @@ body.sidebar-open .sidebar-nav {
   flex-shrink: 0;
 }
 .panel-fixture-btn:hover { background: rgba(255,255,255,.09); }
+.panel-fixture-btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+
+/* Details 패널 "바로 불러오기" — 선택된 경기를 오버레이 없이 즉시 조회하는 강조 버튼 */
+.panel-fixture-btn-primary {
+  background: rgba(70,170,255,.18);
+  border-color: rgba(120,195,255,.5);
+  color: #eaf6ff;
+}
+.panel-fixture-btn-primary:hover:not(:disabled) { background: rgba(70,170,255,.3); }
