@@ -65,6 +65,7 @@
     'Meniscus Injury':   '반월판 부상',
     'Surgery':           '수술',
     'Heart Problems':    '심장 문제',
+    'Contusion':         '타박상',
     'Illness':           '질병',
     'Virus':             '바이러스',
     'Fever':             '발열',

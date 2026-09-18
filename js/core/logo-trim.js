@@ -24,9 +24,19 @@ const LogoTrim = (() => {
   const pending = new Map();
   // 이미지 요소별 현재 요청 상태: DOM이 제거되면 별도 정리 없이 참조도 해제된다.
   let elements = new WeakMap();
-  // 같은 URL의 CDN 파일이 교체돼도 페이지 진입 시 새 이미지 응답을 받도록 한다.
-  // 원본 source/state 값은 유지하고, 화면의 <img> 요청 URL에만 세션 단위 버전을 붙인다.
-  const SESSION_CACHE_BUSTER = `logo-v=${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  // (2026-09-18 ~ 09-19, 제거됨) 한때 화면의 <img> 요청 URL에 `?logo-v=...` 캐시버스터
+  // 쿼리스트링을 붙여, 같은 URL의 CDN 파일이 교체돼도 오래(로고 CDN 응답 헤더 기준 1년)
+  // 브라우저에 캐시된 옛 이미지를 계속 쓰지 않게 하려 했다. 세션 단위 랜덤 값(매 페이지
+  // 로드마다 그 CDN이 한 번도 못 본 새 URL) → 날짜 단위 고정 값으로 한 번 완화해봤지만,
+  // 실제 방송 중 팀 로고가 403으로 깨져서(alt="HOME"/"AWAY" 텍스트가 대체 표시되며 카드
+  // 전체가 깨진 것처럼 보임) 새로고침해야만 복구되는 사례가 실측으로 재현됐다 — 값을 날짜
+  // 단위로 줄여도 쿼리스트링 자체가 원인일 가능성을 배제할 수 없어, 방송용 도구에서는
+  // "로고 갱신이 최대 며칠 늦게 반영될 수 있음"보다 "로고가 방송 중 깨질 수 있음"이 훨씬
+  // 치명적이라고 보고 쿼리스트링 부착 자체를 완전히 제거했다. 원본 URL 그대로 요청한다.
+  // 실제로 로고 파일이 교체됐을 때 오래된 캐시가 남아있으면, 설정 팝업의 "캐시 초기화"
+  // 버튼(clearAppCaches → logoTrimClearCache)으로 trim 분석 캐시는 지울 수 있고, 브라우저
+  // 자체의 이미지 HTTP 캐시까지 확실히 비우려면 하드 리프레시(Ctrl+Shift+R)가 필요하다 —
+  // 이 문제가 재발하면 이번엔 의도적인 수동 조치이므로 자동 복구가 아니어도 된다.
   // 자동 보정용 속성만 관리한다. 사용자가 지정한 배율·위치 속성은 건드리지 않는다.
   const properties = ['--logo-trim-width', '--logo-trim-height', '--logo-trim-x', '--logo-trim-y'];
 
@@ -153,12 +163,12 @@ const LogoTrim = (() => {
     }
   }
 
-  /** 원본 URL을 캐시 키로 사용하고, 이미지 분석 요청에만 cache-busted URL을 사용한다. */
-  function getBounds(url, requestUrl = url) {
+  /** 유효한 캐시 → 진행 중인 분석 공유 → 새 분석 순서로 경계를 얻는다. */
+  function getBounds(url) {
     const cached = readCache(url);
     if (cached) return Promise.resolve(cached);
     if (pending.has(url)) return pending.get(url);
-    const task = analyse(requestUrl).then(bounds => writeCache(url, bounds)).catch(() => {
+    const task = analyse(url).then(bounds => writeCache(url, bounds)).catch(() => {
       // CORS·네트워크 등의 일시적 실패를 30일 동안 고정하지 않는다.
       // 실패 결과는 메모리에 1분만 두어 반복 요청을 막고, 이후 render 호출 시 재시도한다.
       // 별도 타이머로 1분 뒤 자동 재시도하는 방식은 아니다.
@@ -211,16 +221,26 @@ const LogoTrim = (() => {
   function render(img, source, onReady) {
     if (!img) return;
     const url = String(source || '').trim();
-    const displayUrl = url
-      ? `${url}${url.includes('?') ? '&' : '?'}${SESSION_CACHE_BUSTER}`
-      : '';
     let current = elements.get(img);
     if (!current || current.url !== url) {
-      current = { url, expiresAt: 0, busy: false, ready: false };
+      current = { url, expiresAt: 0, busy: false, ready: false, loadRetried: false };
       elements.set(img, current);
       clearLayout(img);
-      if (displayUrl) img.src = displayUrl; else img.removeAttribute('src');
+      if (url) img.src = url; else img.removeAttribute('src');
       img.classList.toggle('hidden', !url);
+      // 화면에 실제로 보이는 <img> 자체가 로드 실패(네트워크 순단, CDN 일시 오류 등)하면
+      // 새로고침 없이도 스스로 한 번 복구를 시도한다 — src를 비웠다가 그대로 다시 대입해
+      // 브라우저가 같은 URL로 새 요청을 보내도록 강제한다(값이 그대로면 재요청을 안 하는
+      // 브라우저가 있어 한 프레임 비워야 함). 무한 재시도를 막기 위해 요소당 1회만 시도한다.
+      if (url) {
+        img.addEventListener('error', function onLoadError() {
+          img.removeEventListener('error', onLoadError);
+          if (elements.get(img) !== current || current.loadRetried) return;
+          current.loadRetried = true;
+          img.removeAttribute('src');
+          requestAnimationFrame(() => { if (elements.get(img) === current) img.src = url; });
+        }, { once: true });
+      }
     }
     // 항상 최신 렌더의 콜백을 사용한다. 분석 중 색상만 바뀌어도 이전 색을 적용하지 않는다.
     current.onReady = onReady;
@@ -241,7 +261,7 @@ const LogoTrim = (() => {
     current.busy = true;
     current.ready = false;
     current.onReady?.(false);
-    getBounds(url, displayUrl).then(record => {
+    getBounds(url).then(record => {
       // 분석 중 경기가 바뀌거나 로고를 지웠다면 이전 요청의 응답은 적용하지 않는다.
       // URL 문자열뿐 아니라 상태 객체 자체를 비교하므로 A→B→A로 바뀐 경우도 구분된다.
       if (elements.get(img) !== current) return;
