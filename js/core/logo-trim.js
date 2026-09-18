@@ -22,6 +22,8 @@ const LogoTrim = (() => {
   const memory = new Map();
   // URL별 진행 중인 Promise: 홈·원정이 같은 로고를 요청해도 분석은 한 번만 수행한다.
   const pending = new Map();
+  // 캐시 초기화 이후 도착한 이전 분석 결과가 새 캐시에 다시 들어오지 않도록 구분한다.
+  let cacheGeneration = 0;
   // 이미지 요소별 현재 요청 상태: DOM이 제거되면 별도 정리 없이 참조도 해제된다.
   let elements = new WeakMap();
   // (2026-09-18 ~ 09-19, 제거됨) 한때 화면의 <img> 요청 URL에 `?logo-v=...` 캐시버스터
@@ -168,14 +170,22 @@ const LogoTrim = (() => {
     const cached = readCache(url);
     if (cached) return Promise.resolve(cached);
     if (pending.has(url)) return pending.get(url);
-    const task = analyse(url).then(bounds => writeCache(url, bounds)).catch(() => {
+    const generation = cacheGeneration;
+    const task = analyse(url).then(bounds => {
+      if (generation !== cacheGeneration) {
+        return { bounds, expiresAt: Date.now() + TTL };
+      }
+      return writeCache(url, bounds);
+    }).catch(() => {
       // CORS·네트워크 등의 일시적 실패를 30일 동안 고정하지 않는다.
       // 실패 결과는 메모리에 1분만 두어 반복 요청을 막고, 이후 render 호출 시 재시도한다.
       // 별도 타이머로 1분 뒤 자동 재시도하는 방식은 아니다.
       const retry = { bounds: null, expiresAt: Date.now() + 60000 };
-      memory.set(url, retry);
+      if (generation === cacheGeneration) memory.set(url, retry);
       return retry;
-    }).finally(() => pending.delete(url));
+    }).finally(() => {
+      if (pending.get(url) === task) pending.delete(url);
+    });
     pending.set(url, task);
     return task;
   }
@@ -275,6 +285,7 @@ const LogoTrim = (() => {
 
   /** localStorage와 현재 페이지 메모리에 저장된 투명 여백 분석 결과를 모두 삭제한다. */
   function clearCache() {
+    cacheGeneration += 1;
     memory.clear();
     pending.clear();
     elements = new WeakMap();

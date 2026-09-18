@@ -154,6 +154,11 @@ const ScoreboardLogoContrast = (() => {
     }
   }
 
+  /** URL별 분석 결과를 폐기해 같은 URL의 교체 로고도 다시 분석할 수 있게 한다. */
+  function clearCache() {
+    elements = new WeakMap();
+  }
+
   /**
    * LogoTrim이 캐시해 둔 경계(bounds — 자신의 분석 캔버스 기준 픽셀 좌표)를 비율로 환산해,
    * 지금 로드한 이미지의 naturalWidth/naturalHeight 기준 크롭 사각형(sx,sy,sw,sh)으로 변환한다.
@@ -274,5 +279,7 @@ const ScoreboardLogoContrast = (() => {
     });
   }
 
-  return { render };
+  const api = { render, clearCache };
+  window.ScoreboardLogoContrast = api;
+  return api;
 })();

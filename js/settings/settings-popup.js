@@ -642,6 +642,7 @@ function resetSettingsToDefaults() {
  */
 function clearAppCaches() {
   window.logoTrimClearCache?.();
+  window.ScoreboardLogoContrast?.clearCache?.();
   if (typeof resetFixtureDrivenState === 'function') {
     resetFixtureDrivenState({
       clearFixtureId: true,
