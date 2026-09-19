@@ -1198,7 +1198,13 @@ function balanceBenchInjuryPanelHeightsImpl() {
   if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
     transferTarget = 'bench';
-    sourceSpare = injuryMetrics.spare;
+    const minInjuryHeight = getPanelChromeHeight(injuryPanel)
+      + getInjuryPanelMinSplitHeight(injuryPanel)
+      + DETAIL_PANEL_BALANCE_EPSILON_PX;
+    sourceSpare = Math.min(
+      injuryMetrics.spare,
+      Math.max(0, injuryRect.height - minInjuryHeight)
+    );
     targetDeficit = benchMetrics.deficit;
   } else if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX) {

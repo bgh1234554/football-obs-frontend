@@ -1379,7 +1379,7 @@
   }
 
   function forceRefreshCurrentFixture() {
-    if (_forceRefreshCooldownTimer) return;
+    if (_forceRefreshCooldownTimer || _mainShowBtnBusy) return;
     if (state.manualMode || !activeFixtureId) {
       showToast('연동된 경기가 없습니다');
       return;
