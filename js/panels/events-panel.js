@@ -826,6 +826,33 @@ const EV_PERIOD_BOUNDARY_ELAPSED = new Set([45, 90, 105, 120]);
  * 마커보다도 뒤로 밀려버리는 버그가 있었다(2026-09-20) — 90분 경계는 실제로 연장전이 이어질
  * 때만(activeBoundaryElapsedSet.has(90)) 밀어야 하고, 그렇지 않으면 일반 이벤트처럼 정렬해야
  * 풀타임 마커보다 먼저(더 이른 시점) 온다.
+ *
+ * ── 실제 데이터로 본 두 케이스 ──────────────────────────────────────────
+ *
+ * [버그였던 케이스] AS로마 vs 인테르, 연장 없이 90분 만에 FT로 종료(activeBoundaryElapsedSet에
+ * 90 없음). 90분 교체 2건이 전부 extra:null로 내려옴:
+ *   { elapsed: 90, extra: null, ... playerOrigName: "M. Thuram" (OUT), assistOrigName: "A. Bonny" (IN) }
+ *   { elapsed: 90, extra: null, ... playerOrigName: "L. Martinez" (OUT), assistOrigName: "F. Esposito" (IN) }
+ * 고치기 전: isActiveBoundary가 무조건 true → extra=51 → sortKey=9051.
+ *   풀타임 마커(elapsed:90, extra:50 고정) sortKey=9050 < 9051 → 교체 2건이 마커보다 위(=더
+ *   최근)로 잘못 렌더링됐다(실제로는 정규시간 안에서 벌어진 일인데 "풀타임 이후"처럼 보임).
+ * 고친 후: activeBoundaryElapsedSet.has(90) === false → isActiveBoundary=false →
+ *   extra=Number(null??0)=0 → sortKey=9000 < 마커의 9050 → 마커보다 아래(=더 과거)로 정렬돼
+ *   실제 시간 순서와 일치한다.
+ *
+ * [정상적으로 밀어야 하는 케이스] 토트넘(홈) vs 아스톤 빌라(원정), 전반 종료 후 하프타임 진입
+ * (reachedHalftime=true → activeBoundaryElapsedSet에 45 포함). 전반 스토파지 타임의 실제
+ * 이벤트는 extra가 채워져 있고, 하프타임 휴식 중 이뤄진 교체만 extra:null이다:
+ *   { elapsed: 45, extra: 4, side: "away", type: "Goal", playerOrigName: "Johan Manzambi" }        → sortKey 4504
+ *   { elapsed: 45, extra: 7, side: "home", type: "Card", playerOrigName: "Jan Paul van Hecke" }     → sortKey 4507
+ *   { elapsed: 45, extra: null, side: "away", type: "subst", playerOrigName: "Aaron Wan-Bissaka" }  → isActiveBoundary=true → extra=51 → sortKey 4551
+ *   { elapsed: 45, extra: null, side: "home", type: "subst", playerOrigName: "Mateus Fernandes" }   → 마찬가지로 sortKey 4551
+ *   하프타임 마커(elapsed:45, extra:50 고정) → sortKey 4550
+ * 내림차순 정렬 결과(위→아래 = 최신→과거): 교체 2건(4551, 동점이면 원래 배열 순서 유지) →
+ * 하프타임 마커(4550) → 판헤커 옐로카드(4507) → 만잠비 골(4504). 교체가 "하프타임 휴식 중"에
+ * 실제로 일어났으므로 마커보다 위(=더 나중)에 오는 게 맞다. 참고로 같은 경기의 90분대
+ * 이벤트(옐로카드 2건 extra:2, 반헤커 골 extra:8)는 전부 실제 extra 값이 채워져 있어 이 보정
+ * 자체가 필요 없다 — extra 값 그대로 자연스럽게 정렬된다.
  */
 function evSortKey(ev, activeBoundaryElapsedSet) {
   const elapsed = evIsPenaltyShootoutEvent(ev)
