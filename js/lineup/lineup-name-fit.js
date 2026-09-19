@@ -1149,8 +1149,8 @@ function balanceBenchInjuryPanelHeightsImpl() {
   let sourceSpare = 0;
   let targetDeficit = 0;
 
-  // 미출전 명단은 부족한 높이를 자체 스크롤로 처리한다. 교체 명단이 잘리지 않도록
-  // 교체 명단이 부족할 때만 미출전 패널의 여유 공간을 가져온다.
+  // 기본 배치에서 둘 다 스크롤이 생기면(양쪽 모두 부족) 교체 명단을 우선해 공간을 몰아주고,
+  // 그렇지 않으면(한쪽만 부족) 여유 있는 쪽에서 부족한 쪽으로 옮겨 양쪽 다 스크롤이 없도록 한다.
   if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
     transferTarget = 'bench';
@@ -1175,6 +1175,13 @@ function balanceBenchInjuryPanelHeightsImpl() {
     injurySection.style.flex = `0 0 ${nextInjuryHeight}px`;
     injurySection.style.height = `${nextInjuryHeight}px`;
     return;
+  } else if (injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
+    && benchMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    // 3-c) 교체 명단은 이미 여유가 있는데 미출전 명단만 부족한 경우 — 반대 방향으로 옮겨
+    // 미출전 패널도 스크롤이 생기지 않게 한다. (교체 명단만 우선하던 기존 로직의 누락분)
+    transferTarget = 'injury';
+    sourceSpare = benchMetrics.spare;
+    targetDeficit = injuryMetrics.deficit;
   } else {
     return;
   }

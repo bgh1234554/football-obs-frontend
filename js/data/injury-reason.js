@@ -55,6 +55,7 @@
     'Broken Arm':        '팔 골절',
     'Broken calfbone':   '종아리뼈 골절',
     'Fracture':          '골절',
+    'Abdominal strain':  '복근 파열',
     'Sprain':            '염좌',
     'Strain':            '근육 긴장',
     'Muscle Bruise':     '근육 타박상',

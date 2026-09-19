@@ -809,12 +809,23 @@ const EV_PENALTY_SHOOTOUT_SORT_ELAPSED = 121; // 승부차기는 연장 후반 �
 // 하프타임 마커 표시 허용 status — "NS/1H가 아니면 전부"식 부정 조건은 PST/CANC/SUSP/INT/ABD/AWD/WO
 // 같은 비정상 status에도 걸려 하프타임 마커가 잘못 붙었음. 진행된 상태만 명시적으로 허용한다.
 const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'PSO', 'FT']);
+// 구간 경계 elapsed 값 — 하프타임/후반종료/연장전반종료/연장후반종료 마커가 찍히는 지점과 동일.
+// API-Football은 휴식 시간 중(하프타임 등) 발생한 교체/카드 등을 extra 없이 이 경계 elapsed
+// 그대로 내려준다(예: 후반 시작 교체가 elapsed:45, extra:null) — 그대로 정렬하면 그 구간의
+// 추가시간 이벤트(elapsed:45, extra:4 등)보다도 앞선 시점으로 잘못 묶여 하프타임 마커보다
+// "이전"(1H)으로 표시돼버린다.
+const EV_PERIOD_BOUNDARY_ELAPSED = new Set([45, 90, 105, 120]);
 
 function evSortKey(ev) {
   const elapsed = evIsPenaltyShootoutEvent(ev)
     ? EV_PENALTY_SHOOTOUT_SORT_ELAPSED
     : Number(ev?.elapsed ?? 0);
-  const extra = Number(ev?.extra ?? 0);
+  const hasExtra = ev?.extra !== null && ev?.extra !== undefined && ev.extra !== '';
+  // extra가 없는 경계 elapsed 이벤트(휴식 중 발생) — 그 구간의 추가시간 이벤트, 그리고 구간
+  // 구분자 마커(EV_PERIOD_MARKER_SORT_PADDING)보다도 늦은 시점으로 취급해 마커 "다음"에 온다.
+  const extra = (!hasExtra && EV_PERIOD_BOUNDARY_ELAPSED.has(elapsed))
+    ? EV_PERIOD_MARKER_SORT_PADDING + 1
+    : Number(ev?.extra ?? 0);
   return (Number.isFinite(elapsed) ? elapsed : 0) * 100
     + (Number.isFinite(extra) ? extra : 0);
 }
