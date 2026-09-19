@@ -94,7 +94,8 @@
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
-  font-size: 13px;
+  /* 설정 팝업 "교체/미출전 명단 글씨 크기" 슬라이더로 조정 (settings-popup.js: applyLayoutSettings). */
+  font-size: var(--dp-item-name-size, 13px);
   line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;

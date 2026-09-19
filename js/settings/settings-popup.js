@@ -51,6 +51,11 @@ const SETTINGS_DEFAULTS = {
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
+  // 교체 명단 / 미출전 선수 명단 (.dp-item) 글자 크기 (px). 설정 팝업 슬라이더로 조정.
+  benchInjuryNameSize: 13,
+  // 경기 스탯 패널 (.st-title/.st-val) 글자 크기 (px). 막대 굵기(.st-bar height)가
+  // 기본값(12px) 대비 이 값의 비율만큼 함께 굵어진다 (statBarHeight = 6px * size/12).
+  statsNameSize: 12,
   // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
@@ -129,6 +134,12 @@ const BG_IMAGE_SAFE_PERSIST_BYTES = Math.floor(1.8 * 1024 * 1024);
 
 const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
+const BENCH_INJURY_NAME_SIZE_MIN = 10;
+const BENCH_INJURY_NAME_SIZE_MAX = 18;
+const STATS_NAME_SIZE_MIN = 10;
+const STATS_NAME_SIZE_MAX = 18;
+const STATS_NAME_SIZE_DEFAULT = 12;
+const STATS_BAR_HEIGHT_DEFAULT = 6;
 const STATS_SWIPE_SEC_MIN = 2.5;
 const STATS_SWIPE_SEC_MAX = 60;
 const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
@@ -382,6 +393,12 @@ function isValidSetting(category, value) {
   if (category === 'eventNameSize') {
     return Number.isFinite(value) && value >= EVENT_NAME_SIZE_MIN && value <= EVENT_NAME_SIZE_MAX;
   }
+  if (category === 'benchInjuryNameSize') {
+    return Number.isFinite(value) && value >= BENCH_INJURY_NAME_SIZE_MIN && value <= BENCH_INJURY_NAME_SIZE_MAX;
+  }
+  if (category === 'statsNameSize') {
+    return Number.isFinite(value) && value >= STATS_NAME_SIZE_MIN && value <= STATS_NAME_SIZE_MAX;
+  }
   if (category === 'tacticsNameSize') {
     return Number.isFinite(value) && value >= TACTICS_NAME_SIZE_MIN && value <= TACTICS_NAME_SIZE_MAX;
   }
@@ -564,7 +581,7 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign') applyLayoutSettings();
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -682,6 +699,9 @@ function resetRatingColorsToDefaults() {
  *   --lp-lineup-scale       : 캠 큼 페이지 라인업 패널 크기 배율 (.layout-big .lp-lineup 전용)
  *   --lp-name-base-size     : 라인업 노드 이름 base 글자 크기 (모든 layout 공통)
  *   --ev-name-base-size     : 이벤트 패널 base 글자 크기
+ *   --dp-item-name-size     : 교체 명단/미출전 선수 명단(.dp-item) base 글자 크기
+ *   --st-name-base-size     : 경기 스탯 패널(.st-title/.st-val) base 글자 크기
+ *   --st-bar-height         : 경기 스탯 막대(.st-bar) 굵기. statsNameSize 비율만큼 6px 기준으로 스케일
  *   --lp-pitch-*            : 라인업 패널 피치 색감 (background/stripe/border/marking/wash/logo)
  *   --td-pitch-*            : 전술판 피치 색감 (라인업과 같은 톤 프리셋 사용)
  *
@@ -696,6 +716,9 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
+  const benchInjurySize = Math.max(BENCH_INJURY_NAME_SIZE_MIN, Math.min(BENCH_INJURY_NAME_SIZE_MAX, Number(getSetting('benchInjuryNameSize')) || 13));
+  const statsSize = Math.max(STATS_NAME_SIZE_MIN, Math.min(STATS_NAME_SIZE_MAX, Number(getSetting('statsNameSize')) || STATS_NAME_SIZE_DEFAULT));
+  const statsBarHeight = STATS_BAR_HEIGHT_DEFAULT * (statsSize / STATS_NAME_SIZE_DEFAULT);
   const tacticsNameSize = Math.max(TACTICS_NAME_SIZE_MIN, Math.min(TACTICS_NAME_SIZE_MAX, Number(getSetting('tacticsNameSize')) || 12));
   const tacticsTokenScale = Math.max(TACTICS_TOKEN_SCALE_MIN, Math.min(TACTICS_TOKEN_SCALE_MAX, Number(getSetting('tacticsTokenScale')) || 100)) / 100;
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
@@ -704,6 +727,9 @@ function applyLayoutSettings() {
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
+  root.style.setProperty('--dp-item-name-size', `${benchInjurySize}px`);
+  root.style.setProperty('--st-name-base-size', `${statsSize}px`);
+  root.style.setProperty('--st-bar-height', `${statsBarHeight}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
   root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
   root.style.setProperty('--td-topbar-scale', String(
@@ -758,6 +784,11 @@ function applyLayoutSettings() {
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
   }
+  // benchInjuryNameSize 변경 시 글자 크기가 바뀌어 교체/미출전 명단 내용 높이가 달라지므로,
+  // 캠 작음(#benchPanel/#injuryPanel) 높이 자동 배분도 다시 실행 (lineup-name-fit.js).
+  if (typeof window.balanceBenchInjuryPanelHeights === 'function') {
+    requestAnimationFrame(() => window.balanceBenchInjuryPanelHeights());
+  }
 }
 
 /**
@@ -808,7 +839,7 @@ function applyBackgroundSettings() {
 
 /**
  * 슬라이더 UI 동기화 + 옆에 붙은 .sp-slider-value 라벨도 같이 갱신.
- * lineupNameSize / eventNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
+ * lineupNameSize / eventNameSize / benchInjuryNameSize / statsNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
  */
 function syncSliderUi(category) {
   const input = document.querySelector(`input[data-settings-slider="${category}"]`);
@@ -818,7 +849,7 @@ function syncSliderUi(category) {
   const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
     || document.querySelector(`[data-settings-slider-value="${category}"]`);
   if (!label) return;
-  if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize') label.textContent = `${value}px`;
+  if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize' || category === 'benchInjuryNameSize' || category === 'statsNameSize') label.textContent = `${value}px`;
   else label.textContent = `${value}%`;
 }
 

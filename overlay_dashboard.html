@@ -143,7 +143,7 @@
       <div class="sp-body">
         <!-- 카테고리 탭 — 클릭 시 data-sp-tab-section과 매칭하는 섹션만 표시. 기본 'names'. -->
         <div class="sp-tabs" role="tablist">
-          <button class="sp-tab is-active" type="button" data-sp-tab="names" role="tab">이름</button>
+          <button class="sp-tab is-active" type="button" data-sp-tab="names" role="tab">선수/팀 이름</button>
           <button class="sp-tab"            type="button" data-sp-tab="lineup" role="tab">라인업</button>
           <button class="sp-tab"            type="button" data-sp-tab="events" role="tab">패널/스탯</button>
           <button class="sp-tab"            type="button" data-sp-tab="background" role="tab">배경/OBS</button>
@@ -151,7 +151,7 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="names">
-          <div class="sp-section-title">이름 표시</div>
+          <div class="sp-section-title">선수 이름 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">라인업 이름 풀네임</span>
@@ -172,17 +172,6 @@
               <span class="sp-toggle-side" data-side="off">OFF</span>
               <label class="sp-switch"><input type="checkbox" data-settings-cat="lineupHideInitial" /><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="on">ON</span>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">점수판 팀명 풀네임</span>
-              <span class="sp-label-sub">점수판 팀명을 길게 표시합니다.</span>
-            </div>
-            <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="short">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="teamName" checked/><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="long">ON</span>
             </div>
           </div>
           <div class="sp-row">
@@ -215,6 +204,18 @@
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="short">OFF</span>
               <label class="sp-switch"><input type="checkbox" data-settings-cat="event" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="long">ON</span>
+            </div>
+          </div>
+          <div class="sp-section-title" style="margin-top:10px;">팀 이름 표시</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">점수판 팀명 풀네임</span>
+              <span class="sp-label-sub">점수판 팀명을 길게 표시합니다.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="short">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="teamName" checked/><span class="sp-switch-slider"></span></label>
               <span class="sp-toggle-side" data-side="long">ON</span>
             </div>
           </div>
@@ -387,7 +388,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">교체 OUT 공격포인트 배지</span>
-              <span class="sp-label-sub">교체 아웃된 선수 중 골·도움·자책골을 기록한 선수를 피치 오른쪽에 별도로 표시합니다. "교체 선수 라인업에 반영"이 ON일 때만 동작합니다.</span>
+              <span class="sp-label-sub">교체 아웃된 선수 중 골·도움·자책골을 기록한 선수를 피치 오른쪽에 별도로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -468,14 +469,35 @@
           <div class="sp-section-title">이벤트/스탯 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">이벤트 이름 크기</span>
-              <span class="sp-label-sub">이벤트 텍스트 크기입니다. 기본 15px.</span>
+              <span class="sp-label-main">이벤트 글씨 크기</span>
+              <span class="sp-label-sub">기본 15px.</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="10" max="22" step="1" data-settings-slider="eventNameSize" />
               <span class="sp-slider-value">15px</span>
             </div>
           </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">교체/미출전 선수 명단 글씨 크기</span>
+              <span class="sp-label-sub">기본 13px.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="18" step="1" data-settings-slider="benchInjuryNameSize" />
+              <span class="sp-slider-value">13px</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">경기 스탯 글씨 크기</span>
+              <span class="sp-label-sub">기본 12px. 크기 비율만큼 아래 막대 굵기도 같이 조정됩니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="18" step="1" data-settings-slider="statsNameSize" />
+              <span class="sp-slider-value">12px</span>
+            </div>
+          </div>
+          <div class="sp-section-title">캠 큰 화면 패널 전환</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">자동 스와이프</span>
