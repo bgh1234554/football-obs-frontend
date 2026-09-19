@@ -89,7 +89,7 @@ const SETTINGS_DEFAULTS = {
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
-  bgImageData:    '',        // 파일 첨부 base64 데이터 URL — 3MB까지만 허용
+  bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
   // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
   panelAlpha:     25,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
@@ -126,11 +126,11 @@ const SETTINGS_DEFAULTS = {
   bigPanelLinked: 'on',
 };
 
-// 배경 이미지 파일 크기 제한.
-// 파일 업로드는 base64로 localStorage에 저장되므로 원본보다 훨씬 커진다.
-// 3MB 미만이어도 저장 한도를 넘길 수 있어, 실제로는 약 1.8MB 안팎만 안정적으로 허용한다.
-const BG_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+// 배경 이미지 원본 선택 제한. 저장 전 브라우저에서 WebP/JPEG로 압축한다.
+const BG_IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 const BG_IMAGE_SAFE_PERSIST_BYTES = Math.floor(1.8 * 1024 * 1024);
+const BG_IMAGE_MAX_WIDTH = 1920;
+const BG_IMAGE_MAX_HEIGHT = 1080;
 
 const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
@@ -885,8 +885,67 @@ function syncSelectUi(category) {
   if (select.value !== value) select.value = value;
 }
 
-function handleBgImageFileLoad(reader, file) {
-  if (!setSetting('bgImageData', String(reader.result || ''))) {
+function getDataUrlByteLength(dataUrl) {
+  const payload = String(dataUrl || '').split(',')[1] || '';
+  return Math.floor(payload.length * 3 / 4);
+}
+
+/** 파일을 압축 없이 그대로 base64 data URL로 읽는다 (BG_IMAGE_SAFE_PERSIST_BYTES 이하 원본 보존용). */
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('file read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressBackgroundImage(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          BG_IMAGE_MAX_WIDTH / image.naturalWidth,
+          BG_IMAGE_MAX_HEIGHT / image.naturalHeight
+        );
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        for (const quality of [0.84, 0.72, 0.60, 0.48]) {
+          const webp = canvas.toDataURL('image/webp', quality);
+          if (getDataUrlByteLength(webp) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+            resolve(webp);
+            return;
+          }
+          const jpeg = canvas.toDataURL('image/jpeg', quality);
+          if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+            resolve(jpeg);
+            return;
+          }
+        }
+        reject(new Error('compressed image is still too large'));
+      } catch (error) {
+        reject(error);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('image decode failed'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function handleBgImageFileLoad(dataUrl, file) {
+  if (!setSetting('bgImageData', String(dataUrl || ''))) {
     const mb = file ? (file.size / 1024 / 1024).toFixed(1) : '?';
     if (typeof showToast === 'function') {
       showToast(`배경 이미지 저장 실패. ${mb}MB 파일은 첨부로 저장하기 큽니다. 이미지 URL을 사용하세요.`);
@@ -1375,9 +1434,7 @@ function initSettingsPopup() {
     });
   });
 
-  // 배경 이미지 파일 첨부 (Iter 5-7). 3MB 초과 시 거부 + toast 안내.
-  // 파일 → FileReader로 base64 data URL 변환 → bgImageData 저장.
-  // localStorage quota 초과 시에도 toast 안내 (try/catch는 setSetting 내부에서 처리되지 않으므로 여기서 가드).
+  // 배경 이미지 파일 첨부 (Iter 5-7). 원본은 브라우저에서 압축한 뒤 bgImageData에 저장.
   const bgFileInput = document.getElementById('settingsBgImageFile');
   if (bgFileInput) {
     bgFileInput.addEventListener('change', () => {
@@ -1391,27 +1448,24 @@ function initSettingsPopup() {
       if (file.size > BG_IMAGE_MAX_BYTES) {
         const mb = (file.size / 1024 / 1024).toFixed(1);
         if (typeof showToast === 'function') {
-          showToast(`파일이 너무 큽니다 (${mb}MB). 3MB 이하 파일만 첨부할 수 있습니다.`);
+          showToast(`파일이 너무 큽니다 (${mb}MB). 12MB 이하 파일만 첨부할 수 있습니다.`);
         }
         bgFileInput.value = '';
         return;
       }
-      if (file.size > BG_IMAGE_SAFE_PERSIST_BYTES) {
-        const mb = (file.size / 1024 / 1024).toFixed(1);
-        if (typeof showToast === 'function') {
-          showToast(`파일이 커서 저장하기 어렵습니다 (${mb}MB). 이미지 URL을 사용하세요.`);
-        }
-        bgFileInput.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        handleBgImageFileLoad(reader, file);
-      };
-      reader.onerror = () => {
-        if (typeof showToast === 'function') showToast('파일 읽기 실패');
-      };
-      reader.readAsDataURL(file);
+      // 이미 저장 가능한 크기(BG_IMAGE_SAFE_PERSIST_BYTES 이하)면 압축 없이 원본 그대로 저장.
+      // 압축은 큰 파일을 그 크기 이하로 줄이기 위한 수단일 뿐, 작은 PNG/JPG까지 웹P로
+      // 재인코딩해 화질을 떨어뜨릴 이유가 없다.
+      const loadPromise = file.size <= BG_IMAGE_SAFE_PERSIST_BYTES
+        ? readFileAsDataUrl(file)
+        : compressBackgroundImage(file);
+      loadPromise
+        .then(dataUrl => handleBgImageFileLoad(dataUrl, file))
+        .catch(() => {
+          if (typeof showToast === 'function') {
+            showToast('이미지를 저장 가능한 크기로 압축하지 못했습니다. 더 작은 이미지를 선택하세요.');
+          }
+        });
     });
   }
 
