@@ -890,16 +890,6 @@ function getDataUrlByteLength(dataUrl) {
   return Math.floor(payload.length * 3 / 4);
 }
 
-/** 파일을 압축 없이 그대로 base64 data URL로 읽는다 (BG_IMAGE_SAFE_PERSIST_BYTES 이하 원본 보존용). */
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('file read failed'));
-    reader.readAsDataURL(file);
-  });
-}
-
 function compressBackgroundImage(file) {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
@@ -1453,13 +1443,7 @@ function initSettingsPopup() {
         bgFileInput.value = '';
         return;
       }
-      // 이미 저장 가능한 크기(BG_IMAGE_SAFE_PERSIST_BYTES 이하)면 압축 없이 원본 그대로 저장.
-      // 압축은 큰 파일을 그 크기 이하로 줄이기 위한 수단일 뿐, 작은 PNG/JPG까지 웹P로
-      // 재인코딩해 화질을 떨어뜨릴 이유가 없다.
-      const loadPromise = file.size <= BG_IMAGE_SAFE_PERSIST_BYTES
-        ? readFileAsDataUrl(file)
-        : compressBackgroundImage(file);
-      loadPromise
+      compressBackgroundImage(file)
         .then(dataUrl => handleBgImageFileLoad(dataUrl, file))
         .catch(() => {
           if (typeof showToast === 'function') {
