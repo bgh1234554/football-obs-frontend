@@ -22,7 +22,7 @@
 .fsm-board { margin:0; padding:0; overflow:hidden; }
 
 .fsm-board .scoreboard-main {
-    width: 656px;
+    width: 984px;
     height: 48px;
     display: flex;
     justify-content: center;
@@ -34,7 +34,7 @@
 }
 
 .fsm-board .div-background {
-    width: 656px;
+    width: 984px;
     height: 48px;
     position: absolute;
     background-image: url("/resources/background/background_sbleft.png");
@@ -44,7 +44,7 @@
 }
 
 .fsm-board .teams-left, .teams-right {
-    width: 240px;
+    width: 360px;
     height: 48px;
     background: linear-gradient(90deg, #200734, #8165B2, #4B0D46);
     display: flex;
@@ -246,14 +246,14 @@
 
 .fsm-board #rcHome {
     display: flex;
-    left: 10px;
+    left: 100px;
     justify-content: flex-end; 
     flex-direction: row-reverse;
 }
 
 .fsm-board #rcAway {
     display: flex;
-    right: 10px;
+    right: 100px;
     justify-content: flex-start; 
     flex-direction: row-reverse;
 }
