@@ -32,14 +32,14 @@
 }
 
 .fsm-board .div-background {
-    width: 656px;
+    width: 984px;
     height: 48px;
     position: absolute;
     display: flex;
 }
 
 .fsm-board .teams-left, .teams-right {
-    width: 240px;
+    width: 360px;
     height: 48px;
     background: black;
     display: flex;
@@ -305,14 +305,14 @@
 
 .fsm-board #rcHome {
     display: flex;
-    left: 20px;
+    left: 100px;
     justify-content: flex-end; 
     flex-direction: row-reverse;
 }
 
 .fsm-board #rcAway {
     display: flex;
-    right: 20px;
+    right: 100px;
     justify-content: flex-start; 
     flex-direction: row-reverse;
 }
