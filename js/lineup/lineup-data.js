@@ -37,6 +37,7 @@ function buildEffectiveFixtureData(data) {
     if (typeof window.applyZeroIdOverrides === 'function') {
       window.applyZeroIdOverrides(next, fixtureId);
     }
+    reconcileInjuriesAgainstLineup(next);
     return applyInferredFormationsToFixtureData(next);
   }
 
@@ -122,7 +123,57 @@ function buildEffectiveFixtureData(data) {
     window.applyZeroIdOverrides(next, fixtureId);
   }
 
+  reconcileInjuriesAgainstLineup(next);
+
   return applyInferredFormationsToFixtureData(next);
+}
+
+/**
+ * 부상자 명단과 라인업을 대조해 데이터 불일치를 보정한다. 백엔드가 "출전 여부 미정"이
+ * 아닌 확정 부상(getInjuryCategoryRank===0, 즉 의심/출장정지/미등록이 아닌 순수 부상)으로
+ * 내려줬는데 실제로는 그 선수가 이번 경기 선발 라인업에 있으면 부상 정보 자체가 낡은
+ * 것이므로 명단에서 아예 지운다. 선발이 아니라 벤치(교체 명단)에만 있으면 실제로 뛰지는
+ * 않았지만 스쿼드에는 포함된 것이므로 확정 부상 대신 "출전 여부 미정" 카테고리로 낮춰서
+ * 표시한다. 둘 다에 없으면(스쿼드 밖) 원래 부상 정보를 그대로 유지한다.
+ */
+function reconcileInjuriesAgainstLineup(next) {
+  if (!next) return;
+  ['home', 'away'].forEach(side => {
+    const injuries = next[`${side}Injuries`];
+    if (!Array.isArray(injuries) || !injuries.length) return;
+
+    const lineup = next[`${side}Lineup`];
+    const startIds = collectLineupPlayerIds(lineup?.startXi);
+    const benchIds = collectLineupPlayerIds(lineup?.substitutes);
+    if (!startIds.size && !benchIds.size) return;
+
+    next[`${side}Injuries`] = injuries.reduce((acc, injury) => {
+      const isGenuineInjury = typeof getInjuryCategoryRank !== 'function'
+        || getInjuryCategoryRank(injury) === 0;
+      const pid = Number(injury?.playerId);
+      if (!isGenuineInjury || !pid) {
+        acc.push(injury);
+        return acc;
+      }
+      if (startIds.has(pid)) return acc; // 선발에 뛰고 있음 -> 부상 정보가 낡음, 제거
+      if (benchIds.has(pid)) {
+        acc.push({ ...injury, type: 'Questionable' }); // 벤치엔 있음 -> 출전 여부 미정으로 강등
+        return acc;
+      }
+      acc.push(injury);
+      return acc;
+    }, []);
+  });
+}
+
+/** playerId(0 제외) Set — 부상자 명단 대조용. */
+function collectLineupPlayerIds(players) {
+  const ids = new Set();
+  (players || []).forEach(p => {
+    const pid = Number(p?.playerId);
+    if (pid) ids.add(pid);
+  });
+  return ids;
 }
 
 /**

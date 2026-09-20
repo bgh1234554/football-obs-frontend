@@ -1046,6 +1046,50 @@ function getPanelChromeHeight(panel) {
   return Math.max(0, panelHeight - splitHeight);
 }
 
+// 미출전 선수 명단이 교체 명단에 밀려 완전히 사라지지 않도록 보장하는 최소 줄 수.
+// 결장자가 없는 팀은 "결장자 없음" 안내 1줄만, 있는 팀은 최소 3줄 분량의 공간을 항상 확보한다.
+const INJURY_PANEL_MIN_ROWS_EMPTY = 1;
+const INJURY_PANEL_MIN_ROWS_WITH_ITEMS = 3;
+
+/**
+ * .dp-item 한 줄의 실제 높이(px). benchInjuryNameSize 설정에 따라 폰트가 커지면 이 값도
+ * 같이 커져야 최소 높이 보장이 실제 화면 크기와 어긋나지 않는다. 화면에 이미 렌더된 .dp-item이
+ * 있으면 그 실측값을 쓰고(래핑된 긴 이름 등 실제 상황 반영), 없으면(양쪽 다 결장자 0명) CSS
+ * 변수(--dp-item-name-size, 기본 13px)와 .dp-item의 line-height:1.5 + 상하 padding 4px로 추정한다.
+ */
+function estimateDpItemRowHeight(panel) {
+  const sample = panel?.querySelector('.dp-item')
+    || document.querySelector('#benchPanel .dp-item, #injuryPanel .dp-item');
+  if (sample) {
+    const rect = getDisplayLayoutRect(sample);
+    if (rect.height > 0) return rect.height;
+  }
+  const fontSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dp-item-name-size')) || 13;
+  return fontSize * 1.5 + 4;
+}
+
+/**
+ * 미출전 선수 명단(injuryPanel)의 dp-split이 절대 이보다 작아지면 안 되는 최소 높이.
+ * 컬럼(홈/원정)별로 결장자가 있으면 INJURY_PANEL_MIN_ROWS_WITH_ITEMS줄, 없으면
+ * INJURY_PANEL_MIN_ROWS_EMPTY줄만큼의 공간 + 헤더 높이를 요구하고, 두 컬럼 중 더 큰 쪽을 채택한다
+ * (dp-split은 홈/원정 컬럼이 같은 높이를 공유하므로).
+ */
+function getInjuryPanelMinSplitHeight(injuryPanel) {
+  const split = injuryPanel?.querySelector('.dp-split');
+  if (!split) return 0;
+  const rowHeight = estimateDpItemRowHeight(injuryPanel);
+  const columns = Array.from(split.children).filter(child => child.classList.contains('dp-col'));
+  if (!columns.length) return rowHeight * INJURY_PANEL_MIN_ROWS_EMPTY;
+
+  return Math.max(...columns.map(column => {
+    const header = column.querySelector('.dp-side-header');
+    const list = column.querySelector('.dp-list');
+    const hasItems = !!list?.querySelector('.dp-item');
+    const rows = hasItems ? INJURY_PANEL_MIN_ROWS_WITH_ITEMS : INJURY_PANEL_MIN_ROWS_EMPTY;
+    return getPanelOuterHeight(header) + rows * rowHeight;
+  }));
+}
+
 /** 벤치/부상 패널 높이 균형 계산에 필요한 DOM 참조 묶음. */
 function getBenchPanelSections() {
   const benchPanel = document.getElementById('benchPanel');
@@ -1102,7 +1146,7 @@ function reclaimBenchListOverflowHeight(benchPanel) {
   if (overflow <= DETAIL_PANEL_BALANCE_EPSILON_PX || !injuryPanel || !injurySection) return;
 
   const injuryRect = getDisplayLayoutRect(injurySection);
-  const injuryMinimum = getPanelChromeHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
+  const injuryMinimum = getPanelChromeHeight(injuryPanel) + getInjuryPanelMinSplitHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
   const available = Math.max(0, injuryRect.height - injuryMinimum);
   const transfer = Math.min(Math.ceil(overflow), Math.floor(available));
   if (transfer <= DETAIL_PANEL_BALANCE_EPSILON_PX) return;
@@ -1149,17 +1193,24 @@ function balanceBenchInjuryPanelHeightsImpl() {
   let sourceSpare = 0;
   let targetDeficit = 0;
 
-  // 미출전 명단은 부족한 높이를 자체 스크롤로 처리한다. 교체 명단이 잘리지 않도록
-  // 교체 명단이 부족할 때만 미출전 패널의 여유 공간을 가져온다.
+  // 기본 배치에서 둘 다 스크롤이 생기면(양쪽 모두 부족) 교체 명단을 우선해 공간을 몰아주고,
+  // 그렇지 않으면(한쪽만 부족) 여유 있는 쪽에서 부족한 쪽으로 옮겨 양쪽 다 스크롤이 없도록 한다.
   if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
     transferTarget = 'bench';
-    sourceSpare = injuryMetrics.spare;
+    const minInjuryHeight = getPanelChromeHeight(injuryPanel)
+      + getInjuryPanelMinSplitHeight(injuryPanel)
+      + DETAIL_PANEL_BALANCE_EPSILON_PX;
+    sourceSpare = Math.min(
+      injuryMetrics.spare,
+      Math.max(0, injuryRect.height - minInjuryHeight)
+    );
     targetDeficit = benchMetrics.deficit;
   } else if (benchMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
     && injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX) {
-    // 3-a) 양쪽 모두 부족하면 미출전 패널의 제목 등 최소 영역만 남기고 교체 명단에 우선 배분한다.
-    const minInjuryHeight = getPanelChromeHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
+    // 3-a) 양쪽 모두 부족하면 교체 명단에 우선 배분하되, 미출전 패널이 완전히 사라지지 않도록
+    // 제목 + 최소 콘텐츠 높이(getInjuryPanelMinSplitHeight)만큼은 항상 남긴다.
+    const minInjuryHeight = getPanelChromeHeight(injuryPanel) + getInjuryPanelMinSplitHeight(injuryPanel) + DETAIL_PANEL_BALANCE_EPSILON_PX;
     const maxTransferFromInjury = Math.max(0, injuryRect.height - minInjuryHeight);
     const transfer = Math.min(
       Math.floor(maxTransferFromInjury),
@@ -1175,6 +1226,13 @@ function balanceBenchInjuryPanelHeightsImpl() {
     injurySection.style.flex = `0 0 ${nextInjuryHeight}px`;
     injurySection.style.height = `${nextInjuryHeight}px`;
     return;
+  } else if (injuryMetrics.deficit > DETAIL_PANEL_BALANCE_EPSILON_PX
+    && benchMetrics.spare > DETAIL_PANEL_BALANCE_EPSILON_PX) {
+    // 3-c) 교체 명단은 이미 여유가 있는데 미출전 명단만 부족한 경우 — 반대 방향으로 옮겨
+    // 미출전 패널도 스크롤이 생기지 않게 한다. (교체 명단만 우선하던 기존 로직의 누락분)
+    transferTarget = 'injury';
+    sourceSpare = benchMetrics.spare;
+    targetDeficit = injuryMetrics.deficit;
   } else {
     return;
   }
@@ -1835,6 +1893,7 @@ function fitLineupNamePills(root) {
 // 라인업 리사이즈/설정 변경 후 외부에서 다시 fit을 호출할 수 있도록 노출
 window.fitLineupNamePills = fitLineupNamePills;
 window.fitBenchFooterNames = fitBenchFooterNames;
+window.balanceBenchInjuryPanelHeights = balanceBenchInjuryPanelHeights;
 
 // 전체화면/창 모드 전환과 display-scale의 resize가 끝난 뒤 실제 피치 폭 기준으로
 // 라벨을 다시 계산한다. 한 프레임만 기다리면 transform/zoom 적용 전 치수를 읽을 수

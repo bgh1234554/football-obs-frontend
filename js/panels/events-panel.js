@@ -809,39 +809,90 @@ const EV_PENALTY_SHOOTOUT_SORT_ELAPSED = 121; // 승부차기는 연장 후반 �
 // 하프타임 마커 표시 허용 status — "NS/1H가 아니면 전부"식 부정 조건은 PST/CANC/SUSP/INT/ABD/AWD/WO
 // 같은 비정상 status에도 걸려 하프타임 마커가 잘못 붙었음. 진행된 상태만 명시적으로 허용한다.
 const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'PSO', 'FT']);
+// 구간 경계 elapsed 값 — 하프타임/후반종료/연장전반종료/연장후반종료 마커가 찍히는 지점과 동일.
+// API-Football은 휴식 시간 중(하프타임 등) 발생한 교체/카드 등을 extra 없이 이 경계 elapsed
+// 그대로 내려준다(예: 후반 시작 교체가 elapsed:45, extra:null) — 그대로 정렬하면 그 구간의
+// 추가시간 이벤트(elapsed:45, extra:4 등)보다도 앞선 시점으로 잘못 묶여 하프타임 마커보다
+// "이전"(1H)으로 표시돼버린다.
+const EV_PERIOD_BOUNDARY_ELAPSED = new Set([45, 90, 105, 120]);
 
-function evSortKey(ev) {
+/**
+ * elapsed가 경계값(45/90/105/120)이고 extra가 없는 이벤트를 "그 구간 마커 다음"으로 밀어야
+ * 하는지 판단할 때, 실제로 그 경계 다음 구간이 이어졌는지(activeBoundaryElapsedSet)를 함께
+ * 확인한다. 인자를 안 주면(다른 호출부 대비 안전장치) 기존처럼 경계값이면 무조건 민다.
+ *
+ * 연장 없이 FT로 끝난 경기에서 elapsed:90, extra:null인 후반 막판 교체(예: 스토파지 타임 중
+ * extra 필드가 API에서 누락된 경우)까지 "정규시간 종료 후 휴식 중 발생"으로 취급해 풀타임
+ * 마커보다도 뒤로 밀려버리는 버그가 있었다(2026-09-20) — 90분 경계는 실제로 연장전이 이어질
+ * 때만(activeBoundaryElapsedSet.has(90)) 밀어야 하고, 그렇지 않으면 일반 이벤트처럼 정렬해야
+ * 풀타임 마커보다 먼저(더 이른 시점) 온다.
+ *
+ * ── 실제 데이터로 본 두 케이스 ──────────────────────────────────────────
+ *
+ * [버그였던 케이스] AS로마 vs 인테르, 연장 없이 90분 만에 FT로 종료(activeBoundaryElapsedSet에
+ * 90 없음). 90분 교체 2건이 전부 extra:null로 내려옴:
+ *   { elapsed: 90, extra: null, ... playerOrigName: "M. Thuram" (OUT), assistOrigName: "A. Bonny" (IN) }
+ *   { elapsed: 90, extra: null, ... playerOrigName: "L. Martinez" (OUT), assistOrigName: "F. Esposito" (IN) }
+ * 고치기 전: isActiveBoundary가 무조건 true → extra=51 → sortKey=9051.
+ *   풀타임 마커(elapsed:90, extra:50 고정) sortKey=9050 < 9051 → 교체 2건이 마커보다 위(=더
+ *   최근)로 잘못 렌더링됐다(실제로는 정규시간 안에서 벌어진 일인데 "풀타임 이후"처럼 보임).
+ * 고친 후: activeBoundaryElapsedSet.has(90) === false → isActiveBoundary=false →
+ *   extra=Number(null??0)=0 → sortKey=9000 < 마커의 9050 → 마커보다 아래(=더 과거)로 정렬돼
+ *   실제 시간 순서와 일치한다.
+ *
+ * [정상적으로 밀어야 하는 케이스] 토트넘(홈) vs 아스톤 빌라(원정), 전반 종료 후 하프타임 진입
+ * (reachedHalftime=true → activeBoundaryElapsedSet에 45 포함). 전반 스토파지 타임의 실제
+ * 이벤트는 extra가 채워져 있고, 하프타임 휴식 중 이뤄진 교체만 extra:null이다:
+ *   { elapsed: 45, extra: 4, side: "away", type: "Goal", playerOrigName: "Johan Manzambi" }        → sortKey 4504
+ *   { elapsed: 45, extra: 7, side: "home", type: "Card", playerOrigName: "Jan Paul van Hecke" }     → sortKey 4507
+ *   { elapsed: 45, extra: null, side: "away", type: "subst", playerOrigName: "Aaron Wan-Bissaka" }  → isActiveBoundary=true → extra=51 → sortKey 4551
+ *   { elapsed: 45, extra: null, side: "home", type: "subst", playerOrigName: "Mateus Fernandes" }   → 마찬가지로 sortKey 4551
+ *   하프타임 마커(elapsed:45, extra:50 고정) → sortKey 4550
+ * 내림차순 정렬 결과(위→아래 = 최신→과거): 교체 2건(4551, 동점이면 원래 배열 순서 유지) →
+ * 하프타임 마커(4550) → 판헤커 옐로카드(4507) → 만잠비 골(4504). 교체가 "하프타임 휴식 중"에
+ * 실제로 일어났으므로 마커보다 위(=더 나중)에 오는 게 맞다. 참고로 같은 경기의 90분대
+ * 이벤트(옐로카드 2건 extra:2, 반헤커 골 extra:8)는 전부 실제 extra 값이 채워져 있어 이 보정
+ * 자체가 필요 없다 — extra 값 그대로 자연스럽게 정렬된다.
+ */
+function evSortKey(ev, activeBoundaryElapsedSet) {
   const elapsed = evIsPenaltyShootoutEvent(ev)
     ? EV_PENALTY_SHOOTOUT_SORT_ELAPSED
     : Number(ev?.elapsed ?? 0);
-  const extra = Number(ev?.extra ?? 0);
+  const hasExtra = ev?.extra !== null && ev?.extra !== undefined && ev.extra !== '';
+  const isActiveBoundary = activeBoundaryElapsedSet
+    ? activeBoundaryElapsedSet.has(elapsed)
+    : EV_PERIOD_BOUNDARY_ELAPSED.has(elapsed);
+  // extra가 없는 경계 elapsed 이벤트(휴식 중 발생) — 그 구간의 추가시간 이벤트, 그리고 구간
+  // 구분자 마커(EV_PERIOD_MARKER_SORT_PADDING)보다도 늦은 시점으로 취급해 마커 "다음"에 온다.
+  const extra = (!hasExtra && isActiveBoundary)
+    ? EV_PERIOD_MARKER_SORT_PADDING + 1
+    : Number(ev?.extra ?? 0);
   return (Number.isFinite(elapsed) ? elapsed : 0) * 100
     + (Number.isFinite(extra) ? extra : 0);
 }
 
 /**
- * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 두 쌍(후반종료/풀타임,
- * 연장후반종료/풀타임)은 그 경기가 연장으로 갔는지에 따라 서로 배타적으로 하나만 나온다.
- *   - 하프타임   : status가 HT 이후로 진행됐으면(HT/2H/ET1/ET2/PSO/FT) 표시.
- *   - 후반종료   : 연장으로 이어진 경우에만(정규시간 종료 시 FT가 바로 안 왔다는 뜻).
- *   - 연장 전반 종료 : status가 ET2/PSO까지 진행됐거나(=elapsed 106 이상), FT인데
- *                  사후적으로 연장이 있었다고 판단되는 경우.
- *   - 연장 후반 종료 : status가 PSO이거나 승부차기 스코어가 존재하는 경우.
- *   - 풀타임     : 연장 없이 FT로 끝났을 때, 또는 연장에서 승부차기 없이 FT로 끝났을 때.
+ * matchInfo/events로부터 각 구간 경계(45/90/105/120)를 실제로 지나 다음 구간이 이어졌는지
+ * 판정한다. evBuildPeriodMarkers(마커 표시 여부)와 evActiveBoundaryElapsedSet(정렬 보정 여부)
+ * 양쪽이 같은 기준을 써야 마커와 이벤트 정렬이 어긋나지 않는다.
+ *   - reachedHalftime  : status가 HT 이후로 진행됐으면(HT/2H/ET1/ET2/PSO/FT).
+ *   - extraTimePlayed  : 연장으로 이어진 경우에만(정규시간 종료 시 FT가 바로 안 왔다는 뜻).
+ *   - reachedEt2       : status가 ET2/PSO까지 진행됐거나(=elapsed 106 이상), FT인데
+ *                        사후적으로 연장이 있었다고 판단되는 경우.
+ *   - hadPenalties     : status가 PSO이거나 승부차기 스코어가 존재하는 경우.
  * FT 시점엔 status만으론 연장 여부를 알 수 없어(정규/연장/PK 종료 모두 그냥 "FT") elapsed가
  * 105를 넘었는지/승부차기 스코어가 있는지로 사후 추정한다 — 생방송 중에는 ET1/ET2/PSO 상태를
  * 직접 거치므로 이 추정이 필요 없다.
  */
-function evBuildPeriodMarkers(matchInfo, events = []) {
+function evComputePeriodFlags(matchInfo, events = []) {
   const hasShootoutEvents = Array.isArray(events) && events.some(evIsPenaltyShootoutEvent);
-  if (!matchInfo && !hasShootoutEvents) return [];
-  matchInfo = matchInfo || {}; // hasShootoutEvents만으로 통과한 경우 matchInfo가 없을 수 있음
+  const info = matchInfo || {}; // hasShootoutEvents만으로 통과한 경우 matchInfo가 없을 수 있음
 
-  const status = String(matchInfo.status || '').toUpperCase();
-  const elapsed = Number(matchInfo.elapsed ?? 0);
+  const status = String(info.status || '').toUpperCase();
+  const elapsed = Number(info.elapsed ?? 0);
   const isPenaltyStatus = status === 'PSO' || status === 'P' || status === 'PEN';
-  const hadPenalties = matchInfo.homePenaltyScore != null
-    || matchInfo.awayPenaltyScore != null
+  const hadPenalties = info.homePenaltyScore != null
+    || info.awayPenaltyScore != null
     || isPenaltyStatus
     || hasShootoutEvents;
 
@@ -850,6 +901,36 @@ function evBuildPeriodMarkers(matchInfo, events = []) {
   const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime || hasShootoutEvents;
   const reachedEt2 = status === 'ET2' || isPenaltyStatus || ftLooksLikeExtraTime || hasShootoutEvents;
   const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status) || hasShootoutEvents;
+
+  return { status, elapsed, isPenaltyStatus, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, hasShootoutEvents };
+}
+
+/**
+ * evSortKey가 "extra 없는 경계 elapsed 이벤트를 마커 다음으로 밀지" 판단할 때 쓰는 집합.
+ * evBuildPeriodMarkers와 같은 evComputePeriodFlags 기준을 공유해, 마커가 실제로 찍히지 않는
+ * 경계(예: 연장 없이 끝난 경기의 90분)에는 밀기 로직도 함께 비활성화되게 한다.
+ */
+function evActiveBoundaryElapsedSet(matchInfo, events = []) {
+  const { reachedHalftime, extraTimePlayed, reachedEt2, hadPenalties } = evComputePeriodFlags(matchInfo, events);
+  const active = new Set();
+  if (reachedHalftime) active.add(45);
+  if (extraTimePlayed) active.add(90);
+  if (reachedEt2) active.add(105);
+  if (hadPenalties) active.add(120);
+  return active;
+}
+
+/**
+ * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 두 쌍(후반종료/풀타임,
+ * 연장후반종료/풀타임)은 그 경기가 연장으로 갔는지에 따라 서로 배타적으로 하나만 나온다.
+ *   - 풀타임: 연장 없이 FT로 끝났을 때, 또는 연장에서 승부차기 없이 FT로 끝났을 때.
+ */
+function evBuildPeriodMarkers(matchInfo, events = []) {
+  const hasShootoutEvents = Array.isArray(events) && events.some(evIsPenaltyShootoutEvent);
+  if (!matchInfo && !hasShootoutEvents) return [];
+
+  const { status, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, isPenaltyStatus } =
+    evComputePeriodFlags(matchInfo, events);
 
   const markers = [];
   const addMarker = (label, sortElapsed) => markers.push({
@@ -877,8 +958,12 @@ function evBuildPeriodMarkers(matchInfo, events = []) {
  * 필터링된 실제 이벤트(내림차순)와 구간 마커를 합쳐 시간 내림차순 단일 리스트로 반환.
  * 마커는 evFilterEvents의 카테고리 필터 대상이 아니라 항상 포함됨 — 정렬 키(elapsed*100+extra)에
  * EV_PERIOD_MARKER_SORT_PADDING을 더해 같은 분의 실제 이벤트보다 항상 늦게(=내림차순에서 더 위로) 배치.
+ *
+ * activeBoundaryElapsedSet(evActiveBoundaryElapsedSet 결과)을 evSortKey에 전달해, 실제로
+ * 그 경계 다음 구간이 이어지지 않았으면(예: 연장 없이 끝난 경기의 90분) extra 없는 경계
+ * elapsed 이벤트를 마커 뒤로 미는 보정을 적용하지 않는다.
  */
-function evMergeWithPeriodMarkers(eventsDesc, markers) {
+function evMergeWithPeriodMarkers(eventsDesc, markers, activeBoundaryElapsedSet) {
   const renderKeys = evBuildRenderKeys(eventsDesc);
   const eventItems = eventsDesc.map((ev, index) => ({
     kind: 'event',
@@ -891,7 +976,7 @@ function evMergeWithPeriodMarkers(eventsDesc, markers) {
     const src = item.kind === 'marker' ? item.marker : item.ev;
     return item.kind === 'marker'
       ? Number(src?.elapsed ?? 0) * 100 + Number(src?.extra ?? 0)
-      : evSortKey(src);
+      : evSortKey(src, activeBoundaryElapsedSet);
   };
 
   return [...eventItems, ...markerItems]
@@ -1292,7 +1377,8 @@ function applyEventsPanel(fixtureData, options = {}) {
   if (!filterOptions.length) eventsPanelFilterState.isOpen = false;
   const events = evFilterEvents(processedEvents);
   const periodMarkers = evBuildPeriodMarkers(fixtureData?.matchInfo, processedEvents);
-  const renderItems = evMergeWithPeriodMarkers(events, periodMarkers);
+  const activeBoundaryElapsedSet = evActiveBoundaryElapsedSet(fixtureData?.matchInfo, processedEvents);
+  const renderItems = evMergeWithPeriodMarkers(events, periodMarkers, activeBoundaryElapsedSet);
 
   containers.forEach(container => {
     const previousFixtureId = String(container.dataset.evFixtureId || '').trim();

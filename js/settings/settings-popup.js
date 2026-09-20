@@ -51,6 +51,11 @@ const SETTINGS_DEFAULTS = {
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
+  // 교체 명단 / 미출전 선수 명단 (.dp-item) 글자 크기 (px). 설정 팝업 슬라이더로 조정.
+  benchInjuryNameSize: 13,
+  // 경기 스탯 패널 (.st-title/.st-val) 글자 크기 (px). 막대 굵기(.st-bar height)가
+  // 기본값(12px) 대비 이 값의 비율만큼 함께 굵어진다 (statBarHeight = 6px * size/12).
+  statsNameSize: 12,
   // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
@@ -84,7 +89,7 @@ const SETTINGS_DEFAULTS = {
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
-  bgImageData:    '',        // 파일 첨부 base64 데이터 URL — 3MB까지만 허용
+  bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
   // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
   panelAlpha:     25,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
@@ -121,14 +126,20 @@ const SETTINGS_DEFAULTS = {
   bigPanelLinked: 'on',
 };
 
-// 배경 이미지 파일 크기 제한.
-// 파일 업로드는 base64로 localStorage에 저장되므로 원본보다 훨씬 커진다.
-// 3MB 미만이어도 저장 한도를 넘길 수 있어, 실제로는 약 1.8MB 안팎만 안정적으로 허용한다.
-const BG_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+// 배경 이미지 원본 선택 제한. 저장 전 브라우저에서 WebP/JPEG로 압축한다.
+const BG_IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 const BG_IMAGE_SAFE_PERSIST_BYTES = Math.floor(1.8 * 1024 * 1024);
+const BG_IMAGE_MAX_WIDTH = 1920;
+const BG_IMAGE_MAX_HEIGHT = 1080;
 
 const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
+const BENCH_INJURY_NAME_SIZE_MIN = 10;
+const BENCH_INJURY_NAME_SIZE_MAX = 18;
+const STATS_NAME_SIZE_MIN = 10;
+const STATS_NAME_SIZE_MAX = 18;
+const STATS_NAME_SIZE_DEFAULT = 12;
+const STATS_BAR_HEIGHT_DEFAULT = 6;
 const STATS_SWIPE_SEC_MIN = 2.5;
 const STATS_SWIPE_SEC_MAX = 60;
 const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
@@ -382,6 +393,12 @@ function isValidSetting(category, value) {
   if (category === 'eventNameSize') {
     return Number.isFinite(value) && value >= EVENT_NAME_SIZE_MIN && value <= EVENT_NAME_SIZE_MAX;
   }
+  if (category === 'benchInjuryNameSize') {
+    return Number.isFinite(value) && value >= BENCH_INJURY_NAME_SIZE_MIN && value <= BENCH_INJURY_NAME_SIZE_MAX;
+  }
+  if (category === 'statsNameSize') {
+    return Number.isFinite(value) && value >= STATS_NAME_SIZE_MIN && value <= STATS_NAME_SIZE_MAX;
+  }
   if (category === 'tacticsNameSize') {
     return Number.isFinite(value) && value >= TACTICS_NAME_SIZE_MIN && value <= TACTICS_NAME_SIZE_MAX;
   }
@@ -564,7 +581,7 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign') applyLayoutSettings();
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -682,6 +699,9 @@ function resetRatingColorsToDefaults() {
  *   --lp-lineup-scale       : 캠 큼 페이지 라인업 패널 크기 배율 (.layout-big .lp-lineup 전용)
  *   --lp-name-base-size     : 라인업 노드 이름 base 글자 크기 (모든 layout 공통)
  *   --ev-name-base-size     : 이벤트 패널 base 글자 크기
+ *   --dp-item-name-size     : 교체 명단/미출전 선수 명단(.dp-item) base 글자 크기
+ *   --st-name-base-size     : 경기 스탯 패널(.st-title/.st-val) base 글자 크기
+ *   --st-bar-height         : 경기 스탯 막대(.st-bar) 굵기. statsNameSize 비율만큼 6px 기준으로 스케일
  *   --lp-pitch-*            : 라인업 패널 피치 색감 (background/stripe/border/marking/wash/logo)
  *   --td-pitch-*            : 전술판 피치 색감 (라인업과 같은 톤 프리셋 사용)
  *
@@ -696,6 +716,9 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
+  const benchInjurySize = Math.max(BENCH_INJURY_NAME_SIZE_MIN, Math.min(BENCH_INJURY_NAME_SIZE_MAX, Number(getSetting('benchInjuryNameSize')) || 13));
+  const statsSize = Math.max(STATS_NAME_SIZE_MIN, Math.min(STATS_NAME_SIZE_MAX, Number(getSetting('statsNameSize')) || STATS_NAME_SIZE_DEFAULT));
+  const statsBarHeight = STATS_BAR_HEIGHT_DEFAULT * (statsSize / STATS_NAME_SIZE_DEFAULT);
   const tacticsNameSize = Math.max(TACTICS_NAME_SIZE_MIN, Math.min(TACTICS_NAME_SIZE_MAX, Number(getSetting('tacticsNameSize')) || 12));
   const tacticsTokenScale = Math.max(TACTICS_TOKEN_SCALE_MIN, Math.min(TACTICS_TOKEN_SCALE_MAX, Number(getSetting('tacticsTokenScale')) || 100)) / 100;
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
@@ -704,6 +727,9 @@ function applyLayoutSettings() {
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
+  root.style.setProperty('--dp-item-name-size', `${benchInjurySize}px`);
+  root.style.setProperty('--st-name-base-size', `${statsSize}px`);
+  root.style.setProperty('--st-bar-height', `${statsBarHeight}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
   root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
   root.style.setProperty('--td-topbar-scale', String(
@@ -758,6 +784,11 @@ function applyLayoutSettings() {
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
   }
+  // benchInjuryNameSize 변경 시 글자 크기가 바뀌어 교체/미출전 명단 내용 높이가 달라지므로,
+  // 캠 작음(#benchPanel/#injuryPanel) 높이 자동 배분도 다시 실행 (lineup-name-fit.js).
+  if (typeof window.balanceBenchInjuryPanelHeights === 'function') {
+    requestAnimationFrame(() => window.balanceBenchInjuryPanelHeights());
+  }
 }
 
 /**
@@ -808,7 +839,7 @@ function applyBackgroundSettings() {
 
 /**
  * 슬라이더 UI 동기화 + 옆에 붙은 .sp-slider-value 라벨도 같이 갱신.
- * lineupNameSize / eventNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
+ * lineupNameSize / eventNameSize / benchInjuryNameSize / statsNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
  */
 function syncSliderUi(category) {
   const input = document.querySelector(`input[data-settings-slider="${category}"]`);
@@ -818,7 +849,7 @@ function syncSliderUi(category) {
   const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
     || document.querySelector(`[data-settings-slider-value="${category}"]`);
   if (!label) return;
-  if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize') label.textContent = `${value}px`;
+  if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize' || category === 'benchInjuryNameSize' || category === 'statsNameSize') label.textContent = `${value}px`;
   else label.textContent = `${value}%`;
 }
 
@@ -854,8 +885,67 @@ function syncSelectUi(category) {
   if (select.value !== value) select.value = value;
 }
 
-function handleBgImageFileLoad(reader, file) {
-  if (!setSetting('bgImageData', String(reader.result || ''))) {
+function getDataUrlByteLength(dataUrl) {
+  const payload = String(dataUrl || '').split(',')[1] || '';
+  return Math.floor(payload.length * 3 / 4);
+}
+
+/** 파일을 압축 없이 그대로 base64 data URL로 읽는다 (BG_IMAGE_SAFE_PERSIST_BYTES 이하 원본 보존용). */
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('file read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressBackgroundImage(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          BG_IMAGE_MAX_WIDTH / image.naturalWidth,
+          BG_IMAGE_MAX_HEIGHT / image.naturalHeight
+        );
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        for (const quality of [0.84, 0.72, 0.60, 0.48]) {
+          const webp = canvas.toDataURL('image/webp', quality);
+          if (getDataUrlByteLength(webp) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+            resolve(webp);
+            return;
+          }
+          const jpeg = canvas.toDataURL('image/jpeg', quality);
+          if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+            resolve(jpeg);
+            return;
+          }
+        }
+        reject(new Error('compressed image is still too large'));
+      } catch (error) {
+        reject(error);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('image decode failed'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function handleBgImageFileLoad(dataUrl, file) {
+  if (!setSetting('bgImageData', String(dataUrl || ''))) {
     const mb = file ? (file.size / 1024 / 1024).toFixed(1) : '?';
     if (typeof showToast === 'function') {
       showToast(`배경 이미지 저장 실패. ${mb}MB 파일은 첨부로 저장하기 큽니다. 이미지 URL을 사용하세요.`);
@@ -1344,9 +1434,7 @@ function initSettingsPopup() {
     });
   });
 
-  // 배경 이미지 파일 첨부 (Iter 5-7). 3MB 초과 시 거부 + toast 안내.
-  // 파일 → FileReader로 base64 data URL 변환 → bgImageData 저장.
-  // localStorage quota 초과 시에도 toast 안내 (try/catch는 setSetting 내부에서 처리되지 않으므로 여기서 가드).
+  // 배경 이미지 파일 첨부 (Iter 5-7). 원본은 브라우저에서 압축한 뒤 bgImageData에 저장.
   const bgFileInput = document.getElementById('settingsBgImageFile');
   if (bgFileInput) {
     bgFileInput.addEventListener('change', () => {
@@ -1360,27 +1448,24 @@ function initSettingsPopup() {
       if (file.size > BG_IMAGE_MAX_BYTES) {
         const mb = (file.size / 1024 / 1024).toFixed(1);
         if (typeof showToast === 'function') {
-          showToast(`파일이 너무 큽니다 (${mb}MB). 3MB 이하 파일만 첨부할 수 있습니다.`);
+          showToast(`파일이 너무 큽니다 (${mb}MB). 12MB 이하 파일만 첨부할 수 있습니다.`);
         }
         bgFileInput.value = '';
         return;
       }
-      if (file.size > BG_IMAGE_SAFE_PERSIST_BYTES) {
-        const mb = (file.size / 1024 / 1024).toFixed(1);
-        if (typeof showToast === 'function') {
-          showToast(`파일이 커서 저장하기 어렵습니다 (${mb}MB). 이미지 URL을 사용하세요.`);
-        }
-        bgFileInput.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        handleBgImageFileLoad(reader, file);
-      };
-      reader.onerror = () => {
-        if (typeof showToast === 'function') showToast('파일 읽기 실패');
-      };
-      reader.readAsDataURL(file);
+      // 이미 저장 가능한 크기(BG_IMAGE_SAFE_PERSIST_BYTES 이하)면 압축 없이 원본 그대로 저장.
+      // 압축은 큰 파일을 그 크기 이하로 줄이기 위한 수단일 뿐, 작은 PNG/JPG까지 웹P로
+      // 재인코딩해 화질을 떨어뜨릴 이유가 없다.
+      const loadPromise = file.size <= BG_IMAGE_SAFE_PERSIST_BYTES
+        ? readFileAsDataUrl(file)
+        : compressBackgroundImage(file);
+      loadPromise
+        .then(dataUrl => handleBgImageFileLoad(dataUrl, file))
+        .catch(() => {
+          if (typeof showToast === 'function') {
+            showToast('이미지를 저장 가능한 크기로 압축하지 못했습니다. 더 작은 이미지를 선택하세요.');
+          }
+        });
     });
   }
 

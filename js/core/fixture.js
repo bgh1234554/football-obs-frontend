@@ -7,6 +7,13 @@
   const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
+  // 실제로 스코어보드에 로딩/적용된 fixture ID. currentFixtureId는 위젯에서 "구경만" 해도
+  // 바뀌지만(바로 불러오기 버튼의 대상), 이건 fetchAndApplyFixtureData가 실제로 데이터를
+  // 적용했을 때만 갱신 — forceRefreshCurrentFixture처럼 "지금 화면에 떠 있는 경기"를 다시
+  // 조회해야 하는 기능은 반드시 이 값을 써야 한다. currentFixtureId를 썼을 때는, 이미 A 경기를
+  // 불러온 상태에서 일정 위젯으로 B 경기를 구경만 해도 "새로고침" 버튼이 B를 재조회해버리는
+  // 버그가 있었다.
+  let activeFixtureId = null;
   // setFixtureId가 저장값을 바꾸기 전에 복원된 타이머의 경기 ID를 보관한다.
   const initialFixtureId = (() => {
     try { return String(localStorage.getItem('last_fixture_id') ?? '').trim(); }
@@ -55,16 +62,24 @@
   /** 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신 */
   /**
    * 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신.
-   * id가 truthy면 last_fixture_id로 영속화 → 다음 세션 "최근값 불러오기" 버튼에서 사용.
+   * persist=true(기본값)면 id가 truthy일 때 last_fixture_id로 영속화 →
+   * 다음 세션 "최근값 불러오기" 버튼 + 새로고침 시 자동 복원에서 사용.
+   *
+   * persist=false는 "일정 확인" 위젯에서 경기를 클릭해 미리보기만 하는 경우 전용 — 이때는
+   * currentFixtureId(= "바로 불러오기" 버튼의 대상)만 바뀔 뿐 실제로 스코어보드에 아직 반영된
+   * 게 아니므로 last_fixture_id를 덮어쓰면 안 된다. 예전에는 무조건 영속화해서, 이미 A 경기를
+   * 불러온 뒤 위젯에서 B 경기를 구경만 해도 last_fixture_id가 B로 바뀌어버려 — 새로고침하면
+   * 실제로 로딩했던 A가 아니라 클릭만 해봤던 B로 복원되는 버그가 있었다. 실제 로딩(위젯 클릭이
+   * 아니라 fetchAndApplyFixtureData 성공 시 호출되는 지점들)에서는 인자를 생략해 기존처럼 영속화한다.
    */
-  function setFixtureId(id) {
+  function setFixtureId(id, { persist = true } = {}) {
     currentFixtureId = id || null;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
     fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
     if (panelFixtureLoadBtn && !_mainShowBtnBusy) {
       panelFixtureLoadBtn.disabled = !currentFixtureId;
     }
-    if (currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
+    if (persist && currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
   }
   /**
    * matchInfo에서 한 팀의 표시명 선택 — 설정의 'teamName' 토글에 따라 long/short 분기.
@@ -130,7 +145,7 @@
       const w = gameTarget.querySelector('api-sports-widget[data-type="game"]');
       const id = w ? w.getAttribute('data-game-id') : null;
       if(id && id !== currentFixtureId){
-        setFixtureId(id);
+        setFixtureId(id, { persist: false });
         setStatus('클릭으로 선택됨');
         autoClickStandings(id);
       }
@@ -686,7 +701,10 @@
     state.teamColorOverrideFixtureId = null;
 
     if (clearCache) clearCachedFixtureData();
-    if (clearFixtureId) setFixtureId(null);
+    if (clearFixtureId) {
+      setFixtureId(null);
+      activeFixtureId = null;
+    }
 
     if (state.manualMode) {
       if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
@@ -815,6 +833,7 @@
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
       setFixtureId(normalizedFixtureId);
+      activeFixtureId = normalizedFixtureId;
       const leagueId = extractLeagueIdFromFixtureData(data);
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
         try {
@@ -1289,6 +1308,7 @@
         const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
         if (fixtureId) {
           setFixtureId(fixtureId);
+          activeFixtureId = fixtureId;
           _lastFetchId = fixtureId; // 폴링 콜백의 _lastFetchId 비교용
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
@@ -1359,8 +1379,8 @@
   }
 
   function forceRefreshCurrentFixture() {
-    if (_forceRefreshCooldownTimer) return;
-    if (state.manualMode || !currentFixtureId) {
+    if (_forceRefreshCooldownTimer || _mainShowBtnBusy) return;
+    if (state.manualMode || !activeFixtureId) {
       showToast('연동된 경기가 없습니다');
       return;
     }
@@ -1376,7 +1396,7 @@
         updateForceRefreshButtons(secondsLeft);
       }
     }, 1000);
-    fetchAndApplyFixtureData(currentFixtureId, { silent: true, cache: 'reload' })
+    fetchAndApplyFixtureData(activeFixtureId, { silent: true, cache: 'reload' })
       .catch(err => console.error('Force refresh failed:', err));
   }
 
