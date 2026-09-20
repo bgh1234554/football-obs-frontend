@@ -344,11 +344,17 @@ function canStayWithinLineupNameClamp(nameEl) {
   return nameEl.scrollHeight <= nameEl.clientHeight + 0.5;
 }
 
-/** 주장 배지가 이름 텍스트와 별도 줄로 밀리면 클램프 높이 계산만으로는 잘림을 감지하지 못한다. */
+/** 주장 배지가 이름 텍스트와 별도 줄로 밀리면 클램프 높이 계산만으로는 잘림을 감지하지 못한다.
+ *  단, 배지가 등번호와 같은 prefix에 있으면(번호가 표시 중이면) 번호처럼 이름과 분리된 자기 줄을
+ *  가져도 된다 — 일반 선수의 "번호 줄 / 이름 줄" 2줄 분리와 동일한 레이아웃을 주장에게도 허용하기
+ *  위함. 번호가 꺼져 있어 배지 혼자 prefix에 남는 경우에만 기존처럼 이름과 같은 줄 공유를 강제한다. */
 function lineupCaptainBadgeSharesTextLine(nameEl) {
   const badge = nameEl.querySelector('.dp-lineup-captain-badge');
+  if (!badge) return true;
+  const prefix = badge.closest('.dp-lineup-name-prefix');
+  if (prefix && prefix.querySelector('.dp-lineup-name-num')) return true;
   const textEl = nameEl.querySelector(':scope > .dp-lineup-name-text');
-  if (!badge || !canMeasureTextElement(textEl)) return true;
+  if (!canMeasureTextElement(textEl)) return true;
   const badgeRect = getDisplayLayoutRect(badge);
   return getMergedTextLines(textEl).some(line => (
     badgeRect.top < line.bottom - 0.5 && badgeRect.bottom > line.top + 0.5
