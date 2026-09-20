@@ -166,8 +166,8 @@ function applyTheme(theme, logoUrl) {
   // 팀명 길이에 따라 폰트 크기 조정
 function getTeamNameFontSize(element, teamName) {
     const maxFontSize = 33;
-    const minFontSize = 19;
-    const maxWidth = element.clientWidth - 10;
+    const minFontSize = 12;
+    const maxWidth = element.clientWidth - 25;
 
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');

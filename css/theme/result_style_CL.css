@@ -263,14 +263,14 @@
 
 .fsm-board #rcHome {
     display: flex;
-    left: 100px;
+    left: 30px;
     justify-content: flex-end; 
     flex-direction: row-reverse;
 }
 
 .fsm-board #rcAway {
     display: flex;
-    right: 100px;
+    right: 30px;
     justify-content: flex-start; 
     flex-direction: row-reverse;
 }
