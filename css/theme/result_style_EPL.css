@@ -20,7 +20,7 @@
 }
 
 .fsm-board .scoreboard-main {
-    width: 656px;
+    width: 984px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -30,7 +30,7 @@
 }
 
 .fsm-board .div-background {
-    width: 656px;
+    width: 984px;
     height: 48px;
     position: absolute;
     background-image: url("/resources/imgs/background_pl2.png");
@@ -40,7 +40,7 @@
 }
 
 .fsm-board .teams-left, .teams-right {
-    width: 240px;
+    width: 360px;
     height: 48px;
     background: #350B53;
     display: flex;
@@ -263,21 +263,21 @@
 
 .fsm-board .div-rc {
     position: absolute;
-    top: 24px;
+    top: 15px;
     gap: 6px;
     z-index: -1;
 }
 
 .fsm-board #rcHome {
     display: flex;
-    left: 30px;
+    left: 100px;
     justify-content: flex-end; 
     flex-direction: row-reverse;
 }
 
 .fsm-board #rcAway {
     display: flex;
-    right: 30px;
+    right: 100px;
     justify-content: flex-start; 
     flex-direction: row-reverse;
 }
