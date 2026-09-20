@@ -59,6 +59,9 @@
     color: white;
     text-align: center;
     margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
    
 .fsm-board .teams-left {

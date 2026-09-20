@@ -129,6 +129,9 @@ function applyTheme(theme, logoUrl) {
     jQuery('.fsm-board #team-text-right').text(state.awayName);
     jQuery('.fsm-board #score-right').text(state.awayScore);
 
+    jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
+    jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
+
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
     // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영됩니다.
 
@@ -159,6 +162,28 @@ function applyTheme(theme, logoUrl) {
        jQuery('.pso-status').css({display: 'none'});
     }
   }
+
+  // 팀명 길이에 따라 폰트 크기 조정
+function getTeamNameFontSize(element, teamName) {
+    const maxFontSize = 33;
+    const minFontSize = 19;
+    const maxWidth = element.clientWidth - 10;
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    const style = getComputedStyle(element);
+
+    for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 2) {
+        context.font = `${fontSize}px ${style.fontFamily}`;
+
+        if (context.measureText(teamName).width <= maxWidth) {
+            return fontSize;
+        }
+    }
+
+    return minFontSize;
+}
 
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {

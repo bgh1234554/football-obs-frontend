@@ -263,7 +263,7 @@
 
 .fsm-board .div-rc {
     position: absolute;
-    top: 24px;
+    top: 15px;
     gap: 6px;
     z-index: -1;
 }
