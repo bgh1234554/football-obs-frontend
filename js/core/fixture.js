@@ -14,6 +14,12 @@
   // 불러온 상태에서 일정 위젯으로 B 경기를 구경만 해도 "새로고침" 버튼이 B를 재조회해버리는
   // 버그가 있었다.
   let activeFixtureId = null;
+  // "최근 선택값" 버튼 전용 — 위젯 클릭(persist:false)이든 실제 로딩(persist:true)이든 가장
+  // 최근에 "선택"된 경기 ID를 그대로 기억한다. last_fixture_id(localStorage)는 새로고침 복원용이라
+  // 위젯 클릭으로는 갱신되지 않는데, 그걸 "최근 선택값" 버튼에 그대로 쓰면 위젯에서 경기를
+  // 클릭한 직후에도 예전에 실제로 로딩했던 경기 ID가 나오는 버그가 있었다. "비우기" 버튼도
+  // 이 값은 건드리지 않아 — 보드를 비운 뒤에도 방금 보던 경기를 "최근 선택값"으로 다시 불러올 수 있다.
+  let lastSeenFixtureId = null;
   // setFixtureId가 저장값을 바꾸기 전에 복원된 타이머의 경기 ID를 보관한다.
   const initialFixtureId = (() => {
     try { return String(localStorage.getItem('last_fixture_id') ?? '').trim(); }
@@ -74,6 +80,7 @@
    */
   function setFixtureId(id, { persist = true } = {}) {
     currentFixtureId = id || null;
+    if (currentFixtureId) lastSeenFixtureId = currentFixtureId;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
     fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
     if (panelFixtureLoadBtn && !_mainShowBtnBusy) {
@@ -233,7 +240,14 @@
   }
   if(mainShowBtn) mainShowBtn.addEventListener('click', ()=> triggerFixtureLoad(mainInput?.value));
   if(panelFixtureLoadBtn) panelFixtureLoadBtn.addEventListener('click', ()=> triggerFixtureLoad(currentFixtureId));
-  if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{ const last=localStorage.getItem('last_fixture_id'); if(!last) return; if(mainInput) mainInput.value=last; mainInput.focus(); });
+  if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{
+    // lastSeenFixtureId 우선(위젯 클릭 포함 최신 선택) — 아직 이번 세션에 아무것도 선택 안 했으면
+    // last_fixture_id(localStorage, 실제 로딩된 마지막 경기)로 폴백.
+    const last = lastSeenFixtureId || localStorage.getItem('last_fixture_id');
+    if(!last) return;
+    if(mainInput) mainInput.value=last;
+    mainInput.focus();
+  });
   if(mainClearBtn)   mainClearBtn.addEventListener('click', ()=>{
     if(mainInput){
       mainInput.value='';
@@ -246,6 +260,121 @@
     });
   });
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // [최근 불러온 경기 목록] 경기 ID 입력 오버레이에 최근 7일 / 최대 20개까지 표시.
+  // "바로 불러오기" 위젯 클릭, 오버레이 입력, Details 패널 로딩 등 실제로 데이터가
+  // 적용된 경우(fetchAndApplyFixtureData 성공 시)에만 recordRecentFixture로 기록한다.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const RECENT_FIXTURE_KEY = 'recent_fixture_history_v1';
+  const RECENT_FIXTURE_MAX = 20;
+  const RECENT_FIXTURE_MS = 7 * 24 * 60 * 60 * 1000;
+  const RECENT_FIXTURE_VISIBLE_ROWS = 5;
+  const recentFixtureListEl = $('fixture-recent-list');
+  const recentFixtureEmptyEl = document.querySelector('[data-fixture-recent-empty]');
+
+  /** localStorage에서 최근 경기 기록을 읽고, 7일 지난 항목은 걸러낸다 (저장은 별도로 안 함). */
+  function loadRecentFixtureHistory(){
+    let list;
+    try { list = JSON.parse(localStorage.getItem(RECENT_FIXTURE_KEY) || '[]'); }
+    catch { list = []; }
+    if(!Array.isArray(list)) return [];
+    const cutoff = Date.now() - RECENT_FIXTURE_MS;
+    return list.filter(entry => entry && entry.id && Number(entry.ts) >= cutoff);
+  }
+
+  function saveRecentFixtureHistory(list){
+    try { localStorage.setItem(RECENT_FIXTURE_KEY, JSON.stringify(list)); } catch {}
+  }
+
+  /**
+   * 성공적으로 로딩된 경기를 최근 목록 맨 앞에 기록 (같은 id는 갱신 후 맨 앞으로 이동).
+   * long/short 팀 이름을 둘 다 저장 — 목록에 표시할 때 점수판의 'teamName'(풀네임/단축명) 설정을
+   * 그대로 따라가도록 하기 위함이다(로딩 시점 설정값 하나로 고정해버리면, 나중에 설정을 바꿔도
+   * 예전에 기록된 항목은 그때 그 표기로 남아있어 헷갈린다).
+   */
+  function recordRecentFixture(id, matchInfo, kickoffAt){
+    const fixtureId = String(id || '').trim();
+    if(!fixtureId) return;
+    const m = matchInfo || {};
+    const list = loadRecentFixtureHistory().filter(entry => entry.id !== fixtureId);
+    list.unshift({
+      id: fixtureId,
+      homeLong: m.homeTeamName || '',
+      homeShort: m.homeTeamNameShort || '',
+      awayLong: m.awayTeamName || '',
+      awayShort: m.awayTeamNameShort || '',
+      kickoffAt: kickoffAt || null,
+      ts: Date.now(),
+    });
+    saveRecentFixtureHistory(list.slice(0, RECENT_FIXTURE_MAX));
+    renderRecentFixtureList();
+  }
+
+  /**
+   * 최근 목록 항목에서 한 팀의 표시명을 pickMatchTeamName과 동일한 규칙(long/short 토글, fallback)으로
+   * 계산. `home`/`away` 구버전 필드(단일 문자열)만 있는 예전 저장 데이터는 그대로 사용해 호환.
+   */
+  function pickRecentEntryTeamName(entry, side) {
+    const shortName = side === 'home' ? (entry.homeShort || '') : (entry.awayShort || '');
+    const longName = side === 'home' ? (entry.homeLong || '') : (entry.awayLong || '');
+    if (!shortName && !longName) return side === 'home' ? (entry.home || '') : (entry.away || '');
+    const useLong = (typeof isLongName === 'function') && isLongName('teamName');
+    return useLong ? (longName || shortName) : (shortName || longName);
+  }
+
+  /** ISO 문자열/epoch ms를 "YY.MM.DD HH:mm" 형식으로 변환 (로컬 타임존). 값이 없거나 파싱 실패 시 '-'. */
+  function formatRecentFixtureDateTime(value){
+    if(!value) return '-';
+    const d = new Date(value);
+    if(Number.isNaN(d.getTime())) return '-';
+    const pad = n => String(n).padStart(2, '0');
+    return `${String(d.getFullYear()).slice(2)}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** 오버레이 안 최근 목록 UI를 다시 그림. 항목 클릭 시 그 경기를 즉시 불러온다. */
+  function renderRecentFixtureList(){
+    if(!recentFixtureListEl) return;
+    const list = loadRecentFixtureHistory();
+    saveRecentFixtureHistory(list); // 오래된 항목 정리분 즉시 반영
+    recentFixtureListEl.querySelectorAll('.fixture-recent-item').forEach(el => el.remove());
+    if(recentFixtureEmptyEl) recentFixtureEmptyEl.style.display = list.length ? 'none' : '';
+    list.forEach(entry => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fixture-recent-item';
+      const homeDisplay = pickRecentEntryTeamName(entry, 'home');
+      const awayDisplay = pickRecentEntryTeamName(entry, 'away');
+      const teams = (homeDisplay || awayDisplay) ? `${homeDisplay || '?'} vs ${awayDisplay || '?'}` : '팀 정보 없음';
+      const kickoffStr = formatRecentFixtureDateTime(entry.kickoffAt);
+      const loadedStr = formatRecentFixtureDateTime(entry.ts);
+      const idSpan = document.createElement('span');
+      idSpan.className = 'fixture-recent-id';
+      // flex item(span)은 블록화되어 텍스트 앞/뒤 공백이 자동으로 잘려나간다 — 구분용 "-"를
+      // 각 span 앞/뒤에 걸쳐 걸치는 여백 문자로 넣으면 렌더링 시 간격이 사라지므로, 대시는
+      // idSpan 안쪽(공백-대시 순서, 끝 문자가 대시라 안 잘림)에 넣고 나머지 간격은 flex gap으로 처리.
+      idSpan.textContent = `${entry.id} -`;
+      const detailSpan = document.createElement('span');
+      detailSpan.className = 'fixture-recent-detail';
+      detailSpan.textContent = `${teams} - 경기 시간: ${kickoffStr} - 로딩 시점: ${loadedStr}`;
+      btn.append(idSpan, detailSpan);
+      btn.addEventListener('click', () => {
+        if(mainInput) mainInput.value = entry.id;
+        triggerFixtureLoad(entry.id);
+      });
+      recentFixtureListEl.appendChild(btn);
+    });
+    // 5번째 줄까지는 잘리지 않고 보이도록, 실제 렌더된 행 높이를 측정해 max-height를 동적으로 맞춘다
+    // (CSS 고정값은 폰트/줄바꿈에 따라 행 높이가 달라지면 5번째 줄이 살짝 잘려 보이는 문제가 있었음).
+    const firstItem = recentFixtureListEl.querySelector('.fixture-recent-item');
+    if (firstItem) {
+      const rowHeight = firstItem.getBoundingClientRect().height;
+      const visibleRows = Math.min(RECENT_FIXTURE_VISIBLE_ROWS, list.length);
+      recentFixtureListEl.style.maxHeight = rowHeight > 0 ? `${Math.ceil(rowHeight * visibleRows)}px` : '';
+    } else {
+      recentFixtureListEl.style.maxHeight = '';
+    }
+  }
+
   /** 경기 ID 입력 오버레이 패널을 열고 입력 필드에 포커스 */
   const overlay = $('fixture-overlay');
   const openBtn = $('open-fixture-overlay');
@@ -255,6 +384,7 @@
     if(!overlay) return;
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden','false');
+    renderRecentFixtureList();
     setTimeout(()=>mainInput?.focus(),0);
   }
   /** 경기 ID 입력 오버레이 패널을 닫음 */
@@ -883,6 +1013,8 @@
       const homeName = pickMatchTeamName(m, 'home');
       const awayName = pickMatchTeamName(m, 'away');
       setApiStatus('ok', `${homeName} vs ${awayName}`, overlayOpts);
+      // 최근 목록은 silent(자동 폴링) 갱신마다 남기지 않고 실제 사용자 로딩 시점에만 기록.
+      if (!silent) recordRecentFixture(normalizedFixtureId, m, m.kickoffAt || m.kickoffUtc);
 
       // 다음 호출 자동 예약 (1분 간격, FT+3분 후 중단, 비정상 상태 중단, 경기 시작 전 대기)
       schedulePoll(data);
@@ -1242,6 +1374,8 @@
   // 플래그가 처리하므로 별도 옵션 불필요.
   document.addEventListener('settings:change', e => {
     const category = e.detail?.category;
+    // teamName 토글은 최근 목록 표시명에도 영향 — 열려있으면 즉시 다시 그림(닫혀 있으면 no-op).
+    if (category === 'teamName') renderRecentFixtureList();
     if (
       category !== 'scorer' &&
       category !== 'teamName' &&
