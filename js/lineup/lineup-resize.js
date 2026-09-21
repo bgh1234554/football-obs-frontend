@@ -112,7 +112,7 @@ function ensureSmallBenchHeightHandle() {
   if (!benchColumn || benchColumn.querySelector('.lp-small-bench-height-resize')) return;
   const handle = document.createElement('div');
   handle.className = 'lp-small-bench-height-resize';
-  handle.title = '위아래로 드래그: 높이 조절 · 더블클릭: 자동 높이';
+  handle.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
   handle.tabIndex = 0;
   handle.setAttribute('role', 'separator');
   handle.setAttribute('aria-label', '교체 명단과 미출전 선수 명단 높이 조절');
@@ -235,7 +235,7 @@ function ensureSmallStatsHeightHandle() {
   if (!column || column.querySelector('.lp-small-stats-height-resize')) return;
   const handle = document.createElement('div');
   handle.className = 'lp-small-stats-height-resize';
-  handle.title = '위아래로 드래그: 높이 조절 · 더블클릭: 스탯 9개 기본 높이';
+  handle.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
   handle.tabIndex = 0;
   handle.setAttribute('role', 'separator');
   handle.setAttribute('aria-label', '이벤트와 경기 스탯 높이 조절');
@@ -484,7 +484,7 @@ function ensureSmallLayoutResizeHandles() {
     const handle = document.createElement('div');
     handle.className = 'lp-small-col-resize';
     handle.setAttribute('aria-hidden', 'true');
-    handle.title = '칼럼 크기 조정';
+    handle.title = '칼럼 크기 조정 · 더블클릭으로 초기화';
     handle.addEventListener('pointerdown', startSmallLayoutResize);
     handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
     panel.appendChild(handle);
@@ -494,7 +494,7 @@ function ensureSmallLayoutResizeHandles() {
     const handle = document.createElement('div');
     handle.className = 'lp-small-col-resize-end';
     handle.setAttribute('aria-hidden', 'true');
-    handle.title = '칼럼 크기 조정';
+    handle.title = '칼럼 크기 조정 · 더블클릭으로 초기화';
     handle.addEventListener('pointerdown', startSmallLayoutResize);
     handle.addEventListener('dblclick', resetSmallLayoutResizeFromHandle);
     panel.appendChild(handle);
@@ -1267,7 +1267,7 @@ function ensureBigPanelHandles() {
       const el = document.createElement('div');
       el.className = 'lp-big-chat-edge-bottom';
       el.setAttribute('aria-hidden', 'true');
-      el.title = '팬 반응 높이 조절 (더블클릭: 초기화)';
+      el.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
       el.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'chatBottom'));
       el.addEventListener('dblclick', resetAll);
       chatPanel.appendChild(el);
@@ -1278,7 +1278,7 @@ function ensureBigPanelHandles() {
       const el = document.createElement('div');
       el.className = 'lp-big-stat-edge-top';
       el.setAttribute('aria-hidden', 'true');
-      el.title = '경기 스탯 높이 조절 (더블클릭: 초기화)';
+      el.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
       el.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'statTop'));
       el.addEventListener('dblclick', resetAll);
       statPanel.appendChild(el);
@@ -1605,7 +1605,7 @@ function ensureLineupEdgeHandles() {
       const el = document.createElement('div');
       el.className = 'lp-lineup-top-edge';
       el.setAttribute('aria-hidden', 'true');
-      el.title = '라인업 높이 조절 (더블클릭: 초기화)';
+      el.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
       el.addEventListener('pointerdown', e => startLineupHeightDrag(e, panel));
       el.addEventListener('dblclick', e => resetLineupHeightOnly(e, panel));
       panel.appendChild(el);

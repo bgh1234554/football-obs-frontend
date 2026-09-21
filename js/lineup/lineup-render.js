@@ -1219,9 +1219,6 @@ function buildMatchInfoCyclePanel(effectiveData) {
   const awayAccent = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
   const effectiveBg = miResolveEffectiveBgHex();
 
-  const homeCoach = getCoachName(effectiveData?.homeLineup) || '-';
-  const awayCoach = getCoachName(effectiveData?.awayLineup) || '-';
-  const referee = matchInfo.refereeName || '-';
   const leagueName = matchInfo.leagueName || '-';
   const leagueRound = String(matchInfo.leagueRound || '').trim();
   const venueName = matchInfo.venueName || '-';
@@ -1251,15 +1248,19 @@ function buildMatchInfoCyclePanel(effectiveData) {
     </div>`;
   };
 
+  // 홈/원정 감독, 주심은 값을 여기서 바로 채우지 않고 빈 자리(placeholder)만 마련한다 —
+  // DOM에 삽입된 뒤 setCoachElement/setRefereeElement(벤치 패널과 동일한 함수)가 API 유무에 따라
+  // 텍스트 + 더블클릭 편집 가능 여부(dataset.apiMissing)까지 함께 채워야 캠 큰 화면에서도
+  // 캠 작음 화면(벤치 패널 하단)과 똑같이 더블클릭으로 감독/주심을 직접 입력할 수 있다.
   return `<div class="st-title-bar mi-panel-title">경기 정보</div>
 <div class="mi-body">
   <div class="mi-section">
-    ${miRow('홈 감독', homeCoach, homeAccent)}
-    ${miRow('원정 감독', awayCoach, awayAccent)}
+    <div class="mi-row" data-mi-coach="home"><span class="mi-label" style="--mi-label-color:${dpEscape(homeAccent)}">홈 감독</span><span class="mi-value dp-coach-name">-</span></div>
+    <div class="mi-row" data-mi-coach="away"><span class="mi-label" style="--mi-label-color:${dpEscape(awayAccent)}">원정 감독</span><span class="mi-value dp-coach-name">-</span></div>
   </div>
   <div class="mi-sep"></div>
   <div class="mi-section">
-    ${miRow('주심', referee)}
+    <div class="mi-row" data-mi-referee><span class="mi-label">주심</span><span class="mi-value dp-referee-name">-</span></div>
   </div>
   <div class="mi-sep"></div>
   <div class="mi-section">
@@ -1272,12 +1273,21 @@ function buildMatchInfoCyclePanel(effectiveData) {
 }
 
 /** lp-stat 경기 정보 사이클 패널 렌더 — _lpStatMatchInfoAvailable 플래그 갱신.
- *  lpStatUpdateVisibility는 이후 renderBenchCyclePanels에서 한 번만 호출됨. */
-function renderMatchInfoCyclePanel(effectiveData) {
+ *  lpStatUpdateVisibility는 이후 renderBenchCyclePanels에서 한 번만 호출됨.
+ *  rawData(원본 fixture)는 setCoachElement/setRefereeElement가 "API가 실제로 값을 제공했는지"
+ *  판단하는 기준 — 벤치 패널(교체 명단)과 동일하게 API 값이 없을 때만 더블클릭 편집을 연다. */
+function renderMatchInfoCyclePanel(effectiveData, rawData) {
   const hasData = !!(effectiveData?.matchInfo);
   window._lpStatMatchInfoAvailable = hasData;
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  const homeAccent = cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb'));
+  const awayAccent = cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626'));
   document.querySelectorAll('.lp-stat [data-match-info-panel]').forEach(el => {
     el.innerHTML = hasData ? buildMatchInfoCyclePanel(effectiveData) : '';
+    if (!hasData) return;
+    setCoachElement(el.querySelector('[data-mi-coach="home"] .dp-coach-name'), effectiveData, rawData, 'home', homeAccent);
+    setCoachElement(el.querySelector('[data-mi-coach="away"] .dp-coach-name'), effectiveData, rawData, 'away', awayAccent);
+    setRefereeElement(el.querySelector('[data-mi-referee] .dp-referee-name'), effectiveData, rawData);
   });
 }
 
@@ -1496,7 +1506,7 @@ function rerenderLineupPanels() {
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
   syncTacticsBoard(effectiveData);
-  renderMatchInfoCyclePanel(effectiveData);
+  renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
 
   // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
