@@ -1240,7 +1240,7 @@ function syncSettingsTabSectionHeights() {
   const availableHeight = modalMaxHeight > 0
     ? Math.max(0, modalMaxHeight - headerHeight - tabsHeight - bodyPaddingV - roundingBuffer)
     : maxHeight;
-  const appliedHeight = availableHeight > 0 ? Math.min(maxHeight, availableHeight) : maxHeight;
+  const appliedHeight = Math.min(maxHeight, availableHeight);
 
   sections.forEach(section => {
     section.style.minHeight = `${appliedHeight}px`;
