@@ -1179,16 +1179,24 @@ const SETTINGS_TAB_KEY = 'obs.settings.activeTab.v1';
  * 1) sp-body 폭에서 좌우 padding 빼서 availableWidth 산출.
  * 2) 각 섹션을 임시로 absolute + hidden 해제 + width 고정 → 자연 높이 측정.
  * 3) 측정 후 inline style 원복(`prevCssText`로 통째 되돌림). hidden 상태도 복구.
- * 4) 최대 높이 찾으면 모든 섹션의 minHeight 적용.
+ * 4) 가장 긴 탭이 모달에 실제로 들어갈 수 있는 높이(availableHeight)보다 크면, 그 탭은 원래도
+ *    스크롤이 필요한 게 맞으므로 그대로 두되 — 다른 짧은 탭들까지 그 큰 값으로 minHeight를
+ *    맞추면 짧은 탭에도 필요 없는 스크롤이 생긴다. 그래서 적용할 minHeight는
+ *    min(가장 큰 섹션 높이, availableHeight)로 상한을 둔다 — 짧은 탭은 모달이 허용하는
+ *    한도까지만 채워지고(스크롤 없음), 정말 긴 탭만 그 한도를 넘겨 자체적으로 스크롤된다.
  */
 function syncSettingsTabSectionHeights() {
+  const modal = document.querySelector('.sp-modal');
+  const header = document.querySelector('.sp-header');
+  const tabs = document.querySelector('.sp-tabs');
   const body = document.querySelector('.sp-body');
   const sections = Array.from(document.querySelectorAll('[data-sp-tab-section]'));
-  if (!body || !sections.length) return;
+  if (!modal || !body || !sections.length) return;
 
   // 1) 측정용 width — sp-body의 content area 폭 (padding 제외).
   const bodyRect = body.getBoundingClientRect();
   const bodyStyles = getComputedStyle(body);
+  const bodyPaddingV = (parseFloat(bodyStyles.paddingTop) || 0) + (parseFloat(bodyStyles.paddingBottom) || 0);
   const availableWidth = Math.max(
     0,
     bodyRect.width - (parseFloat(bodyStyles.paddingLeft) || 0) - (parseFloat(bodyStyles.paddingRight) || 0)
@@ -1216,11 +1224,26 @@ function syncSettingsTabSectionHeights() {
     section.style.cssText = prevCssText;
     if (wasHidden) section.setAttribute('hidden', '');
   });
-
-  // 4) 모든 섹션에 max 높이 적용 → 탭 전환 시 모달 점프 방지.
   if (!maxHeight) return;
+
+  // 4) 모달이 실제로 허용하는 섹션 높이 상한 계산 (모달 max-height - 헤더 - 탭바 - body padding).
+  // 이 페이지 전체가 body에 걸린 transform:scale(--display-transform)로 화면에 맞춰 축소/확대되므로
+  // (js/core/display-scale.js), getBoundingClientRect()는 축소된 실제 화면 px를 반환해
+  // getComputedStyle().maxHeight(축소 전 논리 px)와 단위가 어긋난다. offsetHeight/clientHeight 같은
+  // 레이아웃 박스 속성은 transform 영향을 받지 않는 논리 px 값이라 이쪽으로 통일해야 한다.
+  const modalMaxHeight = parseFloat(getComputedStyle(modal).maxHeight) || 0;
+  const headerHeight = header ? header.offsetHeight : 0;
+  const tabsMarginBottom = tabs ? (parseFloat(getComputedStyle(tabs).marginBottom) || 0) : 0;
+  const tabsHeight = tabs ? tabs.offsetHeight + tabsMarginBottom : 0;
+  // 서브픽셀 반올림 오차로 1px 안팎 넘치는 것까지 스크롤바를 만들지 않도록 여유분을 조금 둔다.
+  const roundingBuffer = 2;
+  const availableHeight = modalMaxHeight > 0
+    ? Math.max(0, modalMaxHeight - headerHeight - tabsHeight - bodyPaddingV - roundingBuffer)
+    : maxHeight;
+  const appliedHeight = Math.min(maxHeight, availableHeight);
+
   sections.forEach(section => {
-    section.style.minHeight = `${maxHeight}px`;
+    section.style.minHeight = `${appliedHeight}px`;
   });
 }
 

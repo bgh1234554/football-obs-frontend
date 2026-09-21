@@ -636,6 +636,48 @@
     .overlay-body { padding: 12px; }
     .overlay-body .input-group .btn { font-weight: 800; }
 
+    /* 검색창 + 최근 목록을 하나의 박스로 시각적으로 연결 — overflow:hidden으로 안쪽 요소는
+       각지게 두고 바깥 모서리만 둥글게(overlay-card와 동일한 패턴). */
+    .fixture-search-box {
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      background: rgba(255,255,255,.02);
+    }
+    .fixture-search-box .input-group,
+    .fixture-search-box .input-group > .form-control,
+    .fixture-search-box .input-group > .btn {
+      border-radius: 0 !important;
+    }
+
+    /* 최근 불러온 경기 목록 (최대 20개, 7일 이내) — 5줄까지는 안 잘리게 보이고 나머지는 스크롤.
+       max-height는 fixture.js의 renderRecentFixtureList가 실제 행 높이를 측정해 인라인으로
+       설정한다(고정값을 쓰면 폰트/줄바꿈에 따라 5번째 줄이 살짝 잘려 보이는 문제가 있었음). */
+    .fixture-recent-list {
+      border-top: 1px solid var(--line);
+      overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    .fixture-recent-list::-webkit-scrollbar { width: 6px; }
+    .fixture-recent-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .fixture-recent-list::-webkit-scrollbar-track { background: transparent; }
+    .fixture-recent-empty {
+      padding: 10px 12px; color: var(--muted); font-size: 12px; font-weight: 700;
+    }
+    .fixture-recent-item {
+      display: flex; align-items: center; gap: 6px; width: 100%;
+      padding: 8px 12px; background: transparent; border: none;
+      border-bottom: 1px solid var(--line); color: var(--text);
+      font-size: 13px; font-weight: 700; text-align: left; cursor: pointer;
+    }
+    .fixture-recent-item:last-child { border-bottom: none; }
+    .fixture-recent-item:hover { background: rgba(255,255,255,.06); }
+    .fixture-recent-item .fixture-recent-id {
+      flex: 0 0 auto; color: var(--muted); font-weight: 900; font-variant-numeric: tabular-nums;
+    }
+    .fixture-recent-item .fixture-recent-detail {
+      flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-weight: 600;
+    }
+
     .bmc-slot {
       display: flex;
       align-items: center;

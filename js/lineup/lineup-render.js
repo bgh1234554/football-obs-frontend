@@ -1519,10 +1519,29 @@ function applyLineupPanels(fixtureData) {
   // 같은 경기를 폴링할 때는 clearTacticsLineupSync를 생략해 전술판 상태를 보존한다.
   const incomingId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
   const currentId = String(lineupPanelState.lastFixture?.matchInfo?.fixtureId ?? '').trim();
-  if (incomingId !== currentId) clearTacticsLineupSync();
+  if (incomingId !== currentId) {
+    clearTacticsLineupSync();
+    // lineup-name-fit.js의 syncBigLineupFullscreenGeometry()가 페이지 로드 시점(=아직 경기
+    // 데이터 없음)에 라인업 패널 폭을 한 번 측정해 dataset.lineupWindowWidth에 고정해둔다.
+    // 그 캐시가 남아있으면 이후 실제 라인업이 렌더돼도 폭이 재측정되지 않아, 새로고침 없이
+    // 경기 ID만 입력했을 때 피치가 로딩 전 크기 그대로 멈춰있는 버그가 있었다. 새 경기로
+    // 전환될 때 캐시를 지우고 다음 프레임에 실제 렌더된 폭 기준으로 다시 잠그도록 한다.
+    // 사용자가 엣지 핸들로 직접 폭을 고정한 패널(has-w-override/has-edge-override)은
+    // syncBigLineupFullscreenGeometry도 건드리지 않는 값이므로 여기서도 그대로 둔다.
+    document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
+      if (panel.classList.contains('has-w-override') || panel.classList.contains('has-edge-override')) return;
+      if (typeof _lineupClearFullscreenWidthLock === 'function') _lineupClearFullscreenWidthLock(panel);
+      panel.style.removeProperty('width');
+    });
+  }
   lineupPanelState.lastFixture = fixtureData;
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
+  if (incomingId !== currentId && typeof scheduleLineupViewportFit === 'function') {
+    // 라인업 그리드가 실제로 그려진 다음(rerenderLineupPanels가 위에서 이미 requestAnimationFrame으로
+    // 예약한 텍스트 피팅 이후) 폭 캐시를 새로 잠가야 하므로, 한 프레임 더 늦춰서 호출한다.
+    requestAnimationFrame(() => scheduleLineupViewportFit());
+  }
 }
 
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
