@@ -129,8 +129,13 @@ function applyTheme(theme, logoUrl) {
     jQuery('.fsm-board #team-text-right').text(state.awayName);
     jQuery('.fsm-board #score-right').text(state.awayScore);
 
-    jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
-    jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
+    // jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
+    // jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
+
+    fitTeamName(document.querySelector('.fsm-board #homeName'));
+    fitTeamName(document.querySelector('.fsm-board #awayName'));
+
+    adjustScoreboardWidth();
 
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
     // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영됩니다.
@@ -183,6 +188,117 @@ function getTeamNameFontSize(element, teamName) {
     }
 
     return minFontSize;
+}
+
+function fitTeamName(element) {
+    const text = element.querySelector('.text');
+
+    if (!text) return;
+
+    const maxFontSize = 33;
+    const minFontSize = 12;
+
+    // 현재 team-name이 사용할 수 있는 실제 너비
+    const availableWidth = element.clientWidth
+        - parseFloat(getComputedStyle(element).paddingLeft)
+        - parseFloat(getComputedStyle(element).paddingRight);
+
+    let fontSize = maxFontSize;
+
+    text.style.whiteSpace = 'nowrap';
+    text.style.fontSize = `${fontSize}px`;
+
+    while (text.scrollWidth > availableWidth && fontSize > minFontSize) {
+        fontSize -= 1;
+        text.style.fontSize = `${fontSize}px`;
+    }
+}
+
+function adjustScoreboardWidth() {
+    const scoreboard = document.querySelector('.scoreboard-main');
+
+    const leftTeam = document.getElementById('homeCard');
+    const rightTeam = document.getElementById('awayCard');
+
+    const leftText = document.getElementById('team-text-left');
+    const rightText = document.getElementById('team-text-right');
+
+    if (!scoreboard || !leftTeam || !rightTeam || !leftText || !rightText) {
+        return;
+    }
+
+    const MIN_TEAM_WIDTH = 240;
+    const MAX_TEAM_WIDTH = 420;
+
+    const MIN_BOARD_WIDTH = 656;
+    const MAX_BOARD_WIDTH = 984;
+
+    const TEAM_PADDING = 40;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function getTextWidth(element) {
+        const style = getComputedStyle(element);
+
+        ctx.font =
+            `${style.fontWeight} ` +
+            `${style.fontSize} ` +
+            `${style.fontFamily}`;
+
+        return ctx.measureText(element.textContent.trim()).width;
+    }
+
+    // 팀명 실제 너비
+    const leftTextWidth = getTextWidth(leftText);
+    const rightTextWidth = getTextWidth(rightText);
+
+    // 팀명 + 여유 공간
+    let leftWidth = leftTextWidth + TEAM_PADDING;
+    let rightWidth = rightTextWidth + TEAM_PADDING;
+
+    // 최소/최대 제한
+    leftWidth = Math.max(
+        MIN_TEAM_WIDTH,
+        Math.min(MAX_TEAM_WIDTH, leftWidth)
+    );
+
+    rightWidth = Math.max(
+        MIN_TEAM_WIDTH,
+        Math.min(MAX_TEAM_WIDTH, rightWidth)
+    );
+
+    // 팀 영역 적용
+    leftTeam.style.width = `${leftWidth}px`;
+    rightTeam.style.width = `${rightWidth}px`;
+
+    /*
+     * 전체 점수판 너비
+     *
+     * 팀 영역 2개 + 가운데 영역
+     *
+     * 최소 656px ~ 최대 984px
+     */
+    const centerWidth = 176;
+
+    let boardWidth =
+        leftWidth +
+        rightWidth +
+        centerWidth;
+
+    boardWidth = Math.max(
+        MIN_BOARD_WIDTH,
+        Math.min(MAX_BOARD_WIDTH, boardWidth)
+    );
+
+    scoreboard.style.width = `${boardWidth}px`;
+
+    // 배경도 같이 조절
+    const background = scoreboard.querySelector('.div-background');
+
+    if (background) {
+        background.style.width = `${boardWidth}px`;
+    }
 }
 
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출

@@ -41,7 +41,7 @@
 }
 
 .fsm-board .teams-left, .teams-right {
-    width: 360px;
+    width: 420px;
     height: 48px;
     background: #350B53;
     display: flex;
@@ -61,18 +61,24 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    box-sizing: border-box;
+    white-space: nowrap;
 }
 
 .fsm-board .teams-left > .team-name {
     display: flex;
     justify-content: flex-start;
     margin-left: 10px;
+    padding-left: 0;
+    padding-right: 65px;
 }
 
 .fsm-board .teams-right > .team-name {
     display: flex;
     justify-content: flex-end;
     margin-right: 10px;
+    padding-left: 65px;
+    padding-right: 0;
 }
 
 .fsm-board .team-score {

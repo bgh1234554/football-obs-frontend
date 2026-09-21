@@ -44,7 +44,7 @@
 }
 
 .fsm-board .teams-left, .teams-right {
-    width: 360px;
+    width: 420px;
     height: 48px;
     background: linear-gradient(90deg, #200734, #8165B2, #4B0D46);
     display: flex;
