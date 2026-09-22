@@ -20,7 +20,7 @@
 }
 
 .fsm-board .scoreboard-main {
-    width: 984px;
+    width: 656px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -30,7 +30,7 @@
 }
 
 .fsm-board .div-background {
-    width: 984px;
+    width: 656px;
     height: 48px;
     position: absolute;
     background-image: url("/resources/imgs/background_pl2.png");
@@ -41,7 +41,7 @@
 }
 
 .fsm-board .teams-left, .teams-right {
-    width: 420px;
+    width: 240px;
     height: 48px;
     background: #350B53;
     display: flex;

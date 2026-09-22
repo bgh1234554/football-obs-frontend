@@ -129,12 +129,11 @@ function applyTheme(theme, logoUrl) {
     jQuery('.fsm-board #team-text-right').text(state.awayName);
     jQuery('.fsm-board #score-right').text(state.awayScore);
 
-    // jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
-    // jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
+    jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
+    jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
 
     fitTeamName(document.querySelector('.fsm-board #homeName'));
     fitTeamName(document.querySelector('.fsm-board #awayName'));
-
     adjustScoreboardWidth();
 
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
@@ -186,7 +185,6 @@ function getTeamNameFontSize(element, teamName) {
             return fontSize;
         }
     }
-
     return minFontSize;
 }
 
@@ -217,84 +215,106 @@ function fitTeamName(element) {
 function adjustScoreboardWidth() {
     const scoreboard = document.querySelector('.scoreboard-main');
 
-    const leftTeam = document.getElementById('homeCard');
-    const rightTeam = document.getElementById('awayCard');
+    const homeCard = document.getElementById('homeCard');
+    const awayCard = document.getElementById('awayCard');
 
-    const leftText = document.getElementById('team-text-left');
-    const rightText = document.getElementById('team-text-right');
+    const homeText = document.getElementById('homeName');
+    const awayText = document.getElementById('awayName');
 
-    if (!scoreboard || !leftTeam || !rightTeam || !leftText || !rightText) {
+    const background = document.querySelector('.div-background');
+
+    if (!scoreboard || !homeCard || !awayCard || !homeText || !awayText) {
         return;
     }
 
-    const MIN_TEAM_WIDTH = 240;
-    const MAX_TEAM_WIDTH = 420;
+    // =========================
+    // 설정값
+    // =========================
 
     const MIN_BOARD_WIDTH = 656;
     const MAX_BOARD_WIDTH = 984;
 
-    const TEAM_PADDING = 40;
+    const MIN_TEAM_WIDTH = 240;
+    const MAX_TEAM_WIDTH = 420;
+
+    // 팀명 양쪽 여유
+    const TEAM_PADDING = 80;
+
+    // 로고
+    const LOGO_WIDTH = 80;
+
+    // 가운데 점수 영역
+    const CENTER_WIDTH = 176;
+
+
+    // =========================
+    // 실제 팀명 너비 측정
+    // =========================
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    function getTextWidth(element) {
+    function getTextWidth(text, element) {
         const style = getComputedStyle(element);
 
-        ctx.font =
-            `${style.fontWeight} ` +
-            `${style.fontSize} ` +
-            `${style.fontFamily}`;
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
 
-        return ctx.measureText(element.textContent.trim()).width;
+        context.font =
+            `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+
+        return context.measureText(text).width;
     }
 
-    // 팀명 실제 너비
-    const leftTextWidth = getTextWidth(leftText);
-    const rightTextWidth = getTextWidth(rightText);
+    const homeTextWidth = getTextWidth(homeText.textContent, homeText);
+    const awayTextWidth = getTextWidth(awayText.textContent, awayText);
 
-    // 팀명 + 여유 공간
-    let leftWidth = leftTextWidth + TEAM_PADDING;
-    let rightWidth = rightTextWidth + TEAM_PADDING;
 
-    // 최소/최대 제한
-    leftWidth = Math.max(
+    // =========================
+    // 팀 영역 너비 계산
+    // =========================
+
+    let homeWidth = homeTextWidth + TEAM_PADDING;
+    let awayWidth = awayTextWidth + TEAM_PADDING;
+
+    homeWidth = Math.max(
         MIN_TEAM_WIDTH,
-        Math.min(MAX_TEAM_WIDTH, leftWidth)
+        Math.min(MAX_TEAM_WIDTH, homeWidth)
     );
 
-    rightWidth = Math.max(
+    awayWidth = Math.max(
         MIN_TEAM_WIDTH,
-        Math.min(MAX_TEAM_WIDTH, rightWidth)
+        Math.min(MAX_TEAM_WIDTH, awayWidth)
     );
 
-    // 팀 영역 적용
-    leftTeam.style.width = `${leftWidth}px`;
-    rightTeam.style.width = `${rightWidth}px`;
 
-    /*
-     * 전체 점수판 너비
-     *
-     * 팀 영역 2개 + 가운데 영역
-     *
-     * 최소 656px ~ 최대 984px
-     */
-    const centerWidth = 176;
+    // =========================
+    // 전체 보드 너비 계산
+    // =========================
 
     let boardWidth =
-        leftWidth +
-        rightWidth +
-        centerWidth;
+        LOGO_WIDTH +
+        homeWidth +
+        CENTER_WIDTH +
+        awayWidth +
+        LOGO_WIDTH;
 
+
+    // 최소 / 최대 제한
     boardWidth = Math.max(
         MIN_BOARD_WIDTH,
         Math.min(MAX_BOARD_WIDTH, boardWidth)
     );
 
-    scoreboard.style.width = `${boardWidth}px`;
 
-    // 배경도 같이 조절
-    const background = scoreboard.querySelector('.div-background');
+    // =========================
+    // 실제 적용
+    // =========================
+
+    homeCard.style.width = `${homeWidth}px`;
+    awayCard.style.width = `${homeWidth}px`;
+
+    scoreboard.style.width = `${boardWidth}px`;
 
     if (background) {
         background.style.width = `${boardWidth}px`;
