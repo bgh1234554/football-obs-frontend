@@ -69,15 +69,30 @@ function scheduleGridDefaultRatios(availableWidth) {
   return [col1, ...rest].map(px => px / availableWidth);
 }
 
-/** availableWidth(칼럼 전용 폭, gap 제외, 레이아웃 px) 기준 최소 비율로 각 칼럼을 보정하고 합=1로 재정규화. */
+/**
+ * availableWidth(칼럼 전용 폭, gap 제외, 레이아웃 px) 기준 최소 비율을 보장하며 합=1로 정규화.
+ * 기존엔 min으로 올려친 뒤 전체 합으로 나눠 재정규화했는데, 그 나누기 단계가 방금 올려친
+ * 최소값까지 다시 비례 축소해버려 min이 실제로는 보장 안 되는 문제가 있었다(예: min 비율
+ * 합이 0.8인 4칼럼에서 한 칼럼만 큰 값을 가지면 나머지가 min 아래로 다시 깎임).
+ * 대신 "각 칼럼에 min을 먼저 배정 → 남는 폭(1 - totalMin)만 원래 비율의 초과분(min 넘는 부분)
+ * 비례로 재분배"하는 방식으로 바꿔 min을 항상 만족시킨다.
+ */
 function scheduleGridClampRatios(ratios, availableWidth) {
   if (!(availableWidth > 0)) return ratios;
+  const n = ratios.length;
+  const totalRatio = ratios.reduce((a, b) => a + b, 0);
+  const normalized = totalRatio > 0 ? ratios.map(r => r / totalRatio) : ratios.map(() => 1 / n);
   const minR = SCHED_GRID_MIN_PX.map(px => px / availableWidth);
   const totalMin = minR.reduce((a, b) => a + b, 0);
-  if (totalMin >= 1) return ratios.map(() => 1 / ratios.length);
-  const out = ratios.map((r, i) => Math.max(minR[i], r));
-  const sum = out.reduce((a, b) => a + b, 0);
-  return out.map(r => r / sum);
+  if (totalMin >= 1) return ratios.map(() => 1 / n);
+  const remaining = 1 - totalMin;
+  const excess = normalized.map((r, i) => Math.max(0, r - minR[i]));
+  const totalExcess = excess.reduce((a, b) => a + b, 0);
+  if (totalExcess > 0) {
+    return minR.map((m, i) => m + remaining * (excess[i] / totalExcess));
+  }
+  // 모든 칼럼이 이미 자기 min 이하로 눌려있던 경우 — 남는 폭을 균등 배분.
+  return minR.map(m => m + remaining / n);
 }
 
 function scheduleGridHandles(grid) {
