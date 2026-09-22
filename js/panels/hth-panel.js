@@ -225,11 +225,15 @@ function hthCreateRow(match, fixtureData) {
   homeSide.className = 'hth-team-side hth-team-home';
   const homeLogoUrl = hthResolveLogoUrl(match.homeTeamId, match.homeTeamLogo, fixtureData);
   if (homeLogoUrl) {
+    const box = document.createElement('span');
+    box.className = 'hth-logo-box';
     const img = document.createElement('img');
-    img.src = homeLogoUrl;
     img.alt = match.homeTeamName || 'HOME';
     img.className = 'hth-logo';
-    homeSide.appendChild(img);
+    box.appendChild(img);
+    homeSide.appendChild(box);
+    if (typeof LogoTrim !== 'undefined') LogoTrim.render(img, homeLogoUrl);
+    else img.src = homeLogoUrl;
   }
   const homeNameEl = document.createElement('span');
   homeNameEl.className = 'hth-team-name';
@@ -288,11 +292,15 @@ function hthCreateRow(match, fixtureData) {
   awaySide.appendChild(awayNameEl);
   const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
   if (awayLogoUrl) {
+    const box = document.createElement('span');
+    box.className = 'hth-logo-box';
     const img = document.createElement('img');
-    img.src = awayLogoUrl;
     img.alt = match.awayTeamName || 'AWAY';
     img.className = 'hth-logo';
-    awaySide.appendChild(img);
+    box.appendChild(img);
+    awaySide.appendChild(box);
+    if (typeof LogoTrim !== 'undefined') LogoTrim.render(img, awayLogoUrl);
+    else img.src = awayLogoUrl;
   }
 
   scoreRow.append(homeSide, scoreCenter, awaySide);
