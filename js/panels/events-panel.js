@@ -1130,13 +1130,18 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   // state 없거나 비었으면 fixtureData.matchInfo로 폴백.
   const logoUrl = evResolveTeamLogo(ev, fixtureData);
   if (logoUrl) {
-    // .hth-logo(hth-panel.js)와 동일하게 래퍼 span 없이 img 자체가 고정 크기 박스
-    // (css/panels/events-panel.css: .ev-team-logo) — object-fit이 비율을 알아서 맞춘다.
+    // .hth-logo-box(hth-panel.js)와 동일한 고정 크기 래퍼 + img absolute 배치
+    // (css/panels/events-panel.css: .ev-team-logo-box/.ev-team-logo) — logo-trim.js가
+    // 점수판과 동일하게 투명 여백을 보정해준다.
+    const box = document.createElement('span');
+    box.className = 'ev-team-logo-box';
     const img = document.createElement('img');
     img.className = 'ev-team-logo';
-    img.src = logoUrl;
     img.alt = ev.side === 'home' ? 'HOME' : 'AWAY';
-    main.appendChild(img);
+    box.appendChild(img);
+    main.appendChild(box);
+    if (typeof LogoTrim !== 'undefined') LogoTrim.render(img, logoUrl);
+    else img.src = logoUrl;
   }
 
   row.appendChild(main);

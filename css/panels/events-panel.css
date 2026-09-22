@@ -617,21 +617,45 @@
     /* 골 1줄(어시스트 있음) — 첫 라인 기본 굵기. */
     .ev-text-primary { font-weight: 700; }
 
-    /* 팀 로고 — row 우측 끝. .hth-logo(css/panels/hth-panel.css)와 동일하게 img 자체에 고정
-       width/height + object-fit:contain. 점수판 .logo-img처럼 position:absolute + auto +
-       max-* + transform으로 짤 필요가 없다 — 그건 팀별 수동 위치/크기 보정(--home-logo-x/y/
-       scale, 테마 탭 기능) 때문에 필요한 구조였고, 여기는 그런 보정이 없는 고정 26x26 박스라
-       object-fit만으로 충분하다. 이 방식은 width/height 속성 없이 viewBox만 있는 SVG(자연
-       크기를 못 정하는 경우)에도 별도 예외 처리 없이 안전 — object-fit은 이미 정해진 박스
-       크기에 콘텐츠를 맞추는 것이라 자연 크기 유무와 무관하게 비율만으로 동작한다.
-       (기존엔 이 부분도 .logo-img 패턴을 그대로 복사해 와서, SVG 로고가 렌더 박스보다
-       작게 나오는 버그가 있었음.) */
-    .ev-team-logo {
+    /* 팀 로고 — row 우측 끝. .hth-logo-box(css/panels/hth-panel.css)와 동일한 래퍼+절대배치
+       패턴 — logo-trim.js의 여백 자동 보정(--logo-trim-*)을 받으려면 .board .logo-img처럼
+       고정 크기 래퍼 안에서 img가 absolute/auto/max-*로 배치돼야 한다(퍼센트 width/height가
+       래퍼 기준으로 계산되어야 하므로 img 자체에 고정 width/height를 주는 방식으로는 불가).
+       래퍼 overflow:hidden으로 확대된 투명 여백이 옆 텍스트로 새지 않게 막는다. */
+    .ev-team-logo-box {
       flex: 0 0 26px;
       width: 26px;
       height: 26px;
-      object-fit: contain;
+      position: relative;
+      overflow: hidden;
       align-self: center;
       margin-right: 2px;
+    }
+    .ev-team-logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+    }
+    .ev-team-logo[src$=".svg"],
+    .ev-team-logo[src*=".svg?"],
+    .ev-team-logo[src^="data:image/svg+xml"] {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+    }
+    .ev-team-logo.logo-trimmed {
+      width: var(--logo-trim-width);
+      height: var(--logo-trim-height);
+      max-width: none;
+      max-height: none;
+      transform: translate(-50%, -50%) translate(var(--logo-trim-x, 0%), var(--logo-trim-y, 0%));
+      pointer-events: none;
     }
 
