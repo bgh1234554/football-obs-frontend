@@ -17,7 +17,8 @@ const LogoTrim = (() => {
   // TTL은 분석 완료 시각부터 30일이다. 읽을 때마다 만료 시각을 연장하지 않는다.
   const TTL = 30 * 24 * 60 * 60 * 1000;
   // 경계 계산이나 저장 형식이 바뀌면 버전을 올려 이전 좌표가 재사용되지 않게 한다.
-  const PREFIX = 'football-obs:logo-trim:v1:';
+  // v2 (2026-09-22): findBounds의 알파 임계값을 0 초과 → ALPHA_MIN(8) 이상으로 변경.
+  const PREFIX = 'football-obs:logo-trim:v2:';
   // URL별 분석 결과: 같은 페이지에서 localStorage 접근과 재분석을 줄인다.
   const memory = new Map();
   // URL별 진행 중인 Promise: 홈·원정이 같은 로고를 요청해도 분석은 한 번만 수행한다.
@@ -46,17 +47,23 @@ const LogoTrim = (() => {
    * 투명하지 않은 모든 픽셀을 감싸는 최소 사각형을 구한다.
    * 네 방향에서 각 행·열 전체를 탐색하는 것과 같은 경계를, 전체 픽셀 한 번 순회로 찾는다.
    * 중앙선만 탐색하거나 가장 큰 덩어리만 선택하지 않으므로 떨어진 별·문자도 포함된다.
-   * 알파값이 정확히 0인 픽셀만 제외한다. 알파값 1인 희미한 테두리도 보존 대상이다.
    *
-   * left/top은 첫 픽셀을 포함하고, right/bottom은 마지막 픽셀 바로 다음 좌표다.
-   * 예: x=10~19에 그림이 있으면 left=10, right=20, 그림의 너비=10이다.
-   * 보이는 픽셀이 하나도 없으면 null을 반환해 원본 표시를 유지한다.
+   * (2026-09-22) 원래는 알파값이 정확히 0인 픽셀만 제외했다(알파 1인 희미한 테두리도
+   * 보존 대상으로 간주). 그런데 유벤투스 로고(496.png)에서 실측으로 반례가 발견됐다 —
+   * 실제 "J" 마크는 캔버스 중앙 29~104 / 18~136 영역에만 있고 그 밖은 완전히 여백인데도,
+   * 캔버스 테두리 전체에 알파값 1~2짜리 픽셀이 30개 넘게 흩어져 있어(리사이징/재압축
+   * 과정의 아티팩트로 추정) bbox가 캔버스 전체로 잡혀 버렸다. 같은 이미지를 알파 임계값별로
+   * 비교하면 1~2에서는 bbox가 캔버스 전체, 5 이상에서는 (29,18,104,136) 부근으로 안정되는
+   * 뚜렷한 단절이 있었다 — 즉 1~4는 노이즈, 5 이상부터가 실제 그림이라는 뜻. ALPHA_MIN을
+   * 그 단절보다 위, 진짜 안티앨리어싱 테두리(대체로 수십~수백대)보다는 훨씬 아래로 잡아
+   * 노이즈만 제외하고 의도된 희미한 테두리/글로우는 그대로 살린다.
    */
+  const ALPHA_MIN = 8;
   function findBounds({ data, width, height }) {
     let left = width, top = height, right = 0, bottom = 0;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (data[(y * width + x) * 4 + 3] === 0) continue;
+        if (data[(y * width + x) * 4 + 3] < ALPHA_MIN) continue;
         left = Math.min(left, x);
         right = Math.max(right, x + 1);
         top = Math.min(top, y);
