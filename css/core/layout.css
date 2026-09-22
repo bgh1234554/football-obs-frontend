@@ -238,7 +238,13 @@
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
     }
     .panelHeader .hint { color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
-    .panelBody { flex: 1; padding: 0; overflow: auto; min-height: 0; }
+    .panelBody {
+      flex: 1; padding: 0; overflow: auto; min-height: 0;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    .panelBody::-webkit-scrollbar { width: 6px; }
+    .panelBody::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .panelBody::-webkit-scrollbar-track { background: transparent; }
 
     /* ========== 일정 확인 ========== */
     /* 탭바 인라인 경기 ID */
@@ -270,7 +276,28 @@
       z-index: 9999;
     }
     .copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .widgetGrid { flex: 1; display: grid; grid-template-columns: 190px minmax(0,1fr) minmax(0,2.2fr) minmax(0,2fr); gap: 8px; height: 100%; min-height: 0; overflow: hidden; }
+    .widgetGrid { position: relative; flex: 1; display: grid; grid-template-columns: 247px minmax(0,1fr) minmax(0,2.366fr) minmax(0,2.226fr); gap: 8px; height: 100%; min-height: 0; overflow: hidden; }
+    /* 사용자가 칼럼 폭을 드래그로 조정하면(js/core/schedule-resize.js) 4칼럼 전부 px 변수로 전환 */
+    .widgetGrid.sched-columns-custom {
+      grid-template-columns: var(--sched-col-1) var(--sched-col-2) var(--sched-col-3) var(--sched-col-4);
+    }
+    /* 칼럼 경계 리사이즈 핸들 — .panel의 자식이 아니라 .widgetGrid의 자식으로 둔다.
+       .panel은 둥근 모서리를 위해 overflow:hidden이라, 핸들을 panel 안에 넣으면 칼럼
+       경계 밖으로 걸쳐야 하는 절반이 그대로 잘려나가 클릭 가능 영역이 왼쪽 절반으로
+       줄어든다(캠 작음 페이지의 핸들은 부모에 overflow:hidden이 없어 문제 없음). left는
+       JS(schedule-resize.js)가 실제 칼럼 경계 픽셀 위치로 매번 계산해서 넣는다. */
+    .widgetGrid .sched-col-resize {
+      position: absolute;
+      top: 0;
+      width: 12px;
+      height: 100%;
+      z-index: 8;
+      cursor: col-resize;
+      touch-action: none;
+      background: transparent;
+    }
+    body.sched-grid-resizing,
+    body.sched-grid-resizing * { cursor: col-resize !important; user-select: none !important; }
 
     /* ── 점수판 CSS 변수가 위젯에 새어들어가지 않도록 격리 ── */
     #game-content, #standings-content, #team-content, #games-list {
