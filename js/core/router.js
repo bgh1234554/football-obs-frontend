@@ -52,6 +52,16 @@
       const w = document.createElement('api-sports-widget');
       w.setAttribute('data-type', 'leagues');
       leaguesBody.appendChild(w);
+
+      // 리그 검색 시 위젯 내부 리스트 영역의 스크롤 높이 계산이 어긋나 이중 스크롤이
+      // 생기는 버그 보정 — 개발자도구를 열고 닫을 때(리사이즈로 display-scale.js가
+      // 전체 페이지를 다시 레이아웃)는 저절로 고쳐지는 걸 확인해, 검색 입력이 끝난
+      // 직후 같은 효과(resize 이벤트 강제 발생)를 인위적으로 한 번 내본다.
+      let leaguesResizeNudgeTimer = null;
+      leaguesBody.addEventListener('input', () => {
+        clearTimeout(leaguesResizeNudgeTimer);
+        leaguesResizeNudgeTimer = setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+      });
     }
 
     const gamesList = document.getElementById('games-list');

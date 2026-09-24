@@ -232,7 +232,7 @@ function recomputeGridSlotsForFormation(side, formation) {
  * 패널/벤치 행과 같은 "교체 IN" 마커(lpBuildSubMarkerHtml)를 이름 오른쪽에 그대로 붙인다.
  */
 function buildGridRowHtml(pidStr, slotIndex) {
-  const { formation, players } = lineupPanelState.gridState;
+  const { formation, players, side } = lineupPanelState.gridState;
   const labels = getFormationSlotLabels(formation);
   const p = pidStr ? players[pidStr] : null;
   const photoStyle = p?.photoUrl ? ` style="background-image:url('${dpEscape(p.photoUrl)}')"` : '';
@@ -241,7 +241,7 @@ function buildGridRowHtml(pidStr, slotIndex) {
   const resolvedName = p ? (pickName(p, 'lineup') || p.name || '') : '';
   const isNamelessPlayer = !!p && !resolvedName && Number(p.playerId) > 0;
   const subEvents = p?._subEventPlayerId != null && typeof lpGetPlayerEvents === 'function'
-    ? lpGetPlayerEvents(p._subEventPlayerId)
+    ? lpGetPlayerEvents(p._subEventPlayerId, side, p.name)
     : null;
   const subHtml = subEvents && typeof lpBuildSubMarkerHtml === 'function'
     ? lpBuildSubMarkerHtml(subEvents, 'starter')
@@ -373,25 +373,61 @@ function extractGridOverrideFromState() {
   return Object.keys(gridByPlayerId).length ? { formation, gridByPlayerId } : null;
 }
 
-/** 라인업 풀폼 모달(포메이션 없음 — 11명 줄글 직접 입력) 본문 HTML. */
+/**
+ * 완전 수동 라인업(풀폼) 전용 골/자책골/도움/경고/퇴장 5칸 — 헤더 행(아이콘)과 각 선수 행이
+ * 같은 grid-template-columns(dp-manual-row.has-stats, css/lineup/lineup-manual.css)를 공유해
+ * 열이 그대로 맞춰진다. 이 선수는 API 이벤트와 아예 연결될 방법이 없는 _manual 선수라
+ * (player-id-resolve.js의 fuzzy 매칭도 origName 없는 선수는 후보에서 제외), 분(minute)
+ * 정보 없이 "몇 번 있었는지/있었는지"만 직접 입력받는다. extractLineupOverrideFromForm이
+ * 이 값을 player 오브젝트의 manualGoals/manualOwnGoals/manualAssists/manualYellow/manualRed
+ * 필드로 저장하고, lpManualPlayerEventsOverride(lineup-events.js)가 렌더 시 이걸 events와
+ * 같은 모양으로 변환해 기존 배지 렌더링 함수들을 그대로 재사용한다.
+ */
+function buildLineupManualStatCellsHtml(player, index) {
+  const goals = Number(player?.manualGoals) || 0;
+  const ownGoals = Number(player?.manualOwnGoals) || 0;
+  const assists = Number(player?.manualAssists) || 0;
+  const yellow = !!player?.manualYellow;
+  const red = !!player?.manualRed;
+  return `<input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-goals-${index}" value="${goals || ''}" placeholder="0" title="득점" />
+    <input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-owngoals-${index}" value="${ownGoals || ''}" placeholder="0" title="자책골" />
+    <input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-assists-${index}" value="${assists || ''}" placeholder="0" title="도움" />
+    <label class="dp-manual-stat-check" title="경고(옐로카드)"><input type="checkbox" name="lineup-yellow-${index}"${yellow ? ' checked' : ''} /><span class="dp-manual-card-swatch is-yellow"></span></label>
+    <label class="dp-manual-stat-check" title="퇴장(레드카드)"><input type="checkbox" name="lineup-red-${index}"${red ? ' checked' : ''} /><span class="dp-manual-card-swatch is-red"></span></label>`;
+}
+
+/**
+ * 라인업 풀폼 모달(포메이션 없음 — 11명 줄글 직접 입력) 본문 HTML.
+ * 첫 행은 좁힌 포메이션 select(1~3번 칸에 걸침) + 골/자책골/도움/경고/퇴장 아이콘 헤더(4~8번 칸).
+ * 이후 11개 선수 행은 같은 8칸 grid를 공유해(dp-manual-row.has-stats) 각 입력칸이 헤더 아이콘과
+ * 세로로 정확히 맞춰진다. 이름 입력칸은 폭을 고정 좁혀 통계 칸들이 들어갈 자리를 확보한다.
+ */
 function buildLineupManualFormHtml(lineup) {
   const formation = hasValidFormation(lineup) ? lineup.formation : DETAIL_DEFAULT_FORMATION;
   const players = getOrderedLineupPlayers(lineup?.startXi || []);
   const labels = getFormationSlotLabels(formation);
 
-  return `<div class="dp-manual-help">포메이션과 선발 11명을 입력하면 /detail 라인업과 전술판에 함께 반영됩니다.</div>
+  return `<div class="dp-manual-help">포메이션과 선발 11명을 입력하면 /detail 라인업과 전술판에 함께 반영됩니다. 오른쪽 열에서 득점/자책골/도움 횟수와 경고·퇴장 여부도 함께 입력할 수 있습니다.</div>
     <div class="dp-form-stack">
-      <label class="dp-field">
-        <span class="dp-field-label">포메이션</span>
-        <select class="dp-select" name="manual-formation" id="manualLineupFormation">
-          ${buildFormationOptionsHtml(formation)}
-        </select>
-      </label>
-      <div class="dp-manual-grid">
-        ${Array.from({ length: 11 }, (_, index) => `<div class="dp-manual-row">
+      <div class="dp-manual-grid dp-manual-grid-lineup">
+        <div class="dp-manual-row has-stats dp-manual-header-row">
+          <label class="dp-manual-formation-field">
+            <span class="dp-field-label">포메이션</span>
+            <select class="dp-select dp-select-compact" name="manual-formation" id="manualLineupFormation">
+              ${buildFormationOptionsHtml(formation)}
+            </select>
+          </label>
+          <span class="dp-manual-stat-header" title="득점">⚽</span>
+          <span class="dp-manual-stat-header" title="자책골">OG</span>
+          <span class="dp-manual-stat-header" title="도움">👟</span>
+          <span class="dp-manual-stat-header" title="경고(옐로카드)">🟨</span>
+          <span class="dp-manual-stat-header" title="퇴장(레드카드)">🟥</span>
+        </div>
+        ${Array.from({ length: 11 }, (_, index) => `<div class="dp-manual-row has-stats">
           <div class="dp-slot-label" data-slot-index="${index}">${dpEscape(labels[index] || `${index + 1}`)}</div>
           <input class="dp-input" name="lineup-number-${index}" value="${dpEscape(players[index]?.number ?? '')}" placeholder="번호" />
           <input class="dp-input" name="lineup-name-${index}" value="${dpEscape(getPrefillName(players[index]))}" placeholder="선수 이름" />
+          ${buildLineupManualStatCellsHtml(players[index], index)}
         </div>`).join('')}
       </div>
     </div>`;
@@ -400,7 +436,7 @@ function buildLineupManualFormHtml(lineup) {
 /** 교체 명단 풀폼 모달 본문 HTML — 번호/이름 입력 행 DETAIL_BENCH_ROWS개. */
 function buildBenchManualFormHtml(players) {
   const list = clonePlayers(players || []);
-  return `<div class="dp-manual-help">교체 명단을 입력하면 /detail 교체 명단에 즉시 반영됩니다.</div>
+  return `<div class="dp-manual-help">교체 명단을 입력하면 즉시 반영됩니다.</div>
     <div class="dp-form-stack">
       <div class="dp-manual-grid">
         ${Array.from({ length: DETAIL_BENCH_ROWS }, (_, index) => `<div class="dp-manual-row">
@@ -552,6 +588,12 @@ function extractLineupOverrideFromForm(form) {
     const number = getInputValue(form.elements[`lineup-number-${index}`]?.value);
     if (!name) continue;
 
+    const goals = Math.max(0, Number(form.elements[`lineup-goals-${index}`]?.value) || 0);
+    const ownGoals = Math.max(0, Number(form.elements[`lineup-owngoals-${index}`]?.value) || 0);
+    const assists = Math.max(0, Number(form.elements[`lineup-assists-${index}`]?.value) || 0);
+    const yellow = !!form.elements[`lineup-yellow-${index}`]?.checked;
+    const red = !!form.elements[`lineup-red-${index}`]?.checked;
+
     players.push({
       playerId: null,
       name,
@@ -561,6 +603,13 @@ function extractLineupOverrideFromForm(form) {
       pos: inferBasePos(labels[index]),
       grid: grids[index] || null,
       _manual: true,
+      // 라인업 자체가 없어 API 이벤트와 연결될 방법이 없는 선수의 골/카드 수동 입력값 —
+      // lpManualPlayerEventsOverride(lineup-events.js)가 렌더 시 events와 같은 모양으로 변환.
+      manualGoals: goals || undefined,
+      manualOwnGoals: ownGoals || undefined,
+      manualAssists: assists || undefined,
+      manualYellow: yellow || undefined,
+      manualRed: red || undefined,
     });
   }
 
@@ -800,6 +849,29 @@ document.addEventListener('click', event => {
 
   const backdrop = document.getElementById('manualPanelBackdrop');
   if (backdrop && event.target === backdrop) closeManualPanel();
+});
+
+/**
+ * 수동 입력 폼(#manualPanelForm) 공통 — Enter 키로 같은 열의 다음 행 입력칸으로 포커스 이동.
+ * input name이 "{prefix}-{index}" 형식(lineup-name-0, lineup-goals-3, bench-number-2,
+ * injury-name-5 등 — 이 파일의 모든 풀폼/그리드 행이 이 규칙을 따름)이면 다음 인덱스의
+ * 같은 prefix 필드로 넘어간다. 다음 행에 그 필드가 없으면(마지막 행 등) 아무 동작 안 함.
+ */
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const form = target.closest('#manualPanelForm');
+  if (!form) return;
+
+  event.preventDefault();
+  const name = target.getAttribute('name') || '';
+  const match = name.match(/^(.*-)(\d+)$/);
+  if (!match) return;
+  const nextField = form.elements[`${match[1]}${Number(match[2]) + 1}`];
+  if (!nextField) return;
+  nextField.focus();
+  if (nextField.type !== 'checkbox' && typeof nextField.select === 'function') nextField.select();
 });
 
 document.addEventListener('change', event => {
