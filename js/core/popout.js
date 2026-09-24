@@ -21,10 +21,13 @@
 
 const POPOUT_WINDOW_NAME = 'obs_popout_window';
 const POPOUT_CLOSE_TRIGGER_SELECTOR = [
-  '#manualPanelClose', '#manualPanelCancel', '#manualPanelSave',
+  // manualPanelReset/tacticsNamesReset은 각각 resetManualPanelKind()/전술판 리셋 로직이
+  // 값 삭제 후 closeManualPanel() 등으로 모달 자체를 닫아버린다 — 팝업에서는 모달을 닫아도
+  // 뒤에 보여줄 대시보드가 없어(전부 숨김) 창만 텅 빈 채로 남으므로 같이 닫아줘야 한다.
+  '#manualPanelClose', '#manualPanelCancel', '#manualPanelSave', '#manualPanelReset',
   '#settingsCloseBtn',
   '.ev-subst-picker-confirm', '.ev-subst-picker-cancel', '.ev-subst-picker-close',
-  '#tacticsNamesClose', '#tacticsNamesCancel', '#tacticsNamesSave',
+  '#tacticsNamesClose', '#tacticsNamesCancel', '#tacticsNamesSave', '#tacticsNamesReset',
 ].join(', ');
 
 /** 전술판 선수 이름 입력 버튼(onclick 인라인) 공용 진입점 — 새 창 분리 설정을 확인해 분기한다. */
