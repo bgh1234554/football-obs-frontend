@@ -104,6 +104,88 @@ function syncSettingsFromStorage(newValue) {
     : [];
 }
 
+/**
+ * obs-scoreboard-state-v2(state.js SKEY) storage 이벤트 공통 처리 — 메인 창과 팝업 둘 다
+ * 이 창의 로컬 state를 최신으로 맞추는 데 써야 한다. 이 함수를 메인 창에서만 등록해두면,
+ * 테마 탭 팝업이 열려있는 동안 메인 창(또는 다른 팝업)에서 점수/색상이 바뀌어도 그 팝업의
+ * state는 부팅 시점 스냅샷에 멈춰있다가, 팝업에서 아무 필드나 하나 바꿔 persist()가 그
+ * 오래된 state 전체를 다시 저장하면서 메인 창의 변경사항을 되돌려버리는 문제가 있었다 —
+ * 설정(syncSettingsFromStorage)과 똑같은 구조의 문제라 같은 함수를 메인/팝업 양쪽에서 공유한다.
+ * event.oldValue와 비교해 "무엇이 바뀌었는지" 추정하지 않는다 — 오히려 그러면 이 창이 이미
+ * 알고 있던 값과 반영해야 할 값이 어긋날 수 있다. 그 대신 저장된 최신 스냅샷(saved)을
+ * 이 창의 현재 state와 직접 비교해 필드 단위로만 반영한다(항상 정확, 순서 무관).
+ */
+function syncScoreboardStateFromStorage(newValue) {
+  try {
+    const saved = JSON.parse(newValue || 'null');
+    if (!saved) return;
+    let changed = false;
+    const apply = (key, value) => { if (state[key] !== value) { state[key] = value; changed = true; } };
+    const applyIfPresent = keys => keys.forEach(key => { if (key in saved) apply(key, saved[key]); });
+
+    // 1) 수동 모드 ON/OFF — theme.js:toggleManualMode()의 부수효과를 확인창 없이 재현.
+    if (typeof saved.manualMode === 'boolean' && saved.manualMode !== state.manualMode) {
+      apply('manualMode', saved.manualMode);
+      if (el.manualModeToggle) el.manualModeToggle.checked = saved.manualMode;
+      const sidebarMirror = document.getElementById('sidebarManualMirror');
+      if (sidebarMirror) sidebarMirror.checked = saved.manualMode;
+      if (el.manualSection) el.manualSection.classList.toggle('visible', saved.manualMode);
+      if (!saved.manualMode) { apply('homeLogo', ''); apply('awayLogo', ''); }
+    }
+
+    // 2) 순수 표시/레이아웃 설정 — API 폴링이 절대 건드리지 않는 값들이라 수동 모드
+    // 여부와 무관하게 항상 동기화해도 안전하다(색상/보드 폭/테두리/득점자 폰트/로고
+    // 배율·위치/레드카드 레일/팀컬러 override 표시 등, 전부 theme.js·render.js가
+    // 테마 탭 컨트롤에서 직접 쓰는 필드).
+    if (saved.colors && typeof saved.colors === 'object') {
+      Object.keys(saved.colors).forEach(key => {
+        if (state.colors[key] !== saved.colors[key]) { state.colors[key] = saved.colors[key]; changed = true; }
+      });
+    }
+    applyIfPresent([
+      'aggEnabled', 'aggHomeBase', 'aggAwayBase',
+      'logoAlign', 'radiusMode', 'boardWidth',
+      'homeOutlineEnabled', 'awayOutlineEnabled', 'boardOutlineEnabled', 'scoreOutlineEnabled',
+      'homeOutlineWidth', 'awayOutlineWidth', 'boardOutlineWidth', 'scoreOutlineWidth',
+      'noteEnabled', 'noteFontSize', 'fontFamily',
+      'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
+      'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
+      'teamColorOverride', 'teamColorOverrideFixtureId',
+    ]);
+
+    // 3) 추가시간 — extraManualOverride가 켜져 있으면(수동으로 조작함) 수동 모드 여부와
+    // 무관하게 동기화한다. 메인 창의 API 폴링도 이 플래그를 보고 자동 갱신을 건너뛰므로
+    // (js/core/fixture.js) 값을 가져와도 서로 충돌하지 않는다.
+    if (saved.extraManualOverride) applyIfPresent(['extra', 'extraShown', 'extraManualOverride']);
+
+    // 4) 수동 모드에서만 사람이 직접 입력하는 필드 — 켜져 있을 때만 동기화한다. 꺼져
+    // 있으면 이 값들(이름/전후반/점수/로고)은 API 폴링이 대신 채우므로, 팝업이 부팅
+    // 시점에 들고 있던 오래된 스냅샷으로 덮어쓰면 안 된다.
+    if (state.manualMode) {
+      applyIfPresent(['homeName', 'awayName', 'half', 'homeScore', 'awayScore',
+        'homeLogoManual', 'awayLogoManual', 'homeLogo', 'awayLogo']);
+      if (saved.notes) {
+        ['home', 'away'].forEach(side => {
+          if (typeof saved.notes[side] === 'string' && saved.notes[side] !== state.notes[side]) {
+            state.notes[side] = saved.notes[side];
+            changed = true;
+          }
+        });
+      }
+    }
+
+    // 일부러 동기화하지 않는 것: seconds/running/lastRunningTickMs(타이머 진행 — 매 초
+    // 바뀌는 값을 다른 창의 스냅샷으로 덮으면 방송 시계가 튄다), boardScale(창마다 다른
+    // 미리보기 배율이라 다른 창에 맞지 않음), pk/pkScore/pkLastExitedAt(PK는 버튼/단축키로
+    // 진행 중인 이벤트 시퀀스라 오래된 값으로 되돌리면 진행 상황이 깨진다).
+
+    if (changed) {
+      if (state.manualMode && typeof syncManualInputs === 'function') syncManualInputs();
+      if (typeof render === 'function') render();
+    }
+  } catch {}
+}
+
 if (window.__POPOUT_MODE__) {
   // 이 창 자신이 팝업인 경우 — 보드/사이드바/탭바 숨기고, 부팅이 끝나면 목표 트리거를 클릭한다.
   (function () {
@@ -168,7 +250,18 @@ if (window.__POPOUT_MODE__) {
     // saveSettings) 그 사이 다른 창에서 바뀐 값을 롤백시켜버린다. 메인 창과 동일하게
     // storage 이벤트로 최신 값을 반영해둔다.
     window.addEventListener('storage', event => {
-      if (event.key === SETTINGS_STORAGE_KEY) syncSettingsFromStorage(event.newValue);
+      if (event.key === SETTINGS_STORAGE_KEY) {
+        syncSettingsFromStorage(event.newValue).forEach(category => {
+          if (typeof applySettingSideEffects === 'function') applySettingSideEffects(category);
+        });
+        return;
+      }
+      // 팝업의 로컬 state(점수/색상/보드 폭 등)도 같은 이유로 낡을 수 있다 — 테마 탭
+      // 팝업이 열려있는 동안 메인 창(또는 다른 팝업)에서 점수/색상이 바뀌었는데 이 팝업
+      // 쪽에서 아무 필드나 하나 바꾸면, persist()가 이 팝업의 오래된 state 전체를 다시
+      // 저장하면서 메인 창의 변경사항을 되돌려버린다. 메인 창과 동일한 필드별 규칙으로
+      // 동기화한다(syncScoreboardStateFromStorage 참고).
+      if (event.key === 'obs-scoreboard-state-v2') syncScoreboardStateFromStorage(event.newValue);
     });
   })();
 } else {
@@ -182,6 +275,10 @@ if (window.__POPOUT_MODE__) {
       // 필터링하기 때문에, category:null 하나만 보내면(이전 코드) 전부 무시되어 값은
       // 저장돼도 실제 화면(이름 표시 등)에는 아무것도 반영되지 않는 버그가 있었다.
       syncSettingsFromStorage(event.newValue).forEach(category => {
+        // setSetting()이 로컬 변경 시에만 실행하던 부수효과(배경 CSS 변수, 그린스크린 재렌더,
+        // bigPanelLinked 패널 높이 등)를 원격 변경/초기화에도 똑같이 적용 — 안 하면 값은
+        // settingsState에 반영돼도 화면(CSS 변수 갱신 등)엔 반영되지 않는 카테고리가 있었다.
+        if (typeof applySettingSideEffects === 'function') applySettingSideEffects(category);
         const value = settingsState[category];
         document.dispatchEvent(new CustomEvent('settings:change', { detail: { category, value, mode: value } }));
       });
@@ -208,78 +305,10 @@ if (window.__POPOUT_MODE__) {
       return;
     }
     // 테마 탭 컨트롤은 obs.settings.v3가 아니라 점수판 전체 state(state.js:
-    // SKEY='obs-scoreboard-state-v2')에 실려 저장된다. 이 state를 통째로 메인 창에 병합하면
-    // 팝업이 부팅된 시점의 오래된 타이머/점수 값까지 같이 덮어써 진행 중인 방송 화면이
-    // 되돌아갈 위험이 있어, 필드를 세 그룹으로 나눠 각기 다른 조건으로 동기화한다.
+    // SKEY='obs-scoreboard-state-v2')에 실려 저장된다 — 필드별 동기화 규칙은
+    // syncScoreboardStateFromStorage 참고(메인 창/팝업 공용).
     if (event.key === 'obs-scoreboard-state-v2') {
-      try {
-        const saved = JSON.parse(event.newValue || 'null');
-        if (!saved) return;
-        let changed = false;
-        const apply = (key, value) => { if (state[key] !== value) { state[key] = value; changed = true; } };
-        const applyIfPresent = keys => keys.forEach(key => { if (key in saved) apply(key, saved[key]); });
-
-        // 1) 수동 모드 ON/OFF — theme.js:toggleManualMode()의 부수효과를 확인창 없이 재현.
-        if (typeof saved.manualMode === 'boolean' && saved.manualMode !== state.manualMode) {
-          apply('manualMode', saved.manualMode);
-          if (el.manualModeToggle) el.manualModeToggle.checked = saved.manualMode;
-          const sidebarMirror = document.getElementById('sidebarManualMirror');
-          if (sidebarMirror) sidebarMirror.checked = saved.manualMode;
-          if (el.manualSection) el.manualSection.classList.toggle('visible', saved.manualMode);
-          if (!saved.manualMode) { apply('homeLogo', ''); apply('awayLogo', ''); }
-        }
-
-        // 2) 순수 표시/레이아웃 설정 — API 폴링이 절대 건드리지 않는 값들이라 수동 모드
-        // 여부와 무관하게 항상 동기화해도 안전하다(색상/보드 폭/테두리/득점자 폰트/로고
-        // 배율·위치/레드카드 레일/팀컬러 override 표시 등, 전부 theme.js·render.js가
-        // 테마 탭 컨트롤에서 직접 쓰는 필드).
-        if (saved.colors && typeof saved.colors === 'object') {
-          Object.keys(saved.colors).forEach(key => {
-            if (state.colors[key] !== saved.colors[key]) { state.colors[key] = saved.colors[key]; changed = true; }
-          });
-        }
-        applyIfPresent([
-          'aggEnabled', 'aggHomeBase', 'aggAwayBase',
-          'logoAlign', 'radiusMode', 'boardWidth',
-          'homeOutlineEnabled', 'awayOutlineEnabled', 'boardOutlineEnabled', 'scoreOutlineEnabled',
-          'homeOutlineWidth', 'awayOutlineWidth', 'boardOutlineWidth', 'scoreOutlineWidth',
-          'noteEnabled', 'noteFontSize', 'fontFamily',
-          'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
-          'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
-          'teamColorOverride', 'teamColorOverrideFixtureId',
-        ]);
-
-        // 3) 추가시간 — extraManualOverride가 켜져 있으면(수동으로 조작함) 수동 모드 여부와
-        // 무관하게 동기화한다. 메인 창의 API 폴링도 이 플래그를 보고 자동 갱신을 건너뛰므로
-        // (js/core/fixture.js) 값을 가져와도 서로 충돌하지 않는다.
-        if (saved.extraManualOverride) applyIfPresent(['extra', 'extraShown', 'extraManualOverride']);
-
-        // 4) 수동 모드에서만 사람이 직접 입력하는 필드 — 켜져 있을 때만 동기화한다. 꺼져
-        // 있으면 이 값들(이름/전후반/점수/로고)은 API 폴링이 대신 채우므로, 팝업이 부팅
-        // 시점에 들고 있던 오래된 스냅샷으로 덮어쓰면 안 된다.
-        if (state.manualMode) {
-          applyIfPresent(['homeName', 'awayName', 'half', 'homeScore', 'awayScore',
-            'homeLogoManual', 'awayLogoManual', 'homeLogo', 'awayLogo']);
-          if (saved.notes) {
-            ['home', 'away'].forEach(side => {
-              if (typeof saved.notes[side] === 'string' && saved.notes[side] !== state.notes[side]) {
-                state.notes[side] = saved.notes[side];
-                changed = true;
-              }
-            });
-          }
-        }
-
-        // 일부러 동기화하지 않는 것: seconds/running/lastRunningTickMs(타이머 진행 — 매 초
-        // 바뀌는 값을 팝업의 스냅샷으로 덮으면 방송 시계가 튄다), boardScale(창마다 다른
-        // 미리보기 배율이라 다른 창에 맞지 않음), pk/pkScore/pkLastExitedAt(PK는 버튼/단축키로
-        // 진행 중인 이벤트 시퀀스라 팝업의 오래된 값으로 되돌리면 진행 상황이 깨진다).
-
-        if (changed) {
-          if (state.manualMode && typeof syncManualInputs === 'function') syncManualInputs();
-          if (typeof render === 'function') render();
-        }
-      } catch {}
+      syncScoreboardStateFromStorage(event.newValue);
       return;
     }
     // 그 외(라인업 수동 입력, 교체 override, 선수 ID/닉네임 연결 등)는 전부 라인업/이벤트/전술판

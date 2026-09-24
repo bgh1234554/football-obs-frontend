@@ -586,6 +586,24 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
+  applySettingSideEffects(category);
+  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+    setSetting('statsAutoSwipe', 'on');
+  }
+  document.dispatchEvent(new CustomEvent('settings:change', {
+    detail: { category, value, mode: value }
+  }));
+  return true;
+}
+
+/**
+ * category 하나가 바뀌었을 때 필요한 추가 부수효과(CSS 변수 재적용/재렌더/패널 높이 등) —
+ * setSetting()의 로컬 변경 경로뿐 아니라, 팝업 분리(js/core/popout.js)가 storage 이벤트로
+ * 원격 변경사항을 반영할 때도 이 함수를 그대로 호출해야 한다. 예전엔 이 부수효과들이
+ * setSetting() 안에만 있어서, 팝업에서 배경색/그린스크린/bigPanelLinked 등을 바꾸면 값
+ * 자체는 메인 창에 동기화돼도 실제 화면(CSS 변수·재렌더)엔 반영되지 않는 문제가 있었다.
+ */
+function applySettingSideEffects(category) {
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
@@ -613,13 +631,6 @@ function setSetting(category, value) {
     // theme:colors-changed로 라인업/스탯 패널이 인라인 컬러를 다시 그리도록 신호.
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
   }
-  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
-    setSetting('statsAutoSwipe', 'on');
-  }
-  document.dispatchEvent(new CustomEvent('settings:change', {
-    detail: { category, value, mode: value }
-  }));
-  return true;
 }
 
 /**

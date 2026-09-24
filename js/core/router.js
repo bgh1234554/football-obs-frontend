@@ -164,7 +164,10 @@
       window.history[fn]({ page }, '', nextUrl);
       return;
     }
-    window.history[fn]({ page }, '', route);
+    // 쿼리스트링(예: 팝업 분리의 ?popout=theme)을 유지한 채 경로만 바꾼다 — 이전엔 route만
+    // 넘겨 쿼리스트링이 사라졌고, path 라우팅(배포 환경)에서 팝업 창을 새로고침하면
+    // ?popout=... 이 없어져 팝업 모드가 풀리고 일반 메인 창처럼 부팅돼버리는 문제가 있었다.
+    window.history[fn]({ page }, '', route + window.location.search);
   }
 
   /**
