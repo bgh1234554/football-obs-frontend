@@ -54,6 +54,20 @@
     'html.is-popout .dp-manual-row { grid-template-columns: 52px 78px minmax(0, 1fr) !important; }',
     'html.is-popout .dp-manual-row.is-injury { grid-template-columns: 72px 72px minmax(0, 1fr) minmax(180px, 240px) !important; }',
     'html.is-popout .dp-slot-label { text-align: center !important; }',
+    // 설정 팝업도 같은 이유(팝업 창의 실제 폭이 좁으면 @container 반응형이 "좁은 화면"으로
+    // 오인)로 settings-popup.css의 두 반응형 분기(740px/560px)가 오작동할 수 있어, 팝업
+    // 창 크기를 자유롭게 줄일 수 있도록 두 분기 모두 무력화하고 원래(데스크톱) 값을 강제한다.
+    'html.is-popout .sp-row,',
+    'html.is-popout .sp-row:has(.sp-bg-input-cluster) { flex-direction: row !important; align-items: center !important; }',
+    'html.is-popout .sp-row-label { max-width: 430px !important; }',
+    'html.is-popout .sp-toggle-cluster,',
+    'html.is-popout .sp-slider-cluster,',
+    'html.is-popout .sp-num-cluster,',
+    'html.is-popout .sp-radio-cluster { width: auto !important; }',
+    'html.is-popout .sp-file-input { max-width: 320px !important; }',
+    'html.is-popout .sp-manual-reset-toggles-nowrap { flex-wrap: nowrap !important; }',
+    'html.is-popout .sp-tabs { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; overflow-x: visible !important; }',
+    'html.is-popout .sp-tab { width: 100% !important; padding-inline: 10px !important; }',
   ].join('\n');
   document.head.appendChild(chromeStyle);
 

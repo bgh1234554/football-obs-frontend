@@ -39,19 +39,22 @@ window.handleTacticsNamesBtnClick = handleTacticsNamesBtnClick;
 
 // 대상별 창 크기 — 각 모달이 OFF(인라인)일 때 자연스럽게 갖는 가로세로 비율에 맞춰,
 // 팝업이 그 비율 그대로 열리도록 한다(억지로 넓게/좁게 늘어나 보이지 않게).
+// 데스크톱(OFF) 모달의 반응형 분기(lineup-manual.css/settings-popup.css)는 전부 팝업 CSS에서
+// 무력화해뒀으므로, 창 크기는 "그 분기점을 넘는지"와 무관하게 순수하게 화면에 편한 크기로
+// 자유롭게 고를 수 있다 — "팝업"다운 작은 크기로 축소.
 const POPOUT_WINDOW_SIZE = {
-  manual:         { width: 780, height: 860 },  // .dp-manual-modal (라인업/교체/미출전) — 폭 760 기준
-  'tactics-names': { width: 780, height: 860 }, // 같은 .dp-manual-modal 구조
-  settings:       { width: 740, height: 840 },  // .sp-modal 기본 크기(720x820)에 맞춤
-  subst:          { width: 340, height: 480 },  // .ev-subst-picker-modal(320px, 소형 리스트)
-  theme:          { width: 900, height: 820 },  // 페이지 하나(테마 탭) — 모달보다 넓게
+  manual:         { width: 620, height: 820 },  // .dp-manual-modal (라인업/교체/미출전)
+  'tactics-names': { width: 620, height: 700 }, // 같은 .dp-manual-modal 구조
+  settings:       { width: 680, height: 760 },  // .sp-modal
+  subst:          { width: 300, height: 420 },  // .ev-subst-picker-modal(소형 리스트)
+  theme:          { width: 760, height: 700 },  // 페이지 하나(테마 탭) — 모달보다 살짝 넓게
 };
 
 /** 메인 창에서 호출 — key/params로 팝업 창을 열거나(이미 열려있으면) 포커스한다. */
 function popoutOpen(key, params) {
   const qs = new URLSearchParams({ popout: key, ...(params || {}) });
   const url = `${window.location.pathname}?${qs.toString()}`;
-  const { width, height } = POPOUT_WINDOW_SIZE[key] || { width: 780, height: 860 };
+  const { width, height } = POPOUT_WINDOW_SIZE[key] || { width: 620, height: 700 };
   const win = window.open(url, POPOUT_WINDOW_NAME, `width=${width},height=${height},resizable=yes,scrollbars=yes`);
   if (win) win.focus();
   return win;
