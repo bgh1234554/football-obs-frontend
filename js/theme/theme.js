@@ -684,19 +684,31 @@
    * 이미지 파일을 읽어 URL 문자열을 콜백으로 전달.
    * - SVG: readAsText → data:image/svg+xml,{encodeURIComponent} 형식
    *   → 브라우저가 벡터로 렌더링하며, localStorage에도 문자열로 저장 가능
-   * - 그 외(PNG 등): readAsDataURL → base64 data URL
+   * - 그 외(PNG 등): 설정 팝업의 배경 이미지 첨부(compressBackgroundImage)와 동일한 압축을
+   *   재사용 — 1920x1080 초과분만 축소하고 webp/jpeg 품질을 단계적으로 낮춰 localStorage에
+   *   안전하게 들어가는 크기(약 1.8MB 이하)로 줄인다. 작은 로고는 이미 그 이하라 사실상
+   *   그대로 통과한다. 압축 자체가 실패하면(매우 드묾) 원본 base64로 폴백 — 이 경우
+   *   저장 시 용량 초과가 나더라도 persist()의 quota 가드가 반대편 로고까지 지우지는 않는다.
    */
   function readLogoFile(file, cb){
-    const r = new FileReader();
     if(file.type === 'image/svg+xml'){
+      const r = new FileReader();
       // SVG는 텍스트로 읽어 URL-encoded data URI 생성 (벡터 품질 유지)
       r.onload = ()=> cb('data:image/svg+xml,' + encodeURIComponent(r.result));
       r.readAsText(file);
-    } else {
-      // PNG 등 래스터 이미지는 base64로 변환
-      r.onload = ()=> cb(r.result);
-      r.readAsDataURL(file);
+      return;
     }
+    if(typeof compressBackgroundImage === 'function'){
+      compressBackgroundImage(file).then(cb).catch(()=>{
+        const r = new FileReader();
+        r.onload = ()=> cb(r.result);
+        r.readAsDataURL(file);
+      });
+      return;
+    }
+    const r = new FileReader();
+    r.onload = ()=> cb(r.result);
+    r.readAsDataURL(file);
   }
   // [이벤트 등록] 수동 모드 — 로고 파일 업로드 (파일 선택 시 URL 입력란 초기화)
   function clearManualLogo(side){
