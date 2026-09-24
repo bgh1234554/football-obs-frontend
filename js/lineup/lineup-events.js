@@ -83,8 +83,57 @@ function lpFindLineupPlayerIndex(players, matcher) {
 }
 
 /**
+ * playerId가 실제 값(0 아님)이면 그대로 문자열 키로 쓰고, 0/null이면 "0:{side}:{정규화된 이름}"
+ * 합성 키로 구분한다. API가 여러 선수의 ID를 다 못 준 팀(하위 리그 등)에서, 라인업/벤치에
+ * playerId=0인 선수가 여럿 있을 때 전부 같은 "0" 키로 뭉쳐 한 이벤트(카드/골/교체)가 무관한
+ * 선수 전원에게 표시되던 충돌을 막는다. 이름은 이벤트 쪽(playerName/assistName)과 라인업 쪽
+ * (player.name) 둘 다 백엔드 KoResolver를 거쳐 동일한 표시명을 쓰므로 정규화 후 일치한다.
+ * 이름조차 없으면(사실상 식별 불가) null을 반환해 호출자가 집계를 건너뛰게 한다.
+ */
+function lpEventPersonKey(id, side, name) {
+  const pid = Number(id);
+  if (pid) return String(pid);
+  const normalized = lpNormalizePlayerName(name);
+  if (!normalized) return null;
+  return `0:${side || ''}:${normalized}`;
+}
+window.lpEventPersonKey = lpEventPersonKey;
+
+/**
+ * 라인업 풀폼(완전 수동 입력, `_manual: true`)으로 만든 선수는 playerId가 없어 API events와
+ * 전혀 연결될 수 없다 — lineup-manual-modal.js의 골/자책골/도움/경고/퇴장 입력칸에 사용자가
+ * 직접 넣은 값을 lpAggregatePlayerEvents가 만드는 events와 정확히 같은 모양으로 변환해,
+ * lpBuildNodeBadgesHtml/lpBuildCardMarkersHtml/lpBuildGoalsAssistsHtml/lpCardKind 등
+ * 기존 배지 렌더링 함수를 그대로 재사용할 수 있게 한다. 분(minute) 정보가 없으므로
+ * time은 전부 null — 위 렌더 함수들은 개수/존재 여부만 보고 time은 쓰지 않아 안전하다.
+ * 값이 하나도 없으면 null(호출자가 일반 이벤트 조회로 폴백).
+ */
+function lpManualPlayerEventsOverride(player) {
+  if (!player) return null;
+  const goals = Number(player.manualGoals) || 0;
+  const ownGoals = Number(player.manualOwnGoals) || 0;
+  const assists = Number(player.manualAssists) || 0;
+  const yellow = !!player.manualYellow;
+  const red = !!player.manualRed;
+  if (!goals && !ownGoals && !assists && !yellow && !red) return null;
+
+  return {
+    goals: Array.from({ length: goals }, () => ({ time: null, isPenalty: false, isOwnGoal: false })),
+    ownGoals: Array.from({ length: ownGoals }, () => ({ time: null })),
+    assists: Array.from({ length: assists }, () => ({ time: null })),
+    yellow: yellow ? { time: null } : null,
+    // 옐로+레드 둘 다 체크 = "2번째 경고 누적 퇴장"(lpCardKind가 yellow+red.isCumulative일 때만
+    // 'cumulative'로 판정해 카드 2장을 같이 그림). 레드만 체크하면 일반 단독 퇴장.
+    red: red ? { time: null, isCumulative: yellow } : null,
+    subIn: null,
+    subOut: null,
+  };
+}
+window.lpManualPlayerEventsOverride = lpManualPlayerEventsOverride;
+
+/**
  * fixtureData.events를 선수별로 집계.
- * 반환 Map<playerIdString, {
+ * 반환 Map<personKey, {
  *   goals: [{ time, isPenalty, isOwnGoal }],  // 정규 득점만 (자책골 제외)
  *   ownGoals: [{ time }],                     // 이 선수의 자책골
  *   assists: [{ time }],
@@ -93,6 +142,8 @@ function lpFindLineupPlayerIndex(players, matcher) {
  *   subIn: { time } | null,           // 이 선수가 교체 IN 됐을 때
  *   subOut: { time } | null,          // 이 선수가 교체 OUT 됐을 때
  * }>
+ * personKey는 lpEventPersonKey 참고 — playerId가 있으면 그 숫자 그대로, 없으면
+ * "0:{side}:{이름}" 합성 키. 렌더 쪽 lpGetPlayerEvents도 같은 함수로 조회해야 일치한다.
  *
  * Penalty Shootout 이벤트(comments==='Penalty Shootout')는 제외.
  * Own Goal은 goals가 아닌 별도의 ownGoals에 집계 — 정규 득점과 구분해서 표시하기 위함
@@ -102,15 +153,14 @@ function lpAggregatePlayerEvents(events) {
   const map = new Map();
   if (!Array.isArray(events)) return map;
 
-  function ensure(pid) {
-    const key = String(pid);
+  function ensure(key) {
     if (!map.has(key)) {
       map.set(key, { goals: [], ownGoals: [], assists: [], yellow: null, red: null, subIn: null, subOut: null });
     }
     return map.get(key);
   }
 
-  // 같은 선수 두 번째 옐로 → red(누적) 변환을 위해 yellow 카운트 추적.
+  // 같은 선수 두 번째 옐로 → red(누적) 변환을 위해 yellow 카운트 추적(personKey 기준).
   const yellowCount = new Map();
 
   events.forEach(ev => {
@@ -123,28 +173,31 @@ function lpAggregatePlayerEvents(events) {
     if (isPso) return;
 
     if (type === 'goal') {
-      if (ev.playerId == null) return;
+      const playerKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      if (!playerKey) return;
       if (detail === 'Missed Penalty') return;
       const isOwn = detail === 'Own Goal';
       const isPenalty = detail === 'Penalty';
       if (isOwn) {
-        ensure(ev.playerId).ownGoals.push({ time });
+        ensure(playerKey).ownGoals.push({ time });
       } else {
-        ensure(ev.playerId).goals.push({ time, isPenalty, isOwnGoal: false });
+        ensure(playerKey).goals.push({ time, isPenalty, isOwnGoal: false });
       }
       // 어시스트는 Own Goal만 제외. 페널티는 보통 assistId가 없어 기록되지 않지만, 있으면 그대로 반영.
-      if (ev.assistId != null && !isOwn) {
-        ensure(ev.assistId).assists.push({ time });
+      const assistKey = lpEventPersonKey(ev.assistId, ev.side, ev.assistName);
+      if (assistKey && !isOwn) {
+        ensure(assistKey).assists.push({ time });
       }
       return;
     }
 
     if (type === 'card') {
-      if (ev.playerId == null) return;
-      const e = ensure(ev.playerId);
+      const playerKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      if (!playerKey) return;
+      const e = ensure(playerKey);
       if (detail === 'Yellow Card') {
-        const next = (yellowCount.get(String(ev.playerId)) || 0) + 1;
-        yellowCount.set(String(ev.playerId), next);
+        const next = (yellowCount.get(playerKey) || 0) + 1;
+        yellowCount.set(playerKey, next);
         if (!e.yellow) e.yellow = { time };
         // 두 번째 옐로면 누적 퇴장으로 자동 마킹 (API가 별도 Red를 안 보낼 수도 있음).
         if (next >= 2 && !e.red) e.red = { time, isCumulative: true };
@@ -152,7 +205,7 @@ function lpAggregatePlayerEvents(events) {
         if (!e.yellow) e.yellow = { time }; // 두 번째 옐로만 와도 첫번째 옐로가 있었음을 함의 → 노란 표시
         e.red = { time, isCumulative: true };
       } else if (detail === 'Red Card') {
-        const hadYellow = (yellowCount.get(String(ev.playerId)) || 0) > 0;
+        const hadYellow = (yellowCount.get(playerKey) || 0) > 0;
         e.red = { time, isCumulative: hadYellow };
       }
       return;
@@ -160,8 +213,10 @@ function lpAggregatePlayerEvents(events) {
 
     if (type === 'subst') {
       // playerId = OUT, assistId = IN (이벤트 패널과 동일한 컨벤션)
-      if (ev.playerId != null) ensure(ev.playerId).subOut = { time };
-      if (ev.assistId != null) ensure(ev.assistId).subIn = { time };
+      const outKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      const inKey = lpEventPersonKey(ev.assistId, ev.side, ev.assistName);
+      if (outKey) ensure(outKey).subOut = { time };
+      if (inKey) ensure(inKey).subIn = { time };
     }
   });
 

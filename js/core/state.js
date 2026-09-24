@@ -166,7 +166,14 @@
   // [상태 저장/복원] LocalStorage를 통해 state를 영속화하고 새로고침 시 복원
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /** 현재 state를 LocalStorage에 JSON으로 저장 (로고 데이터는 용량 절약을 위해 제외) */
+  /**
+   * 현재 state를 LocalStorage에 JSON으로 저장.
+   * 용량 초과 시 홈/원정 로고 중 실제로 큰 쪽만 골라 빼고 나머지는 그대로 저장한다 —
+   * "이번 저장을 통째로 건너뛰기"만 하면, 용량을 넘긴 로고가 메모리(state.homeLogo 등)에
+   * 남아있는 한 그 뒤의 모든 persist() 호출(점수/타이머/색상 등 무관한 변경 포함)이 계속
+   * 같은 이유로 실패해 사실상 저장 자체가 영구히 멈춰버린다. 실패한 필드만 골라 빼면 나머지
+   * 변경사항은 계속 저장되고, 반대편 로고도(예전처럼 둘 다 비우지 않고) 그대로 유지된다.
+   */
   function persist(){
     try{
       try{
@@ -174,9 +181,24 @@
         return;
       }catch(e){
         if(e.name !== 'QuotaExceededError' && e.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e;
-        const snap = JSON.parse(JSON.stringify({...state, homeLogo:'', awayLogo:'', homeLogoManual:'', awayLogoManual:''}));
-        localStorage.setItem(SKEY, JSON.stringify(snap));
-        console.warn('Logo data was excluded from localStorage because it exceeded the browser quota.', e);
+        const fallbacks = [
+          { drop: ['homeLogo', 'homeLogoManual'], warn: '홈 로고' },
+          { drop: ['awayLogo', 'awayLogoManual'], warn: '원정 로고' },
+          { drop: ['homeLogo', 'homeLogoManual', 'awayLogo', 'awayLogoManual'], warn: '홈/원정 로고' },
+        ];
+        for (const { drop, warn } of fallbacks) {
+          try {
+            const snap = { ...state };
+            drop.forEach(key => { snap[key] = ''; });
+            localStorage.setItem(SKEY, JSON.stringify(snap));
+            console.warn(`${warn} 데이터가 너무 커서 이번 저장에서 제외했습니다(새로고침 시 사라짐). 나머지 값은 정상 저장됨.`, e);
+            return;
+          } catch (e2) {
+            if (e2.name !== 'QuotaExceededError' && e2.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e2;
+          }
+        }
+        // 로고를 전부 비워도 여전히 용량 초과면(다른 값이 큰 경우 등) 이번 저장만 건너뛴다.
+        console.warn('Logo data was too large to save to localStorage; this change will be lost on reload.', e);
         return;
       }
     }catch(e){ console.warn('저장 실패 (' + SKEY + '):', e); }

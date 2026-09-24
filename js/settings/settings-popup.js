@@ -64,6 +64,10 @@ const SETTINGS_DEFAULTS = {
   // 라인업+벤치 안에서 유일하게 일치하면 ID 입력 없이 자동으로 연결(player-id-resolve.js).
   // 동명이인이 있으면 자동 적용하지 않고 건너뛴다. off='off', on='on'.
   autoLinkPlayerIdByName: 'on',
+  // 새 창 분리 (관리 탭). ON이면 교체 IN/OUT 선택 / 포메이션·라인업·교체·미출전 입력창 /
+  // 설정 팝업 / 테마 탭을 window.open()으로 별도 창에 띄운다 (js/core/popout.js).
+  // OBS 캡처(Browser Source/Window Capture 모두 메인 창 하나만 봄)에 잡히지 않게 하기 위함.
+  popoutModals: 'off',
   // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
   lineupShowGoals: 'on',     // 골/어시스트 이모티콘
   lineupShowCards: 'on',     // 옐로/레드 카드
@@ -361,6 +365,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
+  'popoutModals',
 ]);
 
 function isValidSetting(category, value) {
@@ -581,6 +586,24 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
+  applySettingSideEffects(category);
+  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+    setSetting('statsAutoSwipe', 'on');
+  }
+  document.dispatchEvent(new CustomEvent('settings:change', {
+    detail: { category, value, mode: value }
+  }));
+  return true;
+}
+
+/**
+ * category 하나가 바뀌었을 때 필요한 추가 부수효과(CSS 변수 재적용/재렌더/패널 높이 등) —
+ * setSetting()의 로컬 변경 경로뿐 아니라, 팝업 분리(js/core/popout.js)가 storage 이벤트로
+ * 원격 변경사항을 반영할 때도 이 함수를 그대로 호출해야 한다. 예전엔 이 부수효과들이
+ * setSetting() 안에만 있어서, 팝업에서 배경색/그린스크린/bigPanelLinked 등을 바꾸면 값
+ * 자체는 메인 창에 동기화돼도 실제 화면(CSS 변수·재렌더)엔 반영되지 않는 문제가 있었다.
+ */
+function applySettingSideEffects(category) {
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
@@ -608,13 +631,6 @@ function setSetting(category, value) {
     // theme:colors-changed로 라인업/스탯 패널이 인라인 컬러를 다시 그리도록 신호.
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
   }
-  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
-    setSetting('statsAutoSwipe', 'on');
-  }
-  document.dispatchEvent(new CustomEvent('settings:change', {
-    detail: { category, value, mode: value }
-  }));
-  return true;
 }
 
 /**
@@ -890,7 +906,16 @@ function getDataUrlByteLength(dataUrl) {
   return Math.floor(payload.length * 3 / 4);
 }
 
-function compressBackgroundImage(file) {
+/**
+ * @param {File} file
+ * @param {{ preserveAlpha?: boolean }} [options] - preserveAlpha:true면(팀 로고 등 투명
+ *   배경이 의미 있는 이미지) JPEG로 폴백하지 않는다 — JPEG는 알파 채널이 없어 투명 배경이
+ *   단색으로 채워지며, 배경 이미지와 달리 로고는 그러면 시각적으로 망가진다. 그 대신 WebP
+ *   (알파 유지 가능)만으로 계속 시도하고, 그래도 목표 용량을 못 맞추면 캔버스를 한 번 더
+ *   축소해 재시도한다.
+ */
+function compressBackgroundImage(file, options = {}) {
+  const preserveAlpha = !!options.preserveAlpha;
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
     const image = new Image();
@@ -913,10 +938,27 @@ function compressBackgroundImage(file) {
             resolve(webp);
             return;
           }
-          const jpeg = canvas.toDataURL('image/jpeg', quality);
-          if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
-            resolve(jpeg);
-            return;
+          if (!preserveAlpha) {
+            const jpeg = canvas.toDataURL('image/jpeg', quality);
+            if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+              resolve(jpeg);
+              return;
+            }
+          }
+        }
+        if (preserveAlpha) {
+          // 화질을 더 낮춰도 안 되면 캔버스 자체를 축소해 WebP로 재시도(알파 유지 우선).
+          canvas.width = Math.max(1, Math.round(canvas.width * 0.5));
+          canvas.height = Math.max(1, Math.round(canvas.height * 0.5));
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          for (const quality of [0.72, 0.48, 0.3]) {
+            const webp = canvas.toDataURL('image/webp', quality);
+            if (getDataUrlByteLength(webp) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+              resolve(webp);
+              return;
+            }
           }
         }
         reject(new Error('compressed image is still too large'));
@@ -1316,7 +1358,13 @@ function initSettingsPopup() {
     syncSettingsTabSectionHeights();
   });
 
-  if (gearBtn) gearBtn.addEventListener('click', openSettingsPopup);
+  if (gearBtn) gearBtn.addEventListener('click', () => {
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('settings', {});
+      return;
+    }
+    openSettingsPopup();
+  });
   if (closeBtn) closeBtn.addEventListener('click', closeSettingsPopup);
   if (backdrop) {
     backdrop.addEventListener('click', event => {

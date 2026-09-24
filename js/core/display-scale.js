@@ -49,7 +49,14 @@
     if (!(width > 0 && height > 0)) return;
     // 2) 가로 1920을 기준으로 배율을 정하고, 세로는 남은 화면을 채우는 논리 높이로 환산한다.
     // 브라우저 주소창 때문에 높이가 줄어도 기존 FHD 글씨/점수판까지 작아지면 안 된다.
-    displayScale = width / baseWidth;
+    // 팝업 분리(js/core/popout-early.js) 창은 OBS 캔버스가 아니라 작은 입력 대화상자다.
+    // 1920 기준 배율을 그대로 적용하면(막 열린 팝업 창이 실제 요청 크기로 자리잡기 전에
+    // 이 계산이 한 번 더 일찍 도는 경우가 있어) 배율이 예상보다 훨씬 작게 잡혀 내용이
+    // 왼쪽 위 구석에 작게 뭉쳐 보이는 문제가 있었다 — 배율을 1로 고정해 창 실제 크기
+    // 그대로 렌더링한다. 이때 body의 레이아웃 폭이 실제 창 크기(작을 수 있음)가 되면서
+    // @container 반응형 분기점(예: lineup-manual.css의 900px)이 잘못 발동할 수 있는데,
+    // 그건 각 CSS 쪽에서 "html.is-popout"으로 직접 되돌려 막아둔다.
+    displayScale = window.__POPOUT_MODE__ ? 1 : (width / baseWidth);
     var canvasWidth = width / displayScale;
     var canvasHeight = height / displayScale;
     offsetX = 0;

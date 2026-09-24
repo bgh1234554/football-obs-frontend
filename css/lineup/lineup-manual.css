@@ -70,7 +70,13 @@
   min-height: 0;
   overflow: auto;
   padding: 14px 16px 18px;
+  /* 다른 패널(.dp-list/.sp-body 등)과 동일한 얇은 스크롤바로 통일 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.25) transparent;
 }
+.dp-manual-body::-webkit-scrollbar { width: 6px; }
+.dp-manual-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+.dp-manual-body::-webkit-scrollbar-track { background: transparent; }
 .dp-manual-footer {
   border-top: 1px solid rgba(255,255,255,.08);
 }
@@ -150,6 +156,82 @@
 .dp-manual-row.is-injury {
   grid-template-columns: 72px 72px minmax(0, 1fr) minmax(180px, 240px);
 }
+
+/* 라인업 풀폼(완전 수동 입력) 전용 — 이름 뒤에 골/자책골/도움/경고/퇴장 5칸을 더 붙인 8열 grid.
+   헤더 행(포메이션 select + 아이콘)과 11개 선수 행이 같은 열 폭을 공유해 아이콘과 입력칸이
+   세로로 맞춰진다. 이름 칸은 minmax(0,1fr)이라 통계 칸들이 늘어난 만큼 자동으로 좁아진다. */
+.dp-manual-row.has-stats {
+  grid-template-columns: 52px 60px minmax(0, 1fr) 34px 34px 34px 30px 30px;
+}
+.dp-manual-header-row {
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  margin-bottom: 2px;
+}
+.dp-manual-formation-field {
+  grid-column: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dp-select-compact {
+  width: auto;
+  max-width: 160px;
+}
+.dp-manual-stat-header {
+  text-align: center;
+  font-size: 13px;
+  align-self: end;
+  padding-bottom: 8px;
+}
+.dp-input-mini {
+  width: 100%;
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 11px;
+}
+/* number input의 브라우저 기본 스피너 — 칸이 좁아 겹쳐 보이므로 숨김 */
+.dp-input-mini::-webkit-outer-spin-button,
+.dp-input-mini::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.dp-input-mini[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.dp-manual-stat-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.dp-manual-stat-check input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+}
+.dp-manual-card-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 18px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-yellow {
+  background: #FFD93D;
+  border-color: #FFD93D;
+}
+.dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-red {
+  background: #FF3B30;
+  border-color: #FF3B30;
+}
+.dp-manual-stat-check input[type="checkbox"]:focus-visible + .dp-manual-card-swatch {
+  outline: 2px solid rgba(76,217,100,.65);
+  outline-offset: 1px;
+}
+
 .dp-slot-label {
   font-size: 11px;
   font-weight: 800;

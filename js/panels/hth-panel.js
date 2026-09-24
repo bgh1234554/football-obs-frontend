@@ -97,6 +97,20 @@ function hthCurrentDataIsFresh(fixtureData = null) {
     && Number(_hthState.expiresAt) > Date.now();
 }
 
+/**
+ * 이 팀 조합의 상대 전적에 실제로 표시할 과거 경기가 있는지.
+ * hthCanLoadForFixture는 "조회를 시도할 수 있는지"(팀 ID 존재 여부)만 보고, 실제 결과가
+ * 0건인 상대 조합(맞대결 이력이 없는 팀 등)도 항상 true를 반환한다 — 그래서 stat-cycle.js의
+ * 자동 전환 목록(lpStatAvailableModes)이 "표시할 데이터가 없는 패널은 건너뛴다"는 다른 모드들
+ * (stats 등)과 다르게 상대전적만 빈 패널로 계속 순환에 남아있었다.
+ * 아직 이 조합으로 데이터를 불러온 적이 없으면(fetch 전/다른 조합 캐시) 판정을 보류하고
+ * true를 반환 — 로드가 끝나면 다음 호출 때 실제 결과로 정확히 재판정된다.
+ */
+function hthHasMatchesForFixture(fixtureData = null) {
+  if (!hthCurrentDataIsFresh(fixtureData)) return true;
+  return Array.isArray(_hthState.displayMatches) && _hthState.displayMatches.length > 0;
+}
+
 /** 모든 상대 전적 패널의 본문을 로딩·실패 메시지로 교체하고 제목 바를 다시 만든다. */
 function hthRenderStatus(message) {
   document.querySelectorAll('[data-hth-panel]').forEach(container => {

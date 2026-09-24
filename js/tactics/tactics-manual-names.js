@@ -267,6 +267,30 @@ document.addEventListener('click', event => {
   if (backdrop && event.target === backdrop) closeTacticsNamesPanel();
 });
 
+/**
+ * #tacticsNamesForm — Enter 키로 같은 열의 다음 행 입력칸으로 포커스 이동.
+ * lineup-manual-modal.js의 #manualPanelForm과 동일한 관례(input name = "{prefix}-{index}",
+ * 이 파일에서는 "tn-number-{side}-{index}"/"tn-name-{side}-{index}")를 그대로 따른다.
+ */
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  // 한글 등 IME 조합 확정용 Enter까지 다음 칸 이동으로 가로채지 않도록 건너뛴다.
+  if (event.isComposing || event.keyCode === 229) return;
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const form = target.closest('#tacticsNamesForm');
+  if (!form) return;
+
+  event.preventDefault();
+  const name = target.getAttribute('name') || '';
+  const match = name.match(/^(.*-)(\d+)$/);
+  if (!match) return;
+  const nextField = form.elements[`${match[1]}${Number(match[2]) + 1}`];
+  if (!nextField) return;
+  nextField.focus();
+  if (typeof nextField.select === 'function') nextField.select();
+});
+
 // 팀 이름 입력 — 키 입력마다 즉시 점수판에 반영(기존 수동모드 이름 입력과 동일한 UX).
 // 색상 피커는 드래그 중 스와치 미리보기만(가벼움) — 실제 commit은 'change'에서.
 document.addEventListener('input', event => {

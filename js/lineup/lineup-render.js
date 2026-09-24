@@ -13,10 +13,29 @@ function lpGetContext() {
   return lineupPanelState.context || { eventsByPlayer: new Map(), ratingByPlayer: new Map(), captainSet: new Set() };
 }
 
-/** 선수 1명의 집계된 골/어시/카드/교체 이벤트. 없으면 null. */
-function lpGetPlayerEvents(playerId) {
-  if (playerId == null) return null;
-  return lpGetContext().eventsByPlayer.get(String(playerId)) || null;
+/**
+ * 선수 1명의 집계된 골/어시/카드/교체 이벤트. 없으면 null.
+ * side/name은 playerId===0(API가 ID를 못 준 선수)일 때만 쓰인다 — lpAggregatePlayerEvents와
+ * 동일한 lpEventPersonKey로 키를 맞춰야, 같은 팀에 id=0 선수가 여럿 있어도 서로 다른
+ * 이벤트가 뒤섞이지 않는다(둘 다 안 넘기면 옛 동작대로 playerId만으로 조회 — id=0이면 항상 미스).
+ */
+function lpGetPlayerEvents(playerId, side, name) {
+  const key = typeof lpEventPersonKey === 'function'
+    ? lpEventPersonKey(playerId, side, name)
+    : (playerId == null ? null : String(playerId));
+  if (!key) return null;
+  return lpGetContext().eventsByPlayer.get(key) || null;
+}
+
+/**
+ * 노드/행 렌더 헬퍼들이 쓰는 단일 진입점 — 라인업 풀폼(완전 수동 입력) 선수는 events 매칭이
+ * 아예 불가능하므로(playerId 없음) manualGoals/manualAssists/... 수동 입력값을 우선 사용하고,
+ * 없으면 평소처럼 API events 집계 결과를 조회한다.
+ */
+function lpGetPlayerEventsForPlayer(player, side) {
+  const manual = typeof lpManualPlayerEventsOverride === 'function' ? lpManualPlayerEventsOverride(player) : null;
+  if (manual) return manual;
+  return lpGetPlayerEvents(player?.playerId, side, player?.name);
 }
 
 /** 선수 1명의 경기 평점. 데이터 없음(unset)과 0 평점을 구분하기 위해 has() 먼저 체크. */
@@ -101,8 +120,8 @@ function lpBuildRatingHtml(playerId) {
  * 이름/카드/교체마커/골·어시를 한 줄에 시도하다 안 되면 둘째 줄로 넘김.
  * 평점은 outer flex에 있어서 항상 최우측 정렬 + 첫 줄 위치 유지.
  */
-function lpBuildRosterRowHtml(player, kind) {
-  const events = lpGetPlayerEvents(player.playerId);
+function lpBuildRosterRowHtml(player, kind, side) {
+  const events = lpGetPlayerEventsForPlayer(player, side);
   const cardKind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
   const isOff = !!(events?.red);
 
@@ -236,9 +255,9 @@ function buildTitleActionButton(kind, side) {
   return `<button class="dp-side-edit-btn" data-manual="${kind}" data-side="${side}">${DETAIL_SIDE_TITLES[side]} 입력</button>`;
 }
 
-/** API에 교체 명단이 통째로 없을 때만 입력 버튼 노출 — 있으면 그리드/풀폼 수동 모드 자체가 무관. */
-function shouldShowBenchManualButton(rawFixture, side) {
-  return !Array.isArray(rawFixture?.[`${side}Lineup`]?.substitutes);
+/** 교체 명단도 미출전 선수 명단과 동일하게, API에 있어도 추가 입력이 의미 있어 항상 노출. */
+function shouldShowBenchManualButton(/* rawFixture, side */) {
+  return true;
 }
 
 /** 미출전 선수는 API에 있어도 추가 입력이 의미 있어 항상 노출. */
@@ -386,12 +405,12 @@ function applyBenchCountClass(listEl) {
 }
 
 /** 교체 명단 목록 HTML. 빈 배열이면 "후보 없음"/"벤치 정보 미제공"으로 API 유무를 구분. */
-function buildBenchListHtml(players, lineupExists) {
+function buildBenchListHtml(players, lineupExists, side) {
   if (!players || players.length === 0) {
     return buildEmptyHtml(lineupExists ? '후보 없음' : '벤치 정보 미제공');
   }
   // Iter 5-3: 카드/교체/골/어시/평점 마커는 lpBuildRosterRowHtml이 일괄 처리.
-  return players.map(player => lpBuildRosterRowHtml(player, 'bench')).join('');
+  return players.map(player => lpBuildRosterRowHtml(player, 'bench', side)).join('');
 }
 
 /** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/미등록=3)을 매긴다. */
@@ -607,7 +626,7 @@ function buildLineupNodePairHtml(player, effectiveData, side, position, extraCla
     : `<span class="dp-lineup-circle">${dpEscape(player.number ?? '')}</span>`;
 
   // Iter 5-3: 이벤트/평점 lookup
-  const events = lpGetPlayerEvents(player.playerId);
+  const events = lpGetPlayerEventsForPlayer(player, side);
   const isSentOff = !!(events?.red);
   const badgesHtml = lpBuildNodeBadgesHtml(events);
   const ratingHtml = lpBuildNodeRatingHtml(player.playerId);
@@ -623,14 +642,14 @@ function buildLineupNodePairHtml(player, effectiveData, side, position, extraCla
 }
 
 /** subReflect=on일 때 교체 OUT 되면서 골/도움/자책골을 기록한 선수 목록. 가장 먼저 OUT된 선수가 배열 앞에 오도록 정렬. */
-function getOutScorerCandidates(lineup) {
+function getOutScorerCandidates(lineup, side) {
   if (typeof getSetting !== 'function' || getSetting('lineupShowOutScorers') !== 'on') return [];
   if (getSetting('subReflect') !== 'on') return [];
   if (!Array.isArray(lineup?.substitutes)) return [];
 
   return lineup.substitutes
     .map(player => {
-      const events = lpGetPlayerEvents(player?.playerId);
+      const events = lpGetPlayerEventsForPlayer(player, side);
       if (!events?.subOut) return null;
       const contributions = (events.goals?.length || 0) + (events.ownGoals?.length || 0) + (events.assists?.length || 0);
       if (!contributions) return null;
@@ -652,7 +671,7 @@ function getOutScorerCandidates(lineup) {
  * 한 줄에 다 들어가는 길이이므로, 그 5칸 간격 그대로 재사용한다.
  */
 function buildOutScorerColumnHtml(lineup, effectiveData, side) {
-  const candidates = getOutScorerCandidates(lineup);
+  const candidates = getOutScorerCandidates(lineup, side);
   if (!candidates.length) return { circles: '', names: '' };
 
   const isHome = side === 'home';
@@ -850,7 +869,7 @@ function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
 }
 
 /** 포메이션 정보 없을 때(canRenderPitchMode=false) 줄글 폴백용 선발 명단 HTML. */
-function buildStartXiListHtml(lineup, lineupProvided) {
+function buildStartXiListHtml(lineup, lineupProvided, side) {
   if (!lineupProvided || !lineup) {
     return buildEmptyHtml('선발 라인업 미제공');
   }
@@ -860,7 +879,7 @@ function buildStartXiListHtml(lineup, lineupProvided) {
     return buildEmptyHtml('선발 명단 없음');
   }
   // Iter 5-3: 카드/교체/골/어시/평점 마커는 lpBuildRosterRowHtml이 일괄 처리.
-  return players.map(player => lpBuildRosterRowHtml(player, 'starter')).join('');
+  return players.map(player => lpBuildRosterRowHtml(player, 'starter', side)).join('');
 }
 
 /** 줄글 폴백 모드 한쪽(홈/원정) 컬럼 — 헤더 + buildStartXiListHtml. */
@@ -876,7 +895,7 @@ function buildLineupListSideHtml(effectiveData, rawData, side) {
       lineup?.formation || '',
       shouldShowLineupManualButton(rawData, side)
     )}
-    <div class="dp-list">${buildStartXiListHtml(lineup, !!rawLineup || !!lineup)}</div>
+    <div class="dp-list">${buildStartXiListHtml(lineup, !!rawLineup || !!lineup, side)}</div>
   </div>`;
 }
 
@@ -915,11 +934,11 @@ function renderBenchPanel(effectiveData, rawData) {
   const homeList = panel.querySelector('[data-bench-side="home"] .dp-list');
   const awayList = panel.querySelector('[data-bench-side="away"] .dp-list');
   if (homeList) {
-    homeList.innerHTML = buildBenchListHtml(effectiveData?.homeLineup?.substitutes || [], homeLineupExists);
+    homeList.innerHTML = buildBenchListHtml(effectiveData?.homeLineup?.substitutes || [], homeLineupExists, 'home');
     applyBenchCountClass(homeList);
   }
   if (awayList) {
-    awayList.innerHTML = buildBenchListHtml(effectiveData?.awayLineup?.substitutes || [], awayLineupExists);
+    awayList.innerHTML = buildBenchListHtml(effectiveData?.awayLineup?.substitutes || [], awayLineupExists, 'away');
     applyBenchCountClass(awayList);
   }
 
@@ -1080,14 +1099,14 @@ function lpFitBenchCycleTitle(titleEl) {
 }
 
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
-function buildBenchCyclePanelHtml(players, teamName, accentColor) {
+function buildBenchCyclePanelHtml(players, teamName, accentColor, side) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
   const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}>${dpEscape(teamName)} 교체명단</div>`;
   if (!players || !players.length) {
     return `${title}<div class="st-empty">교체 선수 없음</div>`;
   }
   // 모든 선수를 단일 리스트로 — CSS columns + JS 오버플로 감지가 2열 전환을 처리
-  return `${title}<div class="bc-body">${players.map(p => lpBuildRosterRowHtml(p, 'bench')).join('')}</div>`;
+  return `${title}<div class="bc-body">${players.map(p => lpBuildRosterRowHtml(p, 'bench', side)).join('')}</div>`;
 }
 
 /**
@@ -1160,10 +1179,10 @@ function renderBenchCyclePanels(effectiveData) {
   };
 
   document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
-    el.innerHTML = buildBenchCyclePanelHtml(homeSubs, getTeamName(effectiveData, 'home'), homeColor);
+    el.innerHTML = buildBenchCyclePanelHtml(homeSubs, getTeamName(effectiveData, 'home'), homeColor, 'home');
   });
   document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
-    el.innerHTML = buildBenchCyclePanelHtml(awaySubs, getTeamName(effectiveData, 'away'), awayColor);
+    el.innerHTML = buildBenchCyclePanelHtml(awaySubs, getTeamName(effectiveData, 'away'), awayColor, 'away');
   });
 
   // 렌더 직후 rebalance

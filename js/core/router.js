@@ -52,6 +52,16 @@
       const w = document.createElement('api-sports-widget');
       w.setAttribute('data-type', 'leagues');
       leaguesBody.appendChild(w);
+
+      // 리그 검색 시 위젯 내부 리스트 영역의 스크롤 높이 계산이 어긋나 이중 스크롤이
+      // 생기는 버그 보정 — 개발자도구를 열고 닫을 때(리사이즈로 display-scale.js가
+      // 전체 페이지를 다시 레이아웃)는 저절로 고쳐지는 걸 확인해, 검색 입력이 끝난
+      // 직후 같은 효과(resize 이벤트 강제 발생)를 인위적으로 한 번 내본다.
+      let leaguesResizeNudgeTimer = null;
+      leaguesBody.addEventListener('input', () => {
+        clearTimeout(leaguesResizeNudgeTimer);
+        leaguesResizeNudgeTimer = setTimeout(() => window.dispatchEvent(new Event('resize')), 200);
+      });
     }
 
     const gamesList = document.getElementById('games-list');
@@ -154,7 +164,10 @@
       window.history[fn]({ page }, '', nextUrl);
       return;
     }
-    window.history[fn]({ page }, '', route);
+    // 쿼리스트링(예: 팝업 분리의 ?popout=theme)을 유지한 채 경로만 바꾼다 — 이전엔 route만
+    // 넘겨 쿼리스트링이 사라졌고, path 라우팅(배포 환경)에서 팝업 창을 새로고침하면
+    // ?popout=... 이 없어져 팝업 모드가 풀리고 일반 메인 창처럼 부팅돼버리는 문제가 있었다.
+    window.history[fn]({ page }, '', route + window.location.search);
   }
 
   /**
@@ -202,7 +215,15 @@
   // [이벤트 등록] 탭 버튼 클릭으로 페이지 전환.
   // 클릭 후 버튼 blur — 활성 버튼이 포커스를 잡고 있으면 이후 사용자가 누르는 Space가
   // 버튼의 native click 트리거에도 걸려 토글이 꼬이는 문제 방지 (또한 timer space 단축키 정상 동작)
-  tabButtons.forEach(btn=>btn.addEventListener('click', ()=>{ activatePage(btn.dataset.page); btn.blur(); }));
+  tabButtons.forEach(btn=>btn.addEventListener('click', ()=>{
+    if (btn.dataset.page === 'theme' && typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('theme', {});
+      btn.blur();
+      return;
+    }
+    activatePage(btn.dataset.page);
+    btn.blur();
+  }));
   window.addEventListener('popstate', ()=>activatePage(resolvePageFromPath(), { syncRoute: false }));
   if(ROUTING_MODE === 'hash'){
     window.addEventListener('hashchange', ()=>activatePage(resolvePageFromPath(), { syncRoute: false }));
