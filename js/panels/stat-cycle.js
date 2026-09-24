@@ -451,8 +451,13 @@ function lpStatAvailableModes() {
   const modes = hasStats ? ['stats'] : [];
   const hasEvents = Array.isArray(window._eventsLastData?.events)
     && window._eventsLastData.events.length > 0;
+  // hthCanLoadForFixture는 "조회 가능(팀 ID 존재)"만 보고 실제 상대전적이 0건인 조합도
+  // 통과시킨다 — stats와 동일하게 "실제로 보여줄 데이터가 있을 때만" 포함시키기 위해
+  // hthHasMatchesForFixture(실제 표시할 과거 경기 존재 여부)도 함께 확인한다.
   const hasHth = typeof window.hthCanLoadForFixture === 'function'
-    && window.hthCanLoadForFixture(window._eventsLastData);
+    && window.hthCanLoadForFixture(window._eventsLastData)
+    && (typeof window.hthHasMatchesForFixture !== 'function'
+      || window.hthHasMatchesForFixture(window._eventsLastData));
   const hasBenchHome = !!(window._lpStatBenchData?.home);
   const hasBenchAway = !!(window._lpStatBenchData?.away);
   const hasMatchInfo = !!(window._lpStatMatchInfoAvailable);
