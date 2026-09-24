@@ -12,9 +12,14 @@ function buildFormationOptionsHtml(selected) {
     .join('');
 }
 
-/** 입력 폼 prefill용 — 닉네임/한글/영문 중 표시 우선순위대로 첫 값. */
+/** 입력 폼 prefill용 — 패널에 실제로 표시 중인 이름(풀네임 설정/닉네임 반영)과 동일한 값을 사용. */
 function getPrefillName(person) {
-  return person?.name || person?.playerName || person?.nameKoLong || person?.playerNameKoLong || '';
+  if (!person) return '';
+  if (typeof pickName === 'function') {
+    const picked = pickName(person, 'roster');
+    if (picked) return picked;
+  }
+  return person.name || person.playerName || person.nameKoLong || person.playerNameKoLong || '';
 }
 
 /** 부상 사유가 "출전 여부 미정" 상태인지 — type 필드 또는 reason 문자열 둘 다 확인. */
