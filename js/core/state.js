@@ -166,7 +166,7 @@
   // [상태 저장/복원] LocalStorage를 통해 state를 영속화하고 새로고침 시 복원
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /** 현재 state를 LocalStorage에 JSON으로 저장 (로고 데이터는 용량 절약을 위해 제외) */
+  /** 현재 state를 LocalStorage에 JSON으로 저장 (용량 초과 시 이번 저장만 건너뜀) */
   function persist(){
     try{
       try{
@@ -174,9 +174,15 @@
         return;
       }catch(e){
         if(e.name !== 'QuotaExceededError' && e.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e;
-        const snap = JSON.parse(JSON.stringify({...state, homeLogo:'', awayLogo:'', homeLogoManual:'', awayLogoManual:''}));
-        localStorage.setItem(SKEY, JSON.stringify(snap));
-        console.warn('Logo data was excluded from localStorage because it exceeded the browser quota.', e);
+        // 예전엔 홈/원정 로고를 둘 다 빈 문자열로 비운 스냅샷을 대신 저장했는데, 그러면
+        // 실제로 용량을 초과시킨 쪽이 아닌 반대편 로고까지 "저장된 값이 없음"이 되어버린다.
+        // 같은 창 안에서는 render()가 메모리상의 state.homeLogo/awayLogo를 그대로 쓰므로 화면엔
+        // 영향이 없지만, 팝업 분리(js/core/popout.js)가 이 localStorage 값을 다른 창에도 그대로
+        // 동기화하면서 정상이던 반대편 로고까지 실시간으로 지워버리는 문제가 생겼다 — 저장을
+        // 아예 건너뛰어(직전까지 저장돼 있던 값을 그대로 둠) 이런 오염된 스냅샷 자체를 없앤다.
+        // 대가로 새로고침하면 이번에 첨부한 큰 로고 하나는 복원되지 않지만(경고는 그대로 표시),
+        // 현재 세션 화면과 다른 창 동기화는 항상 정확한 값만 반영한다.
+        console.warn('Logo data was too large to save to localStorage; this change will be lost on reload.', e);
         return;
       }
     }catch(e){ console.warn('저장 실패 (' + SKEY + '):', e); }

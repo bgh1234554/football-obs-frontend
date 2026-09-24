@@ -19,7 +19,6 @@
 // storage 이벤트가 뜨지 않는다)로 즉시 재렌더한다.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const POPOUT_WINDOW_NAME = 'obs_popout_window';
 const POPOUT_CLOSE_TRIGGER_SELECTOR = [
   // manualPanelReset/tacticsNamesReset은 각각 resetManualPanelKind()/전술판 리셋 로직이
   // 값 삭제 후 closeManualPanel() 등으로 모달 자체를 닫아버린다 — 팝업에서는 모달을 닫아도
@@ -53,12 +52,23 @@ const POPOUT_WINDOW_SIZE = {
   theme:          { width: 760, height: 700 },  // 페이지 하나(테마 탭) — 모달보다 살짝 넓게
 };
 
-/** 메인 창에서 호출 — key/params로 팝업 창을 열거나(이미 열려있으면) 포커스한다. */
+/**
+ * key/params로 고유한 window.open() 대상 이름을 만든다. 같은 대상(예: "홈 교체 명단")을
+ * 다시 클릭하면 같은 이름이라 기존 창을 재사용/포커스하고, 다른 대상(예: "원정 미출전 명단")은
+ * 이름이 달라 별도 창으로 동시에 뜬다 — 창 이름 하나로 전부 재사용하던 이전 방식과 차이.
+ */
+function popoutWindowName(key, params) {
+  const parts = [key, ...Object.values(params || {})].map(v => String(v ?? ''));
+  const safe = parts.join('_').replace(/[^a-zA-Z0-9_-]/g, '');
+  return `obs_popout_${safe || 'default'}`;
+}
+
+/** 메인 창에서 호출 — key/params로 팝업 창을 열거나(같은 대상이 이미 열려있으면) 포커스한다. */
 function popoutOpen(key, params) {
   const qs = new URLSearchParams({ popout: key, ...(params || {}) });
   const url = `${window.location.pathname}?${qs.toString()}`;
   const { width, height } = POPOUT_WINDOW_SIZE[key] || { width: 620, height: 700 };
-  const win = window.open(url, POPOUT_WINDOW_NAME, `width=${width},height=${height},resizable=yes,scrollbars=yes`);
+  const win = window.open(url, popoutWindowName(key, params), `width=${width},height=${height},resizable=yes,scrollbars=yes`);
   if (win) win.focus();
   return win;
 }
@@ -153,6 +163,81 @@ if (window.__POPOUT_MODE__) {
           document.dispatchEvent(new CustomEvent('settings:change', { detail: { category, value, mode: value } }));
         });
       }
+      return;
+    }
+    // 테마 탭 컨트롤은 obs.settings.v3가 아니라 점수판 전체 state(state.js:
+    // SKEY='obs-scoreboard-state-v2')에 실려 저장된다. 이 state를 통째로 메인 창에 병합하면
+    // 팝업이 부팅된 시점의 오래된 타이머/점수 값까지 같이 덮어써 진행 중인 방송 화면이
+    // 되돌아갈 위험이 있어, 필드를 세 그룹으로 나눠 각기 다른 조건으로 동기화한다.
+    if (event.key === 'obs-scoreboard-state-v2') {
+      try {
+        const saved = JSON.parse(event.newValue || 'null');
+        if (!saved) return;
+        let changed = false;
+        const apply = (key, value) => { if (state[key] !== value) { state[key] = value; changed = true; } };
+        const applyIfPresent = keys => keys.forEach(key => { if (key in saved) apply(key, saved[key]); });
+
+        // 1) 수동 모드 ON/OFF — theme.js:toggleManualMode()의 부수효과를 확인창 없이 재현.
+        if (typeof saved.manualMode === 'boolean' && saved.manualMode !== state.manualMode) {
+          apply('manualMode', saved.manualMode);
+          if (el.manualModeToggle) el.manualModeToggle.checked = saved.manualMode;
+          const sidebarMirror = document.getElementById('sidebarManualMirror');
+          if (sidebarMirror) sidebarMirror.checked = saved.manualMode;
+          if (el.manualSection) el.manualSection.classList.toggle('visible', saved.manualMode);
+          if (!saved.manualMode) { apply('homeLogo', ''); apply('awayLogo', ''); }
+        }
+
+        // 2) 순수 표시/레이아웃 설정 — API 폴링이 절대 건드리지 않는 값들이라 수동 모드
+        // 여부와 무관하게 항상 동기화해도 안전하다(색상/보드 폭/테두리/득점자 폰트/로고
+        // 배율·위치/레드카드 레일/팀컬러 override 표시 등, 전부 theme.js·render.js가
+        // 테마 탭 컨트롤에서 직접 쓰는 필드).
+        if (saved.colors && typeof saved.colors === 'object') {
+          Object.keys(saved.colors).forEach(key => {
+            if (state.colors[key] !== saved.colors[key]) { state.colors[key] = saved.colors[key]; changed = true; }
+          });
+        }
+        applyIfPresent([
+          'aggEnabled', 'aggHomeBase', 'aggAwayBase',
+          'logoAlign', 'radiusMode', 'boardWidth',
+          'homeOutlineEnabled', 'awayOutlineEnabled', 'boardOutlineEnabled', 'scoreOutlineEnabled',
+          'homeOutlineWidth', 'awayOutlineWidth', 'boardOutlineWidth', 'scoreOutlineWidth',
+          'noteEnabled', 'noteFontSize', 'fontFamily',
+          'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
+          'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
+          'teamColorOverride', 'teamColorOverrideFixtureId',
+        ]);
+
+        // 3) 추가시간 — extraManualOverride가 켜져 있으면(수동으로 조작함) 수동 모드 여부와
+        // 무관하게 동기화한다. 메인 창의 API 폴링도 이 플래그를 보고 자동 갱신을 건너뛰므로
+        // (js/core/fixture.js) 값을 가져와도 서로 충돌하지 않는다.
+        if (saved.extraManualOverride) applyIfPresent(['extra', 'extraShown', 'extraManualOverride']);
+
+        // 4) 수동 모드에서만 사람이 직접 입력하는 필드 — 켜져 있을 때만 동기화한다. 꺼져
+        // 있으면 이 값들(이름/전후반/점수/로고)은 API 폴링이 대신 채우므로, 팝업이 부팅
+        // 시점에 들고 있던 오래된 스냅샷으로 덮어쓰면 안 된다.
+        if (state.manualMode) {
+          applyIfPresent(['homeName', 'awayName', 'half', 'homeScore', 'awayScore',
+            'homeLogoManual', 'awayLogoManual', 'homeLogo', 'awayLogo']);
+          if (saved.notes) {
+            ['home', 'away'].forEach(side => {
+              if (typeof saved.notes[side] === 'string' && saved.notes[side] !== state.notes[side]) {
+                state.notes[side] = saved.notes[side];
+                changed = true;
+              }
+            });
+          }
+        }
+
+        // 일부러 동기화하지 않는 것: seconds/running/lastRunningTickMs(타이머 진행 — 매 초
+        // 바뀌는 값을 팝업의 스냅샷으로 덮으면 방송 시계가 튄다), boardScale(창마다 다른
+        // 미리보기 배율이라 다른 창에 맞지 않음), pk/pkScore/pkLastExitedAt(PK는 버튼/단축키로
+        // 진행 중인 이벤트 시퀀스라 팝업의 오래된 값으로 되돌리면 진행 상황이 깨진다).
+
+        if (changed) {
+          if (state.manualMode && typeof syncManualInputs === 'function') syncManualInputs();
+          if (typeof render === 'function') render();
+        }
+      } catch {}
       return;
     }
     // 그 외(라인업 수동 입력, 교체 override, 선수 ID/닉네임 연결 등)는 전부 라인업/이벤트/전술판
