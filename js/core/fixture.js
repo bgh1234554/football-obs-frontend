@@ -696,6 +696,9 @@
    * 실패 시에만 scheduleRetryFromLastFixture로 재예약(타이머 중복 생성 방지).
    */
   function schedulePoll(data) {
+    // 팝업으로 뜬 창(js/core/popout.js)은 모달 하나만 보여주고 곧 닫힐 창이므로,
+    // 메인 창과 중복으로 API를 폴링하지 않는다. 최초 1회 렌더는 이 가드 이전에 이미 끝남.
+    if (window.__POPOUT_MODE__) return;
     clearPolling(false);
 
     const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();

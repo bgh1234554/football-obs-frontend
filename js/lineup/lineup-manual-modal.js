@@ -835,7 +835,11 @@ function startRefereeInlineEdit(hostEl) {
 document.addEventListener('click', event => {
   const manualBtn = event.target.closest('.dp-side-edit-btn');
   if (manualBtn?.dataset.manual && manualBtn?.dataset.side) {
-    openManualPanel(manualBtn.dataset.manual, manualBtn.dataset.side);
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('manual', { kind: manualBtn.dataset.manual, side: manualBtn.dataset.side });
+    } else {
+      openManualPanel(manualBtn.dataset.manual, manualBtn.dataset.side);
+    }
     return;
   }
 

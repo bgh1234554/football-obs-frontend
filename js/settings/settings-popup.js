@@ -64,6 +64,10 @@ const SETTINGS_DEFAULTS = {
   // 라인업+벤치 안에서 유일하게 일치하면 ID 입력 없이 자동으로 연결(player-id-resolve.js).
   // 동명이인이 있으면 자동 적용하지 않고 건너뛴다. off='off', on='on'.
   autoLinkPlayerIdByName: 'on',
+  // 새 창 분리 (관리 탭). ON이면 교체 IN/OUT 선택 / 포메이션·라인업·교체·미출전 입력창 /
+  // 설정 팝업 / 테마 탭을 window.open()으로 별도 창에 띄운다 (js/core/popout.js).
+  // OBS 캡처(Browser Source/Window Capture 모두 메인 창 하나만 봄)에 잡히지 않게 하기 위함.
+  popoutModals: 'off',
   // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
   lineupShowGoals: 'on',     // 골/어시스트 이모티콘
   lineupShowCards: 'on',     // 옐로/레드 카드
@@ -361,6 +365,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
+  'popoutModals',
 ]);
 
 function isValidSetting(category, value) {
@@ -1316,7 +1321,13 @@ function initSettingsPopup() {
     syncSettingsTabSectionHeights();
   });
 
-  if (gearBtn) gearBtn.addEventListener('click', openSettingsPopup);
+  if (gearBtn) gearBtn.addEventListener('click', () => {
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('settings', {});
+      return;
+    }
+    openSettingsPopup();
+  });
   if (closeBtn) closeBtn.addEventListener('click', closeSettingsPopup);
   if (backdrop) {
     backdrop.addEventListener('click', event => {

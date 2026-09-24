@@ -204,9 +204,15 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
   btn.className = 'ev-subst-fix-btn';
   btn.title = field === 'player' ? 'OUT 선수 선택' : 'IN 선수 선택';
   btn.textContent = '?';
+  // 팝업 분리(js/core/popout.js)가 이 이벤트를 다시 찾아 같은 버튼을 클릭 시뮬레이션할 때 쓰는 키.
+  btn.dataset.evKey = `${evSubstEventKey(ev)}:${field}`;
   btn.addEventListener('click', e => {
     e.stopPropagation();
-    evOpenSubstPicker(ev, field, fixtureData);
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('subst', { evkey: evSubstEventKey(ev), field });
+    } else {
+      evOpenSubstPicker(ev, field, fixtureData);
+    }
   });
   return btn;
 }
@@ -221,9 +227,14 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
   btn.className = 'ev-text-name ev-subst-name-editable';
   btn.title = field === 'player' ? '클릭해서 OUT 선수 다시 선택' : '클릭해서 IN 선수 다시 선택';
   btn.textContent = name;
+  btn.dataset.evKey = `${evSubstEventKey(ev)}:${field}`;
   btn.addEventListener('click', e => {
     e.stopPropagation();
-    evOpenSubstPicker(ev, field, fixtureData);
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('subst', { evkey: evSubstEventKey(ev), field });
+    } else {
+      evOpenSubstPicker(ev, field, fixtureData);
+    }
   });
   return btn;
 }
