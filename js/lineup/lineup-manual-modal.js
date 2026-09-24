@@ -868,6 +868,10 @@ document.addEventListener('click', event => {
  */
 document.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
+  // 한글/일본어 등 IME 조합 중 후보를 확정하는 Enter까지 다음 칸 이동으로 가로채면, 조합
+  // 중이던 글자가 커밋되지 않거나 포커스가 엉뚱한 칸으로 튀는 문제가 있다 — isComposing과
+  // 구형 브라우저의 keyCode 229(조합 확정용 Enter 표시)를 함께 확인해 건너뛴다.
+  if (event.isComposing || event.keyCode === 229) return;
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
   const form = target.closest('#manualPanelForm');

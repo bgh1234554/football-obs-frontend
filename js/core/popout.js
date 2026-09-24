@@ -80,6 +80,30 @@ function popoutModeEnabled() {
 }
 window.popoutModeEnabled = popoutModeEnabled;
 
+/**
+ * obs.settings.v3 storage 이벤트 공통 처리 — settingsState를 최신 값으로 맞추고 체크박스/
+ * 슬라이더 등 UI를 재동기화한다. "설정 초기화" 버튼은 값을 쓰는 게 아니라 키 자체를
+ * removeItem으로 지우므로(settings-popup.js), 그 경우 event.newValue가 null이 되는데
+ * loadSettings()는 저장된 값이 없으면 settingsState를 건드리지 않고 그냥 반환해버려
+ * "초기화했는데 다른 창엔 반영이 안 되는" 문제가 있었다 — 그 경우엔 SETTINGS_DEFAULTS로
+ * 직접 리셋한다. 반환값은 실제로 바뀐 카테고리 목록(호출자가 필요하면 이벤트 재발행에 사용).
+ */
+function syncSettingsFromStorage(newValue) {
+  const before = { ...settingsState };
+  if (newValue === null) {
+    Object.assign(settingsState, SETTINGS_DEFAULTS);
+    if (typeof applyLayoutSettings === 'function') applyLayoutSettings();
+  } else if (typeof loadSettings === 'function') {
+    loadSettings();
+  }
+  if (typeof SETTINGS_DEFAULTS === 'object' && typeof syncSettingUi === 'function') {
+    Object.keys(SETTINGS_DEFAULTS).forEach(syncSettingUi);
+  }
+  return typeof SETTINGS_DEFAULTS === 'object'
+    ? Object.keys(SETTINGS_DEFAULTS).filter(category => before[category] !== settingsState[category])
+    : [];
+}
+
 if (window.__POPOUT_MODE__) {
   // 이 창 자신이 팝업인 경우 — 보드/사이드바/탭바 숨기고, 부팅이 끝나면 목표 트리거를 클릭한다.
   (function () {
@@ -137,31 +161,49 @@ if (window.__POPOUT_MODE__) {
     window.addEventListener('keydown', event => {
       if (event.key === 'Escape') setTimeout(() => window.close(), 50);
     });
+
+    // 팝업 자신의 settingsState도 부팅 시점 스냅샷이라 곧 낡을 수 있다 — 메인 창이나 다른
+    // 팝업에서 설정이 바뀌는 동안 이 팝업에서 아무 설정이나 하나 바꾸면, setSetting()이
+    // settingsState 전체를 localStorage에 다시 쓰면서(js/settings/settings-popup.js:
+    // saveSettings) 그 사이 다른 창에서 바뀐 값을 롤백시켜버린다. 메인 창과 동일하게
+    // storage 이벤트로 최신 값을 반영해둔다.
+    window.addEventListener('storage', event => {
+      if (event.key === SETTINGS_STORAGE_KEY) syncSettingsFromStorage(event.newValue);
+    });
   })();
 } else {
   // 메인 창 — 팝업이 localStorage에 쓴 변경사항을 감지해 즉시 재반영한다.
   window.addEventListener('storage', event => {
     if (!event.key) return;
     if (event.key === SETTINGS_STORAGE_KEY) {
-      // loadSettings()는 settingsState(메모리)와 CSS 변수(applyLayoutSettings)까지 갱신하지만,
-      // 설정 팝업의 체크박스/슬라이더 등 DOM UI는 별개 — syncSettingUi를 직접 돌려주지 않으면
-      // 팝업에서 바꾼 값이 메인 창에 저장은 되고도 다음에 열었을 때 화면엔 예전 상태로 보인다.
-      const before = { ...settingsState };
-      if (typeof loadSettings === 'function') loadSettings();
-      if (typeof SETTINGS_DEFAULTS === 'object' && typeof syncSettingUi === 'function') {
-        Object.keys(SETTINGS_DEFAULTS).forEach(syncSettingUi);
-      }
       // setSetting()이 로컬 변경 시 보내는 것과 똑같은 모양({category, value, mode})으로,
       // 실제로 바뀐 카테고리마다 따로 dispatch해야 한다 — lineup-render.js/events-panel.js/
       // stats-panel.js 등 대부분의 'settings:change' 리스너가 category 화이트리스트로
       // 필터링하기 때문에, category:null 하나만 보내면(이전 코드) 전부 무시되어 값은
       // 저장돼도 실제 화면(이름 표시 등)에는 아무것도 반영되지 않는 버그가 있었다.
-      if (typeof SETTINGS_DEFAULTS === 'object') {
-        Object.keys(SETTINGS_DEFAULTS).forEach(category => {
-          if (before[category] === settingsState[category]) return;
-          const value = settingsState[category];
-          document.dispatchEvent(new CustomEvent('settings:change', { detail: { category, value, mode: value } }));
-        });
+      syncSettingsFromStorage(event.newValue).forEach(category => {
+        const value = settingsState[category];
+        document.dispatchEvent(new CustomEvent('settings:change', { detail: { category, value, mode: value } }));
+      });
+      return;
+    }
+    if (typeof SUBST_OVERRIDE_STORAGE_KEY !== 'undefined' && event.key === SUBST_OVERRIDE_STORAGE_KEY) {
+      // 팝업에서 교체 IN/OUT을 다시 고르면(evOpenSubstPicker) 같은 창 안에서는 확인 버튼이
+      // evRerenderCurrentPanel + applyLineupPanels + ttRefreshEventsData 세 가지를 전부
+      // 호출해 이벤트 패널/라인업/전술판 타임라인을 같이 갱신한다(js/panels/events-panel.js).
+      // 아래 공용 fallback(rerenderLineupPanels만 호출)은 라인업만 갱신해, 이벤트 패널의
+      // 선수명과 전술판 타임라인은 팝업에서 override를 바꿔도 반영되지 않았다 — 같은 세
+      // 함수를 그대로 재사용해 메인 창에서도 동일하게 갱신한다.
+      if (typeof evRerenderCurrentPanel === 'function') evRerenderCurrentPanel();
+      if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
+        applyLineupPanels(window._eventsLastData);
+      }
+      if (typeof window.ttRefreshEventsData === 'function' && window._eventsLastData) {
+        const fixtureId = window._eventsLastData?.matchInfo?.fixtureId;
+        const patchedEvents = typeof evPatchSubstEvents === 'function'
+          ? evPatchSubstEvents(window._eventsLastData.events, fixtureId)
+          : window._eventsLastData.events;
+        window.ttRefreshEventsData({ ...window._eventsLastData, events: patchedEvents });
       }
       return;
     }

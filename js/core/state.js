@@ -166,7 +166,14 @@
   // [상태 저장/복원] LocalStorage를 통해 state를 영속화하고 새로고침 시 복원
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /** 현재 state를 LocalStorage에 JSON으로 저장 (용량 초과 시 이번 저장만 건너뜀) */
+  /**
+   * 현재 state를 LocalStorage에 JSON으로 저장.
+   * 용량 초과 시 홈/원정 로고 중 실제로 큰 쪽만 골라 빼고 나머지는 그대로 저장한다 —
+   * "이번 저장을 통째로 건너뛰기"만 하면, 용량을 넘긴 로고가 메모리(state.homeLogo 등)에
+   * 남아있는 한 그 뒤의 모든 persist() 호출(점수/타이머/색상 등 무관한 변경 포함)이 계속
+   * 같은 이유로 실패해 사실상 저장 자체가 영구히 멈춰버린다. 실패한 필드만 골라 빼면 나머지
+   * 변경사항은 계속 저장되고, 반대편 로고도(예전처럼 둘 다 비우지 않고) 그대로 유지된다.
+   */
   function persist(){
     try{
       try{
@@ -174,14 +181,23 @@
         return;
       }catch(e){
         if(e.name !== 'QuotaExceededError' && e.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e;
-        // 예전엔 홈/원정 로고를 둘 다 빈 문자열로 비운 스냅샷을 대신 저장했는데, 그러면
-        // 실제로 용량을 초과시킨 쪽이 아닌 반대편 로고까지 "저장된 값이 없음"이 되어버린다.
-        // 같은 창 안에서는 render()가 메모리상의 state.homeLogo/awayLogo를 그대로 쓰므로 화면엔
-        // 영향이 없지만, 팝업 분리(js/core/popout.js)가 이 localStorage 값을 다른 창에도 그대로
-        // 동기화하면서 정상이던 반대편 로고까지 실시간으로 지워버리는 문제가 생겼다 — 저장을
-        // 아예 건너뛰어(직전까지 저장돼 있던 값을 그대로 둠) 이런 오염된 스냅샷 자체를 없앤다.
-        // 대가로 새로고침하면 이번에 첨부한 큰 로고 하나는 복원되지 않지만(경고는 그대로 표시),
-        // 현재 세션 화면과 다른 창 동기화는 항상 정확한 값만 반영한다.
+        const fallbacks = [
+          { drop: ['homeLogo', 'homeLogoManual'], warn: '홈 로고' },
+          { drop: ['awayLogo', 'awayLogoManual'], warn: '원정 로고' },
+          { drop: ['homeLogo', 'homeLogoManual', 'awayLogo', 'awayLogoManual'], warn: '홈/원정 로고' },
+        ];
+        for (const { drop, warn } of fallbacks) {
+          try {
+            const snap = { ...state };
+            drop.forEach(key => { snap[key] = ''; });
+            localStorage.setItem(SKEY, JSON.stringify(snap));
+            console.warn(`${warn} 데이터가 너무 커서 이번 저장에서 제외했습니다(새로고침 시 사라짐). 나머지 값은 정상 저장됨.`, e);
+            return;
+          } catch (e2) {
+            if (e2.name !== 'QuotaExceededError' && e2.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e2;
+          }
+        }
+        // 로고를 전부 비워도 여전히 용량 초과면(다른 값이 큰 경우 등) 이번 저장만 건너뛴다.
         console.warn('Logo data was too large to save to localStorage; this change will be lost on reload.', e);
         return;
       }

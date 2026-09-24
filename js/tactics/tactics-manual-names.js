@@ -274,6 +274,8 @@ document.addEventListener('click', event => {
  */
 document.addEventListener('keydown', event => {
   if (event.key !== 'Enter') return;
+  // 한글 등 IME 조합 확정용 Enter까지 다음 칸 이동으로 가로채지 않도록 건너뛴다.
+  if (event.isComposing || event.keyCode === 229) return;
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
   const form = target.closest('#tacticsNamesForm');

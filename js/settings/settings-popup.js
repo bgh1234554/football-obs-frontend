@@ -895,7 +895,16 @@ function getDataUrlByteLength(dataUrl) {
   return Math.floor(payload.length * 3 / 4);
 }
 
-function compressBackgroundImage(file) {
+/**
+ * @param {File} file
+ * @param {{ preserveAlpha?: boolean }} [options] - preserveAlpha:true면(팀 로고 등 투명
+ *   배경이 의미 있는 이미지) JPEG로 폴백하지 않는다 — JPEG는 알파 채널이 없어 투명 배경이
+ *   단색으로 채워지며, 배경 이미지와 달리 로고는 그러면 시각적으로 망가진다. 그 대신 WebP
+ *   (알파 유지 가능)만으로 계속 시도하고, 그래도 목표 용량을 못 맞추면 캔버스를 한 번 더
+ *   축소해 재시도한다.
+ */
+function compressBackgroundImage(file, options = {}) {
+  const preserveAlpha = !!options.preserveAlpha;
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
     const image = new Image();
@@ -918,10 +927,27 @@ function compressBackgroundImage(file) {
             resolve(webp);
             return;
           }
-          const jpeg = canvas.toDataURL('image/jpeg', quality);
-          if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
-            resolve(jpeg);
-            return;
+          if (!preserveAlpha) {
+            const jpeg = canvas.toDataURL('image/jpeg', quality);
+            if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+              resolve(jpeg);
+              return;
+            }
+          }
+        }
+        if (preserveAlpha) {
+          // 화질을 더 낮춰도 안 되면 캔버스 자체를 축소해 WebP로 재시도(알파 유지 우선).
+          canvas.width = Math.max(1, Math.round(canvas.width * 0.5));
+          canvas.height = Math.max(1, Math.round(canvas.height * 0.5));
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          for (const quality of [0.72, 0.48, 0.3]) {
+            const webp = canvas.toDataURL('image/webp', quality);
+            if (getDataUrlByteLength(webp) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+              resolve(webp);
+              return;
+            }
           }
         }
         reject(new Error('compressed image is still too large'));
