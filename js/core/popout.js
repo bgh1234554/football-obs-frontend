@@ -46,9 +46,9 @@ window.handleTacticsNamesBtnClick = handleTacticsNamesBtnClick;
 // 무력화해뒀으므로, 창 크기는 "그 분기점을 넘는지"와 무관하게 순수하게 화면에 편한 크기로
 // 자유롭게 고를 수 있다 — "팝업"다운 작은 크기로 축소.
 const POPOUT_WINDOW_SIZE = {
-  manual:         { width: 620, height: 820 },  // .dp-manual-modal (라인업/교체/미출전)
+  manual:         { width: 495, height: 820 },  // .dp-manual-modal (라인업/교체/미출전)
   'tactics-names': { width: 620, height: 850 }, // 같은 .dp-manual-modal 구조
-  settings:       { width: 680, height: 760 },  // .sp-modal
+  settings:       { width: 570, height: 760 },  // .sp-modal
   subst:          { width: 300, height: 420 },  // .ev-subst-picker-modal(소형 리스트)
   theme:          { width: 760, height: 700 },  // 페이지 하나(테마 탭) — 모달보다 살짝 넓게
 };
@@ -136,11 +136,23 @@ if (window.__POPOUT_MODE__) {
       // loadSettings()는 settingsState(메모리)와 CSS 변수(applyLayoutSettings)까지 갱신하지만,
       // 설정 팝업의 체크박스/슬라이더 등 DOM UI는 별개 — syncSettingUi를 직접 돌려주지 않으면
       // 팝업에서 바꾼 값이 메인 창에 저장은 되고도 다음에 열었을 때 화면엔 예전 상태로 보인다.
+      const before = { ...settingsState };
       if (typeof loadSettings === 'function') loadSettings();
       if (typeof SETTINGS_DEFAULTS === 'object' && typeof syncSettingUi === 'function') {
         Object.keys(SETTINGS_DEFAULTS).forEach(syncSettingUi);
       }
-      document.dispatchEvent(new CustomEvent('settings:change', { detail: { category: null } }));
+      // setSetting()이 로컬 변경 시 보내는 것과 똑같은 모양({category, value, mode})으로,
+      // 실제로 바뀐 카테고리마다 따로 dispatch해야 한다 — lineup-render.js/events-panel.js/
+      // stats-panel.js 등 대부분의 'settings:change' 리스너가 category 화이트리스트로
+      // 필터링하기 때문에, category:null 하나만 보내면(이전 코드) 전부 무시되어 값은
+      // 저장돼도 실제 화면(이름 표시 등)에는 아무것도 반영되지 않는 버그가 있었다.
+      if (typeof SETTINGS_DEFAULTS === 'object') {
+        Object.keys(SETTINGS_DEFAULTS).forEach(category => {
+          if (before[category] === settingsState[category]) return;
+          const value = settingsState[category];
+          document.dispatchEvent(new CustomEvent('settings:change', { detail: { category, value, mode: value } }));
+        });
+      }
       return;
     }
     // 그 외(라인업 수동 입력, 교체 override, 선수 ID/닉네임 연결 등)는 전부 라인업/이벤트/전술판

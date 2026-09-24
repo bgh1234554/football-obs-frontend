@@ -44,7 +44,11 @@
     'html.is-popout .sp-modal,',
     'html.is-popout .ev-subst-picker-modal {',
     '  width: 100% !important; height: 100% !important;',
-    '  max-width: none !important; max-height: none !important;',
+    // max-height를 none으로 두면 settings-popup.js의 syncSettingsTabSectionHeights()가
+    // getComputedStyle(modal).maxHeight를 숫자로 못 읽어(NaN→0) "실제로 들어갈 수 있는 높이"
+    // 계산을 못 해, 모든 탭이 가장 긴 탭(라인업) 높이만큼 강제로 늘어나 짧은 탭에도 불필요한
+    // 스크롤이 생겼다 — 100vh는 창을 꽉 채우는 효과는 같으면서 실제 px 숫자로 읽힌다.
+    '  max-width: none !important; max-height: 100vh !important;',
     '  border-radius: 0 !important; box-shadow: none !important; border: none !important;',
     '}',
     // 팝업 창은 배율을 1로 고정(위 display-scale.js 참고)해서 실제 창 크기가 작으면
@@ -59,6 +63,11 @@
     // 창 크기를 자유롭게 줄일 수 있도록 두 분기 모두 무력화하고 원래(데스크톱) 값을 강제한다.
     'html.is-popout .sp-row,',
     'html.is-popout .sp-row:has(.sp-bg-input-cluster) { flex-direction: row !important; align-items: center !important; }',
+    // .sp-row-rating-colors는 반응형 분기와 무관하게 원래부터(데스크톱 기본값으로) column
+    // 배치다 — 라벨과 색상 그리드를 세로로 쌓아 그리드가 가로 폭을 전부 쓰게 하기 위함.
+    // 위 .sp-row 규칙이 이 row에도 걸려 row로 바뀌면 그리드 폭이 좁아져 auto-fit 컬럼이
+    // 1개로 줄어버리므로(세로로 길게 쌓임), 같은 우선순위(!important)에서 순서로 다시 되돌린다.
+    'html.is-popout .sp-row-rating-colors { flex-direction: column !important; align-items: stretch !important; }',
     'html.is-popout .sp-row-label { max-width: 430px !important; }',
     'html.is-popout .sp-toggle-cluster,',
     'html.is-popout .sp-slider-cluster,',
