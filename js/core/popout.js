@@ -47,7 +47,7 @@ window.handleTacticsNamesBtnClick = handleTacticsNamesBtnClick;
 // 자유롭게 고를 수 있다 — "팝업"다운 작은 크기로 축소.
 const POPOUT_WINDOW_SIZE = {
   manual:         { width: 620, height: 820 },  // .dp-manual-modal (라인업/교체/미출전)
-  'tactics-names': { width: 620, height: 700 }, // 같은 .dp-manual-modal 구조
+  'tactics-names': { width: 620, height: 850 }, // 같은 .dp-manual-modal 구조
   settings:       { width: 680, height: 760 },  // .sp-modal
   subst:          { width: 300, height: 420 },  // .ev-subst-picker-modal(소형 리스트)
   theme:          { width: 760, height: 700 },  // 페이지 하나(테마 탭) — 모달보다 살짝 넓게
@@ -87,6 +87,7 @@ if (window.__POPOUT_MODE__) {
       }
       if (p.popout === 'settings') return '#settingsGearBtn';
       if (p.popout === 'theme') return '.tab[data-page="theme"]';
+      if (p.popout === 'tactics-names') return '#btn-tactics-manual-names';
       return null;
     }
 
