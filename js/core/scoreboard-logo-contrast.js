@@ -49,6 +49,8 @@ const ScoreboardLogoContrast = (() => {
   // Dzerzhinsk의 크림색 primary)로 발견 — "육안으로 거의 순백"인 경우만 걸러내도록 훨씬 좁은
   // 값을 쓴다.
   const NEAR_WHITE_DELTA_E = 8;
+  // 흰색 교체 후보에만 적용하는 완화된 최소 대비. 등번호색은 대비 검사 면제, 검정/보색은 기존 3:1(TEAM_COLOR_MIN_TEXT_CONTRAST) 유지.
+  const LIGHT_SWAP_MIN_CONTRAST = 2;
   // 이미지 분석(CORS 차단, 네트워크 실패 등)이 실패했을 때 재시도까지 대기하는 시간.
   // 매 render 호출마다 재시도하면 실패가 반복될 때마다 요청이 몰릴 수 있어 간격을 둔다.
   const RETRY_MS = 60000;
@@ -106,12 +108,12 @@ const ScoreboardLogoContrast = (() => {
   /**
    * candidate를 배경으로 써도 안전한지 — (1) 로고 가장자리 자체에 그 색이 이미 많이 쓰이고
    * 있지 않아야 하고(그렇지 않으면 로고가 새 배경에도 다시 묻힌다), (2) 지금 배경(primary,
-   * 교체 후 글자색으로 쓰임)과 대비가 최소 3:1은 나와야 그 위에 primary로 그려질 텍스트가 보인다.
+   * 교체 후 글자색으로 쓰임)과 대비가 minContrast 이상 나와야 그 위에 primary로 그려질 텍스트가 보인다.
    */
-  function isSafeSwapCandidate(colors, background, candidate) {
+  function isSafeSwapCandidate(colors, background, candidate, minContrast = TEAM_COLOR_MIN_TEXT_CONTRAST) {
     if (!candidate) return false;
     if (edgeSimilarShare(colors, candidate) >= MIN_SIMILAR_SHARE) return false;
-    return teamColorContrastRatio(background, candidate) >= TEAM_COLOR_MIN_TEXT_CONTRAST;
+    return teamColorContrastRatio(background, candidate) >= minContrast;
   }
 
   /**
@@ -119,11 +121,11 @@ const ScoreboardLogoContrast = (() => {
    * 그대로 둔다는 뜻이고, 값이 있으면 render()가 그 색을 --logo-swap-bg로 세팅해 교체한다.
    *
    * 1) 지금 배경이 가장자리와 충분히 겹치지 않으면(로고가 안 묻히면) 그대로 둔다.
-   * 2) 묻힌다면 후보를 순서대로 시도한다 — 등번호색(number) → 검정 → 흰색 → primary의 보색.
+   * 2) 묻힌다면 후보를 순서대로 시도한다 — 등번호색(number) → 흰색 → 검정 → primary의 보색.
    *    2색 위주 엠블럼(예: Arsenal Dzerzhinsk — 크림색 바탕에 빨간 장식만 있는 방패)처럼
    *    대표색 두 개(primary/number)가 전부 로고 자체에 실존하는 색인 경우, number로 바꿔도
    *    그 색 역시 로고 가장자리에 이미 널려 있어 다시 묻히는 일이 흔하다 — 그래서 로고에
-   *    없을 가능성이 높은 검정/흰색/보색까지 순서대로 더 시도한다.
+   *    없을 가능성이 높은 흰색/검정/보색까지 순서대로 더 시도한다.
    * 3) 후보 각각은 isSafeSwapCandidate로 검사해, 가장자리와 안 겹치고 대비도 충분한 첫 번째
    *    후보를 채택한다. 끝까지 하나도 안전하지 않으면 교체를 포기한다(묻힌 채로 두는 게 애매한
    *    색으로 계속 바뀌는 것보다 낫다는 원래 설계 원칙을 유지).
@@ -136,9 +138,18 @@ const ScoreboardLogoContrast = (() => {
     if (whiteDeltaE !== null && whiteDeltaE < NEAR_WHITE_DELTA_E) return null;
     if (edgeSimilarShare(colors, background) < MIN_SIMILAR_SHARE) return null;
 
-    const candidates = [number, '#000000', '#ffffff', teamColorComplementHex(background)];
-    for (const candidate of candidates) {
-      if (isSafeSwapCandidate(colors, background, candidate)) return candidate;
+    // 등번호색은 팀이 실제 유니폼에서 primary와 짝지어 쓰는 색이라 대비 검사를 면제한다(로고 가장자리와
+    // 겹치는지만 검사). 흰색은 WCAG 큰 텍스트 기준 3:1보다 완화된 LIGHT_SWAP_MIN_CONTRAST만 요구한다 —
+    // 밝은 primary(예: 첼랴빈스크 #01b6e9, 흰색 대비 2.37)가 3:1에 걸려 검정으로 떨어지던 문제 보정.
+    // 흰색으로 충분히 읽히면 검정보다 흰색을 우선한다.
+    const candidates = [
+      [number, 0],
+      ['#ffffff', LIGHT_SWAP_MIN_CONTRAST],
+      ['#000000', TEAM_COLOR_MIN_TEXT_CONTRAST],
+      [teamColorComplementHex(background), TEAM_COLOR_MIN_TEXT_CONTRAST],
+    ];
+    for (const [candidate, minContrast] of candidates) {
+      if (isSafeSwapCandidate(colors, background, candidate, minContrast)) return candidate;
     }
     return null;
   }
