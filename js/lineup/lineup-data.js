@@ -135,6 +135,7 @@ function buildEffectiveFixtureData(data) {
  * 것이므로 명단에서 아예 지운다. 선발이 아니라 벤치(교체 명단)에만 있으면 실제로 뛰지는
  * 않았지만 스쿼드에는 포함된 것이므로 확정 부상 대신 "출전 여부 미정" 카테고리로 낮춰서
  * 표시한다. 둘 다에 없으면(스쿼드 밖) 원래 부상 정보를 그대로 유지한다.
+ * 국가대표 차출은 선발 또는 교체 명단에 있으면 차출 정보가 낡은 것으로 보고 제거한다.
  */
 function reconcileInjuriesAgainstLineup(next) {
   if (!next) return;
@@ -148,9 +149,13 @@ function reconcileInjuriesAgainstLineup(next) {
     if (!startIds.size && !benchIds.size) return;
 
     next[`${side}Injuries`] = injuries.reduce((acc, injury) => {
+      const pid = Number(injury?.playerId);
+      const isNationalDuty = typeof isNationalTeamDuty === 'function'
+        && isNationalTeamDuty(injury?.reason);
+      if (isNationalDuty && pid && (startIds.has(pid) || benchIds.has(pid))) return acc;
+
       const isGenuineInjury = typeof getInjuryCategoryRank !== 'function'
         || getInjuryCategoryRank(injury) === 0;
-      const pid = Number(injury?.playerId);
       if (!isGenuineInjury || !pid) {
         acc.push(injury);
         return acc;
