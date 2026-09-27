@@ -902,7 +902,17 @@ function fitBigLineupNameAgainstOpposingBadges(labels) {
 /** 이름의 패딩을 뺀 텍스트 영역이 다른 선수 원의 반지름 절반 안쪽까지 침범하는지 판정한다. */
 function nameOverlapsNodeCircleSignificantly(nameEl, nodeEl) {
   if (!canMeasureTextElement(nameEl) || !canMeasureTextElement(nodeEl)) return false;
-  const nr = getDisplayLayoutRect(nameEl);
+  return nameRectOverlapsNodeCircleSignificantly(getDisplayLayoutRect(nameEl), nodeEl);
+}
+
+/**
+ * nameOverlapsNodeCircleSignificantly의 rect 버전 — 아직 적용하지 않은 가상의 라벨 rect에도 쓸 수 있다.
+ * 자연 1줄 시도(tryLineupNameNaturalSingleLine)가 원과의 겹침을 이 마지막 단계와 같은 기준으로
+ * 판정하도록 공유한다. 기준이 다르면 1줄이 원 가장자리를 스치기만 해도 거절되고, 대신 선택된
+ * 2줄이 원을 더 깊게 덮어 결국 폰트까지 줄어드는 역전이 생긴다.
+ */
+function nameRectOverlapsNodeCircleSignificantly(nr, nodeEl) {
+  if (!canMeasureTextElement(nodeEl)) return false;
   const cr = getDisplayLayoutRect(nodeEl);
   // pill 패딩 제외한 텍스트 표시 영역
   const tL = nr.left + 6, tR = nr.right - 6;
@@ -1409,7 +1419,14 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 
   const fitsWithinPitch = !hasLineupNamePitchOverflowForRect(hypotheticalRect, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
   const collisionTargets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const overlapsAnything = collisionTargets.some(target => canMeasureTextElement(target) && rectsOverlap(hypotheticalRect, getDisplayLayoutRect(target)));
+  // 다른 선수의 원만 마지막 단계(fitLineupNamesAgainstNodeCircles)와 같은 "실제 원 모양 + 반지름 절반"
+  // 기준으로 본다 — 원 가장자리를 스치는 정도면 1줄을 유지한다. 라벨/배지/팀칩은 기존 사각형 판정 그대로.
+  const circles = new Set(getSiblingNodeCirclesForLabel(nameEl));
+  const overlapsAnything = collisionTargets.some(target => {
+    if (!canMeasureTextElement(target)) return false;
+    if (circles.has(target)) return nameRectOverlapsNodeCircleSignificantly(hypotheticalRect, target);
+    return rectsOverlap(hypotheticalRect, getDisplayLayoutRect(target));
+  });
 
   if (!fitsWithinPitch || overlapsAnything) return false; // nameEl 자체는 한 번도 안 건드림
 
