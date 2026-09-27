@@ -55,6 +55,15 @@ function computeLineupSurnameBreakLines(raw) {
       ? [hyphenParts[0].slice(0, prefixEnd), hyphenParts[0].slice(prefixEnd + 1), hyphenParts[1]]
       : hyphenParts;
   }
+  // 한글화되지 않은 영문 복합 성(예: "M. Schjønning-Larsen")도 한글 복합 성과 같은 줄 구성으로
+  // [이니셜/앞부분, 첫 성, 둘째 성] 후보를 만든다. 영문 하이픈은 실제 철자라 숨기지 않고 첫 성 끝에 남긴다.
+  // 마지막 토큰(성) 안의 하이픈만 대상 — "Jean-Philippe Mateta"처럼 이름 쪽 하이픈은 성 경계가 아니다.
+  const latinMatch = text.trim().match(/^(.*\s)?(\p{L}[\p{L}'’.]*)-(\p{L}[\p{L}'’.]*)$/u);
+  if (latinMatch && !/[가-힣]/.test(text)) {
+    const prefix = (latinMatch[1] || '').trim();
+    const lines = [`${latinMatch[2]}-`, latinMatch[3]];
+    return prefix ? [prefix, ...lines] : lines;
+  }
   const tokens = text.trim().split(/\s+/).filter(Boolean);
   if (tokens.length >= 3) {
     const last = tokens[tokens.length - 1];
@@ -199,7 +208,7 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare, maxFont
           bottom: wrapRect.top + size.height,
         };
         const outsidePitch = hasLineupNamePitchOverflowForRect(candidate, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
-        const overlaps = targets.some(target => canMeasureTextElement(target) && rectsOverlap(candidate, getDisplayLayoutRect(target)));
+        const overlaps = lineupNameCandidateRectCollides(candidate, nameEl, targets);
         if (!outsidePitch && !overlaps) return font;
       }
       const next = Math.max(LINEUP_NAME_MIN_FONT_PX, font - TEXT_FIT_FONT_STEP_PX);
@@ -1338,6 +1347,22 @@ function resolveLineupCaptainBadgePlacement(nameEl, labels) {
   applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
 }
 
+/**
+ * 아직 적용하지 않은 라벨 후보 rect(자연 1줄, 성 경계 3줄, 등번호 줄 분리 4줄, 주장 배지 배치 등)가
+ * 충돌 대상과 겹치는지. 다른 선수의 원만 마지막 단계(fitLineupNamesAgainstNodeCircles)와 같은
+ * "실제 원 모양 + 반지름 절반" 기준으로 보고, 라벨/배지/팀칩은 사각형 판정 그대로 쓴다.
+ * 후보 비교가 원을 사각형으로 보면 가장자리만 스쳐도 더 나은 후보(1줄, 큰 폰트 4줄 등)가 거절되고,
+ * 대신 남은 배치가 원을 더 덮어 결국 폰트까지 줄어드는 역전이 생긴다.
+ */
+function lineupNameCandidateRectCollides(rect, nameEl, targets) {
+  const circles = new Set(getSiblingNodeCirclesForLabel(nameEl));
+  return targets.some(target => {
+    if (!canMeasureTextElement(target)) return false;
+    if (circles.has(target)) return nameRectOverlapsNodeCircleSignificantly(rect, target);
+    return rectsOverlap(rect, getDisplayLayoutRect(target));
+  });
+}
+
 /** 두 DOMRect가 실제로 겹치는지 (1px 여유). wrapsOverlap과 동일 기준, 가상 rect에도 사용 가능. */
 function rectsOverlap(rectA, rectB) {
   return rectA.left < rectB.right - 1
@@ -1419,14 +1444,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
 
   const fitsWithinPitch = !hasLineupNamePitchOverflowForRect(hypotheticalRect, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
   const collisionTargets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  // 다른 선수의 원만 마지막 단계(fitLineupNamesAgainstNodeCircles)와 같은 "실제 원 모양 + 반지름 절반"
-  // 기준으로 본다 — 원 가장자리를 스치는 정도면 1줄을 유지한다. 라벨/배지/팀칩은 기존 사각형 판정 그대로.
-  const circles = new Set(getSiblingNodeCirclesForLabel(nameEl));
-  const overlapsAnything = collisionTargets.some(target => {
-    if (!canMeasureTextElement(target)) return false;
-    if (circles.has(target)) return nameRectOverlapsNodeCircleSignificantly(hypotheticalRect, target);
-    return rectsOverlap(hypotheticalRect, getDisplayLayoutRect(target));
-  });
+  const overlapsAnything = lineupNameCandidateRectCollides(hypotheticalRect, nameEl, collisionTargets);
 
   if (!fitsWithinPitch || overlapsAnything) return false; // nameEl 자체는 한 번도 안 건드림
 

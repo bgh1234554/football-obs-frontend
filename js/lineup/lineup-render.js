@@ -589,6 +589,13 @@ function hasLineupNameMultiSpaceBreakCandidate(name) {
   return String(name || '').trim().split(/\s+/).filter(Boolean).length >= 3;
 }
 
+/** 한글화되지 않은 영문 이름의 성(마지막 토큰)이 하이픈 복합 성인지 — "M. Schjønning-Larsen".
+ *  한글 복합 성과 같은 3줄 후보(이니셜 / 첫 성 / 둘째 성) 비교 대상으로 삼는다. */
+function hasLineupNameLatinHyphenSurname(name) {
+  const text = String(name || '').trim();
+  return !/[가-힣]/.test(text) && /(?:^|\s)\p{L}[\p{L}'’.]*-\p{L}[\p{L}'’.]*$/u.test(text);
+}
+
 /** 이름 라벨 내부 HTML — (사진 모드면) 등번호 + 이름 텍스트. 주장이면 등번호 앞에 완장 배지. */
 function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const rawName = getLineupNameWithSurnameBreaks(player, name);
@@ -596,7 +603,9 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const safeName = dpEscape(visibleName);
   // data-surname-breaks는 "이 라벨에 3줄 분리 후보가 있다"는 표시 — 하이픈 성 경계뿐 아니라
   // 하이픈 없이 공백 2개 이상(중간 이름)인 이름도 대상에 포함한다.
-  const hasBreakCandidate = visibleName !== rawName || hasLineupNameMultiSpaceBreakCandidate(visibleName);
+  const hasBreakCandidate = visibleName !== rawName
+    || hasLineupNameMultiSpaceBreakCandidate(visibleName)
+    || hasLineupNameLatinHyphenSurname(visibleName);
   const surnameAttr = hasBreakCandidate ? ` data-surname-breaks="${dpEscape(rawName)}"` : '';
   const rawNumber = String(player?.number ?? '').trim();
   const showNumber = shouldShowLineupNameNumber() && rawNumber !== '';
