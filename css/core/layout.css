@@ -16,6 +16,16 @@
       transform: scale(var(--display-transform));
       transform-origin: top left;
     }
+    /* 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout) — 전술판 탭에서는 body를
+       전술판 전용 배율(--tactics-fs-*, js/core/display-scale.js)로 그린다. 세로 화면이면 기기 폭 기준으로 커지고,
+       가로 화면은 일반 배율과 같은 값이라 차이가 없다. 다른 탭은 영향 없음. */
+    html[data-display-scaled] body.tactics-active.td-touch-board {
+      width: var(--tactics-fs-width, var(--display-width));
+      height: var(--tactics-fs-height, var(--display-height));
+      transform: scale(var(--tactics-fs-transform, var(--display-transform)));
+      --display-vw: var(--tactics-fs-vw);
+      --display-vh: var(--tactics-fs-vh);
+    }
     .tactics-viewport {
       display: flex;
       flex-direction: column;
@@ -25,14 +35,18 @@
     }
     /* 전체화면 요소 자체는 UA의 transform:none !important가 적용된다.
        내부 래퍼에서 보정해야 글씨/도구까지 일반 화면과 같은 물리 크기를 유지한다. */
+    /* 전술판 전체화면은 --tactics-fs-*(js/core/display-scale.js)를 쓴다 — 가로 화면에선 일반 배율과 같고,
+       세로 화면(태블릿/모바일 세로)에선 기기 폭에 맞춘 큰 배율이다. 내부의 --display-vw/vh도 같이 맞춘다. */
     html[data-display-scaled] #page-tactics:fullscreen > .tactics-viewport {
       position: absolute;
       inset: var(--display-top) auto auto var(--display-left);
-      width: var(--display-width);
-      height: var(--display-height);
+      width: var(--tactics-fs-width, var(--display-width));
+      height: var(--tactics-fs-height, var(--display-height));
       flex: none;
-      transform: scale(var(--display-transform));
+      transform: scale(var(--tactics-fs-transform, var(--display-transform)));
       transform-origin: top left;
+      --display-vw: var(--tactics-fs-vw);
+      --display-vh: var(--tactics-fs-vh);
     }
     body {
       container-type: inline-size;

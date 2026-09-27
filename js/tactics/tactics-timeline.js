@@ -422,7 +422,13 @@ function ttBindFullscreenToggle() {
   const setOpen = (next) => {
     tacticsTimelineState.isFullscreenPanelOpen = next;
     panel.classList.toggle('is-open', next);
-    if (openBtn) openBtn.textContent = next ? '›› 타임라인' : '‹‹ 타임라인';
+    if (openBtn) {
+      // 화살표/라벨 span 분리 — 세로 화면 전체화면에선 화살표를 숨기고 열림 상태(aria-expanded)를 세그먼트 버튼 색으로 표시
+      const arrow = openBtn.querySelector('.td-toggle-arrow');
+      if (arrow) arrow.textContent = next ? '››' : '‹‹';
+      else openBtn.textContent = next ? '›› 타임라인' : '‹‹ 타임라인';
+      openBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    }
   };
 
   if (openBtn) {
@@ -444,7 +450,8 @@ function ttBindFullscreenToggle() {
   // 풀스크린 + 패널이 열려있을 때만 외부 클릭으로 닫기.
   // 일반 모드에서는 패널이 인라인이라 외부 클릭으로 닫을 필요 없음.
   document.addEventListener('click', (e) => {
-    if (!document.fullscreenElement) return;
+    // 전체화면 또는 터치 기기 배치(패널이 오버레이)일 때만 바깥 클릭으로 닫기
+    if (!(typeof window.tdIsOverlayPanelMode === 'function' ? window.tdIsOverlayPanelMode() : document.fullscreenElement)) return;
     if (!panel.classList.contains('is-open')) return;
     if (panel.contains(e.target)) return;
     if (openBtn && openBtn.contains(e.target)) return;
