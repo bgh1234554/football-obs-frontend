@@ -144,6 +144,12 @@ function openTacticsNamesPanel() {
   if (typeof lineupPanelState !== 'undefined' && lineupPanelState?.lastFixture) return;
   const backdrop = document.getElementById('tacticsNamesBackdrop');
   if (!backdrop) return;
+  // 전술판 전체화면 중이면 모달을 전체화면 요소(.tactics-viewport) 안으로 옮긴다 — body에 있으면
+  // 전체화면 요소 바깥이라 화면에 안 보이고, 전체화면을 풀어야만 나타나던 버그(태블릿에서 발견).
+  // 전체화면이 아니면 원래 자리(body)로 되돌린다.
+  const fsEl = document.fullscreenElement;
+  const host = fsEl ? (fsEl.querySelector('.tactics-viewport') || fsEl) : document.body;
+  if (backdrop.parentElement !== host) host.appendChild(backdrop);
   renderTacticsNamesPanel();
   setTacticsNamesTab('home');
   backdrop.classList.add('open');

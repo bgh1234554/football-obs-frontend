@@ -25,7 +25,7 @@ const POPOUT_CLOSE_TRIGGER_SELECTOR = [
   // 뒤에 보여줄 대시보드가 없어(전부 숨김) 창만 텅 빈 채로 남으므로 같이 닫아줘야 한다.
   '#manualPanelClose', '#manualPanelCancel', '#manualPanelSave', '#manualPanelReset',
   '#settingsCloseBtn',
-  '.ev-subst-picker-confirm', '.ev-subst-picker-cancel', '.ev-subst-picker-close',
+  '.ev-subst-picker-confirm', '.ev-subst-picker-cancel', '.ev-subst-picker-close', '.ev-subst-picker-reset',
   '#tacticsNamesClose', '#tacticsNamesCancel', '#tacticsNamesSave', '#tacticsNamesReset',
 ].join(', ');
 

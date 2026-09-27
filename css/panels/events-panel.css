@@ -349,6 +349,21 @@
       transition: background .14s ease;
     }
     .ev-subst-picker-cancel:hover { background: rgba(255,255,255,.12); }
+    /* 초기화 — 직접 고른 교체 선수를 지우고 API 원본으로 되돌림(evClearSubstOverride). 고른 적 없으면 비활성. */
+    .ev-subst-picker-reset {
+      flex: 0 0 auto;
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.4);
+      color: #fca5a5;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background .14s ease;
+    }
+    .ev-subst-picker-reset:hover:not(:disabled) { background: rgba(239,68,68,.24); }
+    .ev-subst-picker-reset:disabled { opacity: .35; cursor: default; }
 
     .ev-list {
       flex: 1 1 0;
