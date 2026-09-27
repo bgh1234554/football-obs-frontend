@@ -39,7 +39,13 @@ function lpCollectPlayerNames(player) {
   if (!player || typeof player !== 'object') return [];
   return [
     typeof getPlayerNickname === 'function' && player.playerId != null
-      ? getPlayerNickname(player.playerId)
+      ? getPlayerNickname(
+        player.playerId,
+        // id=0 선수만 이름 키로 조회(id≠0이면 두 번째 인자는 무시됨)
+        Number(player.playerId) === 0 && typeof playerNicknameSourceName === 'function'
+          ? playerNicknameSourceName(player)
+          : undefined
+      )
       : null,
     player.name,
     player.nameKoLong,

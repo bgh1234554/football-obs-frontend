@@ -1114,6 +1114,12 @@ function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
     const nick = getPlayerNickname(pid);
     if (nick) return nick;
   }
+  // playerId가 명시적으로 0인 선수만 API 원본 이름 키로 닉네임을 찾는다(감독 등 playerId가 없는 객체는 제외).
+  if (player.playerId != null && Number(player.playerId) === 0
+    && typeof getPlayerNickname === 'function' && typeof playerNicknameSourceName === 'function') {
+    const nick = getPlayerNickname(0, playerNicknameSourceName(player));
+    if (nick) return nick;
+  }
   const shortName = player.name || player.playerName || '';
   const longName = player.nameKoLong || player.playerNameKoLong || '';
   const shouldHideInitial = category === 'lineup'

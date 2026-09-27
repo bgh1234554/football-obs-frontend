@@ -603,6 +603,14 @@ function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
     const nick = getPlayerNickname(pid);
     if (nick) return nick;
   }
+  // id=0 이벤트는 API 원본 이름(playerOrigName/assistOrigName) 키로 닉네임을 찾는다.
+  if (pid != null && Number(pid) === 0 && typeof getPlayerNickname === 'function') {
+    const origName = kind === 'assist'
+      ? (ev.assistOrigName || ev.assistName)
+      : (ev.playerOrigName || ev.playerName);
+    const nick = getPlayerNickname(0, origName);
+    if (nick) return nick;
+  }
   if (kind === 'assist') {
     const long = evNormalizeDisplayName(ev.assistNameKoLong || '');
     const short = evNormalizeDisplayName(ev.assistName || '');
