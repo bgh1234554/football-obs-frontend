@@ -413,9 +413,10 @@ function buildBenchListHtml(players, lineupExists, side) {
   return players.map(player => lpBuildRosterRowHtml(player, 'bench', side)).join('');
 }
 
-/** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/미등록=3)을 매긴다. */
+/** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/국가대표 차출=3/미등록=4)을 매긴다. 국가대표 차출은 미등록 아이콘을 쓰지만 진짜 미등록보다 앞에 둔다. */
 function getInjuryCategoryRank(injury) {
-  if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) return 3;
+  if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) return 4;
+  if (typeof isNationalTeamDuty === 'function' && isNationalTeamDuty(injury.reason)) return 3;
   if (isQuestionableInjuryReason(injury.reason, injury.type)) return 1;
   if (typeof isSuspension === 'function' && isSuspension(injury.reason)) return 2;
   return 0;
@@ -444,6 +445,8 @@ function buildInjuryListHtml(injuries, provided) {
     let iconHtml = '<span class="dp-icon dp-icon-injury" aria-label="부상"></span>';
     if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) {
       iconHtml = '<span class="dp-icon dp-icon-unregistered" aria-label="선수단 미등록"></span>';
+    } else if (typeof isNationalTeamDuty === 'function' && isNationalTeamDuty(injury.reason)) {
+      iconHtml = '<span class="dp-icon dp-icon-unregistered" aria-label="국가대표 차출"></span>';
     } else if (isQuestionableInjuryReason(injury.reason, injury.type)) {
       iconHtml = '<span class="dp-icon dp-icon-questionable" aria-label="의심"></span>';
     } else if (typeof isSuspension === 'function' && isSuspension(injury.reason)) {

@@ -142,3 +142,14 @@
     if (!reason) return false;
     return normalizeInjuryReasonKey(reason) === 'off the roster';
   }
+
+  /**
+   * reason이 "국가대표 차출"인지 판별 — 원문("National Team", "International duty" 등)과 무관하게
+   * 한글 매핑 결과가 '국가대표 차출'이면 true. 미등록과 같은 빨간 X 아이콘을 쓰되 정렬은 미등록 바로 앞.
+   * @param {string|null|undefined} reason
+   * @returns {boolean}
+   */
+  function isNationalTeamDuty(reason) {
+    if (!reason) return false;
+    return getInjuryReasonKo(reason) === '국가대표 차출';
+  }
