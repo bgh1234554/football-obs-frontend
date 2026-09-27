@@ -31,7 +31,8 @@
 const ScoreboardLogoContrast = (() => {
   // 이미지 엘리먼트별 진행 상태(요청 키, 캐시된 색상, 재시도 시각, 최신 배경/번호색)를 보관한다.
   // DOM이 제거되면 별도 정리 없이 WeakMap 항목도 함께 해제된다.
-  const elements = new WeakMap();
+  // clearCache()가 통째로 새 WeakMap으로 교체하므로 let이어야 한다(const면 호출 시 TypeError).
+  let elements = new WeakMap();
   // 로고 가장자리 전체 가중치 중 어떤 색과 "비슷하다"고 판정된 비중이 이 값 이상이면 그 색을
   // 배경으로 쓸 때 로고가 묻힌다고 판단한다(현재 배경 판정에도, 교체 후보 판정에도 같은 기준을 쓴다).
   // 원래 0.6이었다. 실제 로고 2건(둘 다 방패 전체가 대표색 2개로만 채워진 벨라루스 하위리그

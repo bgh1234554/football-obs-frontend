@@ -149,6 +149,10 @@ function evVarDetailKey(detail) {
 // 복합키: side|elapsed|extra|playerId|assistId — 이벤트 패널·라인업 패널 양쪽에서 동일하게 생성 가능.
 
 function evSubstEventKey(ev) {
+  // evPatchSubstEvents가 패치/ID 리매핑 전 원본 이벤트 기준으로 새겨둔 키를 우선한다.
+  // 화면에 그려지는 이벤트는 override 적용·alt ID 연결로 playerId/assistId가 바뀐 뒤라,
+  // 그대로 다시 계산하면 저장된 키와 어긋나 초기화/재선택이 엉뚱한 키를 건드린다.
+  if (ev?._evSubstKey) return ev._evSubstKey;
   return [
     ev?.side || '',
     Number(ev?.elapsed ?? 0),
@@ -268,14 +272,16 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
  */
 function evPatchSubstEvents(events, fixtureId) {
   if (!Array.isArray(events) || !fixtureId) return events;
-  const overrides = evLoadSubstOverrides()[fixtureId];
-  if (!overrides || !Object.keys(overrides).length) return events;
+  const overrides = evLoadSubstOverrides()[fixtureId] || {};
 
+  // override가 없어도 모든 교체 이벤트에 원본 키(_evSubstKey)를 새겨둔다 — 이후 applyZeroIdOverrides의
+  // alt ID 리매핑이나 이 함수의 패치로 ID가 바뀌어도 선택 창의 저장/초기화가 같은 키를 쓰게 하기 위함.
   return events.map(ev => {
     if (String(ev?.type || '').toLowerCase() !== 'subst') return ev;
-    const evOverride = overrides[evSubstEventKey(ev)];
-    if (!evOverride) return ev;
-    const patched = { ...ev };
+    const key = evSubstEventKey(ev);
+    const evOverride = overrides[key];
+    if (!evOverride) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
+    const patched = { ...ev, _evSubstKey: key };
     if (evOverride.player) {
       patched.playerId = evOverride.player.playerId;
       patched.playerName = evOverride.player.name;
