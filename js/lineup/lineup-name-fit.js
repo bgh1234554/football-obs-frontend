@@ -259,6 +259,60 @@ function improveLineupNameWithNumberLine(nameEl, labels, maxFont) {
   lockLineupNameWidth(nameEl);
 }
 
+/**
+ * 모든 충돌 보정이 끝난 뒤, 설정 폰트보다 작아진 라벨을 겹치지 않는 한도에서 다시 키운다.
+ * 충돌 루프는 겹침이 풀릴 때까지 한 단계씩 줄이기만 하므로, 이웃 라벨이 나중에 줄어들어
+ * 공간이 생겨도 먼저 줄어든 라벨은 작은 채로 남는다. 가장 작은 라벨부터 처리해 작은 쪽에
+ * 먼저 공간을 준다. 후보는 기본 2줄과(있으면) 성 경계 3줄이며, 더 큰 폰트가 나오는 쪽을 쓴다.
+ * 적용 후 실제 rect가 피치 밖이거나 무언가와 겹치면 원래 상태로 되돌린다.
+ */
+function regrowShrunkLineupNames(labels, configuredFonts) {
+  const fontOf = el => parseFloat(getComputedStyle(el).fontSize);
+  const shrunk = labels
+    .filter(el => canMeasureTextElement(el) && Number.isFinite(configuredFonts.get(el))
+      && fontOf(el) < configuredFonts.get(el) - 0.01)
+    .sort((a, b) => fontOf(a) - fontOf(b));
+
+  shrunk.forEach(el => {
+    if (!canMeasureTextElement(el)) return;
+    const current = fontOf(el);
+    const maxFont = configuredFonts.get(el);
+    const targets = getLineupNameNaturalWidthCollisionTargets(el, labels);
+    const textEl = el.querySelector('.dp-lineup-name-text[data-surname-breaks]');
+    const surnameLines = textEl ? computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks) : null;
+
+    let best = { font: measureLineupNameCandidateFont(el, null, targets, undefined, maxFont), lines: null };
+    if (surnameLines) {
+      const splitFont = measureLineupNameCandidateFont(el, surnameLines, targets, undefined, maxFont);
+      if (splitFont !== null && (best.font === null || splitFont > best.font)) best = { font: splitFont, lines: surnameLines };
+    }
+    if (best.font === null || best.font <= current) return;
+
+    const saved = { html: el.innerHTML, className: el.className, css: el.style.cssText };
+    resetLineupSurnameBreaks(el);
+    moveLineupCaptainBadgeToPrefix(el);
+    if (best.lines) applyLineupSurnameLines(el, best.lines);
+    const wrap = getLineupNameWrap(el) || el.parentElement;
+    el.style.whiteSpace = '';
+    el.style.display = '';
+    el.style.flexShrink = '';
+    el.style.width = '';
+    el.style.maxWidth = `${wrap.clientWidth}px`;
+    el.style.fontSize = `${best.font}px`;
+    lockLineupNameWidth(el);
+
+    const rect = getDisplayLayoutRect(el);
+    const unsafe = !canStayWithinLineupNameLayout(el)
+      || hasLineupNamePitchOverflowForRect(rect, el, getLineupNamePitchPaddingPxForContext(el))
+      || lineupNameCandidateRectCollides(rect, el, targets);
+    if (unsafe) {
+      el.innerHTML = saved.html;
+      el.className = saved.className;
+      el.style.cssText = saved.css;
+    }
+  });
+}
+
 /** 등번호를 별도 첫 줄에 배치하고, 지정한 이름 줄과 마지막 토큰의 주장 배지를 적용한다. */
 function applyLineupNumberLine(nameEl, lines) {
   const textEl = nameEl.querySelector('.dp-lineup-name-text');
@@ -401,7 +455,11 @@ function canStayWithinTwoTextLines(el) {
 /** 이분탐색으로 el의 width를 canFitFn이 통과하는 한도 내 최소값까지 줄인다. */
 function tightenTextElementWidth(el, minWidthPx, canFitFn) {
   if (!canMeasureTextElement(el) || typeof canFitFn !== 'function') return false;
-  const currentWidth = Math.ceil(getDisplayLayoutRect(el).width);
+  // 화면 배율 변환을 거친 rect 폭에는 76.00001처럼 부동소수 오차가 붙는다. 그대로 올림하면
+  // 77이 되어 실제로는 한 픽셀도 못 줄였는데도 "줄였다(true)"를 반환하고, 호출 측 충돌 루프가
+  // 매 패스 이 가짜 성공에 걸려 폰트 축소 단계에 영영 도달하지 못했다(경기 1528895 실측).
+  const startWidth = getDisplayLayoutRect(el).width;
+  const currentWidth = Math.ceil(startWidth - 0.01);
   if (!Number.isFinite(currentWidth) || currentWidth <= minWidthPx) return false;
 
   let low = minWidthPx;
@@ -420,7 +478,8 @@ function tightenTextElementWidth(el, minWidthPx, canFitFn) {
   }
 
   el.style.width = `${best}px`;
-  return best < currentWidth;
+  // 계산상 값이 아니라 실제로 렌더된 폭이 줄었는지로 성공 여부를 판단한다.
+  return getDisplayLayoutRect(el).width < startWidth - 0.5;
 }
 
 /** 일반(작은 캠) 이름 라벨 폭 좁히기. */
@@ -618,16 +677,25 @@ function wrapsOverlap(leftWrap, rightWrap) {
     && leftRect.bottom > rightRect.top + 1;
 }
 
-/** 겹치는 두 라벨 중 먼저 줄여야 할 쪽 — 더 넓은 쪽, 동률이면 텍스트 더 긴 쪽, 그래도 같으면 더 아래쪽. */
+/**
+ * 겹치는 두 라벨 중 먼저 줄여야 할 쪽 — 폰트가 더 큰 쪽, 같으면 더 넓은 쪽, 그다음 텍스트 더 긴 쪽,
+ * 그래도 같으면 더 아래쪽. 폰트가 큰 쪽부터 줄여야 한쪽만 최소 폰트까지 몰려 작아지지 않고
+ * 두 라벨이 비슷한 크기로 맞춰진다(가장 작은 라벨을 최대한 크게).
+ */
 function chooseWrapToShrink(leftWrap, rightWrap) {
   const leftRect = getDisplayLayoutRect(leftWrap);
   const rightRect = getDisplayLayoutRect(rightWrap);
+  const leftName = leftWrap.matches?.('.dp-lineup-name') ? leftWrap : leftWrap.querySelector('.dp-lineup-name');
+  const rightName = rightWrap.matches?.('.dp-lineup-name') ? rightWrap : rightWrap.querySelector('.dp-lineup-name');
+  const leftFont = leftName ? parseFloat(getComputedStyle(leftName).fontSize) : NaN;
+  const rightFont = rightName ? parseFloat(getComputedStyle(rightName).fontSize) : NaN;
+  if (Number.isFinite(leftFont) && Number.isFinite(rightFont) && Math.abs(leftFont - rightFont) >= 0.5) {
+    return leftFont > rightFont ? leftWrap : rightWrap;
+  }
   if (Math.abs(leftRect.width - rightRect.width) > 1) {
     return leftRect.width > rightRect.width ? leftWrap : rightWrap;
   }
 
-  const leftName = leftWrap.matches?.('.dp-lineup-name') ? leftWrap : leftWrap.querySelector('.dp-lineup-name');
-  const rightName = rightWrap.matches?.('.dp-lineup-name') ? rightWrap : rightWrap.querySelector('.dp-lineup-name');
   const leftLen = String(leftName?.textContent || '').trim().length;
   const rightLen = String(rightName?.textContent || '').trim().length;
   if (leftLen !== rightLen) return leftLen > rightLen ? leftWrap : rightWrap;
@@ -1927,6 +1995,8 @@ function fitLineupNamePills(root) {
   fitLineupNamesAgainstNodeCircles(labels);
   labels.forEach(nameEl => { fitLineupNameWithinPitchBounds(nameEl); });
   fitBigLineupTeamChips(scope);
+  // 줄이기만 하는 충돌 보정 이후, 이웃이 줄어 생긴 공간만큼 작아진 라벨을 다시 키운다.
+  regrowShrunkLineupNames(labels, configuredFonts);
   // 기존 결과가 우선이다. 모든 충돌 보정 이후 더 큰 폰트가 안전하게 들어갈 때만 개선한다.
   labels.forEach(nameEl => improveLineupNameWithNumberLine(nameEl, labels, configuredFonts.get(nameEl)));
 }
