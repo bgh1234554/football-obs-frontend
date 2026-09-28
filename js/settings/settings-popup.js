@@ -1603,6 +1603,7 @@ function initSettingsPopup() {
         injuries: !!document.getElementById('mrResetInjuries')?.checked,
         coachName: !!document.getElementById('mrResetCoach')?.checked,
         referee: !!document.getElementById('mrResetReferee')?.checked,
+        venue: !!document.getElementById('mrResetVenue')?.checked,
       };
       if (!Object.values(options).some(Boolean)) {
         if (typeof showToast === 'function') showToast('지울 항목을 하나 이상 켜두세요');

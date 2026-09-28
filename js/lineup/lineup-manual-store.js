@@ -183,10 +183,11 @@ function sanitizeManualSideData(sideData) {
   return Object.keys(next).length ? next : null;
 }
 
-/** entry가 사용자 입력이 하나도 없는지 — 주심+양 사이드 모두 비면 true. store 정리 판단용. */
+/** entry가 사용자 입력이 하나도 없는지 — 주심+경기장+양 사이드 모두 비면 true. store 정리 판단용. */
 function isManualEntryEmpty(entry) {
   const refereeEmpty = !String(entry?.refereeName || '').trim();
-  return refereeEmpty && !sanitizeManualSideData(entry?.home) && !sanitizeManualSideData(entry?.away);
+  const venueEmpty = !String(entry?.venueName || '').trim();
+  return refereeEmpty && venueEmpty && !sanitizeManualSideData(entry?.home) && !sanitizeManualSideData(entry?.away);
 }
 
 // fixture 단위로 저장되는 주심 이름 — entry 최상단(home/away와 동급)에 보관.
@@ -214,7 +215,31 @@ function setManualReferee(fixtureId, value) {
   writeManualStore(store);
 }
 
-/** fixtureId의 수동 entry 전체 반환 (home/away/refereeName 포함). 없으면 null. */
+// fixture 단위로 저장되는 경기장 이름 — 주심과 동일하게 entry 최상단에 보관(setManualReferee와 같은 흐름).
+function setManualVenue(fixtureId, value) {
+  if (!fixtureId) return;
+  const trimmed = String(value || '').trim();
+  const store = readManualStore();
+  const current = store[fixtureId] && typeof store[fixtureId] === 'object'
+    ? { ...store[fixtureId] }
+    : { home: {}, away: {} };
+
+  if (trimmed) current.venueName = trimmed;
+  else delete current.venueName;
+
+  if (isManualEntryEmpty(current)) {
+    delete store[fixtureId];
+  } else {
+    store[fixtureId] = {
+      ...current,
+      savedAt: Date.now(),
+      expiresAt: Date.now() + DETAIL_MANUAL_TTL_MS,
+    };
+  }
+  writeManualStore(store);
+}
+
+/** fixtureId의 수동 entry 전체 반환 (home/away/refereeName/venueName 포함). 없으면 null. */
 function getManualEntry(fixtureId) {
   if (!fixtureId) return null;
   return readManualStore()[fixtureId] || null;
@@ -222,10 +247,11 @@ function getManualEntry(fixtureId) {
 
 /**
  * fixtureId 하나의 수동 입력 중, options에서 true로 켠 항목만 선택적으로 삭제.
- * options: { lineup, bench, injuries, coachName, referee } (boolean, 기본 전부 false).
+ * options: { lineup, bench, injuries, coachName, referee, venue } (boolean, 기본 전부 false).
  *   - lineup/bench/injuries/coachName: home/away 양쪽에서 함께 지움
  *     (lineup엔 포메이션+그리드/풀폼 라인업이 같이 들어있어 따로 못 나눔).
  *   - referee: entry 최상단 refereeName (양 팀 공통이라 side 구분 없음).
+ *   - venue: entry 최상단 venueName (주심과 동일하게 양 팀 공통).
  * 다른 fixture의 저장값이나 선수 ID/닉네임 연결(player-id-resolve.js, 별도 storage key)은
  * 건드리지 않음 — "캐시 초기화"가 API 응답 캐시만 지우고 이 store는 그대로 두는 것과
  * 반대로, 이 함수는 이 store의 해당 fixture 항목 중 선택한 필드만 지운다.
@@ -254,6 +280,10 @@ function clearManualEntryFields(fixtureId, options = {}) {
   });
   if (options.referee && next.refereeName !== undefined) {
     delete next.refereeName;
+    changed = true;
+  }
+  if (options.venue && next.venueName !== undefined) {
+    delete next.venueName;
     changed = true;
   }
 

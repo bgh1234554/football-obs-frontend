@@ -832,6 +832,53 @@ function startRefereeInlineEdit(hostEl) {
   input.addEventListener('blur', () => finish(true));
 }
 
+/** 경기장 인라인 편집 종료 — finishRefereeInlineEdit와 동일한 흐름. */
+function finishVenueInlineEdit(hostEl, inputEl, saveValue) {
+  const fixtureId = getActiveFixtureId();
+  if (hostEl) hostEl.classList.remove('dp-venue-editing');
+  if (!hostEl || !fixtureId) {
+    rerenderLineupPanels();
+    return;
+  }
+  if (saveValue) setManualVenue(fixtureId, inputEl.value);
+  rerenderLineupPanels();
+}
+
+/** API에 경기장 이름이 없을 때만 허용되는 인라인 경기장 편집 진입점 (주심과 동일한 방식). */
+function startVenueInlineEdit(hostEl) {
+  if (!hostEl || hostEl.dataset.apiMissing !== 'true') return;
+  if (hostEl.querySelector('input')) return;
+
+  const fixtureId = getActiveFixtureId();
+  if (!fixtureId) return;
+
+  const current = String(getManualEntry(fixtureId)?.venueName || '').trim();
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'dp-coach-inline-input';   // 동일 스타일 재사용
+  input.value = current;
+  input.placeholder = '경기장 이름';
+
+  hostEl.classList.add('dp-venue-editing');
+  hostEl.textContent = '';
+  hostEl.appendChild(input);
+  input.focus();
+  input.select();
+
+  let done = false;
+  const finish = saveValue => {
+    if (done) return;
+    done = true;
+    finishVenueInlineEdit(hostEl, input, saveValue);
+  };
+
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); finish(true); return; }
+    if (event.key === 'Escape') { event.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
 document.addEventListener('click', event => {
   const manualBtn = event.target.closest('.dp-side-edit-btn');
   if (manualBtn?.dataset.manual && manualBtn?.dataset.side) {
@@ -914,6 +961,11 @@ document.addEventListener('dblclick', event => {
   const refereeEl = event.target.closest('.dp-referee-name');
   if (refereeEl && refereeEl.dataset.apiMissing === 'true') {
     startRefereeInlineEdit(refereeEl);
+    return;
+  }
+  const venueEl = event.target.closest('.dp-venue-name');
+  if (venueEl && venueEl.dataset.apiMissing === 'true') {
+    startVenueInlineEdit(venueEl);
   }
 });
 

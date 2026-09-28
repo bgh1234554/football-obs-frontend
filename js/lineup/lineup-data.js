@@ -116,6 +116,12 @@ function buildEffectiveFixtureData(data) {
   if (manualReferee) {
     next.matchInfo = { ...(next.matchInfo || {}), refereeName: manualReferee };
   }
+  // 경기장도 주심과 같은 방식 — manualEntry.venueName이 있으면 venueName만 override
+  // (API가 venueCity만 준 경우 도시는 그대로 두어 "경기장, 도시" 형태로 이어 붙는다).
+  const manualVenue = String(entry.venueName || '').trim();
+  if (manualVenue) {
+    next.matchInfo = { ...(next.matchInfo || {}), venueName: manualVenue };
+  }
 
   // 5) 수동 라인업 적용 후 ID override 적용 — 수동 선수 데이터가 한글 이름을 덮어쓰지 않도록
   //    항상 마지막에 실행한다.
