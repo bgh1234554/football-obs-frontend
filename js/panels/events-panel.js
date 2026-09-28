@@ -303,10 +303,14 @@ window.evPatchSubstEvents = evPatchSubstEvents;
 function evOpenSubstPicker(ev, field, fixtureData) {
   const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
   const lineup = ev.side === 'home' ? fixtureData?.homeLineup : fixtureData?.awayLineup;
-  const allPlayers = [
-    ...(lineup?.startXi || []),
-    ...(lineup?.substitutes || []),
-  ].filter(Boolean);
+  // 그 교체 시점에 실제로 가능한 선수만 — OUT은 그라운드에 있던 선수, IN은 아직 투입 안 된 교체 명단
+  // 선수(event-hide.js evAvailablePlayers). 계산할 수 없으면 기존처럼 팀 전체 명단.
+  const allPlayers = typeof window.evAvailablePlayers === 'function'
+    ? window.evAvailablePlayers(ev, ev.side, field === 'player' ? 'onPitch' : 'bench')
+    : [
+      ...(lineup?.startXi || []),
+      ...(lineup?.substitutes || []),
+    ].filter(Boolean);
 
   document.querySelector('.ev-subst-picker-overlay')?.remove();
 

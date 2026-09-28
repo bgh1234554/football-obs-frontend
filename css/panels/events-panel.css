@@ -458,13 +458,17 @@
     }
     .ev-row-menu-btn:hover { background: rgba(255,255,255,.14); }
     .ev-row-menu-btn.is-danger { color: #fca5a5; border-color: rgba(239,68,68,.35); }
-    .ev-edit-modal { width: 360px; height: auto; }
+    /* 교체 선수 선택 모달과 같은 틀(헤더 / 선수 목록 / 액션) — 목록이 남는 높이를 채우고 스크롤 */
+    .ev-edit-modal { width: 340px; height: clamp(380px, calc(var(--display-vh, 1vh) * 70), 600px); }
     .ev-edit-body {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding: 12px 14px;
+      gap: 8px;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid rgba(255,255,255,.09);
     }
+    .ev-edit-seg-rows { display: flex; flex-direction: column; gap: 8px; }
+    .ev-edit-tabs .ev-edit-seg-btn { text-align: left; padding: 6px 8px; }
     .ev-edit-field {
       display: flex;
       flex-direction: column;
@@ -500,17 +504,6 @@
       background: rgba(34,197,94,.18);
       border-color: rgba(34,197,94,.5);
     }
-    .ev-edit-select {
-      width: 100%;
-      padding: 6px 8px;
-      font: inherit;
-      font-size: 13px;
-      color: #f0f0f0;
-      background: #12121c;
-      border: 1px solid rgba(255,255,255,.16);
-      border-radius: 6px;
-    }
-    .ev-edit-modal .ev-hide-mgr-help { padding: 0; }
 
     .ev-list {
       flex: 1 1 0;

@@ -251,7 +251,8 @@ function evHideCreateManageButton() {
   btn.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
-    evHideOpenManager(fixtureId);
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) window.Popout.open('evhidden', {});
+    else evHideOpenManager(fixtureId);
   });
   return btn;
 }
@@ -329,7 +330,12 @@ function evHideOpenManager(fixtureId) {
     const entries = Object.entries(evHideGetItems(fixtureId))
       .sort((a, b) => (Number(a[1]?.snapshot?.elapsed ?? 0) + Number(a[1]?.snapshot?.extra ?? 0) / 100)
         - (Number(b[1]?.snapshot?.elapsed ?? 0) + Number(b[1]?.snapshot?.extra ?? 0) / 100));
-    if (!entries.length) { close(); return; }
+    if (!entries.length) {
+      close();
+      // 새 창으로 연 경우 마지막 항목까지 복원하면 창도 닫는다(빈 창만 남지 않도록).
+      if (window.__POPOUT_MODE__) setTimeout(() => window.close(), 50);
+      return;
+    }
     list.replaceChildren(...entries.map(([sig, item]) => {
       const snap = item?.snapshot || {};
       const row = document.createElement('div');
@@ -396,23 +402,103 @@ function evEditSave(sig, patch) {
 }
 
 /**
- * 팀별 선수 목록(선발+교체). 라인업 패널 원본(lineupPanelState.lastFixture — playerStats로 추정한
- * 라인업 포함)에 수동 입력/ID 연결을 반영해 쓰고(교체 반영 전이라 벤치 선수도 전부 포함), 그래도
- * 비면 playerStats에서 그 팀 선수를 모은다.
+ * 팀별 선발/교체 명단(교체 반영 전). 라인업 패널 원본(lineupPanelState.lastFixture — playerStats로
+ * 추정한 라인업 포함)에 수동 입력/ID 연결을 반영해 쓰고, 라인업이 아예 없으면 playerStats의 그 팀
+ * 선수를 선발 여부(substitute)로 나눠 쓴다.
  */
-function evEditRoster(side) {
+function evEditLineupParts(side) {
   const base = (typeof lineupPanelState !== 'undefined' && lineupPanelState?.lastFixture) || window._eventsLastData;
   const data = base && typeof buildEffectiveFixtureData === 'function' ? buildEffectiveFixtureData(base) : base;
   const lineup = data?.[`${side}Lineup`];
-  const roster = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])].filter(Boolean);
-  if (roster.length) return roster;
-  return (data?.playerStats || []).filter(p => p && p.side === side).map(p => ({
+  const starters = (lineup?.startXi || []).filter(Boolean);
+  const bench = (lineup?.substitutes || []).filter(Boolean);
+  if (starters.length || bench.length) return { starters, bench };
+  const rows = (data?.playerStats || []).filter(p => p && p.side === side).map(p => ({
     playerId: Number(p.playerId) || 0,
     name: p.playerName || '',
     nameKoLong: p.playerNameKoLong || null,
     number: p.number ?? '',
+    pos: p.position || '',
+    _sub: p.substitute === true,
   }));
+  return { starters: rows.filter(p => !p._sub), bench: rows.filter(p => p._sub) };
 }
+
+/** 팀 전체 명단(선발+교체) — 시점 계산이 불가능할 때의 폴백. */
+function evEditRoster(side) {
+  const { starters, bench } = evEditLineupParts(side);
+  return [...starters, ...bench];
+}
+window.evEditRoster = evEditRoster;
+
+const EV_POS_ORDER = { G: 0, D: 1, M: 2, F: 3 };
+/**
+ * 선수 선택 목록 정렬 — 포지션(GK → DF → MF → FW → 미상) 다음 등번호 오름차순(번호 없으면 뒤).
+ * 명단 원본 순서(API/수동 입력/playerStats 추정, 교체 투입 선수는 벤치 순서)가 섞여 있어 목록이
+ * 뒤죽박죽으로 보이던 문제를 고정 기준으로 정리한다.
+ */
+function evSortPlayers(players) {
+  const posRank = p => EV_POS_ORDER[String(p?.pos || p?.position || '').toUpperCase().charAt(0)] ?? 4;
+  const numRank = p => {
+    const n = Number.parseInt(p?.number, 10);
+    return Number.isFinite(n) ? n : 999;
+  };
+  return players
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => posRank(a.p) - posRank(b.p) || numRank(a.p) - numRank(b.p) || a.i - b.i)
+    .map(({ p }) => p);
+}
+
+/** 이벤트 시각 정렬 키(분*100+추가시간). */
+function evEditTimeKey(ev) {
+  return Number(ev?.elapsed ?? 0) * 100 + Number(ev?.extra ?? 0);
+}
+
+/**
+ * 이벤트(ev) 시점에 실제로 선택 가능한 선수 목록.
+ *  - role 'onPitch': 그 시점 그라운드에 있는 선수(선발 + 이전 교체 IN - 이전 교체 OUT - 이전 퇴장).
+ *    골 득점자/어시스트, 카드, 교체 OUT에 사용.
+ *  - role 'bench': 아직 투입되지 않은 교체 명단 선수. 교체 IN에 사용.
+ * 같은 분의 이벤트는 이벤트 목록 순서상 ev보다 앞에 있는 것만 반영하고, ev 자신은 제외한다(교체
+ * 선수 override를 다시 고를 때 자기 자신의 교체가 목록을 바꾸지 않도록). 이벤트는 교체 override/수정이
+ * 반영된 이벤트 패널 데이터 기준. 명단이 비어 계산할 수 없으면 팀 전체 명단으로 폴백.
+ */
+function evAvailablePlayers(ev, side, role) {
+  const { starters, bench } = evEditLineupParts(side);
+  const roster = [...starters, ...bench];
+  if (!starters.length) return evSortPlayers(roster);
+
+  const indexOf = (id, names) => evEditRosterIndex(roster, id, names);
+  const onPitch = new Set(starters.map((_, i) => i));
+  const usedIn = new Set();
+  const targetKey = evEditTimeKey(ev);
+  const events = (window._eventsLastData?.events || [])
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e && e.side === side)
+    .sort((a, b) => evEditTimeKey(a.e) - evEditTimeKey(b.e) || a.i - b.i);
+
+  for (const { e } of events) {
+    if (ev?._hideSig && e._hideSig === ev._hideSig) break;
+    if (evEditTimeKey(e) > targetKey) break;
+    const type = String(e.type || '').toLowerCase();
+    const detail = String(e.detail || '').toLowerCase();
+    if (type === 'subst') {
+      const outIdx = indexOf(e.playerId, [e.playerName, e.playerNameKoLong, e.playerOrigName]);
+      const inIdx = indexOf(e.assistId, [e.assistName, e.assistNameKoLong, e.assistOrigName]);
+      if (outIdx >= 0) onPitch.delete(outIdx);
+      if (inIdx >= 0) { onPitch.add(inIdx); usedIn.add(inIdx); }
+    } else if (type === 'card' && (detail === 'red card' || detail === 'second yellow card')) {
+      const idx = indexOf(e.playerId, [e.playerName, e.playerNameKoLong, e.playerOrigName]);
+      if (idx >= 0) onPitch.delete(idx);
+    }
+  }
+
+  if (role === 'bench') {
+    return evSortPlayers(roster.filter((_, i) => i >= starters.length && !usedIn.has(i) && !onPitch.has(i)));
+  }
+  return evSortPlayers(roster.filter((_, i) => onPitch.has(i)));
+}
+window.evAvailablePlayers = evAvailablePlayers;
 
 function evEditTeamName(side) {
   const mi = window._eventsLastData?.matchInfo || {};
@@ -425,12 +511,6 @@ function evEditTeamName(side) {
 function evEditTeamId(side) {
   const mi = window._eventsLastData?.matchInfo || {};
   return side === 'home' ? mi.homeTeamId : mi.awayTeamId;
-}
-
-function evEditPlayerLabel(player) {
-  const name = (typeof pickName === 'function' ? pickName(player, 'roster') : '') || player?.name || player?.nameKoLong || '';
-  const num = player?.number != null && player.number !== '' ? `${player.number} ` : '';
-  return `${num}${name}`.trim() || '(이름 없음)';
 }
 
 /** 이벤트의 선수와 같은 로스터 인덱스 — playerId 우선, 없으면 이름. 못 찾으면 -1. */
@@ -454,6 +534,7 @@ function evEditSegment(options, value, onChange) {
     btn.type = 'button';
     btn.className = 'ev-edit-seg-btn';
     btn.textContent = opt.label;
+    btn.dataset.value = opt.value;
     btn.classList.toggle('is-active', opt.value === value);
     btn.addEventListener('click', () => {
       wrap.querySelectorAll('.ev-edit-seg-btn').forEach(b => b.classList.remove('is-active'));
@@ -466,7 +547,7 @@ function evEditSegment(options, value, onChange) {
 }
 
 function evEditField(labelText, control) {
-  const field = document.createElement('label');
+  const field = document.createElement('div');
   field.className = 'ev-edit-field';
   const label = document.createElement('span');
   label.className = 'ev-edit-label';
@@ -475,12 +556,40 @@ function evEditField(labelText, control) {
   return field;
 }
 
+/** 교체 선수 선택 모달과 같은 모양의 선수 행(등번호 / 이름 / 포지션). */
+function evEditPlayerItem(numberText, nameText, posText, selected, onClick) {
+  const item = document.createElement('div');
+  item.className = 'ev-subst-picker-item';
+  item.classList.toggle('is-selected', !!selected);
+  const num = document.createElement('span');
+  num.className = 'ev-subst-picker-number';
+  num.textContent = numberText;
+  const name = document.createElement('span');
+  name.className = 'ev-subst-picker-name';
+  name.textContent = nameText;
+  const pos = document.createElement('span');
+  pos.className = 'ev-subst-picker-pos';
+  pos.textContent = posText || '';
+  item.append(num, name, pos);
+  item.addEventListener('click', () => {
+    item.parentElement?.querySelectorAll('.ev-subst-picker-item.is-selected').forEach(el => el.classList.remove('is-selected'));
+    item.classList.add('is-selected');
+    onClick();
+  });
+  return item;
+}
+
+function evEditDisplayName(player) {
+  return (typeof pickName === 'function' ? pickName(player, 'roster') : '') || player?.name || player?.nameKoLong || '(이름 없음)';
+}
+
 /**
- * 골/카드 정보 수정 팝업.
+ * 골/카드 정보 수정 팝업 — 교체 선수 선택 모달과 같은 모양(헤더 / 선수 목록 / 초기화·확인·취소).
  * - 골: 종류(골/페널티골/자책골) + 득점 팀(득점이 인정된 팀, 자책골이면 득점자는 상대 팀 선수) +
- *   득점자 + 어시스트(자책골은 없음).
+ *   득점자/어시스트 탭(어시스트는 자책골이면 없음).
  * - 카드: 종류(경고/퇴장/경고 누적 퇴장) + 팀 + 선수.
- * 선수 목록은 그 팀 선발+교체. 목록에 없는 현재 선수는 "현재 선수 유지" 선택지로 둔다.
+ * 선수 목록은 그 이벤트 시점에 그라운드에 있던 선수만(evAvailablePlayers). 지금 값이 목록에 없으면
+ * 맨 위 "현재" 행으로 남겨 그대로 유지할 수 있다.
  */
 function evEditOpen(ev) {
   if (!evEditIsEditable(ev)) return;
@@ -501,114 +610,138 @@ function evEditOpen(ev) {
     assistNameKoLong: ev.assistNameKoLong ?? null,
     assistOrigName: ev.assistOrigName ?? null,
   };
+  const hadAssist = !!(Number(keepAssist.assistId) || String(keepAssist.assistName || '').trim());
+  // player/assist: 'keep'(현재 값 유지) | 'none'(어시스트 없음) | 선수 객체
   const draft = {
     side: ev.side === 'away' ? 'away' : 'home',
     detail: isGoal
       ? (['Own Goal', 'Penalty'].includes(ev.detail) ? ev.detail : 'Normal Goal')
       : (['Red Card', 'Second Yellow Card'].includes(ev.detail) ? ev.detail : 'Yellow Card'),
-    playerKey: 'keep',
-    assistKey: 'keep',
+    player: 'keep',
+    assist: hadAssist ? 'keep' : 'none',
+    tab: 'player',
   };
-
-  const body = document.createElement('div');
-  body.className = 'ev-edit-body';
-  modal.append(body);
 
   const typeOptions = isGoal
     ? [{ value: 'Normal Goal', label: '골' }, { value: 'Penalty', label: '페널티골' }, { value: 'Own Goal', label: '자책골' }]
-    : [{ value: 'Yellow Card', label: '경고' }, { value: 'Red Card', label: '퇴장' }, { value: 'Second Yellow Card', label: '경고 누적 퇴장' }];
+    : [{ value: 'Yellow Card', label: '경고' }, { value: 'Red Card', label: '퇴장' }, { value: 'Second Yellow Card', label: '경고 누적' }];
   const teamOptions = ['home', 'away'].map(side => ({ value: side, label: evEditTeamName(side) }));
 
-  const playerSelect = document.createElement('select');
-  playerSelect.className = 'ev-edit-select';
-  const assistSelect = document.createElement('select');
-  assistSelect.className = 'ev-edit-select';
-  const assistField = evEditField('어시스트', assistSelect);
+  const body = document.createElement('div');
+  body.className = 'ev-edit-body';
+  const tabWrap = document.createElement('div');
+  tabWrap.className = 'ev-edit-seg ev-edit-tabs';
+  const list = document.createElement('div');
+  list.className = 'ev-subst-picker-list';
 
   // 득점자는 자책골이면 상대 팀, 아니면 득점 팀 선수. 카드는 그 팀 선수.
   const playerSide = () => (isGoal && draft.detail === 'Own Goal' ? (draft.side === 'home' ? 'away' : 'home') : draft.side);
-
-  function fillSelect(select, roster, currentKeyIndex, keepLabel, withNone) {
-    const options = [];
-    options.push(`<option value="keep">${dpEscapeSafe(keepLabel)}</option>`);
-    if (withNone) options.push('<option value="none">없음</option>');
-    roster.forEach((p, i) => options.push(`<option value="${i}">${dpEscapeSafe(evEditPlayerLabel(p))}</option>`));
-    select.innerHTML = options.join('');
-    select.value = currentKeyIndex >= 0 ? String(currentKeyIndex) : 'keep';
-  }
-
-  function refreshPlayers() {
-    const roster = evEditRoster(playerSide());
-    const idx = evEditRosterIndex(roster, keepPlayer.playerId, [keepPlayer.playerName, keepPlayer.playerNameKoLong, keepPlayer.playerOrigName]);
-    const currentName = (typeof evPickPlayerName === 'function' ? evPickPlayerName(ev, 'player') : '') || '선수 없음';
-    fillSelect(playerSelect, roster, idx, `현재: ${currentName}`, false);
-    draft.playerKey = playerSelect.value;
-    playerSelect._roster = roster;
-
-    const showAssist = isGoal && draft.detail !== 'Own Goal';
-    assistField.hidden = !showAssist;
-    if (showAssist) {
-      const aRoster = evEditRoster(draft.side);
-      const aIdx = evEditRosterIndex(aRoster, keepAssist.assistId, [keepAssist.assistName, keepAssist.assistNameKoLong, keepAssist.assistOrigName]);
-      const currentAssist = (typeof evPickPlayerName === 'function' ? evPickPlayerName(ev, 'assist') : '') || '없음';
-      fillSelect(assistSelect, aRoster, aIdx, `현재: ${currentAssist}`, true);
-      if (aIdx < 0 && !keepAssist.assistId && !keepAssist.assistName) assistSelect.value = 'none';
-      draft.assistKey = assistSelect.value;
-      assistSelect._roster = aRoster;
-    }
-  }
-
-  playerSelect.addEventListener('change', () => { draft.playerKey = playerSelect.value; });
-  assistSelect.addEventListener('change', () => { draft.assistKey = assistSelect.value; });
-
-  body.append(
-    evEditField('종류', evEditSegment(typeOptions, draft.detail, value => { draft.detail = value; refreshPlayers(); })),
-    evEditField(isGoal ? '득점 팀' : '팀', evEditSegment(teamOptions, draft.side, value => { draft.side = value; refreshPlayers(); })),
-    evEditField(isGoal ? '득점자' : '선수', playerSelect),
-    assistField,
-  );
-  if (isGoal) {
-    const help = document.createElement('div');
-    help.className = 'ev-hide-mgr-help';
-    help.textContent = '득점 팀은 골이 인정된 팀입니다. 자책골이면 득점자는 상대 팀 선수 중에서 고릅니다.';
-    body.appendChild(help);
-  }
-  refreshPlayers();
-
-  const pickFrom = (select, key, prefix) => {
-    const p = select._roster?.[Number(key)];
-    return {
-      [`${prefix}Id`]: Number(p?.playerId) || 0,
-      [`${prefix}Name`]: p?.name || p?.nameKoLong || '',
-      [`${prefix}NameKoLong`]: p?.nameKoLong || null,
-      [`${prefix}OrigName`]: p?.origName || null,
-    };
+  const showAssist = () => isGoal && draft.detail !== 'Own Goal';
+  const pickedName = (value, kind) => {
+    if (value === 'none') return '없음';
+    if (value === 'keep') return (typeof evPickPlayerName === 'function' ? evPickPlayerName(ev, kind) : '') || (kind === 'assist' ? '없음' : '선수 없음');
+    return evEditDisplayName(value);
   };
+
+  function renderTabs() {
+    if (!showAssist() && draft.tab === 'assist') draft.tab = 'player';
+    const tabs = [{ key: 'player', label: `${isGoal ? '득점자' : '선수'}: ${pickedName(draft.player, 'player')}` }];
+    if (showAssist()) tabs.push({ key: 'assist', label: `어시스트: ${pickedName(draft.assist, 'assist')}` });
+    tabWrap.replaceChildren(...tabs.map(tab => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ev-edit-seg-btn';
+      btn.classList.toggle('is-active', draft.tab === tab.key);
+      btn.textContent = tab.label;
+      btn.title = tab.label;
+      btn.addEventListener('click', () => { draft.tab = tab.key; renderTabs(); renderList(); });
+      return btn;
+    }));
+  }
+
+  function renderList() {
+    const kind = draft.tab;
+    const side = kind === 'assist' ? draft.side : playerSide();
+    const available = evAvailablePlayers(ev, side, 'onPitch');
+    const keep = kind === 'assist' ? keepAssist : keepPlayer;
+    const current = draft[kind];
+    const keepIdx = evEditRosterIndex(available, keep[`${kind}Id`], [keep[`${kind}Name`], keep[`${kind}NameKoLong`], keep[`${kind}OrigName`]]);
+    const hasKeepValue = kind === 'assist' ? hadAssist : true;
+    const select = value => { draft[kind] = value; renderTabs(); };
+    const items = [];
+    // 지금 값은 항상 맨 위 "현재" 행으로 보여준다 — 무엇을 고치는 중인지 바로 보이고, 목록에 없는
+    // 선수(다른 팀/시점 밖, 이름 없는 선수)여도 그대로 유지할 수 있다. 목록 안의 같은 선수 행은
+    // "현재" 행과 중복 강조하지 않는다.
+    if (hasKeepValue) {
+      const keepPlayerObj = keepIdx >= 0 ? available[keepIdx] : null;
+      const keepNum = keepPlayerObj?.number != null && keepPlayerObj.number !== '' ? String(keepPlayerObj.number) : '-';
+      items.push(evEditPlayerItem(keepNum, `현재: ${pickedName('keep', kind)}`, keepPlayerObj?.pos || '', current === 'keep', () => select('keep')));
+    }
+    if (kind === 'assist') items.push(evEditPlayerItem('-', '없음', '', current === 'none', () => select('none')));
+    available.forEach(p => {
+      const isSelected = current !== 'keep' && current !== 'none' && current === p;
+      items.push(evEditPlayerItem(p.number != null && p.number !== '' ? String(p.number) : '-',
+        evEditDisplayName(p), p.pos || '', isSelected, () => select(p)));
+    });
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'ev-subst-picker-empty';
+      empty.textContent = '선수 명단 데이터가 없습니다';
+      items.push(empty);
+    }
+    list.replaceChildren(...items);
+    // 선택된 선수가 목록 아래쪽이면 보이도록 스크롤.
+    requestAnimationFrame(() => {
+      const selected = list.querySelector('.is-selected');
+      if (!selected || selected === list.firstElementChild) list.scrollTop = 0;
+      else selected.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  // 팀/종류를 바꾸면 득점자 팀이 달라질 수 있어 이전 선택을 비우고 현재 값 기준으로 다시 고른다.
+  const resetPicks = () => { draft.player = 'keep'; draft.assist = hadAssist ? 'keep' : 'none'; renderTabs(); renderList(); };
+  const segRow = document.createElement('div');
+  segRow.className = 'ev-edit-seg-rows';
+  segRow.append(
+    evEditField('종류', evEditSegment(typeOptions, draft.detail, value => { draft.detail = value; resetPicks(); })),
+    evEditField(isGoal ? '득점 팀 (골이 인정된 팀)' : '팀', evEditSegment(teamOptions, draft.side, value => { draft.side = value; resetPicks(); })),
+  );
+  body.append(segRow, tabWrap);
+  modal.append(body, list);
+  renderTabs();
+  renderList();
+
+  const toFields = (p, prefix) => ({
+    [`${prefix}Id`]: Number(p?.playerId) || 0,
+    [`${prefix}Name`]: p?.name || p?.nameKoLong || '',
+    [`${prefix}NameKoLong`]: p?.nameKoLong || null,
+    [`${prefix}OrigName`]: p?.origName || null,
+  });
 
   const resetBtn = document.createElement('button');
   resetBtn.type = 'button';
   resetBtn.className = 'ev-subst-picker-reset';
   resetBtn.textContent = '초기화';
   resetBtn.disabled = !ev._evEdited;
-  resetBtn.title = ev._evEdited ? '수정한 내용을 지우고 API 원래 값으로 되돌립니다.' : '수정한 내용이 없습니다.';
+  resetBtn.title = ev._evEdited ? '수정한 내용을 지우고 원래 데이터로 되돌립니다.' : '수정한 내용이 없습니다.';
   resetBtn.addEventListener('click', () => { evEditSave(sig, null); close(); });
 
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'button';
-  saveBtn.className = 'ev-subst-picker-confirm';
-  saveBtn.textContent = '저장';
-  saveBtn.addEventListener('click', () => {
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'ev-subst-picker-confirm';
+  confirmBtn.textContent = '확인';
+  confirmBtn.addEventListener('click', () => {
     const patch = {
       side: draft.side,
       teamId: evEditTeamId(draft.side) ?? ev.teamId ?? null,
       detail: draft.detail,
-      ...(draft.playerKey === 'keep' ? keepPlayer : pickFrom(playerSelect, draft.playerKey, 'player')),
+      ...(draft.player === 'keep' ? keepPlayer : toFields(draft.player, 'player')),
     };
     if (isGoal) {
-      if (draft.detail === 'Own Goal' || draft.assistKey === 'none') {
+      if (!showAssist() || draft.assist === 'none') {
         Object.assign(patch, { assistId: null, assistName: null, assistNameKoLong: null, assistOrigName: null });
       } else {
-        Object.assign(patch, draft.assistKey === 'keep' ? keepAssist : pickFrom(assistSelect, draft.assistKey, 'assist'));
+        Object.assign(patch, draft.assist === 'keep' ? keepAssist : toFields(draft.assist, 'assist'));
       }
     }
     evEditSave(sig, patch);
@@ -621,14 +754,10 @@ function evEditOpen(ev) {
   cancelBtn.textContent = '취소';
   cancelBtn.addEventListener('click', close);
 
-  actions.append(resetBtn, saveBtn, cancelBtn);
+  actions.append(resetBtn, confirmBtn, cancelBtn);
   mount();
 }
 window.evEditOpen = evEditOpen;
-
-function dpEscapeSafe(value) {
-  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
 
 // ── row 클릭 메뉴 ─────────────────────────────────────────────────────────────
 
@@ -650,7 +779,11 @@ function evRowMenuOpen(ev, clientX, clientY) {
     btn.addEventListener('click', () => { evRowMenuClose(); onClick(); });
     menu.appendChild(btn);
   };
-  add('정보 수정', () => evEditOpen(ev));
+  // 설정 "입력창/설정을 새 창으로 열기"(popoutModals)가 켜져 있으면 수정 팝업을 별도 창으로 연다(popout.js).
+  add('정보 수정', () => {
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) window.Popout.open('evedit', { sig: ev._hideSig });
+    else evEditOpen(ev);
+  });
   if (ev._evEdited) add('수정 초기화', () => evEditSave(ev._hideSig, null));
   add('숨기기', () => evHideEvent(ev), 'is-danger');
 
