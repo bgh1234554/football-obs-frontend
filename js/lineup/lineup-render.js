@@ -1064,7 +1064,7 @@ const BC_CYCLE_TITLE_FONT_MIN = 9;
 // 실제로 화면에 떠 있는 것만 매번 실측한다 — 고정 padding으로 예약해두면 버튼이 적게 떠 있을 때
 // 제목이 한쪽으로 쏠려 보이는 문제가 있었다(2026-08 피드백).
 const BC_CYCLE_TITLE_LEFT_BTN_SELECTORS = ['.lp-stat-cycle-btn', '.lp-stat-refresh-btn', '.lp-stat-standings-popup-btn'];
-const BC_CYCLE_TITLE_RIGHT_BTN_SELECTORS = ['.lp-stat-pause-btn'];
+const BC_CYCLE_TITLE_RIGHT_BTN_SELECTORS = ['.lp-stat-pause-btn', '.lp-stat-bench-edit-btn'];
 const BC_CYCLE_TITLE_SAFE_GAP_PX = 6;
 
 // 텍스트 폭 측정 전용 오프스크린 canvas — 재사용(매번 새로 만들지 않음).

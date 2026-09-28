@@ -57,6 +57,30 @@
       margin-right: calc(var(--panel-title-control-size) + 6px);
     }
     .lp-stat-pause-btn.is-paused { border-color: rgba(255,255,255,.35); color: #fff; }
+    /* 교체 명단 입력(연필) 버튼 — 홈/원정 교체 명단 모드에서만 표시(stat-cycle.js lpStatUpdateBenchEditBtn).
+       일시정지 버튼이 떠 있으면 그 왼쪽, 없으면 일시정지 버튼 자리(우측 상단). */
+    .lp-stat-bench-edit-btn {
+      position: absolute;
+      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      right: 8px;
+      z-index: 20;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,.72);
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      transition: background 120ms;
+    }
+    .lp-stat.has-pause-btn .lp-stat-bench-edit-btn { right: calc(8px + var(--panel-title-control-size) + 6px); }
+    .lp-stat-bench-edit-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+    .lp-stat-bench-edit-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
     .lp-stat-standings-popup-btn {
       position: absolute;
       top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
