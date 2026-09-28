@@ -364,7 +364,14 @@ function evOpenSubstPicker(ev, field, fixtureData) {
       posEl.textContent = player.pos || '';
 
       item.append(num, nameEl, posEl);
-      if (existingOverride && Number(existingOverride.playerId) === Number(player.playerId)) {
+      // 기존 선택 표시: ID가 있으면 ID로 비교(기존 동작). ID가 0인 선수는 여러 명이 같은 0을
+      // 가질 수 있어 ID만 비교하면 전원이 선택돼 버리므로, 저장된 이름으로 첫 한 명만 매칭한다.
+      const overrideId = Number(existingOverride?.playerId) || 0;
+      const matchesExisting = !!existingOverride && !selectedPlayer && (overrideId > 0
+        ? overrideId === Number(player.playerId)
+        : !Number(player.playerId) && !!existingOverride.name
+          && [player.name, player.nameKoLong, displayName].includes(existingOverride.name));
+      if (matchesExisting) {
         item.classList.add('is-selected');
         selectedPlayer = { playerId: player.playerId, name: displayName };
       }

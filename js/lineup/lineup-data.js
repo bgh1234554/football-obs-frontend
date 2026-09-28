@@ -101,8 +101,11 @@ function buildEffectiveFixtureData(data) {
 
     // 감독 수동값은 저장 당시 API 감독 키(coachApiBaseline, 구버전 인라인 입력은 없음 = API 감독 없음)와
     // 지금 API 키가 같을 때만 적용 — 이후 API가 다른 감독 정보를 주면 수동값 대신 API 값을 쓴다.
-    const coachStillApplies = manualSide.coachName
-      && (manualSide.coachApiBaseline || '') === getCoachApiBaselineKey(data?.[lineupKey]);
+    // 구버전 저장값(baseline 필드 자체가 없음)은 인라인 편집이 열려 있던 조건 그대로, API 감독
+    // 이름이 비어 있는 동안만 적용 - coachId만 있고 이름이 빈 응답에서도 수동값이 사라지지 않는다.
+    const coachStillApplies = manualSide.coachName && (typeof manualSide.coachApiBaseline === 'string'
+      ? manualSide.coachApiBaseline === getCoachApiBaselineKey(data?.[lineupKey])
+      : !normalizeCoachName(data?.[lineupKey]?.coach?.name) && !normalizeCoachName(data?.[lineupKey]?.coach?.nameKoLong));
     if (coachStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {

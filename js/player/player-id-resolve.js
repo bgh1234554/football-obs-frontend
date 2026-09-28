@@ -99,6 +99,12 @@ function pirGetByKey(key) {
 function pirSetByKey(key, data) {
   if (!key) return;
   const store = pirReadStore();
+  // id=0(이름 키) 선수의 연결이 해제되거나 다른 ID로 바뀌면, 이전 ID로 승격 복사된 닉네임을 정리한다.
+  const prevId = Number(store[key]?.playerId) || 0;
+  if (String(key).includes(':n:') && prevId > 0 && prevId !== (Number(data?.playerId) || 0)
+    && typeof window.demotePromotedNickname === 'function') {
+    window.demotePromotedNickname(prevId);
+  }
   if (data) store[key] = data;
   else delete store[key];
   pirWriteStore(store);

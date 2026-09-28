@@ -12,6 +12,20 @@ const PLAYER_NICKNAME_KEY = 'obs.player.nicknames.v1';
 // id=0 선수 닉네임 키 접두어. 같은 맵에 "n:{API 원본 이름}" 형태로 id 키와 나란히 저장한다.
 // 숫자 id 키와 겹칠 수 없어 기존 저장값은 마이그레이션 없이 그대로 유지된다.
 const PLAYER_NICKNAME_NAME_PREFIX = 'n:';
+// 이름 키 -> id 키로 자동 복사(승격)한 닉네임 기록 { idKey: nameKey }. 연결 해제/변경 시
+// 승격으로 생긴 id 닉네임만 골라 지우고, 사용자가 id에 직접 설정한 닉네임은 남기기 위해 쓴다.
+const PLAYER_NICKNAME_PROMOTED_KEY = 'obs.player.nicknames.promoted.v1';
+
+function readPromotedNicknames() {
+  try { return JSON.parse(localStorage.getItem(PLAYER_NICKNAME_PROMOTED_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+function writePromotedNicknames(promoted) {
+  try {
+    if (Object.keys(promoted).length) localStorage.setItem(PLAYER_NICKNAME_PROMOTED_KEY, JSON.stringify(promoted));
+    else localStorage.removeItem(PLAYER_NICKNAME_PROMOTED_KEY);
+  } catch {}
+}
 
 // ── 닉네임 CRUD ──────────────────────────────────────────────────────────────
 
@@ -59,6 +73,11 @@ function setPlayerNickname(playerId, nickname, origName) {
     if (v) map[key] = v;
     else delete map[key];
     localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    // id에 직접 설정/삭제한 닉네임은 더 이상 승격값이 아니다 - 연결 해제 시 지우지 않도록 기록 제거.
+    if (hasId) {
+      const promoted = readPromotedNicknames();
+      if (promoted[key]) { delete promoted[key]; writePromotedNicknames(promoted); }
+    }
   } catch {}
 }
 
@@ -86,14 +105,41 @@ function promoteNameNicknameToId(origName, playerId) {
     if (!map[nameKey] || map[idKey]) return false;
     map[idKey] = map[nameKey];
     localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    const promoted = readPromotedNicknames();
+    promoted[idKey] = nameKey;
+    writePromotedNicknames(promoted);
     return true;
   } catch { return false; }
 }
 window.promoteNameNicknameToId = promoteNameNicknameToId;
 
+/**
+ * id=0 선수의 ID 연결이 해제/변경될 때(player-id-resolve.js pirSetByKey) 호출.
+ * 그 ID의 닉네임이 승격으로 생긴 값이고 이후 사용자가 id에 직접 바꾸지 않았다면 지운다 -
+ * 잘못 입력한 ID의 실제 선수에게 닉네임이 남아 다른 경기에도 표시되는 문제 방지.
+ * 연결이 아직 유효한 경우엔 다음 렌더에서 promoteNameNicknameToId가 다시 복사한다.
+ */
+function demotePromotedNickname(playerId) {
+  if (!Number(playerId)) return false;
+  const idKey = String(Number(playerId));
+  const promoted = readPromotedNicknames();
+  if (!promoted[idKey]) return false;
+  delete promoted[idKey];
+  writePromotedNicknames(promoted);
+  try {
+    const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
+    if (map[idKey] == null) return false;
+    delete map[idKey];
+    localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    return true;
+  } catch { return false; }
+}
+window.demotePromotedNickname = demotePromotedNickname;
+
 /** 모든 닉네임을 삭제하고 라인업·득점자·이벤트 표시를 원래 이름으로 갱신한다. */
 function clearAllPlayerNicknames() {
   localStorage.removeItem(PLAYER_NICKNAME_KEY);
+  localStorage.removeItem(PLAYER_NICKNAME_PROMOTED_KEY);
   if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
   document.dispatchEvent(new CustomEvent('settings:change', { detail: { category: 'scorer' } }));
   if (window._eventsLastData && typeof applyEventsPanel === 'function') {

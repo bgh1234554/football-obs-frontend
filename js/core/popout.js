@@ -235,11 +235,18 @@ if (window.__POPOUT_MODE__) {
     // 각 모듈의 기존 delegated 클릭 핸들러가 그대로 처리하고, 여기서는 같은 클릭을 별도로
     // 감지해 window.close()만 얹는다(기존 코드 수정 없이 병행 리스너로 동작). 배경(backdrop)
     // 클릭은 일부러 포함하지 않는다 — 작업 중 실수로 바깥을 눌러 창이 닫히는 걸 막기 위함.
+    // 캡처 단계로 등록한다 - 교체 선수 선택 모달(.ev-subst-picker-modal)은 자체 click에서
+    // stopPropagation을 해서, 버블 단계 리스너로는 확인/취소/닫기/초기화 클릭이 document까지
+    // 올라오지 않아 팝업 창이 닫히지 않았다. 실제 저장/닫기 처리는 각 버튼 핸들러가 그대로 하고
+    // 여기선 50ms 뒤 창만 닫으므로 순서는 바뀌지 않는다.
     document.addEventListener('click', event => {
-      if (event.target.closest(POPOUT_CLOSE_TRIGGER_SELECTOR)) {
-        setTimeout(() => window.close(), 50);
-      }
-    });
+      const trigger = event.target.closest(POPOUT_CLOSE_TRIGGER_SELECTOR);
+      if (!trigger) return;
+      // 교체 선수 확인은 선수를 고르지 않으면 아무 동작도 안 하므로(evOpenSubstPicker) 창도 유지.
+      if (trigger.matches('.ev-subst-picker-confirm')
+        && !trigger.closest('.ev-subst-picker-modal')?.querySelector('.ev-subst-picker-item.is-selected')) return;
+      setTimeout(() => window.close(), 50);
+    }, true);
     window.addEventListener('keydown', event => {
       if (event.key === 'Escape') setTimeout(() => window.close(), 50);
     });
