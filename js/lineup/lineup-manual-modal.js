@@ -725,9 +725,25 @@ function saveManualPanel() {
         && String(player.number ?? '') === String(rows[index].number ?? ''));
       // 프리필된 이름과 같은 행은 원래 선수 객체(playerId/사진/포지션/원본 이름)를 이어받는다 —
       // 명단을 일부 고쳐 저장해도 기존 선수는 ID가 유지돼 교체/카드 이벤트 연동이 끊기지 않는다.
-      const prefillByName = new Map(prefill.map(player => [getPrefillName(player), player]));
-      const bench = extracted.map(row => {
-        const source = prefillByName.get(row.name);
+      // 같은 이름(예: 김태현 2명)이 있어도 서로 다른 선수로 남도록, 같은 줄의 프리필(이름+번호) ->
+      // 이름+번호가 같은 다른 줄 -> 이름만 같은 줄 순으로 찾고, 한 번 쓴 프리필 행은 다시 쓰지 않는다.
+      const used = new Set();
+      const sameName = (player, row) => getPrefillName(player) === row.name;
+      const sameNumber = (player, row) => String(player.number ?? '') === String(row.number ?? '');
+      const findSource = (row, index) => {
+        const candidates = [
+          i => i === index && sameName(prefill[i], row) && sameNumber(prefill[i], row),
+          i => sameName(prefill[i], row) && sameNumber(prefill[i], row),
+          i => sameName(prefill[i], row),
+        ];
+        for (const match of candidates) {
+          const i = prefill.findIndex((_, idx) => !used.has(idx) && match(idx));
+          if (i >= 0) { used.add(i); return prefill[i]; }
+        }
+        return null;
+      };
+      const bench = extracted.map((row, index) => {
+        const source = findSource(row, index);
         if (!source || !Number(source.playerId)) return row;
         return { ...source, number: row.number || source.number || '' };
       });

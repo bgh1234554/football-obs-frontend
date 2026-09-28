@@ -310,9 +310,10 @@ function setCoachElement(el, effectiveData, rawData, side, accentColor) {
   if (!el) return;
 
   const fixtureId = getActiveFixtureId();
-  const manualCoachName = normalizeCoachName(getManualSideData(fixtureId, side)?.coachName);
   const rawCoachName = normalizeCoachName(getCoachName(rawData?.[`${side}Lineup`]));
-  const effectiveCoachName = normalizeCoachName(getCoachName(effectiveData?.[`${side}Lineup`])) || manualCoachName;
+  // 수동 감독명은 buildEffectiveFixtureData가 적용을 허용한 경우에만 effectiveData에 들어 있다 —
+  // 저장값으로 폴백하면 API 감독이 바뀌어 무효가 된 예전 수동값이 다시 보일 수 있어 폴백하지 않는다.
+  const effectiveCoachName = normalizeCoachName(getCoachName(effectiveData?.[`${side}Lineup`]));
   const editable = !rawCoachName;
 
   el.textContent = effectiveCoachName || '(정보 없음. 직접 입력)';

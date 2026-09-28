@@ -109,7 +109,8 @@ function getCoachApiBaselineKey(lineupLike) {
   const coach = lineupLike?.coach;
   const id = Number(coach?.coachId) || 0;
   if (id) return `id:${id}`;
-  const name = normalizeCoachName(coach?.name);
+  // 표시 쪽(pickName)과 같은 이름 필드를 본다 — name이 비어 있으면 nameKoLong.
+  const name = normalizeCoachName(coach?.name) || normalizeCoachName(coach?.nameKoLong);
   return name ? `n:${name}` : '';
 }
 

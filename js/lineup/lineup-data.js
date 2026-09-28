@@ -252,11 +252,17 @@ function inferLineupsFromPlayerStats(data) {
       starters = rows.filter(p => p.substitute === false);
       bench = rows.filter(p => p.substitute !== false);
     } else {
-      const subInIds = new Set(events
-        .filter(ev => ev && ev.side === side && String(ev.type || '').toLowerCase() === 'subst')
-        .map(ev => Number(ev.assistId))
-        .filter(id => id > 0));
-      starters = rows.filter(p => Number(p.minutes) > 0 && !subInIds.has(Number(p.playerId)));
+      // 교체 IN 선수 — ID가 있으면 ID로, ID가 0이면 이름(한글/원본)으로 대조한다.
+      const subInEvents = events.filter(ev => ev && ev.side === side && String(ev.type || '').toLowerCase() === 'subst');
+      const subInIds = new Set(subInEvents.map(ev => Number(ev.assistId)).filter(id => id > 0));
+      const normName = v => String(v || '').trim().toLowerCase();
+      const subInNames = new Set(subInEvents
+        .filter(ev => !(Number(ev.assistId) > 0))
+        .flatMap(ev => [ev.assistName, ev.assistNameKoLong, ev.assistOrigName].map(normName))
+        .filter(Boolean));
+      const isSubIn = p => (Number(p.playerId) > 0 && subInIds.has(Number(p.playerId)))
+        || [p.playerName, p.playerNameKoLong].map(normName).some(n => n && subInNames.has(n));
+      starters = rows.filter(p => Number(p.minutes) > 0 && !isSubIn(p));
       bench = rows.filter(p => !starters.includes(p));
     }
     if (starters.length !== 11) return;

@@ -16,6 +16,26 @@ const PLAYER_NICKNAME_NAME_PREFIX = 'n:';
 // 승격으로 생긴 id 닉네임만 골라 지우고, 사용자가 id에 직접 설정한 닉네임은 남기기 위해 쓴다.
 const PLAYER_NICKNAME_PROMOTED_KEY = 'obs.player.nicknames.promoted.v1';
 
+// 사용자가 id 키 닉네임을 직접 지운 경우의 표시 — 다음 렌더에서 이름 키 닉네임이 다시 복사되지 않게 한다.
+const PLAYER_NICKNAME_SUPPRESSED = '!deleted';
+
+/**
+ * 이름 키 닉네임이 바뀌거나 지워지면, 그 이름 키에서 복사(승격)된 id 키 닉네임도 같이 바꾸거나 지운다.
+ * 승격 기록(promoted[idKey] === nameKey)이 남아 있는 것만 대상 — 사용자가 id에 직접 설정한 닉네임은
+ * setPlayerNickname이 기록을 지우므로 여기서 건드리지 않는다.
+ */
+function syncPromotedCopies(map, nameKey, value) {
+  const promoted = readPromotedNicknames();
+  let changed = false;
+  Object.keys(promoted).forEach(idKey => {
+    if (promoted[idKey] !== nameKey) return;
+    if (value) map[idKey] = value;
+    else { delete map[idKey]; delete promoted[idKey]; }
+    changed = true;
+  });
+  if (changed) writePromotedNicknames(promoted);
+}
+
 function readPromotedNicknames() {
   try { return JSON.parse(localStorage.getItem(PLAYER_NICKNAME_PROMOTED_KEY) || '{}') || {}; }
   catch { return {}; }
@@ -72,11 +92,15 @@ function setPlayerNickname(playerId, nickname, origName) {
     const v = String(nickname || '').trim();
     if (v) map[key] = v;
     else delete map[key];
+    if (!hasId) syncPromotedCopies(map, key, v);
     localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
-    // id에 직접 설정/삭제한 닉네임은 더 이상 승격값이 아니다 - 연결 해제 시 지우지 않도록 기록 제거.
+    // id에 직접 설정한 닉네임은 더 이상 승격값이 아니다 - 연결 해제 시 지우지 않도록 기록 제거.
+    // 직접 지운 경우는 "지움" 표시를 남겨 이름 키 닉네임이 다시 복사되지 않게 한다.
     if (hasId) {
       const promoted = readPromotedNicknames();
-      if (promoted[key]) { delete promoted[key]; writePromotedNicknames(promoted); }
+      if (v) delete promoted[key];
+      else promoted[key] = PLAYER_NICKNAME_SUPPRESSED;
+      writePromotedNicknames(promoted);
     }
   } catch {}
 }
@@ -86,8 +110,17 @@ function removePlayerNicknameByKey(key) {
   if (!key) return;
   try {
     const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
-    delete map[String(key)];
+    const k = String(key);
+    delete map[k];
+    const isNameKey = k.startsWith(PLAYER_NICKNAME_NAME_PREFIX);
+    if (isNameKey) syncPromotedCopies(map, k, '');
     localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    // id 행을 목록에서 지운 경우도 직접 삭제로 보고 다시 복사되지 않게 표시.
+    if (!isNameKey) {
+      const promoted = readPromotedNicknames();
+      promoted[k] = PLAYER_NICKNAME_SUPPRESSED;
+      writePromotedNicknames(promoted);
+    }
   } catch {}
 }
 
@@ -103,6 +136,8 @@ function promoteNameNicknameToId(origName, playerId) {
     const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
     const idKey = String(Number(playerId));
     if (!map[nameKey] || map[idKey]) return false;
+    // 사용자가 이 id의 닉네임을 직접 지운 적이 있으면 다시 만들지 않는다.
+    if (readPromotedNicknames()[idKey] === PLAYER_NICKNAME_SUPPRESSED) return false;
     map[idKey] = map[nameKey];
     localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
     const promoted = readPromotedNicknames();

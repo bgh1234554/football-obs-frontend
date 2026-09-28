@@ -32,6 +32,21 @@ function evHideSignature(ev) {
   ]);
 }
 
+/**
+ * 원본 이벤트 목록의 서명 배열 — 같은 내용이 여러 번 나오면 두 번째부터 "#2", "#3"을 붙여 구분한다
+ * (첫 번째는 그대로라 기존 저장값과 호환). 그래야 중복 이벤트 하나만 숨기거나 수정할 수 있다.
+ */
+function evHideSignatures(rawEvents) {
+  const seen = new Map();
+  return (rawEvents || []).map(ev => {
+    if (!ev) return null;
+    const base = evHideSignature(ev);
+    const count = (seen.get(base) || 0) + 1;
+    seen.set(base, count);
+    return count === 1 ? base : `${base}#${count}`;
+  });
+}
+
 // ── 저장소 ────────────────────────────────────────────────────────────────────
 // { [fixtureId]: { savedAt, items: { [sig]: {snapshot, hiddenAt} }, edits: { [sig]: {patch, editedAt} } } }
 
@@ -133,7 +148,8 @@ function evHideApplyToFixtureData(data) {
   const fixtureId = String(matchInfo.fixtureId ?? '').trim();
   const { items, edits } = evHideGetEntry(fixtureId);
 
-  const tagged = raw.map(ev => (ev ? { ...ev, _hideSig: evHideSignature(ev) } : ev));
+  const sigs = evHideSignatures(raw);
+  const tagged = raw.map((ev, i) => (ev ? { ...ev, _hideSig: sigs[i] } : ev));
   if (raw.length && (Object.keys(items).length || Object.keys(edits).length)) {
     const present = new Set(tagged.map(ev => ev?._hideSig));
     let changed = false;
@@ -384,7 +400,9 @@ window.evEditIsEditable = evEditIsEditable;
 /** 원본(API) 이벤트 — _rawEvents에서 서명으로 찾는다. 수정 전 값과 비교/되돌리기에 사용. */
 function evEditFindRawEvent(sig) {
   const raw = window._eventsLastData?._rawEvents || [];
-  return raw.find(ev => ev && evHideSignature(ev) === sig) || null;
+  const sigs = evHideSignatures(raw);
+  const index = sigs.indexOf(sig);
+  return index >= 0 ? raw[index] : null;
 }
 
 /** 수정 기록 저장. patch가 원본과 전부 같거나 null이면 기록을 지운다. */

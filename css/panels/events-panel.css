@@ -394,6 +394,11 @@
       pointer-events: none;
       transition: opacity .12s ease, background .12s ease;
     }
+    /* 키보드 포커스(:focus-within)로도 보이게 하고, hover가 없는 터치 기기에서는 항상 보이게 한다. */
+    @media (hover: none) {
+      .ev-row.has-hide-btn .ev-hide-btn { opacity: 1; pointer-events: auto; }
+    }
+    .ev-row.has-hide-btn:focus-within .ev-hide-btn,
     .ev-row.has-hide-btn:hover .ev-hide-btn {
       opacity: 1;
       pointer-events: auto;
