@@ -216,13 +216,61 @@ function collectLineupPlayerIds(players) {
  * 않고 next를 직접 변형한다(buildEffectiveFixtureData가 이미 clone한 next 대상).
  */
 /**
+ * playerStats 행(한 팀)에서 선발/교체 명단을 가른다.
+ * 1) substitute 플래그가 true/false 둘 다 섞여 있으면 그대로 신뢰한다.
+ *    (전원 false처럼 한쪽으로만 오는 응답은 플래그가 채워지지 않은 것으로 보고 무시 — 실제 사례:
+ *    모잠비크-세네갈 경기는 교체 투입 선수까지 전원 substitute:false)
+ * 2) 아니면 출전 시간(minutes > 0)이 있는 선수에서 교체 IN 선수를 뺀다.
+ *    - 교체 IN은 이벤트 assistId(ID 0이면 이름)로 찾는다.
+ *    - 교체 OUT으로 나간 선수는 선발이 확실하므로 빼지 않는다.
+ *    - API가 교체 IN 선수를 비워 보낸 이벤트가 있어 아직 11명이 넘으면, 그 교체 시각 T 기준으로
+ *      출전 시간이 (경기 종료 분 - T)에 가장 가까운 선수를 교체 IN으로 보고 뺀다.
+ * 결과가 11명이 아니면 호출부가 추정을 포기한다.
+ */
+function inferStartersFromPlayerStatRows(rows, events, side, matchInfo) {
+  const flags = rows.map(p => p.substitute);
+  if (flags.includes(true) && flags.includes(false)) {
+    return { starters: rows.filter(p => p.substitute === false), bench: rows.filter(p => p.substitute !== false) };
+  }
+
+  const normName = v => String(v || '').trim().toLowerCase();
+  const namesOf = p => [p.playerName, p.playerNameKoLong].map(normName).filter(Boolean);
+  const matches = (p, id, names) => (Number(id) > 0
+    ? Number(p.playerId) === Number(id)
+    : names.map(normName).filter(Boolean).some(n => namesOf(p).includes(n)));
+  const substs = events.filter(ev => ev && ev.side === side && String(ev.type || '').toLowerCase() === 'subst');
+  const hasIn = ev => Number(ev.assistId) > 0 || String(ev.assistName || '').trim();
+
+  const played = rows.filter(p => Number(p.minutes) > 0);
+  const subIn = new Set(played.filter(p => substs.some(ev => hasIn(ev)
+    && matches(p, ev.assistId, [ev.assistName, ev.assistNameKoLong, ev.assistOrigName]))));
+  const subOut = new Set(played.filter(p => substs.some(ev => matches(p, ev.playerId, [ev.playerName, ev.playerNameKoLong, ev.playerOrigName]))));
+
+  const endMinute = Math.max(90, Number(matchInfo?.elapsed) || 0);
+  substs.filter(ev => !hasIn(ev))
+    .sort((a, b) => Number(a.elapsed || 0) - Number(b.elapsed || 0))
+    .forEach(ev => {
+      if (played.length - subIn.size <= 11) return;
+      const expected = endMinute - Number(ev.elapsed || 0);
+      let best = null;
+      played.forEach(p => {
+        if (subIn.has(p) || subOut.has(p)) return;
+        const diff = Math.abs(Number(p.minutes) - expected);
+        if (!best || diff < best.diff) best = { p, diff };
+      });
+      if (best) subIn.add(best.p);
+    });
+
+  const starters = played.filter(p => !subIn.has(p));
+  return { starters, bench: rows.filter(p => !starters.includes(p)) };
+}
+
+/**
  * API가 라인업(startXi)은 비워 보내고 playerStats(선수별 경기 스탯)만 주는 경우, playerStats로
  * 선발/교체 명단을 추정해 라인업 자리에 채운 새 fixture 객체를 반환한다(원본은 변형하지 않음).
  *
- * - 선발 = substitute === false, 교체 명단 = substitute === true. playerStats 행 순서가 API
- *   라인업 순서(GK→DF→MF→FW)를 따르므로 그 순서를 그대로 유지한다.
- * - substitute 플래그가 없는 응답이면 minutes > 0 이면서 교체 IN 이벤트(assistId)로 들어오지
- *   않은 선수를 선발로 본다.
+ * - 선발/교체 구분은 inferStartersFromPlayerStatRows 참고(substitute 플래그 -> 출전 시간 + 교체 이벤트).
+ *   playerStats 행 순서가 API 라인업 순서(GK→DF→MF→FW)를 따르므로 그 순서를 그대로 유지한다.
  * - 선발이 정확히 11명일 때만 채운다(애매하면 추정하지 않음 — 틀린 라인업보다 빈 라인업이 낫다).
  * - 지금 뛰고 있는 11명은 기존 교체 반영(subReflect) 로직이 events로 알아서 계산하므로 여기서는
  *   "선발 명단"만 만든다. formation/grid는 null로 두어 applyInferredFormation이 포지션 개수로 추정한다.
@@ -246,35 +294,19 @@ function inferLineupsFromPlayerStats(data) {
     const rows = playerStats.filter(p => p.side === side && (Number(p.playerId) > 0 || String(p.playerName || '').trim()));
     if (!rows.length) return;
 
-    let starters;
-    let bench;
-    if (rows.some(p => typeof p.substitute === 'boolean')) {
-      starters = rows.filter(p => p.substitute === false);
-      bench = rows.filter(p => p.substitute !== false);
-    } else {
-      // 교체 IN 선수 — ID가 있으면 ID로, ID가 0이면 이름(한글/원본)으로 대조한다.
-      const subInEvents = events.filter(ev => ev && ev.side === side && String(ev.type || '').toLowerCase() === 'subst');
-      const subInIds = new Set(subInEvents.map(ev => Number(ev.assistId)).filter(id => id > 0));
-      const normName = v => String(v || '').trim().toLowerCase();
-      const subInNames = new Set(subInEvents
-        .filter(ev => !(Number(ev.assistId) > 0))
-        .flatMap(ev => [ev.assistName, ev.assistNameKoLong, ev.assistOrigName].map(normName))
-        .filter(Boolean));
-      const isSubIn = p => (Number(p.playerId) > 0 && subInIds.has(Number(p.playerId)))
-        || [p.playerName, p.playerNameKoLong].map(normName).some(n => n && subInNames.has(n));
-      starters = rows.filter(p => Number(p.minutes) > 0 && !isSubIn(p));
-      bench = rows.filter(p => !starters.includes(p));
-    }
+    const { starters, bench } = inferStartersFromPlayerStatRows(rows, events, side, data?.matchInfo);
     if (starters.length !== 11) return;
 
+    // API가 문자열 "null"이나 0을 채워 보내는 필드(포지션/등번호/사진)는 빈 값으로 정리한다.
+    const clean = v => (v == null || /^(null|undefined)$/i.test(String(v).trim()) ? '' : String(v).trim());
     const toPlayer = p => ({
       playerId: Number(p.playerId) || 0,
       name: p.playerName || '',
       nameKoLong: p.playerNameKoLong || null,
-      number: p.number ?? '',
-      pos: p.position || '',
+      number: Number(p.number) > 0 ? p.number : '',
+      pos: clean(p.position),
       grid: null,
-      photoUrl: p.playerPhotoUrl || null,
+      photoUrl: clean(p.playerPhotoUrl) || null,
       _inferredFromPlayerStats: true,
     });
 
