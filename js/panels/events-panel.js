@@ -1223,6 +1223,15 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   }
 
   row.appendChild(main);
+
+  // 잘못 들어온 이벤트 숨기기 X 버튼 — hover 시에만 보임 (event-hide.js).
+  const hideBtn = typeof window.evHideCreateRowButton === 'function' ? window.evHideCreateRowButton(ev) : null;
+  if (hideBtn) {
+    row.classList.add('has-hide-btn');
+    row.appendChild(hideBtn);
+  }
+  // 골/카드 row 클릭 -> 정보 수정 메뉴 (event-hide.js).
+  if (typeof window.evEditAttachRow === 'function') window.evEditAttachRow(row, ev);
   return row;
 }
 
@@ -1336,6 +1345,10 @@ function evCreateFilterUi(filterOptions) {
 
   const shell = document.createElement('div');
   shell.className = 'ev-filter-shell';
+
+  // 숨긴 이벤트가 있을 때만 필터 버튼 왼쪽에 관리 버튼 (event-hide.js).
+  const hideManageBtn = typeof window.evHideCreateManageButton === 'function' ? window.evHideCreateManageButton() : null;
+  if (hideManageBtn) shell.appendChild(hideManageBtn);
 
   const button = document.createElement('button');
   button.type = 'button';

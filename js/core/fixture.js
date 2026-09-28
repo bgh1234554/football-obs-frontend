@@ -917,7 +917,7 @@
     if (!silent) setApiStatus('loading');
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
-      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
+      let data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
       // requestSeq 비교: 같은 fixtureId로 겹쳐 호출돼도(강제 새로고침 도중 폴링 등) 더 나중에
       // 시작된 호출이 있으면 이 응답은 폐기 — _lastFetchId(fixtureId 문자열) 비교로는 같은
       // fixtureId끼리 겹친 요청을 구분할 수 없었음.
@@ -930,6 +930,10 @@
         });
         return null;
       }
+
+      // 사용자가 X로 숨긴 이벤트를 제외(event-hide.js) — 이후 점수판 득점자/이벤트 패널/라인업/
+      // 전술판이 전부 이 data를 쓰므로 여기 한 곳에서만 거르면 된다. 원본은 data._rawEvents에 보존.
+      if (typeof window.evHideApplyToFixtureData === 'function') data = window.evHideApplyToFixtureData(data);
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
       // 새 이벤트 감지용 — _lastFixtureData가 아래서 이번 data로 덮이기 전에 개수를 미리 저장.
@@ -1372,6 +1376,35 @@
     return '1';
   }
 
+  /**
+   * 이벤트 숨김/수정/복원 직후 호출(event-hide.js) — 마지막 응답의 원본 이벤트(_rawEvents)·점수(_rawScores)로
+   * 숨김/수정과 점수 보정을 다시 적용하고, 새 응답이 왔을 때와 같은 소비처(점수판 득점자/PK, 라인업, 이벤트 패널, 전술판
+   * 타임라인)를 API 재호출 없이 갱신한다. 타이머는 보존하고, 득점자 박스 깜빡임 스냅샷도 새 값으로
+   * 맞춰 다음 폴링에서 괜히 깜빡이지 않게 한다.
+   */
+  function reapplyFixtureEventHide() {
+    if (!_lastFixtureData || typeof window.evHideApplyToFixtureData !== 'function') return;
+    const data = window.evHideApplyToFixtureData(_lastFixtureData);
+    _lastFixtureData = data;
+    applyFixtureToState(data, { resetRunning: false });
+    if (_flashSnapshot) {
+      _flashSnapshot = { homeScore: state.homeScore, awayScore: state.awayScore, homeNote: state.notes?.home ?? '', awayNote: state.notes?.away ?? '' };
+    }
+    if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
+    if (typeof applyEventsPanel === 'function') {
+      const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+      applyEventsPanel(eventsPanelData, { animate: false });
+    }
+    // 전술판 타임라인은 슬라이더 위치를 유지한 채 이벤트만 교체(교체 선수 override와 같은 경로).
+    if (typeof window.ttRefreshEventsData === 'function') {
+      const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
+      const events = typeof window.evPatchSubstEvents === 'function' ? window.evPatchSubstEvents(data.events, fixtureId) : data.events;
+      window.ttRefreshEventsData({ ...data, events });
+    }
+    try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
+  }
+  window.fixtureReapplyEventHide = reapplyFixtureEventHide;
+
   // 토글 변경 시 fixture를 다시 적용 — scorer/teamName(이름 표기), teamLogo(기본/협회 로고).
   // 사용자가 수동으로 켠 타이머는 보존(resetRunning: false). 팀 컬러 보존은 state.teamColorOverride
   // 플래그가 처리하므로 별도 옵션 불필요.
@@ -1420,7 +1453,9 @@
         });
         return;
       }
-      const data = JSON.parse(raw);
+      let data = JSON.parse(raw);
+      // 캐시에는 원본(_rawEvents)이 함께 저장돼 있어, 숨김 기록을 다시 적용하면 복원도 그대로 동작한다.
+      if (data && typeof window.evHideApplyToFixtureData === 'function') data = window.evHideApplyToFixtureData(data);
       if (!data || !data.matchInfo) {
         resetFixtureDrivenState({
           clearFixtureId: true,

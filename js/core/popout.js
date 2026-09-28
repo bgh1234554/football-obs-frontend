@@ -311,6 +311,11 @@ if (window.__POPOUT_MODE__) {
       }
       return;
     }
+    // 다른 창에서 이벤트를 숨기거나 복원하면(event-hide.js) 점수판 득점자까지 포함해 전부 다시 적용.
+    if (typeof EV_HIDE_STORAGE_KEY !== 'undefined' && event.key === EV_HIDE_STORAGE_KEY) {
+      if (typeof window.fixtureReapplyEventHide === 'function') window.fixtureReapplyEventHide();
+      return;
+    }
     // 테마 탭 컨트롤은 obs.settings.v3가 아니라 점수판 전체 state(state.js:
     // SKEY='obs-scoreboard-state-v2')에 실려 저장된다 — 필드별 동기화 규칙은
     // syncScoreboardStateFromStorage 참고(메인 창/팝업 공용).
