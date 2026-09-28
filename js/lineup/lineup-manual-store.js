@@ -99,6 +99,36 @@ function normalizeCoachName(name) {
   return value;
 }
 
+/**
+ * 감독 수동 입력 시점의 API 감독 식별 키 — coachId가 있으면 id, 없으면 이름.
+ * 수동 감독명은 저장 당시의 이 키(coachApiBaseline)와 지금 API 키가 같을 때만 적용되고,
+ * 폴링으로 API가 다른 감독(새 정보)을 주면 수동값 대신 API 값을 그대로 쓴다.
+ * id 기준이라 같은 감독의 이름 표기만 바뀌는 경우(coaches.csv 한글화 등)는 새 정보로 보지 않는다.
+ */
+function getCoachApiBaselineKey(lineupLike) {
+  const coach = lineupLike?.coach;
+  const id = Number(coach?.coachId) || 0;
+  if (id) return `id:${id}`;
+  const name = normalizeCoachName(coach?.name);
+  return name ? `n:${name}` : '';
+}
+
+/**
+ * 교체 명단 수동 입력 시점의 API 교체 명단 식별 키 — 선수 키(buildLineupRosterKey 규칙, id=0이면 이름)를
+ * 정렬해 이은 문자열. API 명단이 비어 있으면 ''. 수동 교체 명단은 저장 당시의 이 키(benchApiBaseline)와
+ * 지금 API 키가 같을 때만 적용되고, API가 다른 명단(새 정보)을 주면 API 값을 그대로 쓴다.
+ */
+function getBenchApiBaselineKey(lineupLike) {
+  const subs = Array.isArray(lineupLike?.substitutes) ? lineupLike.substitutes.filter(Boolean) : [];
+  return subs
+    .map(player => {
+      const pid = Number(player?.playerId) || 0;
+      return pid ? `id:${pid}` : `n:${String(player?.origName || player?.name || '').trim()}`;
+    })
+    .sort()
+    .join('|');
+}
+
 // ─── 수동 입력 저장소 (fixture 단위) ──────────────────────────────────────
 // localStorage(DETAIL_MANUAL_STORAGE_KEY)에 fixtureId 기준으로 override를 보관하고,
 // API 응답에 얹어서 실제 렌더 데이터로 사용. TTL은 7일.
@@ -170,6 +200,8 @@ function sanitizeManualSideData(sideData) {
 
   if (Array.isArray(sideData?.bench) && sideData.bench.length) {
     next.bench = clonePlayers(sideData.bench);
+    // 수동 입력 당시의 API 교체 명단 키 — 교체 명단이 있을 때만 의미가 있어 같이 보존.
+    if (typeof sideData.benchApiBaseline === 'string') next.benchApiBaseline = sideData.benchApiBaseline;
   }
 
   if (Array.isArray(sideData?.injuries) && sideData.injuries.length) {
@@ -178,6 +210,8 @@ function sanitizeManualSideData(sideData) {
 
   if (String(sideData?.coachName || '').trim()) {
     next.coachName = String(sideData.coachName).trim();
+    // 수동 입력 당시의 API 감독 키 — 감독명이 있을 때만 의미가 있어 같이 보존.
+    if (typeof sideData.coachApiBaseline === 'string') next.coachApiBaseline = sideData.coachApiBaseline;
   }
 
   return Object.keys(next).length ? next : null;
@@ -274,6 +308,8 @@ function clearManualEntryFields(fixtureId, options = {}) {
     ['lineup', 'bench', 'injuries', 'coachName'].forEach(field => {
       if (options[field] && next[side][field] !== undefined) {
         delete next[side][field];
+        if (field === 'coachName') delete next[side].coachApiBaseline;
+        if (field === 'bench') delete next[side].benchApiBaseline;
         changed = true;
       }
     });
@@ -361,9 +397,9 @@ function updateManualEntry(fixtureId, side, updater) {
 function deleteManualKind(fixtureId, side, kind) {
   updateManualEntry(fixtureId, side, sideData => {
     if (kind === 'lineup') delete sideData.lineup;
-    if (kind === 'bench') delete sideData.bench;
+    if (kind === 'bench') { delete sideData.bench; delete sideData.benchApiBaseline; }
     if (kind === 'injury') delete sideData.injuries;
-    if (kind === 'coach') delete sideData.coachName;
+    if (kind === 'coach') { delete sideData.coachName; delete sideData.coachApiBaseline; }
     return sideData;
   });
 }

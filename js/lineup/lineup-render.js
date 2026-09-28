@@ -1589,7 +1589,8 @@ function applyLineupPanels(fixtureData) {
       panel.style.removeProperty('width');
     });
   }
-  lineupPanelState.lastFixture = fixtureData;
+  // API가 라인업 없이 playerStats만 준 경우 선발/교체 명단을 추정해 채운 객체로 보관 (lineup-data.js).
+  lineupPanelState.lastFixture = inferLineupsFromPlayerStats(fixtureData);
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
   if (incomingId !== currentId && typeof scheduleLineupViewportFit === 'function') {

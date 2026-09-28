@@ -51,15 +51,21 @@ function buildEffectiveFixtureData(data) {
 
     if (manualSide.lineup) {
       const base = lineup || { formation: null, startXi: [], substitutes: [], coach: null };
+      // (A) 풀폼(11명 직접 입력)은 API 선발 명단이 비어 있을 때만 적용 — 이후 API 라인업이 들어오면
+      //     API 값을 쓴다(수동값은 저장소에 남아 API가 다시 비면 재적용). (B) 그리드 모드는 API 선발
+      //     명단 위에 포메이션/배치만 덮는 방식이라 API 라인업이 있어도 항상 적용한다.
+      const apiHasStartXi = Array.isArray(data?.[lineupKey]?.startXi) && data[lineupKey].startXi.length > 0;
       if (Array.isArray(manualSide.lineup.startXi)) {
-        // (A) 풀폼 모드 — startXi 통째 override
-        lineup = {
-          ...base,
-          formation: manualSide.lineup.formation || base.formation || null,
-          startXi: clonePlayers(manualSide.lineup.startXi || []),
-          substitutes: clonePlayers(base.substitutes || []),
-          coach: base.coach ? { ...base.coach } : null,
-        };
+        // (A) 풀폼 모드 — startXi 통째 override (API 라인업이 있으면 건너뛰고 API 값 사용)
+        if (!apiHasStartXi) {
+          lineup = {
+            ...base,
+            formation: manualSide.lineup.formation || base.formation || null,
+            startXi: clonePlayers(manualSide.lineup.startXi || []),
+            substitutes: clonePlayers(base.substitutes || []),
+            coach: base.coach ? { ...base.coach } : null,
+          };
+        }
       } else if (manualSide.lineup.gridByPlayerId) {
         // (B) 그리드만 모드 — API의 startXi를 보존, formation + 선수별 grid만 override.
         // 카드/교체 이벤트는 자동 모드와 같은 데이터 구조라 그대로 작동.
@@ -78,7 +84,11 @@ function buildEffectiveFixtureData(data) {
       next[lineupKey] = lineup;
     }
 
-    if (manualSide.bench) {
+    // 교체 명단 수동값은 저장 당시 API 명단 키(benchApiBaseline, 구버전 저장값은 없음 = API 명단 없음)와
+    // 지금 API 키가 같을 때만 적용 — 이후 API가 다른 교체 명단을 주면 수동값 대신 API 값을 쓴다.
+    const benchStillApplies = manualSide.bench
+      && (manualSide.benchApiBaseline || '') === getBenchApiBaselineKey(data?.[lineupKey]);
+    if (benchStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {
         ...base,
@@ -89,7 +99,11 @@ function buildEffectiveFixtureData(data) {
       next[lineupKey] = lineup;
     }
 
-    if (manualSide.coachName) {
+    // 감독 수동값은 저장 당시 API 감독 키(coachApiBaseline, 구버전 인라인 입력은 없음 = API 감독 없음)와
+    // 지금 API 키가 같을 때만 적용 — 이후 API가 다른 감독 정보를 주면 수동값 대신 API 값을 쓴다.
+    const coachStillApplies = manualSide.coachName
+      && (manualSide.coachApiBaseline || '') === getCoachApiBaselineKey(data?.[lineupKey]);
+    if (coachStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {
         ...base,
@@ -112,14 +126,15 @@ function buildEffectiveFixtureData(data) {
   // 4) 주심은 fixture 공통 데이터라 side 바깥에서 한 번만 반영한다.
   // fixture 단위로 저장된 manualEntry.refereeName 적용 — API에 주심 없을 때만 의미가 있지만,
   // setRefereeElement는 raw fixture 기준 editable 여부를 판별하므로 항상 override 우선.
+  // 주심/경기장 수동값은 API 값이 비어 있을 때만 적용 — 이후 API가 값을 주면 API 값을 쓴다.
   const manualReferee = String(entry.refereeName || '').trim();
-  if (manualReferee) {
+  if (manualReferee && !String(data?.matchInfo?.refereeName || '').trim()) {
     next.matchInfo = { ...(next.matchInfo || {}), refereeName: manualReferee };
   }
   // 경기장도 주심과 같은 방식 — manualEntry.venueName이 있으면 venueName만 override
   // (API가 venueCity만 준 경우 도시는 그대로 두어 "경기장, 도시" 형태로 이어 붙는다).
   const manualVenue = String(entry.venueName || '').trim();
-  if (manualVenue) {
+  if (manualVenue && !String(data?.matchInfo?.venueName || '').trim()) {
     next.matchInfo = { ...(next.matchInfo || {}), venueName: manualVenue };
   }
 
@@ -197,6 +212,76 @@ function collectLineupPlayerIds(players) {
  * subReflect(교체 반영) swap과 벤치 패널 표시가 정상 작동한다. 원본 객체는 건드리지
  * 않고 next를 직접 변형한다(buildEffectiveFixtureData가 이미 clone한 next 대상).
  */
+/**
+ * API가 라인업(startXi)은 비워 보내고 playerStats(선수별 경기 스탯)만 주는 경우, playerStats로
+ * 선발/교체 명단을 추정해 라인업 자리에 채운 새 fixture 객체를 반환한다(원본은 변형하지 않음).
+ *
+ * - 선발 = substitute === false, 교체 명단 = substitute === true. playerStats 행 순서가 API
+ *   라인업 순서(GK→DF→MF→FW)를 따르므로 그 순서를 그대로 유지한다.
+ * - substitute 플래그가 없는 응답이면 minutes > 0 이면서 교체 IN 이벤트(assistId)로 들어오지
+ *   않은 선수를 선발로 본다.
+ * - 선발이 정확히 11명일 때만 채운다(애매하면 추정하지 않음 — 틀린 라인업보다 빈 라인업이 낫다).
+ * - 지금 뛰고 있는 11명은 기존 교체 반영(subReflect) 로직이 events로 알아서 계산하므로 여기서는
+ *   "선발 명단"만 만든다. formation/grid는 null로 두어 applyInferredFormation이 포지션 개수로 추정한다.
+ *
+ * lineupPanelState.lastFixture 자체를 이 결과로 바꾸기 때문에(applyLineupPanels) 그리드 모드
+ * "포메이션 설정", 선수 ID 연결 등 raw 라인업을 보는 기능도 API가 라인업을 준 것처럼 동작한다.
+ * 이후 API가 실제 라인업을 주면 startXi가 차 있어 이 추정은 자연히 건너뛴다.
+ */
+function inferLineupsFromPlayerStats(data) {
+  if (!data) return data;
+  const playerStats = Array.isArray(data.playerStats) ? data.playerStats.filter(Boolean) : [];
+  if (!playerStats.length) return data;
+  const events = Array.isArray(data.events) ? data.events : [];
+
+  let next = data;
+  ['home', 'away'].forEach(side => {
+    const lineupKey = `${side}Lineup`;
+    const apiLineup = data[lineupKey];
+    if (Array.isArray(apiLineup?.startXi) && apiLineup.startXi.length) return;
+
+    const rows = playerStats.filter(p => p.side === side && (Number(p.playerId) > 0 || String(p.playerName || '').trim()));
+    if (!rows.length) return;
+
+    let starters;
+    let bench;
+    if (rows.some(p => typeof p.substitute === 'boolean')) {
+      starters = rows.filter(p => p.substitute === false);
+      bench = rows.filter(p => p.substitute !== false);
+    } else {
+      const subInIds = new Set(events
+        .filter(ev => ev && ev.side === side && String(ev.type || '').toLowerCase() === 'subst')
+        .map(ev => Number(ev.assistId))
+        .filter(id => id > 0));
+      starters = rows.filter(p => Number(p.minutes) > 0 && !subInIds.has(Number(p.playerId)));
+      bench = rows.filter(p => !starters.includes(p));
+    }
+    if (starters.length !== 11) return;
+
+    const toPlayer = p => ({
+      playerId: Number(p.playerId) || 0,
+      name: p.playerName || '',
+      nameKoLong: p.playerNameKoLong || null,
+      number: p.number ?? '',
+      pos: p.position || '',
+      grid: null,
+      photoUrl: p.playerPhotoUrl || null,
+      _inferredFromPlayerStats: true,
+    });
+
+    if (next === data) next = { ...data };
+    next[lineupKey] = {
+      ...(apiLineup || {}),
+      formation: apiLineup?.formation || null,
+      startXi: starters.map(toPlayer),
+      substitutes: bench.map(toPlayer),
+      coach: apiLineup?.coach ? { ...apiLineup.coach } : null,
+      _inferredFromPlayerStats: true,
+    };
+  });
+  return next;
+}
+
 function synthesizeMissingBenchPlayers(next) {
   if (!next) return;
   const events = Array.isArray(next.events) ? next.events : [];

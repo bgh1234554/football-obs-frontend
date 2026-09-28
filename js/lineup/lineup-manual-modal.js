@@ -117,8 +117,19 @@ function getManualModalEffectiveData() {
  * (포메이션/드래그 변경이 저장 후 적용되지 않는 버그의 원인). lpApplySubReflectToLineup이
  * 같은 배열 인덱스에서 in-place로 선수만 바꿔치기하므로 인덱스로 짝지으면 항상 안전하다.
  */
+/**
+ * 그리드 모드가 기준으로 삼는 원본 라인업. API가 formation/grid 없이 선수만 준 경우(playerStats로
+ * 추정한 라인업 포함) 패널 렌더와 같은 applyInferredFormation 결과를 써서, 모달이 화면에 보이는
+ * 추정 포메이션/배치 그대로 열리게 한다(예전엔 기본값 4-3-3에 API 순서대로 채워져 화면과 달랐다).
+ * playerId는 그대로라 저장 키(buildLineupRosterKey)는 원본과 동일하다.
+ */
+function getGridSourceLineup(side) {
+  const lineup = lineupPanelState.lastFixture?.[`${side}Lineup`];
+  return typeof applyInferredFormation === 'function' ? applyInferredFormation(lineup) : lineup;
+}
+
 function buildLineupDisplayOverlay(side) {
-  const rawStartXi = lineupPanelState.lastFixture?.[`${side}Lineup`]?.startXi || [];
+  const rawStartXi = getGridSourceLineup(side)?.startXi || [];
   const effectiveStartXi = getManualModalEffectiveData()?.[`${side}Lineup`]?.startXi || [];
   return clonePlayers(rawStartXi).map((p, idx) => {
     const display = effectiveStartXi[idx];
@@ -141,7 +152,7 @@ function buildLineupDisplayOverlay(side) {
 // 모달 오픈 시 호출 — gridState 초기화. 저장된 gridByPlayerId override 있으면 복원.
 function initGridState(side) {
   const fixtureId = getActiveFixtureId();
-  const apiLineup = lineupPanelState.lastFixture?.[`${side}Lineup`];
+  const apiLineup = getGridSourceLineup(side);
   const players = buildLineupDisplayOverlay(side);
   const playersById = Object.fromEntries(players.map((p, idx) => [buildLineupRosterKey(p, idx), p]));
 
@@ -200,7 +211,7 @@ function initGridState(side) {
  * 그대로 유지하고, 이 함수는 select change 핸들러에서만 쓴다.
  */
 function recomputeGridSlotsForFormation(side, formation) {
-  const apiStartXi = lineupPanelState.lastFixture?.[`${side}Lineup`]?.startXi || [];
+  const apiStartXi = getGridSourceLineup(side)?.startXi || [];
   const players = clonePlayers(apiStartXi);
   const gridValues = buildManualGridValues(formation);
   const slotsCount = gridValues.length || 11;
@@ -438,12 +449,16 @@ function buildLineupManualFormHtml(lineup) {
     </div>`;
 }
 
-/** 교체 명단 풀폼 모달 본문 HTML — 번호/이름 입력 행 DETAIL_BENCH_ROWS개. */
-function buildBenchManualFormHtml(players) {
+/** 교체 명단 풀폼 모달 본문 HTML — 맨 위 감독 이름 행 + 번호/이름 입력 행 DETAIL_BENCH_ROWS개. */
+function buildBenchManualFormHtml(players, coachName) {
   const list = clonePlayers(players || []);
-  return `<div class="dp-manual-help">교체 명단을 입력하면 즉시 반영됩니다.</div>
+  return `<div class="dp-manual-help">교체 명단과 감독 이름을 입력하면 즉시 반영됩니다. 감독은 이후 API가 다른 감독 정보를 주면 그 값으로 자동 갱신됩니다.</div>
     <div class="dp-form-stack">
       <div class="dp-manual-grid">
+        <div class="dp-manual-row dp-manual-header-row">
+          <div class="dp-slot-label">감독</div>
+          <input class="dp-input dp-manual-coach-input" name="bench-coach" value="${dpEscape(coachName || '')}" placeholder="감독 이름" />
+        </div>
         ${Array.from({ length: DETAIL_BENCH_ROWS }, (_, index) => `<div class="dp-manual-row">
           <div class="dp-slot-label">${index + 1}</div>
           <input class="dp-input" name="bench-number-${index}" value="${dpEscape(list[index]?.number ?? '')}" placeholder="번호" />
@@ -487,7 +502,7 @@ function hasManualOverrideForKind(fixtureId, side, kind) {
   const sideData = getManualSideData(fixtureId, side);
   if (!sideData) return false;
   if (kind === 'lineup') return !!sideData.lineup;
-  if (kind === 'bench') return !!(sideData.bench && sideData.bench.length);
+  if (kind === 'bench') return !!((sideData.bench && sideData.bench.length) || sideData.coachName);
   if (kind === 'injury') return !!(sideData.injuries && sideData.injuries.length);
   if (kind === 'coach') return !!sideData.coachName;
   return false;
@@ -525,7 +540,15 @@ function renderManualPanelForm(kind, side) {
     }
   } else if (kind === 'bench') {
     // 2) 교체 명단은 번호/이름 full form.
-    content.innerHTML = buildBenchManualFormHtml(effectiveData?.[`${side}Lineup`]?.substitutes);
+    // 감독 칸은 지금 화면에 보이는 감독(수동값이 적용 중이면 수동값, 아니면 API 값)으로 채운다.
+    // 선수 행과 같은 getPrefillName(pickName 'roster')을 써서 패널과 똑같이 풀네임/단축명 설정을 따른다.
+    const coachName = normalizeCoachName(getPrefillName(effectiveData?.[`${side}Lineup`]?.coach));
+    // 교체 명단 칸은 교체 반영(subReflect) 전 명단으로 채운다 — 교체 반영 후 명단(OUT 선수가 벤치로
+    // 내려오고 IN 선수는 빠진 상태)을 프리필하면 명단을 안 건드려도 API 명단과 달라 보여, 감독만
+    // 바꿔 저장해도 선수 ID 없는 수동 명단으로 덮여 이벤트 연동이 끊기는 문제가 있었다.
+    const benchPrefill = clonePlayers(buildEffectiveFixtureData(lineupPanelState.lastFixture)?.[`${side}Lineup`]?.substitutes || []);
+    if (lineupPanelState.manualModal) lineupPanelState.manualModal.benchPrefill = benchPrefill;
+    content.innerHTML = buildBenchManualFormHtml(benchPrefill, coachName);
   } else {
     // 3) 부상자 명단은 번호/이름/사유 full form.
     content.innerHTML = buildInjuryManualFormHtml(effectiveData?.[`${side}Injuries`]);
@@ -694,9 +717,49 @@ function saveManualPanel() {
       else delete sideData.lineup;
     }
     if (kind === 'bench') {
-      const bench = extractBenchOverrideFromForm(form);
-      if (bench.length) sideData.bench = bench;
-      else delete sideData.bench;
+      const extracted = extractBenchOverrideFromForm(form);
+      const rawBenchLineup = lineupPanelState.lastFixture?.[`${side}Lineup`];
+      const prefill = modalState.benchPrefill || [];
+      const sameRows = (players, rows) => players.length === rows.length && players.every((player, index) =>
+        getPrefillName(player) === rows[index].name
+        && String(player.number ?? '') === String(rows[index].number ?? ''));
+      // 프리필된 이름과 같은 행은 원래 선수 객체(playerId/사진/포지션/원본 이름)를 이어받는다 —
+      // 명단을 일부 고쳐 저장해도 기존 선수는 ID가 유지돼 교체/카드 이벤트 연동이 끊기지 않는다.
+      const prefillByName = new Map(prefill.map(player => [getPrefillName(player), player]));
+      const bench = extracted.map(row => {
+        const source = prefillByName.get(row.name);
+        if (!source || !Number(source.playerId)) return row;
+        return { ...source, number: row.number || source.number || '' };
+      });
+      // 프리필된 API 명단을 그대로 저장한 경우(번호/이름 순서까지 동일)는 수동값을 만들지 않는다 —
+      // 불필요한 override가 API 갱신을 가리지 않도록.
+      const rawBench = clonePlayers(rawBenchLineup?.substitutes || []);
+      const sameAsApi = sameRows(rawBench, extracted);
+      if (sameRows(prefill, extracted) && !sameAsApi) {
+        // 명단은 손대지 않음(감독만 바꾼 경우 등) — 기존 수동 명단/API 명단 상태를 그대로 둔다.
+      } else if (bench.length && !sameAsApi) {
+        sideData.bench = bench;
+        sideData.benchApiBaseline = getBenchApiBaselineKey(rawBenchLineup);
+      } else {
+        delete sideData.bench;
+        delete sideData.benchApiBaseline;
+      }
+
+      // 감독 — 비우거나 API 값과 같게 두면 수동값 삭제(API 값 사용). 다르면 지금 API 감독 키를
+      // 함께 저장해, 이후 API 감독이 바뀌면(새 정보) buildEffectiveFixtureData가 수동값을 무시한다.
+      const rawLineup = lineupPanelState.lastFixture?.[`${side}Lineup`];
+      const coachInput = normalizeCoachName(form.elements['bench-coach']?.value);
+      const rawCoach = rawLineup?.coach;
+      const matchesApi = !coachInput
+        || coachInput === normalizeCoachName(rawCoach?.name)
+        || coachInput === normalizeCoachName(rawCoach?.nameKoLong);
+      if (matchesApi) {
+        delete sideData.coachName;
+        delete sideData.coachApiBaseline;
+      } else {
+        sideData.coachName = coachInput;
+        sideData.coachApiBaseline = getCoachApiBaselineKey(rawLineup);
+      }
     }
     if (kind === 'injury') {
       const injuries = extractInjuryOverrideFromForm(form, side);
@@ -716,6 +779,8 @@ function resetManualPanelKind() {
   const modalState = lineupPanelState.manualModal;
   if (!modalState) return;
   deleteManualKind(modalState.fixtureId, modalState.side, modalState.kind);
+  // 교체 명단 모달엔 감독 칸도 있으므로 초기화 시 감독 수동값도 같이 지운다.
+  if (modalState.kind === 'bench') deleteManualKind(modalState.fixtureId, modalState.side, 'coach');
   closeManualPanel();
   rerenderLineupPanels();
 }
@@ -732,8 +797,13 @@ function finishCoachInlineEdit(hostEl, inputEl, side, saveValue) {
   if (saveValue) {
     updateManualEntry(fixtureId, side, sideData => {
       const trimmed = normalizeCoachName(inputEl.value);
-      if (trimmed) sideData.coachName = trimmed;
-      else delete sideData.coachName;
+      if (trimmed) {
+        sideData.coachName = trimmed;
+        sideData.coachApiBaseline = getCoachApiBaselineKey(lineupPanelState.lastFixture?.[`${side}Lineup`]);
+      } else {
+        delete sideData.coachName;
+        delete sideData.coachApiBaseline;
+      }
       return sideData;
     });
   }
@@ -908,7 +978,7 @@ document.addEventListener('click', event => {
 });
 
 /**
- * 수동 입력 폼(#manualPanelForm) 공통 — Enter 키로 같은 열의 다음 행 입력칸으로 포커스 이동.
+ * 수동 입력 폼(#manualPanelForm) 공통 — Enter 키로 다음 입력칸으로 포커스 이동(번호 -> 같은 줄 이름 -> 다음 줄 번호, 그 외는 같은 열 다음 행).
  * input name이 "{prefix}-{index}" 형식(lineup-name-0, lineup-goals-3, bench-number-2,
  * injury-name-5 등 — 이 파일의 모든 풀폼/그리드 행이 이 규칙을 따름)이면 다음 인덱스의
  * 같은 prefix 필드로 넘어간다. 다음 행에 그 필드가 없으면(마지막 행 등) 아무 동작 안 함.
@@ -928,7 +998,17 @@ document.addEventListener('keydown', event => {
   const name = target.getAttribute('name') || '';
   const match = name.match(/^(.*-)(\d+)$/);
   if (!match) return;
-  const nextField = form.elements[`${match[1]}${Number(match[2]) + 1}`];
+  const index = Number(match[2]);
+  // 번호 → 이름 → 다음 줄 번호 순서(엑셀식 입력 흐름): 번호 칸 Enter는 같은 줄 이름 칸으로,
+  // 이름 칸 Enter는 다음 줄 번호 칸으로 이동한다. 그 외 칸(골/도움 등)은 같은 열의 다음 행.
+  const rowMatch = match[1].match(/^(.*-)(number|name)-$/);
+  let nextName = `${match[1]}${index + 1}`;
+  if (rowMatch && rowMatch[2] === 'number' && form.elements[`${rowMatch[1]}name-${index}`]) {
+    nextName = `${rowMatch[1]}name-${index}`;
+  } else if (rowMatch && rowMatch[2] === 'name' && form.elements[`${rowMatch[1]}number-${index + 1}`]) {
+    nextName = `${rowMatch[1]}number-${index + 1}`;
+  }
+  const nextField = form.elements[nextName];
   if (!nextField) return;
   nextField.focus();
   if (nextField.type !== 'checkbox' && typeof nextField.select === 'function') nextField.select();
