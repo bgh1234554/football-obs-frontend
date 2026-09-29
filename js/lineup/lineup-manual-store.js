@@ -108,10 +108,20 @@ function normalizeCoachName(name) {
 function getCoachApiBaselineKey(lineupLike) {
   const coach = lineupLike?.coach;
   const id = Number(coach?.coachId) || 0;
-  if (id) return `id:${id}`;
   // 표시 쪽(pickName)과 같은 이름 필드를 본다 — name이 비어 있으면 nameKoLong.
   const name = normalizeCoachName(coach?.name) || normalizeCoachName(coach?.nameKoLong);
+  // id가 있어도 이름이 없으면 ":noname"을 붙인다 - 이름 없이 id만 오던 감독의 이름이 나중에 들어오면
+  // 키가 바뀌어 수동값 대신 API 값을 쓰게 된다. 이름 표기만 바뀌는 경우(한글화 등)는 키가 그대로.
+  if (id) return name ? `id:${id}` : `id:${id}:noname`;
   return name ? `n:${name}` : '';
+}
+
+/**
+ * 저장된 감독 기준값과 지금 API 키 비교. ":noname" 도입 전에 저장된 "id:N"(당시 이름이 없던 경우 포함)은
+ * 지금도 이름이 없으면 같은 것으로 본다 - 기존 수동 입력이 사라지지 않도록.
+ */
+function coachApiBaselineMatches(stored, current) {
+  return stored === current || (/^id:\d+$/.test(stored) && current === `${stored}:noname`);
 }
 
 /**
@@ -120,7 +130,9 @@ function getCoachApiBaselineKey(lineupLike) {
  * 지금 API 키가 같을 때만 적용되고, API가 다른 명단(새 정보)을 주면 API 값을 그대로 쓴다.
  */
 function getBenchApiBaselineKey(lineupLike) {
-  const subs = Array.isArray(lineupLike?.substitutes) ? lineupLike.substitutes.filter(Boolean) : [];
+  // playerStats로 추정한 라인업은 API 교체 명단이 아니다 - 추정 전 원래 API 라인업(_apiLineup) 기준.
+  if (lineupLike?._inferredFromPlayerStats) return getBenchApiBaselineKey(lineupLike._apiLineup || null);
+  const subs =Array.isArray(lineupLike?.substitutes) ? lineupLike.substitutes.filter(Boolean) : [];
   return subs
     .map(player => {
       const pid = Number(player?.playerId) || 0;

@@ -48,13 +48,19 @@ function buildEffectiveFixtureData(data) {
 
     const lineupKey = `${side}Lineup`;
     let lineup = next[lineupKey];
+    // playerStats로 추정한 라인업(inferLineupsFromPlayerStats)은 API가 준 라인업이 아니므로, 수동값 적용
+    // 판단(API 선발 유무, 교체 명단/감독 기준값)에는 원래 API 라인업 상태(선발/교체 비어 있음)로 본다 -
+    // 추정 라인업이 저장된 11명 직접 입력이나 교체 명단 수동값을 가리지 않도록.
+    const apiLineup = data?.[lineupKey]?._inferredFromPlayerStats
+      ? (data[lineupKey]._apiLineup || { coach: data[lineupKey].coach, startXi: [], substitutes: [] })
+      : data?.[lineupKey];
 
     if (manualSide.lineup) {
       const base = lineup || { formation: null, startXi: [], substitutes: [], coach: null };
       // (A) 풀폼(11명 직접 입력)은 API 선발 명단이 비어 있을 때만 적용 — 이후 API 라인업이 들어오면
       //     API 값을 쓴다(수동값은 저장소에 남아 API가 다시 비면 재적용). (B) 그리드 모드는 API 선발
       //     명단 위에 포메이션/배치만 덮는 방식이라 API 라인업이 있어도 항상 적용한다.
-      const apiHasStartXi = Array.isArray(data?.[lineupKey]?.startXi) && data[lineupKey].startXi.length > 0;
+      const apiHasStartXi = Array.isArray(apiLineup?.startXi) && apiLineup.startXi.length > 0;
       if (Array.isArray(manualSide.lineup.startXi)) {
         // (A) 풀폼 모드 — startXi 통째 override (API 라인업이 있으면 건너뛰고 API 값 사용)
         if (!apiHasStartXi) {
@@ -87,7 +93,7 @@ function buildEffectiveFixtureData(data) {
     // 교체 명단 수동값은 저장 당시 API 명단 키(benchApiBaseline, 구버전 저장값은 없음 = API 명단 없음)와
     // 지금 API 키가 같을 때만 적용 — 이후 API가 다른 교체 명단을 주면 수동값 대신 API 값을 쓴다.
     const benchStillApplies = manualSide.bench
-      && (manualSide.benchApiBaseline || '') === getBenchApiBaselineKey(data?.[lineupKey]);
+      && (manualSide.benchApiBaseline || '') === getBenchApiBaselineKey(apiLineup);
     if (benchStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {
@@ -104,8 +110,8 @@ function buildEffectiveFixtureData(data) {
     // 구버전 저장값(baseline 필드 자체가 없음)은 인라인 편집이 열려 있던 조건 그대로, API 감독
     // 이름이 비어 있는 동안만 적용 - coachId만 있고 이름이 빈 응답에서도 수동값이 사라지지 않는다.
     const coachStillApplies = manualSide.coachName && (typeof manualSide.coachApiBaseline === 'string'
-      ? manualSide.coachApiBaseline === getCoachApiBaselineKey(data?.[lineupKey])
-      : !normalizeCoachName(data?.[lineupKey]?.coach?.name) && !normalizeCoachName(data?.[lineupKey]?.coach?.nameKoLong));
+      ? coachApiBaselineMatches(manualSide.coachApiBaseline, getCoachApiBaselineKey(apiLineup))
+      : !normalizeCoachName(apiLineup?.coach?.name) && !normalizeCoachName(apiLineup?.coach?.nameKoLong));
     if (coachStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {
@@ -246,7 +252,11 @@ function inferStartersFromPlayerStatRows(rows, events, side, matchInfo) {
     && matches(p, ev.assistId, [ev.assistName, ev.assistNameKoLong, ev.assistOrigName]))));
   const subOut = new Set(played.filter(p => substs.some(ev => matches(p, ev.playerId, [ev.playerName, ev.playerNameKoLong, ev.playerOrigName]))));
 
-  const endMinute = Math.max(90, Number(matchInfo?.elapsed) || 0);
+  // 교체 IN 선수의 출전 시간 = (지금까지 진행된 분 - 교체 시각). 끝난 경기는 최소 90분, 진행 중인
+  // 경기는 현재 경과 분을 쓴다(진행 중에 90으로 잡으면 방금 들어온 선수의 예상 출전 시간이 부풀려진다).
+  const elapsedNow = Number(matchInfo?.elapsed) || 0;
+  const finished = ['FT', 'AET', 'PEN'].includes(String(matchInfo?.status || '').toUpperCase());
+  const endMinute = finished ? Math.max(90, elapsedNow) : (elapsedNow || 90);
   substs.filter(ev => !hasIn(ev))
     .sort((a, b) => Number(a.elapsed || 0) - Number(b.elapsed || 0))
     .forEach(ev => {
@@ -310,14 +320,26 @@ function inferLineupsFromPlayerStats(data) {
       _inferredFromPlayerStats: true,
     });
 
+    // API가 교체 명단만 따로 준 경우, 스탯 행이 없는(출전 안 한) API 교체 선수도 빠지지 않게 합친다.
+    // 같은 선수(ID 0 초과면 ID, 아니면 이름)는 한 번만.
+    const inferredStarters = starters.map(toPlayer);
+    const inferredBench = bench.map(toPlayer);
+    const identity = p => (Number(p?.playerId) > 0 ? `id:${Number(p.playerId)}` : `n:${String(p?.name || '').trim().toLowerCase()}`);
+    const seen = new Set([...inferredStarters, ...inferredBench].map(identity));
+    const apiOnlySubs = (Array.isArray(apiLineup?.substitutes) ? apiLineup.substitutes : [])
+      .filter(p => p && !seen.has(identity(p)))
+      .map(p => ({ ...p }));
+
     if (next === data) next = { ...data };
     next[lineupKey] = {
       ...(apiLineup || {}),
       formation: apiLineup?.formation || null,
-      startXi: starters.map(toPlayer),
-      substitutes: bench.map(toPlayer),
+      startXi: inferredStarters,
+      substitutes: [...inferredBench, ...apiOnlySubs],
       coach: apiLineup?.coach ? { ...apiLineup.coach } : null,
       _inferredFromPlayerStats: true,
+      // 추정 전 원래 API 라인업 - 수동값 적용 판단(API 선발/교체 유무, 기준값)은 이걸 본다.
+      _apiLineup: apiLineup || null,
     };
   });
   return next;
@@ -544,6 +566,9 @@ function applyInferredFormationsToFixtureData(next) {
 // startXi 자체가 없는 경우만 풀폼 모드(직접 입력) 라우팅.
 function isGridMode(rawData, side) {
   const lineup = rawData?.[`${side}Lineup`];
+  // 추정 라인업 위에 11명 직접 입력(풀폼)이 저장돼 있으면 그 풀폼이 표시되므로 모달도 풀폼으로 연다.
+  if (lineup?._inferredFromPlayerStats && typeof getManualSideData === 'function'
+    && Array.isArray(getManualSideData(getFixtureIdFromData(rawData), side)?.lineup?.startXi)) return false;
   return !!lineup && hasStartXi(lineup);
 }
 

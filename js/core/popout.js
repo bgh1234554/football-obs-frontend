@@ -229,7 +229,8 @@ if (window.__POPOUT_MODE__) {
           evOpenSubstClusterEditor(evSubstCluster(ev), ev, 'player', window._eventsLastData);
         }
         else if (p.popout === 'evhidden' && typeof evHideOpenManager === 'function') evHideOpenManager(evHideCurrentFixtureId());
-        if (!document.querySelector('.ev-subst-picker-overlay')) document.title = '입력창을 열 수 없음 (경기 데이터 없음)';
+        const expectedOverlay = { evedit: '.ev-edit-modal-overlay', evhidden: '.ev-hide-mgr-modal-overlay', substedit: '.ev-subst-cluster-modal-overlay' }[p.popout];
+        if (!document.querySelector(expectedOverlay)) document.title = '입력창을 열 수 없음 (경기 데이터 없음)';
         reveal();
         return;
       }

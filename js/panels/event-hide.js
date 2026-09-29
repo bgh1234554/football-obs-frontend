@@ -493,7 +493,10 @@ function evAvailablePlayers(ev, side, role) {
   const onPitch = new Set(starters.map((_, i) => i));
   const usedIn = new Set();
   const targetKey = evEditTimeKey(ev);
-  const events = (window._eventsLastData?.events || [])
+  // 교체 선수 수정(override)을 반영한 이벤트 기준 - 앞선 교체를 고친 결과가 후보에 바로 반영되도록.
+  const fixtureId = evHideCurrentFixtureId();
+  const baseEvents = window._eventsLastData?.events || [];
+  const events = (typeof evPatchSubstEvents === 'function' ? evPatchSubstEvents(baseEvents, fixtureId) : baseEvents)
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => e && e.side === side)
     .sort((a, b) => evEditTimeKey(a.e) - evEditTimeKey(b.e) || a.i - b.i);
@@ -888,6 +891,9 @@ function evOpenSubstClusterEditor(cluster, focusEv, focusField, fixtureData) {
     const pick = col.sel[field];
     if (pick !== 'keep') return cands[field].indexOf(pick);
     const ev = col.ev;
+    // 이미 고른 교체 선수(override)가 있으면 그 선수가 "현재" 값이다.
+    const override = typeof evGetSubstOverride === 'function' ? evGetSubstOverride(fixtureId, ev, field) : null;
+    if (override) return evEditRosterIndex(cands[field], override.playerId, [override.name]);
     const id = field === 'player' ? ev.playerId : ev.assistId;
     const names = field === 'player'
       ? [ev.playerName, ev.playerNameKoLong, ev.playerOrigName]
@@ -1083,6 +1089,9 @@ function evSubstClearOverrides(events) {
 
 /** 교체 override 저장/삭제 후 갱신 — 교체 선수 선택 창(evOpenSubstPicker)과 같은 3곳. */
 function evSubstRefreshAfterOverride(fixtureId) {
+  // 원본 fixture 데이터에서 다시 합성해 이벤트 패널 데이터(_eventsLastData)까지 새 override로 맞춘다 -
+  // 기존 데이터를 그대로 다시 그리면 다음 폴링 전까지 선수 후보 계산이 예전 override를 본다.
+  if (typeof window.fixtureReapplyEventHide === 'function') { window.fixtureReapplyEventHide(); return; }
   if (typeof evRerenderCurrentPanel === 'function') evRerenderCurrentPanel();
   if (typeof applyLineupPanels === 'function' && window._eventsLastData) applyLineupPanels(window._eventsLastData);
   if (typeof window.ttRefreshEventsData === 'function' && window._eventsLastData && typeof evPatchSubstEvents === 'function') {

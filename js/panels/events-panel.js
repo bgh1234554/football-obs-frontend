@@ -407,6 +407,8 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   // 저장/초기화 후 이벤트 패널 + 라인업 패널 + 전술판 타임라인을 한 번에 다시 그린다
   function applyOverrideChange() {
     closeOverlay();
+    // 원본 fixture에서 다시 합성(fixture.js) - 이벤트 패널 데이터까지 새 override 기준으로 갱신.
+    if (typeof window.fixtureReapplyEventHide === 'function') { window.fixtureReapplyEventHide(); return; }
     evRerenderCurrentPanel();
     if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
       applyLineupPanels(window._eventsLastData);
