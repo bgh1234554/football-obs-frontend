@@ -99,6 +99,49 @@ function normalizeCoachName(name) {
   return value;
 }
 
+/**
+ * 감독 수동 입력 시점의 API 감독 식별 키 — coachId가 있으면 id, 없으면 이름.
+ * 수동 감독명은 저장 당시의 이 키(coachApiBaseline)와 지금 API 키가 같을 때만 적용되고,
+ * 폴링으로 API가 다른 감독(새 정보)을 주면 수동값 대신 API 값을 그대로 쓴다.
+ * id 기준이라 같은 감독의 이름 표기만 바뀌는 경우(coaches.csv 한글화 등)는 새 정보로 보지 않는다.
+ */
+function getCoachApiBaselineKey(lineupLike) {
+  const coach = lineupLike?.coach;
+  const id = Number(coach?.coachId) || 0;
+  // 표시 쪽(pickName)과 같은 이름 필드를 본다 — name이 비어 있으면 nameKoLong.
+  const name = normalizeCoachName(coach?.name) || normalizeCoachName(coach?.nameKoLong);
+  // id가 있어도 이름이 없으면 ":noname"을 붙인다 - 이름 없이 id만 오던 감독의 이름이 나중에 들어오면
+  // 키가 바뀌어 수동값 대신 API 값을 쓰게 된다. 이름 표기만 바뀌는 경우(한글화 등)는 키가 그대로.
+  if (id) return name ? `id:${id}` : `id:${id}:noname`;
+  return name ? `n:${name}` : '';
+}
+
+/**
+ * 저장된 감독 기준값과 지금 API 키 비교. ":noname" 도입 전에 저장된 "id:N"(당시 이름이 없던 경우 포함)은
+ * 지금도 이름이 없으면 같은 것으로 본다 - 기존 수동 입력이 사라지지 않도록.
+ */
+function coachApiBaselineMatches(stored, current) {
+  return stored === current || (/^id:\d+$/.test(stored) && current === `${stored}:noname`);
+}
+
+/**
+ * 교체 명단 수동 입력 시점의 API 교체 명단 식별 키 — 선수 키(buildLineupRosterKey 규칙, id=0이면 이름)를
+ * 정렬해 이은 문자열. API 명단이 비어 있으면 ''. 수동 교체 명단은 저장 당시의 이 키(benchApiBaseline)와
+ * 지금 API 키가 같을 때만 적용되고, API가 다른 명단(새 정보)을 주면 API 값을 그대로 쓴다.
+ */
+function getBenchApiBaselineKey(lineupLike) {
+  // playerStats로 추정한 라인업은 API 교체 명단이 아니다 - 추정 전 원래 API 라인업(_apiLineup) 기준.
+  if (lineupLike?._inferredFromPlayerStats) return getBenchApiBaselineKey(lineupLike._apiLineup || null);
+  const subs =Array.isArray(lineupLike?.substitutes) ? lineupLike.substitutes.filter(Boolean) : [];
+  return subs
+    .map(player => {
+      const pid = Number(player?.playerId) || 0;
+      return pid ? `id:${pid}` : `n:${String(player?.origName || player?.name || '').trim()}`;
+    })
+    .sort()
+    .join('|');
+}
+
 // ─── 수동 입력 저장소 (fixture 단위) ──────────────────────────────────────
 // localStorage(DETAIL_MANUAL_STORAGE_KEY)에 fixtureId 기준으로 override를 보관하고,
 // API 응답에 얹어서 실제 렌더 데이터로 사용. TTL은 7일.
@@ -170,6 +213,8 @@ function sanitizeManualSideData(sideData) {
 
   if (Array.isArray(sideData?.bench) && sideData.bench.length) {
     next.bench = clonePlayers(sideData.bench);
+    // 수동 입력 당시의 API 교체 명단 키 — 교체 명단이 있을 때만 의미가 있어 같이 보존.
+    if (typeof sideData.benchApiBaseline === 'string') next.benchApiBaseline = sideData.benchApiBaseline;
   }
 
   if (Array.isArray(sideData?.injuries) && sideData.injuries.length) {
@@ -178,15 +223,18 @@ function sanitizeManualSideData(sideData) {
 
   if (String(sideData?.coachName || '').trim()) {
     next.coachName = String(sideData.coachName).trim();
+    // 수동 입력 당시의 API 감독 키 — 감독명이 있을 때만 의미가 있어 같이 보존.
+    if (typeof sideData.coachApiBaseline === 'string') next.coachApiBaseline = sideData.coachApiBaseline;
   }
 
   return Object.keys(next).length ? next : null;
 }
 
-/** entry가 사용자 입력이 하나도 없는지 — 주심+양 사이드 모두 비면 true. store 정리 판단용. */
+/** entry가 사용자 입력이 하나도 없는지 — 주심+경기장+양 사이드 모두 비면 true. store 정리 판단용. */
 function isManualEntryEmpty(entry) {
   const refereeEmpty = !String(entry?.refereeName || '').trim();
-  return refereeEmpty && !sanitizeManualSideData(entry?.home) && !sanitizeManualSideData(entry?.away);
+  const venueEmpty = !String(entry?.venueName || '').trim();
+  return refereeEmpty && venueEmpty && !sanitizeManualSideData(entry?.home) && !sanitizeManualSideData(entry?.away);
 }
 
 // fixture 단위로 저장되는 주심 이름 — entry 최상단(home/away와 동급)에 보관.
@@ -214,7 +262,31 @@ function setManualReferee(fixtureId, value) {
   writeManualStore(store);
 }
 
-/** fixtureId의 수동 entry 전체 반환 (home/away/refereeName 포함). 없으면 null. */
+// fixture 단위로 저장되는 경기장 이름 — 주심과 동일하게 entry 최상단에 보관(setManualReferee와 같은 흐름).
+function setManualVenue(fixtureId, value) {
+  if (!fixtureId) return;
+  const trimmed = String(value || '').trim();
+  const store = readManualStore();
+  const current = store[fixtureId] && typeof store[fixtureId] === 'object'
+    ? { ...store[fixtureId] }
+    : { home: {}, away: {} };
+
+  if (trimmed) current.venueName = trimmed;
+  else delete current.venueName;
+
+  if (isManualEntryEmpty(current)) {
+    delete store[fixtureId];
+  } else {
+    store[fixtureId] = {
+      ...current,
+      savedAt: Date.now(),
+      expiresAt: Date.now() + DETAIL_MANUAL_TTL_MS,
+    };
+  }
+  writeManualStore(store);
+}
+
+/** fixtureId의 수동 entry 전체 반환 (home/away/refereeName/venueName 포함). 없으면 null. */
 function getManualEntry(fixtureId) {
   if (!fixtureId) return null;
   return readManualStore()[fixtureId] || null;
@@ -222,10 +294,11 @@ function getManualEntry(fixtureId) {
 
 /**
  * fixtureId 하나의 수동 입력 중, options에서 true로 켠 항목만 선택적으로 삭제.
- * options: { lineup, bench, injuries, coachName, referee } (boolean, 기본 전부 false).
+ * options: { lineup, bench, injuries, coachName, referee, venue } (boolean, 기본 전부 false).
  *   - lineup/bench/injuries/coachName: home/away 양쪽에서 함께 지움
  *     (lineup엔 포메이션+그리드/풀폼 라인업이 같이 들어있어 따로 못 나눔).
  *   - referee: entry 최상단 refereeName (양 팀 공통이라 side 구분 없음).
+ *   - venue: entry 최상단 venueName (주심과 동일하게 양 팀 공통).
  * 다른 fixture의 저장값이나 선수 ID/닉네임 연결(player-id-resolve.js, 별도 storage key)은
  * 건드리지 않음 — "캐시 초기화"가 API 응답 캐시만 지우고 이 store는 그대로 두는 것과
  * 반대로, 이 함수는 이 store의 해당 fixture 항목 중 선택한 필드만 지운다.
@@ -248,12 +321,18 @@ function clearManualEntryFields(fixtureId, options = {}) {
     ['lineup', 'bench', 'injuries', 'coachName'].forEach(field => {
       if (options[field] && next[side][field] !== undefined) {
         delete next[side][field];
+        if (field === 'coachName') delete next[side].coachApiBaseline;
+        if (field === 'bench') delete next[side].benchApiBaseline;
         changed = true;
       }
     });
   });
   if (options.referee && next.refereeName !== undefined) {
     delete next.refereeName;
+    changed = true;
+  }
+  if (options.venue && next.venueName !== undefined) {
+    delete next.venueName;
     changed = true;
   }
 
@@ -331,9 +410,9 @@ function updateManualEntry(fixtureId, side, updater) {
 function deleteManualKind(fixtureId, side, kind) {
   updateManualEntry(fixtureId, side, sideData => {
     if (kind === 'lineup') delete sideData.lineup;
-    if (kind === 'bench') delete sideData.bench;
+    if (kind === 'bench') { delete sideData.bench; delete sideData.benchApiBaseline; }
     if (kind === 'injury') delete sideData.injuries;
-    if (kind === 'coach') delete sideData.coachName;
+    if (kind === 'coach') { delete sideData.coachName; delete sideData.coachApiBaseline; }
     return sideData;
   });
 }

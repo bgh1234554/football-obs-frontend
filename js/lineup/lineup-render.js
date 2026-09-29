@@ -310,9 +310,10 @@ function setCoachElement(el, effectiveData, rawData, side, accentColor) {
   if (!el) return;
 
   const fixtureId = getActiveFixtureId();
-  const manualCoachName = normalizeCoachName(getManualSideData(fixtureId, side)?.coachName);
   const rawCoachName = normalizeCoachName(getCoachName(rawData?.[`${side}Lineup`]));
-  const effectiveCoachName = normalizeCoachName(getCoachName(effectiveData?.[`${side}Lineup`])) || manualCoachName;
+  // 수동 감독명은 buildEffectiveFixtureData가 적용을 허용한 경우에만 effectiveData에 들어 있다 —
+  // 저장값으로 폴백하면 API 감독이 바뀌어 무효가 된 예전 수동값이 다시 보일 수 있어 폴백하지 않는다.
+  const effectiveCoachName = normalizeCoachName(getCoachName(effectiveData?.[`${side}Lineup`]));
   const editable = !rawCoachName;
 
   el.textContent = effectiveCoachName || '(정보 없음. 직접 입력)';
@@ -348,6 +349,29 @@ function setRefereeElement(el, effectiveData, rawData) {
   el.classList.toggle('dp-referee-editable', editable);
   el.dataset.apiMissing = editable ? 'true' : 'false';
   el.title = editable ? '더블클릭해서 주심 이름 입력' : '';
+}
+
+/** 경기장 표시 텍스트 — venueName + venueCity (도시 있으면 ", 도시" 형태로 붙임). 둘 다 없으면 ''. */
+function formatVenueText(matchInfo) {
+  const venueName = String(matchInfo?.venueName || '').trim();
+  const venueCity = String(matchInfo?.venueCity || '').trim();
+  if (venueName && venueCity && venueCity !== venueName) return `${venueName}, ${venueCity}`;
+  return venueName || venueCity;
+}
+
+// setRefereeElement와 동일한 패턴 — API가 경기장 이름(venueName)을 안 줬을 때만 더블클릭 편집 허용,
+// 빈 값엔 '(정보 없음)' 표시. 캠 작음(벤치 패널 하단)과 캠 큼(경기 정보 사이클 패널) 공용.
+function setVenueElement(el, effectiveData, rawData) {
+  if (!el) return;
+
+  const rawVenue = String(rawData?.matchInfo?.venueName || '').trim();
+  const venueText = formatVenueText(effectiveData?.matchInfo);
+  const editable = !rawVenue;
+
+  el.textContent = venueText || '(정보 없음)';
+  el.classList.toggle('dp-venue-editable', editable);
+  el.dataset.apiMissing = editable ? 'true' : 'false';
+  el.title = editable ? '더블클릭해서 경기장 이름 입력' : '';
 }
 
 /** 벤치 패널 헤더용 킥오프 시각 — 로컬 타임존, "M월 D일 (요일) HH:mm" 형식. */
@@ -413,9 +437,10 @@ function buildBenchListHtml(players, lineupExists, side) {
   return players.map(player => lpBuildRosterRowHtml(player, 'bench', side)).join('');
 }
 
-/** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/미등록=3)을 매긴다. */
+/** 아이콘 분기와 동일한 우선순위로 사유 카테고리 순번(부상=0/의심=1/출장정지=2/국가대표 차출=3/미등록=4)을 매긴다. 국가대표 차출은 미등록 아이콘을 쓰지만 진짜 미등록보다 앞에 둔다. */
 function getInjuryCategoryRank(injury) {
-  if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) return 3;
+  if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) return 4;
+  if (typeof isNationalTeamDuty === 'function' && isNationalTeamDuty(injury.reason)) return 3;
   if (isQuestionableInjuryReason(injury.reason, injury.type)) return 1;
   if (typeof isSuspension === 'function' && isSuspension(injury.reason)) return 2;
   return 0;
@@ -444,6 +469,8 @@ function buildInjuryListHtml(injuries, provided) {
     let iconHtml = '<span class="dp-icon dp-icon-injury" aria-label="부상"></span>';
     if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) {
       iconHtml = '<span class="dp-icon dp-icon-unregistered" aria-label="선수단 미등록"></span>';
+    } else if (typeof isNationalTeamDuty === 'function' && isNationalTeamDuty(injury.reason)) {
+      iconHtml = '<span class="dp-icon dp-icon-unregistered" aria-label="국가대표 차출"></span>';
     } else if (isQuestionableInjuryReason(injury.reason, injury.type)) {
       iconHtml = '<span class="dp-icon dp-icon-questionable" aria-label="의심"></span>';
     } else if (typeof isSuspension === 'function' && isSuspension(injury.reason)) {
@@ -586,6 +613,13 @@ function hasLineupNameMultiSpaceBreakCandidate(name) {
   return String(name || '').trim().split(/\s+/).filter(Boolean).length >= 3;
 }
 
+/** 한글화되지 않은 영문 이름의 성(마지막 토큰)이 하이픈 복합 성인지 — "M. Schjønning-Larsen".
+ *  한글 복합 성과 같은 3줄 후보(이니셜 / 첫 성 / 둘째 성) 비교 대상으로 삼는다. */
+function hasLineupNameLatinHyphenSurname(name) {
+  const text = String(name || '').trim();
+  return !/[가-힣]/.test(text) && /(?:^|\s)\p{L}[\p{L}'’.]*-\p{L}[\p{L}'’.]*$/u.test(text);
+}
+
 /** 이름 라벨 내부 HTML — (사진 모드면) 등번호 + 이름 텍스트. 주장이면 등번호 앞에 완장 배지. */
 function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const rawName = getLineupNameWithSurnameBreaks(player, name);
@@ -593,7 +627,9 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const safeName = dpEscape(visibleName);
   // data-surname-breaks는 "이 라벨에 3줄 분리 후보가 있다"는 표시 — 하이픈 성 경계뿐 아니라
   // 하이픈 없이 공백 2개 이상(중간 이름)인 이름도 대상에 포함한다.
-  const hasBreakCandidate = visibleName !== rawName || hasLineupNameMultiSpaceBreakCandidate(visibleName);
+  const hasBreakCandidate = visibleName !== rawName
+    || hasLineupNameMultiSpaceBreakCandidate(visibleName)
+    || hasLineupNameLatinHyphenSurname(visibleName);
   const surnameAttr = hasBreakCandidate ? ` data-surname-breaks="${dpEscape(rawName)}"` : '';
   const rawNumber = String(player?.number ?? '').trim();
   const showNumber = shouldShowLineupNameNumber() && rawNumber !== '';
@@ -952,23 +988,16 @@ function renderBenchPanel(effectiveData, rawData) {
   setRefereeElement(panel.querySelector('[data-bench-referee] .dp-referee-name'), effectiveData, rawData);
 
   // 4) 리그/라운드와 경기장 정보를 하단 메타 라인에 반영한다.
-  // 경기장 이름 — venueName + venueCity (도시 있으면 ", 도시" 형태로 붙임)
+  // 경기장은 주심과 동일하게 API 값이 없으면 더블클릭 편집 가능(setVenueElement).
+  setVenueElement(panel.querySelector('[data-bench-venue] .dp-venue-name'), effectiveData, rawData);
   const leagueEl = panel.querySelector('[data-bench-league] .dp-league-name');
-  const venueEl = panel.querySelector('[data-bench-venue] .dp-venue-name');
   const kickoffEl = panel.querySelector('[data-bench-kickoff] .dp-kickoff-time');
-  if (leagueEl || venueEl || kickoffEl) {
+  if (leagueEl || kickoffEl) {
     const matchInfo = effectiveData?.matchInfo || {};
     const leagueName = String(matchInfo.leagueName || '').trim();
     const leagueRound = String(matchInfo.leagueRound || '').trim();
     const leagueText = [leagueName, leagueRound].filter(Boolean).join(' · ');
-    const venueName = String(matchInfo.venueName || '').trim();
-    const venueCity = String(matchInfo.venueCity || '').trim();
-    let venueText = '-';
-    if (venueName && venueCity && venueCity !== venueName) venueText = `${venueName}, ${venueCity}`;
-    else if (venueName) venueText = venueName;
-    else if (venueCity) venueText = venueCity;
     if (leagueEl) leagueEl.textContent = leagueText || '-';
-    if (venueEl) venueEl.textContent = venueText;
     if (kickoffEl) kickoffEl.textContent = formatBenchKickoffLocal(matchInfo);
   }
 }
@@ -1036,7 +1065,7 @@ const BC_CYCLE_TITLE_FONT_MIN = 9;
 // 실제로 화면에 떠 있는 것만 매번 실측한다 — 고정 padding으로 예약해두면 버튼이 적게 떠 있을 때
 // 제목이 한쪽으로 쏠려 보이는 문제가 있었다(2026-08 피드백).
 const BC_CYCLE_TITLE_LEFT_BTN_SELECTORS = ['.lp-stat-cycle-btn', '.lp-stat-refresh-btn', '.lp-stat-standings-popup-btn'];
-const BC_CYCLE_TITLE_RIGHT_BTN_SELECTORS = ['.lp-stat-pause-btn'];
+const BC_CYCLE_TITLE_RIGHT_BTN_SELECTORS = ['.lp-stat-pause-btn', '.lp-stat-bench-edit-btn'];
 const BC_CYCLE_TITLE_SAFE_GAP_PX = 6;
 
 // 텍스트 폭 측정 전용 오프스크린 canvas — 재사용(매번 새로 만들지 않음).
@@ -1240,9 +1269,6 @@ function buildMatchInfoCyclePanel(effectiveData) {
 
   const leagueName = matchInfo.leagueName || '-';
   const leagueRound = String(matchInfo.leagueRound || '').trim();
-  const venueName = matchInfo.venueName || '-';
-  const venueCity = String(matchInfo.venueCity || '').trim();
-  const venue = (venueCity && venueName !== '-' && venueCity !== venueName) ? `${venueName}, ${venueCity}` : venueName;
   const kickoff = formatBenchKickoffLocal(matchInfo);
 
   const miRow = (label, value, accentColor) => {
@@ -1267,7 +1293,7 @@ function buildMatchInfoCyclePanel(effectiveData) {
     </div>`;
   };
 
-  // 홈/원정 감독, 주심은 값을 여기서 바로 채우지 않고 빈 자리(placeholder)만 마련한다 —
+  // 홈/원정 감독, 주심, 경기장은 값을 여기서 바로 채우지 않고 빈 자리(placeholder)만 마련한다 —
   // DOM에 삽입된 뒤 setCoachElement/setRefereeElement(벤치 패널과 동일한 함수)가 API 유무에 따라
   // 텍스트 + 더블클릭 편집 가능 여부(dataset.apiMissing)까지 함께 채워야 캠 큰 화면에서도
   // 캠 작음 화면(벤치 패널 하단)과 똑같이 더블클릭으로 감독/주심을 직접 입력할 수 있다.
@@ -1285,7 +1311,7 @@ function buildMatchInfoCyclePanel(effectiveData) {
   <div class="mi-section">
     ${miRow('대회', leagueName)}
     ${leagueRound ? miRow('라운드', leagueRound) : ''}
-    ${miRow('경기장', venue)}
+    <div class="mi-row" data-mi-venue><span class="mi-label">경기장</span><span class="mi-value dp-venue-name">-</span></div>
     ${miRow('킥오프', kickoff)}
   </div>
 </div>`;
@@ -1307,6 +1333,7 @@ function renderMatchInfoCyclePanel(effectiveData, rawData) {
     setCoachElement(el.querySelector('[data-mi-coach="home"] .dp-coach-name'), effectiveData, rawData, 'home', homeAccent);
     setCoachElement(el.querySelector('[data-mi-coach="away"] .dp-coach-name'), effectiveData, rawData, 'away', awayAccent);
     setRefereeElement(el.querySelector('[data-mi-referee] .dp-referee-name'), effectiveData, rawData);
+    setVenueElement(el.querySelector('[data-mi-venue] .dp-venue-name'), effectiveData, rawData);
   });
 }
 
@@ -1563,7 +1590,8 @@ function applyLineupPanels(fixtureData) {
       panel.style.removeProperty('width');
     });
   }
-  lineupPanelState.lastFixture = fixtureData;
+  // API가 라인업 없이 playerStats만 준 경우 선발/교체 명단을 추정해 채운 객체로 보관 (lineup-data.js).
+  lineupPanelState.lastFixture = inferLineupsFromPlayerStats(fixtureData);
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
   if (incomingId !== currentId && typeof scheduleLineupViewportFit === 'function') {
@@ -1590,17 +1618,16 @@ function clearLineupPanels() {
     benchPanel.classList.remove('dp-mode-long');
     benchPanel.querySelectorAll('.dp-list').forEach(list => { list.innerHTML = ''; });
     benchPanel.querySelectorAll('.dp-side-name').forEach(el => { el.textContent = 'TEAM'; });
-    benchPanel.querySelectorAll('.dp-coach-name, .dp-referee-name').forEach(el => {
+    benchPanel.querySelectorAll('.dp-coach-name, .dp-referee-name, .dp-venue-name').forEach(el => {
       el.textContent = '-';
-      el.classList.remove('dp-coach-editable', 'dp-coach-editing', 'dp-referee-editable', 'dp-referee-editing');
+      el.title = '';
+      el.classList.remove('dp-coach-editable', 'dp-coach-editing', 'dp-referee-editable', 'dp-referee-editing', 'dp-venue-editable', 'dp-venue-editing');
       delete el.dataset.coachSide;
       delete el.dataset.apiMissing;
     });
-    const leagueEl = benchPanel.querySelector('[data-bench-venue] .dp-league-name');
-    const venueEl = benchPanel.querySelector('[data-bench-venue] .dp-venue-name');
+    const leagueEl = benchPanel.querySelector('[data-bench-league] .dp-league-name');
     const kickoffEl = benchPanel.querySelector('[data-bench-kickoff] .dp-kickoff-time');
     if (leagueEl) leagueEl.textContent = '-';
-    if (venueEl) venueEl.textContent = '-';
     if (kickoffEl) kickoffEl.textContent = '-';
   }
 

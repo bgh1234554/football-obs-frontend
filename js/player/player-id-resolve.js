@@ -99,6 +99,12 @@ function pirGetByKey(key) {
 function pirSetByKey(key, data) {
   if (!key) return;
   const store = pirReadStore();
+  // id=0(이름 키) 선수의 연결이 해제되거나 다른 ID로 바뀌면, 이전 ID로 승격 복사된 닉네임을 정리한다.
+  const prevId = Number(store[key]?.playerId) || 0;
+  if (String(key).includes(':n:') && prevId > 0 && prevId !== (Number(data?.playerId) || 0)
+    && typeof window.demotePromotedNickname === 'function') {
+    window.demotePromotedNickname(prevId);
+  }
   if (data) store[key] = data;
   else delete store[key];
   pirWriteStore(store);
@@ -842,6 +848,14 @@ function applyZeroIdOverrides(next, fixtureId) {
       const needsNameKoFromHint = !ov?.name && hint?.name && !pirHasHangul(p.name);
       const needsLongKoFromHint = !ov?.nameKoLong && hint?.nameKoLong && !pirHasHangul(p.nameKoLong);
       if (!ov && !needsNameKoFromHint && !needsLongKoFromHint) return p;
+      // id=0 선수가 실제 ID로 연결되는 순간(수동/자동 모두 이 경로), 이름 키 닉네임을 id 키로 복사해
+      // id 경로로 넘어간 뒤에도 라인업·이벤트에서 닉네임이 유지되게 한다. id 키가 이미 있으면 건드리지 않음.
+      if (isZero && Number(ov?.playerId) > 0 && typeof window.promoteNameNicknameToId === 'function') {
+        const nickName = typeof playerNicknameSourceName === 'function'
+          ? playerNicknameSourceName(p)
+          : (p.origName || pirRosterName(p));
+        window.promoteNameNicknameToId(nickName, ov.playerId);
+      }
       return {
         ...p,
         ...(isZero ? { playerId: ov.playerId } : {}),
@@ -1002,6 +1016,12 @@ function pirShowMenu(side, origName, clientX, clientY) {
     ? (pickName(player, 'roster') || origName || '-')
     : (origName || '-');
   const idStatusHtml = `<div class="pm-pos" style="color:#f88;font-size:11px">선수 ID 없음 (클릭해서 연결)</div>`;
+  // id=0 선수 닉네임은 API 원본 이름 키로 저장(player-menu.js). 명단에서 못 찾으면 클릭한 표시명으로 대체.
+  const nickSourceName = (player && typeof playerNicknameSourceName === 'function')
+    ? (playerNicknameSourceName(player) || origName)
+    : origName;
+  const nickname = typeof getPlayerNickname === 'function' ? getPlayerNickname(0, nickSourceName) : null;
+  const canEditNickname = !!nickSourceName && typeof pmEditNickname === 'function';
 
   c.innerHTML = `
 <div class="pm-popup" id="pirPopup" role="dialog">
@@ -1012,8 +1032,10 @@ function pirShowMenu(side, origName, clientX, clientY) {
       <div class="pm-name"><span class="pm-num">${pirEsc(num)}</span>${pirEsc(displayName)}</div>
       ${idStatusHtml}
       ${existing ? `<div class="pm-nick-badge" style="color:#8cf">연결됨: ID ${pirEsc(String(existing.playerId))}</div>` : ''}
+      ${nickname ? `<div class="pm-nick-badge">닉네임: ${pirEsc(nickname)}</div>` : ''}
     </div>
   </div>
+  ${canEditNickname ? `<div class="pm-btns"><button class="pm-btn" id="pirBtnNick">닉네임 설정</button></div>` : ''}
   <div class="pm-nick-wrap">
     <div class="pm-nick-title">선수 ID 입력 후 검색</div>
     <div style="display:flex;gap:6px;align-items:center">
@@ -1096,6 +1118,13 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
   document.getElementById('pirClose').addEventListener('click', pirHideAll);
   document.getElementById('pirCancel').addEventListener('click', pirHideAll);
+  const nickBtn = document.getElementById('pirBtnNick');
+  if (nickBtn) {
+    nickBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      pmEditNickname(0, displayName, nickSourceName, 'pirPopup');
+    });
+  }
 
   document.getElementById('pirSave').addEventListener('click', () => {
     const pid = parseInt(input.value, 10);

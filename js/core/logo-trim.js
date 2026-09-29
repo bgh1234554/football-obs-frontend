@@ -3,9 +3,17 @@
  *
  * 처리 흐름: URL별 캐시 확인 → 필요할 때 픽셀 분석 → 경계 저장 → CSS 크기·중심 보정.
  * Canvas는 경계를 찾는 용도로만 사용하며, 화면에는 원본 PNG/SVG를 계속 표시한다.
- * 따라서 SVG를 PNG로 교체하지 않으며, 로고 내부의 투명한 부분도 그대로 유지된다.
+ * 따라서 SVG를 PNG로 교체하지 않는다.
  *
- * 저장 형식: { bounds: { left, top, right, bottom, width, height }, expiresAt }.
+ * 내부 채우기(2026-09-27): 테두리나 링으로 완전히 둘러싸인 큰 투명 영역(방패 안쪽, 링 안쪽 등)은
+ * 흰색(FILL_COLOR)으로 채워 보이게 한다. 원본 이미지는 그대로 두고, 채울 영역만 담은 마스크
+ * PNG를 blob URL로 만들어 같은 <img>의 CSS background로 깐다 — 이미지 내용이 배경 위에
+ * 그려지므로 원본 로고는 가려지지 않고 투명했던 안쪽만 흰색이 비친다. 글자/문양 속 작은
+ * 구멍은 채우지 않도록 로고 면적 대비 MIN_FILL_SHARE 이상인 영역만 채운다.
+ *
+ * 저장 형식: { bounds: { left, top, right, bottom, width, height }, hasFill, expiresAt }.
+ * hasFill은 "채울 영역이 있는 로고인지"만 저장한다. 마스크 자체(blob URL)는 세션을 넘어
+ * 재사용할 수 없어 메모리(fills)에만 두고, 새 세션에서 hasFill=true인 로고만 다시 분석한다.
  * 좌표는 분석용 이미지의 픽셀 단위이고, CSS 적용 시 비율로 변환한다.
  * 완전히 투명한 이미지의 bounds는 null이다. 분석 실패도 화면에서는 원본으로 처리하지만,
  * 성공 결과와 달리 실패 결과는 localStorage에 저장하지 않고 메모리에서 잠시만 유지한다.
@@ -18,9 +26,22 @@ const LogoTrim = (() => {
   const TTL = 30 * 24 * 60 * 60 * 1000;
   // 경계 계산이나 저장 형식이 바뀌면 버전을 올려 이전 좌표가 재사용되지 않게 한다.
   // v2 (2026-09-22): findBounds의 알파 임계값을 0 초과 → ALPHA_MIN(8) 이상으로 변경.
-  const PREFIX = 'football-obs:logo-trim:v2:';
+  // v3 (2026-09-27): 내부 채우기 여부(hasFill) 추가 — v2 기록에는 없어 전부 한 번 재분석한다.
+  const PREFIX = 'football-obs:logo-trim:v3:';
   // URL별 분석 결과: 같은 페이지에서 localStorage 접근과 재분석을 줄인다.
   const memory = new Map();
+  // URL별 내부 채우기 마스크 blob URL(채울 영역이 없으면 null). 세션 한정이라 메모리에만 둔다.
+  const fills = new Map();
+  // 내부 채우기 색. 협업 프론트(FSM) 로고 구역 배경에 맞추려면 이 값만 바꾸면 된다.
+  const FILL_COLOR = [255, 255, 255];
+  // 이 알파값 미만이면 "투명"으로 보고 바깥/안쪽 영역 탐색에 포함한다(안티앨리어싱 가장자리 절반 기준).
+  const FILL_ALPHA_MAX = 128;
+  // 둘러싸인 투명 영역이 로고 그림 경계 면적의 이 비율 이상일 때만 채운다. 실측: USG 링 안쪽
+  // 영역 각각 6~8%, FCF 방패 안쪽 약 44%, 반면 왕관 십자가 가운데 같은 작은 구멍은 0.01% 수준.
+  const MIN_FILL_SHARE = 0.01;
+  // 채우기 분석 해상도(긴 변 최대 px). 원본이 커도 이 크기로 줄여 메모리/시간을 제한한다.
+  // 마스크는 CSS로 다시 늘려 그리고, 경계는 로고의 불투명 테두리 아래에 숨으므로 이 정도면 충분하다.
+  const FILL_ANALYSIS_MAX = 1024;
   // URL별 진행 중인 Promise: 홈·원정이 같은 로고를 요청해도 분석은 한 번만 수행한다.
   const pending = new Map();
   // 캐시 초기화 이후 도착한 이전 분석 결과가 새 캐시에 다시 들어오지 않도록 구분한다.
@@ -73,6 +94,100 @@ const LogoTrim = (() => {
     return right > left ? { left, top, right, bottom, width, height } : null;
   }
 
+  /**
+   * 테두리/링으로 완전히 둘러싸인 큰 투명 영역을 찾아, 그 영역만 FILL_COLOR로 칠한 마스크
+   * ImageData를 반환한다. 채울 영역이 없으면 null.
+   * 1) 이미지 가장자리에서 시작해 투명 픽셀만 따라가며 "바깥"을 표시한다.
+   * 2) 남은 투명 픽셀을 연결 영역별로 묶고, 면적이 minArea 이상인 영역만 채운다.
+   *    테두리가 한 군데라도 끊겨 있으면 안쪽이 바깥과 이어져 채우지 않는다(원본 그대로 = 안전한 실패).
+   * 3) 채운 영역을 불투명 픽셀 쪽으로만 1px 넓혀, 안티앨리어싱된 테두리 안쪽 가장자리 밑까지
+   *    흰색이 깔리게 한다. 투명한 바깥 쪽으로는 넓히지 않아 로고 밖으로 흰 테두리가 새지 않는다.
+   */
+  function buildFillMask({ data, width, height }, minArea) {
+    const n = width * height;
+    const clear = new Uint8Array(n);
+    for (let i = 0; i < n; i++) clear[i] = data[i * 4 + 3] < FILL_ALPHA_MAX ? 1 : 0;
+    const visited = new Uint8Array(n);
+    const stack = new Int32Array(n);
+    let sp = 0;
+    const push = i => { if (clear[i] && !visited[i]) { visited[i] = 1; stack[sp++] = i; } };
+    const flood = collect => {
+      while (sp) {
+        const i = stack[--sp];
+        if (collect) collect(i);
+        const x = i % width;
+        if (x > 0) push(i - 1);
+        if (x < width - 1) push(i + 1);
+        if (i >= width) push(i - width);
+        if (i < n - width) push(i + width);
+      }
+    };
+    // 1) 바깥 영역
+    for (let x = 0; x < width; x++) { push(x); push(n - width + x); }
+    for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
+    flood(null);
+
+    // 2) 둘러싸인 영역 중 큰 것만 채움
+    const mask = new Uint8Array(n);
+    const members = new Int32Array(n);
+    let filled = false;
+    for (let s = 0; s < n; s++) {
+      if (!clear[s] || visited[s]) continue;
+      let count = 0;
+      push(s);
+      flood(i => { members[count++] = i; });
+      if (count < minArea) continue;
+      for (let k = 0; k < count; k++) mask[members[k]] = 1;
+      filled = true;
+    }
+    if (!filled) return null;
+
+    // 3) 불투명 쪽으로만 1px 확장해 출력
+    const out = new ImageData(width, height);
+    const [r, g, b] = FILL_COLOR;
+    const paint = i => { const o = i * 4; out.data[o] = r; out.data[o + 1] = g; out.data[o + 2] = b; out.data[o + 3] = 255; };
+    for (let i = 0; i < n; i++) {
+      if (!mask[i]) continue;
+      paint(i);
+      const x = i % width;
+      if (x > 0 && !clear[i - 1]) paint(i - 1);
+      if (x < width - 1 && !clear[i + 1]) paint(i + 1);
+      if (i >= width && !clear[i - width]) paint(i - width);
+      if (i < n - width && !clear[i + width]) paint(i + width);
+    }
+    return out;
+  }
+
+  /**
+   * 로드된 로고로 내부 채우기 마스크를 만들어 blob URL로 반환한다. 채울 영역이 없으면 null.
+   * 기준 크기는 경계 분석에 쓴 캔버스 크기(bounds.width/height — SVG는 이미 1024px 이상으로 확대됨)이고,
+   * 긴 변이 FILL_ANALYSIS_MAX를 넘으면 그 이하로 줄여서 분석한다. 최소 면적은 findBounds가 찾은
+   * 그림 경계 면적을 같은 비율로 환산해 계산한다.
+   */
+  async function buildFillUrl(img, bounds) {
+    if (!bounds) return null;
+    const scale = Math.min(1, FILL_ANALYSIS_MAX / Math.max(bounds.width, bounds.height));
+    const width = Math.max(1, Math.round(bounds.width * scale));
+    const height = Math.max(1, Math.round(bounds.height * scale));
+    const areaScale = (width / bounds.width) * (height / bounds.height);
+    const minArea = Math.max(16, Math.ceil((bounds.right - bounds.left) * (bounds.bottom - bounds.top) * areaScale * MIN_FILL_SHARE));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    try {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, width, height);
+      const mask = buildFillMask(ctx.getImageData(0, 0, width, height), minArea);
+      if (!mask) return null;
+      ctx.clearRect(0, 0, width, height);
+      ctx.putImageData(mask, 0, 0);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      return blob ? URL.createObjectURL(blob) : null;
+    } finally {
+      canvas.width = canvas.height = 0;
+    }
+  }
+
   /** 저장된 좌표가 정수이고 이미지 안에 있는지 확인한다. 빈 이미지의 null도 유효하다. */
   function validBounds(b) {
     return b === null || !!b && ['left', 'top', 'right', 'bottom', 'width', 'height']
@@ -96,7 +211,8 @@ const LogoTrim = (() => {
       try { record = JSON.parse(localStorage.getItem(PREFIX + url)); } catch (_) { /* 저장소 접근 실패·JSON 손상은 캐시 없음으로 처리 */ }
     }
     if (record && Number.isFinite(record.expiresAt) && record.expiresAt > Date.now()
-        && record.expiresAt <= Date.now() + TTL && validBounds(record.bounds)) {
+        && record.expiresAt <= Date.now() + TTL && validBounds(record.bounds)
+        && typeof record.hasFill === 'boolean') {
       memory.set(url, record);
       return record;
     }
@@ -111,8 +227,8 @@ const LogoTrim = (() => {
    * 분석을 마친 시점에 30일 만료 시각을 부여하고 좌표만 저장한다.
    * 저장 용량 초과·접근 제한이 있어도 메모리 결과는 유지해 현재 페이지에서는 재사용한다.
    */
-  function writeCache(url, bounds) {
-    const record = { bounds, expiresAt: Date.now() + TTL };
+  function writeCache(url, bounds, hasFill) {
+    const record = { bounds, hasFill: !!hasFill, expiresAt: Date.now() + TTL };
     memory.set(url, record);
     if (!/^(data:|blob:)/i.test(url)) {
       try { localStorage.setItem(PREFIX + url, JSON.stringify(record)); } catch (_) { /* 영구 저장 실패 시 메모리 캐시로 계속 동작 */ }
@@ -143,8 +259,20 @@ const LogoTrim = (() => {
     });
   }
 
-  /** 원본을 임시 Canvas에 그린 뒤 알파 채널로 경계를 찾는다. 분석용 비트맵은 저장하지 않는다. */
+  /**
+   * 원본을 임시 Canvas에 그린 뒤 알파 채널로 경계를 찾고, 이어서 내부 채우기 마스크를 만든다.
+   * 분석용 비트맵은 저장하지 않는다. 반환: { bounds, fillUrl }.
+   * 채우기 마스크 생성이 실패해도 경계 결과는 살린다(채우기만 생략).
+   */
   async function analyse(url) {
+    const { img, bounds } = await analyseBounds(url);
+    let fillUrl = null;
+    try { fillUrl = await buildFillUrl(img, bounds); } catch (_) { /* 채우기 실패는 원본 표시로 대체 */ }
+    return { bounds, fillUrl };
+  }
+
+  /** 원본을 임시 Canvas에 그린 뒤 알파 채널로 경계를 찾는다. 채우기 분석에 재사용할 이미지도 함께 반환. */
+  async function analyseBounds(url) {
     const img = await loadImage(url);
     let width = img.naturalWidth, height = img.naturalHeight;
     if (!width || !height) throw new Error('Empty logo dimensions');
@@ -165,29 +293,42 @@ const LogoTrim = (() => {
     try {
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, width, height);
-      return findBounds(ctx.getImageData(0, 0, width, height));
+      return { img, bounds: findBounds(ctx.getImageData(0, 0, width, height)) };
     } finally {
       // 성공·실패와 관계없이 임시 Canvas의 큰 픽셀 버퍼를 해제한다.
       canvas.width = canvas.height = 0;
     }
   }
 
+  /**
+   * 화면 적용에 바로 쓸 수 있는 캐시만 반환한다. 채울 영역이 있는 로고(hasFill)인데 이번 세션에
+   * 마스크가 아직 없으면(새로고침 직후 등) 경계만으로는 부족하므로 캐시 미스로 보고 재분석한다.
+   * localStorage 기록 자체는 유효하므로 지우지 않는다.
+   */
+  function usableCache(url) {
+    const cached = readCache(url);
+    if (cached && cached.hasFill && !fills.has(url)) return null;
+    return cached;
+  }
+
   /** 유효한 캐시 → 진행 중인 분석 공유 → 새 분석 순서로 경계를 얻는다. */
   function getBounds(url) {
-    const cached = readCache(url);
+    const cached = usableCache(url);
     if (cached) return Promise.resolve(cached);
     if (pending.has(url)) return pending.get(url);
     const generation = cacheGeneration;
-    const task = analyse(url).then(bounds => {
+    const task = analyse(url).then(({ bounds, fillUrl }) => {
       if (generation !== cacheGeneration) {
-        return { bounds, expiresAt: Date.now() + TTL };
+        if (fillUrl) URL.revokeObjectURL(fillUrl);
+        return { bounds, hasFill: false, expiresAt: Date.now() + TTL };
       }
-      return writeCache(url, bounds);
+      fills.set(url, fillUrl);
+      return writeCache(url, bounds, !!fillUrl);
     }).catch(() => {
       // CORS·네트워크 등의 일시적 실패를 30일 동안 고정하지 않는다.
       // 실패 결과는 메모리에 1분만 두어 반복 요청을 막고, 이후 render 호출 시 재시도한다.
       // 별도 타이머로 1분 뒤 자동 재시도하는 방식은 아니다.
-      const retry = { bounds: null, expiresAt: Date.now() + 60000 };
+      const retry = { bounds: null, hasFill: false, expiresAt: Date.now() + 60000 };
       if (generation === cacheGeneration) memory.set(url, retry);
       return retry;
     }).finally(() => {
@@ -199,8 +340,27 @@ const LogoTrim = (() => {
 
   /** 이전 로고의 자동 크기·중심 보정만 제거한다. 수동 설정과 원본 URL은 유지한다. */
   function clearLayout(img) {
-    img.classList.remove('logo-trimmed');
+    img.classList.remove('logo-trimmed', 'logo-filled');
     for (const name of properties) img.style.removeProperty(name);
+    for (const name of ['background-image', 'background-size', 'background-position', 'background-repeat']) {
+      img.style.removeProperty(name);
+    }
+  }
+
+  /**
+   * 내부 채우기 마스크를 <img>의 배경으로 깐다. 이미지 내용은 배경 위에 그려지므로 원본 로고는
+   * 그대로 보이고 투명했던 안쪽에만 흰색이 비친다. 마스크는 원본과 같은 종횡비라
+   * object-fit:contain과 같은 규칙(background-size:contain + 가운데 정렬)으로 맞추면
+   * trim 보정/SVG 100% 박스 여부와 무관하게 로고와 정확히 겹친다.
+   */
+  function applyFill(img, url) {
+    const fillUrl = fills.get(url);
+    if (!fillUrl) return;
+    img.style.backgroundImage = `url("${fillUrl}")`;
+    img.style.backgroundSize = 'contain';
+    img.style.backgroundPosition = 'center';
+    img.style.backgroundRepeat = 'no-repeat';
+    img.classList.add('logo-filled');
   }
 
   /**
@@ -266,9 +426,10 @@ const LogoTrim = (() => {
       return;
     }
     // 캐시가 있으면 Promise를 기다리지 않고 즉시 적용해 반복 표시 시 크기 변화를 줄인다.
-    const cached = readCache(url);
+    const cached = usableCache(url);
     if (cached) {
       applyLayout(img, cached.bounds);
+      applyFill(img, url);
       current.expiresAt = cached.expiresAt;
       current.ready = !!cached.bounds;
       current.onReady?.(current.ready);
@@ -285,6 +446,7 @@ const LogoTrim = (() => {
       current.busy = false;
       current.expiresAt = record.expiresAt;
       applyLayout(img, record.bounds);
+      applyFill(img, url);
       current.ready = !!record.bounds;
       current.onReady?.(current.ready);
     });
@@ -295,6 +457,9 @@ const LogoTrim = (() => {
     cacheGeneration += 1;
     memory.clear();
     pending.clear();
+    // 이미 화면에 깔린 마스크는 elements 초기화 후 다음 render에서 새 URL로 교체된다.
+    for (const fillUrl of fills.values()) if (fillUrl) URL.revokeObjectURL(fillUrl);
+    fills.clear();
     elements = new WeakMap();
     try {
       for (let index = localStorage.length - 1; index >= 0; index -= 1) {

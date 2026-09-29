@@ -149,6 +149,10 @@ function evVarDetailKey(detail) {
 // 복합키: side|elapsed|extra|playerId|assistId — 이벤트 패널·라인업 패널 양쪽에서 동일하게 생성 가능.
 
 function evSubstEventKey(ev) {
+  // evPatchSubstEvents가 패치/ID 리매핑 전 원본 이벤트 기준으로 새겨둔 키를 우선한다.
+  // 화면에 그려지는 이벤트는 override 적용·alt ID 연결로 playerId/assistId가 바뀐 뒤라,
+  // 그대로 다시 계산하면 저장된 키와 어긋나 초기화/재선택이 엉뚱한 키를 건드린다.
+  if (ev?._evSubstKey) return ev._evSubstKey;
   return [
     ev?.side || '',
     Number(ev?.elapsed ?? 0),
@@ -184,6 +188,28 @@ function evSetSubstOverride(fixtureId, ev, field, playerInfo) {
   evSaveSubstOverrides(store);
 }
 
+/** 교체 선수 override 삭제 — 해당 필드만 지워 API 원본(이름 또는 '?')으로 되돌린다. */
+function evClearSubstOverride(fixtureId, ev, field) {
+  if (!fixtureId) return;
+  const key = evSubstEventKey(ev);
+  const store = evLoadSubstOverrides();
+  const entry = store[fixtureId]?.[key];
+  if (!entry || !entry[field]) return;
+  delete entry[field];
+  if (!Object.keys(entry).length) delete store[fixtureId][key];
+  if (!Object.keys(store[fixtureId]).length) delete store[fixtureId];
+  evSaveSubstOverrides(store);
+}
+
+/**
+ * API가 이름만 주고 선수 ID는 0(또는 null)으로 준 교체 선수인지 — 이름이 있어도 라인업과 연결이 안 돼
+ * 틀린 선수일 수 있으므로, override가 없어도 '?'처럼 클릭해서 고칠 수 있게 한다.
+ */
+function evSubstHasUnlinkedId(ev, field) {
+  const id = Number(field === 'player' ? ev?.playerId : ev?.assistId);
+  return !Number.isFinite(id) || id === 0;
+}
+
 /**
  * 교체 이벤트의 선수 이름을 반환. override가 있으면 그것을 우선.
  * field: 'player'(OUT) or 'assist'(IN)
@@ -198,6 +224,12 @@ function evGetSubstDisplayName(ev, field, fixtureId) {
  * 선수명이 비어있을 때 표시하는 클릭 가능한 `?` 버튼.
  * 클릭 시 evOpenSubstPicker 모달을 열어 팀 선수 명단에서 선택할 수 있게 함.
  */
+/** 교체 선택 창 새 창 파라미터 — 연속 교체 묶음이면 넓은 창(wide)으로 연다(popout.js 창 크기). */
+function evSubstPopoutParams(ev, field) {
+  const multi = typeof window.evSubstCluster === 'function' && window.evSubstCluster(ev).length > 1;
+  return { evkey: evSubstEventKey(ev), field, ...(multi ? { wide: '1' } : {}) };
+}
+
 function evCreateSubstFixBtn(ev, field, fixtureData) {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -209,7 +241,7 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
-      window.Popout.open('subst', { evkey: evSubstEventKey(ev), field });
+      window.Popout.open('subst', evSubstPopoutParams(ev, field));
     } else {
       evOpenSubstPicker(ev, field, fixtureData);
     }
@@ -231,7 +263,7 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
-      window.Popout.open('subst', { evkey: evSubstEventKey(ev), field });
+      window.Popout.open('subst', evSubstPopoutParams(ev, field));
     } else {
       evOpenSubstPicker(ev, field, fixtureData);
     }
@@ -246,14 +278,16 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
  */
 function evPatchSubstEvents(events, fixtureId) {
   if (!Array.isArray(events) || !fixtureId) return events;
-  const overrides = evLoadSubstOverrides()[fixtureId];
-  if (!overrides || !Object.keys(overrides).length) return events;
+  const overrides = evLoadSubstOverrides()[fixtureId] || {};
 
+  // override가 없어도 모든 교체 이벤트에 원본 키(_evSubstKey)를 새겨둔다 — 이후 applyZeroIdOverrides의
+  // alt ID 리매핑이나 이 함수의 패치로 ID가 바뀌어도 선택 창의 저장/초기화가 같은 키를 쓰게 하기 위함.
   return events.map(ev => {
     if (String(ev?.type || '').toLowerCase() !== 'subst') return ev;
-    const evOverride = overrides[evSubstEventKey(ev)];
-    if (!evOverride) return ev;
-    const patched = { ...ev };
+    const key = evSubstEventKey(ev);
+    const evOverride = overrides[key];
+    if (!evOverride) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
+    const patched = { ...ev, _evSubstKey: key };
     if (evOverride.player) {
       patched.playerId = evOverride.player.playerId;
       patched.playerName = evOverride.player.name;
@@ -273,12 +307,22 @@ window.evPatchSubstEvents = evPatchSubstEvents;
  * 선택 확인 시 override 저장 + 이벤트 패널 + 라인업 패널 즉시 재렌더.
  */
 function evOpenSubstPicker(ev, field, fixtureData) {
+  // 앞뒤 1분 안에 다른 교체가 이어져 있으면 묶음 전체를 한 번에 고치는 창으로 연다(event-hide.js).
+  const cluster = typeof window.evSubstCluster === 'function' ? window.evSubstCluster(ev) : [ev];
+  if (cluster.length > 1 && typeof window.evOpenSubstClusterEditor === 'function') {
+    window.evOpenSubstClusterEditor(cluster, ev, field, fixtureData);
+    return;
+  }
   const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
   const lineup = ev.side === 'home' ? fixtureData?.homeLineup : fixtureData?.awayLineup;
-  const allPlayers = [
-    ...(lineup?.startXi || []),
-    ...(lineup?.substitutes || []),
-  ].filter(Boolean);
+  // 그 교체 시점에 실제로 가능한 선수만 — OUT은 그라운드에 있던 선수, IN은 아직 투입 안 된 교체 명단
+  // 선수(event-hide.js evAvailablePlayers). 계산할 수 없으면 기존처럼 팀 전체 명단.
+  const allPlayers = typeof window.evAvailablePlayers === 'function'
+    ? window.evAvailablePlayers(ev, ev.side, field === 'player' ? 'onPitch' : 'bench')
+    : [
+      ...(lineup?.startXi || []),
+      ...(lineup?.substitutes || []),
+    ].filter(Boolean);
 
   document.querySelector('.ev-subst-picker-overlay')?.remove();
 
@@ -336,7 +380,14 @@ function evOpenSubstPicker(ev, field, fixtureData) {
       posEl.textContent = player.pos || '';
 
       item.append(num, nameEl, posEl);
-      if (existingOverride && Number(existingOverride.playerId) === Number(player.playerId)) {
+      // 기존 선택 표시: ID가 있으면 ID로 비교(기존 동작). ID가 0인 선수는 여러 명이 같은 0을
+      // 가질 수 있어 ID만 비교하면 전원이 선택돼 버리므로, 저장된 이름으로 첫 한 명만 매칭한다.
+      const overrideId = Number(existingOverride?.playerId) || 0;
+      const matchesExisting = !!existingOverride && !selectedPlayer && (overrideId > 0
+        ? overrideId === Number(player.playerId)
+        : !Number(player.playerId) && !!existingOverride.name
+          && [player.name, player.nameKoLong, displayName].includes(existingOverride.name));
+      if (matchesExisting) {
         item.classList.add('is-selected');
         selectedPlayer = { playerId: player.playerId, name: displayName };
       }
@@ -353,14 +404,11 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   const actions = document.createElement('div');
   actions.className = 'ev-subst-picker-actions';
 
-  const confirmBtn = document.createElement('button');
-  confirmBtn.type = 'button';
-  confirmBtn.className = 'ev-subst-picker-confirm';
-  confirmBtn.textContent = '확인';
-  confirmBtn.addEventListener('click', () => {
-    if (!selectedPlayer) return;
-    evSetSubstOverride(fixtureId, ev, field, selectedPlayer);
+  // 저장/초기화 후 이벤트 패널 + 라인업 패널 + 전술판 타임라인을 한 번에 다시 그린다
+  function applyOverrideChange() {
     closeOverlay();
+    // 원본 fixture에서 다시 합성(fixture.js) - 이벤트 패널 데이터까지 새 override 기준으로 갱신.
+    if (typeof window.fixtureReapplyEventHide === 'function') { window.fixtureReapplyEventHide(); return; }
     evRerenderCurrentPanel();
     if (typeof applyLineupPanels === 'function' && window._eventsLastData) {
       applyLineupPanels(window._eventsLastData);
@@ -371,6 +419,32 @@ function evOpenSubstPicker(ev, field, fixtureData) {
       const patchedEvents = evPatchSubstEvents(window._eventsLastData.events, fixtureId);
       window.ttRefreshEventsData({ ...window._eventsLastData, events: patchedEvents });
     }
+  }
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'ev-subst-picker-confirm';
+  confirmBtn.textContent = '확인';
+  confirmBtn.addEventListener('click', () => {
+    if (!selectedPlayer) return;
+    evSetSubstOverride(fixtureId, ev, field, selectedPlayer);
+    applyOverrideChange();
+  });
+
+  // 초기화 — 직접 고른 선수를 지우고 API 원본으로 되돌림(원본 이름이 없으면 다시 '?').
+  // 고른 적이 없으면(override 없음) 되돌릴 것이 없으므로 비활성.
+  const resetBtn = document.createElement('button');
+  resetBtn.type = 'button';
+  resetBtn.className = 'ev-subst-picker-reset';
+  resetBtn.textContent = '초기화';
+  resetBtn.title = existingOverride
+    ? '직접 선택한 선수를 지우고 원래 데이터로 되돌립니다.'
+    : '직접 선택한 선수가 없습니다.';
+  resetBtn.disabled = !existingOverride;
+  resetBtn.addEventListener('click', () => {
+    if (!existingOverride) return;
+    evClearSubstOverride(fixtureId, ev, field);
+    applyOverrideChange();
   });
 
   const cancelBtn = document.createElement('button');
@@ -379,7 +453,7 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   cancelBtn.textContent = '취소';
   cancelBtn.addEventListener('click', closeOverlay);
 
-  actions.append(confirmBtn, cancelBtn);
+  actions.append(resetBtn, confirmBtn, cancelBtn);
   modal.append(header, list, actions);
   overlay.appendChild(modal);
 
@@ -393,7 +467,9 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   overlay.addEventListener('click', closeOverlay);
   document.addEventListener('keydown', onEsc);
 
-  document.body.appendChild(overlay);
+  // 전술판 전체화면 중이면 전체화면 요소 안에 띄운다 — body에 붙이면 전체화면 요소 바깥이라 보이지 않는다.
+  const fsEl = document.fullscreenElement;
+  (fsEl ? (fsEl.querySelector('.tactics-viewport') || fsEl) : document.body).appendChild(overlay);
 }
 
 /** 이벤트 표시 시간 — extra가 있으면 "{elapsed}+{extra}'", 없으면 "{elapsed}'". */
@@ -558,13 +634,23 @@ function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
     const nick = getPlayerNickname(pid);
     if (nick) return nick;
   }
+  // id=0 이벤트는 API 원본 이름(playerOrigName/assistOrigName) 키로 닉네임을 찾는다.
+  if (pid != null && Number(pid) === 0 && typeof getPlayerNickname === 'function') {
+    const origName = kind === 'assist'
+      ? (ev.assistOrigName || ev.assistName)
+      : (ev.playerOrigName || ev.playerName);
+    const nick = getPlayerNickname(0, origName);
+    if (nick) return nick;
+  }
+  // 라틴 이름의 가운뎃점 구분자를 공백으로(settings-popup.js normalizeLatinNameSeparators, 점수판/라인업과 동일).
+  const sep = v => (typeof normalizeLatinNameSeparators === 'function' ? normalizeLatinNameSeparators(v) : v);
   if (kind === 'assist') {
-    const long = evNormalizeDisplayName(ev.assistNameKoLong || '');
-    const short = evNormalizeDisplayName(ev.assistName || '');
+    const long = evNormalizeDisplayName(sep(ev.assistNameKoLong || ''));
+    const short = evNormalizeDisplayName(sep(ev.assistName || ''));
     return evNormalizeDisplayName(useLong ? (long || short) : (short || long), fallback);
   }
-  const long = evNormalizeDisplayName(ev.playerNameKoLong || '');
-  const short = evNormalizeDisplayName(ev.playerName || '');
+  const long = evNormalizeDisplayName(sep(ev.playerNameKoLong || ''));
+  const short = evNormalizeDisplayName(sep(ev.playerName || ''));
   return evNormalizeDisplayName(useLong ? (long || short) : (short || long), fallback);
 }
 
@@ -1083,7 +1169,8 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
     inLine.append('IN: ');
     const inName = evGetSubstDisplayName(ev, 'assist', fixtureId);
     if (inName) {
-      if (evGetSubstOverride(fixtureId, ev, 'assist')) inLine.appendChild(evCreateSubstEditableName(ev, 'assist', fixtureData, inName));
+      // 직접 고른 선수(override)이거나, API가 이름만 주고 ID가 0인 선수면 클릭해서 다시 고를 수 있게 한다
+      if (evGetSubstOverride(fixtureId, ev, 'assist') || evSubstHasUnlinkedId(ev, 'assist')) inLine.appendChild(evCreateSubstEditableName(ev, 'assist', fixtureData, inName));
       else appendName(inLine, inName);
     } else {
       inLine.appendChild(evCreateSubstFixBtn(ev, 'assist', fixtureData));
@@ -1095,7 +1182,7 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
     outLine.append('OUT: ');
     const outName = evGetSubstDisplayName(ev, 'player', fixtureId);
     if (outName) {
-      if (evGetSubstOverride(fixtureId, ev, 'player')) outLine.appendChild(evCreateSubstEditableName(ev, 'player', fixtureData, outName));
+      if (evGetSubstOverride(fixtureId, ev, 'player') || evSubstHasUnlinkedId(ev, 'player')) outLine.appendChild(evCreateSubstEditableName(ev, 'player', fixtureData, outName));
       else appendName(outLine, outName);
     } else {
       outLine.appendChild(evCreateSubstFixBtn(ev, 'player', fixtureData));
@@ -1156,6 +1243,15 @@ function evCreateRow(ev, fixtureData, renderKey = '') {
   }
 
   row.appendChild(main);
+
+  // 잘못 들어온 이벤트 숨기기 X 버튼 — hover 시에만 보임 (event-hide.js).
+  const hideBtn = typeof window.evHideCreateRowButton === 'function' ? window.evHideCreateRowButton(ev) : null;
+  if (hideBtn) {
+    row.classList.add('has-hide-btn');
+    row.appendChild(hideBtn);
+  }
+  // 골/카드 row 클릭 -> 정보 수정 메뉴 (event-hide.js).
+  if (typeof window.evEditAttachRow === 'function') window.evEditAttachRow(row, ev);
   return row;
 }
 
@@ -1269,6 +1365,10 @@ function evCreateFilterUi(filterOptions) {
 
   const shell = document.createElement('div');
   shell.className = 'ev-filter-shell';
+
+  // 숨긴 이벤트가 있을 때만 필터 버튼 왼쪽에 관리 버튼 (event-hide.js).
+  const hideManageBtn = typeof window.evHideCreateManageButton === 'function' ? window.evHideCreateManageButton() : null;
+  if (hideManageBtn) shell.appendChild(hideManageBtn);
 
   const button = document.createElement('button');
   button.type = 'button';

@@ -623,8 +623,17 @@
   const boardScaleLabel = $('boardScaleLabel');
 
   /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
+  // 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout)에서 점수판을 작게 줄이는 비율.
+  // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
+  const TOUCH_BOARD_SHRINK = 0.7;
   function applyBoardScale(pct){
-    const s = pct / 100;
+    let s = pct / 100;
+    if (document.body.classList.contains('tactics-active') && document.body.classList.contains('td-touch-board')) {
+      const boardEl = boardStageInner.querySelector('.board');
+      const boardW = boardEl ? boardEl.offsetWidth : 0;
+      const avail = document.body.clientWidth - 24;
+      s = Math.min(s * TOUCH_BOARD_SHRINK, boardW > 0 ? avail / boardW : s);
+    }
     boardStageInner.style.transform = `scale(${s})`;
     // wrap 높이를 실제 축소 높이에 맞게 조정
     const naturalH = boardStageInner.scrollHeight;
@@ -638,6 +647,8 @@
     const pct = state.boardScale ?? 75;
     applyBoardScale(pct);
   }
+  // 터치 기기 전술판 배치 전환/탭 이동/화면 회전 시 점수판 배율을 다시 계산하도록 노출
+  window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 75);
 
   // [이벤트 등록] 배율 슬라이더 및 리셋 버튼
   boardScaleRange?.addEventListener('input', e=>{

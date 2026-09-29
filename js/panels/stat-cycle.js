@@ -56,6 +56,9 @@ const _STAT_PAUSE_ICONS = {
   play:  `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3.5 2.3v9.4a1 1 0 0 0 1.52.85l7.5-4.7a1 1 0 0 0 0-1.7l-7.5-4.7a1 1 0 0 0-1.52.85z"/></svg>`,
 };
 
+// 교체 명단 수동 입력(연필) 아이콘 — 캠 작음 교체 명단 패널의 "홈/원정 입력" 버튼과 같은 모달을 연다.
+const _STAT_BENCH_EDIT_ICON = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M9.2 2.3l2.5 2.5-6.9 6.9H2.3V9.2z"/><path d="M8 3.5l2.5 2.5"/></svg>`;
+
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 
 /** 패널 자동 전환(statCycleAuto) 설정이 ON인지. */
@@ -561,6 +564,7 @@ function lpStatUpdateVisibility() {
   // 3) 버튼 표시를 맞춘 뒤 실행 중인 작업이 없을 때만 자동 전환을 시작한다.
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();
+  lpStatUpdateBenchEditBtn();
   // lpStatUpdateVisibility()는 실제 모드 전환뿐 아니라, applyStatsPanel/renderBenchCyclePanels
   // 등에서 매 폴링(진행 중 경기 15초 간격)마다도 호출된다. 이미 스크롤/타이머가 진행 중인데
   // 매번 _lpAutoStart()를 부르면 _lpAutoClear()가 진행 중인 애니메이션을 끊고 처음부터
@@ -600,6 +604,35 @@ function lpStatUpdatePauseBtn() {
     btn.title = _lpStatCycle.paused ? '자동 전환 다시 시작' : '자동 전환 일시정지';
     btn.classList.toggle('is-paused', _lpStatCycle.paused);
   });
+}
+
+/**
+ * 교체 명단 입력 버튼 — 홈/원정 교체 명단 모드(bench_home/bench_away)에서만 표시. 캠 작음에만 있던
+ * 수동 입력("홈/원정 입력")을 캠 큼에서도 열 수 있게 일시정지 버튼 왼쪽에 아이콘으로 둔다
+ * (일시정지 버튼이 없으면 그 자리). 위치 보정은 .lp-stat.has-pause-btn CSS가 처리.
+ */
+function lpStatUpdateBenchEditBtn() {
+  const mode = _lpStatCycle.mode;
+  const side = mode === 'bench_home' ? 'home' : mode === 'bench_away' ? 'away' : null;
+  document.querySelectorAll('.lp-stat-bench-edit-btn').forEach(btn => {
+    btn.style.display = side ? '' : 'none';
+    btn.closest('.lp-stat')?.classList.toggle('has-bench-edit-btn', !!side);
+    if (!side) return;
+    btn.dataset.side = side;
+    btn.innerHTML = _STAT_BENCH_EDIT_ICON;
+    btn.title = side === 'home' ? '홈 교체 명단 입력' : '원정 교체 명단 입력';
+  });
+}
+
+/** 교체 명단 입력 버튼 클릭 — 캠 작음 "홈/원정 입력" 버튼과 같은 경로(새 창 설정이면 별도 창). */
+function lpStatOpenBenchEdit(event) {
+  const side = event.currentTarget?.dataset.side;
+  if (!side) return;
+  if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+    window.Popout.open('manual', { kind: 'bench', side });
+  } else if (typeof openManualPanel === 'function') {
+    openManualPanel('bench', side);
+  }
 }
 
 /** 일시정지 버튼 클릭 — paused 토글 후 타이머 정리/재시작. */
@@ -717,6 +750,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelectorAll('.lp-stat-pause-btn').forEach(btn => {
     btn.addEventListener('click', lpStatTogglePause);
+  });
+  document.querySelectorAll('.lp-stat-bench-edit-btn').forEach(btn => {
+    btn.addEventListener('click', lpStatOpenBenchEdit);
   });
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();

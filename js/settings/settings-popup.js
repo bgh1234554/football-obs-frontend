@@ -103,12 +103,16 @@ const SETTINGS_DEFAULTS = {
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   0,
   tacticsTopbarScale: 100, // 전체화면 상단바 버튼·글자 크기 배율(%).
-  tacticsDrawtoolsScale: 100, // 전체화면 그리기 도구 패널 크기 배율(%).
+  tacticsDrawtoolsScale: 150, // 전체화면 그리기 도구 패널 크기 배율(%). 태블릿 터치 편의를 위해 기본 150%.
   tacticsFullscreenAlign: 'center', // 전술판 전체화면 피치 정렬: left / center / right
+  // 터치 기기 전술판 배치: auto(터치가 주 입력인 기기에서 자동) / on / off. js/tactics/tactics.js: tacticsApplyTouchLayout
+  tacticsTouchLayout: 'auto',
   tacticsNameSize: 12, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
   tacticsTokenScale: 100, // 전술판 선수 바둑알 크기 배율(%). 전술판 상단 슬라이더로 조정. 태블릿 등 작은 화면 대응.
   // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
   alphaTransparencyMode: 'transparency',
+  // 그리기 도구 크기 기본값 100% -> 150% 변경 마이그레이션 완료 표시. 이전 기본값(100)이 저장된 브라우저를 1회만 150으로 올린다.
+  tacticsDrawtoolsScaleRev: 'v150',
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
   // OBS 크로마키와 충돌 방지용.
   // 카테고리별 분리 정책:
@@ -382,7 +386,9 @@ function isValidSetting(category, value) {
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
+  if (category === 'tacticsDrawtoolsScaleRev') return value === 'v150';
   if (category === 'tacticsFullscreenAlign') return ['left', 'center', 'right'].includes(value);
+  if (category === 'tacticsTouchLayout') return ['auto', 'on', 'off'].includes(value);
   if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return value === 'on' || value === 'off';
   }
@@ -478,6 +484,16 @@ function loadSettings() {
         settingsState[category] = 100 - clampPercent(legacyOpacity, 100);
       });
       settingsState.alphaTransparencyMode = SETTINGS_DEFAULTS.alphaTransparencyMode;
+      normalizedSettings = true;
+    }
+
+    // 그리기 도구 크기 기본값 150% 마이그레이션 — 이전 기본값(100)이 그대로 저장돼 있으면 1회만 150으로 올린다.
+    // 마이그레이션 이후 사용자가 직접 100을 고르면 rev가 이미 저장돼 있어 다시 바뀌지 않는다.
+    if (parsed.tacticsDrawtoolsScaleRev !== SETTINGS_DEFAULTS.tacticsDrawtoolsScaleRev) {
+      if (Number(parsed.tacticsDrawtoolsScale) === 100) {
+        settingsState.tacticsDrawtoolsScale = SETTINGS_DEFAULTS.tacticsDrawtoolsScale;
+      }
+      settingsState.tacticsDrawtoolsScaleRev = SETTINGS_DEFAULTS.tacticsDrawtoolsScaleRev;
       normalizedSettings = true;
     }
 
@@ -1006,6 +1022,15 @@ function stripKoreanSurnameBreaks(name) {
   return String(name || '').replace(/(?<=[가-힣])-(?=[가-힣])/g, '');
 }
 
+/**
+ * API가 라틴 문자 이름의 띄어쓰기 자리에 가운뎃점을 넣어 보내는 경우(예: "Malique·Roberts",
+ * "Tiquanny·Williams" — 경기 1639959)가 있어, 라틴 글자 사이의 가운뎃점류(·・‧∙)를 공백으로 바꾼다.
+ * 한 단어로 취급돼 포메이션 이름 라벨이 줄바꿈 없이 작은 폰트로 줄어들던 문제 해결. 한글 사이 가운뎃점은 그대로.
+ */
+function normalizeLatinNameSeparators(name) {
+  return String(name || '').replace(/(?<=\p{Script=Latin}|[.'’])\s*[·・‧∙]\s*(?=\p{Script=Latin})/gu, ' ');
+}
+
 function getLineupShortName(player) {
   return stripKoreanSurnameBreaks(player?.name || player?.playerName || '');
 }
@@ -1090,12 +1115,18 @@ function shouldKeepLineupInitial(shortName) {
 function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
   if (!player) return '';
   // 포메이션 pill만 원본 경계를 받아 피팅 단계에서 사용한다.
-  const display = name => preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name);
+  const display = name => normalizeLatinNameSeparators(preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name));
   // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
   // 닉네임은 사용자가 자유 입력한 텍스트라 성 경계 하이픈 규칙 대상이 아니다 — 그대로 반환.
   const pid = player.playerId || player.id;
   if (pid && Number(pid) !== 0 && typeof getPlayerNickname === 'function') {
     const nick = getPlayerNickname(pid);
+    if (nick) return nick;
+  }
+  // playerId가 명시적으로 0인 선수만 API 원본 이름 키로 닉네임을 찾는다(감독 등 playerId가 없는 객체는 제외).
+  if (player.playerId != null && Number(player.playerId) === 0
+    && typeof getPlayerNickname === 'function' && typeof playerNicknameSourceName === 'function') {
+    const nick = getPlayerNickname(0, playerNicknameSourceName(player));
     if (nick) return nick;
   }
   const shortName = player.name || player.playerName || '';
@@ -1581,6 +1612,7 @@ function initSettingsPopup() {
         injuries: !!document.getElementById('mrResetInjuries')?.checked,
         coachName: !!document.getElementById('mrResetCoach')?.checked,
         referee: !!document.getElementById('mrResetReferee')?.checked,
+        venue: !!document.getElementById('mrResetVenue')?.checked,
       };
       if (!Object.values(options).some(Boolean)) {
         if (typeof showToast === 'function') showToast('지울 항목을 하나 이상 켜두세요');

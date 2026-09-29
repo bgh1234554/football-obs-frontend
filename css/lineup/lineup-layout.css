@@ -416,16 +416,19 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   font-weight: 800;
 }
 .dp-coach-name.dp-coach-editable,
-.dp-referee-name.dp-referee-editable {
+.dp-referee-name.dp-referee-editable,
+.dp-venue-name.dp-venue-editable {
   cursor: text;
   border-bottom: 1px dotted rgba(255,255,255,.28);
 }
 .dp-coach-name.dp-coach-editable:hover,
-.dp-referee-name.dp-referee-editable:hover {
+.dp-referee-name.dp-referee-editable:hover,
+.dp-venue-name.dp-venue-editable:hover {
   border-bottom-color: rgba(255,255,255,.62);
 }
 .dp-coach-name.dp-coach-editing,
-.dp-referee-name.dp-referee-editing {
+.dp-referee-name.dp-referee-editing,
+.dp-venue-name.dp-venue-editing {
   flex: 1 1 auto;
   max-width: none;
   overflow: visible;

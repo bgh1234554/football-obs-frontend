@@ -9,33 +9,172 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const PLAYER_NICKNAME_KEY = 'obs.player.nicknames.v1';
+// id=0 선수 닉네임 키 접두어. 같은 맵에 "n:{API 원본 이름}" 형태로 id 키와 나란히 저장한다.
+// 숫자 id 키와 겹칠 수 없어 기존 저장값은 마이그레이션 없이 그대로 유지된다.
+const PLAYER_NICKNAME_NAME_PREFIX = 'n:';
+// 이름 키 -> id 키로 자동 복사(승격)한 닉네임 기록 { idKey: nameKey }. 연결 해제/변경 시
+// 승격으로 생긴 id 닉네임만 골라 지우고, 사용자가 id에 직접 설정한 닉네임은 남기기 위해 쓴다.
+const PLAYER_NICKNAME_PROMOTED_KEY = 'obs.player.nicknames.promoted.v1';
+
+// 사용자가 id 키 닉네임을 직접 지운 경우의 표시 — 다음 렌더에서 이름 키 닉네임이 다시 복사되지 않게 한다.
+const PLAYER_NICKNAME_SUPPRESSED = '!deleted';
+
+/**
+ * 이름 키 닉네임이 바뀌거나 지워지면, 그 이름 키에서 복사(승격)된 id 키 닉네임도 같이 바꾸거나 지운다.
+ * 승격 기록(promoted[idKey] === nameKey)이 남아 있는 것만 대상 — 사용자가 id에 직접 설정한 닉네임은
+ * setPlayerNickname이 기록을 지우므로 여기서 건드리지 않는다.
+ */
+function syncPromotedCopies(map, nameKey, value) {
+  const promoted = readPromotedNicknames();
+  let changed = false;
+  Object.keys(promoted).forEach(idKey => {
+    if (promoted[idKey] !== nameKey) return;
+    if (value) map[idKey] = value;
+    else { delete map[idKey]; delete promoted[idKey]; }
+    changed = true;
+  });
+  if (changed) writePromotedNicknames(promoted);
+}
+
+function readPromotedNicknames() {
+  try { return JSON.parse(localStorage.getItem(PLAYER_NICKNAME_PROMOTED_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+function writePromotedNicknames(promoted) {
+  try {
+    if (Object.keys(promoted).length) localStorage.setItem(PLAYER_NICKNAME_PROMOTED_KEY, JSON.stringify(promoted));
+    else localStorage.removeItem(PLAYER_NICKNAME_PROMOTED_KEY);
+  } catch {}
+}
 
 // ── 닉네임 CRUD ──────────────────────────────────────────────────────────────
 
-/** 유효한 선수 ID의 저장된 닉네임을 반환한다. 미등록·잘못된 ID·저장소 오류는 null로 처리한다. */
-function getPlayerNickname(playerId) {
-  if (!playerId || Number(playerId) === 0) return null;
+/** id=0 선수의 닉네임 저장 키. 이름이 비어 있으면 null. */
+function playerNicknameNameKey(origName) {
+  const name = String(origName || '').trim();
+  return name ? PLAYER_NICKNAME_NAME_PREFIX + name : null;
+}
+
+/**
+ * id=0 선수의 이름 키에 쓸 이름을 고른다. API 원본 영문명(origName/playerOrigName)을 우선해
+ * CSV 한글화나 ID 연결로 표시명이 바뀌어도 키가 유지되게 하고, 없으면 표시명으로 대체한다.
+ */
+function playerNicknameSourceName(player) {
+  if (!player) return '';
+  return String(player.origName || player.playerOrigName || player.name || player.playerName || '').trim();
+}
+
+/**
+ * 저장된 닉네임을 반환한다. 미등록·저장소 오류는 null.
+ * id≠0이면 id 키만 조회하고 이름 키로는 절대 넘어가지 않는다(기존 동작 그대로).
+ * id가 0이고 origName이 주어졌을 때만 "n:{origName}" 이름 키를 조회한다.
+ */
+function getPlayerNickname(playerId, origName) {
+  const hasId = playerId && Number(playerId) !== 0;
+  const nameKey = hasId ? null : playerNicknameNameKey(origName);
+  if (!hasId && !nameKey) return null;
   try {
     const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
-    return map[String(playerId)] || null;
+    return (hasId ? map[String(playerId)] : map[nameKey]) || null;
   } catch { return null; }
 }
 
-/** 선수 ID별 닉네임을 저장한다. 공백만 입력하면 해당 항목을 삭제하며 ID 0은 저장하지 않는다. */
-function setPlayerNickname(playerId, nickname) {
-  if (!playerId || Number(playerId) === 0) return;
+/**
+ * 닉네임을 저장한다. 공백만 입력하면 해당 항목을 삭제한다.
+ * id≠0은 id 키, id=0은 origName이 있을 때만 이름 키에 저장한다(둘 다 없으면 무시).
+ */
+function setPlayerNickname(playerId, nickname, origName) {
+  const hasId = playerId && Number(playerId) !== 0;
+  const key = hasId ? String(playerId) : playerNicknameNameKey(origName);
+  if (!key) return;
   try {
     const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
     const v = String(nickname || '').trim();
-    if (v) map[String(playerId)] = v;
-    else delete map[String(playerId)];
+    if (v) map[key] = v;
+    else delete map[key];
+    if (!hasId) syncPromotedCopies(map, key, v);
     localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    // id에 직접 설정한 닉네임은 더 이상 승격값이 아니다 - 연결 해제 시 지우지 않도록 기록 제거.
+    // 직접 지운 경우는 "지움" 표시를 남겨 이름 키 닉네임이 다시 복사되지 않게 한다.
+    if (hasId) {
+      const promoted = readPromotedNicknames();
+      if (v) delete promoted[key];
+      else promoted[key] = PLAYER_NICKNAME_SUPPRESSED;
+      writePromotedNicknames(promoted);
+    }
   } catch {}
 }
+
+/** 저장소 키 문자열(id 또는 "n:이름") 그대로 닉네임을 삭제한다. 닉네임 목록 모달 전용. */
+function removePlayerNicknameByKey(key) {
+  if (!key) return;
+  try {
+    const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
+    const k = String(key);
+    delete map[k];
+    const isNameKey = k.startsWith(PLAYER_NICKNAME_NAME_PREFIX);
+    if (isNameKey) syncPromotedCopies(map, k, '');
+    localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    // id 행을 목록에서 지운 경우도 직접 삭제로 보고 다시 복사되지 않게 표시.
+    if (!isNameKey) {
+      const promoted = readPromotedNicknames();
+      promoted[k] = PLAYER_NICKNAME_SUPPRESSED;
+      writePromotedNicknames(promoted);
+    }
+  } catch {}
+}
+
+/**
+ * id=0 선수가 실제 ID로 연결될 때(수동 ID 입력 또는 자동 매칭) 이름 키 닉네임을 id 키로 복사한다.
+ * id 키에 이미 닉네임이 있으면 덮어쓰지 않는다. 이름 키는 남겨둬 다른 경기에서 여전히
+ * id=0으로 내려오는 경우에도 계속 적용되게 한다. 복사가 일어나면 true.
+ */
+function promoteNameNicknameToId(origName, playerId) {
+  const nameKey = playerNicknameNameKey(origName);
+  if (!nameKey || !playerId || Number(playerId) <= 0) return false;
+  try {
+    const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
+    const idKey = String(Number(playerId));
+    if (!map[nameKey] || map[idKey]) return false;
+    // 사용자가 이 id의 닉네임을 직접 지운 적이 있으면 다시 만들지 않는다.
+    if (readPromotedNicknames()[idKey] === PLAYER_NICKNAME_SUPPRESSED) return false;
+    map[idKey] = map[nameKey];
+    localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    const promoted = readPromotedNicknames();
+    promoted[idKey] = nameKey;
+    writePromotedNicknames(promoted);
+    return true;
+  } catch { return false; }
+}
+window.promoteNameNicknameToId = promoteNameNicknameToId;
+
+/**
+ * id=0 선수의 ID 연결이 해제/변경될 때(player-id-resolve.js pirSetByKey) 호출.
+ * 그 ID의 닉네임이 승격으로 생긴 값이고 이후 사용자가 id에 직접 바꾸지 않았다면 지운다 -
+ * 잘못 입력한 ID의 실제 선수에게 닉네임이 남아 다른 경기에도 표시되는 문제 방지.
+ * 연결이 아직 유효한 경우엔 다음 렌더에서 promoteNameNicknameToId가 다시 복사한다.
+ */
+function demotePromotedNickname(playerId) {
+  if (!Number(playerId)) return false;
+  const idKey = String(Number(playerId));
+  const promoted = readPromotedNicknames();
+  if (!promoted[idKey]) return false;
+  delete promoted[idKey];
+  writePromotedNicknames(promoted);
+  try {
+    const map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}');
+    if (map[idKey] == null) return false;
+    delete map[idKey];
+    localStorage.setItem(PLAYER_NICKNAME_KEY, JSON.stringify(map));
+    return true;
+  } catch { return false; }
+}
+window.demotePromotedNickname = demotePromotedNickname;
 
 /** 모든 닉네임을 삭제하고 라인업·득점자·이벤트 표시를 원래 이름으로 갱신한다. */
 function clearAllPlayerNicknames() {
   localStorage.removeItem(PLAYER_NICKNAME_KEY);
+  localStorage.removeItem(PLAYER_NICKNAME_PROMOTED_KEY);
   if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
   document.dispatchEvent(new CustomEvent('settings:change', { detail: { category: 'scorer' } }));
   if (window._eventsLastData && typeof applyEventsPanel === 'function') {
@@ -488,11 +627,15 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
 
 // ── 닉네임 편집 ──────────────────────────────────────────────────────────────
 
-/** 현재 팝업을 닉네임 편집기로 바꾸고 저장·초기화·취소 및 Enter/Escape 처리를 연결한다. */
-function pmEditNickname(playerId, currentDisplay) {
-  const popup = document.getElementById('pmPopup');
+/**
+ * 현재 팝업을 닉네임 편집기로 바꾸고 저장·초기화·취소 및 Enter/Escape 처리를 연결한다.
+ * id=0 선수는 origName(이름 키)과 팝업 id('pirPopup')를 함께 넘긴다. 생략하면 기존과 동일하게
+ * #pmPopup의 id 키 닉네임을 편집한다.
+ */
+function pmEditNickname(playerId, currentDisplay, origName, popupId = 'pmPopup') {
+  const popup = document.getElementById(popupId);
   if (!popup) return;
-  const current = getPlayerNickname(playerId) || '';
+  const current = getPlayerNickname(playerId, origName) || '';
 
   popup.innerHTML = `
 <div class="pm-nick-wrap">
@@ -505,19 +648,19 @@ function pmEditNickname(playerId, currentDisplay) {
     <button class="pm-btn"               id="pmNickCancel">취소</button>
   </div>
 </div>`;
-  pmClampPopupToViewport();
+  pmClampPopupToViewport(popup);
 
   const input = document.getElementById('pmNickInput');
   input.focus();
   input.select();
 
   const save = () => {
-    setPlayerNickname(playerId, input.value);
+    setPlayerNickname(playerId, input.value, origName);
     pmRefreshAfterNickname();
     pmHideAll();
   };
   const clear = () => {
-    setPlayerNickname(playerId, '');
+    setPlayerNickname(playerId, '', origName);
     pmRefreshAfterNickname();
     pmHideAll();
   };
@@ -918,7 +1061,7 @@ function pmShowNicknameList() {
   let map = {};
   try { map = JSON.parse(localStorage.getItem(PLAYER_NICKNAME_KEY) || '{}'); } catch {}
 
-  const entries = Object.entries(map); // [[playerId, nickname], ...]
+  const entries = Object.entries(map); // [[playerId 또는 "n:이름", nickname], ...]
 
   // 현재 fixture에서 선수 이름 조회
   const getName = (pid) => {
@@ -927,16 +1070,23 @@ function pmShowNicknameList() {
     return p.nameKoLong || p.playerNameKoLong || p.name || p.playerName || null;
   };
 
+  // id 키는 기존처럼 현재 경기에서 이름을 찾고, 이름 키(id=0 선수)는 키에 든 API 원본 이름을 그대로 표시한다.
   const rows = entries.length === 0
     ? '<tr><td colspan="4" class="pm-empty">저장된 닉네임 없음</td></tr>'
-    : entries.map(([pid, nick]) => {
-        const origName = getName(pid) || `선수 #${pid}`;
+    : entries.map(([key, nick]) => {
+        const isNameKey = key.startsWith(PLAYER_NICKNAME_NAME_PREFIX);
+        const origName = isNameKey
+          ? key.slice(PLAYER_NICKNAME_NAME_PREFIX.length)
+          : (getName(key) || `선수 #${key}`);
+        const idCell = isNameKey
+          ? '<span title="ID 없이 내려온 선수 - API 원본 이름으로 매칭">0 (이름 매칭)</span>'
+          : pmEsc(key);
         return `<tr>
           <td class="pm-nick-list-name">${pmEsc(origName)}</td>
-          <td class="pm-nick-list-id">${pmEsc(pid)}</td>
+          <td class="pm-nick-list-id">${idCell}</td>
           <td class="pm-nick-list-nick">${pmEsc(nick)}</td>
           <td class="pm-nick-list-action">
-            <button class="pm-btn pm-btn-danger pm-nick-del" data-pid="${pmEsc(pid)}">삭제</button>
+            <button class="pm-btn pm-btn-danger pm-nick-del" data-key="${pmEsc(key)}">삭제</button>
           </td>
         </tr>`;
       }).join('');
@@ -974,8 +1124,7 @@ function pmShowNicknameList() {
   document.getElementById('pmNickListBody').addEventListener('click', e => {
     const btn = e.target.closest('.pm-nick-del');
     if (!btn) return;
-    const pid = btn.dataset.pid;
-    setPlayerNickname(pid, '');
+    removePlayerNicknameByKey(btn.dataset.key);
     btn.closest('tr').remove();
     // 남은 행 수 업데이트
     const remaining = document.querySelectorAll('.pm-nick-del').length;

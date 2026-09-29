@@ -161,8 +161,10 @@
 }
 
 /* ----- iOS 스타일 토글 스위치 ----- */
-.sp-danger-actions {
-  margin-top: 10px;
+/* 초기화 버튼 묶음 — 바로 위 일반 행(이벤트 선수 ID 자동 매칭)과 같은 간격/구분선으로 이어지게 한다.
+   예전 margin-top(10px)은 묶음 첫 행이 '.sp-row + .sp-row' 구분선도 못 받아(형제가 아님) 빈 공간만 커 보였다. */
+.sp-row + .sp-danger-actions > .sp-row:first-child {
+  border-top: 1px solid rgba(255,255,255,.06);
 }
 
 .sp-row-manual-reset {

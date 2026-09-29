@@ -16,21 +16,36 @@
 (function(){
   if (typeof document === 'undefined' || !document.documentElement) return;
   var displayScale = 1;
+  var tacticsScale = 1; // 전술판 전용 배율(4단계) — 터치 기기 전술판 배치/세로 전체화면에서 사용
   var offsetX = 0, offsetY = 0;
   var baseWidth = 1920;
+  // 전술판 전체화면 + 세로 화면 전용 기준 폭 범위(아래 applyDisplayScale 4단계 참조).
+  var PORTRAIT_TACTICS_MIN_BASE = 480;
+  var PORTRAIT_TACTICS_MAX_BASE = 900;
   // 화면 좌표를 CSS 레이아웃에 다시 넣을 때만 변환한다.
   // 포인터와 DOMRect를 직접 비교하는 히트 테스트는 기존 화면 좌표를 그대로 사용한다.
   /** 화면상의 길이 또는 좌표 차이를 현재 배율로 나눠 레이아웃 단위로 변환한다. */
-  window.toDisplayLayoutPixels = function(value){ return value / displayScale; };
+  window.toDisplayLayoutPixels = function(value){ return value / currentBodyScale(); };
   /** 화면상의 점에서 원점 오프셋을 제거하고 배율을 나눠 레이아웃 좌표를 반환한다. */
   window.toDisplayLayoutPoint = function(x, y){
-    return { x: (x - offsetX) / displayScale, y: (y - offsetY) / displayScale };
+    var scale = currentBodyScale();
+    return { x: (x - offsetX) / scale, y: (y - offsetY) / scale };
   };
   /** 화면 DOMRect의 위치와 크기를 레이아웃 기준 DOMRect로 변환한다. */
   window.toDisplayLayoutRect = function(rect){
-    return new DOMRect((rect.x - offsetX) / displayScale, (rect.y - offsetY) / displayScale,
-      rect.width / displayScale, rect.height / displayScale);
+    var scale = currentBodyScale();
+    return new DOMRect((rect.x - offsetX) / scale, (rect.y - offsetY) / scale,
+      rect.width / scale, rect.height / scale);
   };
+  /**
+   * 지금 body에 적용된 배율 — 터치 기기 전술판 배치(body.tactics-active.td-touch-board)에서는
+   * body가 전술판 전용 배율(--tactics-fs-*)로 그려지므로 그 값을 쓴다(css/core/layout.css).
+   */
+  function currentBodyScale(){
+    var body = document.body;
+    if (body && body.classList.contains('tactics-active') && body.classList.contains('td-touch-board')) return tacticsScale;
+    return displayScale;
+  }
   /** 요소의 화면 경계를 측정한 뒤 배율 보정된 레이아웃 좌표로 반환한다. */
   window.getDisplayLayoutRect = function(element){
     return window.toDisplayLayoutRect(element.getBoundingClientRect());
@@ -74,6 +89,24 @@
     root.style.setProperty('--display-height', canvasHeight + 'px');
     root.style.setProperty('--display-vw', (canvasWidth / 100) + 'px');
     root.style.setProperty('--display-vh', (canvasHeight / 100) + 'px');
+    // 4) 전술판 전체화면 전용 배율 — 세로 화면(태블릿/모바일 세로)에서 가로 1920 기준을 그대로 쓰면
+    //    모든 것이 폭/1920(태블릿 세로 약 0.42배, 휴대폰 약 0.2배)으로 줄어 터치하기 어렵다.
+    //    세로 화면일 때만 기준 폭을 실제 화면 폭(CSS px)에 가깝게 두어 글씨/버튼이 기기 본래 크기로 보이게 한다.
+    //    휴대폰처럼 아주 좁은 화면은 최소 기준 폭(480)을 보장해 버튼들이 지나치게 여러 줄로 쪼개지지 않게 하고,
+    //    큰 태블릿은 최대 기준 폭(900)으로 제한한다. 가로 화면은 일반 배율과 동일.
+    //    (css/core/layout.css의 전체화면 래퍼 + css/tactics/tactics-timeline.css의 세로 전용 디자인과 함께 동작)
+    var portrait = !window.__POPOUT_MODE__ && height > width;
+    var tacticsBase = portrait
+      ? Math.min(PORTRAIT_TACTICS_MAX_BASE, Math.max(PORTRAIT_TACTICS_MIN_BASE, width))
+      : baseWidth;
+    tacticsScale = portrait ? (width / tacticsBase) : displayScale;
+    var tacticsWidth = width / tacticsScale;
+    var tacticsHeight = height / tacticsScale;
+    root.style.setProperty('--tactics-fs-transform', String(tacticsScale / layoutZoom));
+    root.style.setProperty('--tactics-fs-width', tacticsWidth + 'px');
+    root.style.setProperty('--tactics-fs-height', tacticsHeight + 'px');
+    root.style.setProperty('--tactics-fs-vw', (tacticsWidth / 100) + 'px');
+    root.style.setProperty('--tactics-fs-vh', (tacticsHeight / 100) + 'px');
   }
 
   applyDisplayScale();

@@ -25,7 +25,7 @@ const POPOUT_CLOSE_TRIGGER_SELECTOR = [
   // 뒤에 보여줄 대시보드가 없어(전부 숨김) 창만 텅 빈 채로 남으므로 같이 닫아줘야 한다.
   '#manualPanelClose', '#manualPanelCancel', '#manualPanelSave', '#manualPanelReset',
   '#settingsCloseBtn',
-  '.ev-subst-picker-confirm', '.ev-subst-picker-cancel', '.ev-subst-picker-close',
+  '.ev-subst-picker-confirm', '.ev-subst-picker-cancel', '.ev-subst-picker-close', '.ev-subst-picker-reset',
   '#tacticsNamesClose', '#tacticsNamesCancel', '#tacticsNamesSave', '#tacticsNamesReset',
 ].join(', ');
 
@@ -49,6 +49,11 @@ const POPOUT_WINDOW_SIZE = {
   'tactics-names': { width: 620, height: 850 }, // 같은 .dp-manual-modal 구조
   settings:       { width: 570, height: 760 },  // .sp-modal
   subst:          { width: 300, height: 420 },  // .ev-subst-picker-modal(소형 리스트)
+  'subst-wide':   { width: 820, height: 600 },
+  substedit:      { width: 330, height: 600 },  // 교체 row 정보 수정(한 칸짜리 교체 선수 수정 창)
+  'substedit-wide': { width: 820, height: 600 }, // 교체 row 정보 수정(연속 교체 묶음)  // 연속 교체 묶음 수정(event-hide.js evOpenSubstClusterEditor)
+  evedit:         { width: 360, height: 640 },  // 골/카드 정보 수정(event-hide.js, 같은 모달 틀)
+  evhidden:       { width: 400, height: 460 },  // 숨긴 이벤트 관리(event-hide.js)
   theme:          { width: 760, height: 700 },  // 페이지 하나(테마 탭) — 모달보다 살짝 넓게
 };
 
@@ -67,7 +72,7 @@ function popoutWindowName(key, params) {
 function popoutOpen(key, params) {
   const qs = new URLSearchParams({ popout: key, ...(params || {}) });
   const url = `${window.location.pathname}?${qs.toString()}`;
-  const { width, height } = POPOUT_WINDOW_SIZE[key] || { width: 620, height: 700 };
+  const { width, height } = (params?.wide && POPOUT_WINDOW_SIZE[`${key}-wide`]) || POPOUT_WINDOW_SIZE[key] || { width: 620, height: 700 };
   const win = window.open(url, popoutWindowName(key, params), `width=${width},height=${height},resizable=yes,scrollbars=yes`);
   if (win) win.focus();
   return win;
@@ -213,6 +218,22 @@ if (window.__POPOUT_MODE__) {
     }
 
     function activate() {
+      // 이벤트 정보 수정/숨긴 이벤트 관리(event-hide.js)는 클릭할 버튼이 따로 없어(row 메뉴/관리 버튼이
+      // 상태에 따라 생김) 이벤트 패널 데이터에서 대상을 찾아 팝업 함수를 직접 연다.
+      if (p.popout === 'evedit' || p.popout === 'evhidden' || p.popout === 'substedit') {
+        const ev = p.popout !== 'evhidden'
+          ? (window._eventsLastData?.events || []).find(e => e && e._hideSig === p.sig)
+          : null;
+        if (p.popout === 'evedit' && ev && typeof evEditOpen === 'function') evEditOpen(ev);
+        else if (p.popout === 'substedit' && ev && typeof evOpenSubstClusterEditor === 'function') {
+          evOpenSubstClusterEditor(evSubstCluster(ev), ev, 'player', window._eventsLastData);
+        }
+        else if (p.popout === 'evhidden' && typeof evHideOpenManager === 'function') evHideOpenManager(evHideCurrentFixtureId());
+        const expectedOverlay = { evedit: '.ev-edit-modal-overlay', evhidden: '.ev-hide-mgr-modal-overlay', substedit: '.ev-subst-cluster-modal-overlay' }[p.popout];
+        if (!document.querySelector(expectedOverlay)) document.title = '입력창을 열 수 없음 (경기 데이터 없음)';
+        reveal();
+        return;
+      }
       const sel = resolveTriggerSelector();
       const trigger = sel && document.querySelector(sel);
       if (trigger) {
@@ -235,11 +256,20 @@ if (window.__POPOUT_MODE__) {
     // 각 모듈의 기존 delegated 클릭 핸들러가 그대로 처리하고, 여기서는 같은 클릭을 별도로
     // 감지해 window.close()만 얹는다(기존 코드 수정 없이 병행 리스너로 동작). 배경(backdrop)
     // 클릭은 일부러 포함하지 않는다 — 작업 중 실수로 바깥을 눌러 창이 닫히는 걸 막기 위함.
+    // 캡처 단계로 등록한다 - 교체 선수 선택 모달(.ev-subst-picker-modal)은 자체 click에서
+    // stopPropagation을 해서, 버블 단계 리스너로는 확인/취소/닫기/초기화 클릭이 document까지
+    // 올라오지 않아 팝업 창이 닫히지 않았다. 실제 저장/닫기 처리는 각 버튼 핸들러가 그대로 하고
+    // 여기선 50ms 뒤 창만 닫으므로 순서는 바뀌지 않는다.
     document.addEventListener('click', event => {
-      if (event.target.closest(POPOUT_CLOSE_TRIGGER_SELECTOR)) {
-        setTimeout(() => window.close(), 50);
-      }
-    });
+      const trigger = event.target.closest(POPOUT_CLOSE_TRIGGER_SELECTOR);
+      if (!trigger) return;
+      // 교체 선수 확인은 선수를 고르지 않으면 아무 동작도 안 하므로(evOpenSubstPicker) 창도 유지.
+      // (숨긴 이벤트 관리의 "모두 복원"은 선택 없이 동작하므로 제외.)
+      const pickerModal = trigger.closest('.ev-subst-picker-modal');
+      if (trigger.matches('.ev-subst-picker-confirm') && !pickerModal?.classList.contains('ev-hide-mgr-modal')
+        && !pickerModal?.querySelector('.ev-subst-picker-item.is-selected')) return;
+      setTimeout(() => window.close(), 50);
+    }, true);
     window.addEventListener('keydown', event => {
       if (event.key === 'Escape') setTimeout(() => window.close(), 50);
     });
@@ -302,6 +332,11 @@ if (window.__POPOUT_MODE__) {
           : window._eventsLastData.events;
         window.ttRefreshEventsData({ ...window._eventsLastData, events: patchedEvents });
       }
+      return;
+    }
+    // 다른 창에서 이벤트를 숨기거나 복원하면(event-hide.js) 점수판 득점자까지 포함해 전부 다시 적용.
+    if (typeof EV_HIDE_STORAGE_KEY !== 'undefined' && event.key === EV_HIDE_STORAGE_KEY) {
+      if (typeof window.fixtureReapplyEventHide === 'function') window.fixtureReapplyEventHide();
       return;
     }
     // 테마 탭 컨트롤은 obs.settings.v3가 아니라 점수판 전체 state(state.js:
