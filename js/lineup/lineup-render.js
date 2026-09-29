@@ -45,8 +45,9 @@ function lpGetPlayerRating(playerId) {
   return map.has(String(playerId)) ? map.get(String(playerId)) : null;
 }
 
-/** 선수 1명이 이 경기의 주장인지 — playerStats.captain 기준. */
-function lpIsCaptain(playerId) {
+/** 수동 선수는 폼의 주장 선택, API 선수는 playerStats.captain 기준. */
+function lpIsCaptain(playerId, player) {
+  if (player?._manual) return !!player.manualCaptain;
   if (playerId == null) return false;
   return lpGetContext().captainSet.has(String(playerId));
 }
@@ -135,7 +136,7 @@ function lpBuildRosterRowHtml(player, kind, side) {
   const subHtml = lpBuildSubMarkerHtml(events, kind);
   const goalsAssistsHtml = lpBuildGoalsAssistsHtml(events);
   const ratingHtml = lpBuildRatingHtml(player.playerId);
-  const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player.playerId)
+  const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player.playerId, player)
     ? '<span class="dp-roster-captain" title="주장">C</span>'
     : '';
 
@@ -636,7 +637,7 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
   const numberHtml = showNumber
     ? `<span class="dp-lineup-name-num">${dpEscape(rawNumber)}</span>`
     : '';
-  const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player?.playerId)
+  const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player?.playerId, player)
     ? '<span class="dp-lineup-captain-badge" title="주장">C</span>'
     : '';
   const prefixHtml = captainHtml || numberHtml

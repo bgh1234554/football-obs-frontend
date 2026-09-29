@@ -254,7 +254,7 @@ function buildGridRowHtml(pidStr, slotIndex) {
   const photoStyle = p?.photoUrl ? ` style="background-image:url('${dpEscape(p.photoUrl)}')"` : '';
   const photoCls = p?.photoUrl ? '' : ' dp-grid-photo-empty';
   const num = p ? dpEscape(p.number ?? '') : '';
-  const resolvedName = p ? (pickName(p, 'lineup') || p.name || '') : '';
+  const resolvedName = p ? (lineupPanelState.gridState.fullFormRows ? p.name : (pickName(p, 'lineup') || p.name || '')) : '';
   const isNamelessPlayer = !!p && !resolvedName && Number(p.playerId) > 0;
   const subEvents = p?._subEventPlayerId != null && typeof lpGetPlayerEvents === 'function'
     ? lpGetPlayerEvents(p._subEventPlayerId, side, p.name)
@@ -266,7 +266,7 @@ function buildGridRowHtml(pidStr, slotIndex) {
     ? '(빈 슬롯)'
     : isNamelessPlayer
       ? `<input type="text" class="dp-input dp-grid-name-input" data-player-id="${p.playerId}" placeholder="선수 이름 입력 (이벤트 자동 연계용)" value="" draggable="false">`
-      : `${dpEscape(resolvedName)}${subHtml ? ` ${subHtml}` : ''}`;
+      : `${p.manualCaptain ? '<span class="dp-roster-captain" title="주장">C</span>' : ''}${dpEscape(resolvedName)}${subHtml ? ` ${subHtml}` : ''}`;
   const emptyCls = p ? '' : ' dp-grid-empty'; // "(빈 슬롯)" 텍스트 전용 — 입력창 렌더링일 땐 부여 안 함
   return `<div class="dp-grid-row" data-slot-index="${slotIndex}" draggable="true">
     <span class="dp-grid-handle" aria-hidden="true">⠿</span>
@@ -319,7 +319,10 @@ function saveManualGridPlayerName(inputEl) {
 function buildLineupGridFormHtml() {
   const { formation, slotPlayerIds } = lineupPanelState.gridState;
   const rows = slotPlayerIds.map((pid, idx) => buildGridRowHtml(pid, idx)).join('');
-  return `<div class="dp-manual-help">포메이션이 없으면 라인업이 리스트로만 표시되며, 불러온 포메이션 데이터가 잘못된 경우에도 여기서 수정할 수 있습니다. 포메이션을 선택하면 슬롯이 표시되고 선수가 자동 배치됩니다. 핸들(⠿)을 드래그해서 슬롯 위치를 서로 바꾸세요. 저장하면 라인업과 전술판에 같이 반영됩니다.</div>
+  const help = lineupPanelState.gridState.fullFormRows
+    ? '핸들(⠿)을 드래그해서 선수 위치를 서로 바꾸세요. 번호와 득점·카드 정보도 함께 이동합니다. 포메이션 이동 버튼을 다시 누르면 입력 폼으로 돌아갑니다. 저장하면 라인업과 전술판에 함께 반영됩니다.'
+    : '포메이션이 없으면 라인업이 리스트로만 표시되며, 불러온 포메이션 데이터가 잘못된 경우에도 여기서 수정할 수 있습니다. 포메이션을 선택하면 슬롯이 표시되고 선수가 자동 배치됩니다. 핸들(⠿)을 드래그해서 슬롯 위치를 서로 바꾸세요. 저장하면 라인업과 전술판에 같이 반영됩니다.';
+  return `<div class="dp-manual-help">${help}</div>
     <div class="dp-form-stack">
       <label class="dp-field">
         <span class="dp-field-label">포메이션</span>
@@ -329,6 +332,59 @@ function buildLineupGridFormHtml() {
       </label>
       <div class="dp-grid-list" id="manualGridList">${rows}</div>
     </div>`;
+}
+
+/** 풀폼의 미저장 입력을 보존한 채 기존 슬롯 이동 UI를 켜고 끈다. 저장 형식은 풀폼을 유지한다. */
+function toggleManualLineupGrid() {
+  const modal = lineupPanelState.manualModal;
+  const content = document.getElementById('manualPanelContent');
+  const toggle = document.getElementById('manualPanelGridToggle');
+  const fullForm = document.getElementById('manualLineupFullForm');
+  if (modal?.kind !== 'lineup' || !fullForm || !content || !toggle) return;
+
+  const grid = lineupPanelState.gridState;
+  if (grid?.fullFormRows) {
+    // 이름이 없는 행도 포함해 모든 입력을 이동한다. 필터링하거나 다시 파싱하면 부분 입력이 사라진다.
+    grid.slotPlayerIds.forEach((key, index) => {
+      grid.fullFormRows[key].forEach(field => {
+        const input = fullForm.querySelector(`[name="${field.prefix}${index}"]`);
+        input.value = field.value;
+        input.checked = field.checked;
+      });
+    });
+    fullForm.querySelector('#manualLineupFormation').value = grid.formation;
+    syncManualLineupSlotLabels(grid.formation);
+    document.getElementById('manualLineupGridView')?.remove();
+    fullForm.hidden = false;
+    lineupPanelState.gridState = null;
+    toggle.setAttribute('aria-pressed', 'false');
+    return;
+  }
+
+  const formation = fullForm.querySelector('#manualLineupFormation').value;
+  const fullFormRows = {};
+  const players = {};
+  const slotPlayerIds = Array.from({ length: 11 }, (_, index) => {
+    const key = `manual-row-${index}`;
+    fullFormRows[key] = [...fullForm.querySelectorAll(`input[name$="-${index}"]`)].map(input => ({
+      prefix: input.name.replace(/\d+$/, ''), value: input.value, checked: input.checked,
+    }));
+    const name = fullForm.querySelector(`[name="lineup-name-${index}"]`).value;
+    const number = fullForm.querySelector(`[name="lineup-number-${index}"]`).value;
+    const manualCaptain = !!fullForm.querySelector(`[name="lineup-captain-${index}"]`)?.checked;
+    if (name || number) players[key] = { name, number, manualCaptain };
+    return key;
+  });
+  lineupPanelState.gridState = { side: modal.side, formation, slotPlayerIds, players, fullFormRows };
+  const view = document.createElement('div');
+  view.id = 'manualLineupGridView';
+  view.innerHTML = buildLineupGridFormHtml();
+  // 원본 폼의 formation 입력을 저장에 사용한다. 이동 UI 선택값은 토글 해제/저장 시 동기화한다.
+  view.querySelector('select').removeAttribute('name');
+  fullForm.hidden = true;
+  content.appendChild(view);
+  toggle.setAttribute('aria-pressed', 'true');
+  bindLineupGridDragDrop();
 }
 
 /** gridState.slotPlayerIds 기준으로 슬롯 목록 DOM을 다시 그리고 드래그 핸들러를 재바인딩. */
@@ -390,7 +446,7 @@ function extractGridOverrideFromState() {
 }
 
 /**
- * 완전 수동 라인업(풀폼) 전용 골/자책골/도움/경고/퇴장 5칸 — 헤더 행(아이콘)과 각 선수 행이
+ * 완전 수동 라인업(풀폼) 전용 골/자책골/도움/경고/퇴장/주장 6칸 — 헤더 행과 각 선수 행이
  * 같은 grid-template-columns(dp-manual-row.has-stats, css/lineup/lineup-manual.css)를 공유해
  * 열이 그대로 맞춰진다. 이 선수는 API 이벤트와 아예 연결될 방법이 없는 _manual 선수라
  * (player-id-resolve.js의 fuzzy 매칭도 origName 없는 선수는 후보에서 제외), 분(minute)
@@ -409,13 +465,14 @@ function buildLineupManualStatCellsHtml(player, index) {
     <input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-owngoals-${index}" value="${ownGoals || ''}" placeholder="0" title="자책골" />
     <input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-assists-${index}" value="${assists || ''}" placeholder="0" title="도움" />
     <label class="dp-manual-stat-check" title="경고(옐로카드)"><input type="checkbox" name="lineup-yellow-${index}"${yellow ? ' checked' : ''} /><span class="dp-manual-card-swatch is-yellow"></span></label>
-    <label class="dp-manual-stat-check" title="퇴장(레드카드)"><input type="checkbox" name="lineup-red-${index}"${red ? ' checked' : ''} /><span class="dp-manual-card-swatch is-red"></span></label>`;
+    <label class="dp-manual-stat-check" title="퇴장(레드카드)"><input type="checkbox" name="lineup-red-${index}"${red ? ' checked' : ''} /><span class="dp-manual-card-swatch is-red"></span></label>
+    <label class="dp-manual-stat-check" title="주장"><input type="checkbox" name="lineup-captain-${index}" aria-label="주장"${player?.manualCaptain ? ' checked' : ''} /><span class="dp-manual-card-swatch is-captain" aria-hidden="true">C</span></label>`;
 }
 
 /**
  * 라인업 풀폼 모달(포메이션 없음 — 11명 줄글 직접 입력) 본문 HTML.
- * 첫 행은 좁힌 포메이션 select(1~3번 칸에 걸침) + 골/자책골/도움/경고/퇴장 아이콘 헤더(4~8번 칸).
- * 이후 11개 선수 행은 같은 8칸 grid를 공유해(dp-manual-row.has-stats) 각 입력칸이 헤더 아이콘과
+ * 첫 행은 좁힌 포메이션 select(1~3번 칸에 걸침) + 골/자책골/도움/경고/퇴장/주장 헤더(4~9번 칸).
+ * 이후 11개 선수 행은 같은 9칸 grid를 공유해(dp-manual-row.has-stats) 각 입력칸이 헤더 아이콘과
  * 세로로 정확히 맞춰진다. 이름 입력칸은 폭을 고정 좁혀 통계 칸들이 들어갈 자리를 확보한다.
  */
 function buildLineupManualFormHtml(lineup) {
@@ -423,7 +480,7 @@ function buildLineupManualFormHtml(lineup) {
   const players = getOrderedLineupPlayers(lineup?.startXi || []);
   const labels = getFormationSlotLabels(formation);
 
-  return `<div class="dp-manual-help">포메이션과 선발 11명을 입력하면 /detail 라인업과 전술판에 함께 반영됩니다. 오른쪽 열에서 득점/자책골/도움 횟수와 경고·퇴장 여부도 함께 입력할 수 있습니다.</div>
+  return `<div class="dp-manual-help">포메이션과 선발 11명을 입력하면 /detail 라인업과 전술판에 함께 반영됩니다. 오른쪽 열에서 득점/자책골/도움 횟수와 경고·퇴장 여부, 주장(C)도 설정할 수 있습니다.</div>
     <div class="dp-form-stack">
       <div class="dp-manual-grid dp-manual-grid-lineup">
         <div class="dp-manual-row has-stats dp-manual-header-row">
@@ -438,6 +495,7 @@ function buildLineupManualFormHtml(lineup) {
           <span class="dp-manual-stat-header" title="도움">👟</span>
           <span class="dp-manual-stat-header" title="경고(옐로카드)">🟨</span>
           <span class="dp-manual-stat-header" title="퇴장(레드카드)">🟥</span>
+          <span class="dp-manual-stat-header" title="주장">C</span>
         </div>
         ${Array.from({ length: 11 }, (_, index) => `<div class="dp-manual-row has-stats">
           <div class="dp-slot-label" data-slot-index="${index}">${dpEscape(labels[index] || `${index + 1}`)}</div>
@@ -525,6 +583,11 @@ function renderManualPanelForm(kind, side) {
   panelTitle.textContent = `${DETAIL_SIDE_TITLES[side]} ${getManualKindLabel(kind)}`;
   meta.textContent = `fixtureId ${fixtureId} · ${getTeamName(effectiveData, side)}`;
   resetBtn.hidden = !hasManualOverrideForKind(fixtureId, side, kind);
+  const gridToggle = document.getElementById('manualPanelGridToggle');
+  if (gridToggle) {
+    gridToggle.hidden = true;
+    gridToggle.setAttribute('aria-pressed', 'false');
+  }
 
   // 1) 선발 라인업은 grid-only override와 full form override를 구분해 렌더한다.
   if (kind === 'lineup') {
@@ -536,7 +599,8 @@ function renderManualPanelForm(kind, side) {
     } else {
       // 풀폼 모드 — API 라인업 자체가 없는 경우 (또는 startXi 비어있음)
       lineupPanelState.gridState = null;
-      content.innerHTML = buildLineupManualFormHtml(effectiveData?.[`${side}Lineup`]);
+      content.innerHTML = `<div id="manualLineupFullForm">${buildLineupManualFormHtml(effectiveData?.[`${side}Lineup`])}</div>`;
+      if (gridToggle) gridToggle.hidden = false;
     }
   } else if (kind === 'bench') {
     // 2) 교체 명단은 번호/이름 full form.
@@ -621,6 +685,7 @@ function extractLineupOverrideFromForm(form) {
     const assists = Math.max(0, Number(form.elements[`lineup-assists-${index}`]?.value) || 0);
     const yellow = !!form.elements[`lineup-yellow-${index}`]?.checked;
     const red = !!form.elements[`lineup-red-${index}`]?.checked;
+    const captain = !!form.elements[`lineup-captain-${index}`]?.checked;
 
     players.push({
       playerId: null,
@@ -638,6 +703,7 @@ function extractLineupOverrideFromForm(form) {
       manualAssists: assists || undefined,
       manualYellow: yellow || undefined,
       manualRed: red || undefined,
+      manualCaptain: captain || undefined,
     });
   }
 
@@ -705,6 +771,7 @@ function saveManualPanel() {
   if (!modalState || !form) return;
 
   const { kind, side, fixtureId } = modalState;
+  if (kind === 'lineup' && lineupPanelState.gridState?.fullFormRows) toggleManualLineupGrid();
 
   // 1) kind별 추출 함수를 통해 sideData를 갱신한다.
   updateManualEntry(fixtureId, side, sideData => {
@@ -988,6 +1055,10 @@ document.addEventListener('click', event => {
     resetManualPanelKind();
     return;
   }
+  if (event.target.id === 'manualPanelGridToggle') {
+    toggleManualLineupGrid();
+    return;
+  }
 
   const backdrop = document.getElementById('manualPanelBackdrop');
   if (backdrop && event.target === backdrop) closeManualPanel();
@@ -1031,6 +1102,11 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('change', event => {
+  if (event.target?.matches('#manualLineupFullForm input[name^="lineup-captain-"]') && event.target.checked) {
+    document.querySelectorAll('#manualLineupFullForm input[name^="lineup-captain-"]').forEach(input => {
+      if (input !== event.target) input.checked = false;
+    });
+  }
   if (event.target?.classList?.contains('dp-grid-name-input')) {
     saveManualGridPlayerName(event.target);
     return;
@@ -1043,7 +1119,9 @@ document.addEventListener('change', event => {
     // (포메이션을 여러 번 바꿔도 원래 포메이션으로 돌아오면 원래 배치가 그대로 복구됨)
     const { side } = lineupPanelState.gridState;
     lineupPanelState.gridState.formation = event.target.value;
-    lineupPanelState.gridState.slotPlayerIds = recomputeGridSlotsForFormation(side, event.target.value);
+    if (!lineupPanelState.gridState.fullFormRows) {
+      lineupPanelState.gridState.slotPlayerIds = recomputeGridSlotsForFormation(side, event.target.value);
+    }
     rerenderGridList();
   }
 });
