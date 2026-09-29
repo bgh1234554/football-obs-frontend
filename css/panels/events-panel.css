@@ -272,6 +272,25 @@
       flex-direction: column;
       gap: 2px;
     }
+    .ev-subst-picker-list,
+    .ev-subst-cluster-cols {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.25) transparent;
+      color-scheme: dark;
+    }
+    .ev-subst-picker-list::-webkit-scrollbar,
+    .ev-subst-cluster-cols::-webkit-scrollbar { width: 6px; height: 6px; }
+    .ev-subst-picker-list::-webkit-scrollbar-track,
+    .ev-subst-cluster-cols::-webkit-scrollbar-track { background: transparent; }
+    .ev-subst-picker-list::-webkit-scrollbar-thumb,
+    .ev-subst-cluster-cols::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,.25);
+      border-radius: 999px;
+    }
+    .ev-subst-picker-list::-webkit-scrollbar-thumb:hover,
+    .ev-subst-cluster-cols::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+    .ev-subst-picker-list::-webkit-scrollbar-corner,
+    .ev-subst-cluster-cols::-webkit-scrollbar-corner { background: transparent; }
     .ev-subst-picker-empty {
       padding: 20px;
       text-align: center;

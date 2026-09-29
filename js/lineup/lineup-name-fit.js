@@ -74,17 +74,36 @@ function computeLineupSurnameBreakLines(raw) {
   return null;
 }
 
+/** 중간 이름이 여러 개면 앞부분을 한 줄에 몰지 않고, 단어 경계의 3줄 후보도 비교한다.
+ * 기존 성 경계 후보를 먼저 두어 같은 크기에서는 기존 배치를 유지한다. */
+function computeLineupSurnameBreakCandidates(raw) {
+  const primary = computeLineupSurnameBreakLines(raw);
+  const candidates = primary ? [primary] : [];
+  const tokens = stripKoreanSurnameBreaks(String(raw || '')).trim().split(/\s+/).filter(Boolean);
+  if (tokens.length >= 3) {
+    for (let first = 1; first < tokens.length - 1; first += 1) {
+      for (let second = first + 1; second < tokens.length; second += 1) {
+        const lines = [tokens.slice(0, first).join(' '), tokens.slice(first, second).join(' '), tokens.slice(second).join(' ')];
+        if (!candidates.some(candidate => candidate.join('\n') === lines.join('\n'))) candidates.push(lines);
+      }
+    }
+  }
+  return candidates;
+}
+
 /** 폰트를 줄이기 직전에 (이니셜/중간 이름 등을 나눈) 최대 3줄을 시도한다. */
 function tryLineupSurnameBreaks(nameEl) {
   if (nameEl.classList.contains('has-surname-breaks')) return false;
   const textEl = nameEl.querySelector('.dp-lineup-name-text[data-surname-breaks]');
   if (!textEl) return false;
-  const lines = computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks);
-  if (!lines) return false;
-  const candidate = getPreferredLineupSurnameCandidate(nameEl, lines);
+  let candidate = null;
+  for (const lines of computeLineupSurnameBreakCandidates(textEl.dataset.surnameBreaks)) {
+    const next = getPreferredLineupSurnameCandidate(nameEl, lines);
+    if (next && (!candidate || next.font > candidate.font)) candidate = { ...next, lines };
+  }
   if (!candidate) return false;
   applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
-  applyLineupSurnameLines(nameEl, lines);
+  applyLineupSurnameLines(nameEl, candidate.lines);
   nameEl.style.fontSize = `${candidate.font}px`;
   return true;
 }
@@ -245,15 +264,20 @@ function improveLineupNameWithNumberLine(nameEl, labels, maxFont) {
   const nameText = textEl.cloneNode(true);
   nameText.querySelector('.dp-lineup-captain-badge')?.remove();
   const raw = textEl.dataset.surnameBreaks || nameText.textContent;
-  const lines = computeLineupSurnameBreakLines(raw) || raw.trim().split(/\s+/);
+  const candidates = computeLineupSurnameBreakCandidates(raw);
+  if (!candidates.length) candidates.push(raw.trim().split(/\s+/));
   // 이름 자체가 2~3줄로 나뉘는 경우에만 번호 한 줄을 추가한다.
-  if (lines.length < 2 || lines.length > 3) return;
   const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const prepare = clone => applyLineupNumberLine(clone, lines);
-  const font = measureLineupNameCandidateFont(nameEl, null, targets, prepare, maxFont);
-  if (font === null || font <= currentFont) return;
-  applyLineupNumberLine(nameEl, lines);
-  nameEl.style.fontSize = `${font}px`;
+  let best = null;
+  for (const lines of candidates) {
+    if (lines.length < 2 || lines.length > 3) continue;
+    const prepare = clone => applyLineupNumberLine(clone, lines);
+    const font = measureLineupNameCandidateFont(nameEl, null, targets, prepare, maxFont);
+    if (font !== null && font > currentFont && (!best || font > best.font)) best = { font, lines };
+  }
+  if (!best) return;
+  applyLineupNumberLine(nameEl, best.lines);
+  nameEl.style.fontSize = `${best.font}px`;
   const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
   nameEl.style.maxWidth = `${wrap.clientWidth}px`;
   lockLineupNameWidth(nameEl);
@@ -279,10 +303,10 @@ function regrowShrunkLineupNames(labels, configuredFonts) {
     const maxFont = configuredFonts.get(el);
     const targets = getLineupNameNaturalWidthCollisionTargets(el, labels);
     const textEl = el.querySelector('.dp-lineup-name-text[data-surname-breaks]');
-    const surnameLines = textEl ? computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks) : null;
+    const surnameCandidates = textEl ? computeLineupSurnameBreakCandidates(textEl.dataset.surnameBreaks) : [];
 
     let best = { font: measureLineupNameCandidateFont(el, null, targets, undefined, maxFont), lines: null };
-    if (surnameLines) {
+    for (const surnameLines of surnameCandidates) {
       const splitFont = measureLineupNameCandidateFont(el, surnameLines, targets, undefined, maxFont);
       if (splitFont !== null && (best.font === null || splitFont > best.font)) best = { font: splitFont, lines: surnameLines };
     }
