@@ -640,13 +640,15 @@ function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
     const nick = getPlayerNickname(0, origName);
     if (nick) return nick;
   }
+  // 라틴 이름의 가운뎃점 구분자를 공백으로(settings-popup.js normalizeLatinNameSeparators, 점수판/라인업과 동일).
+  const sep = v => (typeof normalizeLatinNameSeparators === 'function' ? normalizeLatinNameSeparators(v) : v);
   if (kind === 'assist') {
-    const long = evNormalizeDisplayName(ev.assistNameKoLong || '');
-    const short = evNormalizeDisplayName(ev.assistName || '');
+    const long = evNormalizeDisplayName(sep(ev.assistNameKoLong || ''));
+    const short = evNormalizeDisplayName(sep(ev.assistName || ''));
     return evNormalizeDisplayName(useLong ? (long || short) : (short || long), fallback);
   }
-  const long = evNormalizeDisplayName(ev.playerNameKoLong || '');
-  const short = evNormalizeDisplayName(ev.playerName || '');
+  const long = evNormalizeDisplayName(sep(ev.playerNameKoLong || ''));
+  const short = evNormalizeDisplayName(sep(ev.playerName || ''));
   return evNormalizeDisplayName(useLong ? (long || short) : (short || long), fallback);
 }
 

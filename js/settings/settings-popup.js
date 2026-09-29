@@ -1022,6 +1022,15 @@ function stripKoreanSurnameBreaks(name) {
   return String(name || '').replace(/(?<=[가-힣])-(?=[가-힣])/g, '');
 }
 
+/**
+ * API가 라틴 문자 이름의 띄어쓰기 자리에 가운뎃점을 넣어 보내는 경우(예: "Malique·Roberts",
+ * "Tiquanny·Williams" — 경기 1639959)가 있어, 라틴 글자 사이의 가운뎃점류(·・‧∙)를 공백으로 바꾼다.
+ * 한 단어로 취급돼 포메이션 이름 라벨이 줄바꿈 없이 작은 폰트로 줄어들던 문제 해결. 한글 사이 가운뎃점은 그대로.
+ */
+function normalizeLatinNameSeparators(name) {
+  return String(name || '').replace(/(?<=\p{Script=Latin}|[.'’])\s*[·・‧∙]\s*(?=\p{Script=Latin})/gu, ' ');
+}
+
 function getLineupShortName(player) {
   return stripKoreanSurnameBreaks(player?.name || player?.playerName || '');
 }
@@ -1106,7 +1115,7 @@ function shouldKeepLineupInitial(shortName) {
 function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
   if (!player) return '';
   // 포메이션 pill만 원본 경계를 받아 피팅 단계에서 사용한다.
-  const display = name => preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name);
+  const display = name => normalizeLatinNameSeparators(preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name));
   // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
   // 닉네임은 사용자가 자유 입력한 텍스트라 성 경계 하이픈 규칙 대상이 아니다 — 그대로 반환.
   const pid = player.playerId || player.id;
