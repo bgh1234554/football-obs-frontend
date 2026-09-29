@@ -473,6 +473,19 @@
       border-bottom: 1px solid rgba(255,255,255,.09);
     }
     .ev-edit-seg-rows { display: flex; flex-direction: column; gap: 8px; }
+    /* 골 시간 입력 — 정규시간 + 추가시간 두 칸 */
+    .ev-edit-time { display: flex; align-items: center; gap: 6px; }
+    .ev-edit-time-input {
+      width: 64px;
+      padding: 5px 8px;
+      font: inherit;
+      font-size: 13px;
+      color: #f0f0f0;
+      background: #12121c;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 6px;
+    }
+    .ev-edit-time-sep { color: rgba(255,255,255,.6); font-weight: 700; }
     .ev-edit-tabs .ev-edit-seg-btn { text-align: left; padding: 6px 8px; }
     /* 연속 교체 묶음 수정 — 교체마다 한 칸씩 가로로 나열(event-hide.js evOpenSubstClusterEditor) */
     .ev-subst-cluster-modal {

@@ -20,7 +20,9 @@ const EV_HIDE_STORAGE_KEY = 'obs.events.hidden.v1';
 const EV_HIDE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 수동 입력 저장소(DETAIL_MANUAL_TTL_MS)와 같은 7일
 // 수정 팝업에서 고칠 수 있는 이벤트 필드 — 원본과 전부 같으면 수정 기록을 지운다.
 const EV_EDIT_FIELDS = ['side', 'teamId', 'detail', 'playerId', 'playerName', 'playerNameKoLong', 'playerOrigName',
-  'assistId', 'assistName', 'assistNameKoLong', 'assistOrigName'];
+  'assistId', 'assistName', 'assistNameKoLong', 'assistOrigName', 'elapsed', 'extra'];
+// 숫자로 비교하는 필드(null/0/빈 값은 같은 값으로 본다). 시간(elapsed/extra)은 골 수정에서만 patch에 들어간다.
+const EV_EDIT_NUMERIC_FIELDS = new Set(['teamId', 'playerId', 'assistId', 'elapsed', 'extra']);
 
 /** 이벤트 내용 서명 — API 원본 필드만 사용(화면용 가공 필드 제외). 내용이 바뀌면 서명도 바뀐다. */
 function evHideSignature(ev) {
@@ -411,8 +413,9 @@ function evEditSave(sig, patch) {
   if (!fixtureId || !sig) return;
   const entry = evHideGetEntry(fixtureId);
   const raw = evEditFindRawEvent(sig) || {};
-  const same = patch && EV_EDIT_FIELDS.every(key => (patch[key] ?? null) === (raw[key] ?? null)
-    || (key.endsWith('Id') && Number(patch[key] || 0) === Number(raw[key] || 0)));
+  // patch에 실제로 들어 있는 필드만 비교한다(카드 수정엔 시간 필드가 없음).
+  const same = patch && EV_EDIT_FIELDS.filter(key => key in patch).every(key => (patch[key] ?? null) === (raw[key] ?? null)
+    || (EV_EDIT_NUMERIC_FIELDS.has(key) && Number(patch[key] || 0) === Number(raw[key] || 0)));
   if (!patch || same) delete entry.edits[sig];
   else entry.edits[sig] = { patch, editedAt: Date.now() };
   evHideSetEntry(fixtureId, entry);
@@ -638,6 +641,9 @@ function evEditOpen(ev) {
     player: 'keep',
     assist: hadAssist ? 'keep' : 'none',
     tab: 'player',
+    // 골 시간 — 정규시간(분)과 추가시간을 따로 받는다(예: 45 + 2 -> "45+2'"). 추가시간 0/빈 값은 없음.
+    elapsed: Number(ev.elapsed) || 0,
+    extra: Number(ev.extra) > 0 ? Number(ev.extra) : null,
   };
 
   const typeOptions = isGoal
@@ -680,7 +686,9 @@ function evEditOpen(ev) {
   function renderList() {
     const kind = draft.tab;
     const side = kind === 'assist' ? draft.side : playerSide();
-    const available = evAvailablePlayers(ev, side, 'onPitch');
+    // 골 시간을 바꾸면 바뀐 시간 기준으로 후보를 다시 계산한다(그 사이 교체/퇴장 반영).
+    const timeEv = isGoal ? { ...ev, _hideSig: undefined, elapsed: draft.elapsed, extra: draft.extra } : ev;
+    const available = evAvailablePlayers(timeEv, side, 'onPitch');
     const keep = kind === 'assist' ? keepAssist : keepPlayer;
     const current = draft[kind];
     const keepIdx = evEditRosterIndex(available, keep[`${kind}Id`], [keep[`${kind}Name`], keep[`${kind}NameKoLong`], keep[`${kind}OrigName`]]);
@@ -724,6 +732,39 @@ function evEditOpen(ev) {
     evEditField('종류', evEditSegment(typeOptions, draft.detail, value => { draft.detail = value; resetPicks(); })),
     evEditField(isGoal ? '득점 팀 (골이 인정된 팀)' : '팀', evEditSegment(teamOptions, draft.side, value => { draft.side = value; resetPicks(); })),
   );
+  if (isGoal) {
+    // 정규시간/추가시간 입력 칸 — 값이 바뀌면 선수 후보를 다시 계산.
+    const timeRow = document.createElement('div');
+    timeRow.className = 'ev-edit-time';
+    const numInput = (value, min, max, placeholder, title) => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'ev-edit-time-input';
+      input.min = String(min);
+      input.max = String(max);
+      input.step = '1';
+      input.placeholder = placeholder;
+      input.title = title;
+      input.value = value == null ? '' : String(value);
+      return input;
+    };
+    const elapsedInput = numInput(draft.elapsed, 0, 130, '분', '정규시간(분)');
+    const extraInput = numInput(draft.extra, 0, 30, '0', '추가시간(분) — 없으면 비워 두세요');
+    const plus = document.createElement('span');
+    plus.className = 'ev-edit-time-sep';
+    plus.textContent = '+';
+    const onTimeChange = () => {
+      const e = Number.parseInt(elapsedInput.value, 10);
+      const x = Number.parseInt(extraInput.value, 10);
+      if (Number.isFinite(e) && e >= 0 && e <= 130) draft.elapsed = e;
+      draft.extra = Number.isFinite(x) && x > 0 ? Math.min(x, 30) : null;
+      renderList();
+    };
+    elapsedInput.addEventListener('change', onTimeChange);
+    extraInput.addEventListener('change', onTimeChange);
+    timeRow.append(elapsedInput, plus, extraInput);
+    segRow.prepend(evEditField('시간 (정규시간 + 추가시간)', timeRow));
+  }
   body.append(segRow, tabWrap);
   modal.append(body, list);
   renderTabs();
@@ -756,6 +797,8 @@ function evEditOpen(ev) {
       ...(draft.player === 'keep' ? keepPlayer : toFields(draft.player, 'player')),
     };
     if (isGoal) {
+      patch.elapsed = draft.elapsed;
+      patch.extra = draft.extra;
       if (!showAssist() || draft.assist === 'none') {
         Object.assign(patch, { assistId: null, assistName: null, assistNameKoLong: null, assistOrigName: null });
       } else {
