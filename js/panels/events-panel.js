@@ -224,6 +224,12 @@ function evGetSubstDisplayName(ev, field, fixtureId) {
  * 선수명이 비어있을 때 표시하는 클릭 가능한 `?` 버튼.
  * 클릭 시 evOpenSubstPicker 모달을 열어 팀 선수 명단에서 선택할 수 있게 함.
  */
+/** 교체 선택 창 새 창 파라미터 — 연속 교체 묶음이면 넓은 창(wide)으로 연다(popout.js 창 크기). */
+function evSubstPopoutParams(ev, field) {
+  const multi = typeof window.evSubstCluster === 'function' && window.evSubstCluster(ev).length > 1;
+  return { evkey: evSubstEventKey(ev), field, ...(multi ? { wide: '1' } : {}) };
+}
+
 function evCreateSubstFixBtn(ev, field, fixtureData) {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -235,7 +241,7 @@ function evCreateSubstFixBtn(ev, field, fixtureData) {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
-      window.Popout.open('subst', { evkey: evSubstEventKey(ev), field });
+      window.Popout.open('subst', evSubstPopoutParams(ev, field));
     } else {
       evOpenSubstPicker(ev, field, fixtureData);
     }
@@ -257,7 +263,7 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
-      window.Popout.open('subst', { evkey: evSubstEventKey(ev), field });
+      window.Popout.open('subst', evSubstPopoutParams(ev, field));
     } else {
       evOpenSubstPicker(ev, field, fixtureData);
     }
@@ -301,6 +307,12 @@ window.evPatchSubstEvents = evPatchSubstEvents;
  * 선택 확인 시 override 저장 + 이벤트 패널 + 라인업 패널 즉시 재렌더.
  */
 function evOpenSubstPicker(ev, field, fixtureData) {
+  // 앞뒤 1분 안에 다른 교체가 이어져 있으면 묶음 전체를 한 번에 고치는 창으로 연다(event-hide.js).
+  const cluster = typeof window.evSubstCluster === 'function' ? window.evSubstCluster(ev) : [ev];
+  if (cluster.length > 1 && typeof window.evOpenSubstClusterEditor === 'function') {
+    window.evOpenSubstClusterEditor(cluster, ev, field, fixtureData);
+    return;
+  }
   const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
   const lineup = ev.side === 'home' ? fixtureData?.homeLineup : fixtureData?.awayLineup;
   // 그 교체 시점에 실제로 가능한 선수만 — OUT은 그라운드에 있던 선수, IN은 아직 투입 안 된 교체 명단

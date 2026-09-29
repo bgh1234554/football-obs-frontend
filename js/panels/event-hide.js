@@ -777,6 +777,200 @@ function evEditOpen(ev) {
 }
 window.evEditOpen = evEditOpen;
 
+// ── 교체 묶음 수정 (연속 교체) ────────────────────────────────────────────────
+
+/** 이벤트 분(추가시간 포함) — 교체 묶음 판정용. */
+function evSubstMinute(ev) {
+  return Number(ev?.elapsed ?? 0) + Number(ev?.extra ?? 0);
+}
+
+/**
+ * ev와 이어진 같은 팀 교체 묶음 — 시간 순으로 인접한 교체끼리 1분 이내면 한 묶음으로 잇는다.
+ * API가 동시에 한 교체를 같은 분 또는 앞뒤 1분으로 나눠 기록하기 때문에, 한 교체의 선수가 잘못 들어오면
+ * 옆 교체의 후보에서 올바른 선수가 빠질 수 있다 — 그래서 묶음 전체를 한 번에 고치게 한다.
+ * 교체 override와 수정이 반영된 이벤트 패널 데이터 기준. 묶음이 없으면 [ev].
+ */
+function evSubstCluster(ev) {
+  const sameSubst = (window._eventsLastData?.events || [])
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e && e.side === ev?.side && String(e.type || '').toLowerCase() === 'subst')
+    .sort((a, b) => evEditTimeKey(a.e) - evEditTimeKey(b.e) || a.i - b.i)
+    .map(({ e }) => e);
+  const idx = sameSubst.findIndex(e => (ev?._hideSig && e._hideSig === ev._hideSig)
+    || (typeof evSubstEventKey === 'function' && evSubstEventKey(e) === evSubstEventKey(ev)));
+  if (idx < 0) return [ev];
+  let lo = idx;
+  let hi = idx;
+  while (lo > 0 && evSubstMinute(sameSubst[lo]) - evSubstMinute(sameSubst[lo - 1]) <= 1) lo -= 1;
+  while (hi < sameSubst.length - 1 && evSubstMinute(sameSubst[hi + 1]) - evSubstMinute(sameSubst[hi]) <= 1) hi += 1;
+  return sameSubst.slice(lo, hi + 1);
+}
+window.evSubstCluster = evSubstCluster;
+
+/** 교체 override에 저장할 표시 이름 — 기존 교체 선수 선택 창과 같은 규칙(라인업 풀네임 설정). */
+function evSubstOverrideName(player) {
+  const useLong = (typeof getSetting === 'function') && getSetting('lineup') === 'long';
+  return useLong
+    ? (player.nameKoLong || player.name || String(player.playerId ?? '-'))
+    : (player.name || player.nameKoLong || String(player.playerId ?? '-'));
+}
+
+/**
+ * 연속 교체 묶음 수정 팝업 — 골/카드 정보 수정 팝업과 같은 틀로, 묶음의 교체를 시간 순으로 가로로
+ * 나열하고 각 교체마다 OUT/IN 탭 + 선수 목록을 둔다.
+ * - 후보는 묶음 첫 교체 직전 기준: OUT = 그라운드에 있던 선수, IN = 아직 투입 안 된 교체 명단 선수.
+ * - 한 선수는 묶음 안에서 한 번만 고를 수 있다(다른 교체에서 고른 선수는 흐리게 표시되고 선택 불가).
+ * - 각 칸 맨 위 "현재" 행은 지금 값(API 또는 이전에 고른 값) 유지.
+ * 확인 시 바꾼 칸만 교체 override(evSetSubstOverride)로 저장, 초기화는 묶음 전체의 override를 지운다.
+ */
+function evOpenSubstClusterEditor(cluster, focusEv, focusField, fixtureData) {
+  const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? window._eventsLastData?.matchInfo?.fixtureId ?? '').trim();
+  const side = focusEv.side;
+  document.querySelector('.ev-subst-cluster-modal-overlay')?.remove();
+  const { modal, actions, close, mount } = evHideCreateModal('교체 선수 수정', 'ev-subst-cluster-modal');
+
+  const cands = {
+    player: evAvailablePlayers(cluster[0], side, 'onPitch'),
+    assist: evAvailablePlayers(cluster[0], side, 'bench'),
+  };
+  const focusSig = focusEv._hideSig;
+  const cols = cluster.map(ev => ({
+    ev,
+    sel: { player: 'keep', assist: 'keep' },
+    tab: (focusSig && ev._hideSig === focusSig) ? focusField : 'player',
+  }));
+
+  // 칸별 현재 선택의 후보 인덱스(keep이면 지금 값이 후보에 있는 위치, 없으면 -1).
+  const currentIndex = (col, field) => {
+    const pick = col.sel[field];
+    if (pick !== 'keep') return cands[field].indexOf(pick);
+    const ev = col.ev;
+    const id = field === 'player' ? ev.playerId : ev.assistId;
+    const names = field === 'player'
+      ? [ev.playerName, ev.playerNameKoLong, ev.playerOrigName]
+      : [ev.assistName, ev.assistNameKoLong, ev.assistOrigName];
+    return evEditRosterIndex(cands[field], id, names);
+  };
+  const takenByOthers = (field, exceptCol) => new Set(cols
+    .filter(col => col !== exceptCol)
+    .map(col => currentIndex(col, field))
+    .filter(i => i >= 0));
+  const currentName = (col, field) => {
+    const pick = col.sel[field];
+    if (pick !== 'keep') return evEditDisplayName(pick);
+    const name = typeof evGetSubstDisplayName === 'function' ? evGetSubstDisplayName(col.ev, field, fixtureId) : '';
+    return name || '?';
+  };
+
+  const help = document.createElement('div');
+  help.className = 'ev-hide-mgr-help';
+  help.textContent = cols.length > 1
+    ? '한 번에 일어난 교체 이벤트를 한번에 수정합니다. 한 선수는 한 번만 고를 수 있습니다.'
+    : '교체로 나간 선수(OUT)와 들어온 선수(IN)를 수정합니다.';
+  const colsWrap = document.createElement('div');
+  colsWrap.className = 'ev-subst-cluster-cols';
+  modal.append(help, colsWrap);
+
+  function renderColumn(col) {
+    const box = document.createElement('div');
+    box.className = 'ev-subst-cluster-col';
+    const head = document.createElement('div');
+    head.className = 'ev-subst-cluster-head';
+    const order = String(col.ev.detail || '').match(/(\d+)\s*$/)?.[1];
+    head.textContent = `${typeof evFormatTime === 'function' ? evFormatTime(col.ev) : `${col.ev.elapsed}'`} 교체${order ? ` ${order}` : ''}`;
+
+    const tabs = document.createElement('div');
+    tabs.className = 'ev-edit-seg ev-edit-tabs';
+    [['player', 'OUT'], ['assist', 'IN']].forEach(([field, label]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ev-edit-seg-btn';
+      btn.classList.toggle('is-active', col.tab === field);
+      btn.textContent = `${label}: ${currentName(col, field)}`;
+      btn.title = btn.textContent;
+      btn.addEventListener('click', () => { col.tab = field; renderAll(); });
+      tabs.appendChild(btn);
+    });
+
+    const list = document.createElement('div');
+    list.className = 'ev-subst-picker-list';
+    const field = col.tab;
+    const taken = takenByOthers(field, col);
+    const keepIdx = currentIndex({ ...col, sel: { ...col.sel, [field]: 'keep' } }, field);
+    const keepObj = keepIdx >= 0 ? cands[field][keepIdx] : null;
+    const items = [evEditPlayerItem(
+      keepObj?.number != null && keepObj.number !== '' ? String(keepObj.number) : '-',
+      `현재: ${(typeof evGetSubstDisplayName === 'function' ? evGetSubstDisplayName(col.ev, field, fixtureId) : '') || '?'}`,
+      keepObj?.pos || '', col.sel[field] === 'keep', () => { col.sel[field] = 'keep'; renderAll(); })];
+    cands[field].forEach((p, i) => {
+      const item = evEditPlayerItem(p.number != null && p.number !== '' ? String(p.number) : '-',
+        evEditDisplayName(p), p.pos || '', col.sel[field] === p, () => { col.sel[field] = p; renderAll(); });
+      if (taken.has(i)) {
+        item.classList.add('is-taken');
+        item.title = '다른 교체에서 이미 고른 선수입니다';
+      }
+      items.push(item);
+    });
+    if (!cands[field].length) {
+      const empty = document.createElement('div');
+      empty.className = 'ev-subst-picker-empty';
+      empty.textContent = '선수 명단 데이터가 없습니다';
+      items.push(empty);
+    }
+    list.replaceChildren(...items);
+    box.append(head, tabs, list);
+    return box;
+  }
+
+  function renderAll() {
+    const scrollTops = [...colsWrap.querySelectorAll('.ev-subst-picker-list')].map(el => el.scrollTop);
+    colsWrap.replaceChildren(...cols.map(renderColumn));
+    colsWrap.querySelectorAll('.ev-subst-picker-list').forEach((el, i) => { el.scrollTop = scrollTops[i] || 0; });
+  }
+  renderAll();
+
+  const hasOverride = cols.some(col => ['player', 'assist']
+    .some(field => typeof evGetSubstOverride === 'function' && evGetSubstOverride(fixtureId, col.ev, field)));
+  const refresh = () => evSubstRefreshAfterOverride(fixtureId);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.type = 'button';
+  resetBtn.className = 'ev-subst-picker-reset';
+  resetBtn.textContent = '초기화';
+  resetBtn.disabled = !hasOverride;
+  resetBtn.title = hasOverride ? '이 교체들에서 직접 고른 선수를 지우고 원래 데이터로 되돌립니다.' : '직접 선택한 선수가 없습니다.';
+  resetBtn.addEventListener('click', () => {
+    cols.forEach(col => ['player', 'assist'].forEach(field => evClearSubstOverride(fixtureId, col.ev, field)));
+    close();
+    refresh();
+  });
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'ev-subst-picker-confirm';
+  confirmBtn.textContent = '확인';
+  confirmBtn.addEventListener('click', () => {
+    cols.forEach(col => ['player', 'assist'].forEach(field => {
+      const pick = col.sel[field];
+      if (pick === 'keep') return;
+      evSetSubstOverride(fixtureId, col.ev, field, { playerId: pick.playerId, name: evSubstOverrideName(pick) });
+    }));
+    close();
+    refresh();
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'ev-subst-picker-cancel';
+  cancelBtn.textContent = '취소';
+  cancelBtn.addEventListener('click', close);
+
+  actions.append(resetBtn, confirmBtn, cancelBtn);
+  modal.style.setProperty('--ev-cluster-cols', String(cols.length));
+  mount();
+}
+window.evOpenSubstClusterEditor = evOpenSubstClusterEditor;
+
 // ── row 클릭 메뉴 ─────────────────────────────────────────────────────────────
 
 function evRowMenuClose() {
@@ -797,12 +991,25 @@ function evRowMenuOpen(ev, clientX, clientY) {
     btn.addEventListener('click', () => { evRowMenuClose(); onClick(); });
     menu.appendChild(btn);
   };
+  const isSubst = evIsSubstEvent(ev);
+  const popout = typeof popoutModeEnabled === 'function' && popoutModeEnabled();
   // 설정 "입력창/설정을 새 창으로 열기"(popoutModals)가 켜져 있으면 수정 팝업을 별도 창으로 연다(popout.js).
   add('정보 수정', () => {
-    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) window.Popout.open('evedit', { sig: ev._hideSig });
+    if (isSubst) {
+      // 교체는 교체 선수 수정 창 — 앞뒤 1분 이내로 이어진 교체가 있으면 묶음 전체, 없으면 한 칸.
+      const cluster = evSubstCluster(ev);
+      if (popout) window.Popout.open('substedit', { sig: ev._hideSig, ...(cluster.length > 1 ? { wide: '1' } : {}) });
+      else evOpenSubstClusterEditor(cluster, ev, 'player', window._eventsLastData);
+      return;
+    }
+    if (popout) window.Popout.open('evedit', { sig: ev._hideSig });
     else evEditOpen(ev);
   });
-  if (ev._evEdited) add('수정 초기화', () => evEditSave(ev._hideSig, null));
+  if (isSubst) {
+    if (evSubstHasOverride(ev)) add('수정 초기화', () => evSubstClearOverrides([ev]));
+  } else if (ev._evEdited) {
+    add('수정 초기화', () => evEditSave(ev._hideSig, null));
+  }
   add('숨기기', () => evHideEvent(ev), 'is-danger');
 
   const fsEl = document.fullscreenElement;
@@ -813,9 +1020,36 @@ function evRowMenuOpen(ev, clientX, clientY) {
   if (typeof pmClampPopupToViewport === 'function') pmClampPopupToViewport(menu);
 }
 
-/** events-panel.js evCreateRow가 골/카드 row에 연결. */
+function evIsSubstEvent(ev) {
+  return !!ev?._hideSig && String(ev.type || '').toLowerCase() === 'subst';
+}
+
+/** 이 교체에 직접 고른 선수(교체 override)가 있는지. */
+function evSubstHasOverride(ev) {
+  const fixtureId = evHideCurrentFixtureId();
+  return typeof evGetSubstOverride === 'function'
+    && ['player', 'assist'].some(field => evGetSubstOverride(fixtureId, ev, field));
+}
+
+/** 교체들의 override를 지우고 이벤트 패널/라인업/전술판을 다시 그린다. */
+function evSubstClearOverrides(events) {
+  const fixtureId = evHideCurrentFixtureId();
+  events.forEach(ev => ['player', 'assist'].forEach(field => evClearSubstOverride(fixtureId, ev, field)));
+  evSubstRefreshAfterOverride(fixtureId);
+}
+
+/** 교체 override 저장/삭제 후 갱신 — 교체 선수 선택 창(evOpenSubstPicker)과 같은 3곳. */
+function evSubstRefreshAfterOverride(fixtureId) {
+  if (typeof evRerenderCurrentPanel === 'function') evRerenderCurrentPanel();
+  if (typeof applyLineupPanels === 'function' && window._eventsLastData) applyLineupPanels(window._eventsLastData);
+  if (typeof window.ttRefreshEventsData === 'function' && window._eventsLastData && typeof evPatchSubstEvents === 'function') {
+    window.ttRefreshEventsData({ ...window._eventsLastData, events: evPatchSubstEvents(window._eventsLastData.events, fixtureId) });
+  }
+}
+
+/** events-panel.js evCreateRow가 골/카드/교체 row에 연결 — 클릭하면 정보 수정 메뉴. */
 function evEditAttachRow(row, ev) {
-  if (!evEditIsEditable(ev)) return;
+  if (!evEditIsEditable(ev) && !evIsSubstEvent(ev)) return;
   row.classList.add('is-editable');
   row.addEventListener('click', event => {
     if (event.target.closest('button, a, input, select')) return;

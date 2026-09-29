@@ -49,6 +49,9 @@ const POPOUT_WINDOW_SIZE = {
   'tactics-names': { width: 620, height: 850 }, // 같은 .dp-manual-modal 구조
   settings:       { width: 570, height: 760 },  // .sp-modal
   subst:          { width: 300, height: 420 },  // .ev-subst-picker-modal(소형 리스트)
+  'subst-wide':   { width: 820, height: 600 },
+  substedit:      { width: 330, height: 600 },  // 교체 row 정보 수정(한 칸짜리 교체 선수 수정 창)
+  'substedit-wide': { width: 820, height: 600 }, // 교체 row 정보 수정(연속 교체 묶음)  // 연속 교체 묶음 수정(event-hide.js evOpenSubstClusterEditor)
   evedit:         { width: 360, height: 640 },  // 골/카드 정보 수정(event-hide.js, 같은 모달 틀)
   evhidden:       { width: 400, height: 460 },  // 숨긴 이벤트 관리(event-hide.js)
   theme:          { width: 760, height: 700 },  // 페이지 하나(테마 탭) — 모달보다 살짝 넓게
@@ -69,7 +72,7 @@ function popoutWindowName(key, params) {
 function popoutOpen(key, params) {
   const qs = new URLSearchParams({ popout: key, ...(params || {}) });
   const url = `${window.location.pathname}?${qs.toString()}`;
-  const { width, height } = POPOUT_WINDOW_SIZE[key] || { width: 620, height: 700 };
+  const { width, height } = (params?.wide && POPOUT_WINDOW_SIZE[`${key}-wide`]) || POPOUT_WINDOW_SIZE[key] || { width: 620, height: 700 };
   const win = window.open(url, popoutWindowName(key, params), `width=${width},height=${height},resizable=yes,scrollbars=yes`);
   if (win) win.focus();
   return win;
@@ -217,11 +220,14 @@ if (window.__POPOUT_MODE__) {
     function activate() {
       // 이벤트 정보 수정/숨긴 이벤트 관리(event-hide.js)는 클릭할 버튼이 따로 없어(row 메뉴/관리 버튼이
       // 상태에 따라 생김) 이벤트 패널 데이터에서 대상을 찾아 팝업 함수를 직접 연다.
-      if (p.popout === 'evedit' || p.popout === 'evhidden') {
-        const ev = p.popout === 'evedit'
+      if (p.popout === 'evedit' || p.popout === 'evhidden' || p.popout === 'substedit') {
+        const ev = p.popout !== 'evhidden'
           ? (window._eventsLastData?.events || []).find(e => e && e._hideSig === p.sig)
           : null;
         if (p.popout === 'evedit' && ev && typeof evEditOpen === 'function') evEditOpen(ev);
+        else if (p.popout === 'substedit' && ev && typeof evOpenSubstClusterEditor === 'function') {
+          evOpenSubstClusterEditor(evSubstCluster(ev), ev, 'player', window._eventsLastData);
+        }
         else if (p.popout === 'evhidden' && typeof evHideOpenManager === 'function') evHideOpenManager(evHideCurrentFixtureId());
         if (!document.querySelector('.ev-subst-picker-overlay')) document.title = '입력창을 열 수 없음 (경기 데이터 없음)';
         reveal();

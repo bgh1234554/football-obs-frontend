@@ -474,6 +474,38 @@
     }
     .ev-edit-seg-rows { display: flex; flex-direction: column; gap: 8px; }
     .ev-edit-tabs .ev-edit-seg-btn { text-align: left; padding: 6px 8px; }
+    /* 연속 교체 묶음 수정 — 교체마다 한 칸씩 가로로 나열(event-hide.js evOpenSubstClusterEditor) */
+    .ev-subst-cluster-modal {
+      width: min(calc(var(--ev-cluster-cols, 2) * 250px + 24px), calc(calc(var(--display-vw, 1vw) * 100) - 32px));
+      height: clamp(420px, calc(var(--display-vh, 1vh) * 75), 640px);
+    }
+    .ev-subst-cluster-modal .ev-hide-mgr-help { padding: 8px 14px 0; }
+    .ev-subst-cluster-cols {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      overflow-x: auto;
+    }
+    .ev-subst-cluster-col {
+      flex: 1 0 230px;
+      min-width: 230px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .ev-subst-cluster-head {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,.8);
+    }
+    .ev-subst-cluster-col .ev-subst-picker-list { padding: 0; }
+    .ev-subst-picker-item.is-taken { opacity: .35; pointer-events: none; }
     .ev-edit-field {
       display: flex;
       flex-direction: column;

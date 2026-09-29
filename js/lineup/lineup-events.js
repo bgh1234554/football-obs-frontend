@@ -65,8 +65,9 @@ function lpCollectPlayerNames(player) {
 function lpFindLineupPlayerIndex(players, matcher) {
   if (!Array.isArray(players) || !matcher || typeof matcher !== 'object') return -1;
 
-  // 1) playerId 우선 매칭.
-  const targetId = matcher.playerId == null ? null : String(matcher.playerId);
+  // 1) playerId 우선 매칭 — 실제 ID(0 초과)일 때만. 0은 "ID 없음"이라 ID로 찾으면 명단에서 ID가 0인
+  //    첫 선수가 엉뚱하게 잡힌다(예: 교체 IN을 ID 0 선수로 고르면 다른 ID 0 벤치 선수가 대신 투입됨).
+  const targetId = Number(matcher.playerId) > 0 ? String(Number(matcher.playerId)) : null;
   if (targetId) {
     const byId = players.findIndex(player => String(player?.playerId) === targetId);
     if (byId !== -1) return byId;
