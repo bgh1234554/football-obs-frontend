@@ -37,6 +37,12 @@ const LogoTrim = (() => {
   const fills = new Map();
   // 내부 채우기 색. 협업 프론트(FSM) 로고 구역 배경에 맞추려면 이 값만 바꾸면 된다.
   const FILL_COLOR = [255, 255, 255];
+  // 예외 목록은 logo-fill-exceptions.js에서 관리한다. 바깥 여백 trim과 중심/크기 보정은 유지한다.
+  const FILL_EXCLUDED_URLS = new Set(LOGO_FILL_EXCLUDED_URLS);
+  function isFillExcluded(url) {
+    // 같은 파일의 쿼리/프래그먼트 변형에도 적용하되, 다른 출처의 동명 파일은 제외하지 않는다.
+    return FILL_EXCLUDED_URLS.has(url.split(/[?#]/, 1)[0]);
+  }
   // 이 알파값 미만이면 "투명"으로 보고 바깥/안쪽 영역 탐색에 포함한다(안티앨리어싱 가장자리 절반 기준).
   const FILL_ALPHA_MAX = 128;
   // 둘러싸인 투명 영역이 로고 그림 경계 면적의 이 비율 이상일 때만 채운다. 실측: USG 링 안쪽
@@ -318,7 +324,7 @@ const LogoTrim = (() => {
     let fillUrl = null;
     let fillFailed = false;
     try {
-      fillUrl = await buildFillUrl(img, bounds);
+      if (!isFillExcluded(url)) fillUrl = await buildFillUrl(img, bounds);
     } catch (error) {
       // 채우기 실패는 원본 표시로 대체하되, "채울 칸 없음"으로 30일 저장하지 않도록 표시한다(getBounds).
       fillFailed = true;
@@ -363,7 +369,8 @@ const LogoTrim = (() => {
    */
   function usableCache(url) {
     const cached = readCache(url);
-    if (cached && cached.hasFill && !fills.has(url)) return null;
+    // 예외 추가 전에 hasFill=true로 저장됐어도 경계 캐시는 재사용하고 채우기 재분석은 생략한다.
+    if (cached && cached.hasFill && !isFillExcluded(url) && !fills.has(url)) return null;
     return cached;
   }
 
@@ -416,6 +423,7 @@ const LogoTrim = (() => {
    * trim 보정/SVG 100% 박스 여부와 무관하게 로고와 정확히 겹친다.
    */
   function applyFill(img, url) {
+    if (isFillExcluded(url)) return;
     const fillUrl = fills.get(url);
     if (!fillUrl) return;
     img.style.backgroundImage = `url("${fillUrl}")`;
