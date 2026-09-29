@@ -50,7 +50,7 @@ function evHideSignatures(rawEvents) {
 }
 
 // ── 저장소 ────────────────────────────────────────────────────────────────────
-// { [fixtureId]: { savedAt, items: { [sig]: {snapshot, hiddenAt} }, edits: { [sig]: {patch, editedAt} } } }
+// { [fixtureId]: { savedAt, items: { [sig]: {snapshot, hiddenAt} }, edits: { [sig]: {patch, editedAt} }, periods: { [sig]: period } } }
 
 function evHideLoad() {
   let store = {};
@@ -75,11 +75,11 @@ function evHideSave(store) {
   } catch {}
 }
 
-/** fixture의 숨김(items)/수정(edits) 기록. 없으면 빈 맵. */
+/** fixture의 숨김(items)/정보 수정(edits)/구간 지정(periods) 기록. 없으면 각각 빈 맵. */
 function evHideGetEntry(fixtureId) {
   const id = String(fixtureId ?? '').trim();
   const entry = (id && evHideLoad()[id]) || {};
-  return { items: { ...(entry.items || {}) }, edits: { ...(entry.edits || {}) } };
+  return { items: { ...(entry.items || {}) }, edits: { ...(entry.edits || {}) }, periods: { ...(entry.periods || {}) } };
 }
 
 function evHideSetEntry(fixtureId, entry) {
@@ -88,7 +88,8 @@ function evHideSetEntry(fixtureId, entry) {
   const store = evHideLoad();
   const items = entry.items || {};
   const edits = entry.edits || {};
-  if (Object.keys(items).length || Object.keys(edits).length) store[id] = { savedAt: Date.now(), items, edits };
+  const periods = entry.periods || {};
+  if (Object.keys(items).length || Object.keys(edits).length || Object.keys(periods).length) store[id] = { savedAt: Date.now(), items, edits, periods };
   else delete store[id];
   evHideSave(store);
 }
@@ -148,22 +149,23 @@ function evHideApplyToFixtureData(data) {
     awayPenaltyScore: matchInfo.awayPenaltyScore,
   };
   const fixtureId = String(matchInfo.fixtureId ?? '').trim();
-  const { items, edits } = evHideGetEntry(fixtureId);
+  const { items, edits, periods } = evHideGetEntry(fixtureId);
 
   const sigs = evHideSignatures(raw);
   const tagged = raw.map((ev, i) => (ev ? { ...ev, _hideSig: sigs[i] } : ev));
-  if (raw.length && (Object.keys(items).length || Object.keys(edits).length)) {
+  if (raw.length && (Object.keys(items).length || Object.keys(edits).length || Object.keys(periods).length)) {
     const present = new Set(tagged.map(ev => ev?._hideSig));
     let changed = false;
-    [items, edits].forEach(map => Object.keys(map).forEach(sig => {
+    [items, edits, periods].forEach(map => Object.keys(map).forEach(sig => {
       if (!present.has(sig)) { delete map[sig]; changed = true; }
     }));
-    if (changed) evHideSetEntry(fixtureId, { items, edits });
+    if (changed) evHideSetEntry(fixtureId, { items, edits, periods });
   }
 
   const events = tagged
     .filter(ev => !ev || !items[ev._hideSig])
-    .map(ev => (ev && edits[ev._hideSig]?.patch ? { ...ev, ...edits[ev._hideSig].patch, _evEdited: true } : ev));
+    .map(ev => (ev && edits[ev._hideSig]?.patch ? { ...ev, ...edits[ev._hideSig].patch, _evEdited: true } : ev))
+    .map(ev => (ev && periods[ev._hideSig] ? { ...ev, _eventPeriod: periods[ev._hideSig] } : ev));
 
   const rawCredits = evHideGoalCredits(raw);
   const effCredits = evHideGoalCredits(events);
@@ -470,9 +472,9 @@ function evSortPlayers(players) {
     .map(({ p }) => p);
 }
 
-/** 이벤트 시각 정렬 키(분*100+추가시간). */
-function evEditTimeKey(ev) {
-  return Number(ev?.elapsed ?? 0) * 100 + Number(ev?.extra ?? 0);
+/** 공통 시간 판정 — 패널에서 HT 뒤인 교체는 전반 카드/골의 선수 후보에도 미리 적용하지 않는다. */
+function evEditTimeKey(ev, context = evBuildTimeContext(window._eventsLastData)) {
+  return evResolveEventTime(ev, context).sortKey;
 }
 
 /**
@@ -492,18 +494,19 @@ function evAvailablePlayers(ev, side, role) {
   const indexOf = (id, names) => evEditRosterIndex(roster, id, names);
   const onPitch = new Set(starters.map((_, i) => i));
   const usedIn = new Set();
-  const targetKey = evEditTimeKey(ev);
+  const timeContext = evBuildTimeContext(window._eventsLastData);
+  const targetKey = evEditTimeKey(ev, timeContext);
   // 교체 선수 수정(override)을 반영한 이벤트 기준 - 앞선 교체를 고친 결과가 후보에 바로 반영되도록.
   const fixtureId = evHideCurrentFixtureId();
   const baseEvents = window._eventsLastData?.events || [];
   const events = (typeof evPatchSubstEvents === 'function' ? evPatchSubstEvents(baseEvents, fixtureId) : baseEvents)
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => e && e.side === side)
-    .sort((a, b) => evEditTimeKey(a.e) - evEditTimeKey(b.e) || a.i - b.i);
+    .sort((a, b) => evEditTimeKey(a.e, timeContext) - evEditTimeKey(b.e, timeContext) || a.i - b.i);
 
   for (const { e } of events) {
     if (ev?._hideSig && e._hideSig === ev._hideSig) break;
-    if (evEditTimeKey(e) > targetKey) break;
+    if (evEditTimeKey(e, timeContext) > targetKey) break;
     const type = String(e.type || '').toLowerCase();
     const detail = String(e.detail || '').toLowerCase();
     if (type === 'subst') {
@@ -837,18 +840,21 @@ function evSubstMinute(ev) {
  * 교체 override와 수정이 반영된 이벤트 패널 데이터 기준. 묶음이 없으면 [ev].
  */
 function evSubstCluster(ev) {
+  const timeContext = evBuildTimeContext(window._eventsLastData);
   const sameSubst = (window._eventsLastData?.events || [])
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => e && e.side === ev?.side && String(e.type || '').toLowerCase() === 'subst')
-    .sort((a, b) => evEditTimeKey(a.e) - evEditTimeKey(b.e) || a.i - b.i)
+    .sort((a, b) => evEditTimeKey(a.e, timeContext) - evEditTimeKey(b.e, timeContext) || a.i - b.i)
     .map(({ e }) => e);
   const idx = sameSubst.findIndex(e => (ev?._hideSig && e._hideSig === ev._hideSig)
     || (typeof evSubstEventKey === 'function' && evSubstEventKey(e) === evSubstEventKey(ev)));
   if (idx < 0) return [ev];
   let lo = idx;
   let hi = idx;
-  while (lo > 0 && evSubstMinute(sameSubst[lo]) - evSubstMinute(sameSubst[lo - 1]) <= 1) lo -= 1;
-  while (hi < sameSubst.length - 1 && evSubstMinute(sameSubst[hi + 1]) - evSubstMinute(sameSubst[hi]) <= 1) hi += 1;
+  const adjacent = (a, b) => evResolveEventTime(a, timeContext).period === evResolveEventTime(b, timeContext).period
+    && Math.abs(evSubstMinute(a) - evSubstMinute(b)) <= 1;
+  while (lo > 0 && adjacent(sameSubst[lo], sameSubst[lo - 1])) lo -= 1;
+  while (hi < sameSubst.length - 1 && adjacent(sameSubst[hi + 1], sameSubst[hi])) hi += 1;
   return sameSubst.slice(lo, hi + 1);
 }
 window.evSubstCluster = evSubstCluster;
@@ -1020,6 +1026,69 @@ function evOpenSubstClusterEditor(cluster, focusEv, focusField, fixtureData) {
 }
 window.evOpenSubstClusterEditor = evOpenSubstClusterEditor;
 
+/** 구간 수동값은 선수/득점 수정과 별도로 저장한다. 자동으로 복귀해도 다른 수정값은 유지한다.
+ * 원본 서명이 바뀌거나 이벤트가 사라지면 기존 숨김/수정과 같은 정리 규칙을 적용한다. */
+function evPeriodSave(fixtureId, ev, period) {
+  if (!fixtureId || !ev?._hideSig || (period && !evTimePeriodOptions(ev).includes(period))) return;
+  const entry = evHideGetEntry(fixtureId);
+  if (period) entry.periods[ev._hideSig] = period;
+  else delete entry.periods[ev._hideSig];
+  evHideSetEntry(fixtureId, entry);
+  if (evHideCurrentFixtureId() === fixtureId) evHideReapply();
+}
+
+/** 45/90/105/120분 경계 이벤트의 자동/이전 구간/휴식/다음 구간 선택. 저장 전에는 표시도 바꾸지 않는다. */
+function evPeriodOpen(ev) {
+  const options = evTimePeriodOptions(ev);
+  if (!ev?._hideSig || !options.length) return;
+  document.querySelector('.ev-period-modal-overlay')?.remove();
+  const fixtureId = evHideCurrentFixtureId();
+  const { modal, actions, close, mount } = evHideCreateModal('이벤트 구간 설정', 'ev-period-modal');
+  let selected = options.includes(ev._eventPeriod) ? ev._eventPeriod : '';
+  const body = document.createElement('div');
+  body.className = 'ev-period-body';
+  const help = document.createElement('div');
+  help.className = 'ev-hide-mgr-help';
+  help.textContent = `${evFormatTime(ev)} 이벤트를 어느 구간에 표시할지 선택합니다. 기록된 시간과 점수는 유지됩니다.`;
+  const status = document.createElement('div');
+  status.className = 'ev-period-status';
+  const group = document.createElement('div');
+  group.className = 'ev-edit-seg-rows';
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', '이벤트 구간');
+  const buttons = [];
+  const refresh = () => {
+    buttons.forEach(button => {
+      const active = button.dataset.period === selected;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    const preview = { ...ev, _eventPeriod: selected || undefined };
+    status.textContent = evEventTimeExplanation(evResolveEventTime(preview, evBuildTimeContext(window._eventsLastData)));
+  };
+  ['', ...options].forEach(period => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ev-edit-seg-btn';
+    button.dataset.period = period;
+    button.textContent = period ? EV_TIME_PERIOD_LABELS[period] : '자동 판정';
+    button.addEventListener('click', () => { selected = period; refresh(); });
+    buttons.push(button);
+    group.appendChild(button);
+  });
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'ev-subst-picker-cancel'; cancel.textContent = '취소';
+  cancel.addEventListener('click', close);
+  const save = document.createElement('button');
+  save.type = 'button'; save.className = 'ev-subst-picker-confirm'; save.textContent = '저장';
+  save.addEventListener('click', () => { evPeriodSave(fixtureId, ev, selected); close(); });
+  refresh();
+  body.append(help, group, status);
+  modal.appendChild(body);
+  actions.append(save, cancel);
+  mount();
+}
+
 // ── row 클릭 메뉴 ─────────────────────────────────────────────────────────────
 
 function evRowMenuClose() {
@@ -1042,6 +1111,7 @@ function evRowMenuOpen(ev, clientX, clientY) {
   };
   const isSubst = evIsSubstEvent(ev);
   const popout = typeof popoutModeEnabled === 'function' && popoutModeEnabled();
+  if (evTimePeriodOptions(ev).length) add('구간 설정', () => evPeriodOpen(ev));
   // 설정 "입력창/설정을 새 창으로 열기"(popoutModals)가 켜져 있으면 수정 팝업을 별도 창으로 연다(popout.js).
   add('정보 수정', () => {
     if (isSubst) {
