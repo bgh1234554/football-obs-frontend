@@ -169,7 +169,9 @@ function applyTheme(theme, logoUrl) {
     if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle') {
       jQuery('.fsm-board .scoreboard-timer').css({marginLeft: '305px'});
       jQuery('.fsm-board .total-score').css({display: 'flex'});
-      jQuery('.fsm-board .total-score').text((Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0) + ' - ' + (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0));
+      var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
+      var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
+      jQuery('.fsm-board .total-score').text(aggHome + ' - ' + aggAway);
     } else {
       jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
       jQuery('.fsm-board .total-score').css({display: 'none'});
