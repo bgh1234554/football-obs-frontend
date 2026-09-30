@@ -310,6 +310,21 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
     _lpAuto.scrollRaf = requestAnimationFrame(startAfterLayout);
   });
 }
+/** 표시 중인 이벤트만 센다. 숨김/필터링된 이벤트와 전후반 구분선은 제외한다.
+ * 10초 설정이면 15개부터 스크롤 이동 시간을 늘리고, 시작/끝 대기는 유지한다. */
+function _lpEventScrollOptions(baseIntervalMs) {
+  const list = _lpEventsScrollEl('events');
+  const count = list?.querySelectorAll('.ev-row[data-ev-key]').length || 0;
+  if (!Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
+  const threshold = (baseIntervalMs / 1000) * 1.5;
+  if (count < threshold) return {};
+  return {
+    startHoldMs: baseIntervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO,
+    scrollDurationMs: Math.round(baseIntervalMs * count / threshold),
+    endHoldMs: baseIntervalMs * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO),
+  };
+}
+
 /** 상대전적 경기 수가 많으면 실제 스크롤 이동 시간을 비례해서 늘린다(HTH 패널 전용). */
 const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
@@ -412,7 +427,9 @@ function _lpAutoStart() {
     // 기존 방식(intervalMs의 10%)대로 동작.
     const fixedHoldBottomMs = _lpAuto.pendingNewEventHoldMs;
     _lpAuto.pendingNewEventHoldMs = null;
-    _lpStartEventsScroll(intervalMs, mode, 0, fixedHoldBottomMs != null ? { fixedHoldBottomMs } : {});
+    const options = _lpEventScrollOptions(intervalMs);
+    if (fixedHoldBottomMs != null) options.fixedHoldBottomMs = fixedHoldBottomMs;
+    _lpStartEventsScroll(intervalMs, mode, 0, options);
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
   } else {

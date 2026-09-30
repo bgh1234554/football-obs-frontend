@@ -227,7 +227,11 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare, maxFont
           bottom: wrapRect.top + size.height,
         };
         const outsidePitch = hasLineupNamePitchOverflowForRect(candidate, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
-        const overlaps = lineupNameCandidateRectCollides(candidate, nameEl, targets);
+        // 번호/이니셜의 짧은 줄 옆 빈 공간을 성의 전체 폭으로 검사하면,
+        // 옆 선수 교체 배지 때문에 안전한 3줄 후보까지 최소 폰트로 축소된다.
+        const textRects = clone.classList.contains('has-number-line-break')
+          ? getLineupCandidateTextRects(clone, candidate, size) : null;
+        const overlaps = lineupNameCandidateRectCollides(candidate, nameEl, targets, textRects);
         if (!outsidePitch && !overlaps) return font;
       }
       const next = Math.max(LINEUP_NAME_MIN_FONT_PX, font - TEXT_FIT_FONT_STEP_PX);
@@ -1439,18 +1443,40 @@ function resolveLineupCaptainBadgePlacement(nameEl, labels) {
   applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
 }
 
-/**
- * 아직 적용하지 않은 라벨 후보 rect(자연 1줄, 성 경계 3줄, 등번호 줄 분리 4줄, 주장 배지 배치 등)가
- * 충돌 대상과 겹치는지. 다른 선수의 원만 마지막 단계(fitLineupNamesAgainstNodeCircles)와 같은
- * "실제 원 모양 + 반지름 절반" 기준으로 보고, 라벨/배지/팀칩은 사각형 판정 그대로 쓴다.
- * 후보 비교가 원을 사각형으로 보면 가장자리만 스쳐도 더 나은 후보(1줄, 큰 폰트 4줄 등)가 거절되고,
- * 대신 남은 배치가 원을 더 덮어 결국 폰트까지 줄어드는 역전이 생긴다.
- */
-function lineupNameCandidateRectCollides(rect, nameEl, targets) {
+/** 화면 밖에서 측정한 텍스트 조각을 후보 위치로 옮긴다. 줄 사이 빈 공간은 포함하지 않는다. */
+function getLineupCandidateTextRects(clone, candidate, size) {
+  const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+  const rects = [];
+  const range = document.createRange();
+  while (walker.nextNode()) {
+    if (!walker.currentNode.textContent.replace(/[\s\u2060]/g, '')) continue;
+    range.selectNodeContents(walker.currentNode);
+    for (const raw of range.getClientRects()) {
+      const r = toDisplayLayoutRect(raw);
+      if (r.width <= 0 || r.height <= 0) continue;
+      rects.push({
+        left: r.left - size.left + candidate.left - 2,
+        right: r.right - size.left + candidate.left + 2,
+        top: r.top - size.top + candidate.top - 1,
+        bottom: r.bottom - size.top + candidate.top + 1,
+      });
+    }
+  }
+  range.detach?.();
+  return rects;
+}
+
+/** 원은 반지름 절반 침범, 라벨/팀칩은 전체 박스로 검사한다.
+ * 등번호 분리 후보와 선수 배지 사이만 각 줄의 글자 영역으로 검사한다. */
+function lineupNameCandidateRectCollides(rect, nameEl, targets, textRects = null) {
   const circles = new Set(getSiblingNodeCirclesForLabel(nameEl));
   return targets.some(target => {
     if (!canMeasureTextElement(target)) return false;
     if (circles.has(target)) return nameRectOverlapsNodeCircleSignificantly(rect, target);
+    if (textRects?.length && target.matches('.dp-node-badge')) {
+      const badgeRect = getDisplayLayoutRect(target);
+      return textRects.some(textRect => rectsOverlap(textRect, badgeRect));
+    }
     return rectsOverlap(rect, getDisplayLayoutRect(target));
   });
 }

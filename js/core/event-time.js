@@ -116,7 +116,7 @@ const EV_PERIOD_MARKER_SORT_PADDING = 50;
 const EV_PENALTY_SHOOTOUT_SORT_ELAPSED = 121; // 승부차기는 연장 후반 종료(120') 마커 이후에 배치
 // 하프타임 마커 표시 허용 status — "NS/1H가 아니면 전부"식 부정 조건은 PST/CANC/SUSP/INT/ABD/AWD/WO
 // 같은 비정상 status에도 걸려 하프타임 마커가 잘못 붙었음. 진행된 상태만 명시적으로 허용한다.
-const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'PSO', 'FT']);
+const EV_HALFTIME_REACHED_STATUSES = new Set(['HT', '2H', 'ET1', 'ET2', 'BT', 'PSO', 'FT']);
 // 구간 경계 elapsed — 하프타임/후반종료/연장전반종료/연장후반종료 마커 위치와 같다.
 // 휴식 시간의 교체/카드가 elapsed:45, extra:null처럼 내려오는 경우를 처리하기 위한 목록이다.
 // 단, 똑같은 시간값으로 전반 45분에 실제로 발생한 이벤트도 들어올 수 있으므로,
@@ -471,12 +471,28 @@ function evTimelinePositionLabel(position) {
  * 105를 넘었는지/승부차기 스코어가 있는지로 사후 추정한다 — 생방송 중에는 ET1/ET2/PSO 상태를
  * 직접 거치므로 이 추정이 필요 없다.
  */
+/** BT 응답의 elapsed가 0/null이어도 휴식 구간을 판별한다.
+ * 이벤트의 본 시간만 사용한다: 90+15는 연장 105분의 근거가 아니다.
+ * 연장 진행 근거가 없으면 정규 후반 종료(90분) 휴식으로 본다.
+ */
+function evBreakElapsed(matchInfo, events = []) {
+  if (String(matchInfo?.status || '').toUpperCase() !== 'BT') return null;
+  let elapsed = Number(matchInfo?.elapsed) || 0;
+  for (const ev of Array.isArray(events) ? events : []) {
+    if (!ev || evTimeIsShootout(ev)) continue;
+    const minute = Number(ev.elapsed);
+    if (Number.isFinite(minute)) elapsed = Math.max(elapsed, minute);
+  }
+  return elapsed > 105 ? 120 : elapsed > 90 ? 105 : 90;
+}
+
 function evComputePeriodFlags(matchInfo, events = []) {
   const hasShootoutEvents = Array.isArray(events) && events.some(evTimeIsShootout);
   const info = matchInfo || {}; // hasShootoutEvents만으로 통과한 경우 matchInfo가 없을 수 있음
 
   const status = String(info.status || '').toUpperCase();
   const elapsed = Number(info.elapsed ?? 0);
+  const breakElapsed = evBreakElapsed(info, events);
   const isPenaltyStatus = status === 'PSO' || status === 'P' || status === 'PEN';
   const hadPenalties = info.homePenaltyScore != null
     || info.awayPenaltyScore != null
@@ -485,11 +501,11 @@ function evComputePeriodFlags(matchInfo, events = []) {
 
   const isLiveExtraTime = status === 'ET1' || status === 'ET2' || isPenaltyStatus;
   const ftLooksLikeExtraTime = status === 'FT' && (elapsed > 105 || hadPenalties);
-  const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime || hasShootoutEvents;
-  const reachedEt2 = status === 'ET2' || isPenaltyStatus || ftLooksLikeExtraTime || hasShootoutEvents;
+  const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime || hasShootoutEvents || breakElapsed !== null;
+  const reachedEt2 = status === 'ET2' || isPenaltyStatus || ftLooksLikeExtraTime || hasShootoutEvents || breakElapsed >= 105;
   const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status) || hasShootoutEvents;
 
-  return { status, elapsed, isPenaltyStatus, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, hasShootoutEvents };
+  return { status, elapsed, breakElapsed, isPenaltyStatus, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, hasShootoutEvents };
 }
 
 /**
@@ -503,12 +519,12 @@ function evComputePeriodFlags(matchInfo, events = []) {
  * 없으므로, 90분 교체를 풀타임 이후로 밀면 안 된다(위 AS로마 vs 인테르 회귀 사례).
  */
 function evActiveBoundaryElapsedSet(matchInfo, events = []) {
-  const { reachedHalftime, extraTimePlayed, reachedEt2, hadPenalties } = evComputePeriodFlags(matchInfo, events);
+  const { reachedHalftime, extraTimePlayed, reachedEt2, hadPenalties, breakElapsed } = evComputePeriodFlags(matchInfo, events);
   const active = new Set();
   if (reachedHalftime) active.add(45);
   if (extraTimePlayed) active.add(90);
   if (reachedEt2) active.add(105);
-  if (hadPenalties) active.add(120);
+  if (hadPenalties || breakElapsed === 120) active.add(120);
   return active;
 }
 
@@ -521,7 +537,7 @@ function evBuildPeriodMarkers(matchInfo, events = []) {
   const hasShootoutEvents = Array.isArray(events) && events.some(evTimeIsShootout);
   if (!matchInfo && !hasShootoutEvents) return [];
 
-  const { status, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, isPenaltyStatus } =
+  const { status, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, isPenaltyStatus, breakElapsed } =
     evComputePeriodFlags(matchInfo, events);
 
   const markers = [];
@@ -537,7 +553,7 @@ function evBuildPeriodMarkers(matchInfo, events = []) {
   if (extraTimePlayed) {
     addMarker('후반종료', 90);
     if (reachedEt2) addMarker('연장 전반 종료', 105);
-    if (isPenaltyStatus || hadPenalties) addMarker('연장 후반 종료', 120);
+    if (isPenaltyStatus || hadPenalties || breakElapsed === 120) addMarker('연장 후반 종료', 120);
     else if (status === 'FT') addMarker('풀타임', 120);
   } else if (status === 'FT') {
     addMarker('풀타임', 90);

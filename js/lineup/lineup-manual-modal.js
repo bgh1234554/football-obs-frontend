@@ -195,46 +195,11 @@ function initGridState(side) {
   lineupPanelState.gridState = { side, formation, slotPlayerIds, players: playersById };
 }
 
-/**
- * 그리드 모드에서 포메이션 select를 바꿀 때 호출 — initGridState의 2)/3) 단계(API grid 매칭 +
- * 빈 슬롯 순서대로 채우기)를 그대로 재사용해, 매번 lineupPanelState.lastFixture의 원본 API
- * startXi 기준으로 새로 계산한다. 직전 슬롯 순서(드래그로 바뀌었을 수 있음)는 베이스로 쓰지 않는다.
- * initGridState와 마찬가지로 반드시 원본 API 식별자(playerId) 기준으로 계산해야 한다 —
- * buildLineupDisplayOverlay 설명 참고(교체 선수 ID로 계산하면 저장된 override가 원본
- * 선수와 매칭되지 않아 무시된다). 화면에 보여줄 이름/사진은 initGridState가 이미 채워둔
- * lineupPanelState.gridState.players(overlay 적용됨)를 그대로 재사용하므로 여기선 필요 없다.
- *
- * 예전엔 포메이션을 바꿔도 슬롯 라벨만 갱신하고 선수 순서는 그대로 유지했는데, 그 결과
- * 포메이션을 여러 번 바꿨다가 원래 포메이션으로 되돌려도 (예: 4-2-3-1 → 4-4-2 → 4-2-3-1)
- * 원래 라이트백이었던 선수가 수비형 미드필더 슬롯에 남아있는 등 위치가 꼬인 채 복구되지 않았다.
- * initGridState는 건드리지 않는다 — 모달 최초 오픈 / "초기화" 버튼(deleteManualKind) 흐름은
- * 그대로 유지하고, 이 함수는 select change 핸들러에서만 쓴다.
- */
+/** API 원본 대신 드래그로 수정한 현재 슬롯을 새 포메이션의 대응 역할로 옮긴다. */
 function recomputeGridSlotsForFormation(side, formation) {
-  const apiStartXi = getGridSourceLineup(side)?.startXi || [];
-  const players = clonePlayers(apiStartXi);
-  const gridValues = buildManualGridValues(formation);
-  const slotsCount = gridValues.length || 11;
-  const slotPlayerIds = new Array(slotsCount).fill(null);
-
-  // 1) API 응답의 원본 grid 값과 일치하는 자리에 우선 배치
-  players.forEach((p, i) => {
-    if (!p.grid) return;
-    const idx = gridValues.indexOf(p.grid);
-    const pidStr = buildLineupRosterKey(p, i);
-    if (idx >= 0 && !slotPlayerIds[idx]) slotPlayerIds[idx] = pidStr;
-  });
-
-  // 2) 매핑 안 된 선수는 빈 슬롯에 API 순서대로 삽입
-  let cursor = 0;
-  players.forEach((p, i) => {
-    const pidStr = buildLineupRosterKey(p, i);
-    if (slotPlayerIds.includes(pidStr)) return;
-    while (cursor < slotsCount && slotPlayerIds[cursor]) cursor += 1;
-    if (cursor < slotsCount) slotPlayerIds[cursor] = pidStr;
-  });
-
-  return slotPlayerIds;
+  const state = lineupPanelState.gridState;
+  if (!state || state.side !== side) return [];
+  return remapLineupFormationSlots(state.formation, formation, state.slotPlayerIds);
 }
 
 /**
@@ -320,8 +285,8 @@ function buildLineupGridFormHtml() {
   const { formation, slotPlayerIds } = lineupPanelState.gridState;
   const rows = slotPlayerIds.map((pid, idx) => buildGridRowHtml(pid, idx)).join('');
   const help = lineupPanelState.gridState.fullFormRows
-    ? '핸들(⠿)을 드래그해서 선수 위치를 서로 바꾸세요. 번호와 득점·카드 정보도 함께 이동합니다. 포메이션 이동 버튼을 다시 누르면 입력 폼으로 돌아갑니다. 저장하면 라인업과 전술판에 함께 반영됩니다.'
-    : '포메이션이 없으면 라인업이 리스트로만 표시되며, 불러온 포메이션 데이터가 잘못된 경우에도 여기서 수정할 수 있습니다. 포메이션을 선택하면 슬롯이 표시되고 선수가 자동 배치됩니다. 핸들(⠿)을 드래그해서 슬롯 위치를 서로 바꾸세요. 저장하면 라인업과 전술판에 같이 반영됩니다.';
+    ? '포메이션을 바꾸면 현재 위치와 역할을 최대한 유지해 배치합니다. 핸들(⠿)로 선수를 옮기면 번호와 득점·카드 정보도 함께 이동합니다. 포메이션 이동 버튼을 다시 누르면 입력 폼으로 돌아갑니다.'
+    : '포메이션을 바꾸면 현재 위치와 역할을 최대한 유지해 배치합니다. 핸들(⠿)을 드래그해서 선수 위치를 서로 바꿀 수 있습니다. 저장하면 라인업과 전술판에 같이 반영됩니다.';
   return `<div class="dp-manual-help">${help}</div>
     <div class="dp-form-stack">
       <label class="dp-field">
@@ -486,7 +451,7 @@ function buildLineupManualFormHtml(lineup) {
         <div class="dp-manual-row has-stats dp-manual-header-row">
           <label class="dp-manual-formation-field">
             <span class="dp-field-label">포메이션</span>
-            <select class="dp-select dp-select-compact" name="manual-formation" id="manualLineupFormation">
+            <select class="dp-select dp-select-compact" name="manual-formation" id="manualLineupFormation" data-formation="${dpEscape(formation)}">
               ${buildFormationOptionsHtml(formation)}
             </select>
           </label>
@@ -659,8 +624,27 @@ function isManualPanelOpen() {
   return !!(backdrop && backdrop.classList.contains('open'));
 }
 
-/** 풀폼 모달의 포메이션 select 변경 시, 11개 슬롯 라벨(GK/CB/...)을 새 포메이션 기준으로 갱신. */
+/** 풀폼 입력 전체를 대응 슬롯으로 이동한다. 빈 이름 행과 주장/카드 체크도 보존한다. */
+function remapManualLineupForm(fromFormation, toFormation) {
+  const form = document.getElementById('manualLineupFullForm');
+  if (!form) return;
+  // 모든 입력을 먼저 복사해야 앞 행을 갱신하면서 뒤 행의 원본 값을 잃지 않는다.
+  const rows = Array.from({ length: 11 }, (_, index) =>
+    [...form.querySelectorAll(`input[name$="-${index}"]`)].map(input => ({
+      prefix: input.name.replace(/\d+$/, ''), value: input.value, checked: input.checked,
+    })));
+  remapLineupFormationSlots(fromFormation, toFormation, rows).forEach((fields, index) => {
+    fields?.forEach(field => {
+      const input = form.querySelector(`[name="${field.prefix}${index}"]`);
+      if (input) { input.value = field.value; input.checked = field.checked; }
+    });
+  });
+}
+
+/** 슬롯 라벨과 다음 변경의 기준 포메이션을 함께 갱신한다. */
 function syncManualLineupSlotLabels(formation) {
+  const select = document.getElementById('manualLineupFormation');
+  if (select) select.dataset.formation = formation;
   const labels = getFormationSlotLabels(formation);
   document.querySelectorAll('#manualPanelContent .dp-slot-label[data-slot-index]').forEach(el => {
     const index = Number(el.dataset.slotIndex);
@@ -1112,16 +1096,13 @@ document.addEventListener('change', event => {
     return;
   }
   if (event.target?.id === 'manualLineupFormation') {
+    remapManualLineupForm(event.target.dataset.formation, event.target.value);
     syncManualLineupSlotLabels(event.target.value);
   }
   if (event.target?.id === 'manualGridFormation' && lineupPanelState.gridState) {
-    // 그리드 모드 포메이션 변경: 라벨뿐 아니라 선수 배치도 원본 API grid 기준으로 다시 계산
-    // (포메이션을 여러 번 바꿔도 원래 포메이션으로 돌아오면 원래 배치가 그대로 복구됨)
-    const { side } = lineupPanelState.gridState;
-    lineupPanelState.gridState.formation = event.target.value;
-    if (!lineupPanelState.gridState.fullFormRows) {
-      lineupPanelState.gridState.slotPlayerIds = recomputeGridSlotsForFormation(side, event.target.value);
-    }
+    const state = lineupPanelState.gridState;
+    state.slotPlayerIds = recomputeGridSlotsForFormation(state.side, event.target.value);
+    state.formation = event.target.value;
     rerenderGridList();
   }
 });
