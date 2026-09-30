@@ -790,6 +790,9 @@ function applyZeroIdOverrides(next, fixtureId) {
   pirApplyManualNameHintsForFuzzy(next, relevant);
 
   const autoLinkOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
+  if (autoLinkOn && typeof lpReconcileConflictingEventIds === 'function') {
+    lpReconcileConflictingEventIds(next, relevant);
+  }
   const nameHints = {};
   const canonicalKoHints = {}; // {side:altId} → { name, nameKoLong } — canonical 로스터 한글을 이벤트에 역전파
   const altToCanonical = autoLinkOn ? pirAutoLinkAltToCanonical(next, nameHints, canonicalKoHints) : {};

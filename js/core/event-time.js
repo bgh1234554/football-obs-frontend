@@ -6,12 +6,12 @@
  * 1. 기본 원칙과 해결하려는 문제
  *    API의 elapsed:45, extra:null만으로는 전반 45분과 하프타임 교체를 구별할 수 없다.
  *    HT 이후에 처음 받았다는 사실도 실제 발생 시각을 증명하지 않는다. 지연 수신이나
- *    경기 중간의 첫 조회일 수 있으므로, 근거가 없으면 이전 구간(45분이면 전반)에 둔다.
- *    근거가 충분한 교체만 휴식 구간으로 재추정한다. 자동으로 후반 46분 사건으로 바꾸지는 않는다.
+ *    경기 중간의 첫 조회일 수 있다. 다만 45분 교체는 사용자 요청에 따라 HT 이후에는
+ *    후반 시작을 기본값으로 사용한다. 명시적 추가시간/전반 관측/수동 지정은 우선한다.
  *
  *    기본 판정 예:
  *      45/null 골·PK골·자책골·PK실패·카드 → 전반
- *      45/null 교체                       → 전반을 기본값으로 두고 아래 근거 확인
+ *      45/null 교체                       → HT 이후에는 후반 시작(표시 시간은 45분 유지)
  *      45/4 등 명시적 추가시간             → 전반 추가시간
  *      46/null                            → 후반
  *      comments:"Penalty Shootout"         → 승부차기(일반 경기 중 PK와 구별)
@@ -32,6 +32,7 @@
  *      현재 경기 상태가 해당 구간 진행 중 → observed-before로 기록.
  *      이미 경계를 지났고 교체의 양쪽 이웃 근거가 있음 → 휴식 중인지 재추정.
  *      나머지 → default-before(근거 부족에 따른 이전 구간 기본값).
+ *    최종 판정에서는 45분 교체의 default-before/neighbors-after를 후반 시작으로 처리한다.
  *    예: 1H 때 이미 본 45분 교체는 나중에 HT/2H 응답을 받아도 전반으로 유지한다.
  *    같은 사건이 45+2였다가 45/null로 바뀌어도 과거 추가시간 기록을 근거로 유지한다.
  *
@@ -46,7 +47,7 @@
  *      44분 이벤트 → 45/null 교체 → 45+4 이벤트
  *        → 전반 교체라는 보조 근거.
  *      45+4 → 교체 → 80분 / 한쪽 이웃 없음 / 뒤섞인 배열
- *        → 근거 부족으로 전반 기본값 유지.
+ *        → 이웃 추정은 보류. 45분 교체는 HT 이후 후반 시작 기본값을 사용한다.
  *
  *    휴식 중으로 추정하려면 이전 이벤트가 해당 경계분의 추가시간이어야 하고,
  *    다음 이벤트는 경계 다음 분부터 5분 이내여야 한다(45분 경계라면 46~50분).
@@ -56,7 +57,7 @@
  *    배열 순서가 실제 발생 순서를 완전히 보장하지는 않으므로 이 결과는 어디까지나 추정이다.
  *
  * 4. 경계별 기본 구간과 자동 보정 허용 조건(evActiveBoundaryElapsedSet)
- *      45분  : 전반      → HT 이후로 진행했을 때 하프타임 교체 추정 허용.
+ *      45분  : 전반      → HT 이후 추가시간 없는 교체는 후반 시작이 기본값.
  *      90분  : 후반      → 연장으로 이어졌을 때 연장 시작 전 휴식 교체 추정 허용.
  *      105분 : 연장 전반 → 연장 후반으로 이어졌을 때 연장 하프타임 교체 추정 허용.
  *      120분 : 연장 후반 → 승부차기로 이어졌을 때 승부차기 전 교체 추정 허용.
@@ -326,10 +327,10 @@ function evObserveBoundaryEvents(fixtureData) {
  *   { elapsed:45, extra:null, type:"subst", playerOrigName:"Aaron Wan-Bissaka" } → 4551
  *   { elapsed:45, extra:null, type:"subst", playerOrigName:"Mateus Fernandes" }  → 4551
  * 여기서 두 교체는 원본 배열에서 45+7 다음, 46분 이벤트 앞에 있으며 1H 관측 기록은 없다고 가정한다.
- * 아직 46분 이벤트가 없어 한쪽 이웃만 있으면 두 교체는 일단 4500이고, 다음 응답에서 다시 추정한다.
+ * 45분 교체는 HT 이후 후반 시작 기본값(4600)을 쓰므로 46분 이웃이 없어도 하프타임 뒤다.
  * 하프타임 마커는 4550. 화면 위→아래(최신→과거)는 교체 2건 → 하프타임 → 판헤커 카드 → 만잠비 골.
  * 동점 키는 원래 입력 순서를 유지한다. 만약 같은 교체를 1H에서 이미 관측했다면 observed-before가 남아
- * 4500을 유지한다. extra:null 자체만으로 휴식 중 교체라고 확정하지 않는 것이 새 보호 로직이다.
+ * 4500을 유지한다. 후반 시작 기본값도 직접 관측한 전반 기록보다 우선하지 않는다.
  * 이 사례의 90+2분 카드/90+8분 골처럼 extra가 명시된 이벤트는 원래 추가시간 그대로 정렬된다.
  *
  * ── 회귀 사례 3: fixture 1583654, 하피냐 전반 45분 PK골 ──────────────────
@@ -339,6 +340,14 @@ function evObserveBoundaryEvents(fixtureData) {
  * 하프타임(4550)보다 아래다. comments:"Penalty Shootout"인 승부차기는 예외로 elapsed=121을
  * 사용해 연장 후반 종료(120분) 이후에 배치한다.
  */
+/** 후반에 도달한 경기의 45분 교체는 추가시간/전반 관측 근거가 없으면 후반 시작으로 본다. */
+function evIsDefaultSecondHalfSubstitution(ev, activeBoundaryElapsedSet, observations) {
+  if (Number(ev?.elapsed) !== 45 || Number(ev?.extra || 0) !== 0
+    || !evTimeTypeIs(ev, 'subst') || ev._evEdited || !activeBoundaryElapsedSet?.has(45)) return false;
+  const reason = observations?.[evBoundaryEventKey(ev)]?.reason;
+  return !['observed-before', 'added-time', 'neighbors-before'].includes(reason);
+}
+
 function evSortKey(ev, activeBoundaryElapsedSet, observations) {
   const elapsed = evTimeIsShootout(ev)
     ? EV_PENALTY_SHOOTOUT_SORT_ELAPSED
@@ -359,6 +368,7 @@ function evSortKey(ev, activeBoundaryElapsedSet, observations) {
   if (ev?._eventPeriod === boundary.before) return elapsed * 100 + (Number.isFinite(rawExtra) ? rawExtra : 0);
   if (ev?._eventPeriod === boundary.interval) return elapsed * 100 + EV_PERIOD_MARKER_SORT_PADDING + 1;
   if (ev?._eventPeriod === boundary.after) return (elapsed + 1) * 100 + (Number.isFinite(rawExtra) ? rawExtra : 0);
+  if (evIsDefaultSecondHalfSubstitution(ev, activeBoundaryElapsedSet, observations)) return 4600;
   return normalKey;
 }
 
@@ -398,6 +408,10 @@ function evResolveEventTime(ev, context = {}) {
   let reason = 'event-time';
   if (evTimeIsShootout(ev)) { period = 'PSO'; reason = 'shootout'; }
   else if (manual) { period = manual; reason = 'manual'; }
+  else if (evIsDefaultSecondHalfSubstitution(ev, context.active, context.observations)) {
+    period = '2H';
+    reason = 'halftime-substitution';
+  }
   else if (boundary) {
     if (sortKey === elapsed * 100 + EV_PERIOD_MARKER_SORT_PADDING + 1 && evTimeTypeIs(ev, 'subst')) {
       period = boundary.interval;
@@ -415,6 +429,7 @@ function evResolveEventTime(ev, context = {}) {
 function evEventTimeExplanation(result) {
   const reasons = {
     manual: '직접 지정한 구간입니다. 자동 추정보다 우선합니다.',
+    'halftime-substitution': '추가시간 없는 45분 교체는 기본적으로 후반 시작 교체로 판정합니다.',
     'observed-before': '이 구간이 끝나기 전에 확인된 이벤트입니다.',
     'added-time': '해당 구간의 추가시간으로 기록된 이벤트입니다.',
     goal: '경계분의 골은 해당 구간에 유지합니다.',

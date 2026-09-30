@@ -291,10 +291,14 @@ function evPatchSubstEvents(events, fixtureId) {
     if (evOverride.player) {
       patched.playerId = evOverride.player.playerId;
       patched.playerName = evOverride.player.name;
+      patched.playerNameKoLong = null;
+      patched.playerOrigName = null;
     }
     if (evOverride.assist) {
       patched.assistId = evOverride.assist.playerId;
       patched.assistName = evOverride.assist.name;
+      patched.assistNameKoLong = null;
+      patched.assistOrigName = null;
     }
     return patched;
   });

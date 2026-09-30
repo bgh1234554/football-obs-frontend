@@ -51,6 +51,8 @@ function lpCollectPlayerNames(player) {
     player.nameKoLong,
     player.playerName,
     player.playerNameKoLong,
+    player.origName,
+    player.playerOrigName,
   ]
     .map(lpNormalizePlayerName)
     .filter(Boolean);
@@ -58,8 +60,8 @@ function lpCollectPlayerNames(player) {
 
 /**
  * 라인업/벤치 배열에서 matcher와 매칭되는 선수의 인덱스를 찾는다.
- * 1) playerId가 있으면 그것을 1순위로 시도(가장 안정적).
- * 2) 못 찾으면 정규화 이름으로 fallback — 이벤트의 playerName과 라인업 데이터의 이름 키들 교집합 검색.
+ * ID를 우선하되, 이름이 명확하게 다른 한 선수를 가리키면 해당 선수를 사용한다.
+ * API가 서로 다른 선수에게 같은 이벤트 ID를 주는 경우에도 이름이 모호하면 추측하지 않는다.
  * 3) 둘 다 실패 시 -1 반환 (호출자가 swap 스킵 + 경고 로그).
  */
 function lpFindLineupPlayerIndex(players, matcher) {
@@ -68,24 +70,63 @@ function lpFindLineupPlayerIndex(players, matcher) {
   // 1) playerId 우선 매칭 — 실제 ID(0 초과)일 때만. 0은 "ID 없음"이라 ID로 찾으면 명단에서 ID가 0인
   //    첫 선수가 엉뚱하게 잡힌다(예: 교체 IN을 ID 0 선수로 고르면 다른 ID 0 벤치 선수가 대신 투입됨).
   const targetId = Number(matcher.playerId) > 0 ? String(Number(matcher.playerId)) : null;
-  if (targetId) {
-    const byId = players.findIndex(player => String(player?.playerId) === targetId);
-    if (byId !== -1) return byId;
-  }
+  const byId = targetId ? players.findIndex(player => String(player?.playerId) === targetId) : -1;
 
   // 2) 이름 fallback — 이벤트 측 이름 후보 정규화.
   const targetNames = [
     matcher.playerName,
     matcher.playerNameKoLong,
+    matcher.playerOrigName,
   ]
     .map(lpNormalizePlayerName)
     .filter(Boolean);
-  if (!targetNames.length) return -1;
+  if (!targetNames.length) return byId;
 
-  // 3) 라인업 측 이름 후보군과 교집합 있는 첫 인덱스.
-  return players.findIndex(player => {
+  // 이름만 일치하는 첫 항목을 고르면 동명이인이 잘못 교체될 수 있으므로 유일성을 확인한다.
+  const matches = [];
+  players.forEach((player, index) => {
     const candidateNames = lpCollectPlayerNames(player);
-    return candidateNames.some(name => targetNames.includes(name));
+    if (candidateNames.some(name => targetNames.includes(name))) matches.push(index);
+  });
+  if (matches.includes(byId)) return byId;
+  if (matches.length === 1) return matches[0];
+  return matches.length ? -1 : byId;
+}
+
+/** 이미 명단에 있는 ID가 다른 선수의 이름으로 사용된 이벤트만 개별 보정한다.
+ * ID 전체를 리매핑하면 정상 이벤트까지 다른 선수에게 넘어가므로 이벤트 단위로 처리한다.
+ * ID 없는 선수는 0 + 명단 표시명을 유지해 카드/교체 집계의 이름 키도 일치시킨다.
+ */
+function lpReconcileConflictingEventIds(data, manualLinks = {}) {
+  if (!Array.isArray(data?.events)) return;
+  data.events = data.events.map(ev => {
+    if (!ev) return ev;
+    const lineup = data[`${ev.side}Lineup`];
+    const roster = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    let next = ev;
+    ['player', 'assist'].forEach(field => {
+      const id = Number(ev[`${field}Id`]);
+      if (!(id > 0) || !roster.some(p => Number(p?.playerId) === id)) return;
+      // 사용자가 직접 연결한 ID는 자동 보정보다 우선한다.
+      if (Object.entries(manualLinks).some(([key, value]) => key.startsWith(`${ev.side}:`)
+        && (key === `${ev.side}:id:${id}` || Number(value?.playerId) === id))) return;
+      const index = lpFindLineupPlayerIndex(roster, {
+        playerId: id,
+        playerName: ev[`${field}Name`],
+        playerNameKoLong: ev[`${field}NameKoLong`],
+        playerOrigName: ev[`${field}OrigName`],
+      });
+      const player = roster[index];
+      if (!player || Number(player.playerId) === id) return;
+      next = {
+        ...next,
+        [`${field}Id`]: Number(player.playerId) || 0,
+        [`${field}Name`]: player.name || player.playerName || '',
+        [`${field}NameKoLong`]: player.nameKoLong || null,
+        [`${field}OrigName`]: player.origName || null,
+      };
+    });
+    return next;
   });
 }
 
@@ -259,23 +300,27 @@ function lpResolveSubstEventIdsForAggregation(fixtureData) {
         playerId: ev.playerId,
         playerName: ev.playerName,
         playerNameKoLong: ev.playerNameKoLong,
+        playerOrigName: ev.playerOrigName,
       });
       const inIdx = lpFindLineupPlayerIndex(substitutes, {
         playerId: ev.assistId,
         playerName: ev.assistName,
         playerNameKoLong: ev.assistNameKoLong,
+        playerOrigName: ev.assistOrigName,
       });
       if (outIdx === -1 || inIdx === -1) return;
 
       const outPlayer = startXi[outIdx];
       const inPlayer = substitutes[inIdx];
-      const resolvedOutId = Number(outPlayer?.playerId) > 0 ? outPlayer.playerId : ev.playerId;
-      const resolvedInId = Number(inPlayer?.playerId) > 0 ? inPlayer.playerId : ev.assistId;
+      const resolvedOutId = Number(outPlayer?.playerId) || 0;
+      const resolvedInId = Number(inPlayer?.playerId) || 0;
       if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId) {
         resolved[index] = {
           ...ev,
           playerId: resolvedOutId,
           assistId: resolvedInId,
+          ...(resolvedOutId === 0 ? { playerName: outPlayer.name || outPlayer.playerName } : {}),
+          ...(resolvedInId === 0 ? { assistName: inPlayer.name || inPlayer.playerName } : {}),
         };
       }
 
@@ -393,11 +438,13 @@ function lpApplySubReflectToLineup(lineup, side, events) {
       playerId: ev.playerId,
       playerName: ev.playerName,
       playerNameKoLong: ev.playerNameKoLong,
+      playerOrigName: ev.playerOrigName,
     });
     const inIdx = lpFindLineupPlayerIndex(substitutes, {
       playerId: ev.assistId,
       playerName: ev.assistName,
       playerNameKoLong: ev.assistNameKoLong,
+      playerOrigName: ev.assistOrigName,
     });
     if (outIdx === -1 || inIdx === -1) {
       console.warn('Sub reflect skipped due to unmatched lineup player', {
