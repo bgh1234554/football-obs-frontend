@@ -19,7 +19,7 @@
     src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
 }
 
-.fsm-board { margin:0; padding:0; overflow:hidden; }
+.fsm-board { margin:0; padding:0; }
 
 .fsm-board .scoreboard-main {
     width: 984px;
@@ -275,4 +275,19 @@
 
 .fsm-board .div-rc.hidden {
     display: none; 
+}
+
+.fsm-board .total-score {
+    width: 120px;
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 32px;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: whitesmoke;
+    border: 1px solid #372150;
+    color: #372150;
+    left: 845px;
 }

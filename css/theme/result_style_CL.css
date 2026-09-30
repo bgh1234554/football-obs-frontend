@@ -167,6 +167,7 @@
     align-items: center;
     transition: 0.9s ease-in-out;
     margin-top: -10px;
+    margin-left: 0px;
 }
 
 .fsm-board .time {
@@ -292,4 +293,17 @@
 
 .fsm-board .div-rc.hidden {
     display: none; 
+}
+
+.fsm-board .total-score {
+    width: 120px;
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: whitesmoke;
+    border: 1px solid #00008B;
+    color: #00008B;
 }

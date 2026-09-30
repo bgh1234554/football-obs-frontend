@@ -294,3 +294,16 @@
 .fsm-board .div-rc.hidden {
     display: none; 
 }
+
+.fsm-board .total-score {
+    width: 120px;
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: whitesmoke;
+    border: 1px solid gray;
+    color: black;
+}

@@ -129,8 +129,8 @@ function applyTheme(theme, logoUrl) {
     jQuery('.fsm-board #team-text-right').text(state.awayName);
     jQuery('.fsm-board #score-right').text(state.awayScore);
 
-    jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
-    jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
+    // jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
+    // jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
 
     fitTeamName(document.querySelector('.fsm-board #homeName'));
     fitTeamName(document.querySelector('.fsm-board #awayName'));
@@ -164,6 +164,15 @@ function applyTheme(theme, logoUrl) {
     } else {
        jQuery('.pso-main').css({height: '0px'});
        jQuery('.pso-status').css({display: 'none'});
+    }
+
+    if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle') {
+      jQuery('.fsm-board .scoreboard-timer').css({marginLeft: '305px'});
+      jQuery('.fsm-board .total-score').css({display: 'flex'});
+      jQuery('.fsm-board .total-score').text((Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0) + ' - ' + (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0));
+    } else {
+      jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
+      jQuery('.fsm-board .total-score').css({display: 'none'});
     }
   }
 
