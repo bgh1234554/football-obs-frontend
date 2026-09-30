@@ -60,6 +60,16 @@ function buildLineupRosterKey(player, index) {
   return pid ? String(pid) : `0:${index}`;
 }
 
+/** ID 연결/닉네임 변경 전의 선수 키. 경기와 진영은 저장소에서 별도로 구분한다. */
+function buildCaptainPlayerKey(player) {
+  if (!player) return '';
+  if (player._captainKey) return player._captainKey;
+  const pid = Number(player.playerId);
+  if (pid) return `id:${pid}`;
+  const name = String(player.origName || player.name || player.playerName || '').trim();
+  return name ? `n:${name}` : '';
+}
+
 /** 선수 배열 깊은 복사 (1-depth). null 항목 제거. 입력이 배열 아니면 빈 배열. */
 function clonePlayers(players) {
   return Array.isArray(players) ? players.filter(Boolean).map(player => ({ ...player })) : [];
@@ -192,6 +202,9 @@ function writeManualStore(store) {
  */
 function sanitizeManualSideData(sideData) {
   const next = {};
+  if (typeof sideData?.captainKey === 'string' && /^(id|n):.+/.test(sideData.captainKey)) {
+    next.captainKey = sideData.captainKey;
+  }
 
   // manualSide.lineup 두 가지 모드:
   //   (A) startXi 풀폼 — 사용자가 11명 + 포메이션을 직접 입력 (API 라인업 자체가 없을 때).

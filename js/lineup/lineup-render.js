@@ -45,8 +45,9 @@ function lpGetPlayerRating(playerId) {
   return map.has(String(playerId)) ? map.get(String(playerId)) : null;
 }
 
-/** 수동 선수는 폼의 주장 선택, API 선수는 playerStats.captain 기준. */
+/** 팝업에서 지정한 주장을 우선하고, 없으면 수동 폼/API 주장 정보를 사용한다. */
 function lpIsCaptain(playerId, player) {
+  if (typeof player?._captainOverride === 'boolean') return player._captainOverride;
   if (player?._manual) return !!player.manualCaptain;
   if (playerId == null) return false;
   return lpGetContext().captainSet.has(String(playerId));
