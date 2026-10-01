@@ -53,10 +53,19 @@ const fixture = JSON.parse(fs.readFileSync(path.join(root, 'json/CaboVerdeRwanda
       evSetSubstOverride(f.matchInfo.fixtureId, raw69, 'player', { playerId: 335131, name: 'B. Mugisha' });
       const manualResult = buildEffectiveFixtureData(f).events.find(e => e.elapsed === 69 && e.assistId === 351495);
       evClearSubstOverride(f.matchInfo.fixtureId, manualEvent, 'player');
+      const linkedEvents = { matchInfo: { fixtureId: 'manual-link-scope' }, awayLineup: {
+        startXi: [{ playerId: 335131, name: 'B. Mugisha' }, { playerId: 0, name: 'G. Mugisha' }],
+        substitutes: [],
+      }, events: [
+        { side: 'away', type: 'subst', playerId: 335131, playerName: 'B. Mugisha' },
+        { side: 'away', type: 'subst', playerId: 335131, playerName: 'G. Mugisha' },
+      ] };
+      lpReconcileConflictingEventIds(linkedEvents, { 'away:id:335131': { playerId: 335131, name: 'B. Mugisha' } });
       return {
         rawUnchanged: JSON.stringify(f) === original, raw69, fixed69, time, rows,
         starters: reflected.awayLineup.startXi.map(p => p.name), bench: reflected.awayLineup.substitutes.map(p => ({ name: p.name, id: p.playerId, number: p.number })),
         bon, gilbert, distinct, preservePlayed, sameSurname, ambiguous, manualResult,
+        linkedEventIds: linkedEvents.events.map(e => e.playerId),
         duplicateCount: [...merged.awayLineup.startXi, ...merged.awayLineup.substitutes].filter(p => p.name === 'J. 미켈스').length,
       };
     }, fixture);
@@ -81,6 +90,7 @@ const fixture = JSON.parse(fs.readFileSync(path.join(root, 'json/CaboVerdeRwanda
     assert.equal(result.ambiguous, -1);
     assert.equal(result.manualResult.playerId, 335131);
     assert.equal(result.manualResult.playerName, 'B. Mugisha');
+    assert.deepEqual(result.linkedEventIds, [335131, 0]);
     assert.equal(result.time.period, '2H');
     assert.equal(result.time.sortKey, 4600);
     const ht = result.rows.findIndex(r => r.text.includes('하프타임'));

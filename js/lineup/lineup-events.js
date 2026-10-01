@@ -107,9 +107,21 @@ function lpReconcileConflictingEventIds(data, manualLinks = {}) {
     ['player', 'assist'].forEach(field => {
       const id = Number(ev[`${field}Id`]);
       if (!(id > 0) || !roster.some(p => Number(p?.playerId) === id)) return;
-      // 사용자가 직접 연결한 ID는 자동 보정보다 우선한다.
-      if (Object.entries(manualLinks).some(([key, value]) => key.startsWith(`${ev.side}:`)
-        && (key === `${ev.side}:id:${id}` || Number(value?.playerId) === id))) return;
+      // 교체 이벤트 자체의 수동 선택, 또는 이 이벤트의 이름에 해당하는 선수 링크만 우선한다.
+      const fixtureId = String(data.matchInfo?.fixtureId ?? '');
+      if (String(ev.type || '').toLowerCase() === 'subst' && fixtureId
+        && typeof evGetSubstOverride === 'function' && evGetSubstOverride(fixtureId, ev, field)) return;
+      const eventNames = [ev[`${field}Name`], ev[`${field}NameKoLong`], ev[`${field}OrigName`]]
+        .map(lpNormalizePlayerName).filter(Boolean);
+      const namePrefix = `${ev.side}:n:`;
+      if (eventNames.length && Object.entries(manualLinks).some(([key, value]) => {
+        const idLink = key === `${ev.side}:id:${id}`;
+        const nameLink = key.startsWith(namePrefix) && Number(value?.playerId) === id;
+        if (!idLink && !nameLink) return false;
+        const linkNames = [value?.name, value?.nameKoLong, nameLink ? key.slice(namePrefix.length) : null]
+          .map(lpNormalizePlayerName).filter(Boolean);
+        return linkNames.some(name => eventNames.includes(name));
+      })) return;
       const index = lpFindLineupPlayerIndex(roster, {
         playerId: id,
         playerName: ev[`${field}Name`],

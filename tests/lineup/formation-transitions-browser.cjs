@@ -114,7 +114,9 @@ const root = path.resolve(__dirname, '../..');
     await page.locator('#manualPanelSave').click();
     await page.evaluate(()=>openManualPanel('lineup','home'));
     assert.equal(await field('name',5).inputValue(),'person 6');assert(await field('captain',5).isChecked());
-    await page.locator('.dp-manual-modal').first().screenshot({path:path.join(root,'screenshots/formation-transitions.png')});
+    const screenshotDir = path.join(root, 'screenshots');
+    fs.mkdirSync(screenshotDir, { recursive: true });
+    await page.locator('.dp-manual-modal').first().screenshot({path:path.join(screenshotDir,'formation-transitions.png')});
     await page.evaluate(()=>{
       closeManualPanel();
       applyLineupPanels({matchInfo:{fixtureId:'formation-cam-forward',homeTeamId:1,awayTeamId:2},homeLineup:{startXi:[],substitutes:[]},awayLineup:{startXi:[],substitutes:[]},events:[],playerStats:[]});
