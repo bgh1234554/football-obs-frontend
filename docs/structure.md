@@ -231,6 +231,6 @@ state.lastRunningTickMs     // 새로고침 사이 타이머 drift 보정용 (Da
 
 별도 빌드 없이 Live Server 등 정적 서버에서 `overlay_dashboard.html`을 연다. 명시적 HTML 진입점에서는 `overlay_dashboard.html#/tactics`처럼 hash 경로를 유지해야 새로고침이 정적 서버의 404로 이어지지 않는다.
 
-로컬 `tests/display-viewport.cjs`는 DPR·해상도·전체화면·태블릿 스크롤·펜 좌표를, `tests/display-scale-layout.cjs`는 라인업·패널 크기·저장값·세로 핸들·초기화를 검증한다. Playwright/Chromium이 필요하며 실제 Windows 설정 변경이나 실제 OBS CEF 검증을 대신하지는 않는다.
+`tests/display/display-viewport.cjs`는 DPR·해상도·전체화면·태블릿 스크롤·펜 좌표를, `tests/display/display-scale-layout.cjs`는 라인업·패널 크기·저장값·세로 핸들·초기화를 검증한다. Playwright/Chromium이 필요하며 실제 Windows 설정 변경이나 실제 OBS CEF 검증을 대신하지는 않는다.
 
-`tools/`, `tests/`, 스크린샷은 현재 Git 제외 대상이다. 이 작업 폴더에는 `tools/testMethod/tablet-live-test.md`(연결 방법), `tools/testMethod/display-verification.md`(검증 기록), `tools/fsm-display-scale-notes.md`(`feature/Indvel` 점수판 통합 메모)가 있다. 새 clone에는 포함되지 않으므로 로컬 파일 존재 여부를 확인한다.
+`tools/`와 스크린샷은 Git 제외 대상이며 `tests/`의 실행 코드와 안내 문서는 버전 관리한다. 로컬 `tools/` 파일은 새 clone에 포함되지 않으므로 사용 전 존재 여부를 확인한다.

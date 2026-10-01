@@ -33,6 +33,7 @@ function buildEffectiveFixtureData(data) {
   //  lpFindLineupPlayerIndex가 substitutes에서 못 찾아 subReflect swap이 그냥 skip됨.)
   synthesizeMissingBenchPlayers(next);
   if (!entry) {
+    applyManualCaptainToFixture(next, null);
     // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
     if (typeof window.applyZeroIdOverrides === 'function') {
       window.applyZeroIdOverrides(next, fixtureId);
@@ -149,6 +150,7 @@ function buildEffectiveFixtureData(data) {
 
   // 5) 수동 라인업 적용 후 ID override 적용 — 수동 선수 데이터가 한글 이름을 덮어쓰지 않도록
   //    항상 마지막에 실행한다.
+  applyManualCaptainToFixture(next, entry);
   if (typeof window.applyZeroIdOverrides === 'function') {
     window.applyZeroIdOverrides(next, fixtureId);
   }
@@ -156,6 +158,22 @@ function buildEffectiveFixtureData(data) {
   reconcileInjuriesAgainstLineup(next);
 
   return applyInferredFormationsToFixtureData(next);
+}
+
+/** 연결 ID/표시명 변환 전에 키를 부여하고, 지정된 팀의 주장 표시만 교체한다. */
+function applyManualCaptainToFixture(next, entry) {
+  ['home', 'away'].forEach(side => {
+    const lineup = next[`${side}Lineup`];
+    const players = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    const selectedKey = entry?.[side]?.captainKey;
+    // 명단에서 사라진 선수의 저장값이 API 주장 표시를 가리지 않게 한다.
+    const applies = selectedKey && players.some(p => buildCaptainPlayerKey(p) === selectedKey);
+    players.forEach(player => {
+      player._captainKey = buildCaptainPlayerKey(player);
+      if (applies) player._captainOverride = player._captainKey === selectedKey;
+      else delete player._captainOverride;
+    });
+  });
 }
 
 /**

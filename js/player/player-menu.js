@@ -280,6 +280,35 @@ function pmHideAll() {
 
 // ── 컨텍스트 메뉴 팝업 ────────────────────────────────────────────────────────
 
+/** 선발/교체 명단 선수에게만 경기별 수동 주장 토글을 제공한다. */
+function pmCaptainButtonHtml(player, side) {
+  if (!getActiveFixtureId() || !['home', 'away'].includes(side) || !player) return '';
+  const key = buildCaptainPlayerKey(player);
+  const data = lineupPanelState.lastEffectiveData || lineupPanelState.lastFixture;
+  const lineup = data?.[`${side}Lineup`];
+  if (!key || ![...(lineup?.startXi || []), ...(lineup?.substitutes || [])]
+    .some(p => buildCaptainPlayerKey(p) === key)) return '';
+  const selected = getManualSideData(getActiveFixtureId(), side)?.captainKey === key;
+  return `<button class="pm-btn pm-btn-inline" id="pmBtnCaptain" aria-pressed="${selected}" title="${selected ? '수동 지정을 해제하고 기존 주장 정보 사용' : '이 선수를 이 경기의 주장으로 지정'}">${selected ? '주장 해제' : '주장 지정'}</button>`;
+}
+
+function pmBindCaptainButton(player, side, reopen) {
+  const fixtureId = getActiveFixtureId();
+  document.getElementById('pmBtnCaptain')?.addEventListener('click', e => {
+    e.stopPropagation();
+    if (getActiveFixtureId() !== fixtureId) { pmHideAll(); return; }
+    const key = buildCaptainPlayerKey(player);
+    updateManualEntry(fixtureId, side, draft => {
+      if (draft.captainKey === key) delete draft.captainKey;
+      else draft.captainKey = key;
+      return draft;
+    });
+    rerenderLineupPanels();
+    pmHideAll();
+    reopen();
+  });
+}
+
 /** 클릭한 선수의 기본 정보와 편집·스탯 메뉴를 연다. 열린 메뉴의 같은 선수를 클릭하면 닫는다. */
 function pmShowMenu(playerId, clientX, clientY) {
   // 1) ID와 토글 상태를 확인한 뒤 현재 명단에서 표시할 선수를 찾는다.
@@ -337,9 +366,10 @@ function pmShowMenu(playerId, clientX, clientY) {
       ${subNameRow}
       ${nicknameRow}
       ${injuryReasonRow}
-      <div class="pm-pos" style="display:flex;align-items:center;gap:5px">
+      <div class="pm-pos pm-inline-actions">
         <span>포지션: ${pmEsc(pos)}</span>
-        <button class="pm-btn" id="pmBtnIdLink" style="padding:1px 6px;font-size:10px;line-height:1.5;margin:0;opacity:.75">ID 입력</button>
+        <button class="pm-btn pm-btn-inline" id="pmBtnIdLink">ID 입력</button>
+        ${pmCaptainButtonHtml(player, player._side)}
       </div>
     </div>
   </div>
@@ -371,6 +401,7 @@ function pmShowMenu(playerId, clientX, clientY) {
     e.stopPropagation();
     pmShowIdInput(pid, player, displayName, clientX, clientY);
   });
+  pmBindCaptainButton(player, player._side, () => pmShowMenu(pid, clientX, clientY));
 }
 
 /** 클릭한 화면 좌표를 레이아웃 좌표로 변환해 팝업을 옆에 배치하고 화면 경계 안으로 보정한다. */

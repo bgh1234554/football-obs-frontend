@@ -1103,7 +1103,7 @@
       }
     }
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
-    if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m));
+    if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m, data._rawEvents || data.events));
 
     // 추가시간
     // 추가시간: 사용자가 수동으로 토글/조정한 적 있으면(extraManualOverride) API 값으로 덮지 않음.
@@ -1142,8 +1142,12 @@
     // 폴링/수동 조회로 받은 새 상태는 같은 경기라도 반드시 보정한다.
     // 설정 토글의 캐시 재적용(resetRunning:false)은 수동으로 편집한 시계를 유지한다.
     const status = String(m.status || '').toUpperCase();
+    const breakElapsed = typeof evBreakElapsed === 'function'
+      ? evBreakElapsed(m, data._rawEvents || data.events)
+      : (status === 'BT' ? 90 : null);
     const stoppedSeconds = status === 'HT' ? 45 * 60
-      : (FT_LIKE_STATUSES.has(status) || (status === 'BT' && Number(m.elapsed) === 90)) ? 90 * 60
+      : breakElapsed !== null ? breakElapsed * 60
+      : FT_LIKE_STATUSES.has(status) ? 90 * 60
       : null;
     // 새 경기에는 이전 경기의 시간을 넘기지 않는다. HT/FT의 고정 시각은 우선 적용한다.
     const nextClockSeconds = stoppedSeconds ?? (options?.resetClock === true ? 0 : null);
@@ -1355,7 +1359,7 @@
   }
 
   /** API status → state.half 매핑 (PSO만 PK로 치환, 나머지는 그대로) */
-  function mapApiStatusToHalf(status, matchInfo){
+  function mapApiStatusToHalf(status, matchInfo, events){
     const s = String(status || '').toUpperCase();
     const elapsed = Number(matchInfo?.elapsed) || 0;
     const hasPenaltyScore = matchInfo?.homePenaltyScore != null || matchInfo?.awayPenaltyScore != null;
@@ -1371,8 +1375,11 @@
       if (elapsed > 105) return 'ET2';
       return '2';
     }
-    // BT = 정규 후반 종료 후 연장전 시작 전 휴식(90분 시점) — '1'(전반) 폴백은 오표시이므로 명시 매핑.
-    if (s === 'BT') return '2';
+    // BT는 종료된 구간에 맞춰 유지: 정규 후반 / 연장 전반 / 연장 후반.
+    if (s === 'BT') {
+      const boundary = typeof evBreakElapsed === 'function' ? evBreakElapsed(matchInfo, events) : 90;
+      return boundary === 120 ? 'ET2' : boundary === 105 ? 'ET1' : '2';
+    }
     return '1';
   }
 

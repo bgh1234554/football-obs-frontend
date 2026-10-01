@@ -74,17 +74,36 @@ function computeLineupSurnameBreakLines(raw) {
   return null;
 }
 
+/** 중간 이름이 여러 개면 앞부분을 한 줄에 몰지 않고, 단어 경계의 3줄 후보도 비교한다.
+ * 기존 성 경계 후보를 먼저 두어 같은 크기에서는 기존 배치를 유지한다. */
+function computeLineupSurnameBreakCandidates(raw) {
+  const primary = computeLineupSurnameBreakLines(raw);
+  const candidates = primary ? [primary] : [];
+  const tokens = stripKoreanSurnameBreaks(String(raw || '')).trim().split(/\s+/).filter(Boolean);
+  if (tokens.length >= 3) {
+    for (let first = 1; first < tokens.length - 1; first += 1) {
+      for (let second = first + 1; second < tokens.length; second += 1) {
+        const lines = [tokens.slice(0, first).join(' '), tokens.slice(first, second).join(' '), tokens.slice(second).join(' ')];
+        if (!candidates.some(candidate => candidate.join('\n') === lines.join('\n'))) candidates.push(lines);
+      }
+    }
+  }
+  return candidates;
+}
+
 /** 폰트를 줄이기 직전에 (이니셜/중간 이름 등을 나눈) 최대 3줄을 시도한다. */
 function tryLineupSurnameBreaks(nameEl) {
   if (nameEl.classList.contains('has-surname-breaks')) return false;
   const textEl = nameEl.querySelector('.dp-lineup-name-text[data-surname-breaks]');
   if (!textEl) return false;
-  const lines = computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks);
-  if (!lines) return false;
-  const candidate = getPreferredLineupSurnameCandidate(nameEl, lines);
+  let candidate = null;
+  for (const lines of computeLineupSurnameBreakCandidates(textEl.dataset.surnameBreaks)) {
+    const next = getPreferredLineupSurnameCandidate(nameEl, lines);
+    if (next && (!candidate || next.font > candidate.font)) candidate = { ...next, lines };
+  }
   if (!candidate) return false;
   applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
-  applyLineupSurnameLines(nameEl, lines);
+  applyLineupSurnameLines(nameEl, candidate.lines);
   nameEl.style.fontSize = `${candidate.font}px`;
   return true;
 }
@@ -208,7 +227,11 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare, maxFont
           bottom: wrapRect.top + size.height,
         };
         const outsidePitch = hasLineupNamePitchOverflowForRect(candidate, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
-        const overlaps = lineupNameCandidateRectCollides(candidate, nameEl, targets);
+        // 번호/이니셜의 짧은 줄 옆 빈 공간을 성의 전체 폭으로 검사하면,
+        // 옆 선수 교체 배지 때문에 안전한 3줄 후보까지 최소 폰트로 축소된다.
+        const textRects = clone.classList.contains('has-number-line-break')
+          ? getLineupCandidateTextRects(clone, candidate, size) : null;
+        const overlaps = lineupNameCandidateRectCollides(candidate, nameEl, targets, textRects);
         if (!outsidePitch && !overlaps) return font;
       }
       const next = Math.max(LINEUP_NAME_MIN_FONT_PX, font - TEXT_FIT_FONT_STEP_PX);
@@ -245,15 +268,20 @@ function improveLineupNameWithNumberLine(nameEl, labels, maxFont) {
   const nameText = textEl.cloneNode(true);
   nameText.querySelector('.dp-lineup-captain-badge')?.remove();
   const raw = textEl.dataset.surnameBreaks || nameText.textContent;
-  const lines = computeLineupSurnameBreakLines(raw) || raw.trim().split(/\s+/);
+  const candidates = computeLineupSurnameBreakCandidates(raw);
+  if (!candidates.length) candidates.push(raw.trim().split(/\s+/));
   // 이름 자체가 2~3줄로 나뉘는 경우에만 번호 한 줄을 추가한다.
-  if (lines.length < 2 || lines.length > 3) return;
   const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels);
-  const prepare = clone => applyLineupNumberLine(clone, lines);
-  const font = measureLineupNameCandidateFont(nameEl, null, targets, prepare, maxFont);
-  if (font === null || font <= currentFont) return;
-  applyLineupNumberLine(nameEl, lines);
-  nameEl.style.fontSize = `${font}px`;
+  let best = null;
+  for (const lines of candidates) {
+    if (lines.length < 2 || lines.length > 3) continue;
+    const prepare = clone => applyLineupNumberLine(clone, lines);
+    const font = measureLineupNameCandidateFont(nameEl, null, targets, prepare, maxFont);
+    if (font !== null && font > currentFont && (!best || font > best.font)) best = { font, lines };
+  }
+  if (!best) return;
+  applyLineupNumberLine(nameEl, best.lines);
+  nameEl.style.fontSize = `${best.font}px`;
   const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
   nameEl.style.maxWidth = `${wrap.clientWidth}px`;
   lockLineupNameWidth(nameEl);
@@ -279,10 +307,10 @@ function regrowShrunkLineupNames(labels, configuredFonts) {
     const maxFont = configuredFonts.get(el);
     const targets = getLineupNameNaturalWidthCollisionTargets(el, labels);
     const textEl = el.querySelector('.dp-lineup-name-text[data-surname-breaks]');
-    const surnameLines = textEl ? computeLineupSurnameBreakLines(textEl.dataset.surnameBreaks) : null;
+    const surnameCandidates = textEl ? computeLineupSurnameBreakCandidates(textEl.dataset.surnameBreaks) : [];
 
     let best = { font: measureLineupNameCandidateFont(el, null, targets, undefined, maxFont), lines: null };
-    if (surnameLines) {
+    for (const surnameLines of surnameCandidates) {
       const splitFont = measureLineupNameCandidateFont(el, surnameLines, targets, undefined, maxFont);
       if (splitFont !== null && (best.font === null || splitFont > best.font)) best = { font: splitFont, lines: surnameLines };
     }
@@ -1415,18 +1443,40 @@ function resolveLineupCaptainBadgePlacement(nameEl, labels) {
   applyLineupCaptainBadgePlacement(nameEl, candidate.placement);
 }
 
-/**
- * 아직 적용하지 않은 라벨 후보 rect(자연 1줄, 성 경계 3줄, 등번호 줄 분리 4줄, 주장 배지 배치 등)가
- * 충돌 대상과 겹치는지. 다른 선수의 원만 마지막 단계(fitLineupNamesAgainstNodeCircles)와 같은
- * "실제 원 모양 + 반지름 절반" 기준으로 보고, 라벨/배지/팀칩은 사각형 판정 그대로 쓴다.
- * 후보 비교가 원을 사각형으로 보면 가장자리만 스쳐도 더 나은 후보(1줄, 큰 폰트 4줄 등)가 거절되고,
- * 대신 남은 배치가 원을 더 덮어 결국 폰트까지 줄어드는 역전이 생긴다.
- */
-function lineupNameCandidateRectCollides(rect, nameEl, targets) {
+/** 화면 밖에서 측정한 텍스트 조각을 후보 위치로 옮긴다. 줄 사이 빈 공간은 포함하지 않는다. */
+function getLineupCandidateTextRects(clone, candidate, size) {
+  const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+  const rects = [];
+  const range = document.createRange();
+  while (walker.nextNode()) {
+    if (!walker.currentNode.textContent.replace(/[\s\u2060]/g, '')) continue;
+    range.selectNodeContents(walker.currentNode);
+    for (const raw of range.getClientRects()) {
+      const r = toDisplayLayoutRect(raw);
+      if (r.width <= 0 || r.height <= 0) continue;
+      rects.push({
+        left: r.left - size.left + candidate.left - 2,
+        right: r.right - size.left + candidate.left + 2,
+        top: r.top - size.top + candidate.top - 1,
+        bottom: r.bottom - size.top + candidate.top + 1,
+      });
+    }
+  }
+  range.detach?.();
+  return rects;
+}
+
+/** 원은 반지름 절반 침범, 라벨/팀칩은 전체 박스로 검사한다.
+ * 등번호 분리 후보와 선수 배지 사이만 각 줄의 글자 영역으로 검사한다. */
+function lineupNameCandidateRectCollides(rect, nameEl, targets, textRects = null) {
   const circles = new Set(getSiblingNodeCirclesForLabel(nameEl));
   return targets.some(target => {
     if (!canMeasureTextElement(target)) return false;
     if (circles.has(target)) return nameRectOverlapsNodeCircleSignificantly(rect, target);
+    if (textRects?.length && target.matches('.dp-node-badge')) {
+      const badgeRect = getDisplayLayoutRect(target);
+      return textRects.some(textRect => rectsOverlap(textRect, badgeRect));
+    }
     return rectsOverlap(rect, getDisplayLayoutRect(target));
   });
 }

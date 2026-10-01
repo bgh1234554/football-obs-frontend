@@ -27,18 +27,33 @@ const LogoTrim = (() => {
   // 경계 계산이나 저장 형식이 바뀌면 버전을 올려 이전 좌표가 재사용되지 않게 한다.
   // v2 (2026-09-22): findBounds의 알파 임계값을 0 초과 → ALPHA_MIN(8) 이상으로 변경.
   // v3 (2026-09-27): 내부 채우기 여부(hasFill) 추가 — v2 기록에는 없어 전부 한 번 재분석한다.
-  const PREFIX = 'football-obs:logo-trim:v3:';
+  // v4 (2026-09-29): MIN_FILL_SHARE 1% -> 0.1% — v3에서 hasFill=false로 저장된 로고도 다시 분석한다.
+  // v5 (2026-09-29): 안쪽 선 밑/작은 칸까지 채우도록 바뀜 + 채우기 분석 예외가 hasFill=false로 30일
+  //   고정되던 문제 수정 — v4에서 잘못 저장됐을 수 있는 기록을 버리고 다시 분석한다.
+  const PREFIX = 'football-obs:logo-trim:v5:';
   // URL별 분석 결과: 같은 페이지에서 localStorage 접근과 재분석을 줄인다.
   const memory = new Map();
   // URL별 내부 채우기 마스크 blob URL(채울 영역이 없으면 null). 세션 한정이라 메모리에만 둔다.
   const fills = new Map();
   // 내부 채우기 색. 협업 프론트(FSM) 로고 구역 배경에 맞추려면 이 값만 바꾸면 된다.
   const FILL_COLOR = [255, 255, 255];
+  // 예외 목록은 logo-fill-exceptions.js에서 관리한다. 바깥 여백 trim과 중심/크기 보정은 유지한다.
+  const FILL_EXCLUDED_URLS = new Set(LOGO_FILL_EXCLUDED_URLS);
+  function isFillExcluded(url) {
+    // 같은 파일의 쿼리/프래그먼트 변형에도 적용하되, 다른 출처의 동명 파일은 제외하지 않는다.
+    return FILL_EXCLUDED_URLS.has(url.split(/[?#]/, 1)[0]);
+  }
   // 이 알파값 미만이면 "투명"으로 보고 바깥/안쪽 영역 탐색에 포함한다(안티앨리어싱 가장자리 절반 기준).
   const FILL_ALPHA_MAX = 128;
   // 둘러싸인 투명 영역이 로고 그림 경계 면적의 이 비율 이상일 때만 채운다. 실측: USG 링 안쪽
   // 영역 각각 6~8%, FCF 방패 안쪽 약 44%, 반면 왕관 십자가 가운데 같은 작은 구멍은 0.01% 수준.
-  const MIN_FILL_SHARE = 0.01;
+  // (2026-09-29) 1% -> 0.1%: 이집트 축구협회 로고(검은 빗살로 나뉜 칸들)는 둘러싸인 칸 35개 중
+  // 1% 이상은 6개뿐이고 나머지 빗살 사이 칸이 0.19~0.75%라, 일부 칸만 흰색이 되고 나머지는 팀 컬러가
+  // 비쳐 얼룩처럼 보였다. 글자 속 구멍(EGYPTIAN FA 등)은 0.02~0.07%로 여전히 채우지 않는다.
+  const MIN_FILL_SHARE = 0.001;
+  // 안쪽 선 밑 채우기(buildFillMask 4단계)에서 로고 바깥 가장자리로부터 비워 둘 두께(분석 캔버스 긴 변 대비).
+  // 1024px 분석 기준 약 20px — 점수판(약 30~50px)으로 줄이면 1px 안팎이라 외곽선만 팀 컬러와 섞인다.
+  const OUTER_KEEP_SHARE = 0.02;
   // 채우기 분석 해상도(긴 변 최대 px). 원본이 커도 이 크기로 줄여 메모리/시간을 제한한다.
   // 마스크는 CSS로 다시 늘려 그리고, 경계는 로고의 불투명 테두리 아래에 숨으므로 이 정도면 충분하다.
   const FILL_ANALYSIS_MAX = 1024;
@@ -126,26 +141,66 @@ const LogoTrim = (() => {
     for (let x = 0; x < width; x++) { push(x); push(n - width + x); }
     for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
     flood(null);
+    const outside = visited.slice();
 
     // 2) 둘러싸인 영역 중 큰 것만 채움
+    // 큰 칸이 하나라도 있으면(= 흰 바탕 위에 그린 로고로 판단) 글자 속 구멍 같은 작은 칸도 같이 채운다
+    // (2026-09-29) — 큰 칸만 흰색이고 "EGYPTIAN FA" 글자 구멍엔 팀 컬러가 비치면 오히려 얼룩져 보인다.
+    // 큰 칸이 없는 로고는 예전처럼 아무것도 채우지 않는다. 16px 미만은 잡음으로 보고 건너뛴다.
     const mask = new Uint8Array(n);
     const members = new Int32Array(n);
+    const regionId = new Int32Array(n);
+    const regionSizes = [0];
     let filled = false;
     for (let s = 0; s < n; s++) {
       if (!clear[s] || visited[s]) continue;
       let count = 0;
       push(s);
       flood(i => { members[count++] = i; });
-      if (count < minArea) continue;
-      for (let k = 0; k < count; k++) mask[members[k]] = 1;
-      filled = true;
+      const id = regionSizes.push(count) - 1;
+      for (let k = 0; k < count; k++) regionId[members[k]] = id;
+      if (count >= minArea) filled = true;
     }
     if (!filled) return null;
+    for (let i = 0; i < n; i++) {
+      if (regionId[i] && regionSizes[regionId[i]] >= 16) mask[i] = 1;
+    }
 
     // 3) 불투명 쪽으로만 1px 확장해 출력
     const out = new ImageData(width, height);
     const [r, g, b] = FILL_COLOR;
     const paint = i => { const o = i * 4; out.data[o] = r; out.data[o + 1] = g; out.data[o + 2] = b; out.data[o + 3] = 255; };
+
+    // 4) 로고 안쪽 선/문양 밑에도 흰색을 깐다(2026-09-29). 점수판처럼 작게 줄여 그리면 가는 선(이집트
+    //    로고의 검은 빗살 등)은 반투명 픽셀이 되는데, 그 밑이 비어 있으면 팀 컬러가 비쳐 칸 경계가
+    //    얼룩져 보였다(채운 칸 옆 1px 확장만으로는 두꺼운 선의 가운데가 비어 있음). 채울 칸이 있는
+    //    로고에 한해, 불투명 픽셀 중 바깥(투명 여백)에서 OUTER_KEEP 이상 떨어진 것은 전부 칠한다.
+    //    바깥 테두리 근처는 비워 둬, 줄였을 때 로고 외곽선이 흰 테두리 없이 팀 컬러와 자연스럽게 섞이게 한다.
+    const keep = Math.max(2, Math.round(Math.max(width, height) * OUTER_KEEP_SHARE));
+    const dist = new Uint16Array(n); // 0 = 미방문, 그 외 바깥에서 불투명 픽셀을 따라 잰 거리
+    let head = 0; let tail = 0;
+    const queue = stack; // 위 flood가 끝나 비어 있으므로 재사용
+    const seed = i => { if (!clear[i] && !dist[i]) { dist[i] = 1; queue[tail++] = i; } };
+    for (let i = 0; i < n; i++) {
+      if (clear[i]) continue;
+      const x = i % width;
+      const onEdge = x === 0 || x === width - 1 || i < width || i >= n - width;
+      if (onEdge || (x > 0 && outside[i - 1]) || (x < width - 1 && outside[i + 1])
+        || (i >= width && outside[i - width]) || (i < n - width && outside[i + width])) seed(i);
+    }
+    while (head < tail) {
+      const i = queue[head++];
+      if (dist[i] >= keep) continue;
+      const x = i % width;
+      const step = j => { if (!clear[j] && !dist[j]) { dist[j] = dist[i] + 1; queue[tail++] = j; } };
+      if (x > 0) step(i - 1);
+      if (x < width - 1) step(i + 1);
+      if (i >= width) step(i - width);
+      if (i < n - width) step(i + width);
+    }
+    for (let i = 0; i < n; i++) {
+      if (!clear[i] && (!dist[i] || dist[i] >= keep)) paint(i);
+    }
     for (let i = 0; i < n; i++) {
       if (!mask[i]) continue;
       paint(i);
@@ -267,8 +322,15 @@ const LogoTrim = (() => {
   async function analyse(url) {
     const { img, bounds } = await analyseBounds(url);
     let fillUrl = null;
-    try { fillUrl = await buildFillUrl(img, bounds); } catch (_) { /* 채우기 실패는 원본 표시로 대체 */ }
-    return { bounds, fillUrl };
+    let fillFailed = false;
+    try {
+      if (!isFillExcluded(url)) fillUrl = await buildFillUrl(img, bounds);
+    } catch (error) {
+      // 채우기 실패는 원본 표시로 대체하되, "채울 칸 없음"으로 30일 저장하지 않도록 표시한다(getBounds).
+      fillFailed = true;
+      console.warn('[LogoTrim] 내부 채우기 분석 실패', url, error);
+    }
+    return { bounds, fillUrl, fillFailed };
   }
 
   /** 원본을 임시 Canvas에 그린 뒤 알파 채널로 경계를 찾는다. 채우기 분석에 재사용할 이미지도 함께 반환. */
@@ -307,7 +369,8 @@ const LogoTrim = (() => {
    */
   function usableCache(url) {
     const cached = readCache(url);
-    if (cached && cached.hasFill && !fills.has(url)) return null;
+    // 예외 추가 전에 hasFill=true로 저장됐어도 경계 캐시는 재사용하고 채우기 재분석은 생략한다.
+    if (cached && cached.hasFill && !isFillExcluded(url) && !fills.has(url)) return null;
     return cached;
   }
 
@@ -317,10 +380,16 @@ const LogoTrim = (() => {
     if (cached) return Promise.resolve(cached);
     if (pending.has(url)) return pending.get(url);
     const generation = cacheGeneration;
-    const task = analyse(url).then(({ bounds, fillUrl }) => {
+    const task = analyse(url).then(({ bounds, fillUrl, fillFailed }) => {
       if (generation !== cacheGeneration) {
         if (fillUrl) URL.revokeObjectURL(fillUrl);
         return { bounds, hasFill: false, expiresAt: Date.now() + TTL };
+      }
+      if (fillFailed) {
+        // 채우기 분석이 예외로 실패하면 경계만 쓰고 1분 뒤 다시 시도한다(영구 저장 안 함).
+        const retry = { bounds, hasFill: false, expiresAt: Date.now() + 60000 };
+        memory.set(url, retry);
+        return retry;
       }
       fills.set(url, fillUrl);
       return writeCache(url, bounds, !!fillUrl);
@@ -354,6 +423,7 @@ const LogoTrim = (() => {
    * trim 보정/SVG 100% 박스 여부와 무관하게 로고와 정확히 겹친다.
    */
   function applyFill(img, url) {
+    if (isFillExcluded(url)) return;
     const fillUrl = fills.get(url);
     if (!fillUrl) return;
     img.style.backgroundImage = `url("${fillUrl}")`;

@@ -790,6 +790,9 @@ function applyZeroIdOverrides(next, fixtureId) {
   pirApplyManualNameHintsForFuzzy(next, relevant);
 
   const autoLinkOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
+  if (autoLinkOn && typeof lpReconcileConflictingEventIds === 'function') {
+    lpReconcileConflictingEventIds(next, relevant);
+  }
   const nameHints = {};
   const canonicalKoHints = {}; // {side:altId} → { name, nameKoLong } — canonical 로스터 한글을 이벤트에 역전파
   const altToCanonical = autoLinkOn ? pirAutoLinkAltToCanonical(next, nameHints, canonicalKoHints) : {};
@@ -1031,6 +1034,7 @@ function pirShowMenu(side, origName, clientX, clientY) {
     <div class="pm-info-text">
       <div class="pm-name"><span class="pm-num">${pirEsc(num)}</span>${pirEsc(displayName)}</div>
       ${idStatusHtml}
+      <div class="pm-pos pm-inline-actions">${typeof pmCaptainButtonHtml === 'function' ? pmCaptainButtonHtml(player, side) : ''}</div>
       ${existing ? `<div class="pm-nick-badge" style="color:#8cf">연결됨: ID ${pirEsc(String(existing.playerId))}</div>` : ''}
       ${nickname ? `<div class="pm-nick-badge">닉네임: ${pirEsc(nickname)}</div>` : ''}
     </div>
@@ -1060,6 +1064,9 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
   if (typeof pmPositionPopup === 'function') {
     pmPositionPopup(document.getElementById('pirPopup'), clientX, clientY);
+  }
+  if (typeof pmBindCaptainButton === 'function') {
+    pmBindCaptainButton(player, side, () => pirShowMenu(side, origName, clientX, clientY));
   }
 
   let _fetched = null;

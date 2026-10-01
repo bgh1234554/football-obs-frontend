@@ -176,6 +176,27 @@
 }
 .pm-btn.pm-btn-danger:hover { background: rgba(220,38,38,.7); }
 
+.pm-inline-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.pm-inline-actions > span { white-space: nowrap; }
+.pm-btn.pm-btn-inline {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+  opacity: .75;
+}
+.pm-btn.pm-btn-inline[aria-pressed="true"] {
+  color: #FFD93D;
+  border-color: #FFD93D;
+  opacity: 1;
+}
+
 /* ── 닉네임 편집 ── */
 .pm-nick-wrap { padding: 2px 0; }
 

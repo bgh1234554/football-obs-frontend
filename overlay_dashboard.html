@@ -770,7 +770,7 @@
     </div>
   </div>
   <!-- ========== detail 수동 입력 모달 ========== -->
-  <div class="dp-manual-backdrop" id="manualPanelBackdrop" aria-hidden="true"><div class="dp-manual-modal" role="dialog" aria-modal="true" aria-labelledby="manualPanelTitle"><div class="dp-manual-header"><div><div class="dp-manual-title" id="manualPanelTitle">수동 입력</div><div class="dp-manual-meta" id="manualPanelMeta"></div></div><button class="dp-manual-close" id="manualPanelClose" aria-label="닫기">×</button></div><div class="dp-manual-body"><form id="manualPanelForm"><div id="manualPanelContent"></div></form></div><div class="dp-manual-footer"><button type="button" class="dp-manual-secondary" id="manualPanelReset">수동값 삭제</button><div class="dp-manual-footer-actions"><button type="button" class="dp-manual-secondary" id="manualPanelCancel">취소</button><button type="button" class="dp-manual-primary" id="manualPanelSave">저장</button></div></div></div></div>
+  <div class="dp-manual-backdrop" id="manualPanelBackdrop" aria-hidden="true"><div class="dp-manual-modal" role="dialog" aria-modal="true" aria-labelledby="manualPanelTitle"><div class="dp-manual-header"><div><div class="dp-manual-title" id="manualPanelTitle">수동 입력</div><div class="dp-manual-meta" id="manualPanelMeta"></div></div><button class="dp-manual-close" id="manualPanelClose" aria-label="닫기">×</button></div><div class="dp-manual-body"><form id="manualPanelForm"><div id="manualPanelContent"></div></form></div><div class="dp-manual-footer"><div class="dp-manual-footer-tools"><button type="button" class="dp-manual-secondary" id="manualPanelReset">수동값 삭제</button><button type="button" class="dp-manual-secondary" id="manualPanelGridToggle" aria-pressed="false" aria-controls="manualPanelContent" hidden>포메이션 이동</button></div><div class="dp-manual-footer-actions"><button type="button" class="dp-manual-secondary" id="manualPanelCancel">취소</button><button type="button" class="dp-manual-primary" id="manualPanelSave">저장</button></div></div></div></div>
   <!-- ========== 전술판 선수 이름 수동 입력 모달 (경기 ID 미연동 시) ========== -->
   <div class="dp-manual-backdrop" id="tacticsNamesBackdrop" aria-hidden="true"><div class="dp-manual-modal" role="dialog" aria-modal="true" aria-labelledby="tacticsNamesTitle"><div class="dp-manual-header"><div><div class="dp-manual-title" id="tacticsNamesTitle">전술판 선수 이름 입력</div><div class="dp-manual-meta">경기 ID가 연동되면 입력한 이름은 사라집니다.</div></div><button class="dp-manual-close" id="tacticsNamesClose" aria-label="닫기">×</button></div><div class="tn-tabs"><button type="button" class="tn-tab active" data-side="home">HOME</button><button type="button" class="tn-tab" data-side="away">AWAY</button></div><div class="dp-manual-body"><form id="tacticsNamesForm"><div id="tacticsNamesContent"></div></form></div><div class="dp-manual-footer"><button type="button" class="dp-manual-secondary" id="tacticsNamesReset">초기화</button><div class="dp-manual-footer-actions"><button type="button" class="dp-manual-secondary" id="tacticsNamesCancel">취소</button><button type="button" class="dp-manual-primary" id="tacticsNamesSave">저장</button></div></div></div></div>
   <!-- ========== 플로팅 햄버거 버튼 ========== -->
@@ -1262,6 +1262,7 @@
 <script src="js/core/utils.js"></script>
 <script src="js/core/state.js"></script>
 <!-- 점수판 render가 LogoTrim을 사용하므로 로고 경계 분석·캐시 모듈을 먼저 로드한다. -->
+<script src="js/core/logo-fill-exceptions.js"></script>
 <script src="js/core/logo-trim.js"></script>
 <script src="js/core/scoreboard-logo-contrast.js"></script>
 <script src="js/core/render.js"></script>
@@ -1279,6 +1280,7 @@
 <script src="js/lineup/lineup-events.js"></script>
 <script src="js/lineup/lineup-manual-store.js"></script>
 <script src="js/lineup/lineup-data.js"></script>
+<script src="js/lineup/lineup-formation-match.js"></script>
 <script src="js/lineup/lineup-render.js"></script>
 <script src="js/lineup/lineup-name-fit.js"></script>
 <script src="js/lineup/lineup-manual-modal.js"></script>
@@ -1291,6 +1293,7 @@
 <script src="js/data/scoreaxis-standings-embed-map.js"></script>
 <script src="js/panels/scoreaxis-standings-panel.js"></script>
 <script src="js/panels/event-comments.js"></script>
+<script src="js/core/event-time.js"></script>
 <script src="js/panels/events-panel.js"></script>
 <script src="js/panels/event-hide.js"></script>
 <script src="js/panels/hth-panel.js"></script>
@@ -1331,6 +1334,7 @@
   js/lineup/lineup-resize.js       — 캠 큼 라인업 패널 높이 핸들 드래그 리사이즈 + localStorage 저장
   js/data/stats-config.js          — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
   js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등 33종) + translateEventComment()
+  js/core/event-time.js            — 공통 이벤트 시간·구간 판정, 관측 이력, 경계 마커
   js/panels/events-panel.js        — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
   js/panels/event-hide.js          — 잘못된 이벤트 X 숨기기 (내용 서명 기준) + 숨긴 이벤트 관리 팝업
   js/panels/hth-panel.js           — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
