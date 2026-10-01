@@ -55,6 +55,20 @@
   gap: 6px;
 }
 
+/* 패널 상단 여백(8px)을 포함해 버튼 위와 구분선 아래쪽 여백을 같게 한다.
+   제목의 전체 padding 합계는 8px로 유지해 헤더 높이는 바꾸지 않는다. */
+#benchPanel .dp-title,
+#injuryPanel .dp-title {
+  padding: 0 0 8px;
+}
+#benchPanel .dp-title-actions,
+#benchPanel .dp-title-actions-left,
+#injuryPanel .dp-title-actions,
+#injuryPanel .dp-title-actions-left {
+  top: calc((100% - 1px) / 2 - 4px);
+  transform: translateY(-50%);
+}
+
 /* ===== 좌우 분할 (홈|원정) — 벤치/부상 공통 ===== */
 .dp-split {
   flex: 1 1 0;
