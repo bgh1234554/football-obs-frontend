@@ -92,6 +92,21 @@ const root = path.resolve(__dirname, '../..');
     });
     fs.mkdirSync(path.join(root,'screenshots'),{recursive:true});
     await page.locator('.layout-big .lp-lineup').screenshot({path:path.join(root,'screenshots/team-chip-collision.png')});
+    await page.evaluate(()=>activatePage('main-small'));
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const small=await page.evaluate(()=>{
+      const panel=document.querySelector('.layout-small [data-dp-role="lineup"]');
+      fitBigLineupTeamChips(panel);
+      const chips=[...panel.querySelectorAll('.dp-lineup-team-chip')];
+      return chips.map(chip=>{
+        const main=chip.querySelector('.dp-lineup-team-main'),name=main.querySelector('.dp-lineup-team-name'),formation=main.querySelector('.dp-lineup-team-fm');
+        const before={font:getComputedStyle(name).fontSize,meta:getComputedStyle(formation).fontSize,padding:getComputedStyle(main).padding};
+        fitBigLineupTeamChips(panel);
+        return {text:name.textContent,formation:formation.textContent,before,after:{font:getComputedStyle(name).fontSize,meta:getComputedStyle(formation).fontSize,padding:getComputedStyle(main).padding},fits:name.scrollWidth<=name.clientWidth+.5};
+      });
+    });
+    assert.equal(small.length,2);
+    for(const chip of small){assert(chip.text&&chip.formation==='4-3-3'&&chip.fits,JSON.stringify(chip));assert.deepEqual(chip.before,chip.after);}
     console.log('PASS: 원 모서리 오탐 제거, 실제 겹침·1px 간격·배지 보호, 노르웨이 폰트 회복, 리사이즈·반복 피팅.');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

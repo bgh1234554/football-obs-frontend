@@ -151,7 +151,15 @@
        텍스트를 감싸는 정도로만 테두리를 두른다. */
     .lp-bench-refresh-btn {
       font: inherit;
-      padding: 1px 7px;
+      height: 22px;
+      padding: 0 7px;
+      line-height: 1;
+      justify-content: center;
+    }
+    .lp-bench-refresh-btn .lp-force-refresh-label,
+    .lp-bench-refresh-btn .lp-force-refresh-count {
+      display: block;
+      line-height: 13px;
     }
 
     /* bench cycle 패널 공통 — [data-stat-panel] 과 동일한 패딩으로 타이틀 높이 맞춤 */
