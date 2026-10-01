@@ -157,6 +157,7 @@
     justify-content: center;
     align-items: center;
     margin-top: -10px;
+    margin-left: none;
 }
 
 .fsm-board .time {
@@ -282,4 +283,8 @@
 
 .fsm-board .div-rc.hidden {
     display: none; 
+}
+
+.fsm-board .total-score {
+    display: none;
 }

@@ -150,6 +150,7 @@
     justify-content: center;
     align-items: center;
     margin-top: -10px;
+    margin-left: none;
 }
 
 .fsm-board .time {
@@ -289,4 +290,6 @@
     border: 1px solid #373737;
     color: #373737;
     margin-left: 5px;
+    transition: 0.9s ease-in-out;
+    opacity: 0;
 }

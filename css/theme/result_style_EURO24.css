@@ -170,6 +170,7 @@
     align-items: center;
     transition: 0.9s ease-in-out;
     margin-top: -18px;
+    margin-left: none;
 }
 
 .fsm-board .time {
@@ -296,4 +297,8 @@
 
 .fsm-board .div-rc.hidden {
     display: none; 
+}
+
+.fsm-board .total-score {
+    display: none;
 }

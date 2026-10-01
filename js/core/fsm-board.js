@@ -18,6 +18,7 @@ const FSM_FALLBACK_TYPE = 'club';
 const CSS_LINK_INDEX = 17;
 var _currentTheme = 'default';
 var _currentType = 'club';
+var _timerMargin = 'none';
 
 window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   const entry = LEAGUE_THEME_MAP[leagueId];
@@ -118,6 +119,7 @@ function applyTheme(theme, logoUrl) {
       jQuery('.epl-lion').attr('src', logoUrl);
       break; 
     default:
+      _currentTheme = 'default';
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
   }
 }
@@ -166,15 +168,21 @@ function applyTheme(theme, logoUrl) {
        jQuery('.pso-status').css({display: 'none'});
     }
 
-    if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle') {
-      jQuery('.fsm-board .scoreboard-timer').css({marginLeft: '305px'});
-      jQuery('.fsm-board .total-score').css({display: 'flex'});
-      var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
-      var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
-      jQuery('.fsm-board .total-score').text(aggHome + ' - ' + aggAway);
+    if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle' || _currentTheme == 'default') {
+      if(state.aggEnabled) {
+        jQuery('.fsm-board .scoreboard-timer').css({marginLeft: '305px'});
+        jQuery('.fsm-board .total-score').css({display: 'flex'});
+        var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
+        var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
+        jQuery('.fsm-board .total-score').text(aggHome + ' - ' + aggAway);
+        jQuery('.fsm-board .total-score').css({opacity: '100%'});
+      } else {
+        jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
+        jQuery('.fsm-board .total-score').css({display: 'none', opacity: '0'});
+      }
     } else {
-      jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
-      jQuery('.fsm-board .total-score').css({display: 'none'});
+        jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
+        jQuery('.fsm-board .total-score').css({display: 'none', opacity: '0'});
     }
   }
 
@@ -322,8 +330,13 @@ function adjustScoreboardWidth() {
     // 실제 적용
     // =========================
 
-    homeCard.style.width = `${homeWidth}px`;
-    awayCard.style.width = `${homeWidth}px`;
+    if(homeWidth > awayWidth) {
+      homeCard.style.width = `${homeWidth}px`;
+      awayCard.style.width = `${homeWidth}px`;
+    } else if(awayWidth > homeWidth) {
+      homeCard.style.width = `${awayWidth}px`;
+      awayCard.style.width = `${awayWidth}px`;
+    }
 
     scoreboard.style.width = `${boardWidth}px`;
 

@@ -167,7 +167,7 @@
     align-items: center;
     transition: 0.9s ease-in-out;
     margin-top: -10px;
-    margin-left: 0px;
+    margin-left: none;
 }
 
 .fsm-board .time {
@@ -307,4 +307,6 @@
     border: 1px solid #00008B;
     color: #00008B;
     margin-left: 5px;
+    transition: 0.9s ease-in-out;
+    opacity: 0;
 }
