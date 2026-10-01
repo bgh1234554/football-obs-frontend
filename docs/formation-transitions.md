@@ -85,6 +85,6 @@
 
 ## 검증
 
-`node tests/formation-transitions.cjs`: 지원하는 모든 포메이션 조합의 선수/빈자리 보존, 골키퍼 고정, 유사 관계의 역할·좌우·왕복 대응, 일반 전환의 최적 배정.
+`node tests/lineup/formation-transitions.cjs`: 지원하는 모든 포메이션 조합의 선수/빈자리 보존, 골키퍼 고정, 유사 관계의 역할·좌우·왕복 대응, 일반 전환의 최적 배정.
 
-`node tests/formation-transitions-browser.cjs`: 실제 포메이션 선택, 드래그 후 변경, 저장·재열기, 원정 진영, 풀폼 입력과 이동 모드 간 이름·번호·통계·주장 보존.
+`node tests/lineup/formation-transitions-browser.cjs`: 실제 포메이션 선택, 드래그 후 변경, 저장·재열기, 원정 진영, 풀폼 입력과 이동 모드 간 이름·번호·통계·주장 보존.
