@@ -7,6 +7,32 @@ const LINEUP_FORMATION_FAMILIES = [
   { formations: ['4-3-3', '4-1-2-3', '4-1-4-1', '4-5-1', '4-3-2-1'], aliases: { RM: 'RW', LM: 'LW', RAM: 'RW', LAM: 'LW' } },
   { formations: ['4-2-3-1', '4-2-1-3', '4-4-1-1'], aliases: { RM: 'RW', LM: 'LW' } },
   { formations: ['4-4-2', '4-2-2-2'], aliases: { RM: 'RAM', LM: 'LAM' } },
+  // 원톱+CAM ↔ 투톱: 기존 ST는 왼쪽 ST, CAM은 오른쪽 ST.
+  // 측면 RM/RW와 LM/LW는 4-2-2-2의 RAM/LAM으로 좁혀 배치한다.
+  { formations: ['4-2-3-1', '4-2-1-3', '4-4-1-1', '4-4-2', '4-2-2-2'],
+    aliases: { RM: 'RAM', RW: 'RAM', LM: 'LAM', LW: 'LAM', CAM: 'RS', ST: 'LS' } },
+];
+
+// 목적 슬롯 → 출발 슬롯. 검증한 한 단계의 선수 이동만 여기에 등록한다.
+// 유사군의 동일 역할 이동과 연결하면 다른 포메이션에도 같은 선수 흐름을 적용할 수 있다.
+const LINEUP_FORMATION_MOVES = [
+  { from: '4-3-3', to: '3-4-3', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
+  { from: '4-1-2-3', to: '3-4-3', slots: [0, 2, 5, 3, 1, 6, 7, 4, 8, 9, 10] },
+  { from: '4-2-1-3', to: '3-3-1-3', slots: [0, 2, 5, 3, 1, 6, 4, 7, 8, 9, 10] },
+  { from: '3-4-3', to: '3-3-1-3', slots: [0, 1, 2, 3, 4, 5, 7, 6, 8, 9, 10] },
+  { from: '3-5-2', to: '3-4-1-2', slots: [0, 1, 2, 3, 4, 5, 6, 8, 7, 9, 10] },
+  { from: '3-5-2', to: '3-5-1-1', slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+  { from: '3-4-1-2', to: '3-4-2-1', slots: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10] },
+  { from: '4-3-3', to: '4-2-3-1', slots: [0, 1, 2, 3, 4, 5, 6, 8, 7, 10, 9] },
+  // The holding midfielder fills the middle of the back three; full-backs become wing-backs.
+  { from: '4-3-1-2', to: '3-4-1-2', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
+  { from: '4-3-2-1', to: '3-4-2-1', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
+  // 4-5-1's DM advances to LCM, and its former LCM advances to CAM.
+  { from: '4-5-1', to: '4-4-1-1', slots: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10] },
+  // Full-backs advance; wide attackers move inside; one pivot drops into the back three.
+  { from: '4-2-3-1', to: '3-5-2', slots: [0, 2, 5, 3, 1, 7, 6, 9, 4, 8, 10] },
+  // The central forward drops to No. 10 and both wide forwards become strikers.
+  { from: '4-3-3', to: '4-3-1-2', slots: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10] },
 ];
 
 function getLineupTransitionSlots(formation) {
@@ -71,6 +97,66 @@ function lineupFormationMoveCost(from, to) {
     + ((from.y - to.y) / 80) ** 2 * 160;
 }
 
+let lineupFormationTransitionGraph = null;
+
+/** 전술적으로 확인한 양방향 이동과 유사군을 연결한다. */
+function getLineupFormationTransitionGraph() {
+  if (lineupFormationTransitionGraph) return lineupFormationTransitionGraph;
+  const graph = new Map();
+  const add = (from, to, slots) => {
+    const fromSlots = getLineupTransitionSlots(from);
+    const toSlots = getLineupTransitionSlots(to);
+    if (fromSlots.length !== 11 || toSlots.length !== 11
+      || slots.length !== 11 || new Set(slots).size !== 11
+      || slots.some(index => index < 0 || index >= 11)) return;
+    const reverse = new Array(11);
+    slots.forEach((source, destination) => { reverse[source] = destination; });
+    const cost = slots.reduce((sum, source, destination) =>
+      sum + lineupFormationMoveCost(fromSlots[source], toSlots[destination]), 0);
+    if (!graph.has(from)) graph.set(from, []);
+    if (!graph.has(to)) graph.set(to, []);
+    graph.get(from).push({ to, slots, cost });
+    graph.get(to).push({ to: from, slots: reverse, cost });
+  };
+  for (const family of LINEUP_FORMATION_FAMILIES) {
+    family.formations.forEach((from, index) => {
+      family.formations.slice(index + 1).forEach(to => {
+        const slots = getRelatedLineupSlotMapping(
+          from, to, getLineupTransitionSlots(from), getLineupTransitionSlots(to));
+        if (slots) add(from, to, slots);
+      });
+    });
+  }
+  LINEUP_FORMATION_MOVES.forEach(({ from, to, slots }) => add(from, to, slots));
+  lineupFormationTransitionGraph = graph;
+  return graph;
+}
+
+/** 최대 네 번의 확인된 이동을 합성한다. 경로는 홉 수, 이동 비용 순으로 고른다. */
+function getLineupFormationTransitionPath(fromFormation, toFormation) {
+  const graph = getLineupFormationTransitionGraph();
+  let best = null;
+  const visit = (formation, path, slots, cost) => {
+    if (formation === toFormation && path.length > 1) {
+      // 역방향에서도 같은 경로를 고르도록 양방향 공통 서명을 쓴다.
+      const forward = path.join('>'), backward = path.slice().reverse().join('>');
+      const signature = forward < backward ? forward : backward;
+      const candidate = { path, slots, cost, signature };
+      if (!best || path.length < best.path.length
+        || (path.length === best.path.length && (cost < best.cost - 1e-9
+          || (Math.abs(cost - best.cost) <= 1e-9 && signature < best.signature)))) best = candidate;
+      return;
+    }
+    if (path.length >= 5 || (best && path.length >= best.path.length)) return;
+    for (const edge of graph.get(formation) || []) {
+      if (path.includes(edge.to)) continue;
+      visit(edge.to, [...path, edge.to], edge.slots.map(index => slots[index]), cost + edge.cost);
+    }
+  };
+  visit(fromFormation, [fromFormation], Array.from({ length: 11 }, (_, index) => index), 0);
+  return best;
+}
+
 /** 각 목적 슬롯에 대응하는 출발 슬롯 인덱스. 11! 탐색 대신 O(n²·2^n) 최적 배정. */
 function getLineupFormationSlotMapping(fromFormation, toFormation) {
   const from = getLineupTransitionSlots(fromFormation), to = getLineupTransitionSlots(toFormation);
@@ -78,6 +164,8 @@ function getLineupFormationSlotMapping(fromFormation, toFormation) {
   if (fromFormation === toFormation) return from.map((_, index) => index);
   const related = getRelatedLineupSlotMapping(fromFormation, toFormation, from, to);
   if (related) return related;
+  const transition = getLineupFormationTransitionPath(fromFormation, toFormation);
+  if (transition) return transition.slots;
 
   const n = from.length, size = 1 << n;
   const costs = from.map(a => to.map(b => lineupFormationMoveCost(a, b)));
