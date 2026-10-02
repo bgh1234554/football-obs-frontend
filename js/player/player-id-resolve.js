@@ -977,14 +977,21 @@ function pirGetSide(el) {
 
 /** 현재 fixture의 선발·교체·부상자 명단에서 이름(origName)으로 선수 객체 조회. */
 function pirFindPlayer(side, origName) {
-  const data = (typeof lineupPanelState !== 'undefined') ? lineupPanelState.lastFixture : null;
-  if (!data) return null;
-  const lineup = data[`${side}Lineup`];
-  const all = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
-  const fromLineup = all.find(p => p && pirRosterName(p) === origName);
-  if (fromLineup) return fromLineup;
-  const injuries = data[`${side}Injuries`] || [];
-  return injuries.find(p => p && pirRosterName(p) === origName) || null;
+  if (typeof lineupPanelState === 'undefined') return null;
+  // 클릭한 노드는 수동 입력/벤치 보강을 포함한 표시 명단에서 왔다.
+  // 원본에 없는 ID 0 선수도 찾고, 주장 지정에 필요한 _captainKey를 유지한다.
+  for (const data of [lineupPanelState.lastEffectiveData, lineupPanelState.lastFixture]) {
+    if (!data) continue;
+    const lineup = data[`${side}Lineup`];
+    const all = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    const matches = all.filter(p => p && pirRosterName(p) === origName);
+    if (matches.length > 1) return null;
+    if (matches.length === 1) return matches[0];
+    const injuries = data[`${side}Injuries`] || [];
+    const injury = injuries.find(p => p && pirRosterName(p) === origName);
+    if (injury) return injury;
+  }
+  return null;
 }
 
 // ── pmContainer 참조 (player-menu.js와 공유) ──────────────────────────────────
@@ -1034,12 +1041,14 @@ function pirShowMenu(side, origName, clientX, clientY) {
     <div class="pm-info-text">
       <div class="pm-name"><span class="pm-num">${pirEsc(num)}</span>${pirEsc(displayName)}</div>
       ${idStatusHtml}
-      <div class="pm-pos pm-inline-actions">${typeof pmCaptainButtonHtml === 'function' ? pmCaptainButtonHtml(player, side) : ''}</div>
+      <div class="pm-pos pm-inline-actions">
+        ${typeof pmCaptainButtonHtml === 'function' ? pmCaptainButtonHtml(player, side) : ''}
+        ${canEditNickname ? '<button class="pm-btn pm-btn-inline" id="pirBtnNick">닉네임 설정</button>' : ''}
+      </div>
       ${existing ? `<div class="pm-nick-badge" style="color:#8cf">연결됨: ID ${pirEsc(String(existing.playerId))}</div>` : ''}
       ${nickname ? `<div class="pm-nick-badge">닉네임: ${pirEsc(nickname)}</div>` : ''}
     </div>
   </div>
-  ${canEditNickname ? `<div class="pm-btns"><button class="pm-btn" id="pirBtnNick">닉네임 설정</button></div>` : ''}
   <div class="pm-nick-wrap">
     <div class="pm-nick-title">선수 ID 입력 후 검색</div>
     <div style="display:flex;gap:6px;align-items:center">
