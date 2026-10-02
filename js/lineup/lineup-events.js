@@ -326,7 +326,10 @@ function lpResolveSubstEventIdsForAggregation(fixtureData) {
       const inPlayer = substitutes[inIdx];
       const resolvedOutId = Number(outPlayer?.playerId) || 0;
       const resolvedInId = Number(inPlayer?.playerId) || 0;
-      if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId) {
+      // ID 0은 이름이 집계 키이므로, ID가 그대로여도 명단의 이름으로 맞춘다.
+      // 수동 선택에서 긴 이름을 저장한 경우에도 노드의 짧은 이름과 연결되어야 한다.
+      if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId
+        || resolvedOutId === 0 || resolvedInId === 0) {
         resolved[index] = {
           ...ev,
           playerId: resolvedOutId,
