@@ -370,11 +370,11 @@ function pmShowMenu(playerId, clientX, clientY) {
         <span>포지션: ${pmEsc(pos)}</span>
         <button class="pm-btn pm-btn-inline" id="pmBtnIdLink">ID 입력</button>
         ${pmCaptainButtonHtml(player, player._side)}
-        <button class="pm-btn pm-btn-inline" id="pmBtnNick">닉네임 설정</button>
       </div>
     </div>
   </div>
   <div class="pm-btns">
+    <button class="pm-btn" id="pmBtnNick">닉네임 설정</button>
     <button class="pm-btn" id="pmBtnMatch"${hasMatchStats ? '' : ' disabled'}>경기 스탯</button>
     <button class="pm-btn" id="pmBtnSeason">시즌 스탯</button>
   </div>
