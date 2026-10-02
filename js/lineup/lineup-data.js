@@ -28,16 +28,15 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
     next.events = window.evPatchSubstEvents(next.events, fixtureId);
   }
-  // 교체 IN 이벤트에만 등장하고 교체 명단(substitutes)엔 없는 선수를 벤치에 보강.
-  // (예: API가 벤치 명단 갱신 없이 실제로 투입된 선수를 이벤트에서만 내려주는 경우 —
-  //  lpFindLineupPlayerIndex가 substitutes에서 못 찾아 subReflect swap이 그냥 skip됨.)
-  synthesizeMissingBenchPlayers(next);
   if (!entry) {
     applyManualCaptainToFixture(next, null);
     // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
     if (typeof window.applyZeroIdOverrides === 'function') {
       window.applyZeroIdOverrides(next, fixtureId);
     }
+    // 먼저 이벤트의 별칭 ID를 기존 명단에 연결한다. 보강을 먼저 하면 생성된 ID가
+    // knownIds에 포함되어 자동 연결이 건너뛰어지고 같은 선수가 두 명으로 남는다.
+    synthesizeMissingBenchPlayers(next);
     reconcileInjuriesAgainstLineup(next);
     return applyInferredFormationsToFixtureData(next);
   }
@@ -154,6 +153,8 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.applyZeroIdOverrides === 'function') {
     window.applyZeroIdOverrides(next, fixtureId);
   }
+  // 수동 명단/ID 연결까지 반영한 뒤에도 명단에 없는 IN 선수만 보강한다.
+  synthesizeMissingBenchPlayers(next);
 
   reconcileInjuriesAgainstLineup(next);
 
