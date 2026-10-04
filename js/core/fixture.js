@@ -7,6 +7,7 @@
   const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
+  let fixtureSelectionVersion = 0;
   // 실제로 스코어보드에 로딩/적용된 fixture ID. currentFixtureId는 위젯에서 "구경만" 해도
   // 바뀌지만(바로 불러오기 버튼의 대상), 이건 fetchAndApplyFixtureData가 실제로 데이터를
   // 적용했을 때만 갱신 — forceRefreshCurrentFixture처럼 "지금 화면에 떠 있는 경기"를 다시
@@ -79,6 +80,7 @@
    * 아니라 fetchAndApplyFixtureData 성공 시 호출되는 지점들)에서는 인자를 생략해 기존처럼 영속화한다.
    */
   function setFixtureId(id, { persist = true } = {}) {
+    fixtureSelectionVersion += 1;
     currentFixtureId = id || null;
     if (currentFixtureId) lastSeenFixtureId = currentFixtureId;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
@@ -913,6 +915,7 @@
     const overlayOpts = silent ? { noOverlay: true } : undefined;
     _fetchSeq += 1;
     const requestSeq = _fetchSeq;
+    const selectionVersionAtRequest = fixtureSelectionVersion;
     _lastFetchId = normalizedFixtureId;
     if (!silent) setApiStatus('loading');
     try{
@@ -969,7 +972,11 @@
       // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
-      setFixtureId(normalizedFixtureId);
+      // 자동 갱신은 보드 데이터만 갱신한다. 조회 중 다른 경기를 선택한 경우에도
+      // 늦게 도착한 응답이 선택 ID와 최근 선택값을 되돌리지 않도록 한다.
+      if (!silent && fixtureSelectionVersion === selectionVersionAtRequest) {
+        setFixtureId(normalizedFixtureId);
+      }
       activeFixtureId = normalizedFixtureId;
       const leagueId = extractLeagueIdFromFixtureData(data);
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
