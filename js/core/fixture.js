@@ -927,7 +927,7 @@
       if (requestSeq !== _fetchSeq) return null;
       if(!data){
         resetFixtureDrivenState({
-          clearFixtureId: true,
+          clearFixtureId: fixtureSelectionVersion === selectionVersionAtRequest,
           clearCache: true,
           statusMessage: '경기 데이터 없음'
         });
