@@ -1063,7 +1063,7 @@
    * 7) 추가시간 — extraManualOverride가 false일 때만 API extra로 갱신.
    * 8) 페널티 슛아웃 — events에서 PK 시퀀스 재구성. 단, 새 시퀀스가 더 짧으면 기존 값 유지.
    * 9) 득점자/레드카드 — applyScorersAndCards에서 events 가공.
-   * 10) 타이머 — 새 응답의 HT는 45:00, FT 계열/90분 BT는 90:00으로 보정하고 정지.
+   * 10) 타이머 — HT/BT는 구간 종료 시각, 승부차기·경기 종료는 elapsed 기준 90/120분으로 보정하고 정지.
    *     다른 경기를 조회하면 00:00으로 초기화하고, 같은 경기 갱신/설정 재적용은 수동 시계를 보존한다.
    */
   function applyFixtureToState(data, options){
@@ -1154,7 +1154,8 @@
       : (status === 'BT' ? 90 : null);
     const stoppedSeconds = status === 'HT' ? 45 * 60
       : breakElapsed !== null ? breakElapsed * 60
-      : FT_LIKE_STATUSES.has(status) ? 90 * 60
+      : FT_LIKE_STATUSES.has(status) || ['PSO', 'P'].includes(status)
+        ? (Number(m.elapsed) > 90 ? 120 : 90) * 60
       : null;
     // 새 경기에는 이전 경기의 시간을 넘기지 않는다. HT/FT의 고정 시각은 우선 적용한다.
     const nextClockSeconds = stoppedSeconds ?? (options?.resetClock === true ? 0 : null);
