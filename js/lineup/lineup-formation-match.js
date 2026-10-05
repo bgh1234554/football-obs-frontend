@@ -19,20 +19,33 @@ const LINEUP_FORMATION_MOVES = [
   { from: '4-3-3', to: '3-4-3', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
   { from: '4-1-2-3', to: '3-4-3', slots: [0, 2, 5, 3, 1, 6, 7, 4, 8, 9, 10] },
   { from: '4-2-1-3', to: '3-3-1-3', slots: [0, 2, 5, 3, 1, 6, 4, 7, 8, 9, 10] },
-  { from: '3-4-3', to: '3-3-1-3', slots: [0, 1, 2, 3, 4, 5, 7, 6, 8, 9, 10] },
+  { from: '3-4-3', to: '3-3-1-3', slots: [0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10] },
   { from: '3-5-2', to: '3-4-1-2', slots: [0, 1, 2, 3, 4, 5, 6, 8, 7, 9, 10] },
   { from: '3-5-2', to: '3-5-1-1', slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
   { from: '3-4-1-2', to: '3-4-2-1', slots: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10] },
-  { from: '4-3-3', to: '4-2-3-1', slots: [0, 1, 2, 3, 4, 5, 6, 8, 7, 10, 9] },
-  // The holding midfielder fills the middle of the back three; full-backs become wing-backs.
+  // 오른쪽 CM을 CAM으로 올려, 이후 오른쪽 공격수로 전환해도 좌우를 유지한다.
+  { from: '4-3-3', to: '4-2-3-1', slots: [0, 1, 2, 3, 4, 6, 7, 8, 5, 10, 9] },
+  // 홀딩 미드필더는 백3 중앙으로 내려가고, 양쪽 풀백은 윙백으로 올라간다.
   { from: '4-3-1-2', to: '3-4-1-2', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
   { from: '4-3-2-1', to: '3-4-2-1', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
-  // 4-5-1's DM advances to LCM, and its former LCM advances to CAM.
-  { from: '4-5-1', to: '4-4-1-1', slots: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10] },
-  // Full-backs advance; wide attackers move inside; one pivot drops into the back three.
+  // 오른쪽 CM은 CAM으로 전진하고, DM이 그 자리를 채워 좌우가 뒤바뀌지 않게 한다.
+  { from: '4-5-1', to: '4-4-1-1', slots: [0, 1, 2, 3, 4, 5, 7, 8, 9, 6, 10] },
+  // 풀백은 전진하고 측면 공격수는 안쪽으로 이동하며, 피벗 한 명은 백3으로 내려간다.
   { from: '4-2-3-1', to: '3-5-2', slots: [0, 2, 5, 3, 1, 7, 6, 9, 4, 8, 10] },
-  // The central forward drops to No. 10 and both wide forwards become strikers.
+  // 중앙 공격수는 CAM으로 내려가고, 양쪽 윙어는 투톱으로 좁혀 들어온다.
   { from: '4-3-3', to: '4-3-1-2', slots: [0, 1, 2, 3, 4, 5, 6, 7, 9, 8, 10] },
+  // 측면 미드필더 한 명은 전진하고, 반대쪽 윙은 가까운 공격수가 맡는다.
+  // 오른쪽 공격수는 중앙에 남고 왼쪽 공격수는 측면으로 이동하며, CAM은 중원으로 내려간다.
+  { from: '4-1-3-2', to: '4-3-3', slots: [0, 1, 2, 3, 4, 7, 5, 8, 6, 9, 10] },
+  // 투톱을 공유하는 포메이션은 공격수를 유지하고 중원의 형태만 바꾼다.
+  { from: '4-4-2', to: '4-3-1-2', slots: [0, 1, 2, 3, 4, 5, 6, 8, 7, 9, 10] },
+  { from: '4-4-2', to: '4-1-3-2', slots: [0, 1, 2, 3, 4, 6, 5, 7, 8, 9, 10] },
+  // 중앙 미드필더 한 명은 백3으로 내려가며, 투톱은 기존 좌우를 유지한다.
+  { from: '4-4-2', to: '3-5-2', slots: [0, 2, 6, 3, 1, 5, 7, 8, 4, 9, 10] },
+  // 공격수 한 명이 CAM으로 내려오고 기존 CAM은 피벗에 합류한다.
+  { from: '4-1-3-2', to: '4-2-3-1', slots: [0, 1, 2, 3, 4, 5, 7, 6, 9, 8, 10] },
+  // 오른쪽 CM은 기존 공격수와 투톱을 이루고, 양쪽 윙어는 측면 미드필더로 내려온다.
+  { from: '4-3-3', to: '4-4-2', slots: [0, 1, 2, 3, 4, 8, 6, 7, 10, 5, 9] },
 ];
 
 function getLineupTransitionSlots(formation) {
@@ -132,19 +145,39 @@ function getLineupFormationTransitionGraph() {
   return graph;
 }
 
-/** 최대 네 번의 확인된 이동을 합성한다. 경로는 홉 수, 이동 비용 순으로 고른다. */
+/** 확인된 이동만 합성한다. 같은 길이의 경로는 최종 역할/좌우 보존과 이동 비용을 비교한다. */
 function getLineupFormationTransitionPath(fromFormation, toFormation) {
   const graph = getLineupFormationTransitionGraph();
+  const from = getLineupTransitionSlots(fromFormation), to = getLineupTransitionSlots(toFormation);
+  const sharedDefenders = new Set(from.filter(slot => /^(GK|RB|LB|RCB|CB|LCB|RWB|LWB)$/.test(slot.role)
+    && to.some(target => target.role === slot.role)).map(slot => slot.role));
+  const sameStrikerCount = from.filter(slot => slot.kind === 'ST').length
+    === to.filter(slot => slot.kind === 'ST').length;
+  const compare = (a, b) => {
+    for (let index = 0; index < a.length; index++) {
+      if (Math.abs(a[index] - b[index]) > 1e-9) return a[index] - b[index];
+    }
+    return 0;
+  };
   let best = null;
   const visit = (formation, path, slots, cost) => {
     if (formation === toFormation && path.length > 1) {
       // 역방향에서도 같은 경로를 고르도록 양방향 공통 서명을 쓴다.
       const forward = path.join('>'), backward = path.slice().reverse().join('>');
       const signature = forward < backward ? forward : backward;
-      const candidate = { path, slots, cost, signature };
-      if (!best || path.length < best.path.length
-        || (path.length === best.path.length && (cost < best.cost - 1e-9
-          || (Math.abs(cost - best.cost) <= 1e-9 && signature < best.signature)))) best = candidate;
+      const preservationLoss = slots.reduce((sum, source, destination) => sum
+        + (sharedDefenders.has(to[destination].role) && from[source].role !== to[destination].role ? 1 : 0)
+        + (sameStrikerCount && to[destination].kind === 'ST' && from[source].kind !== 'ST' ? 1 : 0), 0);
+      const sideCrossings = slots.filter((source, destination) =>
+        (from[source].y - 50) * (to[destination].y - 50) < 0).length;
+      const endpointCost = slots.reduce((sum, source, destination) =>
+        sum + lineupFormationMoveCost(from[source], to[destination]), 0);
+      // 같은 단계 수에서는 최종 배치의 수비/공격수 보존, 좌우, 이동 비용 순으로 비교한다.
+      // 경유 단계의 비용만 합산하면 최종적으로 더 먼 자리나 반대쪽을 선택할 수 있다.
+      const rank = [path.length, preservationLoss, sideCrossings, endpointCost, cost];
+      const candidate = { path, slots, cost, endpointCost, signature, rank };
+      const order = best ? compare(rank, best.rank) : -1;
+      if (order < 0 || (order === 0 && signature < best.signature)) best = candidate;
       return;
     }
     if (path.length >= 5 || (best && path.length >= best.path.length)) return;

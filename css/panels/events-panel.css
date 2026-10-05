@@ -27,7 +27,8 @@
       height: var(--panel-title-bar-height);
       min-height: var(--panel-title-bar-height);
       box-sizing: border-box;
-      padding: 4px 0 6px;
+      /* 전체 높이를 유지하면서 패널 상단 여백 4px까지 포함해 중앙 정렬. */
+      padding: 3px 0 7px;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
       z-index: 4;
@@ -36,7 +37,7 @@
     .ev-title-bar .small-panel-mode-buttons {
       position: absolute;
       left: 0;
-      top: 50%;
+      top: calc((100% - 1px) / 2 - 2px);
       transform: translateY(-50%);
     }
     .ev-title {
@@ -51,7 +52,7 @@
     .ev-filter-shell {
       position: absolute;
       right: 0;
-      top: 50%;
+      top: calc((100% - 1px) / 2 - 2px);
       transform: translateY(-50%);
       z-index: 5;
     }
@@ -888,4 +889,3 @@
       transform: translate(-50%, -50%) translate(var(--logo-trim-x, 0%), var(--logo-trim-y, 0%));
       pointer-events: none;
     }
-

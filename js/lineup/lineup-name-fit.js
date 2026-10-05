@@ -1406,6 +1406,25 @@ function elementOverlapsAny(subjectEl, targets) {
   return targets.some(target => canMeasureTextElement(target) && wrapsOverlap(subjectEl, target));
 }
 
+/** 팀 라벨과 바둑알은 실제 원에 1px 간격을 두고 검사한다. 배지·이름표는 사각형을 유지한다. */
+function teamChipOverlapsAny(subjectEl, targets) {
+  if (!canMeasureTextElement(subjectEl) || !Array.isArray(targets)) return false;
+  const label = getDisplayLayoutRect(subjectEl);
+  return targets.some(target => {
+    if (!canMeasureTextElement(target)) return false;
+    if (!target.matches('.dp-lineup-node')) return wrapsOverlap(subjectEl, target);
+    const body = target.querySelector('.dp-lineup-avatar, .dp-lineup-circle');
+    if (!canMeasureTextElement(body)) return wrapsOverlap(subjectEl, target);
+    const circle = getDisplayLayoutRect(body);
+    const cx = (circle.left + circle.right) / 2, cy = (circle.top + circle.bottom) / 2;
+    const nearestX = Math.max(label.left, Math.min(cx, label.right));
+    const nearestY = Math.max(label.top, Math.min(cy, label.bottom));
+    // 가로/세로 반지름을 따로 사용해 배율이 적용된 타원에서도 같은 기준을 유지한다.
+    const rx = circle.width / 2 + 1, ry = circle.height / 2 + 1;
+    return ((nearestX - cx) / rx) ** 2 + ((nearestY - cy) / ry) ** 2 < 1;
+  });
+}
+
 /**
  * nameEl의 자연 1줄 폭 시도용 충돌 대상 — 같은 피치의 다른 이름 라벨 + 원(circle) +
  * 팀칩 + 우선순위/상대팀 배지. 기존 충돌 보정 패스들이 이미 쓰는 타겟 수집 함수를 그대로
@@ -1603,7 +1622,7 @@ function nudgeTeamChipTowardEdge(chipEl, collisionEls, options = {}) {
   for (let next = Math.floor(currentOffset) - 1; next >= minOffset; next -= 1) {
     chipEl.style[prop] = `${next}px`;
     changed = true;
-    if (!elementOverlapsAny(chipEl, collisionEls)) break;
+    if (!teamChipOverlapsAny(chipEl, collisionEls)) break;
   }
   return changed;
 }
@@ -1650,7 +1669,7 @@ function settleTeamChipNameCandidate(nameEl, mainEl, collisionEls, text) {
   for (let font = Math.round(baseFont); font >= TEAM_CHIP_NAME_MIN_FONT_PX; font -= 1) {
     nameEl.style.fontSize = `${font}px`;
     const fits = nameEl.scrollWidth <= nameEl.clientWidth + 0.5
-      && !elementOverlapsAny(mainEl, collisionEls);
+      && !teamChipOverlapsAny(mainEl, collisionEls);
     if (fits) return font;
   }
   return 0;
@@ -1706,7 +1725,7 @@ function tryTeamChipTwoTokenBreak(nameEl, collisionEls) {
   nameEl.style.whiteSpace = '';
 
   if (canStayWithinTwoTextLines(nameEl)
-    && !elementOverlapsAny(nameEl.closest('.dp-lineup-team-main'), collisionEls)) {
+    && !teamChipOverlapsAny(nameEl.closest('.dp-lineup-team-main'), collisionEls)) {
     nameEl.dataset.teamNameOriginal = originalText;
     return true;
   }
@@ -1730,7 +1749,44 @@ function tightenTeamChipNameToRenderedLines(nameEl) {
   return true;
 }
 
-/** 팀칩이 collisionEls와 겹치면 (stacked 전환 → 가장자리 nudge → 폭/폰트 축소 순으로) 풀릴 때까지 보정. */
+/** 팀명/포메이션은 글자를 줄이기 전에 패딩을 조절한다. 동률이면 넉넉한 패딩을 유지한다. */
+function fitTeamChipPadding(chipEl, mainEl, nameEl, collisionEls) {
+  if (!chipEl.classList.contains('dp-lineup-team-name-tag')
+    && !chipEl.closest('.layout-small .lp-lineup-s')) return;
+  const formationEl = mainEl.querySelector('.dp-lineup-team-fm');
+  const baseFormationFont = formationEl ? parseFloat(getComputedStyle(formationEl).fontSize) : 0;
+  const style = getComputedStyle(mainEl);
+  const baseFont = parseFloat(getComputedStyle(nameEl).fontSize);
+  const vertical = parseFloat(style.paddingTop), horizontal = parseFloat(style.paddingLeft);
+  if (!Number.isFinite(baseFont) || !Number.isFinite(vertical) || !Number.isFinite(horizontal)) return;
+  const pitch = chipEl.closest('.dp-lineup-vertical-pitch');
+  const bounds = getDisplayLayoutRect(pitch);
+  const original = { font: nameEl.style.fontSize, width: nameEl.style.width, padding: mainEl.style.padding,
+    formationFont: formationEl?.style.fontSize || '' };
+  const minimum = Math.min(baseFont, TEAM_CHIP_NAME_MIN_FONT_PX);
+  for (let font = baseFont; ; font = Math.max(minimum, font - 1)) {
+    for (const ratio of [1, 0.75]) {
+      // 기본 4/8px에서 최소 3/6px까지만 줄이고, 바둑알 배율도 같은 비율로 유지한다.
+      mainEl.style.padding = `${vertical * ratio}px ${horizontal * ratio}px`;
+      nameEl.style.fontSize = `${font}px`;
+      if (formationEl) formationEl.style.fontSize = `${Math.max(Math.min(baseFormationFont, TEAM_CHIP_META_MIN_FONT_PX), baseFormationFont - (baseFont - font))}px`;
+      nameEl.style.width = '';
+      const rect = getDisplayLayoutRect(mainEl);
+      if (nameEl.scrollWidth <= nameEl.clientWidth + 0.5
+        && nameEl.scrollHeight <= nameEl.clientHeight + 0.5
+        && rect.left >= bounds.left && rect.right <= bounds.right
+        && rect.top >= bounds.top && rect.bottom <= bounds.bottom
+        && !teamChipOverlapsAny(mainEl, collisionEls)) return;
+    }
+    if (font <= minimum) break;
+  }
+  nameEl.style.fontSize = original.font;
+  nameEl.style.width = original.width;
+  mainEl.style.padding = original.padding;
+  if (formationEl) formationEl.style.fontSize = original.formationFont;
+}
+
+/** 팀칩이 충돌하면 패딩 조절 → 이름 후보/줄바꿈 → 폭/폰트 축소 순으로 보정한다. */
 function fitTeamChip(chipEl, collisionEls, options = {}) {
   const preferShrink = options?.preferShrink === true;
   const mainEl = chipEl?.querySelector('.dp-lineup-team-main');
@@ -1747,6 +1803,7 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
   delete nameEl.dataset.teamNameShortTried;
   const nameIsClipped = () => nameEl.scrollWidth > nameEl.clientWidth + 0.5
     || nameEl.scrollHeight > nameEl.clientHeight + 0.5;
+  fitTeamChipPadding(chipEl, mainEl, nameEl, collisionEls);
 
   // 잘림/충돌 여부와 관계없이 먼저 긴 이름과 짧은 이름의 최대 폰트를 비교한다. 긴 이름이
   // 2줄로는 보이더라도 짧은 이름이 더 큰 글자를 허용할 수 있다. preferShrink(작은 캠) 여부와
@@ -1759,14 +1816,14 @@ function fitTeamChip(chipEl, collisionEls, options = {}) {
 
   let safety = 0;
   while (safety < 32) {
-    const mainOverlaps = elementOverlapsAny(mainEl, collisionEls);
-    const buttonOverlaps = elementOverlapsAny(buttonEl, collisionEls);
+    const mainOverlaps = teamChipOverlapsAny(mainEl, collisionEls);
+    const buttonOverlaps = teamChipOverlapsAny(buttonEl, collisionEls);
     // mainEl/buttonEl는 칩 좌우 끝의 실제 pill만 가리켜서, 라벨(예: GK 이름표)이 그 사이
     // 빈 여백(예: formationOnly 모드에서 포메이션 텍스트와 버튼 사이)에 걸리는 경우를
     // 놓친다 — 시각적으로는 칩 바(is-home/away 가로 전체 라인)와 겹쳐 지저분해 보이는데도
     // mainOverlaps/buttonOverlaps 둘 다 false라 아래 nudge/shrink 단계로 못 내려갔다.
     // 칩 전체 rect까지 같이 확인해 그 경우도 remediation 루프에 들어오게 한다.
-    const chipOverlaps = elementOverlapsAny(chipEl, collisionEls);
+    const chipOverlaps = teamChipOverlapsAny(chipEl, collisionEls);
     if (!mainOverlaps && !buttonOverlaps && !chipOverlaps && !nameIsClipped()) break;
 
     // 긴 팀명을 먼저 줄이지 않는다. 짧은 이름이 현재 폰트 크기로 안전하게 들어가면 그
@@ -1871,6 +1928,7 @@ function fitBigLineupTeamChips(root) {
       });
       pitch.querySelectorAll('.dp-lineup-team-main').forEach(el => {
         el.classList.remove('is-stacked');
+        if (el.closest('.dp-lineup-team-name-tag, .layout-small .lp-lineup-s')) el.style.padding = '';
       });
       // .dp-lineup-team-name-tag(분할 모드 좌상단 팀명 라벨)도 같은 파이프라인으로 처리해야
       // 포메이션 chip과 마찬가지로 노드/이름표와 겹칠 때 가장자리로 밀리며, 그래야 두 라벨의
@@ -1883,7 +1941,7 @@ function fitBigLineupTeamChips(root) {
 
       pitch.querySelectorAll('.dp-lineup-team-chip, .dp-lineup-team-name-tag').forEach(chip => {
         const collisionEls = Array.from(
-          pitch.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap')
+          pitch.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap, .dp-node-badge, .dp-node-rating, .dp-node-count, .dp-node-count-og, .dp-card')
         ).filter(target => target !== chip && !chip.contains(target));
         const isNameTag = chip.classList.contains('dp-lineup-team-name-tag');
         fitTeamChip(chip, collisionEls, {

@@ -316,6 +316,12 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   align-items: flex-start;
   gap: calc(2px * var(--lp-node-scale, 1));
 }
+.layout-small .lp-lineup-s .dp-lineup-team-main {
+  padding: calc(4px * var(--lp-team-label-scale, 1)) calc(8px * var(--lp-team-label-scale, 1));
+}
+.layout-big .lp-lineup .dp-lineup-team-name-tag .dp-lineup-team-main {
+  padding: calc(4px * var(--lp-node-scale, 1)) calc(8px * var(--lp-node-scale, 1));
+}
 .layout-big .lp-lineup .dp-lineup-team-main.is-formation-only {
   gap: 0;
   padding-inline: calc(10px * var(--lp-node-scale, 1));

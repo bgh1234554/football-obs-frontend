@@ -46,7 +46,7 @@ const root = path.resolve(__dirname, '../..');
       assert.deepEqual(await slots(),savedSlots,'cancel must not modify stored formation');
       await page.locator('#manualPanelCancel').click();
     }
-    // The real selector must keep both wings on their side and send CAM beside ST.
+    // 실제 선택 UI에서도 양쪽 측면을 유지하고 CAM을 기존 ST 옆으로 보내야 한다.
     for(const [from,to,expected] of [
       ['4-3-3','3-4-3',[0,2,6,3,1,5,7,4,8,9,10]],
       ['4-2-1-3','3-3-1-3',[0,2,5,3,1,6,4,7,8,9,10]],
@@ -57,10 +57,19 @@ const root = path.resolve(__dirname, '../..');
       ['4-3-3','5-2-3',[0,1,2,6,3,4,5,7,8,9,10]],
       ['4-3-1-2','3-4-1-2',[0,2,6,3,1,5,7,4,8,9,10]],
       ['4-3-2-1','3-4-2-1',[0,2,6,3,1,5,7,4,8,9,10]],
-      ['4-5-1','4-4-1-1',[0,1,2,3,4,5,6,7,9,8,10]],
+      ['4-5-1','4-4-1-1',[0,1,2,3,4,5,7,8,9,6,10]],
       ['4-2-3-1','3-5-2',[0,2,5,3,1,7,6,9,4,8,10]],
       ['4-3-3','4-3-1-2',[0,1,2,3,4,5,6,7,9,8,10]],
-      ['4-4-2','5-4-1',[0,1,2,7,3,4,5,6,9,8,10]],
+      ['4-1-3-2','4-3-3',[0,1,2,3,4,7,5,8,6,9,10]],
+      ['4-4-2','4-3-1-2',[0,1,2,3,4,5,6,8,7,9,10]],
+      ['4-4-2','4-1-3-2',[0,1,2,3,4,6,5,7,8,9,10]],
+      ['4-4-2','3-5-2',[0,2,6,3,1,5,7,8,4,9,10]],
+      ['4-1-3-2','4-2-3-1',[0,1,2,3,4,5,7,6,9,8,10]],
+      ['4-3-3','4-4-2',[0,1,2,3,4,8,6,7,10,5,9]],
+      ['4-3-3','4-2-3-1',[0,1,2,3,4,6,7,8,5,10,9]],
+      ['3-4-3','3-3-1-3',[0,1,2,3,4,6,7,5,8,9,10]],
+      ['4-2-2-2','3-4-1-2',[0,2,5,3,1,7,6,4,8,9,10]],
+      ['4-4-2','5-4-1',[0,1,2,6,3,4,5,9,7,8,10]],
     ]) {
       await page.evaluate(from=>{
         const lineup={formation:from,startXi:Array.from({length:11},(_,i)=>({playerId:100+i,name:`player ${i}`,grid:buildManualGridValues(from)[i]})),substitutes:[]};
@@ -88,7 +97,7 @@ const root = path.resolve(__dirname, '../..');
     await select().selectOption('5-2-3');
     assert.deepEqual(await slots(),direct,'direct and staged changes must keep the same edited players');
     await page.locator('#manualPanelCancel').click();
-    // Full-form inputs and its movement UI use the same mapping without losing partial rows.
+    // 전체 입력 폼과 이동 UI가 같은 대응을 사용하고 일부만 입력한 행도 보존해야 한다.
     await page.evaluate(()=>{
       applyLineupPanels({matchInfo:{fixtureId:'formation-full',homeTeamId:1,awayTeamId:2},homeLineup:{startXi:[],substitutes:[]},awayLineup:{startXi:[],substitutes:[]},events:[],playerStats:[]});
       openManualPanel('lineup','home');

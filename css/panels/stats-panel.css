@@ -8,7 +8,7 @@
     /* lp-stat 패널 순환 버튼 — 세 패널(스탯/이벤트/상대전적) 사이 전환 */
     .lp-stat-cycle-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       left: 8px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -32,7 +32,7 @@
     /* lp-stat 자동 전환 일시정지 버튼 — cycle 버튼과 동일 스타일, 우측 상단에 배치. statCycleAuto ON일 때만 표시. */
     .lp-stat-pause-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       right: 8px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -61,7 +61,7 @@
        일시정지 버튼이 떠 있으면 그 왼쪽, 없으면 일시정지 버튼 자리(우측 상단). */
     .lp-stat-bench-edit-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       right: 8px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -83,7 +83,7 @@
     .lp-stat-bench-edit-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
     .lp-stat-standings-popup-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       left: 36px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -133,7 +133,7 @@
     .lp-stat-refresh-btn {
       position: absolute;
       z-index: 20;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       left: 36px;
       height: var(--panel-title-control-size);
       width: var(--panel-title-control-size);
@@ -151,7 +151,15 @@
        텍스트를 감싸는 정도로만 테두리를 두른다. */
     .lp-bench-refresh-btn {
       font: inherit;
-      padding: 1px 7px;
+      height: 22px;
+      padding: 0 7px;
+      line-height: 1;
+      justify-content: center;
+    }
+    .lp-bench-refresh-btn .lp-force-refresh-label,
+    .lp-bench-refresh-btn .lp-force-refresh-count {
+      display: block;
+      line-height: 13px;
     }
 
     /* bench cycle 패널 공통 — [data-stat-panel] 과 동일한 패딩으로 타이틀 높이 맞춤 */
@@ -286,7 +294,7 @@
     .scoreaxis-small-popup-btn {
       position: absolute;
       right: 8px;
-      top: 50%;
+      top: calc((100% - 1px) / 2 - 2px);
       transform: translateY(-50%);
       width: 22px;
       height: 22px;
@@ -379,7 +387,8 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       color: #fff;
-      padding: 0;
+      /* 상단 패널 여백 4px을 포함한 헤더 중앙에 제목을 맞춘다. */
+      padding: 0 0 4px;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
     }
