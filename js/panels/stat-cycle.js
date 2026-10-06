@@ -56,6 +56,9 @@ const _STAT_PAUSE_ICONS = {
   play:  `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3.5 2.3v9.4a1 1 0 0 0 1.52.85l7.5-4.7a1 1 0 0 0 0-1.7l-7.5-4.7a1 1 0 0 0-1.52.85z"/></svg>`,
 };
 
+// 교체 명단 수동 입력(연필) 아이콘 — 캠 작음 교체 명단 패널의 "홈/원정 입력" 버튼과 같은 모달을 연다.
+const _STAT_BENCH_EDIT_ICON = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M9.2 2.3l2.5 2.5-6.9 6.9H2.3V9.2z"/><path d="M8 3.5l2.5 2.5"/></svg>`;
+
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 
 /** 패널 자동 전환(statCycleAuto) 설정이 ON인지. */
@@ -96,6 +99,7 @@ function _lpEventsScrollEl(mode = 'events') {
   if (mode === 'match_info') return panel?.querySelector('.mi-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
+/** 현재 모드가 자동 스크롤 대상인지 판단한다. 교체 명단은 패널이 스크롤 필요 상태일 때만 포함한다. */
 function _lpModeUsesPanelAutoScroll(mode) {
   if (mode === 'events' || mode === 'hth') return true;
   if (mode === 'bench_home' || mode === 'bench_away') {
@@ -210,6 +214,7 @@ function _lpBindEventsScrollInterruption(el) {
  * 그대로 적용한다(둘을 합친 총 시간 = fixedHoldBottomMs + intervalMs).
  */
 function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, options = {}) {
+  // 1) 이전 스크롤을 정리하고 대상 요소·이동 방향을 결정한 뒤 사용자 조작 시 중단 처리를 연결한다.
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
   const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info';
@@ -219,6 +224,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
   }
   _lpBindEventsScrollInterruption(el);
 
+  // 2) 시작 대기·이동·끝 대기 시간을 정한다. 새 이벤트의 고정 대기나 HTH의 긴 이동 시간은 옵션으로 반영한다.
   const hasCustomStartHold = Number.isFinite(options.startHoldMs);
   const hasCustomScrollDuration = Number.isFinite(options.scrollDurationMs);
   const hasCustomEndHold = Number.isFinite(options.endHoldMs);
@@ -238,6 +244,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
     : Math.max(0, intervalMs - holdBottom - scrollDuration);
   const totalDwellMs = holdBottom + scrollDuration + waitAfter;
 
+  // 3) 렌더 후 실제 스크롤 길이를 측정한다. 아직 길이가 없으면 한 번 더 기다린 후 대기만 할지 결정한다.
   const startAfterLayout = () => {
     const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
     const startTop = scrollDown ? 0 : maxScroll;
@@ -269,6 +276,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
       _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
     };
 
+    // 4) 경과 시간 비율로 위치를 이동한다. 끝에 도달하면 마지막 대기 시간을 거쳐 다음 패널로 전환한다.
     const startScroll = () => {
       _lpAuto.scrollTimer = null;
       const startTime = performance.now();
@@ -302,9 +310,25 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
     _lpAuto.scrollRaf = requestAnimationFrame(startAfterLayout);
   });
 }
+/** 표시 중인 이벤트만 센다. 숨김/필터링된 이벤트와 전후반 구분선은 제외한다.
+ * 10초 설정이면 15개부터 스크롤 이동 시간을 늘리고, 시작/끝 대기는 유지한다. */
+function _lpEventScrollOptions(baseIntervalMs) {
+  const list = _lpEventsScrollEl('events');
+  const count = list?.querySelectorAll('.ev-row[data-ev-key]').length || 0;
+  if (!Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
+  const threshold = (baseIntervalMs / 1000) * 1.5;
+  if (count < threshold) return {};
+  return {
+    startHoldMs: baseIntervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO,
+    scrollDurationMs: Math.round(baseIntervalMs * count / threshold),
+    endHoldMs: baseIntervalMs * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO),
+  };
+}
+
 /** 상대전적 경기 수가 많으면 실제 스크롤 이동 시간을 비례해서 늘린다(HTH 패널 전용). */
 const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
+/** 실제 상대 전적 행 수가 기준 이상이면 이동 시간을 늘리는 옵션을 반환한다. 기본 속도면 빈 객체. */
 function _lpHthScrollOptions(baseIntervalMs) {
   // displayMatches는 오늘 포함 이후 예정 경기를 뺀, 실제로 화면에 그려지는 행 수와 일치하는 배열
   // (hth-panel.js applyHthPanel). 필터 전 hthData.matches를 쓰면 화면엔 안 보이는 예정 경기 때문에
@@ -328,6 +352,7 @@ function _lpHthScrollOptions(baseIntervalMs) {
   };
 }
 
+/** 상대 전적 데이터를 준비한 뒤 스크롤을 시작한다. 로딩 중에는 다음 패널로 넘어갈 대체 타이머를 둔다. */
 function _lpStartHthScrollWhenReady(intervalMs) {
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
@@ -365,6 +390,7 @@ function _lpAutoIsActive() {
 
 /** 현재 모드에 맞게 자동 사이클 타이머/리스너 셋업 */
 function _lpAutoStart() {
+  // 1) 이전 예약을 정리하고 자동 전환 설정·일시정지·가용 모드를 검사한다.
   _lpAutoClear();
   if (!_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
   const modes = _lpAutoCycleModes();
@@ -382,6 +408,7 @@ function _lpAutoStart() {
   const intervalMs = _lpGetIntervalMs();
   const mode = _lpStatCycle.mode;
 
+  // 2) 스탯은 페이지 순환 완료를 기다리고, 목록형 패널은 스크롤 또는 일반 대기로 전환을 예약한다.
   if (mode === 'stats') {
     const pages = _lpStatPageCount();
     if (pages <= 1 || !_lpIsStatsAutoSwipeOn()) {
@@ -400,7 +427,9 @@ function _lpAutoStart() {
     // 기존 방식(intervalMs의 10%)대로 동작.
     const fixedHoldBottomMs = _lpAuto.pendingNewEventHoldMs;
     _lpAuto.pendingNewEventHoldMs = null;
-    _lpStartEventsScroll(intervalMs, mode, 0, fixedHoldBottomMs != null ? { fixedHoldBottomMs } : {});
+    const options = _lpEventScrollOptions(intervalMs);
+    if (fixedHoldBottomMs != null) options.fixedHoldBottomMs = fixedHoldBottomMs;
+    _lpStartEventsScroll(intervalMs, mode, 0, options);
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
   } else {
@@ -431,6 +460,7 @@ function lpStatAutoAdvance() {
 
 // ─── 가용 모드 / 가시성 / 버튼 ───────────────────────────────────────────────
 
+/** 현재 데이터로 표시하거나 조회할 수 있는 패널을 수동 전환 순서대로 반환한다. 자동 전환 설정은 별도 적용한다. */
 function lpStatAvailableModes() {
   // stats도 다른 모드와 동일하게 "실제로 보여줄 데이터가 있을 때만" 포함시킨다.
   // 리그에 따라 API가 팀 스탯을 전혀 안 주는 경우(양 팀 전 항목 null) "데이터가 없습니다"만
@@ -441,8 +471,13 @@ function lpStatAvailableModes() {
   const modes = hasStats ? ['stats'] : [];
   const hasEvents = Array.isArray(window._eventsLastData?.events)
     && window._eventsLastData.events.length > 0;
+  // hthCanLoadForFixture는 "조회 가능(팀 ID 존재)"만 보고 실제 상대전적이 0건인 조합도
+  // 통과시킨다 — stats와 동일하게 "실제로 보여줄 데이터가 있을 때만" 포함시키기 위해
+  // hthHasMatchesForFixture(실제 표시할 과거 경기 존재 여부)도 함께 확인한다.
   const hasHth = typeof window.hthCanLoadForFixture === 'function'
-    && window.hthCanLoadForFixture(window._eventsLastData);
+    && window.hthCanLoadForFixture(window._eventsLastData)
+    && (typeof window.hthHasMatchesForFixture !== 'function'
+      || window.hthHasMatchesForFixture(window._eventsLastData));
   const hasBenchHome = !!(window._lpStatBenchData?.home);
   const hasBenchAway = !!(window._lpStatBenchData?.away);
   const hasMatchInfo = !!(window._lpStatMatchInfoAvailable);
@@ -500,7 +535,9 @@ function lpStatEnsureModeReady(mode) {
       return null;
     });
 }
+/** 가용 모드에 맞춰 패널과 전환 버튼을 갱신한다. 실행 중인 자동 스크롤·타이머는 다시 시작하지 않는다. */
 function lpStatUpdateVisibility() {
+  // 1) 데이터가 사라진 모드에 머물지 않도록 첫 가용 모드로 보정한다.
   const available = lpStatAvailableModes();
   // 'stats'가 available에 없을 수 있다(리그가 팀 스탯을 안 주는 경우) — 그때 무조건 'stats'로
   // 되돌리면 실제로 보여줄 데이터가 없는 모드로 고정돼 모든 패널이 숨어버린다. available이
@@ -510,6 +547,7 @@ function lpStatUpdateVisibility() {
   }
   const mode = _lpStatCycle.mode;
 
+  // 2) 선택된 패널만 표시하고, 표시 후 치수 측정이 필요한 패널은 다음 프레임에 보정한다.
   document.querySelectorAll('.lp-stat [data-stat-panel]').forEach(el => {
     el.style.display = mode === 'stats' ? '' : 'none';
   });
@@ -540,8 +578,10 @@ function lpStatUpdateVisibility() {
   });
   window.scoreaxisStandingsUpdatePopupButton?.();
 
+  // 3) 버튼 표시를 맞춘 뒤 실행 중인 작업이 없을 때만 자동 전환을 시작한다.
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();
+  lpStatUpdateBenchEditBtn();
   // lpStatUpdateVisibility()는 실제 모드 전환뿐 아니라, applyStatsPanel/renderBenchCyclePanels
   // 등에서 매 폴링(진행 중 경기 15초 간격)마다도 호출된다. 이미 스크롤/타이머가 진행 중인데
   // 매번 _lpAutoStart()를 부르면 _lpAutoClear()가 진행 중인 애니메이션을 끊고 처음부터
@@ -552,6 +592,7 @@ function lpStatUpdateVisibility() {
   // 진행 중이지 않을 때만 _lpAutoStart()를 실행해도 새 모드 전환은 그대로 즉시 반영된다.
   if (!_lpAutoIsActive()) _lpAutoStart();
 }
+/** 전환 가능한 패널이 둘 이상이면 사이클 버튼을 표시하고 현재 모드의 아이콘·제목·자동 상태를 반영한다. */
 function lpStatUpdateBtn() {
   const available = lpStatAvailableModes();
   const canCycle = available.length > 1;
@@ -582,6 +623,35 @@ function lpStatUpdatePauseBtn() {
   });
 }
 
+/**
+ * 교체 명단 입력 버튼 — 홈/원정 교체 명단 모드(bench_home/bench_away)에서만 표시. 캠 작음에만 있던
+ * 수동 입력("홈/원정 입력")을 캠 큼에서도 열 수 있게 일시정지 버튼 왼쪽에 아이콘으로 둔다
+ * (일시정지 버튼이 없으면 그 자리). 위치 보정은 .lp-stat.has-pause-btn CSS가 처리.
+ */
+function lpStatUpdateBenchEditBtn() {
+  const mode = _lpStatCycle.mode;
+  const side = mode === 'bench_home' ? 'home' : mode === 'bench_away' ? 'away' : null;
+  document.querySelectorAll('.lp-stat-bench-edit-btn').forEach(btn => {
+    btn.style.display = side ? '' : 'none';
+    btn.closest('.lp-stat')?.classList.toggle('has-bench-edit-btn', !!side);
+    if (!side) return;
+    btn.dataset.side = side;
+    btn.innerHTML = _STAT_BENCH_EDIT_ICON;
+    btn.title = side === 'home' ? '홈 교체 명단 입력' : '원정 교체 명단 입력';
+  });
+}
+
+/** 교체 명단 입력 버튼 클릭 — 캠 작음 "홈/원정 입력" 버튼과 같은 경로(새 창 설정이면 별도 창). */
+function lpStatOpenBenchEdit(event) {
+  const side = event.currentTarget?.dataset.side;
+  if (!side) return;
+  if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+    window.Popout.open('manual', { kind: 'bench', side });
+  } else if (typeof openManualPanel === 'function') {
+    openManualPanel('bench', side);
+  }
+}
+
 /** 일시정지 버튼 클릭 — paused 토글 후 타이머 정리/재시작. */
 function lpStatTogglePause() {
   _lpStatCycle.paused = !_lpStatCycle.paused;
@@ -592,6 +662,7 @@ function lpStatTogglePause() {
 
 // ─── 공개 API ─────────────────────────────────────────────────────────────────
 
+/** 수동으로 다음 가용 패널로 전환한다. 기존 자동 작업을 정리하고 새 모드의 데이터와 순환을 준비한다. */
 function lpStatCycleNext() {
   // 수동 클릭 시 자동 타이머 초기화 후 수동 전환
   _lpAutoClear();
@@ -604,6 +675,7 @@ function lpStatCycleNext() {
   _lpEnsureModeReadyUnlessAutoHandled(_lpStatCycle.mode);
 }
 
+/** 경기 전환 시 자동 작업·일시정지·벤치 데이터를 초기화하고 스탯을 우선으로 가용 패널을 표시한다. */
 function lpStatReset() {
   _lpAutoClear();
   _lpStatCycle.mode = 'stats';
@@ -695,6 +767,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelectorAll('.lp-stat-pause-btn').forEach(btn => {
     btn.addEventListener('click', lpStatTogglePause);
+  });
+  document.querySelectorAll('.lp-stat-bench-edit-btn').forEach(btn => {
+    btn.addEventListener('click', lpStatOpenBenchEdit);
   });
   lpStatUpdateBtn();
   lpStatUpdatePauseBtn();

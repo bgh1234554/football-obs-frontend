@@ -1,6 +1,6 @@
-// Auto-update script for Lists.json
-// Automatically updates Lists.json whenever files in the folder change
-// Run with: node auto-update-lists.js
+// Lists.json 자동 갱신 스크립트
+// 폴더 안의 파일이 변경되면 Lists.json을 자동 갱신합니다
+// 실행 방법: node auto-update-lists.js
 
 const fs = require('fs');
 const path = require('path');
@@ -39,7 +39,7 @@ function updateListsJson() {
 
     const jsonArray = templates.map(template => template.content);
 
-    // Write with clean formatting (2-space indent)
+    // 들여쓰기 두 칸으로 정리하여 저장합니다
     fs.writeFileSync(outputFile, JSON.stringify(jsonArray, null, 2) + '\n', 'utf8');
     const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
     console.log(`[${timestamp}] ✓ Lists.json updated (${files.length} files)`);
@@ -48,13 +48,13 @@ function updateListsJson() {
   }
 }
 
-// Initial run
+// 최초 실행
 updateListsJson();
 
-// Watch for file changes
+// 파일 변경 감시
 const watcher = fs.watch(folderPath, (eventType, filename) => {
   if (filename && filename.endsWith('.json') && filename !== 'Lists.json') {
-    // Debounce: wait 500ms for file write to complete
+    // 파일 쓰기가 끝나도록 500ms 대기한 뒤 처리합니다
     setTimeout(updateListsJson, 500);
   }
 });

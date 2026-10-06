@@ -28,16 +28,17 @@ function buildEffectiveFixtureData(data) {
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
     next.events = window.evPatchSubstEvents(next.events, fixtureId);
   }
-  // 교체 IN 이벤트에만 등장하고 교체 명단(substitutes)엔 없는 선수를 벤치에 보강.
-  // (예: API가 벤치 명단 갱신 없이 실제로 투입된 선수를 이벤트에서만 내려주는 경우 —
-  //  lpFindLineupPlayerIndex가 substitutes에서 못 찾아 subReflect swap이 그냥 skip됨.)
-  synthesizeMissingBenchPlayers(next);
   if (!entry) {
+    applyManualCaptainToFixture(next, null);
     // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
     if (typeof window.applyZeroIdOverrides === 'function') {
       window.applyZeroIdOverrides(next, fixtureId);
     }
-    return next;
+    // 먼저 이벤트의 별칭 ID를 기존 명단에 연결한다. 보강을 먼저 하면 생성된 ID가
+    // knownIds에 포함되어 자동 연결이 건너뛰어지고 같은 선수가 두 명으로 남는다.
+    synthesizeMissingBenchPlayers(next);
+    reconcileInjuriesAgainstLineup(next);
+    return applyInferredFormationsToFixtureData(next);
   }
 
   // 3) 홈/원정 각각에 대해 라인업, 벤치, 감독, 부상자 override를 순서대로 적용한다.
@@ -47,18 +48,30 @@ function buildEffectiveFixtureData(data) {
 
     const lineupKey = `${side}Lineup`;
     let lineup = next[lineupKey];
+    // playerStats로 추정한 라인업(inferLineupsFromPlayerStats)은 API가 준 라인업이 아니므로, 수동값 적용
+    // 판단(API 선발 유무, 교체 명단/감독 기준값)에는 원래 API 라인업 상태(선발/교체 비어 있음)로 본다 -
+    // 추정 라인업이 저장된 11명 직접 입력이나 교체 명단 수동값을 가리지 않도록.
+    const apiLineup = data?.[lineupKey]?._inferredFromPlayerStats
+      ? (data[lineupKey]._apiLineup || { coach: data[lineupKey].coach, startXi: [], substitutes: [] })
+      : data?.[lineupKey];
 
     if (manualSide.lineup) {
       const base = lineup || { formation: null, startXi: [], substitutes: [], coach: null };
+      // (A) 풀폼(11명 직접 입력)은 API 선발 명단이 비어 있을 때만 적용 — 이후 API 라인업이 들어오면
+      //     API 값을 쓴다(수동값은 저장소에 남아 API가 다시 비면 재적용). (B) 그리드 모드는 API 선발
+      //     명단 위에 포메이션/배치만 덮는 방식이라 API 라인업이 있어도 항상 적용한다.
+      const apiHasStartXi = Array.isArray(apiLineup?.startXi) && apiLineup.startXi.length > 0;
       if (Array.isArray(manualSide.lineup.startXi)) {
-        // (A) 풀폼 모드 — startXi 통째 override
-        lineup = {
-          ...base,
-          formation: manualSide.lineup.formation || base.formation || null,
-          startXi: clonePlayers(manualSide.lineup.startXi || []),
-          substitutes: clonePlayers(base.substitutes || []),
-          coach: base.coach ? { ...base.coach } : null,
-        };
+        // (A) 풀폼 모드 — startXi 통째 override (API 라인업이 있으면 건너뛰고 API 값 사용)
+        if (!apiHasStartXi) {
+          lineup = {
+            ...base,
+            formation: manualSide.lineup.formation || base.formation || null,
+            startXi: clonePlayers(manualSide.lineup.startXi || []),
+            substitutes: clonePlayers(base.substitutes || []),
+            coach: base.coach ? { ...base.coach } : null,
+          };
+        }
       } else if (manualSide.lineup.gridByPlayerId) {
         // (B) 그리드만 모드 — API의 startXi를 보존, formation + 선수별 grid만 override.
         // 카드/교체 이벤트는 자동 모드와 같은 데이터 구조라 그대로 작동.
@@ -77,7 +90,11 @@ function buildEffectiveFixtureData(data) {
       next[lineupKey] = lineup;
     }
 
-    if (manualSide.bench) {
+    // 교체 명단 수동값은 저장 당시 API 명단 키(benchApiBaseline, 구버전 저장값은 없음 = API 명단 없음)와
+    // 지금 API 키가 같을 때만 적용 — 이후 API가 다른 교체 명단을 주면 수동값 대신 API 값을 쓴다.
+    const benchStillApplies = manualSide.bench
+      && (manualSide.benchApiBaseline || '') === getBenchApiBaselineKey(apiLineup);
+    if (benchStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {
         ...base,
@@ -88,7 +105,14 @@ function buildEffectiveFixtureData(data) {
       next[lineupKey] = lineup;
     }
 
-    if (manualSide.coachName) {
+    // 감독 수동값은 저장 당시 API 감독 키(coachApiBaseline, 구버전 인라인 입력은 없음 = API 감독 없음)와
+    // 지금 API 키가 같을 때만 적용 — 이후 API가 다른 감독 정보를 주면 수동값 대신 API 값을 쓴다.
+    // 구버전 저장값(baseline 필드 자체가 없음)은 인라인 편집이 열려 있던 조건 그대로, API 감독
+    // 이름이 비어 있는 동안만 적용 - coachId만 있고 이름이 빈 응답에서도 수동값이 사라지지 않는다.
+    const coachStillApplies = manualSide.coachName && (typeof manualSide.coachApiBaseline === 'string'
+      ? coachApiBaselineMatches(manualSide.coachApiBaseline, getCoachApiBaselineKey(apiLineup))
+      : !normalizeCoachName(apiLineup?.coach?.name) && !normalizeCoachName(apiLineup?.coach?.nameKoLong));
+    if (coachStillApplies) {
       const base = lineup || next[lineupKey] || { formation: null, startXi: [], substitutes: [], coach: null };
       lineup = {
         ...base,
@@ -111,18 +135,99 @@ function buildEffectiveFixtureData(data) {
   // 4) 주심은 fixture 공통 데이터라 side 바깥에서 한 번만 반영한다.
   // fixture 단위로 저장된 manualEntry.refereeName 적용 — API에 주심 없을 때만 의미가 있지만,
   // setRefereeElement는 raw fixture 기준 editable 여부를 판별하므로 항상 override 우선.
+  // 주심/경기장 수동값은 API 값이 비어 있을 때만 적용 — 이후 API가 값을 주면 API 값을 쓴다.
   const manualReferee = String(entry.refereeName || '').trim();
-  if (manualReferee) {
+  if (manualReferee && !String(data?.matchInfo?.refereeName || '').trim()) {
     next.matchInfo = { ...(next.matchInfo || {}), refereeName: manualReferee };
+  }
+  // 경기장도 주심과 같은 방식 — manualEntry.venueName이 있으면 venueName만 override
+  // (API가 venueCity만 준 경우 도시는 그대로 두어 "경기장, 도시" 형태로 이어 붙는다).
+  const manualVenue = String(entry.venueName || '').trim();
+  if (manualVenue && !String(data?.matchInfo?.venueName || '').trim()) {
+    next.matchInfo = { ...(next.matchInfo || {}), venueName: manualVenue };
   }
 
   // 5) 수동 라인업 적용 후 ID override 적용 — 수동 선수 데이터가 한글 이름을 덮어쓰지 않도록
   //    항상 마지막에 실행한다.
+  applyManualCaptainToFixture(next, entry);
   if (typeof window.applyZeroIdOverrides === 'function') {
     window.applyZeroIdOverrides(next, fixtureId);
   }
+  // 수동 명단/ID 연결까지 반영한 뒤에도 명단에 없는 IN 선수만 보강한다.
+  synthesizeMissingBenchPlayers(next);
 
-  return next;
+  reconcileInjuriesAgainstLineup(next);
+
+  return applyInferredFormationsToFixtureData(next);
+}
+
+/** 연결 ID/표시명 변환 전에 키를 부여하고, 지정된 팀의 주장 표시만 교체한다. */
+function applyManualCaptainToFixture(next, entry) {
+  ['home', 'away'].forEach(side => {
+    const lineup = next[`${side}Lineup`];
+    const players = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    const selectedKey = entry?.[side]?.captainKey;
+    // 명단에서 사라진 선수의 저장값이 API 주장 표시를 가리지 않게 한다.
+    const applies = selectedKey && players.some(p => buildCaptainPlayerKey(p) === selectedKey);
+    players.forEach(player => {
+      player._captainKey = buildCaptainPlayerKey(player);
+      if (applies) player._captainOverride = player._captainKey === selectedKey;
+      else delete player._captainOverride;
+    });
+  });
+}
+
+/**
+ * 부상자 명단과 라인업을 대조해 데이터 불일치를 보정한다. 백엔드가 "출전 여부 미정"이
+ * 아닌 확정 부상(getInjuryCategoryRank===0, 즉 의심/출장정지/미등록이 아닌 순수 부상)으로
+ * 내려줬는데 실제로는 그 선수가 이번 경기 선발 라인업에 있으면 부상 정보 자체가 낡은
+ * 것이므로 명단에서 아예 지운다. 선발이 아니라 벤치(교체 명단)에만 있으면 실제로 뛰지는
+ * 않았지만 스쿼드에는 포함된 것이므로 확정 부상 대신 "출전 여부 미정" 카테고리로 낮춰서
+ * 표시한다. 둘 다에 없으면(스쿼드 밖) 원래 부상 정보를 그대로 유지한다.
+ * 국가대표 차출은 선발 또는 교체 명단에 있으면 차출 정보가 낡은 것으로 보고 제거한다.
+ */
+function reconcileInjuriesAgainstLineup(next) {
+  if (!next) return;
+  ['home', 'away'].forEach(side => {
+    const injuries = next[`${side}Injuries`];
+    if (!Array.isArray(injuries) || !injuries.length) return;
+
+    const lineup = next[`${side}Lineup`];
+    const startIds = collectLineupPlayerIds(lineup?.startXi);
+    const benchIds = collectLineupPlayerIds(lineup?.substitutes);
+    if (!startIds.size && !benchIds.size) return;
+
+    next[`${side}Injuries`] = injuries.reduce((acc, injury) => {
+      const pid = Number(injury?.playerId);
+      const isNationalDuty = typeof isNationalTeamDuty === 'function'
+        && isNationalTeamDuty(injury?.reason);
+      if (isNationalDuty && pid && (startIds.has(pid) || benchIds.has(pid))) return acc;
+
+      const isGenuineInjury = typeof getInjuryCategoryRank !== 'function'
+        || getInjuryCategoryRank(injury) === 0;
+      if (!isGenuineInjury || !pid) {
+        acc.push(injury);
+        return acc;
+      }
+      if (startIds.has(pid)) return acc; // 선발에 뛰고 있음 -> 부상 정보가 낡음, 제거
+      if (benchIds.has(pid)) {
+        acc.push({ ...injury, type: 'Questionable' }); // 벤치엔 있음 -> 출전 여부 미정으로 강등
+        return acc;
+      }
+      acc.push(injury);
+      return acc;
+    }, []);
+  });
+}
+
+/** playerId(0 제외) Set — 부상자 명단 대조용. */
+function collectLineupPlayerIds(players) {
+  const ids = new Set();
+  (players || []).forEach(p => {
+    const pid = Number(p?.playerId);
+    if (pid) ids.add(pid);
+  });
+  return ids;
 }
 
 /**
@@ -135,6 +240,130 @@ function buildEffectiveFixtureData(data) {
  * subReflect(교체 반영) swap과 벤치 패널 표시가 정상 작동한다. 원본 객체는 건드리지
  * 않고 next를 직접 변형한다(buildEffectiveFixtureData가 이미 clone한 next 대상).
  */
+/**
+ * playerStats 행(한 팀)에서 선발/교체 명단을 가른다.
+ * 1) substitute 플래그가 true/false 둘 다 섞여 있으면 그대로 신뢰한다.
+ *    (전원 false처럼 한쪽으로만 오는 응답은 플래그가 채워지지 않은 것으로 보고 무시 — 실제 사례:
+ *    모잠비크-세네갈 경기는 교체 투입 선수까지 전원 substitute:false)
+ * 2) 아니면 출전 시간(minutes > 0)이 있는 선수에서 교체 IN 선수를 뺀다.
+ *    - 교체 IN은 이벤트 assistId(ID 0이면 이름)로 찾는다.
+ *    - 교체 OUT으로 나간 선수는 선발이 확실하므로 빼지 않는다.
+ *    - API가 교체 IN 선수를 비워 보낸 이벤트가 있어 아직 11명이 넘으면, 그 교체 시각 T 기준으로
+ *      출전 시간이 (경기 종료 분 - T)에 가장 가까운 선수를 교체 IN으로 보고 뺀다.
+ * 결과가 11명이 아니면 호출부가 추정을 포기한다.
+ */
+function inferStartersFromPlayerStatRows(rows, events, side, matchInfo) {
+  const flags = rows.map(p => p.substitute);
+  if (flags.includes(true) && flags.includes(false)) {
+    return { starters: rows.filter(p => p.substitute === false), bench: rows.filter(p => p.substitute !== false) };
+  }
+
+  const normName = v => String(v || '').trim().toLowerCase();
+  const namesOf = p => [p.playerName, p.playerNameKoLong].map(normName).filter(Boolean);
+  const matches = (p, id, names) => (Number(id) > 0
+    ? Number(p.playerId) === Number(id)
+    : names.map(normName).filter(Boolean).some(n => namesOf(p).includes(n)));
+  const substs = events.filter(ev => ev && ev.side === side && String(ev.type || '').toLowerCase() === 'subst');
+  const hasIn = ev => Number(ev.assistId) > 0 || String(ev.assistName || '').trim();
+
+  const played = rows.filter(p => Number(p.minutes) > 0);
+  const subIn = new Set(played.filter(p => substs.some(ev => hasIn(ev)
+    && matches(p, ev.assistId, [ev.assistName, ev.assistNameKoLong, ev.assistOrigName]))));
+  const subOut = new Set(played.filter(p => substs.some(ev => matches(p, ev.playerId, [ev.playerName, ev.playerNameKoLong, ev.playerOrigName]))));
+
+  // 교체 IN 선수의 출전 시간 = (지금까지 진행된 분 - 교체 시각). 끝난 경기는 최소 90분, 진행 중인
+  // 경기는 현재 경과 분을 쓴다(진행 중에 90으로 잡으면 방금 들어온 선수의 예상 출전 시간이 부풀려진다).
+  const elapsedNow = Number(matchInfo?.elapsed) || 0;
+  const finished = ['FT', 'AET', 'PEN'].includes(String(matchInfo?.status || '').toUpperCase());
+  const endMinute = finished ? Math.max(90, elapsedNow) : (elapsedNow || 90);
+  substs.filter(ev => !hasIn(ev))
+    .sort((a, b) => Number(a.elapsed || 0) - Number(b.elapsed || 0))
+    .forEach(ev => {
+      if (played.length - subIn.size <= 11) return;
+      const expected = endMinute - Number(ev.elapsed || 0);
+      let best = null;
+      played.forEach(p => {
+        if (subIn.has(p) || subOut.has(p)) return;
+        const diff = Math.abs(Number(p.minutes) - expected);
+        if (!best || diff < best.diff) best = { p, diff };
+      });
+      if (best) subIn.add(best.p);
+    });
+
+  const starters = played.filter(p => !subIn.has(p));
+  return { starters, bench: rows.filter(p => !starters.includes(p)) };
+}
+
+/**
+ * API가 라인업(startXi)은 비워 보내고 playerStats(선수별 경기 스탯)만 주는 경우, playerStats로
+ * 선발/교체 명단을 추정해 라인업 자리에 채운 새 fixture 객체를 반환한다(원본은 변형하지 않음).
+ *
+ * - 선발/교체 구분은 inferStartersFromPlayerStatRows 참고(substitute 플래그 -> 출전 시간 + 교체 이벤트).
+ *   playerStats 행 순서가 API 라인업 순서(GK→DF→MF→FW)를 따르므로 그 순서를 그대로 유지한다.
+ * - 선발이 정확히 11명일 때만 채운다(애매하면 추정하지 않음 — 틀린 라인업보다 빈 라인업이 낫다).
+ * - 지금 뛰고 있는 11명은 기존 교체 반영(subReflect) 로직이 events로 알아서 계산하므로 여기서는
+ *   "선발 명단"만 만든다. formation/grid는 null로 두어 applyInferredFormation이 포지션 개수로 추정한다.
+ *
+ * lineupPanelState.lastFixture 자체를 이 결과로 바꾸기 때문에(applyLineupPanels) 그리드 모드
+ * "포메이션 설정", 선수 ID 연결 등 raw 라인업을 보는 기능도 API가 라인업을 준 것처럼 동작한다.
+ * 이후 API가 실제 라인업을 주면 startXi가 차 있어 이 추정은 자연히 건너뛴다.
+ */
+function inferLineupsFromPlayerStats(data) {
+  if (!data) return data;
+  const playerStats = Array.isArray(data.playerStats) ? data.playerStats.filter(Boolean) : [];
+  if (!playerStats.length) return data;
+  const events = Array.isArray(data.events) ? data.events : [];
+
+  let next = data;
+  ['home', 'away'].forEach(side => {
+    const lineupKey = `${side}Lineup`;
+    const apiLineup = data[lineupKey];
+    if (Array.isArray(apiLineup?.startXi) && apiLineup.startXi.length) return;
+
+    const rows = playerStats.filter(p => p.side === side && (Number(p.playerId) > 0 || String(p.playerName || '').trim()));
+    if (!rows.length) return;
+
+    const { starters, bench } = inferStartersFromPlayerStatRows(rows, events, side, data?.matchInfo);
+    if (starters.length !== 11) return;
+
+    // API가 문자열 "null"이나 0을 채워 보내는 필드(포지션/등번호/사진)는 빈 값으로 정리한다.
+    const clean = v => (v == null || /^(null|undefined)$/i.test(String(v).trim()) ? '' : String(v).trim());
+    const toPlayer = p => ({
+      playerId: Number(p.playerId) || 0,
+      name: p.playerName || '',
+      nameKoLong: p.playerNameKoLong || null,
+      number: Number(p.number) > 0 ? p.number : '',
+      pos: clean(p.position),
+      grid: null,
+      photoUrl: clean(p.playerPhotoUrl) || null,
+      _inferredFromPlayerStats: true,
+    });
+
+    // API가 교체 명단만 따로 준 경우, 스탯 행이 없는(출전 안 한) API 교체 선수도 빠지지 않게 합친다.
+    // 같은 선수(ID 0 초과면 ID, 아니면 이름)는 한 번만.
+    const inferredStarters = starters.map(toPlayer);
+    const inferredBench = bench.map(toPlayer);
+    const identity = p => (Number(p?.playerId) > 0 ? `id:${Number(p.playerId)}` : `n:${String(p?.name || '').trim().toLowerCase()}`);
+    const seen = new Set([...inferredStarters, ...inferredBench].map(identity));
+    const apiOnlySubs = (Array.isArray(apiLineup?.substitutes) ? apiLineup.substitutes : [])
+      .filter(p => p && !seen.has(identity(p)))
+      .map(p => ({ ...p }));
+
+    if (next === data) next = { ...data };
+    next[lineupKey] = {
+      ...(apiLineup || {}),
+      formation: apiLineup?.formation || null,
+      startXi: inferredStarters,
+      substitutes: [...inferredBench, ...apiOnlySubs],
+      coach: apiLineup?.coach ? { ...apiLineup.coach } : null,
+      _inferredFromPlayerStats: true,
+      // 추정 전 원래 API 라인업 - 수동값 적용 판단(API 선발/교체 유무, 기준값)은 이걸 본다.
+      _apiLineup: apiLineup || null,
+    };
+  });
+  return next;
+}
+
 function synthesizeMissingBenchPlayers(next) {
   if (!next) return;
   const events = Array.isArray(next.events) ? next.events : [];
@@ -261,19 +490,177 @@ function hasValidFormation(lineup) {
   return !!(formation && getTacticsFormationMap()[formation]);
 }
 
+// ─── 포메이션 미제공 시 포지션 개수 기반 추정 ─────────────────────────
+// API가 formation/grid를 아예 안 줄 때(하위 리그 등), startXi 각 선수의 pos(G/D/M/F)
+// 개수만으로 TACTICS_FM에 등록된 포메이션 중 가장 가까운 것을 골라 피치 렌더링을 시도한다.
+// 실제 formation/grid가 폴링으로 들어오면 hasValidFormation/hasAnyGrid 체크에 걸려
+// 이 추정 경로 자체가 스킵되므로, 별도 "복구" 로직 없이 API 데이터가 자연히 우선한다.
+const INFERABLE_FORMATION_PRIORITY = [
+  '4-2-3-1', '4-3-3', '4-4-2', '3-5-2', '3-4-3',
+  '4-1-4-1', '4-5-1', '4-4-1-1', '4-1-3-2', '4-3-1-2',
+  '4-2-2-2', '4-3-2-1', '4-1-2-3', '4-2-1-3', '4-1-2-1-2',
+  '3-4-2-1', '3-1-4-2', '3-5-1-1', '3-3-1-3', '3-4-1-2',
+  '5-3-2', '5-4-1', '5-2-3',
+];
+
+/**
+ * startXi 11명의 pos(G/D/M/F) 개수만으로 가장 근접한 TACTICS_FM 포메이션 키를 찾는다.
+ * 11명이 아니거나, pos가 G/D/M/F가 아닌 값을 포함하거나, GK가 정확히 1명이 아니면
+ * 신뢰할 수 없는 데이터로 보고 추정하지 않는다(null). 같은 D/M/F 조합에 여러 포메이션이
+ * 걸리면 INFERABLE_FORMATION_PRIORITY 순서(실제 사용 빈도가 높은 쪽)로 먼저 매칭되는 것을 쓴다.
+ */
+function inferFormationFromPositions(startXi) {
+  const players = Array.isArray(startXi) ? startXi : [];
+  if (players.length !== 11) return null;
+
+  const counts = { G: 0, D: 0, M: 0, F: 0 };
+  for (const p of players) {
+    const pos = String(p?.pos || '').toUpperCase();
+    if (!(pos in counts)) return null;
+    counts[pos]++;
+  }
+  if (counts.G !== 1) return null;
+
+  for (const formation of INFERABLE_FORMATION_PRIORITY) {
+    const digits = formation.split('-').map(Number);
+    const d = digits[0];
+    const f = digits[digits.length - 1];
+    const m = digits.slice(1, -1).reduce((sum, n) => sum + n, 0);
+    if (d === counts.D && m === counts.M && f === counts.F) return formation;
+  }
+  return null;
+}
+
+/**
+ * 추정한 포메이션에 맞춰 grid가 없는 startXi에 합성 grid("line:col")를 부여한 새 배열을 반환한다.
+ * 같은 라인 안에서 실제 좌우 배치는 API가 주지 않아 알 수 없으므로, G/D/M/F 그룹 안에서는
+ * API가 내려준 startXi 원래 순서를 그대로 유지해 슬롯에 순서대로 채운다(완전하진 않지만
+ * 임의 배치보다는 낫다). TACTICS_FM 좌표 배열 자체가 이미 포지션 대분류(G→D→M→F) 순서로
+ * 정의돼 있어, 같은 순서로 그룹핑한 선수 목록을 slot 원본 인덱스에 그대로 맞추면 된다.
+ */
+function assignInferredFormationGrid(startXi, formation) {
+  const players = Array.isArray(startXi) ? startXi : [];
+  const groups = { G: [], D: [], M: [], F: [] };
+  players.forEach(p => {
+    const pos = String(p?.pos || '').toUpperCase();
+    (groups[pos] || groups.F).push(p);
+  });
+  const ordered = [...groups.G, ...groups.D, ...groups.M, ...groups.F];
+  const gridValues = buildManualGridValues(formation);
+  return ordered.map((p, index) => ({ ...p, grid: gridValues[index] || p.grid || null }));
+}
+
+/**
+ * lineup.formation이 없고(또는 알 수 없고) startXi 어느 선수에게도 grid가 없을 때만
+ * 포지션 개수 기반으로 formation/grid를 추정해 채운 새 lineup을 반환한다. formation이 이미
+ * 유효하거나, startXi가 없거나, grid가 하나라도 있으면(API가 부분적으로라도 제공) 원본을
+ * 그대로 돌려준다 — API가 실제 formation/grid를 내려주면 이 함수는 자연히 건너뛰어진다.
+ */
+function applyInferredFormation(lineup) {
+  if (!lineup || hasValidFormation(lineup) || !hasStartXi(lineup)) return lineup;
+  const hasAnyGrid = lineup.startXi.some(p => p?.grid);
+  if (hasAnyGrid) return lineup;
+
+  const formation = inferFormationFromPositions(lineup.startXi);
+  if (!formation) return lineup;
+
+  return {
+    ...lineup,
+    formation,
+    startXi: assignInferredFormationGrid(lineup.startXi, formation),
+    _inferredFormation: true,
+  };
+}
+
+/** buildEffectiveFixtureData의 반환 직전 공통 단계 — 홈/원정 라인업에 포메이션 추정을 적용. */
+function applyInferredFormationsToFixtureData(next) {
+  if (!next) return next;
+  next.homeLineup = applyInferredFormation(next.homeLineup);
+  next.awayLineup = applyInferredFormation(next.awayLineup);
+  return next;
+}
+
 // Iter 3: API 라인업(startXi)이 있는 모든 경우 — 그리드 모드. 사용자가 데이터 오류나
 // 교체 후 포메이션 변경을 직접 손볼 수 있도록, 포메이션이 이미 제공된 경우에도 활성화.
 // startXi 자체가 없는 경우만 풀폼 모드(직접 입력) 라우팅.
 function isGridMode(rawData, side) {
   const lineup = rawData?.[`${side}Lineup`];
+  // 추정 라인업 위에 11명 직접 입력(풀폼)이 저장돼 있으면 그 풀폼이 표시되므로 모달도 풀폼으로 연다.
+  if (lineup?._inferredFromPlayerStats && typeof getManualSideData === 'function'
+    && Array.isArray(getManualSideData(getFixtureIdFromData(rawData), side)?.lineup?.startXi)) return false;
   return !!lineup && hasStartXi(lineup);
 }
 
-/** 포메이션의 슬롯별 포지션 라벨(GK/CB/RB/...). 알 수 없는 포메이션이면 1~11 숫자 fallback. */
+/**
+ * 같은 라벨이 여러 슬롯에 나올 때(예: 4-3-3의 CB/CB, CM/CM/CM) 실제 포메이션 표기에서
+ * 쓰는 좌우 구분 코드로 치환하는 표. 값 배열은 TACTICS_FM의 y좌표 오름차순(오른쪽→왼쪽)
+ * 순서와 일치해야 한다. 3명이 겹치는 중앙 미드필더 라인은 가운데를 홀딩 미드필더 역할인
+ * CDM으로 표기(RCM/CDM/LCM), 백3의 중앙 CB는 그냥 CB로 남긴다(RCB/CB/LCB).
+ * 더블 볼란치(DM/DM)는 수비형이 아니라 중앙 미드필더 두 명으로 보고 RCM/LCM 표기.
+ * AM/ST는 현재 데이터상 최대 2명까지만 겹치므로 3인 항목은 없음.
+ */
+const FORMATION_DUP_LABEL_OVERRIDES = {
+  CB: { 2: ['RCB', 'LCB'], 3: ['RCB', 'CB', 'LCB'] },
+  CM: { 2: ['RCM', 'LCM'], 3: ['RCM', 'CDM', 'LCM'] },
+  DM: { 2: ['RCM', 'LCM'] },
+  AM: { 2: ['RAM', 'LAM'] },
+  ST: { 2: ['RS', 'LS'] },
+};
+
+/** 겹치지 않고 혼자 나오는 라벨의 실제 표기 치환. 단독 수비형/공격형 미드필더는 CDM/CAM으로. */
+const FORMATION_SOLO_LABEL_OVERRIDES = {
+  DM: 'CDM',
+  AM: 'CAM',
+};
+
+/**
+ * 포메이션의 슬롯별 포지션 라벨(GK/CB/RB/...). 알 수 없는 포메이션이면 1~11 숫자 fallback.
+ * 같은 라벨이 한 포메이션에 여러 번 나오면 수동 입력 시 어느 슬롯이 어느 자리인지
+ * 헷갈리므로 FORMATION_DUP_LABEL_OVERRIDES 기준으로 좌우 구분 코드를 붙여 구분한다.
+ * 전술판 토큰(TACTICS_LABELS 원본)은 그대로 두고, 이 함수 반환값을 쓰는 수동 입력 모달에만 적용.
+ */
 function getFormationSlotLabels(formation) {
   const labels = getTacticsLabelMap()[formation];
-  if (Array.isArray(labels) && labels.length) return labels;
-  return Array.from({ length: 11 }, (_, index) => `${index + 1}`);
+  if (!Array.isArray(labels) || !labels.length) {
+    return Array.from({ length: 11 }, (_, index) => `${index + 1}`);
+  }
+  return disambiguateFormationLabels(formation, labels);
+}
+
+/** 같은 라벨이 가리키는 슬롯들을 TACTICS_FM의 y좌표(피치 좌우 위치) 순으로 정렬해 실제 표기로 치환한다. */
+function disambiguateFormationLabels(formation, labels) {
+  const coords = getTacticsFormationMap()[formation] || [];
+  if (coords.length !== labels.length) return labels; // 좌표 개수가 안 맞으면 원본 그대로
+
+  const indicesByLabel = {};
+  labels.forEach((label, index) => {
+    (indicesByLabel[label] = indicesByLabel[label] || []).push(index);
+  });
+
+  const result = labels.slice();
+  Object.entries(indicesByLabel).forEach(([label, indices]) => {
+    if (indices.length === 1) {
+      // 겹치지 않는 단독 라벨(예: 4-2-3-1의 AM 한 명)도 실제 표기로 바꿔줄 게 있으면 적용.
+      const solo = FORMATION_SOLO_LABEL_OVERRIDES[label];
+      if (solo) result[indices[0]] = solo;
+      return;
+    }
+    const sorted = indices.slice().sort((a, b) => coords[a].y - coords[b].y);
+    // 표에 없는 조합(예상 밖 라벨/인원수)은 "라벨(R/C/L)" 형태로 안전하게 폴백.
+    const replacements = FORMATION_DUP_LABEL_OVERRIDES[label]?.[sorted.length]
+      || sorted.map((_, order) => `${label}(${formationSlotSuffixes(sorted.length)[order]})`);
+    sorted.forEach((slotIndex, order) => {
+      result[slotIndex] = replacements[order] ?? labels[slotIndex];
+    });
+  });
+  return result;
+}
+
+/** FORMATION_DUP_LABEL_OVERRIDES에 없는 조합의 폴백 접미사. 2개=R/L, 3개=R/C/L, 그 이상은 좌→우 순번 숫자. */
+function formationSlotSuffixes(count) {
+  if (count === 2) return ['R', 'L'];
+  if (count === 3) return ['R', 'C', 'L'];
+  return Array.from({ length: count }, (_, index) => `${index + 1}`);
 }
 
 /** 라벨 텍스트(GK/CB/CDM 등)에서 G/D/M/F 큰 분류 추출. 노드 색/그룹화 등 폴백 사용. */

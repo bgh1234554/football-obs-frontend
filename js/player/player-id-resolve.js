@@ -99,6 +99,12 @@ function pirGetByKey(key) {
 function pirSetByKey(key, data) {
   if (!key) return;
   const store = pirReadStore();
+  // id=0(이름 키) 선수의 연결이 해제되거나 다른 ID로 바뀌면, 이전 ID로 승격 복사된 닉네임을 정리한다.
+  const prevId = Number(store[key]?.playerId) || 0;
+  if (String(key).includes(':n:') && prevId > 0 && prevId !== (Number(data?.playerId) || 0)
+    && typeof window.demotePromotedNickname === 'function') {
+    window.demotePromotedNickname(prevId);
+  }
   if (data) store[key] = data;
   else delete store[key];
   pirWriteStore(store);
@@ -784,6 +790,9 @@ function applyZeroIdOverrides(next, fixtureId) {
   pirApplyManualNameHintsForFuzzy(next, relevant);
 
   const autoLinkOn = typeof getSetting !== 'function' || getSetting('autoLinkPlayerIdByName') !== 'off';
+  if (autoLinkOn && typeof lpReconcileConflictingEventIds === 'function') {
+    lpReconcileConflictingEventIds(next, relevant);
+  }
   const nameHints = {};
   const canonicalKoHints = {}; // {side:altId} → { name, nameKoLong } — canonical 로스터 한글을 이벤트에 역전파
   const altToCanonical = autoLinkOn ? pirAutoLinkAltToCanonical(next, nameHints, canonicalKoHints) : {};
@@ -842,6 +851,14 @@ function applyZeroIdOverrides(next, fixtureId) {
       const needsNameKoFromHint = !ov?.name && hint?.name && !pirHasHangul(p.name);
       const needsLongKoFromHint = !ov?.nameKoLong && hint?.nameKoLong && !pirHasHangul(p.nameKoLong);
       if (!ov && !needsNameKoFromHint && !needsLongKoFromHint) return p;
+      // id=0 선수가 실제 ID로 연결되는 순간(수동/자동 모두 이 경로), 이름 키 닉네임을 id 키로 복사해
+      // id 경로로 넘어간 뒤에도 라인업·이벤트에서 닉네임이 유지되게 한다. id 키가 이미 있으면 건드리지 않음.
+      if (isZero && Number(ov?.playerId) > 0 && typeof window.promoteNameNicknameToId === 'function') {
+        const nickName = typeof playerNicknameSourceName === 'function'
+          ? playerNicknameSourceName(p)
+          : (p.origName || pirRosterName(p));
+        window.promoteNameNicknameToId(nickName, ov.playerId);
+      }
       return {
         ...p,
         ...(isZero ? { playerId: ov.playerId } : {}),
@@ -960,14 +977,21 @@ function pirGetSide(el) {
 
 /** 현재 fixture의 선발·교체·부상자 명단에서 이름(origName)으로 선수 객체 조회. */
 function pirFindPlayer(side, origName) {
-  const data = (typeof lineupPanelState !== 'undefined') ? lineupPanelState.lastFixture : null;
-  if (!data) return null;
-  const lineup = data[`${side}Lineup`];
-  const all = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
-  const fromLineup = all.find(p => p && pirRosterName(p) === origName);
-  if (fromLineup) return fromLineup;
-  const injuries = data[`${side}Injuries`] || [];
-  return injuries.find(p => p && pirRosterName(p) === origName) || null;
+  if (typeof lineupPanelState === 'undefined') return null;
+  // 클릭한 노드는 수동 입력/벤치 보강을 포함한 표시 명단에서 왔다.
+  // 원본에 없는 ID 0 선수도 찾고, 주장 지정에 필요한 _captainKey를 유지한다.
+  for (const data of [lineupPanelState.lastEffectiveData, lineupPanelState.lastFixture]) {
+    if (!data) continue;
+    const lineup = data[`${side}Lineup`];
+    const all = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    const matches = all.filter(p => p && pirRosterName(p) === origName);
+    if (matches.length > 1) return null;
+    if (matches.length === 1) return matches[0];
+    const injuries = data[`${side}Injuries`] || [];
+    const injury = injuries.find(p => p && pirRosterName(p) === origName);
+    if (injury) return injury;
+  }
+  return null;
 }
 
 // ── pmContainer 참조 (player-menu.js와 공유) ──────────────────────────────────
@@ -1002,6 +1026,12 @@ function pirShowMenu(side, origName, clientX, clientY) {
     ? (pickName(player, 'roster') || origName || '-')
     : (origName || '-');
   const idStatusHtml = `<div class="pm-pos" style="color:#f88;font-size:11px">선수 ID 없음 (클릭해서 연결)</div>`;
+  // id=0 선수 닉네임은 API 원본 이름 키로 저장(player-menu.js). 명단에서 못 찾으면 클릭한 표시명으로 대체.
+  const nickSourceName = (player && typeof playerNicknameSourceName === 'function')
+    ? (playerNicknameSourceName(player) || origName)
+    : origName;
+  const nickname = typeof getPlayerNickname === 'function' ? getPlayerNickname(0, nickSourceName) : null;
+  const canEditNickname = !!nickSourceName && typeof pmEditNickname === 'function';
 
   c.innerHTML = `
 <div class="pm-popup" id="pirPopup" role="dialog">
@@ -1011,7 +1041,12 @@ function pirShowMenu(side, origName, clientX, clientY) {
     <div class="pm-info-text">
       <div class="pm-name"><span class="pm-num">${pirEsc(num)}</span>${pirEsc(displayName)}</div>
       ${idStatusHtml}
+      <div class="pm-pos pm-inline-actions">
+        ${typeof pmCaptainButtonHtml === 'function' ? pmCaptainButtonHtml(player, side) : ''}
+        ${canEditNickname ? '<button class="pm-btn pm-btn-inline" id="pirBtnNick">닉네임 설정</button>' : ''}
+      </div>
       ${existing ? `<div class="pm-nick-badge" style="color:#8cf">연결됨: ID ${pirEsc(String(existing.playerId))}</div>` : ''}
+      ${nickname ? `<div class="pm-nick-badge">닉네임: ${pirEsc(nickname)}</div>` : ''}
     </div>
   </div>
   <div class="pm-nick-wrap">
@@ -1038,6 +1073,9 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
   if (typeof pmPositionPopup === 'function') {
     pmPositionPopup(document.getElementById('pirPopup'), clientX, clientY);
+  }
+  if (typeof pmBindCaptainButton === 'function') {
+    pmBindCaptainButton(player, side, () => pirShowMenu(side, origName, clientX, clientY));
   }
 
   let _fetched = null;
@@ -1096,6 +1134,13 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
   document.getElementById('pirClose').addEventListener('click', pirHideAll);
   document.getElementById('pirCancel').addEventListener('click', pirHideAll);
+  const nickBtn = document.getElementById('pirBtnNick');
+  if (nickBtn) {
+    nickBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      pmEditNickname(0, displayName, nickSourceName, 'pirPopup');
+    });
+  }
 
   document.getElementById('pirSave').addEventListener('click', () => {
     const pid = parseInt(input.value, 10);

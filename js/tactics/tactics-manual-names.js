@@ -144,6 +144,12 @@ function openTacticsNamesPanel() {
   if (typeof lineupPanelState !== 'undefined' && lineupPanelState?.lastFixture) return;
   const backdrop = document.getElementById('tacticsNamesBackdrop');
   if (!backdrop) return;
+  // 전술판 전체화면 중이면 모달을 전체화면 요소(.tactics-viewport) 안으로 옮긴다 — body에 있으면
+  // 전체화면 요소 바깥이라 화면에 안 보이고, 전체화면을 풀어야만 나타나던 버그(태블릿에서 발견).
+  // 전체화면이 아니면 원래 자리(body)로 되돌린다.
+  const fsEl = document.fullscreenElement;
+  const host = fsEl ? (fsEl.querySelector('.tactics-viewport') || fsEl) : document.body;
+  if (backdrop.parentElement !== host) host.appendChild(backdrop);
   renderTacticsNamesPanel();
   setTacticsNamesTab('home');
   backdrop.classList.add('open');
@@ -265,6 +271,30 @@ document.addEventListener('click', event => {
   }
   const backdrop = document.getElementById('tacticsNamesBackdrop');
   if (backdrop && event.target === backdrop) closeTacticsNamesPanel();
+});
+
+/**
+ * #tacticsNamesForm — Enter 키로 같은 열의 다음 행 입력칸으로 포커스 이동.
+ * lineup-manual-modal.js의 #manualPanelForm과 동일한 관례(input name = "{prefix}-{index}",
+ * 이 파일에서는 "tn-number-{side}-{index}"/"tn-name-{side}-{index}")를 그대로 따른다.
+ */
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  // 한글 등 IME 조합 확정용 Enter까지 다음 칸 이동으로 가로채지 않도록 건너뛴다.
+  if (event.isComposing || event.keyCode === 229) return;
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const form = target.closest('#tacticsNamesForm');
+  if (!form) return;
+
+  event.preventDefault();
+  const name = target.getAttribute('name') || '';
+  const match = name.match(/^(.*-)(\d+)$/);
+  if (!match) return;
+  const nextField = form.elements[`${match[1]}${Number(match[2]) + 1}`];
+  if (!nextField) return;
+  nextField.focus();
+  if (typeof nextField.select === 'function') nextField.select();
 });
 
 // 팀 이름 입력 — 키 입력마다 즉시 점수판에 반영(기존 수동모드 이름 입력과 동일한 UX).

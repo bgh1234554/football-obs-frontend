@@ -231,7 +231,7 @@
   //   type==="Card" && detail==="Red Card"|"Second Yellow Card" → state.redHome/redAway
   //   comments==="Penalty Shootout" → PK 결과 배열 재구성 (detail==="Penalty"→"G", "Missed Penalty"→"M")
   //
-  // options:
+  // 선택 옵션:
   //   silent: true면 429 재시도 이벤트를 UI가 무시할 수 있도록 detail.silent=true로 전파
   // ---------------------------------------------------------------------------
   async function fetchFixture(fixtureId, options = {}) {

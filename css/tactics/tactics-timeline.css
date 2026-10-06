@@ -4,6 +4,25 @@
     #tactics-topbar {
       background: var(--panel-bg);
     }
+    .td-topbar-size-control {
+      display: none;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 4px;
+      order: 98;
+      margin-left: auto;
+      padding-left: 8px;
+    }
+    /* 좁은 태블릿에서도 버튼/라벨 내부 글자를 쪼개지 않고 컨트롤 단위로 줄바꿈한다. */
+    #tactics-topbar > * {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    #tactics-topbar .td-token-size-control,
+    #tactics-topbar .td-alpha-control,
+    #tactics-topbar .td-name-size-control {
+      flex-wrap: nowrap;
+    }
     .td-alpha-control,
     .td-name-size-control {
       display: inline-flex;
@@ -309,7 +328,7 @@
       gap: 6px;
       align-items: center;
     }
-    #page-tactics:fullscreen #td-fullscreen-panel-toggles {
+    #page-tactics:is(:fullscreen, .td-touch-layout) #td-fullscreen-panel-toggles {
       display: inline-flex;
     }
     #td-timeline-toggle,
@@ -356,60 +375,180 @@
     #tactics-timeline-panel { position: relative; }
 
     /* 풀스크린 모드: 타임라인 패널을 우측 슬라이드 패널로 전환 */
-    #page-tactics:fullscreen #td-timeline-close,
-    #page-tactics:fullscreen #td-drawtools-close { display: block; }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #td-timeline-close,
+    #page-tactics:is(:fullscreen, .td-touch-layout) #td-drawtools-close { display: block; }
     /* 풀스크린에서 타임라인/그리기 도구 패널 둘 다 position:fixed 오버레이로 빠져나간 빈 자리는
        피치 래퍼가 flex:1로 확장돼 채우게 한다 — 가운데에 큰 빈 공간 방지.
        피치 래퍼의 인라인 style(flex:0 0 auto)을 덮으려면 !important 필요. */
-    #page-tactics:fullscreen #tactics-pitch-wrap {
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-pitch-wrap {
       flex: 1 1 auto !important;
-      justify-content: center !important;
+      justify-content: var(--td-fullscreen-align, center) !important;
     }
-    #page-tactics:fullscreen #tactics-timeline-panel {
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel {
       position: fixed;
       top: 0;
       right: 0;
       bottom: 0;
-      width: min(420px, 38vw);
-      height: 100vh;
+      width: min(420px, calc(var(--display-vw, 1vw) * 38));
+      height: auto;
       max-height: none;
       z-index: 100;
       transform: translateX(100%);
       transition: transform .22s ease;
-      background: var(--panel-bg);
+      background: #0b1220 !important;
       box-shadow: -4px 0 20px rgba(0,0,0,.45);
       border-left: 1px solid rgba(255,255,255,.12);
       border-top: none;
+      --panel-alpha: 1;
+      --panel-bg: #0b1220;
     }
-    #page-tactics:fullscreen #tactics-timeline-panel.is-open {
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel #tactics-timeline-bar,
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel #tactics-events-host > [data-events-panel] {
+      background: #0b1220 !important;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar {
+      /* zoom은 실제 버튼 영역과 줄바꿈 높이를 함께 키운다. */
+      zoom: var(--td-topbar-scale, 1);
+      /* 기본 크기(100%)의 가로 화면에서는 슬라이더 폭을 줄여(아래 규칙) 한 줄에 들어간다.
+         상단바 크기를 키웠거나 태블릿/모바일 세로 화면처럼 한 줄에 안 들어가면 가로 스크롤 대신
+         컨트롤 단위로 두 줄 이상 줄바꿈한다(스크롤 없이 모든 버튼이 보이도록). */
+      flex-wrap: wrap !important;
+      gap: 5px !important;
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+      overflow: visible;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) .td-topbar-size-control {
+      display: inline-flex;
+      flex: 0 1 auto;
+      min-width: 0;
+      padding-left: 4px;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-control {
+      margin-left: 0;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-control,
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-name-size-control,
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-token-size-control {
+      flex: 0 1 auto;
+      min-width: 0;
+      gap: 4px;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-control { padding-left: 4px; }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-slider {
+      width: 60px;
+      min-width: 32px;
+      flex: 0 1 auto;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-name-size-slider,
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-token-size-slider {
+      width: 52px;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel.is-open {
       transform: translateX(0);
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel,
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-draw-toolbar {
+      left: 0;
+      right: auto;
+      border-left: none;
+      border-right: 1px solid rgba(255,255,255,.12);
+      box-shadow: 4px 0 20px rgba(0,0,0,.45);
+      transform: translateX(-100%);
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel.is-open,
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-draw-toolbar.is-open {
+      transform: translateX(0);
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #td-timeline-close,
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #td-drawtools-close {
+      left: 8px;
+      right: auto;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel .ev-filter-shell {
+      margin-right: 0;
+      margin-left: 36px;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel .ev-filter-popover {
+      left: 0;
+      right: auto;
     }
     /* 풀스크린 우측 슬라이드 패널에서, 이벤트 패널 title-bar의 필터 버튼이
        우상단 닫기(×) 버튼(top:6 right:8 / 26x26)과 겹치는 문제 해결.
        닫기 버튼 폭(26) + 여유(10) = 36px 만큼 필터 버튼을 왼쪽으로 밀어 클릭 가능하게.
        동시에 필터 popover도 같은 양만큼 좌측으로 이동해 화면 밖으로 빠지지 않도록 보정. */
-    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
-    #page-tactics:fullscreen #tactics-timeline-panel .ev-filter-popover { right: 0; }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel .ev-filter-shell { margin-right: 36px; }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel .ev-filter-popover { right: 0; }
 
+    #td-drawtools-backdrop {
+      display: none;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #td-drawtools-backdrop:not([hidden]) {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      touch-action: none;
+    }
     /* 풀스크린 모드: 그리기 도구 패널도 타임라인과 동일한 방식(우측 슬라이드)으로 전환.
        타임라인 패널과 같은 우측 자리를 쓰므로 js(tactics.js/tactics-timeline.js)가
        하나를 열 때 다른 하나를 자동으로 닫아 겹치지 않게 한다(is-open 상호 배타). */
-    #page-tactics:fullscreen #tactics-draw-toolbar {
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar {
       position: fixed;
       top: 0;
       right: 0;
       bottom: 0;
-      width: 176px;
-      max-width: 60vw;
-      height: 100vh;
+      /* 버튼 높이는 최대 2배, 패널 폭은 최대 25%만 늘려 피치 가림을 줄인다. */
+      width: calc(176px + 44px * (var(--td-drawtools-scale, 1) - 1)) !important;
+      max-width: calc(var(--display-vw, 1vw) * 60);
+      height: auto;
       z-index: 100;
       transform: translateX(100%);
       transition: transform .22s ease;
       box-shadow: -4px 0 20px rgba(0,0,0,.45);
       border-left: 1px solid rgba(255,255,255,.12);
     }
-    #page-tactics:fullscreen #tactics-draw-toolbar.is-open {
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar.is-open {
       transform: translateX(0);
+    }
+    .td-drawtools-size-control {
+      display: none;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0 8px;
+    }
+    .td-drawtools-size-control .td-alpha-slider {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) .td-drawtools-size-control {
+      display: grid;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > * {
+      flex-shrink: 0;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .tactics-draw-title {
+      min-height: calc(26px * var(--td-drawtools-scale, 1));
+      padding: 7px calc(28px * var(--td-drawtools-scale, 1)) 0;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > button {
+      min-height: calc(28px * var(--td-drawtools-scale, 1)) !important;
+      padding: calc(5px * var(--td-drawtools-scale, 1)) 8px !important;
+      font-size: calc(12px + 6px * (var(--td-drawtools-scale, 1) - 1)) !important;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > #td-drawtools-close {
+      width: calc(26px * var(--td-drawtools-scale, 1));
+      height: calc(26px * var(--td-drawtools-scale, 1));
+      min-height: calc(26px * var(--td-drawtools-scale, 1)) !important;
+      padding: 0 !important;
+      font-size: calc(18px * var(--td-drawtools-scale, 1)) !important;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .tactics-draw-swatches button {
+      width: calc(20px * var(--td-drawtools-scale, 1)) !important;
+      height: calc(20px * var(--td-drawtools-scale, 1)) !important;
     }
     #tactics-draw-toolbar {
       position: relative;
@@ -445,3 +584,656 @@
     }
 
     /* ========== 메인 페이지 패널 ========== */
+
+    /* ━━━ 전술판 피치 가로/세로 전환 ━━━
+       세로 모드는 #tactics-pitch 자체를 JS(tacticsSyncPitchLayout)에서 rotate(-90deg)로 돌린다.
+       피치 안 요소는 함께 돌아가므로, 글자가 있는 선수 바둑알/공/팀 라벨만 +90deg 역회전해 똑바로 세운다.
+       드로잉(SVG)/레이저(canvas)/선택 박스는 피치 좌표 그대로 회전되는 게 맞으므로 건드리지 않는다. */
+    #page-tactics.td-pitch-vertical .tactics-token,
+    #page-tactics.td-pitch-vertical .tactics-ball-token {
+      transform: translate(-50%, -50%) rotate(90deg) !important;
+    }
+    /* 팀 라벨: 가로 기준 좌상단(홈)/우상단(원정) 자리에서 역회전하면 화면상 좌하단(홈)/좌상단(원정)이 된다.
+       transform-origin을 라벨이 붙은 모서리로 두고 회전 후 피치 안쪽으로 들어오도록 자기 크기만큼 밀어준다. */
+    #page-tactics.td-pitch-vertical .td-team-label-home {
+      transform-origin: 0 0;
+      transform: rotate(90deg) translateY(-100%);
+    }
+    #page-tactics.td-pitch-vertical .td-team-label-away {
+      transform-origin: 100% 0;
+      transform: rotate(90deg) translateX(100%);
+    }
+    /* 전술판 팀 이름 라벨 — 캠 큰 메뉴 라인업 팀 chip(.dp-lineup-team-main, css/lineup/lineup-pitch.css)과 같은 디자인:
+       팀 컬러 배경 + 가독성 보장 글자색(등번호색) pill, 굵은 팀명 + 반투명 포메이션. 크기는 바둑알처럼 --td-scale 비례. */
+    #tactics-pitch .td-team-label-wrap {
+      display: flex;
+      align-items: center;
+      gap: calc(8px * var(--td-scale, 1));
+      max-width: 45%;
+      padding: calc(5px * var(--td-scale, 1)) calc(10px * var(--td-scale, 1));
+      border-radius: 12px;
+      background: var(--td-team-accent, #1d4ed8);
+      box-shadow: 0 1px 4px rgba(0,0,0,.4);
+      color: var(--td-team-text, #fff);
+      white-space: nowrap;
+    }
+    #tactics-pitch .td-team-label-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.1;
+      font-size: calc(11px * var(--td-scale, 1));
+      font-weight: 800;
+    }
+    #tactics-pitch .td-team-label-fm {
+      flex: 0 0 auto;
+      font-size: calc(10px * var(--td-scale, 1));
+      font-weight: 700;
+      opacity: .72;
+    }
+    #tactics-pitch .td-team-label-fm:empty { display: none; }
+    #btn-tactics-orientation[aria-pressed="true"] {
+      background: #1e40af !important;
+      color: #fff !important;
+    }
+
+    /* 세로 모드 피치 폭 조절 — 캠 큰 메뉴 라인업 패널(.lp-lineup-right-edge)처럼 피치 가장자리를 직접 잡고 늘리는 방식.
+       #td-pitch-resize-handle 자체는 폭 0인 flex 항목(레이아웃 공간 차지 없음)이고, ::before가 피치 오른쪽 가장자리
+       (전체화면 오른쪽 정렬이면 왼쪽 가장자리) 위에 걸친 투명 잡기 영역이 된다. hover/드래그 중에만 살짝 밝아진다.
+       드래그로 피치 폭만 조절, 더블클릭/더블탭으로 초기화(js/tactics/tactics.js: tacticsBindPitchResizeHandle). */
+    #td-pitch-resize-handle { display: none; }
+    #page-tactics.td-pitch-vertical #td-pitch-resize-handle {
+      display: block;
+      position: relative;
+      flex: 0 0 0px;
+      width: 0;
+      z-index: 10;
+      cursor: ew-resize;
+      touch-action: none;
+      user-select: none;
+    }
+    #page-tactics.td-pitch-vertical #td-pitch-resize-handle::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -8px;
+      width: 16px; /* 태블릿 손가락으로 잡기 쉽도록 가장자리 양쪽 8px씩 */
+      cursor: ew-resize;
+      touch-action: none;
+      background: transparent;
+      transition: background .15s;
+    }
+    #page-tactics.td-pitch-vertical #td-pitch-resize-handle:hover::before,
+    #page-tactics.td-pitch-vertical #td-pitch-resize-handle.is-dragging::before {
+      background: rgba(255,255,255,.18);
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left.td-pitch-vertical #td-pitch-resize-handle {
+      order: -1;
+    }
+
+    /* 그리기 도구 버튼 아이콘/라벨 span(tacticsSplitDrawToolLabels) — 가로 화면에선 기존처럼 한 줄 */
+    .td-tool-icon { margin-right: 4px; }
+    /* 상단바 아이콘 버튼(tdSetIconButton) / 패널 토글 화살표 span — 가로 화면에선 아이콘 + 라벨 한 줄 */
+    #tactics-topbar .td-btn-icon { display: inline-flex; vertical-align: -2px; margin-right: 4px; }
+    #tactics-topbar .td-btn-icon svg { width: 13px; height: 13px; }
+    #tactics-topbar .td-toggle-arrow { margin-right: 3px; }
+    /* 포메이션 선택 묶음(HOME/AWAY 태그 + 셀렉트) — 가로 화면에선 기존 배치 그대로 */
+    #tactics-topbar .td-fm-pair { display: inline-flex; align-items: center; gap: 8px; }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-fm-pair { gap: 5px; }
+
+    /* ━━━ 전술판 전체화면 — 세로 화면(태블릿/모바일 세로) 전용 디자인 ━━━
+       js/core/display-scale.js가 세로 화면에선 전체화면 기준 폭을 기기 폭(480~900)으로 낮춰(--tactics-fs-*)
+       글씨/버튼이 기기 본래 크기로 보이게 한다. 여기서는 그 위에서
+       1) 상단바: 주요 버튼(포메이션, 되돌리기/다시 실행, 타임라인, 그리기 도구, 더보기, 전체화면, 가로/세로)만 표시.
+          슬라이더/체크박스/선수 이름 입력/원위치/전체 지우기(.td-topbar-secondary)는 "더보기"로 펼칠 때만 아래 줄에 표시.
+          상단바 크기 슬라이더(zoom)와 그리기 도구 크기 슬라이더는 세로 전용 배율이 대신하므로 숨기고 1배로 고정.
+       2) 타임라인/이벤트, 그리기 도구: 오른쪽 슬라이드 대신 아래에서 위로 올라오는 바텀 시트.
+          타임라인 시트는 화면의 45%까지 — 타임라인 바는 고정, 그 아래 이벤트 목록만 스크롤(캠 작은 메뉴와 같은 방식).
+          그리기 도구는 아이콘 위/라벨 아래 5열 격자 버튼 + 큰 색상 원.
+       열기/닫기 로직(is-open, 바깥 탭 닫기, 두 패널 상호 배타)은 기존 그대로. 가로 화면/OBS 방송 화면은 영향 없음. */
+    #td-topbar-more-btn { display: none; }
+    /* ── 1) 상단바 — 60칸 격자로 역할별 배치 (#page-tactics.td-touch-topbar: 세로 화면 전체화면 또는 터치 기기 배치) ──
+       1줄: [HOME 포메이션][AWAY 포메이션][되돌리기][다시 실행][가로/세로][점수판 보이기/숨기기][전체화면]  (아이콘 버튼은 정사각)
+       2줄: [타임라인 | 그리기 도구 | 더보기] 세그먼트 + [선수 원위치][전체 지우기]
+       더보기 펼침: [전술판 투명도][라벨 크기][선수 크기] 슬라이더 카드 / [이름 표시][공 표시][대형 유지] 칩 + [선수 이름 입력]
+       칸 사이 간격은 column-gap 대신 각 항목 좌우 margin(4px)으로 준다(60칸 gap이 폭을 잡아먹지 않도록). */
+    #page-tactics.td-touch-topbar #tactics-topbar {
+      zoom: 1;
+      display: grid !important;
+      grid-template-columns: repeat(60, minmax(0, 1fr));
+      column-gap: 0 !important;
+      row-gap: 6px !important;
+      align-items: stretch;
+      padding: 6px 8px !important; /* 태블릿 피드백 — 상단바(바 자체) 두께를 줄임: 버튼 42->34px, 여백 10->6px */
+      background: #0b1220 !important;
+      border-bottom: 1px solid rgba(255,255,255,.08) !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar > * {
+      margin: 0 4px !important;
+      min-width: 0;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-topbar-size-control,
+    #page-tactics.td-touch-topbar #tactics-topbar .td-topbar-sep,
+    #page-tactics.td-touch-topbar #tactics-topbar > [hidden] {
+      display: none !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar:not(.td-more-open) .td-topbar-secondary {
+      display: none !important;
+    }
+
+    /* 공통 버튼 톤 — 짙은 남색 카드 + 옅은 테두리, 높이 42px */
+    #page-tactics.td-touch-topbar #tactics-topbar button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 10px !important;
+      border-radius: 10px !important;
+      border: 1px solid rgba(255,255,255,.08) !important;
+      background: #1e293b !important;
+      color: #e2e8f0 !important;
+      font-size: 14px !important;
+      font-weight: 600;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar button:active {
+      background: #273449 !important;
+    }
+
+    /* 1줄: 포메이션 카드(팀 컬러 점 + HOME/AWAY 태그 + 셀렉트) */
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair {
+      order: 1;
+      grid-column: span 15;
+      position: relative;
+      display: flex;
+      /* 포메이션 카드 — 두께를 줄이려고 태그(HOME/AWAY)와 값을 두 줄이 아닌 한 줄에 둔다 */
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 8px 0 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: #1e293b;
+      overflow: hidden;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-away { order: 2; }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--td-team-accent, #3b82f6);
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-tag {
+      flex: 0 0 auto;
+      text-align: left;
+      font-size: 10px !important;
+      letter-spacing: .08em;
+      color: #94a3b8 !important;
+      line-height: 1;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair select {
+      width: 100%;
+      min-width: 0;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      color: #f8fafc !important;
+      font-size: 15px !important;
+      font-weight: 800;
+      line-height: 1.2;
+      outline: none;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair select option {
+      background: #1e293b;
+      color: #e2e8f0;
+    }
+    /* 1줄: 정사각 아이콘 버튼 */
+    #page-tactics.td-touch-topbar #tactics-topbar #td-undo-btn,
+    #page-tactics.td-touch-topbar #tactics-topbar #td-redo-btn,
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-orientation,
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-board-toggle,
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-fullscreen {
+      grid-column: span 6;
+      padding: 0 !important;
+      font-size: 20px !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar #td-undo-btn { order: 3; }
+    #page-tactics.td-touch-topbar #tactics-topbar #td-redo-btn { order: 4; }
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-orientation { order: 5; }
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-board-toggle { order: 6; }
+    #page-tactics.td-touch-topbar #tactics-topbar #td-topbar-hide-btn { order: 6; }
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-fullscreen { order: 7; }
+    /* 점수판 보이기/숨기기는 전체화면이 아닌 터치 배치에서만 의미가 있다(전체화면엔 점수판이 없음).
+       전체화면에선 그 자리에 상단바 숨기기 버튼이 들어가 1줄 합이 60칸으로 유지된다. */
+    #page-tactics:fullscreen #tactics-topbar #btn-tactics-board-toggle { display: none !important; }
+    #page-tactics.td-touch-topbar #tactics-topbar #td-topbar-hide-btn {
+      grid-column: span 6;
+      padding: 0 !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-orientation .td-btn-label,
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-board-toggle .td-btn-label,
+    #page-tactics.td-touch-topbar #tactics-topbar #td-topbar-hide-btn .td-btn-label,
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-fullscreen .td-btn-label {
+      display: none;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-btn-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+    /* 세로 모드 켜짐 표시 — 파란 테두리 + 아이콘 색 */
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-orientation[aria-pressed="true"] {
+      background: #1e293b !important;
+      border-color: rgba(96,165,250,.55) !important;
+      color: #93c5fd !important;
+    }
+
+    /* 2줄: 세그먼트(타임라인 | 그리기 도구 | 더보기) */
+    #page-tactics.td-touch-topbar #tactics-topbar #td-fullscreen-panel-toggles {
+      order: 8;
+      grid-column: span 36;
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      padding: 3px;
+      border-radius: 12px;
+      background: #111a2e;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar #td-fullscreen-panel-toggles > button {
+      display: inline-flex !important;
+      min-height: 28px;
+      margin: 0 !important;
+      padding: 0 6px !important;
+      border: none !important;
+      border-radius: 9px !important;
+      background: transparent !important;
+      color: #cbd5e1 !important;
+      font-size: 14px !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar #td-fullscreen-panel-toggles > button[aria-expanded="true"] {
+      background: #2563eb !important;
+      color: #fff !important;
+      box-shadow: 0 2px 8px rgba(37,99,235,.35);
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-toggle-arrow {
+      display: none;
+    }
+    /* 2줄: 선수 원위치 / 전체 지우기 */
+    #page-tactics.td-touch-topbar #tactics-topbar .td-btn-reset,
+    #page-tactics.td-touch-topbar #tactics-topbar .td-btn-clear {
+      order: 9;
+      grid-column: span 12;
+      font-size: 13px !important;
+      padding: 0 6px !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-btn-clear { order: 10; }
+
+    /* 더보기: 슬라이더 카드 3개 (라벨 + 값 / 슬라이더) */
+    #page-tactics.td-touch-topbar #tactics-topbar .td-alpha-control,
+    #page-tactics.td-touch-topbar #tactics-topbar .td-name-size-control,
+    #page-tactics.td-touch-topbar #tactics-topbar .td-token-size-control {
+      order: 20;
+      grid-column: span 20;
+      display: grid !important;
+      /* 더보기 펼침 줄도 주 버튼과 같은 두께(34px) — 라벨 / 슬라이더 / 값을 한 줄에 */
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px !important;
+      min-height: 34px;
+      padding: 0 10px !important;
+      border-radius: 10px;
+      background: #111a2e;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-name-size-control { order: 21; }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-token-size-control { order: 22; }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-topbar-secondary .td-alpha-label {
+      grid-row: 1;
+      grid-column: 1;
+      font-size: 12px !important;
+      color: #94a3b8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-topbar-secondary .td-alpha-value {
+      grid-row: 1;
+      grid-column: 3;
+      min-width: 0;
+      font-size: 12px !important;
+      color: #e2e8f0;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-topbar-secondary .td-alpha-slider {
+      grid-row: 1;
+      grid-column: 2;
+      width: 100% !important;
+      min-width: 0;
+      margin: 0;
+    }
+    /* 더보기: 체크박스 칩 3개 + 선수 이름 입력 */
+    #page-tactics.td-touch-topbar #tactics-topbar label.td-topbar-secondary {
+      order: 30;
+      grid-column: span 14;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 6px !important;
+      min-height: 34px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,.08);
+      color: #cbd5e1 !important;
+      font-size: 13px !important;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar label.td-topbar-secondary:has(input:checked) {
+      background: rgba(37,99,235,.18);
+      border-color: rgba(96,165,250,.55);
+      color: #e0edff !important;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar label.td-topbar-secondary input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: #3b82f6;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-manual-names {
+      order: 33;
+      grid-column: span 18;
+      min-height: 34px;
+      font-size: 13px !important;
+    }
+
+    /* 가로 화면 + 터치 기기 배치: 같은 상단바 디자인을 한 줄로 (세로의 두 줄을 합침)
+       [HOME][AWAY] [타임라인|그리기 도구|더보기] [선수 원위치][전체 지우기] [되돌리기][다시 실행][가로/세로][점수판][전체화면]
+       가로 화면은 전술판 전체가 1920 기준 배율(태블릿 약 0.67배)로 그려지므로, 상단바만 zoom으로 그 배율을 되돌려
+       기기 본래 크기(버튼 높이 42px, 글씨 14px)로 보이게 한다. 더보기 펼침 항목은 강제 줄바꿈 뒤 다음 줄에 나온다. */
+    @media (orientation: landscape) {
+      #page-tactics.td-touch-topbar #tactics-topbar {
+        zoom: calc(1 / var(--tactics-fs-transform, 1));
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: stretch;
+        row-gap: 6px !important;
+      }
+      #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair { flex: 0 0 150px; }
+      #page-tactics.td-touch-topbar #tactics-topbar #td-fullscreen-panel-toggles { order: 3; flex: 0 0 340px; }
+      #page-tactics.td-touch-topbar #tactics-topbar .td-btn-reset { order: 4; flex: 0 0 auto; padding: 0 14px !important; }
+      #page-tactics.td-touch-topbar #tactics-topbar .td-btn-clear { order: 5; flex: 0 0 auto; padding: 0 14px !important; }
+      #page-tactics.td-touch-topbar #tactics-topbar #td-undo-btn { order: 6; margin-left: auto !important; }
+      #page-tactics.td-touch-topbar #tactics-topbar #td-redo-btn { order: 7; }
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-orientation { order: 8; }
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-board-toggle { order: 9; }
+      #page-tactics.td-touch-topbar #tactics-topbar #td-topbar-hide-btn { order: 9; flex: 0 0 38px; }
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-fullscreen { order: 10; }
+      #page-tactics.td-touch-topbar #tactics-topbar #td-undo-btn,
+      #page-tactics.td-touch-topbar #tactics-topbar #td-redo-btn,
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-orientation,
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-board-toggle,
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-fullscreen {
+        flex: 0 0 38px;
+      }
+      /* 더보기 펼침 — 주 버튼 줄과 옵션 줄 사이 강제 줄바꿈 */
+      #page-tactics.td-touch-topbar #tactics-topbar.td-more-open::after {
+        content: "";
+        order: 15;
+        flex-basis: 100%;
+      }
+      #page-tactics.td-touch-topbar #tactics-topbar .td-alpha-control,
+      #page-tactics.td-touch-topbar #tactics-topbar .td-name-size-control,
+      #page-tactics.td-touch-topbar #tactics-topbar .td-token-size-control {
+        flex: 0 0 200px;
+      }
+      #page-tactics.td-touch-topbar #tactics-topbar label.td-topbar-secondary { flex: 0 0 auto; padding: 0 16px; }
+      #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-manual-names { flex: 0 0 auto; padding: 0 16px !important; }
+    }
+
+    @media (orientation: portrait) {
+      /* ── 2) 바텀 시트 공통 ── */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-draw-toolbar {
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: auto !important;
+        max-width: none !important;
+        transform: translateY(100%) !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-top: 1px solid rgba(255,255,255,.14) !important;
+        border-radius: 18px 18px 0 0 !important;
+        box-shadow: 0 -6px 24px rgba(0,0,0,.5) !important;
+        background: #0b1220 !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel.is-open,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar.is-open,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel.is-open,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-draw-toolbar.is-open {
+        transform: translateY(0) !important;
+      }
+      /* 시트 상단 손잡이(장식) */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel::before,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.25);
+        transform: translateX(-50%);
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #td-timeline-close,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #td-drawtools-close,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #td-timeline-close,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #td-drawtools-close {
+        top: 10px !important;
+        left: auto !important;
+        right: 12px !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        font-size: 20px !important;
+      }
+
+      /* ── 2-1) 타임라인 시트 — 최대 45%, 타임라인 바 고정 + 이벤트 목록만 스크롤 ── */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel {
+        height: 45% !important;
+        padding: 24px 14px 10px !important;
+        gap: 6px !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel .td-tl-title-row {
+        padding-right: 40px; /* 닫기 버튼 자리 */
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel .td-tl-title { font-size: 15px; }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel .td-tl-current { font-size: 17px; }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel #tactics-timeline-bounds { font-size: 12px; }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel #tactics-events-host .ev-list {
+        margin-top: 8px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel .ev-filter-shell,
+      #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left #tactics-timeline-panel .ev-filter-shell {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      /* ── 2-2) 그리기 도구 시트 — 5열 격자 ── */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar {
+        --td-drawtools-scale: 1;
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-content: start;
+        height: auto !important;
+        max-height: 60%;
+        overflow-y: auto;
+        padding: 24px 14px 18px !important;
+        gap: 8px !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-title,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-subtitle,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-swatches,
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-divider {
+        grid-column: 1 / -1;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .td-drawtools-size-control {
+        display: none !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-title {
+        min-height: 0 !important;
+        padding: 0 44px 2px 2px !important;
+        font-size: 14px !important;
+        color: #cbd5e1 !important;
+        text-transform: none !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-subtitle {
+        font-size: 12px !important;
+        color: #94a3b8 !important;
+        margin-top: 4px;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > .tactics-draw-divider {
+        margin: 2px 0 !important;
+      }
+      /* 도구 버튼: 아이콘 위 / 라벨 아래 카드형 */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > button[id^="td-tool-"] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-width: 0;
+        min-height: 64px !important;
+        padding: 8px 4px !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255,255,255,.08) !important;
+        color: #e5e7eb !important;
+        text-align: center !important;
+        line-height: 1.15;
+        font-size: 12px !important;
+        /* 좁은 휴대폰에서 긴 라벨(곡선실선화살표 등)이 버튼 밖으로 넘치지 않게 글자 단위 줄바꿈 허용 */
+        word-break: normal;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .td-tool-icon {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .td-tool-label {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: -0.03em; /* 좁은 휴대폰에서 '곡선실선화살표'가 한 줄에 들어가도록 */
+      }
+      /* 되돌리기/전체 지우기 — 격자 아래 넓은 두 버튼 */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar > button:not([id]) {
+        grid-column: span 2;
+        min-height: 44px !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+        font-size: 14px !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .tactics-draw-swatches {
+        gap: 12px !important;
+        padding: 2px 0 4px;
+      }
+      /* 모든 색 원에 같은 옅은 바깥 링 — 기존엔 흰색/노랑/검정에만 서로 다른 안쪽 링이 있어
+         어두운 시트 위에서 검정만 테두리가 도드라져 보였다. 선택된 색(✓ 텍스트가 있는 원)은 흰 링 두 겹. */
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .tactics-draw-swatches button {
+        width: 34px !important;
+        height: 34px !important;
+        border: none !important;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.22) !important;
+      }
+      #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-draw-toolbar .tactics-draw-swatches button:not(:empty) {
+        box-shadow: 0 0 0 3px #0b1220, 0 0 0 5px #f8fafc !important;
+      }
+    }
+
+    /* ━━━ 터치 기기 전술판 배치 (.td-touch-layout, js/tactics/tactics.js: tacticsApplyTouchLayout) ━━━
+       이 파일의 전체화면 규칙은 전부 #page-tactics:is(:fullscreen, .td-touch-layout)로 작성돼 있어, 터치 기기에서는
+       전체화면이 아니어도 같은 배치(넓은 피치, 버튼으로 여는 타임라인/그리기 도구 패널, 세로 화면 전용 디자인)가 적용된다.
+       전체화면이 아닐 때는 위쪽 점수판을 가리지 않도록 슬라이드/바텀 시트 패널의 기준을 전술판 페이지로 제한한다
+       (transform이 position:fixed 자식의 기준 박스가 된다). */
+    #page-tactics.td-touch-layout:not(:fullscreen) {
+      transform: translateZ(0);
+    }
+
+    /* 점수판 보이기/숨기기 버튼(tacticsToggleBoardVisible) — 터치 기기 배치에서만, 전체화면이 아닐 때만 보인다.
+       숨김 상태(body.td-board-hidden)면 전술판 탭 위쪽 방송용 점수판 영역을 접어 피치가 그만큼 커진다. */
+    #btn-tactics-board-toggle { display: none; }
+    #page-tactics.td-touch-layout:not(:fullscreen) #btn-tactics-board-toggle { display: inline-flex; align-items: center; }
+    body.tactics-active.td-touch-board.td-board-hidden .board-stage-wrap { display: none !important; }
+
+    /* ━━━ 전체화면 상단바 숨기기 (tacticsSetTopbarHidden) ━━━
+       전체화면에서만 상단바에 "메뉴 숨기기" 버튼(#td-topbar-hide-btn)이 보이고, 누르면 상단바 전체를 접어 피치가 화면을 다 쓴다.
+       접힌 동안에는 오른쪽 아래 둥근 ☰ 버튼(#td-topbar-show-btn)으로 다시 펼친다. 전체화면이 아닐 때는 항상 펼쳐진 상태. */
+    #td-topbar-hide-btn { display: none; }
+    #page-tactics:fullscreen #tactics-topbar #td-topbar-hide-btn { display: inline-flex; align-items: center; }
+    #page-tactics:fullscreen.td-topbar-hidden #tactics-topbar { display: none !important; }
+    #td-topbar-show-btn { display: none; }
+    #page-tactics:fullscreen.td-topbar-hidden #td-topbar-show-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      /* 오른쪽 아래 — 위쪽 모서리에는 팀 이름 라벨(HOME/AWAY)이 있어 겹치지 않게 */
+      bottom: 16px;
+      right: 16px;
+      z-index: 60;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(15,23,42,.78);
+      color: #e2e8f0;
+      box-shadow: 0 4px 14px rgba(0,0,0,.45);
+      cursor: pointer;
+    }
+    #td-topbar-show-btn svg { width: 22px; height: 22px; }
+    /* 가로 화면 기존(마우스) 전체화면 상단바에서는 숨기기 버튼이 기존 버튼들과 같은 톤 */
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #td-topbar-hide-btn {
+      background: #1e293b;
+      color: #e5e7eb;
+      border: 1px solid #ffffff20;
+      border-radius: 7px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    /* 메뉴 숨기기는 전체화면 전용 — 터치 상단바의 공통 버튼 display 규칙보다 우선 */
+    #page-tactics:not(:fullscreen) #tactics-topbar #td-topbar-hide-btn { display: none !important; }
+    /* PC(마우스) 가로 전체화면 상단바 — 메뉴 숨기기 버튼이 추가되며 두 줄로 넘어가던 문제:
+       메뉴 숨기기/가로·세로/전체화면 종료는 아이콘만 표시(라벨은 title/aria-label로 유지)해 한 줄에 들어가게 한다. */
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #td-topbar-hide-btn .td-btn-label,
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #btn-tactics-orientation .td-btn-label,
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #btn-tactics-fullscreen .td-btn-label {
+      display: none;
+    }
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #td-topbar-hide-btn .td-btn-icon,
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #btn-tactics-orientation .td-btn-icon,
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #btn-tactics-fullscreen .td-btn-icon {
+      margin-right: 0;
+    }
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #td-topbar-hide-btn .td-btn-icon svg,
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #btn-tactics-orientation .td-btn-icon svg,
+    #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar #btn-tactics-fullscreen .td-btn-icon svg {
+      width: 15px;
+      height: 15px;
+    }

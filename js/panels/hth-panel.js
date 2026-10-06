@@ -3,6 +3,10 @@
 // fixtureId 로드 시 /api/hth를 호출해 [data-hth-panel]에 렌더링.
 // 이벤트가 없을 때 자동으로 HTH 패널 표시, 이벤트 발생 시 자동 복귀.
 // ev-title-bar 내 토글 버튼으로 수동 전환 가능.
+//
+// 조회 순서: 홈/원정 팀 ID 정규화 → 6시간 캐시 확인 → 진행 중인 요청 재사용 → API 조회.
+// 캐시는 팀 ID를 정렬한 키로 공유하고 sessionStorage에 보관한다.
+// 화면 갱신은 요청 번호와 현재 팀 조합이 일치할 때만 수행해 경기 전환 중의 늦은 응답을 걸러낸다.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const HTH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -20,6 +24,7 @@ const _hthState = {
 };
 window._hthState = _hthState;
 
+/** 만료되지 않은 팀 조합별 상대 전적을 sessionStorage에 저장한다. 저장소 오류는 무시한다. */
 function hthPersistCache() {
   try {
     const now = Date.now();
@@ -31,6 +36,7 @@ function hthPersistCache() {
   } catch {}
 }
 
+/** 탭에 저장된 유효한 상대 전적 캐시를 메모리로 복원하고 저장소의 만료 항목을 정리한다. */
 function hthHydrateCache() {
   try {
     const raw = JSON.parse(sessionStorage.getItem(HTH_CACHE_STORAGE_KEY) || '{}');
@@ -43,10 +49,12 @@ function hthHydrateCache() {
 }
 hthHydrateCache();
 
+/** 명시된 경기 데이터 → 최근 이벤트 데이터 → 상대 전적에 보관된 경기 순으로 조회 대상을 선택한다. */
 function hthGetFixtureData(fixtureData = null) {
   return fixtureData || window._eventsLastData || _hthState.fixtureData || null;
 }
 
+/** 경기의 홈·원정 팀 ID를 숫자로 반환한다. 어느 한쪽이라도 없거나 0이면 null을 반환한다. */
 function hthGetTeamIds(fixtureData = null) {
   const data = hthGetFixtureData(fixtureData);
   const homeTeamId = Number(data?.matchInfo?.homeTeamId);
@@ -55,12 +63,14 @@ function hthGetTeamIds(fixtureData = null) {
   return { homeTeamId, awayTeamId };
 }
 
+/** 홈·원정이 바뀌어도 캐시를 공유하도록 팀 ID를 숫자순으로 정렬해 키를 만든다. ID가 없으면 빈 문자열. */
 function hthGetCacheKey(fixtureData = null) {
   const ids = hthGetTeamIds(fixtureData);
   if (!ids) return '';
   return [ids.homeTeamId, ids.awayTeamId].sort((a, b) => a - b).join(':');
 }
 
+/** 유효한 캐시 항목만 반환한다. 만료 항목은 메모리와 저장소에서 제거하고 null을 반환한다. */
 function hthGetFreshCacheEntry(cacheKey) {
   if (!cacheKey) return null;
   const entry = _hthCache.get(cacheKey);
@@ -73,10 +83,12 @@ function hthGetFreshCacheEntry(cacheKey) {
   return entry;
 }
 
+/** 양 팀 ID로 캐시 키를 만들 수 있어 상대 전적의 조회 대상을 특정할 수 있는지 반환한다. */
 function hthCanLoadForFixture(fixtureData = null) {
   return !!hthGetCacheKey(fixtureData);
 }
 
+/** 현재 패널 데이터가 요청한 팀 조합과 일치하고 아직 만료되지 않았는지 검사한다. */
 function hthCurrentDataIsFresh(fixtureData = null) {
   const cacheKey = hthGetCacheKey(fixtureData);
   return !!cacheKey
@@ -85,6 +97,21 @@ function hthCurrentDataIsFresh(fixtureData = null) {
     && Number(_hthState.expiresAt) > Date.now();
 }
 
+/**
+ * 이 팀 조합의 상대 전적에 실제로 표시할 과거 경기가 있는지.
+ * hthCanLoadForFixture는 "조회를 시도할 수 있는지"(팀 ID 존재 여부)만 보고, 실제 결과가
+ * 0건인 상대 조합(맞대결 이력이 없는 팀 등)도 항상 true를 반환한다 — 그래서 stat-cycle.js의
+ * 자동 전환 목록(lpStatAvailableModes)이 "표시할 데이터가 없는 패널은 건너뛴다"는 다른 모드들
+ * (stats 등)과 다르게 상대전적만 빈 패널로 계속 순환에 남아있었다.
+ * 아직 이 조합으로 데이터를 불러온 적이 없으면(fetch 전/다른 조합 캐시) 판정을 보류하고
+ * true를 반환 — 로드가 끝나면 다음 호출 때 실제 결과로 정확히 재판정된다.
+ */
+function hthHasMatchesForFixture(fixtureData = null) {
+  if (!hthCurrentDataIsFresh(fixtureData)) return true;
+  return Array.isArray(_hthState.displayMatches) && _hthState.displayMatches.length > 0;
+}
+
+/** 모든 상대 전적 패널의 본문을 로딩·실패 메시지로 교체하고 제목 바를 다시 만든다. */
 function hthRenderStatus(message) {
   document.querySelectorAll('[data-hth-panel]').forEach(container => {
     const titleBar = hthCreateTitleBar(container);
@@ -95,19 +122,24 @@ function hthRenderStatus(message) {
   });
 }
 
+// fixture.js의 FT_STALE_AFTER_MS(폴링 종료 기준)와 동일한 값 — "경기가 확실히 끝났다"고
+// 볼 수 있는 공통 기준을 두 곳에서 같이 쓴다.
+const HTH_PAST_MATCH_STALE_AFTER_MS = 4 * 60 * 60 * 1000;
+
 /**
- * 오늘 0시(로컬 자정) 이전에 킥오프한 경기만 상대 전적으로 유효.
- * API가 두 팀의 향후 예정 경기(같은 시즌 역대진 등)까지 목록에 섞어 내려주는 경우가 있는데,
- * 아직 열리지 않은 경기는 스코어가 확정되지 않아 상대 전적에 포함시키면 안 된다.
+ * 킥오프로부터 4시간이 지난 경기만 상대 전적으로 유효.
+ * API가 두 팀의 향후 예정 경기(같은 시즌 역대전 등)까지 목록에 섞어 내려주는 경우가 있는데,
+ * 아직 열리지 않았거나 진행 중인 경기는 스코어가 확정되지 않아 상대 전적에 포함시키면 안 된다.
+ * 이전에는 "오늘 0시 이전 킥오프"만 걸렀는데, 그러면 당일 킥오프한 경기는 이미 종료됐어도
+ * (예: 오전 경기가 저녁에 끝난 경우) 영원히 상대 전적에 반영되지 않는 버그가 있었다 —
+ * 날짜 대신 킥오프 후 경과 시간으로 판단해 당일 경기도 4시간 지나면 자연스럽게 포함된다.
  * 날짜 파싱이 안 되는 항목은 걸러낼 근거가 없으므로 안전하게 표시 쪽(true)으로 둔다.
  */
 function hthIsPastMatch(match) {
   if (!match?.date) return true;
   const d = new Date(match.date);
   if (isNaN(d.getTime())) return true;
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  return d.getTime() < todayStart.getTime();
+  return (Date.now() - d.getTime()) >= HTH_PAST_MATCH_STALE_AFTER_MS;
 }
 
 /** hthIsPastMatch 필터를 배열에 적용. 렌더링뿐 아니라 스크롤 속도 등 크기 계산도 이 결과를 공유한다. */
@@ -207,11 +239,15 @@ function hthCreateRow(match, fixtureData) {
   homeSide.className = 'hth-team-side hth-team-home';
   const homeLogoUrl = hthResolveLogoUrl(match.homeTeamId, match.homeTeamLogo, fixtureData);
   if (homeLogoUrl) {
+    const box = document.createElement('span');
+    box.className = 'hth-logo-box';
     const img = document.createElement('img');
-    img.src = homeLogoUrl;
     img.alt = match.homeTeamName || 'HOME';
     img.className = 'hth-logo';
-    homeSide.appendChild(img);
+    box.appendChild(img);
+    homeSide.appendChild(box);
+    if (typeof LogoTrim !== 'undefined') LogoTrim.render(img, homeLogoUrl);
+    else img.src = homeLogoUrl;
   }
   const homeNameEl = document.createElement('span');
   homeNameEl.className = 'hth-team-name';
@@ -270,11 +306,15 @@ function hthCreateRow(match, fixtureData) {
   awaySide.appendChild(awayNameEl);
   const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
   if (awayLogoUrl) {
+    const box = document.createElement('span');
+    box.className = 'hth-logo-box';
     const img = document.createElement('img');
-    img.src = awayLogoUrl;
     img.alt = match.awayTeamName || 'AWAY';
     img.className = 'hth-logo';
-    awaySide.appendChild(img);
+    box.appendChild(img);
+    awaySide.appendChild(box);
+    if (typeof LogoTrim !== 'undefined') LogoTrim.render(img, awayLogoUrl);
+    else img.src = awayLogoUrl;
   }
 
   scoreRow.append(homeSide, scoreCenter, awaySide);
@@ -340,6 +380,7 @@ window.addEventListener('resize', () => {
 
 /** 모든 [data-hth-panel]에 HTH 데이터 렌더링 */
 function applyHthPanel(hthData, fixtureData, meta = {}) {
+  // 1) 원본 응답과 캐시 시각을 보관하고 실제로 표시할 과거 경기 목록을 별도로 만든다.
   _hthState.hthData = hthData;
   _hthState.fixtureData = fixtureData;
   _hthState.cacheKey = meta.cacheKey || hthGetCacheKey(fixtureData);
@@ -349,6 +390,7 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
   // 둘 다 이 필터링된 배열을 기준으로 삼는다(원본 hthData.matches는 캐시 용도로 그대로 보존).
   _hthState.displayMatches = hthFilterPastMatches(hthData?.matches);
 
+  // 2) 각 패널의 제목과 경기 목록을 교체한다. 표시할 경기가 없으면 빈 상태 메시지를 넣는다.
   document.querySelectorAll('[data-hth-panel]').forEach(container => {
     const titleBar = hthCreateTitleBar(container);
     const matches = _hthState.displayMatches;
@@ -367,6 +409,7 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
     else container.replaceChildren(list);
   });
 
+  // 3) 표시 후 줄바꿈을 측정하고, 패널 전환 버튼에 새 데이터의 가용 상태를 반영한다.
   // 패널이 보이는 상태면 wrap 체크
   if (_hthState.mode === 'hth') requestAnimationFrame(hthCheckMetaWrap);
 
@@ -386,11 +429,13 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
  * - 새 요청 응답은 현재 화면이 같은 fixture일 때만 적용하고, 아니어도 TTL 캐시는 보존.
  */
 function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
+  // 1) 조회할 팀 조합을 결정한다. ID나 API 함수가 없으면 요청 없이 null로 완료한다.
   const data = hthGetFixtureData(fixtureData);
   const ids = hthGetTeamIds(data);
   const cacheKey = hthGetCacheKey(data);
   if (!ids || !cacheKey || typeof fetchHeadToHead !== 'function') return Promise.resolve(null);
 
+  // 2) 유효한 캐시는 즉시 렌더하고, 같은 팀 조합을 조회 중이면 기존 Promise를 반환한다.
   const cached = hthGetFreshCacheEntry(cacheKey);
   if (cached) {
     applyHthPanel(cached.data, data, cached);
@@ -401,6 +446,7 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
     return _hthState.fetchPromise;
   }
 
+  // 3) 새 요청에 순번을 부여한다. 이 순번은 경기 전환이나 다른 요청이 이전 화면을 덮는 것을 막는다.
   if (options.renderLoading) hthRenderStatus('상대 전적 불러오는 중...');
 
   const fetchedAt = Date.now();
@@ -417,18 +463,21 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
       _hthCache.set(cacheKey, entry);
       hthPersistCache();
 
+      // 4) 응답은 캐시하되, 화면에는 최신 요청이면서 현재 팀 조합이 같은 경우만 적용한다.
       if (_hthState.requestSeq === mySeq && hthGetCacheKey() === cacheKey) {
         applyHthPanel(hthData, data, entry);
       }
       return hthData;
     })
     .catch(err => {
+      // 5) 실패 안내도 현재 요청에만 표시한다. 오류는 호출자에게 전달해 후속 처리가 가능하게 한다.
       if (_hthState.requestSeq === mySeq && hthGetCacheKey() === cacheKey && options.renderLoading) {
         hthRenderStatus('상대 전적을 불러오지 못했습니다');
       }
       throw err;
     })
     .finally(() => {
+      // 다른 요청이 시작됐다면 그 Promise는 유지하고, 자신이 등록한 진행 상태만 해제한다.
       if (_hthState.fetchPromise === requestPromise) _hthState.fetchPromise = null;
     });
 
@@ -436,6 +485,7 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
   return requestPromise;
 }
 
+/** 상대 전적 화면으로 전환하고 데이터를 보장한다. 현재 데이터가 만료됐을 때만 로딩 안내를 요청한다. */
 function hthShowForFixture(fixtureData = null) {
   hthSetMode('hth');
   return hthEnsureLoadedForFixture(fixtureData, { renderLoading: !hthCurrentDataIsFresh(fixtureData) });
@@ -532,6 +582,7 @@ window.hthUpdateVisibility = hthUpdateVisibility;
 window.hthAutoSwitch = hthAutoSwitch;
 window.hthReset = hthReset;
 window.hthCheckMetaWrap = hthCheckMetaWrap;
+/** 메모리와 sessionStorage의 상대 전적 캐시를 비운다. 현재 표시 중인 패널 상태는 별도로 유지된다. */
 window.hthClearCache = function hthClearCache() {
   _hthCache.clear();
   try { sessionStorage.removeItem(HTH_CACHE_STORAGE_KEY); } catch {}

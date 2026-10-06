@@ -51,6 +51,11 @@ const SETTINGS_DEFAULTS = {
   // 이벤트 패널 (Iter 5-2). 'event'는 이벤트 row 선수명 풀네임/단축, eventNameSize는 폰트 크기 px.
   event: 'long',
   eventNameSize: 15,
+  // 교체 명단 / 미출전 선수 명단 (.dp-item) 글자 크기 (px). 설정 팝업 슬라이더로 조정.
+  benchInjuryNameSize: 13,
+  // 경기 스탯 패널 (.st-title/.st-val) 글자 크기 (px). 막대 굵기(.st-bar height)가
+  // 기본값(12px) 대비 이 값의 비율만큼 함께 굵어진다 (statBarHeight = 6px * size/12).
+  statsNameSize: 12,
   // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
@@ -59,12 +64,19 @@ const SETTINGS_DEFAULTS = {
   // 라인업+벤치 안에서 유일하게 일치하면 ID 입력 없이 자동으로 연결(player-id-resolve.js).
   // 동명이인이 있으면 자동 적용하지 않고 건너뛴다. off='off', on='on'.
   autoLinkPlayerIdByName: 'on',
+  // 새 창 분리 (관리 탭). ON이면 교체 IN/OUT 선택 / 포메이션·라인업·교체·미출전 입력창 /
+  // 설정 팝업 / 테마 탭을 window.open()으로 별도 창에 띄운다 (js/core/popout.js).
+  // OBS 캡처(Browser Source/Window Capture 모두 메인 창 하나만 봄)에 잡히지 않게 하기 위함.
+  popoutModals: 'off',
   // 캠 큼 페이지의 라인업 노드(피치)에 표시할 항목 per-feature 토글. 작은 캠은 마스터 토글만 적용.
   lineupShowGoals: 'on',     // 골/어시스트 이모티콘
   lineupShowCards: 'on',     // 옐로/레드 카드
   lineupShowRating: 'on',    // 평점 박스
   lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
+  // 교체 OUT 된 선수 중 골/도움/자책골을 기록한 선수를 피치 오른쪽에 별도 열로 표시.
+  // subReflect=on일 때만 동작(off면 OUT 선수가 이미 그리드에 그대로 남아있어 중복 표시 방지).
+  lineupShowOutScorers: 'off',
   // 점수판 양옆 득점자 박스에 골 외 이벤트를 함께 표시할지.
   noteShowPenaltyMisses: 'on',
   noteShowRedCards: 'on',
@@ -81,7 +93,7 @@ const SETTINGS_DEFAULTS = {
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
-  bgImageData:    '',        // 파일 첨부 base64 데이터 URL — 3MB까지만 허용
+  bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
   // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
   panelAlpha:     25,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
@@ -90,10 +102,17 @@ const SETTINGS_DEFAULTS = {
   // 전술판 투명도 (0~100). 전술판 피치 + 타임라인/이벤트 패널 배경을 함께 조정.
   // 전술판 상단 슬라이더로 직접 조절하며, 설정 팝업과는 별도 진입점을 가진다.
   tacticsAlpha:   0,
+  tacticsTopbarScale: 100, // 전체화면 상단바 버튼·글자 크기 배율(%).
+  tacticsDrawtoolsScale: 150, // 전체화면 그리기 도구 패널 크기 배율(%). 태블릿 터치 편의를 위해 기본 150%.
+  tacticsFullscreenAlign: 'center', // 전술판 전체화면 피치 정렬: left / center / right
+  // 터치 기기 전술판 배치: auto(터치가 주 입력인 기기에서 자동) / on / off. js/tactics/tactics.js: tacticsApplyTouchLayout
+  tacticsTouchLayout: 'auto',
   tacticsNameSize: 12, // 전술판 선수 이름 라벨 글자 크기(px). 전술판 상단 슬라이더로 조정.
   tacticsTokenScale: 100, // 전술판 선수 바둑알 크기 배율(%). 전술판 상단 슬라이더로 조정. 태블릿 등 작은 화면 대응.
   // v3 초반에는 위 3개 값이 "불투명도"로 저장됐다. 마이그레이션 완료 여부를 표시한다.
   alphaTransparencyMode: 'transparency',
+  // 그리기 도구 크기 기본값 100% -> 150% 변경 마이그레이션 완료 표시. 이전 기본값(100)이 저장된 브라우저를 1회만 150으로 올린다.
+  tacticsDrawtoolsScaleRev: 'v150',
   // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
   // OBS 크로마키와 충돌 방지용.
   // 카테고리별 분리 정책:
@@ -115,14 +134,20 @@ const SETTINGS_DEFAULTS = {
   bigPanelLinked: 'on',
 };
 
-// 배경 이미지 파일 크기 제한.
-// 파일 업로드는 base64로 localStorage에 저장되므로 원본보다 훨씬 커진다.
-// 3MB 미만이어도 저장 한도를 넘길 수 있어, 실제로는 약 1.8MB 안팎만 안정적으로 허용한다.
-const BG_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+// 배경 이미지 원본 선택 제한. 저장 전 브라우저에서 WebP/JPEG로 압축한다.
+const BG_IMAGE_MAX_BYTES = 12 * 1024 * 1024;
 const BG_IMAGE_SAFE_PERSIST_BYTES = Math.floor(1.8 * 1024 * 1024);
+const BG_IMAGE_MAX_WIDTH = 1920;
+const BG_IMAGE_MAX_HEIGHT = 1080;
 
 const EVENT_NAME_SIZE_MIN = 10;
 const EVENT_NAME_SIZE_MAX = 22;
+const BENCH_INJURY_NAME_SIZE_MIN = 10;
+const BENCH_INJURY_NAME_SIZE_MAX = 18;
+const STATS_NAME_SIZE_MIN = 10;
+const STATS_NAME_SIZE_MAX = 18;
+const STATS_NAME_SIZE_DEFAULT = 12;
+const STATS_BAR_HEIGHT_DEFAULT = 6;
 const STATS_SWIPE_SEC_MIN = 2.5;
 const STATS_SWIPE_SEC_MAX = 60;
 const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
@@ -136,6 +161,10 @@ const TACTICS_NAME_SIZE_MAX = 18;
 // 전술판 선수 바둑알 크기 배율(%) — 태블릿 등 작은 화면에서 기본 44px 원이 너무 크다는 피드백으로 추가.
 const TACTICS_TOKEN_SCALE_MIN = 50;
 const TACTICS_TOKEN_SCALE_MAX = 150;
+const TACTICS_TOPBAR_SCALE_MIN = 100;
+const TACTICS_TOPBAR_SCALE_MAX = 200;
+const TACTICS_DRAWTOOLS_SCALE_MIN = 100;
+const TACTICS_DRAWTOOLS_SCALE_MAX = 200;
 const LINEUP_PITCH_TONE_STYLES = {
   green: {
     background: 'linear-gradient(135deg, #1a7a3a 0%, #15662f 25%, #1a7a3a 50%, #15662f 75%, #1a7a3a 100%)',
@@ -336,10 +365,11 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
-  'lineupShowSubTime', 'lineupShowNumber', 'noteShowPenaltyMisses',
+  'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
+  'popoutModals',
 ]);
 
 function isValidSetting(category, value) {
@@ -356,6 +386,9 @@ function isValidSetting(category, value) {
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
+  if (category === 'tacticsDrawtoolsScaleRev') return value === 'v150';
+  if (category === 'tacticsFullscreenAlign') return ['left', 'center', 'right'].includes(value);
+  if (category === 'tacticsTouchLayout') return ['auto', 'on', 'off'].includes(value);
   if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
     return value === 'on' || value === 'off';
   }
@@ -371,11 +404,23 @@ function isValidSetting(category, value) {
   if (category === 'eventNameSize') {
     return Number.isFinite(value) && value >= EVENT_NAME_SIZE_MIN && value <= EVENT_NAME_SIZE_MAX;
   }
+  if (category === 'benchInjuryNameSize') {
+    return Number.isFinite(value) && value >= BENCH_INJURY_NAME_SIZE_MIN && value <= BENCH_INJURY_NAME_SIZE_MAX;
+  }
+  if (category === 'statsNameSize') {
+    return Number.isFinite(value) && value >= STATS_NAME_SIZE_MIN && value <= STATS_NAME_SIZE_MAX;
+  }
   if (category === 'tacticsNameSize') {
     return Number.isFinite(value) && value >= TACTICS_NAME_SIZE_MIN && value <= TACTICS_NAME_SIZE_MAX;
   }
   if (category === 'tacticsTokenScale') {
     return Number.isFinite(value) && value >= TACTICS_TOKEN_SCALE_MIN && value <= TACTICS_TOKEN_SCALE_MAX;
+  }
+  if (category === 'tacticsTopbarScale') {
+    return Number.isFinite(value) && value >= TACTICS_TOPBAR_SCALE_MIN && value <= TACTICS_TOPBAR_SCALE_MAX;
+  }
+  if (category === 'tacticsDrawtoolsScale') {
+    return Number.isFinite(value) && value >= TACTICS_DRAWTOOLS_SCALE_MIN && value <= TACTICS_DRAWTOOLS_SCALE_MAX;
   }
   if (category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
     return Number.isFinite(value) && value >= 0 && value <= 100;
@@ -439,6 +484,16 @@ function loadSettings() {
         settingsState[category] = 100 - clampPercent(legacyOpacity, 100);
       });
       settingsState.alphaTransparencyMode = SETTINGS_DEFAULTS.alphaTransparencyMode;
+      normalizedSettings = true;
+    }
+
+    // 그리기 도구 크기 기본값 150% 마이그레이션 — 이전 기본값(100)이 그대로 저장돼 있으면 1회만 150으로 올린다.
+    // 마이그레이션 이후 사용자가 직접 100을 고르면 rev가 이미 저장돼 있어 다시 바뀌지 않는다.
+    if (parsed.tacticsDrawtoolsScaleRev !== SETTINGS_DEFAULTS.tacticsDrawtoolsScaleRev) {
+      if (Number(parsed.tacticsDrawtoolsScale) === 100) {
+        settingsState.tacticsDrawtoolsScale = SETTINGS_DEFAULTS.tacticsDrawtoolsScale;
+      }
+      settingsState.tacticsDrawtoolsScaleRev = SETTINGS_DEFAULTS.tacticsDrawtoolsScaleRev;
       normalizedSettings = true;
     }
 
@@ -547,7 +602,25 @@ function setSetting(category, value) {
   }
 
   syncSettingUi(category);
-  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale') applyLayoutSettings();
+  applySettingSideEffects(category);
+  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
+    setSetting('statsAutoSwipe', 'on');
+  }
+  document.dispatchEvent(new CustomEvent('settings:change', {
+    detail: { category, value, mode: value }
+  }));
+  return true;
+}
+
+/**
+ * category 하나가 바뀌었을 때 필요한 추가 부수효과(CSS 변수 재적용/재렌더/패널 높이 등) —
+ * setSetting()의 로컬 변경 경로뿐 아니라, 팝업 분리(js/core/popout.js)가 storage 이벤트로
+ * 원격 변경사항을 반영할 때도 이 함수를 그대로 호출해야 한다. 예전엔 이 부수효과들이
+ * setSetting() 안에만 있어서, 팝업에서 배경색/그린스크린/bigPanelLinked 등을 바꾸면 값
+ * 자체는 메인 창에 동기화돼도 실제 화면(CSS 변수·재렌더)엔 반영되지 않는 문제가 있었다.
+ */
+function applySettingSideEffects(category) {
+  if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
@@ -574,13 +647,6 @@ function setSetting(category, value) {
     // theme:colors-changed로 라인업/스탯 패널이 인라인 컬러를 다시 그리도록 신호.
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
   }
-  if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
-    setSetting('statsAutoSwipe', 'on');
-  }
-  document.dispatchEvent(new CustomEvent('settings:change', {
-    detail: { category, value, mode: value }
-  }));
-  return true;
 }
 
 /**
@@ -624,6 +690,8 @@ function resetSettingsToDefaults() {
  * 없으면 sessionStorage/localStorage만 직접 청소(fallback).
  */
 function clearAppCaches() {
+  window.logoTrimClearCache?.();
+  window.ScoreboardLogoContrast?.clearCache?.();
   if (typeof resetFixtureDrivenState === 'function') {
     resetFixtureDrivenState({
       clearFixtureId: true,
@@ -663,6 +731,9 @@ function resetRatingColorsToDefaults() {
  *   --lp-lineup-scale       : 캠 큼 페이지 라인업 패널 크기 배율 (.layout-big .lp-lineup 전용)
  *   --lp-name-base-size     : 라인업 노드 이름 base 글자 크기 (모든 layout 공통)
  *   --ev-name-base-size     : 이벤트 패널 base 글자 크기
+ *   --dp-item-name-size     : 교체 명단/미출전 선수 명단(.dp-item) base 글자 크기
+ *   --st-name-base-size     : 경기 스탯 패널(.st-title/.st-val) base 글자 크기
+ *   --st-bar-height         : 경기 스탯 막대(.st-bar) 굵기. statsNameSize 비율만큼 6px 기준으로 스케일
  *   --lp-pitch-*            : 라인업 패널 피치 색감 (background/stripe/border/marking/wash/logo)
  *   --td-pitch-*            : 전술판 피치 색감 (라인업과 같은 톤 프리셋 사용)
  *
@@ -677,6 +748,9 @@ function applyLayoutSettings() {
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
+  const benchInjurySize = Math.max(BENCH_INJURY_NAME_SIZE_MIN, Math.min(BENCH_INJURY_NAME_SIZE_MAX, Number(getSetting('benchInjuryNameSize')) || 13));
+  const statsSize = Math.max(STATS_NAME_SIZE_MIN, Math.min(STATS_NAME_SIZE_MAX, Number(getSetting('statsNameSize')) || STATS_NAME_SIZE_DEFAULT));
+  const statsBarHeight = STATS_BAR_HEIGHT_DEFAULT * (statsSize / STATS_NAME_SIZE_DEFAULT);
   const tacticsNameSize = Math.max(TACTICS_NAME_SIZE_MIN, Math.min(TACTICS_NAME_SIZE_MAX, Number(getSetting('tacticsNameSize')) || 12));
   const tacticsTokenScale = Math.max(TACTICS_TOKEN_SCALE_MIN, Math.min(TACTICS_TOKEN_SCALE_MAX, Number(getSetting('tacticsTokenScale')) || 100)) / 100;
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
@@ -685,8 +759,28 @@ function applyLayoutSettings() {
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
+  root.style.setProperty('--dp-item-name-size', `${benchInjurySize}px`);
+  root.style.setProperty('--st-name-base-size', `${statsSize}px`);
+  root.style.setProperty('--st-bar-height', `${statsBarHeight}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
   root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
+  root.style.setProperty('--td-topbar-scale', String(
+    Math.max(TACTICS_TOPBAR_SCALE_MIN, Math.min(TACTICS_TOPBAR_SCALE_MAX,
+      Number(getSetting('tacticsTopbarScale')) || SETTINGS_DEFAULTS.tacticsTopbarScale)) / 100
+  ));
+  root.style.setProperty('--td-drawtools-scale', String(
+    Math.max(TACTICS_DRAWTOOLS_SCALE_MIN, Math.min(TACTICS_DRAWTOOLS_SCALE_MAX,
+      Number(getSetting('tacticsDrawtoolsScale')) || SETTINGS_DEFAULTS.tacticsDrawtoolsScale)) / 100
+  ));
+  root.style.setProperty('--td-fullscreen-align', {
+    left: 'flex-start',
+    center: 'center',
+    right: 'flex-end',
+  }[getSetting('tacticsFullscreenAlign')] || 'center');
+  document.getElementById('page-tactics')?.classList.toggle(
+    'tactics-fullscreen-panels-left',
+    getSetting('tacticsFullscreenAlign') === 'right'
+  );
   // 그린스크린 ON일 때 피치 톤의 모든 색을 시안으로 자동 치환 (gradient/단색 모두 처리).
   // 사용자가 'green' 톤을 골라뒀어도 OBS 크로마키와 충돌하지 않게 보호.
   root.style.setProperty('--lp-pitch-bg',          chromaSafeGradient(pitchTone.background));
@@ -721,6 +815,11 @@ function applyLayoutSettings() {
   // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-name-fit.js의 fit 함수)
   if (typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
+  }
+  // benchInjuryNameSize 변경 시 글자 크기가 바뀌어 교체/미출전 명단 내용 높이가 달라지므로,
+  // 캠 작음(#benchPanel/#injuryPanel) 높이 자동 배분도 다시 실행 (lineup-name-fit.js).
+  if (typeof window.balanceBenchInjuryPanelHeights === 'function') {
+    requestAnimationFrame(() => window.balanceBenchInjuryPanelHeights());
   }
 }
 
@@ -772,7 +871,7 @@ function applyBackgroundSettings() {
 
 /**
  * 슬라이더 UI 동기화 + 옆에 붙은 .sp-slider-value 라벨도 같이 갱신.
- * lineupNameSize / eventNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
+ * lineupNameSize / eventNameSize / benchInjuryNameSize / statsNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
  */
 function syncSliderUi(category) {
   const input = document.querySelector(`input[data-settings-slider="${category}"]`);
@@ -782,7 +881,7 @@ function syncSliderUi(category) {
   const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
     || document.querySelector(`[data-settings-slider-value="${category}"]`);
   if (!label) return;
-  if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize') label.textContent = `${value}px`;
+  if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize' || category === 'benchInjuryNameSize' || category === 'statsNameSize') label.textContent = `${value}px`;
   else label.textContent = `${value}%`;
 }
 
@@ -818,8 +917,83 @@ function syncSelectUi(category) {
   if (select.value !== value) select.value = value;
 }
 
-function handleBgImageFileLoad(reader, file) {
-  if (!setSetting('bgImageData', String(reader.result || ''))) {
+function getDataUrlByteLength(dataUrl) {
+  const payload = String(dataUrl || '').split(',')[1] || '';
+  return Math.floor(payload.length * 3 / 4);
+}
+
+/**
+ * @param {File} file
+ * @param {{ preserveAlpha?: boolean }} [options] - preserveAlpha:true면(팀 로고 등 투명
+ *   배경이 의미 있는 이미지) JPEG로 폴백하지 않는다 — JPEG는 알파 채널이 없어 투명 배경이
+ *   단색으로 채워지며, 배경 이미지와 달리 로고는 그러면 시각적으로 망가진다. 그 대신 WebP
+ *   (알파 유지 가능)만으로 계속 시도하고, 그래도 목표 용량을 못 맞추면 캔버스를 한 번 더
+ *   축소해 재시도한다.
+ */
+function compressBackgroundImage(file, options = {}) {
+  const preserveAlpha = !!options.preserveAlpha;
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          BG_IMAGE_MAX_WIDTH / image.naturalWidth,
+          BG_IMAGE_MAX_HEIGHT / image.naturalHeight
+        );
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        for (const quality of [0.84, 0.72, 0.60, 0.48]) {
+          const webp = canvas.toDataURL('image/webp', quality);
+          if (getDataUrlByteLength(webp) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+            resolve(webp);
+            return;
+          }
+          if (!preserveAlpha) {
+            const jpeg = canvas.toDataURL('image/jpeg', quality);
+            if (getDataUrlByteLength(jpeg) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+              resolve(jpeg);
+              return;
+            }
+          }
+        }
+        if (preserveAlpha) {
+          // 화질을 더 낮춰도 안 되면 캔버스 자체를 축소해 WebP로 재시도(알파 유지 우선).
+          canvas.width = Math.max(1, Math.round(canvas.width * 0.5));
+          canvas.height = Math.max(1, Math.round(canvas.height * 0.5));
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          for (const quality of [0.72, 0.48, 0.3]) {
+            const webp = canvas.toDataURL('image/webp', quality);
+            if (getDataUrlByteLength(webp) <= BG_IMAGE_SAFE_PERSIST_BYTES) {
+              resolve(webp);
+              return;
+            }
+          }
+        }
+        reject(new Error('compressed image is still too large'));
+      } catch (error) {
+        reject(error);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('image decode failed'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function handleBgImageFileLoad(dataUrl, file) {
+  if (!setSetting('bgImageData', String(dataUrl || ''))) {
     const mb = file ? (file.size / 1024 / 1024).toFixed(1) : '?';
     if (typeof showToast === 'function') {
       showToast(`배경 이미지 저장 실패. ${mb}MB 파일은 첨부로 저장하기 큽니다. 이미지 URL을 사용하세요.`);
@@ -846,6 +1020,15 @@ let lineupShortNameCollisionNames = new Set();
 // CSV 한글 숏네임의 하이픈은 성 경계 메타데이터이며 표시명에서는 숨긴다.
 function stripKoreanSurnameBreaks(name) {
   return String(name || '').replace(/(?<=[가-힣])-(?=[가-힣])/g, '');
+}
+
+/**
+ * API가 라틴 문자 이름의 띄어쓰기 자리에 가운뎃점을 넣어 보내는 경우(예: "Malique·Roberts",
+ * "Tiquanny·Williams" — 경기 1639959)가 있어, 라틴 글자 사이의 가운뎃점류(·・‧∙)를 공백으로 바꾼다.
+ * 한 단어로 취급돼 포메이션 이름 라벨이 줄바꿈 없이 작은 폰트로 줄어들던 문제 해결. 한글 사이 가운뎃점은 그대로.
+ */
+function normalizeLatinNameSeparators(name) {
+  return String(name || '').replace(/(?<=\p{Script=Latin}|[.'’])\s*[·・‧∙]\s*(?=\p{Script=Latin})/gu, ' ');
 }
 
 function getLineupShortName(player) {
@@ -932,12 +1115,18 @@ function shouldKeepLineupInitial(shortName) {
 function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
   if (!player) return '';
   // 포메이션 pill만 원본 경계를 받아 피팅 단계에서 사용한다.
-  const display = name => preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name);
+  const display = name => normalizeLatinNameSeparators(preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name));
   // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
   // 닉네임은 사용자가 자유 입력한 텍스트라 성 경계 하이픈 규칙 대상이 아니다 — 그대로 반환.
   const pid = player.playerId || player.id;
   if (pid && Number(pid) !== 0 && typeof getPlayerNickname === 'function') {
     const nick = getPlayerNickname(pid);
+    if (nick) return nick;
+  }
+  // playerId가 명시적으로 0인 선수만 API 원본 이름 키로 닉네임을 찾는다(감독 등 playerId가 없는 객체는 제외).
+  if (player.playerId != null && Number(player.playerId) === 0
+    && typeof getPlayerNickname === 'function' && typeof playerNicknameSourceName === 'function') {
+    const nick = getPlayerNickname(0, playerNicknameSourceName(player));
     if (nick) return nick;
   }
   const shortName = player.name || player.playerName || '';
@@ -1063,16 +1252,24 @@ const SETTINGS_TAB_KEY = 'obs.settings.activeTab.v1';
  * 1) sp-body 폭에서 좌우 padding 빼서 availableWidth 산출.
  * 2) 각 섹션을 임시로 absolute + hidden 해제 + width 고정 → 자연 높이 측정.
  * 3) 측정 후 inline style 원복(`prevCssText`로 통째 되돌림). hidden 상태도 복구.
- * 4) 최대 높이 찾으면 모든 섹션의 minHeight 적용.
+ * 4) 가장 긴 탭이 모달에 실제로 들어갈 수 있는 높이(availableHeight)보다 크면, 그 탭은 원래도
+ *    스크롤이 필요한 게 맞으므로 그대로 두되 — 다른 짧은 탭들까지 그 큰 값으로 minHeight를
+ *    맞추면 짧은 탭에도 필요 없는 스크롤이 생긴다. 그래서 적용할 minHeight는
+ *    min(가장 큰 섹션 높이, availableHeight)로 상한을 둔다 — 짧은 탭은 모달이 허용하는
+ *    한도까지만 채워지고(스크롤 없음), 정말 긴 탭만 그 한도를 넘겨 자체적으로 스크롤된다.
  */
 function syncSettingsTabSectionHeights() {
+  const modal = document.querySelector('.sp-modal');
+  const header = document.querySelector('.sp-header');
+  const tabs = document.querySelector('.sp-tabs');
   const body = document.querySelector('.sp-body');
   const sections = Array.from(document.querySelectorAll('[data-sp-tab-section]'));
-  if (!body || !sections.length) return;
+  if (!modal || !body || !sections.length) return;
 
   // 1) 측정용 width — sp-body의 content area 폭 (padding 제외).
   const bodyRect = body.getBoundingClientRect();
   const bodyStyles = getComputedStyle(body);
+  const bodyPaddingV = (parseFloat(bodyStyles.paddingTop) || 0) + (parseFloat(bodyStyles.paddingBottom) || 0);
   const availableWidth = Math.max(
     0,
     bodyRect.width - (parseFloat(bodyStyles.paddingLeft) || 0) - (parseFloat(bodyStyles.paddingRight) || 0)
@@ -1100,11 +1297,26 @@ function syncSettingsTabSectionHeights() {
     section.style.cssText = prevCssText;
     if (wasHidden) section.setAttribute('hidden', '');
   });
-
-  // 4) 모든 섹션에 max 높이 적용 → 탭 전환 시 모달 점프 방지.
   if (!maxHeight) return;
+
+  // 4) 모달이 실제로 허용하는 섹션 높이 상한 계산 (모달 max-height - 헤더 - 탭바 - body padding).
+  // 이 페이지 전체가 body에 걸린 transform:scale(--display-transform)로 화면에 맞춰 축소/확대되므로
+  // (js/core/display-scale.js), getBoundingClientRect()는 축소된 실제 화면 px를 반환해
+  // getComputedStyle().maxHeight(축소 전 논리 px)와 단위가 어긋난다. offsetHeight/clientHeight 같은
+  // 레이아웃 박스 속성은 transform 영향을 받지 않는 논리 px 값이라 이쪽으로 통일해야 한다.
+  const modalMaxHeight = parseFloat(getComputedStyle(modal).maxHeight) || 0;
+  const headerHeight = header ? header.offsetHeight : 0;
+  const tabsMarginBottom = tabs ? (parseFloat(getComputedStyle(tabs).marginBottom) || 0) : 0;
+  const tabsHeight = tabs ? tabs.offsetHeight + tabsMarginBottom : 0;
+  // 서브픽셀 반올림 오차로 1px 안팎 넘치는 것까지 스크롤바를 만들지 않도록 여유분을 조금 둔다.
+  const roundingBuffer = 2;
+  const availableHeight = modalMaxHeight > 0
+    ? Math.max(0, modalMaxHeight - headerHeight - tabsHeight - bodyPaddingV - roundingBuffer)
+    : maxHeight;
+  const appliedHeight = Math.min(maxHeight, availableHeight);
+
   sections.forEach(section => {
-    section.style.minHeight = `${maxHeight}px`;
+    section.style.minHeight = `${appliedHeight}px`;
   });
 }
 
@@ -1177,7 +1389,13 @@ function initSettingsPopup() {
     syncSettingsTabSectionHeights();
   });
 
-  if (gearBtn) gearBtn.addEventListener('click', openSettingsPopup);
+  if (gearBtn) gearBtn.addEventListener('click', () => {
+    if (typeof popoutModeEnabled === 'function' && popoutModeEnabled()) {
+      window.Popout.open('settings', {});
+      return;
+    }
+    openSettingsPopup();
+  });
   if (closeBtn) closeBtn.addEventListener('click', closeSettingsPopup);
   if (backdrop) {
     backdrop.addEventListener('click', event => {
@@ -1215,6 +1433,17 @@ function initSettingsPopup() {
   document.querySelectorAll('input[data-settings-slider]').forEach(input => {
     const category = input.dataset.settingsSlider;
     syncSliderUi(category);
+    if (category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale') {
+      // 드래그 중 UI가 확대되면 슬라이더 위치도 이동하므로 놓을 때만 적용한다.
+      input.addEventListener('input', () => {
+        const label = document.querySelector(`[data-settings-slider-value="${category}"]`);
+        if (label) label.textContent = `${input.value}%`;
+      });
+      input.addEventListener('change', () => {
+        setSetting(category, Number(input.value));
+      });
+      return;
+    }
     input.addEventListener('input', () => {
       setSetting(category, Number(input.value));
     });
@@ -1297,9 +1526,7 @@ function initSettingsPopup() {
     });
   });
 
-  // 배경 이미지 파일 첨부 (Iter 5-7). 3MB 초과 시 거부 + toast 안내.
-  // 파일 → FileReader로 base64 data URL 변환 → bgImageData 저장.
-  // localStorage quota 초과 시에도 toast 안내 (try/catch는 setSetting 내부에서 처리되지 않으므로 여기서 가드).
+  // 배경 이미지 파일 첨부 (Iter 5-7). 원본은 브라우저에서 압축한 뒤 bgImageData에 저장.
   const bgFileInput = document.getElementById('settingsBgImageFile');
   if (bgFileInput) {
     bgFileInput.addEventListener('change', () => {
@@ -1313,27 +1540,18 @@ function initSettingsPopup() {
       if (file.size > BG_IMAGE_MAX_BYTES) {
         const mb = (file.size / 1024 / 1024).toFixed(1);
         if (typeof showToast === 'function') {
-          showToast(`파일이 너무 큽니다 (${mb}MB). 3MB 이하 파일만 첨부할 수 있습니다.`);
+          showToast(`파일이 너무 큽니다 (${mb}MB). 12MB 이하 파일만 첨부할 수 있습니다.`);
         }
         bgFileInput.value = '';
         return;
       }
-      if (file.size > BG_IMAGE_SAFE_PERSIST_BYTES) {
-        const mb = (file.size / 1024 / 1024).toFixed(1);
-        if (typeof showToast === 'function') {
-          showToast(`파일이 커서 저장하기 어렵습니다 (${mb}MB). 이미지 URL을 사용하세요.`);
-        }
-        bgFileInput.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        handleBgImageFileLoad(reader, file);
-      };
-      reader.onerror = () => {
-        if (typeof showToast === 'function') showToast('파일 읽기 실패');
-      };
-      reader.readAsDataURL(file);
+      compressBackgroundImage(file)
+        .then(dataUrl => handleBgImageFileLoad(dataUrl, file))
+        .catch(() => {
+          if (typeof showToast === 'function') {
+            showToast('이미지를 저장 가능한 크기로 압축하지 못했습니다. 더 작은 이미지를 선택하세요.');
+          }
+        });
     });
   }
 
@@ -1394,6 +1612,7 @@ function initSettingsPopup() {
         injuries: !!document.getElementById('mrResetInjuries')?.checked,
         coachName: !!document.getElementById('mrResetCoach')?.checked,
         referee: !!document.getElementById('mrResetReferee')?.checked,
+        venue: !!document.getElementById('mrResetVenue')?.checked,
       };
       if (!Object.values(options).some(Boolean)) {
         if (typeof showToast === 'function') showToast('지울 항목을 하나 이상 켜두세요');

@@ -49,8 +49,8 @@
 
 /* ===== 모달 카드 ===== */
 .sp-modal {
-  width: min(720px, calc(100vw - 32px));
-  max-height: min(820px, calc(100vh - 24px));
+  width: min(720px, calc(calc(var(--display-vw, 1vw) * 100) - 32px));
+  max-height: min(820px, calc(calc(var(--display-vh, 1vh) * 100) - 24px));
   background: #1c1d22;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 14px;
@@ -161,8 +161,10 @@
 }
 
 /* ----- iOS 스타일 토글 스위치 ----- */
-.sp-danger-actions {
-  margin-top: 10px;
+/* 초기화 버튼 묶음 — 바로 위 일반 행(이벤트 선수 ID 자동 매칭)과 같은 간격/구분선으로 이어지게 한다.
+   예전 margin-top(10px)은 묶음 첫 행이 '.sp-row + .sp-row' 구분선도 못 받아(형제가 아님) 빈 공간만 커 보였다. */
+.sp-row + .sp-danger-actions > .sp-row:first-child {
+  border-top: 1px solid rgba(255,255,255,.06);
 }
 
 .sp-row-manual-reset {
@@ -618,10 +620,10 @@
   background: rgba(76,217,100,.30);
 }
 
-@media (max-width: 740px) {
+@container display-viewport (max-width: 740px) {
   .sp-modal {
-    width: min(560px, calc(100vw - 20px));
-    max-height: calc(100vh - 20px);
+    width: min(560px, calc(calc(var(--display-vw, 1vw) * 100) - 20px));
+    max-height: calc(calc(var(--display-vh, 1vh) * 100) - 20px);
   }
 
   .sp-row,
@@ -662,7 +664,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@container display-viewport (max-width: 560px) {
   .sp-tabs {
     display: flex;
     flex-wrap: nowrap;
