@@ -24,7 +24,7 @@
 .board.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div) {
   transition-property: background-color, color, border-color, box-shadow;
 }
-.board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: 40px; margin-top: 0; line-height: 1; display: flex; align-items: center; }
+.board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: var(--fsm-team-name-padding, 24px); margin-top: 0; line-height: 1; display: flex; align-items: center; }
 .fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
 /* 프리미어리그 배경의 밝은 중앙 영역은 너비 194px이며, 팀마다 97px씩 제외합니다. */
 .board.fsm-board[data-fsm-theme="pl"] { --fsm-name-reserved-width: 97px; }
@@ -40,7 +40,7 @@
 }
 .board.fsm-board[data-fsm-theme="pl"] .team-name {
   width: calc(100% - 97px); justify-content: center;
-  margin-inline: 0; padding-inline: 12px;
+  margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
 }
 .board.fsm-board[data-fsm-theme="pl"] .teams-left .team-name { margin-right: 97px; }
 .board.fsm-board[data-fsm-theme="pl"] .teams-right .team-name { margin-left: 97px; }
@@ -50,7 +50,7 @@
 .board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
 .board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .team-name {
   width: calc(100% - var(--fsm-name-reserved-width, 0px));
-  justify-content: center; margin-inline: 0; padding-inline: 12px;
+  justify-content: center; margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
 }
 .board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }

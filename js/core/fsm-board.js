@@ -201,8 +201,8 @@ function applyTheme(theme, logoUrl) {
 
   // 팀명 길이에 따라 폰트 크기 조정
 const FSM_WIDTH_LIMITS = Object.freeze({
-  minBoard: 520, maxBoard: 984,
-  minTeam: 220, maxTeam: 420,
+  minBoard: 520, maxBoard: 1080,
+  minTeam: 220, maxTeam: 480,
   teamPadding: 48, maxFont: 33, minFont: 12
 });
 
@@ -214,6 +214,8 @@ function adjustScoreboardWidth() {
   const texts = names.map(name => name?.querySelector('.text'));
   if (!scoreboard || texts.some(text => !text)) return;
   const limits = FSM_WIDTH_LIMITS;
+  // 모든 테마의 실제 좌우 패딩을 너비 계산에 사용하는 설정과 동기화합니다.
+  board.style.setProperty('--fsm-team-name-padding', `${limits.teamPadding / 2}px`);
   // 이전 렌더링 결과와 무관하게 원래 글꼴 크기로 측정합니다.
   const widths = texts.map(text => {
     text.style.fontSize = limits.maxFont + 'px';
@@ -244,7 +246,14 @@ function adjustScoreboardWidth() {
     board.style.setProperty('--fsm-name-reserved-width', reserved + 'px');
   }
   const reservedWidth = parseFloat(getComputedStyle(board).getPropertyValue('--fsm-name-reserved-width')) || 0;
-  const requestedTeam = Math.max(limits.minTeam, Math.max(...widths) + limits.teamPadding + reservedWidth);
+  const requestedTeam = Math.max(limits.minTeam, ...widths.map((width, index) => {
+    const style = getComputedStyle(names[index]);
+    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    // 점수 영역을 위해 이미 확보한 여백은 중복해서 더하지 않습니다.
+    const margin = Math.max(0,
+      (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0) - reservedWidth);
+    return width + Math.max(limits.teamPadding, padding + margin) + reservedWidth;
+  }));
   const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
   const boardWidth = Math.min(limits.maxBoard, requestedBoard, fixedWidth + 2 * limits.maxTeam);
   const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
@@ -276,10 +285,12 @@ function adjustScoreboardWidth() {
       // 합성 굵기가 적용된 한글은 글꼴 측정값과 실제 픽셀 높이가 다를 수 있습니다.
       // 실제로 그려진 글자의 상하 경계로 프리미어리그 팀명을 보정합니다.
       const font = context.font;
+      const renderScale = cards[index].getBoundingClientRect().width / cards[index].offsetWidth || 1;
       const baseline = Math.ceil(parseFloat(textStyle.fontSize) * 2);
-      context.canvas.width = Math.ceil(metrics.width) + 16;
-      context.canvas.height = baseline * 2;
+      context.canvas.width = Math.ceil((metrics.width + 16) * renderScale);
+      context.canvas.height = Math.ceil(baseline * 2 * renderScale);
       context.font = font;
+      context.scale(renderScale, renderScale);
       context.fillText(text.textContent, 8, baseline);
       const pixels = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
       let top = pixels.height, bottom = -1;
@@ -291,7 +302,7 @@ function adjustScoreboardWidth() {
           }
         }
       }
-      if (bottom >= top) inkOffset = baseline - (top + bottom + 1) / 2
+      if (bottom >= top) inkOffset = baseline - (top + bottom + 1) / (2 * renderScale)
         - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
     }
     text.style.transform = `translateY(${inkOffset + borderOffset}px)`;
