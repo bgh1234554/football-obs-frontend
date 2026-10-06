@@ -20,11 +20,9 @@ const tacticsTimelineState = {
   isFullscreenPanelOpen: false,
 };
 
-/** 이벤트 elapsed + extra 합산해서 정렬용 sortable number로 변환. */
-function ttEventTimeKey(ev) {
-  const elapsed = Number(ev?.elapsed ?? 0);
-  const extra = Number(ev?.extra ?? 0);
-  return elapsed + (Number.isFinite(extra) ? extra * 0.01 : 0);
+/** 패널/수정 후보와 같은 구간 판정을 사용한다. 45.04(전반 추가시간), 45.51(HT)를 구분한다. */
+function ttEventTimeKey(ev, context) {
+  return evResolveEventTime(ev, context).timelinePosition;
 }
 
 /**
@@ -63,13 +61,15 @@ function ttClassifyEvent(ev) {
  * 라인업 변화에 영향 주는 이벤트만 추출 + 시간 오름차순 정렬 + side별 분리.
  * 반환: { home: [...], away: [...] } — 각 배열은 시간순.
  */
-function ttCollectLineupEvents(rawEvents) {
+function ttCollectLineupEvents(rawEvents, fixtureData = tacticsTimelineState.fixture) {
   const home = [];
   const away = [];
+  const context = evBuildTimeContext(fixtureData || { events: rawEvents });
   (Array.isArray(rawEvents) ? rawEvents : []).forEach(ev => {
     const kind = ttClassifyEvent(ev);
     if (!kind) return;
-    const enriched = { ...ev, _kind: kind, _timeKey: ttEventTimeKey(ev) };
+    const timing = evResolveEventTime(ev, context);
+    const enriched = { ...ev, _kind: kind, _timeKey: timing.timelinePosition, _timeExplanation: evEventTimeExplanation(timing) };
     if (ev.side === 'home') home.push(enriched);
     else if (ev.side === 'away') away.push(enriched);
   });
@@ -93,7 +93,7 @@ function ttReconstructLineupAtTime(rawLineup, sideEvents, targetElapsed) {
   const startXi = Array.isArray(rawLineup.startXi) ? rawLineup.startXi.map(p => ({ ...p })) : [];
   const substitutes = Array.isArray(rawLineup.substitutes) ? rawLineup.substitutes.map(p => ({ ...p })) : [];
 
-  const cutoff = Number(targetElapsed) + 0.999; // extra 포함 동일 분 이벤트도 포함
+  const cutoff = evTimelineCutoff(targetElapsed); // 선택한 stop까지만: 45분 / 45+추가시간 / HT를 분리
 
   for (const ev of sideEvents) {
     if (ev._timeKey > cutoff) break;
@@ -183,7 +183,7 @@ function ttComputeDefaultPosition(fixture, events) {
 
   const all = [...events.home, ...events.away];
   if (!all.length) return Number(fixture?.matchInfo?.elapsed) || 0;
-  const latest = all.reduce((max, ev) => Math.max(max, Math.ceil(ev._timeKey)), 0);
+  const latest = all.reduce((max, ev) => Math.max(max, ev._timeKey), 0);
   return latest;
 }
 
@@ -216,10 +216,10 @@ function ttRenderMarkers() {
     ...tacticsTimelineState.events.away,
   ].sort((a, b) => a._timeKey - b._timeKey);
 
-  // 같은 분(소수점 차이 < 0.5 = 거의 동시)을 한 stop으로 묶기
+  // 같은 판정 시각만 묶는다. ceil하면 45+4와 HT가 둘 다 46분 stop으로 합쳐진다.
   const stopTimes = [];
   allEvents.forEach(ev => {
-    const t = Math.ceil(ev._timeKey);
+    const t = ev._timeKey;
     if (!stopTimes.length || stopTimes[stopTimes.length - 1] !== t) {
       stopTimes.push(t);
     }
@@ -233,7 +233,7 @@ function ttRenderMarkers() {
     return ((idx + 1) / (stopTimes.length + 1)) * 100;
   }
   function stopIdxOf(time) {
-    const t = Math.ceil(time);
+    const t = Number(time);
     return stopTimes.indexOf(t);
   }
 
@@ -260,7 +260,7 @@ function ttRenderMarkers() {
   function groupEventsByStop(events) {
     const map = new Map();
     events.forEach(ev => {
-      const minute = Math.ceil(ev._timeKey);
+      const minute = ev._timeKey;
       const key = String(minute);
       if (!map.has(key)) map.set(key, { minute, items: [] });
       map.get(key).items.push(ev);
@@ -283,11 +283,12 @@ function ttRenderMarkers() {
       const playerName = ev.playerNameKoLong || ev.playerName || '';
       const assistName = ev.assistNameKoLong || ev.assistName || '';
       if (ev._kind === 'subst') {
-        return `교체 — OUT: ${playerName}${assistName ? ' / IN: ' + assistName : ''}`;
+        return `교체 — OUT: ${playerName}${assistName ? ' / IN: ' + assistName : ''}\n${ev._timeExplanation}`;
       }
-      return `퇴장 — ${playerName}`;
+      return `퇴장 — ${playerName}\n${ev._timeExplanation}`;
     });
-    const titleText = `${minute}'\n${lines.join('\n')}`;
+    const positionLabel = evTimelinePositionLabel(minute);
+    const titleText = `${positionLabel}\n${lines.join('\n')}`;
 
     const wrap = document.createElement('div');
     wrap.className = `td-tl-event kind-${groupKind} side-${side}`;
@@ -298,7 +299,7 @@ function ttRenderMarkers() {
 
     const glyph = groupKind === 'subst' ? '⇅' : '▮';
     const countBadge = group.items.length > 1 ? `<span class="td-tl-count">×${group.items.length}</span>` : '';
-    wrap.innerHTML = `<span class="td-tl-glyph">${glyph}</span>${countBadge}<span class="td-tl-time">${minute}'</span>`;
+    wrap.innerHTML = `<span class="td-tl-glyph">${glyph}</span>${countBadge}<span class="td-tl-time">${positionLabel}</span>`;
 
     wrap.addEventListener('click', () => {
       tacticsTimelineState.currentElapsed = minute;
@@ -322,7 +323,7 @@ function ttRenderMarkers() {
 function ttUpdateTimeLabel() {
   const cur = document.getElementById('tactics-time-current');
   const max = document.getElementById('tactics-time-max');
-  if (cur) cur.textContent = `${tacticsTimelineState.currentElapsed}'`;
+  if (cur) cur.textContent = evTimelinePositionLabel(tacticsTimelineState.currentElapsed);
   if (max) max.textContent = `${tacticsTimelineState.maxElapsed}'`;
 }
 
@@ -364,7 +365,7 @@ function applyTacticsTimeline(fixtureData) {
 
   fixtureData = ttApplySubstOverrides(fixtureData);
   tacticsTimelineState.fixture = fixtureData;
-  tacticsTimelineState.events = ttCollectLineupEvents(fixtureData.events);
+  tacticsTimelineState.events = ttCollectLineupEvents(fixtureData.events, fixtureData);
   tacticsTimelineState.maxElapsed = ttComputeMaxElapsed(tacticsTimelineState.events);
   tacticsTimelineState.currentElapsed = ttComputeDefaultPosition(fixtureData, tacticsTimelineState.events);
 
@@ -422,7 +423,13 @@ function ttBindFullscreenToggle() {
   const setOpen = (next) => {
     tacticsTimelineState.isFullscreenPanelOpen = next;
     panel.classList.toggle('is-open', next);
-    if (openBtn) openBtn.textContent = next ? '›› 타임라인' : '‹‹ 타임라인';
+    if (openBtn) {
+      // 화살표/라벨 span 분리 — 세로 화면 전체화면에선 화살표를 숨기고 열림 상태(aria-expanded)를 세그먼트 버튼 색으로 표시
+      const arrow = openBtn.querySelector('.td-toggle-arrow');
+      if (arrow) arrow.textContent = next ? '››' : '‹‹';
+      else openBtn.textContent = next ? '›› 타임라인' : '‹‹ 타임라인';
+      openBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+    }
   };
 
   if (openBtn) {
@@ -444,7 +451,8 @@ function ttBindFullscreenToggle() {
   // 풀스크린 + 패널이 열려있을 때만 외부 클릭으로 닫기.
   // 일반 모드에서는 패널이 인라인이라 외부 클릭으로 닫을 필요 없음.
   document.addEventListener('click', (e) => {
-    if (!document.fullscreenElement) return;
+    // 전체화면 또는 터치 기기 배치(패널이 오버레이)일 때만 바깥 클릭으로 닫기
+    if (!(typeof window.tdIsOverlayPanelMode === 'function' ? window.tdIsOverlayPanelMode() : document.fullscreenElement)) return;
     if (!panel.classList.contains('is-open')) return;
     if (panel.contains(e.target)) return;
     if (openBtn && openBtn.contains(e.target)) return;
@@ -531,7 +539,7 @@ window.applyTacticsTimeline = applyTacticsTimeline;
 function ttRefreshEventsData(fixtureData) {
   if (!fixtureData || !tacticsTimelineState.fixture) return;
   tacticsTimelineState.fixture = fixtureData;
-  tacticsTimelineState.events = ttCollectLineupEvents(fixtureData.events);
+  tacticsTimelineState.events = ttCollectLineupEvents(fixtureData.events, fixtureData);
   tacticsTimelineState.maxElapsed = ttComputeMaxElapsed(tacticsTimelineState.events);
   ttRenderMarkers();
   ttApplyTimelineToTactics(tacticsTimelineState.currentElapsed);

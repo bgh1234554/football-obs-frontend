@@ -64,11 +64,42 @@
   justify-content: flex-end;
 }
 
-.hth-logo {
-  flex: 0 0 auto;
+/* 로고 여백 자동 보정(logo-trim.js) 적용 대상 — .board .logo-img와 동일한 박스+절대배치
+   패턴(래퍼 고정 크기 + img absolute/auto/max-*)으로 바꿔 --logo-trim-* 변수를 받는다.
+   래퍼에 overflow:hidden을 둬 확대된 투명 여백이 옆 팀 이름 쪽으로 새지 않게 막는다. */
+.hth-logo-box {
+  flex: 0 0 26px;
   width: 26px;
   height: 26px;
+  position: relative;
+  overflow: hidden;
+}
+.hth-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+.hth-logo[src$=".svg"],
+.hth-logo[src*=".svg?"],
+.hth-logo[src^="data:image/svg+xml"] {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+}
+.hth-logo.logo-trimmed {
+  width: var(--logo-trim-width);
+  height: var(--logo-trim-height);
+  max-width: none;
+  max-height: none;
+  transform: translate(-50%, -50%) translate(var(--logo-trim-x, 0%), var(--logo-trim-y, 0%));
+  pointer-events: none;
 }
 
 .hth-team-name {

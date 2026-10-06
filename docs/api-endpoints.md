@@ -326,7 +326,8 @@ API-Football 문서상 `grid`는 `X:Y` 형식이다. `X`는 골키퍼 라인에�
 | saves | 세이브 | Integer | GK 위주 | O | `0` |
 | passesTotal | 총 패스 | Integer |  | O | `17` |
 | passesKey | 키패스 | Integer |  | O | `0` |
-| passesAccuracy | 패스 성공률 | String | `%` 포함 | O | `68%` |
+| passesSuccessful | 패스 성공 횟수 | Integer |  | O | `12` |
+| passesAccuracy | 패스 성공률 | String | `%` 미포함 (프런트에서 붙임), `passesSuccessful/passesTotal`로 계산 | O | `71` |
 | tacklesTotal | 태클 | Integer |  | O | `null` |
 | tacklesBlocks | 블록 | Integer |  | O | `0` |
 | tacklesInterceptions | 인터셉트 | Integer |  | O | `0` |

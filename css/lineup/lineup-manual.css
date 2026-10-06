@@ -21,7 +21,7 @@
 }
 .dp-manual-modal {
   width: min(760px, 100%);
-  max-height: calc(100vh - 36px);
+  max-height: calc(calc(var(--display-vh, 1vh) * 100) - 36px);
   display: flex;
   flex-direction: column;
   background: #181a20;
@@ -70,13 +70,29 @@
   min-height: 0;
   overflow: auto;
   padding: 14px 16px 18px;
+  /* 다른 패널(.dp-list/.sp-body 등)과 동일한 얇은 스크롤바로 통일 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.25) transparent;
 }
+.dp-manual-body::-webkit-scrollbar { width: 6px; }
+.dp-manual-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+.dp-manual-body::-webkit-scrollbar-track { background: transparent; }
 .dp-manual-footer {
   border-top: 1px solid rgba(255,255,255,.08);
 }
 .dp-manual-footer-actions {
   display: flex;
   gap: 8px;
+}
+.dp-manual-footer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dp-manual-secondary[aria-pressed="true"] {
+  border-color: rgba(76,217,100,.65);
+  background: rgba(76,217,100,.16);
+  color: #7bea8e;
 }
 .dp-manual-primary,
 .dp-manual-secondary {
@@ -150,6 +166,100 @@
 .dp-manual-row.is-injury {
   grid-template-columns: 72px 72px minmax(0, 1fr) minmax(180px, 240px);
 }
+/* 교체 명단 모달 맨 위 감독 이름 칸 — 번호+이름 두 열에 걸쳐 넓게. */
+.dp-manual-coach-input {
+  grid-column: 2 / -1;
+}
+
+/* 라인업 풀폼(완전 수동 입력) 전용 — 이름 뒤에 골/자책골/도움/경고/퇴장/주장 6칸을 붙인 9열 grid.
+   헤더 행(포메이션 select + 아이콘)과 11개 선수 행이 같은 열 폭을 공유해 아이콘과 입력칸이
+   세로로 맞춰진다. 이름 칸은 minmax(0,1fr)이라 통계 칸들이 늘어난 만큼 자동으로 좁아진다. */
+.dp-manual-row.has-stats {
+  grid-template-columns: 52px 60px minmax(0, 1fr) 34px 34px 34px 30px 30px 30px;
+}
+.dp-manual-header-row {
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  margin-bottom: 2px;
+}
+.dp-manual-formation-field {
+  grid-column: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dp-select-compact {
+  width: auto;
+  max-width: 160px;
+}
+.dp-manual-stat-header {
+  text-align: center;
+  font-size: 13px;
+  align-self: end;
+  padding-bottom: 8px;
+}
+.dp-input-mini {
+  width: 100%;
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 11px;
+}
+/* number input의 브라우저 기본 스피너 — 칸이 좁아 겹쳐 보이므로 숨김 */
+.dp-input-mini::-webkit-outer-spin-button,
+.dp-input-mini::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.dp-input-mini[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.dp-manual-stat-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.dp-manual-stat-check input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+}
+.dp-manual-card-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 18px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+}
+.dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-yellow {
+  background: #FFD93D;
+  border-color: #FFD93D;
+}
+.dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-red {
+  background: #FF3B30;
+  border-color: #FF3B30;
+}
+.dp-manual-card-swatch.is-captain {
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.4);
+}
+.dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-captain {
+  background: #FFD400;
+  border-color: #FFD400;
+  color: #111;
+}
+.dp-manual-stat-check input[type="checkbox"]:focus-visible + .dp-manual-card-swatch {
+  outline: 2px solid rgba(76,217,100,.65);
+  outline-offset: 1px;
+}
+
 .dp-slot-label {
   font-size: 11px;
   font-weight: 800;
@@ -326,7 +436,7 @@
   font-size: 12px;
   width: 100%;
 }
-@media (max-width: 900px) {
+@container display-viewport (max-width: 900px) {
   .dp-manual-row,
   .dp-manual-row.is-injury {
     grid-template-columns: 1fr;
@@ -342,6 +452,9 @@
    두 피치는 split 전용으로 가로를 채워, 지나치게 가늘고 긴 기본 상태를 피한다. */
 .layout-big .lp-lineup.dp-mode-split {
   aspect-ratio: 94 / 210;
+}
+.layout-big .lp-lineup.dp-mode-split.lp-width-locked {
+  aspect-ratio: unset;
 }
 .dp-lineup-pitch.is-split {
   display: flex;
@@ -369,14 +482,24 @@
   height: auto;
   aspect-ratio: auto;
 }
-/* split 모드에서는 양 팀 모두 GK가 피치 아래쪽에 있으므로 home chip도 아래로 내림 */
-.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+/* split 모드에서는 양 팀 모두 GK가 피치 아래쪽에 있으므로 home chip도 아래로 내림 —
+   away와 마찬가지로 bottom 앵커. 값은 px 대신 %를 써서(피치 자기 자신의 높이 기준) 패널이
+   작게 렌더될 때도 가장자리로부터의 상대적 거리가 유지되게 한다(px 고정값은 피치가 작을수록
+   상대적으로 안쪽으로 파고드는 것처럼 보였다 — 2026-09 피드백). 좌상단 팀명 라벨
+   (.dp-lineup-team-name-tag, top:1.5%)과 정확히 같은 값이라 하프라인 기준 상하 대칭도 보장.
+   1.5%는 피치 외곽 라인의 inset(.dp-lineup-markings::before)과 맞춰 라인 바로 안쪽까지
+   가장자리 쪽으로 당김(2026-09 피드백). */
+.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home,
+.dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-away {
   top: auto;
-  bottom: 14px;
+  bottom: 1.5%;
 }
-.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home {
+/* is-away의 일반 scale-tracking 규칙(lineup-layout.css)과 specificity가 같아 로드 순서에
+   기대지 않도록 .layout-big .lp-lineup을 더해 확실하게 위 규칙이 이기게 한다. */
+.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-home,
+.layout-big .lp-lineup .dp-lineup-vertical-pitch.is-split .dp-lineup-team-chip.is-away {
   top: auto;
-  bottom: calc(14px * var(--lp-node-scale, 1));
+  bottom: 1.5%;
 }
 
 /* ─── 리그 로고 워시 위치 (leagueLogoPos: center / left / right) ─────────

@@ -55,6 +55,20 @@
   gap: 6px;
 }
 
+/* 패널 상단 여백(8px)을 포함해 버튼 위와 구분선 아래쪽 여백을 같게 한다.
+   제목의 전체 padding 합계는 8px로 유지해 헤더 높이는 바꾸지 않는다. */
+#benchPanel .dp-title,
+#injuryPanel .dp-title {
+  padding: 0 0 8px;
+}
+#benchPanel .dp-title-actions,
+#benchPanel .dp-title-actions-left,
+#injuryPanel .dp-title-actions,
+#injuryPanel .dp-title-actions-left {
+  top: calc((100% - 1px) / 2 - 4px);
+  transform: translateY(-50%);
+}
+
 /* ===== 좌우 분할 (홈|원정) — 벤치/부상 공통 ===== */
 .dp-split {
   flex: 1 1 0;
@@ -94,7 +108,8 @@
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
-  font-size: 13px;
+  /* 설정 팝업 "교체/미출전 명단 글씨 크기" 슬라이더로 조정 (settings-popup.js: applyLayoutSettings). */
+  font-size: var(--dp-item-name-size, 13px);
   line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
@@ -112,6 +127,18 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.dp-roster-captain {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #FFD400;
+  color: #111;
+  font-size: .82em;
+  font-weight: 800;
+  line-height: 1.2;
+  vertical-align: 1px;
 }
 
 /* 벤치/부상 패널은 폭이 좁아지면 이름과 보조 UI가 다음 줄로 내려갈 수 있게 둔다. */
@@ -207,6 +234,25 @@ body.greenscreen-mode .dp-sub-marker.is-in {
   line-height: 1;
 }
 .dp-event-icon.dp-event-assist { font-size: 11px; }
+.dp-event-own-goal { position: relative; margin-right: 6px; }
+.dp-event-own-goal-count {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  text-shadow: none;
+}
 
 /* 평점 박스 — 행의 우측 끝. flex outer에 있어 content가 wrap돼도 첫 줄 유지. */
 .dp-rating {

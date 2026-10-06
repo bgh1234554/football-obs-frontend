@@ -7,13 +7,28 @@
   align-items: center;
   /* 기존 .board의 padding이 테마 로딩 전후 높이를 바꾸지 않도록 공통 초기화. */
   padding: 0;
+  width: max-content;
+  background: transparent;
+  box-shadow: none;
 }
+
+.board.fsm-board.outline-on { box-shadow: none; }
+.fsm-board .scoreboard-main > * { flex-shrink: 0; }
+.board.fsm-board .teams-left, .board.fsm-board .teams-right {
+  min-width: 0;
+  transition: none;
+}
+.board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: 40px; }
+.fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
 
 /* clockEditor: .board 바깥으로 이동했으므로 #clock 위에 겹쳐 보이도록 */
 #clockEditor {
   position: absolute;
   z-index: 100;
 }
+.fsm-board .scoreboard-timer { position: relative; }
+.fsm-board #clockEditor { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.board-stage-inner:has(.fsm-board) > .pk-wrap { display: none; }
 
 /* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */
 /* #rcHome, #rcAway {

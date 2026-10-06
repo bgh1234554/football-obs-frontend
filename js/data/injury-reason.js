@@ -39,12 +39,14 @@
     'Upper-Body Injury': '상체 부상',
     'Back Injury':       '허리 부상',
     'Shoulder Injury':   '어깨 부상',
+    'Elbow Injury':      '팔꿈치 부상',
     'Arm Injury':        '팔 부상',
     'Wrist Injury':      '손목 부상',
     'Hand Injury':       '손 부상',
     'Hip Injury':        '엉덩이 부상',
     'Broken cheekbone':  '광대뼈 골절',
     'Head Injury':       '머리 부상',
+    'Ribs Injury':       '갈비뼈 부상',
     'Hernia':            '탈장',
     'Neck Injury':       '목 부상',
     'Rib Injury':        '갈비뼈 부상',
@@ -53,6 +55,7 @@
     'Broken Arm':        '팔 골절',
     'Broken calfbone':   '종아리뼈 골절',
     'Fracture':          '골절',
+    'Abdominal strain':  '복부 근육 긴장',
     'Sprain':            '염좌',
     'Strain':            '근육 긴장',
     'Muscle Bruise':     '근육 타박상',
@@ -63,14 +66,17 @@
     'Meniscus Injury':   '반월판 부상',
     'Surgery':           '수술',
     'Heart Problems':    '심장 문제',
+    'Contusion':         '타박상',
     'Illness':           '질병',
     'Virus':             '바이러스',
     'Fever':             '발열',
     'Fitness':           '몸상태 문제',
+    'Lacking Match Fitness': '경기 감각 부족',
     'Health problems':   '건강 문제',
     'Personal Reasons':  '개인 사정',
     'Coach\'s Decision': '감독 결정',
     'National Team':     '국가대표 차출',
+    'International duty': '국가대표 차출',
     'Loan agreement':    '임대 조항',
     'Transfer negotiations': '이적 협상 중',
     'Rest':              '휴식',
@@ -135,4 +141,15 @@
   function isOffRoster(reason) {
     if (!reason) return false;
     return normalizeInjuryReasonKey(reason) === 'off the roster';
+  }
+
+  /**
+   * reason이 "국가대표 차출"인지 판별 — 원문("National Team", "International duty" 등)과 무관하게
+   * 한글 매핑 결과가 '국가대표 차출'이면 true. 미등록과 같은 빨간 X 아이콘을 쓰되 정렬은 미등록 바로 앞.
+   * @param {string|null|undefined} reason
+   * @returns {boolean}
+   */
+  function isNationalTeamDuty(reason) {
+    if (!reason) return false;
+    return getInjuryReasonKo(reason) === '국가대표 차출';
   }

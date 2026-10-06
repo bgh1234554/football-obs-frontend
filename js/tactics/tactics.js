@@ -19,6 +19,9 @@
     "4-3-1-2": [{x:5,y:50},{x:14,y:10},{x:14,y:35},{x:14,y:65},{x:14,y:90},{x:26,y:25},{x:26,y:50},{x:26,y:75},{x:36,y:50},{x:44,y:25},{x:44,y:75}],
     "4-1-3-2": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:22,y:50},{x:32,y:20},{x:32,y:50},{x:32,y:80},{x:42,y:35},{x:42,y:65}],
     "4-1-2-3": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:20.5,y:50},{x:30,y:35},{x:30,y:65},{x:42,y:20},{x:42,y:50},{x:42,y:80}],
+    // 4-1-2-1-2: 다이아몬드 4-4-2. DM(꼭짓점 아래) → CM 2명(다이아몬드 양옆, 넓게) → AM(꼭짓점 위) → ST 2명.
+    // API grid 라인 번호도 1/4/1/2/1/2 인원수 그대로 오므로 배열 순서를 이 라인 순서에 맞춘다.
+    "4-1-2-1-2": [{x:5,y:50},{x:12,y:10},{x:12,y:35},{x:12,y:65},{x:12,y:90},{x:21,y:50},{x:28,y:25},{x:28,y:75},{x:35,y:50},{x:43,y:25},{x:43,y:75}],
 
     "3-5-2":   [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:21,y:10},{x:30,y:25},{x:30,y:50},{x:30,y:75},{x:21,y:90},{x:42,y:37.5},{x:42,y:62.5}],
     "3-1-4-2": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:23,y:50},{x:23,y:10},{x:30,y:35},{x:30,y:65},{x:23,y:90},{x:42,y:35},{x:42,y:65}],
@@ -47,6 +50,7 @@
     "4-3-1-2": ['GK','RB','CB','CB','LB','CM','CM','CM','AM','ST','ST'],
     "4-1-3-2": ['GK','RB','CB','CB','LB','DM','RW','AM','LW','ST','ST'],
     "4-1-2-3": ['GK','RB','CB','CB','LB','DM','CM','CM','RW','ST','LW'],
+    "4-1-2-1-2": ['GK','RB','CB','CB','LB','DM','CM','CM','AM','ST','ST'],
 
     "3-5-2":   ['GK','CB','CB','CB','RM','CM','CM','CM','LM','ST','ST'],
     "3-1-4-2": ['GK','CB','CB','CB','DM','RM','CM','CM','LM','ST','ST'],
@@ -127,6 +131,246 @@
     lineup: null,       // tacticsApplyLineup 후 저장
   };
 
+  // ━━━ [전술판 - 가로/세로 전환] 피치 방향 상태 + 화면 좌표 ↔ 피치 좌표 변환 ━━━
+  // 세로 모드는 피치 좌표계(x=골라인 방향 0~100, y=터치라인 방향 0~100)를 그대로 두고
+  // #tactics-pitch 자체를 CSS rotate(-90deg)로 돌려 표시한다(홈 골대가 아래, 원정 골대가 위).
+  // 토큰/드로잉/레이저/선택 박스 등 기존 로직은 전부 가로 기준 좌표로 동작하고,
+  // 포인터 좌표만 tdClientToPitchPx로 역회전해 넘긴다. 선수 바둑알·이름표·팀 라벨은 CSS로
+  // +90deg 역회전해 화면에서 똑바로 보이게 한다(css/tactics/tactics-timeline.css).
+  // 기기 회전(태블릿 가로→세로)과 무관하게 사용자가 고른 방향을 localStorage로 유지한다.
+  var TD_PITCH_ORIENTATION_STORAGE_KEY = 'obs.tactics.pitchOrientation.v1';
+  var tdPitchVertical = (() => {
+    try { return localStorage.getItem(TD_PITCH_ORIENTATION_STORAGE_KEY) === 'vertical'; } catch { return false; }
+  })();
+  // --td-scale 기준 폭 — 가로 모드일 때의 피치 폭. 세로 모드로 먼저 로드돼도 가로 기준으로 잡아
+  // 선수 크기가 로드 시점 방향에 따라 달라지지 않게 한다(tacticsSyncPitchLayout에서 최초 1회 설정).
+  var tdPitchBaseWidth = 0;
+  // 세로 모드 피치 폭 배율(화면상 가로 폭 / 기본 폭) — 일반 화면/전체화면 별도 저장.
+  var TD_PITCH_STRETCH_STORAGE_KEY = 'obs.tactics.verticalPitchStretch.v1';
+  var TD_PITCH_STRETCH_MIN = 0.6;  // 너무 가늘어지지 않게 하는 하한
+  var TD_PITCH_HANDLE_SPACE = 0;   // 폭 조절 핸들이 레이아웃에서 차지하는 폭(px). 가장자리 위에 겹쳐 잡는 방식이라 0
+  var tdPitchStretch = (() => {
+    const fallback = { normal: 1, fullscreen: 1 };
+    try {
+      const parsed = JSON.parse(localStorage.getItem(TD_PITCH_STRETCH_STORAGE_KEY) || 'null');
+      if (!parsed || typeof parsed !== 'object') return fallback;
+      return {
+        normal: Number(parsed.normal) > 0 ? Number(parsed.normal) : 1,
+        fullscreen: Number(parsed.fullscreen) > 0 ? Number(parsed.fullscreen) : 1,
+      };
+    } catch { return fallback; }
+  })();
+
+  /**
+   * 피치의 가로 기준(회전 전) 크기와 화면 위치를 반환.
+   * 세로 모드에선 getBoundingClientRect가 회전된 외곽 박스를 주므로 폭/높이를 뒤바꾸고,
+   * 포인터 변환용 화면 중심점(centerX/centerY)을 함께 담는다.
+   */
+  function tdPitchRect() {
+    const r = document.getElementById('tactics-pitch').getBoundingClientRect();
+    if (!tdPitchVertical) return { left: r.left, top: r.top, width: r.width, height: r.height, rotated: false };
+    return {
+      left: r.left, top: r.top, width: r.height, height: r.width, rotated: true,
+      centerX: r.left + r.width / 2, centerY: r.top + r.height / 2,
+    };
+  }
+
+  /** 화면 좌표(clientX/Y)를 피치 가로 기준 로컬 px 좌표로 변환 (세로 모드면 -90deg 회전을 되돌림) */
+  function tdClientToPitchPx(clientX, clientY, pr) {
+    if (!pr.rotated) return { x: clientX - pr.left, y: clientY - pr.top };
+    const sx = clientX - pr.centerX;
+    const sy = clientY - pr.centerY;
+    return { x: pr.width / 2 - sy, y: pr.height / 2 + sx };
+  }
+
+  // 상단바 아이콘(SVG, currentColor) — 가로/세로 전환, 전체화면 진입/종료.
+  // 세로 화면 전체화면에선 이 버튼들이 아이콘만 보이는 정사각 버튼이 된다(라벨은 aria-label/title로 유지).
+  var TD_ICON_ROTATE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="10" height="18" rx="2"/><path d="M4 8.5a8 8 0 0 1 2.5-4M4 4v4.5h4.5"/></svg>';
+  var TD_ICON_FS_ENTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  var TD_ICON_FS_EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+
+  /** 버튼 내용을 아이콘 span + 라벨 span으로 채우고 aria-label/title을 라벨과 맞춘다 */
+  function tdSetIconButton(btn, iconSvg, label, title) {
+    btn.innerHTML = `<span class="td-btn-icon">${iconSvg}</span><span class="td-btn-label">${label}</span>`;
+    btn.setAttribute('aria-label', label);
+    btn.title = title || label;
+  }
+
+  var TD_ICON_SCOREBOARD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M12 6v12M7 10.5v3M16 10.5h2v3h-2"/></svg>';
+  var TD_ICON_SCOREBOARD_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M12 6v12M3 3l18 18"/></svg>';
+
+  var TD_ICON_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+  var TD_ICON_MENU_HIDE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 14l5-5 5 5M7 19l5-5 5 5"/></svg>';
+
+  // ━━━ [전술판 - 전체화면 상단바 숨기기] (#td-topbar-hide-btn / #td-topbar-show-btn) ━━━
+  // 전체화면에서 상단바 전체를 접어 피치가 화면을 다 쓰게 한다. 접힘은 #page-tactics.td-topbar-hidden +
+  // CSS(:fullscreen 한정)로 처리 — 전체화면이 아니면 클래스가 남아 있어도 상단바는 항상 보인다.
+  // 상단바 높이가 바뀌면 #tactics-main-area ResizeObserver가 피치를 다시 맞춘다.
+  function tacticsSetTopbarHidden(hidden) {
+    document.getElementById('page-tactics')?.classList.toggle('td-topbar-hidden', !!hidden);
+    // 패널이 열려 있으면 닫는다 — 여는 버튼이 상단바와 함께 사라지므로
+    if (hidden) {
+      if (typeof window.ttSetTimelinePanelOpen === 'function') window.ttSetTimelinePanelOpen(false);
+      if (typeof window.tdSetDrawToolbarOpen === 'function') window.tdSetDrawToolbarOpen(false);
+    }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const hideBtn = document.getElementById('td-topbar-hide-btn');
+    if (hideBtn) tdSetIconButton(hideBtn, TD_ICON_MENU_HIDE, '메뉴 숨기기');
+    const showBtn = document.getElementById('td-topbar-show-btn');
+    if (showBtn) showBtn.innerHTML = TD_ICON_MENU;
+  });
+
+  // ━━━ [전술판 - 점수판 보이기/숨기기] 터치 기기 배치 전용 (#btn-tactics-board-toggle) ━━━
+  // 전술판 탭 위쪽 방송용 점수판을 접어 피치 공간을 넓힌다. 상태는 localStorage에 저장, 기본은 보임.
+  // 숨김은 body.td-board-hidden + CSS(css/tactics/tactics-timeline.css)로 처리 — 다른 탭/마우스 기기에는 영향 없음.
+  var TD_BOARD_HIDDEN_STORAGE_KEY = 'obs.tactics.touchBoardHidden.v1';
+
+  /** 점수판 숨김 상태를 body 클래스와 버튼 아이콘/라벨에 반영 */
+  function tacticsSyncBoardToggleUi() {
+    let hidden = false;
+    try { hidden = localStorage.getItem(TD_BOARD_HIDDEN_STORAGE_KEY) === '1'; } catch {}
+    document.body.classList.toggle('td-board-hidden', hidden);
+    const btn = document.getElementById('btn-tactics-board-toggle');
+    if (btn) {
+      tdSetIconButton(btn, hidden ? TD_ICON_SCOREBOARD_OFF : TD_ICON_SCOREBOARD, hidden ? '점수판 보이기' : '점수판 숨기기');
+      btn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    }
+  }
+
+  /** 점수판 보이기/숨기기 전환 — 레이아웃이 바뀌면 #tactics-main-area ResizeObserver가 피치를 다시 맞춘다 */
+  function tacticsToggleBoardVisible() {
+    const next = !document.body.classList.contains('td-board-hidden');
+    try { localStorage.setItem(TD_BOARD_HIDDEN_STORAGE_KEY, next ? '1' : '0'); } catch {}
+    tacticsSyncBoardToggleUi();
+  }
+  document.addEventListener('DOMContentLoaded', tacticsSyncBoardToggleUi);
+
+  /** 가로/세로 버튼 라벨과 #page-tactics 클래스를 현재 방향에 맞춤 */
+  function tacticsSyncOrientationUi() {
+    document.getElementById('page-tactics')?.classList.toggle('td-pitch-vertical', tdPitchVertical);
+    const btn = document.getElementById('btn-tactics-orientation');
+    if (btn) {
+      tdSetIconButton(btn, TD_ICON_ROTATE, tdPitchVertical ? '가로로 보기' : '세로로 보기');
+      btn.setAttribute('aria-pressed', tdPitchVertical ? 'true' : 'false');
+    }
+  }
+
+  /**
+   * 세로 화면 전체화면 전용 — 상단바의 자주 안 쓰는 컨트롤(.td-topbar-secondary)을 펼치고 접는다.
+   * 가로 화면에선 버튼 자체가 CSS로 숨겨지고 모든 컨트롤이 항상 보인다(css/tactics/tactics-timeline.css).
+   * 상단바 높이가 바뀌면 #tactics-main-area ResizeObserver가 피치 크기를 다시 맞춘다.
+   */
+  function tacticsToggleTopbarMore() {
+    const bar = document.getElementById('tactics-topbar');
+    const btn = document.getElementById('td-topbar-more-btn');
+    if (!bar) return;
+    const open = bar.classList.toggle('td-more-open');
+    if (btn) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      const label = btn.querySelector('.td-toggle-arrow + span');
+      if (label) label.textContent = open ? '접기' : '더보기';
+    }
+  }
+
+  /** 전술판 전체화면(또는 터치 기기 배치) + 세로 화면인지 — 세로 전용 디자인/바둑알 크기 분기용 */
+  function tdIsPortraitFullscreen() {
+    return tdIsOverlayPanelMode()
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(orientation: portrait)').matches;
+  }
+
+  // ━━━ [전술판 - 터치 기기 배치] 태블릿/휴대폰에서 전체화면이 아니어도 전체화면과 같은 배치 ━━━
+  // 설정 tacticsTouchLayout(auto/on/off). auto는 주 입력이 터치인 기기((pointer: coarse))에서만 켠다 —
+  // 터치스크린 노트북처럼 마우스/트랙패드가 주 입력인 방송 PC는 기존 화면 그대로.
+  // 켜지면 #page-tactics.td-touch-layout(전체화면용 CSS가 그대로 적용, css/tactics/tactics-timeline.css) +
+  // body.td-touch-board(전술판 탭에서 body를 전술판 전용 배율로 그리기, css/core/layout.css /
+  // 점수판을 작게 줄이기, js/core/render.js: applyBoardScale).
+
+  /** 설정과 기기 입력 방식으로 터치 기기 배치를 켤지 결정 */
+  function tdTouchLayoutEnabled() {
+    const mode = (typeof getSetting === 'function') ? getSetting('tacticsTouchLayout') : 'auto';
+    if (mode === 'on') return true;
+    if (mode === 'off') return false;
+    return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  }
+
+  /** 타임라인/그리기 도구가 버튼으로 여는 오버레이 패널로 동작하는지 — 전체화면이거나 터치 기기 배치일 때 */
+  function tdIsOverlayPanelMode() {
+    return !!document.fullscreenElement
+      || !!document.getElementById('page-tactics')?.classList.contains('td-touch-layout');
+  }
+  window.tdIsOverlayPanelMode = tdIsOverlayPanelMode;
+
+  /**
+   * 터치용 상단바 디자인(#page-tactics.td-touch-topbar, css/tactics/tactics-timeline.css) 적용 여부.
+   * 터치 기기 배치면 가로/세로 모두, 마우스 기기는 세로 화면 전체화면일 때만(가로 전체화면은 기존 상단바 유지).
+   */
+  function tdSyncTouchTopbar() {
+    const page = document.getElementById('page-tactics');
+    if (!page) return;
+    const portrait = typeof window.matchMedia === 'function' && window.matchMedia('(orientation: portrait)').matches;
+    page.classList.toggle('td-touch-topbar', page.classList.contains('td-touch-layout') || (!!document.fullscreenElement && portrait));
+  }
+  document.addEventListener('fullscreenchange', tdSyncTouchTopbar);
+  window.addEventListener('resize', tdSyncTouchTopbar);
+
+  /** 터치 기기 배치 클래스 적용 + 점수판 배율/피치 크기 재계산 */
+  function tacticsApplyTouchLayout() {
+    const on = tdTouchLayoutEnabled();
+    document.getElementById('page-tactics')?.classList.toggle('td-touch-layout', on);
+    tdSyncTouchTopbar();
+    document.body.classList.toggle('td-touch-board', on);
+    // body 배율이 바뀐 뒤 레이아웃이 확정되면 점수판/피치를 다시 맞춘다
+    requestAnimationFrame(() => {
+      if (typeof window.reapplyBoardScale === 'function') window.reapplyBoardScale();
+      tacticsSyncPitchLayout();
+    });
+  }
+  document.addEventListener('DOMContentLoaded', tacticsApplyTouchLayout);
+  document.addEventListener('page:activated', tacticsApplyTouchLayout);
+  document.addEventListener('settings:change', (e) => {
+    if (e.detail?.category === 'tacticsTouchLayout') tacticsApplyTouchLayout();
+  });
+  window.addEventListener('resize', () => {
+    if (document.body.classList.contains('td-touch-board') && typeof window.reapplyBoardScale === 'function') {
+      requestAnimationFrame(() => window.reapplyBoardScale());
+    }
+  });
+  if (typeof window.matchMedia === 'function') {
+    window.matchMedia('(pointer: coarse)').addEventListener?.('change', tacticsApplyTouchLayout);
+  }
+
+  /**
+   * 그리기 도구 버튼 텍스트("▶ 선택")를 아이콘/라벨 span으로 분리.
+   * 세로 화면 바텀 시트에서 아이콘을 위, 라벨을 아래로 쌓는 격자 버튼 디자인에 쓰인다.
+   * 가로 화면에선 CSS로 기존처럼 한 줄(아이콘 + 라벨)로 보인다.
+   */
+  function tacticsSplitDrawToolLabels() {
+    document.querySelectorAll('#tactics-draw-toolbar > button[id^="td-tool-"]').forEach(btn => {
+      if (btn.querySelector('.td-tool-icon')) return;
+      const text = (btn.textContent || '').trim();
+      const space = text.indexOf(' ');
+      if (space <= 0) return;
+      const icon = document.createElement('span');
+      icon.className = 'td-tool-icon';
+      icon.textContent = text.slice(0, space);
+      const label = document.createElement('span');
+      label.className = 'td-tool-label';
+      label.textContent = text.slice(space + 1);
+      btn.replaceChildren(icon, label);
+    });
+  }
+  document.addEventListener('DOMContentLoaded', tacticsSplitDrawToolLabels);
+
+  /** 전술판 피치 가로/세로 전환 — 선수 위치/드로잉은 좌표계가 같으므로 그대로 유지 */
+  function tacticsToggleOrientation() {
+    tdPitchVertical = !tdPitchVertical;
+    try { localStorage.setItem(TD_PITCH_ORIENTATION_STORAGE_KEY, tdPitchVertical ? 'vertical' : 'horizontal'); } catch {}
+    tacticsSyncOrientationUi();
+    tacticsSyncPitchLayout();
+  }
+
   /** 홈팀 포메이션 좌표를 어웨이 진영으로 미러링 (x=100-x, y=100-y) */
   function tacticsMirror(coords) {
     return coords.map(({x, y}) => ({ x: 100 - x, y: 100 - y }));
@@ -158,21 +402,173 @@
     const availableHeight = Math.max(0, main.clientHeight - padTop - padBottom);
     const toolbar = document.getElementById('tactics-draw-toolbar');
     // 풀스크린에서는 그리기 도구 패널도 타임라인 패널처럼 position:fixed 오버레이 슬라이드 패널로
-    // 전환되어 평소엔 화면 밖(translateX(100%))에 숨어있다 — getBoundingClientRect().width는
-    // transform과 무관하게 레이아웃 상자 크기를 그대로 반환하므로, 닫혀 있어도 폭을 빼버리면
-    // 피치가 실제로 비어있는 공간만큼 불필요하게 작아진다. 풀스크린에선 예약 폭 0으로 취급.
-    const toolbarWidth = (toolbar && !document.fullscreenElement) ? Math.ceil(toolbar.getBoundingClientRect().width) : 0;
-    const reservedPanelWidth = document.fullscreenElement ? 0 : 240;
+    // 전환되어 평소엔 화면 밖(translateX(100%))에 숨어있다. 풀스크린에선 예약 폭 0으로 취급.
+    // main.clientWidth와 같은 zoom 적용 전 레이아웃 단위로 폭을 뺀다.
+    // 터치 기기 배치도 전체화면과 같이 패널이 오버레이라 예약 폭 0 (tdIsOverlayPanelMode)
+    const overlayPanels = tdIsOverlayPanelMode();
+    const toolbarWidth = (toolbar && !overlayPanels) ? toolbar.offsetWidth : 0;
+    const reservedPanelWidth = overlayPanels ? 0 : 240;
     const maxPitchWidth = Math.max(0, main.clientWidth - toolbarWidth - reservedPanelWidth - padLeft - padRight);
     const pitchWidthByHeight = availableHeight * (105 / 68);
-    const pitchWidth = maxPitchWidth > 0 ? Math.min(pitchWidthByHeight, maxPitchWidth) : pitchWidthByHeight;
-    const pitchHeight = pitchWidth * (68 / 105);
+    const horizontalPitchWidth = maxPitchWidth > 0 ? Math.min(pitchWidthByHeight, maxPitchWidth) : pitchWidthByHeight;
+    if (!tdPitchBaseWidth && horizontalPitchWidth > 0) tdPitchBaseWidth = horizontalPitchWidth;
+
+    // 세로 모드: 회전 후 화면상 폭 = 피치 높이(68), 화면상 높이 = 피치 길이(105).
+    // 피치 길이는 가용 높이, 피치 높이는 가용 폭을 넘지 않도록 맞춘다.
+    // 세로 모드에선 폭 조절 핸들(#td-pitch-resize-handle)이 레이아웃에서 차지하는 폭만큼 가용 폭에서 뺀다(현재 0 — 가장자리 겹침).
+    const handleSpace = tdPitchVertical ? TD_PITCH_HANDLE_SPACE : 0;
+    const maxVisualWidth = Math.max(0, maxPitchWidth - handleSpace);
+    const pitchWidth = tdPitchVertical
+      ? (maxVisualWidth > 0 ? Math.min(availableHeight, maxVisualWidth * (105 / 68)) : availableHeight)
+      : horizontalPitchWidth;
+    let pitchHeight = pitchWidth * (68 / 105);
+    if (tdPitchVertical) {
+      // 사용자가 핸들로 조절한 폭 배율(일반/전체화면 별도) 적용 — 길이(세로)는 그대로, 폭(가로)만 변경.
+      // 남는 공간(maxVisualWidth)을 넘지 않도록 여기서 매번 클램프한다(저장값은 그대로 두어 공간이 다시 생기면 복원).
+      const factor = Math.max(TD_PITCH_STRETCH_MIN, tdPitchStretch[tdPitchStretchMode()] || 1);
+      const stretched = pitchHeight * factor;
+      pitchHeight = maxVisualWidth > 0 ? Math.min(stretched, Math.max(pitchHeight, maxVisualWidth)) : stretched;
+    }
+    const w = Math.max(0, Math.round(pitchWidth));
+    const h = Math.max(0, Math.round(pitchHeight));
+    const visualWidth = tdPitchVertical ? h : w;
 
     wrap.style.flex = '0 0 auto';
-    wrap.style.width = `${Math.max(0, Math.round(pitchWidth + padLeft + padRight))}px`;
-    pitch.style.width = `${Math.max(0, Math.round(pitchWidth))}px`;
-    pitch.style.height = `${Math.max(0, Math.round(pitchHeight))}px`;
+    wrap.style.width = `${Math.max(0, Math.round(visualWidth + handleSpace + padLeft + padRight))}px`;
+    pitch.style.width = `${w}px`;
+    pitch.style.height = `${h}px`;
+    if (tdPitchVertical) {
+      // transform은 레이아웃 크기를 바꾸지 않으므로, margin으로 흐름상 박스를 회전 후 크기(h×w)로 보정해
+      // 정렬(좌/가운데/우)과 래퍼 폭 계산이 회전된 모습 기준으로 동작하게 한다.
+      pitch.style.maxWidth = 'none';
+      pitch.style.margin = `${(w - h) / 2}px ${(h - w) / 2}px`;
+      pitch.style.transform = 'rotate(-90deg)';
+    } else {
+      pitch.style.maxWidth = '100%';
+      pitch.style.margin = '';
+      pitch.style.transform = '';
+    }
+    // 폭을 늘린 만큼 라인 마킹 좌표계도 넓혀 센터서클/페널티 아크가 타원으로 찌그러지지 않게 한다.
+    tdSyncPitchMarkings(w > 0 ? h / (w * (68 / 105)) : 1);
+    // 선수 바둑알/이름 라벨 배율(--td-scale). 가로 모드는 기존 ResizeObserver와 같은 계산(피치 폭 / 기준 폭).
+    // 세로 모드는 피치 길이가 가용 '높이'로 정해져 같은 공간의 가로 피치보다 작아진다(가로 화면 기준 약 0.65배).
+    // 피치 크기 비율을 그대로 쓰면 바둑알이 너무 작고, 가로 모드 배율을 그대로 쓰면 좁아진 피치에 비해 너무 크다
+    // (둘 다 사용자 피드백). 그래서 가로 모드 배율에 피치 크기 비율의 제곱근만 곱해 중간 크기로 맞춘다
+    // (0.65배 피치 -> 바둑알 약 0.8배). 핸들로 늘린 폭(stretch)은 반영하지 않아 폭 조절만으로는 바둑알 크기가 바뀌지 않는다.
+    if (tdIsPortraitFullscreen()) {
+      // 세로 화면 전체화면/터치 배치(세로 전용 배율, js/core/display-scale.js): 레이아웃 단위가 기기 CSS px에 가까워
+      // 가로 기준 폭과 비교하는 배율이 의미가 없다. 피치의 짧은 변(68m 쪽, 늘리기 전 기본값)에 대해 직접 정한다 —
+      // 태블릿 세로 + 세로 피치(짧은 변 약 790) 기준 바둑알 약 40px, 좁은 휴대폰은 제곱근 비율로 덜 줄여 터치 가능한 크기 유지.
+      // 세로 화면에서 가로 피치를 쓸 때도 같은 식(짧은 변이 더 짧아 바둑알이 조금 작아짐) — 예전엔 1920 기준 배율과 비교해
+      // 바둑알이 10px 안팎으로 지나치게 작았다.
+      const naturalVisual = pitchWidth * (68 / 105);
+      pitch.style.setProperty('--td-scale', String(0.9 * Math.sqrt(Math.max(1, naturalVisual) / 790)));
+    } else if (tdPitchBaseWidth > 0) {
+      const horizontalScale = (tdPitchVertical ? horizontalPitchWidth : w) / tdPitchBaseWidth;
+      const verticalRatio = (tdPitchVertical && horizontalPitchWidth > 0) ? Math.sqrt(w / horizontalPitchWidth) : 1;
+      pitch.style.setProperty('--td-scale', String(horizontalScale * verticalRatio));
+    }
   }
+
+  /**
+   * 피치 라인 마킹 SVG(viewBox 150×100)를 피치 폭 배율(stretch)에 맞춰 보정.
+   * 폭 방향 viewBox 범위를 100*stretch로 넓히고(중심 50 유지), 터치라인/하프라인/코너 아크만
+   * 새 가장자리로 옮긴다. 박스/서클 등 중앙 기준 요소는 그대로 두면 원래 모양이 유지된다.
+   * stretch=1이면 원래 좌표 그대로(가로 모드와 동일).
+   */
+  function tdSyncPitchMarkings(stretch) {
+    const svg = document.getElementById('tactics-pitch-markings');
+    if (!svg) return;
+    const s = Number.isFinite(stretch) && stretch > 0 ? stretch : 1;
+    const span = 100 * s;
+    const d = (span - 100) / 2; // 가장자리 이동량(viewBox 단위)
+    svg.setAttribute('viewBox', `0 ${50 - span / 2} 150 ${span}`);
+    const outer = svg.querySelector('.td-mk-outer');
+    if (outer) { outer.setAttribute('y', String(2 - d)); outer.setAttribute('height', String(96 + 2 * d)); }
+    const half = svg.querySelector('.td-mk-half');
+    if (half) { half.setAttribute('y1', String(2 - d)); half.setAttribute('y2', String(98 + d)); }
+    svg.querySelectorAll('.td-mk-top').forEach(el => el.setAttribute('transform', `translate(0 ${-d})`));
+    svg.querySelectorAll('.td-mk-bottom').forEach(el => el.setAttribute('transform', `translate(0 ${d})`));
+  }
+
+  /** 현재 폭 배율 저장 슬롯 — 일반 화면/전체화면을 따로 기억한다. */
+  function tdPitchStretchMode() {
+    // 터치 기기 배치는 전체화면과 같은 배치라 같은 슬롯을 쓴다
+    return tdIsOverlayPanelMode() ? 'fullscreen' : 'normal';
+  }
+
+  /** 폭 배율(일반/전체화면)을 localStorage에 저장 */
+  function tdSavePitchStretch() {
+    try { localStorage.setItem(TD_PITCH_STRETCH_STORAGE_KEY, JSON.stringify(tdPitchStretch)); } catch {}
+  }
+
+  /**
+   * 세로 모드 피치 폭 조절 핸들 바인딩.
+   * 드래그: 피치 폭(화면상 가로)만 조절 — 길이는 그대로. 남는 공간은 tacticsSyncPitchLayout이 클램프.
+   * 더블클릭/더블탭: 현재 모드(일반/전체화면)의 배율을 1로 초기화.
+   * 전체화면 가운데 정렬이면 양쪽으로 같이 늘어나므로 이동량을 2배, 오른쪽 정렬이면 핸들이 왼쪽에 있으므로 부호 반전.
+   */
+  function tacticsBindPitchResizeHandle() {
+    const handle = document.getElementById('td-pitch-resize-handle');
+    const wrap = document.getElementById('tactics-pitch-wrap');
+    const pitch = document.getElementById('tactics-pitch');
+    if (!handle || !wrap || !pitch) return;
+    let drag = null;
+    let lastTap = null; // { time, x, y } — 더블탭 판정용 (터치에선 dblclick이 안 오는 브라우저가 있어 직접 판정)
+
+    const naturalWidth = () => pitch.offsetWidth * (68 / 105);
+    const reset = () => {
+      tdPitchStretch[tdPitchStretchMode()] = 1;
+      tdSavePitchStretch();
+      tacticsSyncPitchLayout();
+    };
+
+    handle.addEventListener('pointerdown', (e) => {
+      if (!tdPitchVertical) return;
+      e.preventDefault();
+      e.stopPropagation();
+      // 1. 더블탭/더블클릭 — 350ms 안에 가까운 위치를 다시 누르면 초기화
+      const now = performance.now();
+      if (lastTap && now - lastTap.time < 350 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24) {
+        lastTap = null;
+        drag = null;
+        reset();
+        return;
+      }
+      lastTap = { time: now, x: e.clientX, y: e.clientY };
+      // 2. 드래그 시작 — 화면 px → 레이아웃 px 비율(display-scale transform 보정) 측정
+      handle.setPointerCapture(e.pointerId);
+      const screenW = wrap.getBoundingClientRect().width;
+      drag = {
+        startX: e.clientX,
+        startWidth: pitch.offsetHeight, // 세로 모드: 피치 layout 높이 = 화면상 폭
+        ratio: screenW > 0 ? wrap.offsetWidth / screenW : 1,
+        mult: getComputedStyle(wrap).justifyContent === 'center' ? 2 : 1,
+        sign: getComputedStyle(handle).order === '-1' ? -1 : 1,
+      };
+      handle.classList.add('is-dragging');
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = (e.clientX - drag.startX) * drag.ratio * drag.mult * drag.sign;
+      const natural = naturalWidth();
+      if (!(natural > 0)) return;
+      tdPitchStretch[tdPitchStretchMode()] = Math.max(TD_PITCH_STRETCH_MIN, (drag.startWidth + dx) / natural);
+      tacticsSyncPitchLayout();
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      handle.classList.remove('is-dragging');
+      // 남는 공간에 막혀 실제로 적용된 폭 기준으로 저장(보이는 크기와 저장값을 일치시킴)
+      const natural = naturalWidth();
+      if (natural > 0) tdPitchStretch[tdPitchStretchMode()] = Math.max(TD_PITCH_STRETCH_MIN, pitch.offsetHeight / natural);
+      tdSavePitchStretch();
+    };
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  }
+  document.addEventListener('DOMContentLoaded', tacticsBindPitchResizeHandle);
 
   /**
    * 라인업 데이터(홈/어웨이 포메이션, 선수 목록)를 받아 전술판에 적용.
@@ -261,6 +657,19 @@
       border: cs(state.colors.awayBg   || '#EF4444'),
       text:   cs(state.colors.awayText || '#ffffff'),
     };
+
+    // 5-1. 팀 이름 라벨 — 캠 큰 메뉴 팀 chip과 같은 팀 컬러 pill(배경=팀 컬러, 글자=등번호색) + 현재 포메이션
+    [['home', homeColor, homeFm], ['away', awayColor, awayFm]].forEach(([side, color, fm]) => {
+      const wrap = document.querySelector(`.td-team-label-${side}`);
+      if (wrap) {
+        wrap.style.setProperty('--td-team-accent', color.bg);
+        wrap.style.setProperty('--td-team-text', color.text);
+      }
+      // 상단바 포메이션 선택 카드의 팀 컬러 점(세로 화면 전체화면 디자인)
+      document.querySelector(`.td-fm-${side}`)?.style.setProperty('--td-team-accent', color.bg);
+      const fmLabel = document.getElementById(`tactics-${side}-fm-label`);
+      if (fmLabel) fmLabel.textContent = fm || '';
+    });
 
     // 6. 홈팀 토큰 생성 — 포지션 레이블은 현재 포메이션 기준으로 덮어씀
     tacticsState.homePositions.forEach((pos, i) => {
@@ -413,9 +822,10 @@
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     tacticsDragging = e.currentTarget;
-    tacticsPitchRect = document.getElementById('tactics-pitch').getBoundingClientRect();
-    const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width * 100;
-    const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
+    tacticsPitchRect = tdPitchRect();
+    const lp = tdClientToPitchPx(e.clientX, e.clientY, tacticsPitchRect);
+    const cx = lp.x / tacticsPitchRect.width * 100;
+    const cy = lp.y / tacticsPitchRect.height * 100;
 
     // 2. 선택 그룹에 포함된 토큰을 드래그하면 그룹 이동 모드
     if (tdSelectedTokens.size > 1 && tdSelectedTokens.has(tacticsDragging)) {
@@ -490,8 +900,9 @@
    */
   function tacticsDragMove(e) {
     if (!tacticsDragging) return;
-    const cx = (e.clientX - tacticsPitchRect.left) / tacticsPitchRect.width  * 100;
-    const cy = (e.clientY - tacticsPitchRect.top)  / tacticsPitchRect.height * 100;
+    const lp = tdClientToPitchPx(e.clientX, e.clientY, tacticsPitchRect);
+    const cx = lp.x / tacticsPitchRect.width  * 100;
+    const cy = lp.y / tacticsPitchRect.height * 100;
 
     // 1. 그룹 이동 처리 (다중 선택된 토큰 전체 이동)
     if (tdGroupDrag) {
@@ -612,6 +1023,21 @@
   // [전술판 - 포메이션] 포메이션 선택 변경 처리, 전술판 초기화
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+  /** 전술판 포메이션 select를 수동 라인업 창과 같은 숫자 기준으로 정렬한다. */
+  function tacticsSortFormationSelect(select) {
+    if (!select) return;
+    const selected = select.value;
+    [...select.options]
+      .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }))
+      .forEach(option => select.appendChild(option));
+    select.value = selected;
+  }
+
+  function tacticsSortFormationSelects() {
+    tacticsSortFormationSelect(document.getElementById('tactics-home-fm'));
+    tacticsSortFormationSelect(document.getElementById('tactics-away-fm'));
+  }
+
   /** 홈/어웨이 포메이션 select 변경 시 호출 — lineup 포메이션을 업데이트하고 전술판 재렌더 */
   function tacticsApplyFm() {
     const homeFm = document.getElementById('tactics-home-fm')?.value || '4-3-3';
@@ -635,7 +1061,8 @@
   function syncTacticsFullscreenButtonLabel() {
     const btn = document.getElementById('btn-tactics-fullscreen');
     if (!btn) return;
-    btn.textContent = document.fullscreenElement ? '✕ 전체화면 종료' : '⤢ 전체화면 (\\)';
+    if (document.fullscreenElement) tdSetIconButton(btn, TD_ICON_FS_EXIT, '전체화면 종료');
+    else tdSetIconButton(btn, TD_ICON_FS_ENTER, '전체화면 (\\)', '전체화면 (\\ 키)');
   }
 
   // [이벤트 등록] 전체화면 상태 변경 시 버튼 텍스트 동기화
@@ -645,6 +1072,7 @@
   });
   document.addEventListener('DOMContentLoaded', () => {
     syncTacticsFullscreenButtonLabel();
+    tacticsSyncOrientationUi();
     tacticsSyncPitchLayout();
   });
   window.addEventListener('resize', tacticsSyncPitchLayout);
@@ -660,11 +1088,19 @@
     const openBtn = document.getElementById('td-drawtools-toggle');
     const closeBtn = document.getElementById('td-drawtools-close');
     const panel = document.getElementById('tactics-draw-toolbar');
+    const backdrop = document.getElementById('td-drawtools-backdrop');
     if (!panel) return;
 
     const setOpen = (next) => {
       panel.classList.toggle('is-open', next);
-      if (openBtn) openBtn.textContent = next ? '›› 그리기 도구' : '‹‹ 그리기 도구';
+      if (backdrop) backdrop.hidden = !next;
+      if (openBtn) {
+        // 화살표/라벨 span 분리 — 세로 화면 전체화면에선 화살표를 숨기고 열림 상태(aria-expanded)를 세그먼트 버튼 색으로 표시
+        const arrow = openBtn.querySelector('.td-toggle-arrow');
+        if (arrow) arrow.textContent = next ? '››' : '‹‹';
+        else openBtn.textContent = next ? '›› 그리기 도구' : '‹‹ 그리기 도구';
+        openBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+      }
     };
 
     if (openBtn) {
@@ -682,9 +1118,40 @@
       });
     }
 
-    // 풀스크린 + 패널이 열려있을 때만 외부 클릭으로 닫기 (일반 모드는 인라인이라 불필요).
+    // 첫 바깥 제스처 전체를 받아 그리기/지우기/선수 이동으로 전달되지 않게 한다.
+    // 포인터를 잡아두면 패널을 닫으려다 손가락이 움직여도 피치에 획이 남지 않는다.
+    if (backdrop) {
+      let dismissClickPending = false;
+      // pointerup에서 배경이 숨겨진 뒤 브라우저가 피치로 보내는 후속 click도 소비한다.
+      // 다음 실제 입력이 시작되면 해제해 다음 터치나 클릭은 정상 동작하게 한다.
+      document.addEventListener('pointerdown', () => { dismissClickPending = false; }, true);
+      document.addEventListener('click', (e) => {
+        if (!dismissClickPending) return;
+        dismissClickPending = false;
+        if (e.detail === 0) return; // 키보드로 실행한 클릭은 별도 입력이다.
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }, true);
+      backdrop.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        backdrop.setPointerCapture(e.pointerId);
+      });
+      const dismiss = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dismissClickPending = e.type === 'pointerup';
+        setOpen(false);
+      };
+      backdrop.addEventListener('pointerup', dismiss);
+      backdrop.addEventListener('pointercancel', dismiss);
+      backdrop.addEventListener('click', dismiss);
+    }
+
+    // 키보드 등 포인터를 거치지 않는 외부 클릭에도 닫기 동작 유지.
     document.addEventListener('click', (e) => {
-      if (!document.fullscreenElement) return;
+      // 전체화면 또는 터치 기기 배치(패널이 오버레이)일 때만 바깥 클릭으로 닫기
+      if (!(typeof window.tdIsOverlayPanelMode === 'function' ? window.tdIsOverlayPanelMode() : document.fullscreenElement)) return;
       if (!panel.classList.contains('is-open')) return;
       if (panel.contains(e.target)) return;
       if (openBtn && openBtn.contains(e.target)) return;
@@ -718,6 +1185,7 @@
    * 드래그 레이어 비활성화. DOMContentLoaded 또는 즉시 호출.
    */
   function tacticsInitDefaultSelect() {
+    tacticsSortFormationSelects();
     tacticsApplyLineup(TACTICS_MOCK_LINEUP);
     tacticsDrawSetTool('select');
     const layer = document.getElementById('tactics-draw-layer');
@@ -730,8 +1198,11 @@
 
   // [이벤트 등록] 피치 크기 변화 시 --td-scale 갱신 → 토큰/배지/공/지우개 크기 자동 비례
   {
-    let tdPitchBaseWidth = 0;
+    // 모든 기기가 동일한 물리 픽셀 레이아웃을 사용하므로 기존 선수 크기 계산을 공유한다.
+    // 기준 폭(tdPitchBaseWidth)은 파일 상단에 선언 — 가로 모드 기준 폭을 tacticsSyncPitchLayout이 채운다.
     const tdPitchObserver = new ResizeObserver(entries => {
+      // 세로 모드에선 피치 layout 폭이 '길이'라 배율 기준으로 쓰면 안 된다 — tacticsSyncPitchLayout이 직접 설정.
+      if (tdPitchVertical) return;
       const w = entries[0].contentRect.width;
       if (!tdPitchBaseWidth && w > 0) tdPitchBaseWidth = w;
       const scale = tdPitchBaseWidth > 0 ? w / tdPitchBaseWidth : 1;
@@ -851,7 +1322,7 @@
     const canvas = document.getElementById('td-laser-canvas');
     if (!canvas) { tdLaserRAF = null; return; }
 
-    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const pitch = tdPitchRect();
     const W = Math.round(pitch.width), H = Math.round(pitch.height);
     if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
 
@@ -996,7 +1467,7 @@
       btn.style.border = '2px solid transparent';
       btn.style.boxShadow = btn.dataset.clr === '#ffffff' ? 'inset 0 0 0 1px rgba(0,0,0,0.2)'
                           : btn.dataset.clr === '#facc15' ? 'inset 0 0 0 1px rgba(0,0,0,0.15)'
-                          : btn.dataset.clr === '#1e293b' ? 'inset 0 0 0 1px rgba(255,255,255,0.15)'
+                          : btn.dataset.clr === '#000000' ? 'inset 0 0 0 1px rgba(255,255,255,0.15)'
                           : '';
     });
     const sel = document.querySelector(`[data-clr="${c}"]`);
@@ -1015,10 +1486,11 @@
 
   /** 포인터 이벤트 좌표를 피치 기준 viewBox 퍼센트(0~100)로 변환 */
   function tdGetPt(e, layer) {
-    const r = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const r = tdPitchRect();
+    const lp = tdClientToPitchPx(e.clientX, e.clientY, r);
     return {
-      x: Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)),
-      y: Math.max(0, Math.min(100, (e.clientY - r.top)  / r.height * 100)),
+      x: Math.max(0, Math.min(100, lp.x / r.width * 100)),
+      y: Math.max(0, Math.min(100, lp.y / r.height * 100)),
     };
   }
 
@@ -1027,10 +1499,12 @@
     const circDiv = tok?.querySelector('div');
     if (!circDiv) return null;
     const cr = circDiv.getBoundingClientRect();
+    // 화면상 원 중심을 피치 가로 기준 좌표로 변환 (세로 모드 회전 보정 포함)
+    const center = tdClientToPitchPx(cr.left + cr.width / 2, cr.top + cr.height / 2, pitchRect);
     return {
       radiusPx: Math.max(cr.width, cr.height) / 2 || TD_TOKEN_RADIUS_PX,
-      centerXPx: cr.left + cr.width / 2 - pitchRect.left,
-      centerYPx: cr.top + cr.height / 2 - pitchRect.top,
+      centerXPx: center.x,
+      centerYPx: center.y,
     };
   }
 
@@ -1213,7 +1687,7 @@
    * THRESH(14px) 이내면 hit으로 간주.
    */
   function tdHitTestAny(px, py) {
-    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const pitch = tdPitchRect();
     const W = pitch.width, H = pitch.height;
     const spx = px/100*W, spy = py/100*H;
     const THRESH = 14;
@@ -1312,7 +1786,7 @@
    * viewBox % 기준이 아닌 실제 픽셀 크기로 계산하여 종횡비 왜곡을 보정한다.
    */
   function tdCalcCurveCtrl(x1, y1, x2, y2) {
-    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const pitch = tdPitchRect();
     const W = pitch.width, H = pitch.height;
     // viewBox % → 화면 픽셀
     const sx1 = x1/100*W, sy1 = y1/100*H;
@@ -1548,9 +2022,10 @@
 
     // 원 도구: 선수 바둑알 위 클릭 시 해당 바둑알 중심으로 원 자동 생성
     if (tdTool === 'circle') {
-      const pr = document.getElementById('tactics-pitch').getBoundingClientRect();
-      const ptX_px = e.clientX - pr.left;
-      const ptY_px = e.clientY - pr.top;
+      const pr = tdPitchRect();
+      const ptPx = tdClientToPitchPx(e.clientX, e.clientY, pr);
+      const ptX_px = ptPx.x;
+      const ptY_px = ptPx.y;
       // style.left/top이 아닌 내부 circle div의 실제 화면 중심 사용
       // (wrap에 이름 배지가 있으면 translate(-50%,-50%)가 circle 중심이 아닌 wrap 중심에 맞춰짐)
       const hitTok = [...document.querySelectorAll('.tactics-token')].find(tok => {
@@ -1591,11 +2066,12 @@
   document.getElementById('tactics-draw-layer')?.addEventListener('pointermove', e => {
     // 지우개 커서 위치 업데이트 (드래그 여부 무관)
     if (tdTool === 'eraser') {
-      const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+      const pitch = tdPitchRect();
       const ec = document.getElementById('td-eraser-cursor');
       if (ec) {
-        ec.style.left = (e.clientX - pitch.left) + 'px';
-        ec.style.top  = (e.clientY - pitch.top)  + 'px';
+        const lp = tdClientToPitchPx(e.clientX, e.clientY, pitch);
+        ec.style.left = (lp.x / pitch.width * 100) + '%';
+        ec.style.top  = (lp.y / pitch.height * 100) + '%';
       }
     }
     // 레이저 포인터 — hover 시 점 이동, 클릭+드래그 시 획 추가
@@ -1643,7 +2119,7 @@
       tdPreview = tdMakeEl({type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, cx:ctrl.cx, cy:ctrl.cy, color:tdColor}, true);
       layer.appendChild(tdPreview);
     } else if (tdTool === 'circle') {
-      const pr = document.getElementById('tactics-pitch').getBoundingClientRect();
+      const pr = tdPitchRect();
       const dx_px = (cur.x - tdStart.x) / 100 * pr.width;
       const dy_px = (cur.y - tdStart.y) / 100 * pr.height;
       const r_px = Math.sqrt(dx_px * dx_px + dy_px * dy_px);
@@ -1756,7 +2232,7 @@
         const ctrl = tdCalcCurveCtrl(tdStart.x, tdStart.y, cur.x, cur.y);
         drawing = {type:tdTool, x1:tdStart.x, y1:tdStart.y, x2:cur.x, y2:cur.y, cx:ctrl.cx, cy:ctrl.cy, color:tdColor};
       } else if (tdTool === 'circle') {
-        const pr = document.getElementById('tactics-pitch').getBoundingClientRect();
+        const pr = tdPitchRect();
         const dx_px = (cur.x - tdStart.x) / 100 * pr.width;
         const dy_px = (cur.y - tdStart.y) / 100 * pr.height;
         const r_px = Math.sqrt(dx_px * dx_px + dy_px * dy_px);
@@ -1793,7 +2269,7 @@
    * 베지어 곡선 위 포인트를 0.05 간격으로 샘플링해 픽셀 거리가 THRESHOLD 이내인지 확인한다.
    */
   function tdHitTestCurve(px, py) {
-    const pitch = document.getElementById('tactics-pitch').getBoundingClientRect();
+    const pitch = tdPitchRect();
     const W = pitch.width, H = pitch.height;
     const spx = px/100*W, spy = py/100*H;
     const THRESHOLD = 14; // 픽셀
@@ -1866,17 +2342,15 @@
   document.getElementById('tactics-pitch')?.addEventListener('pointermove', e => {
     if (!tdSelecting || !tdSelStart) return;
     const cur = tdGetPt(e);
-    const pitch = document.getElementById('tactics-pitch');
-    const pr = pitch.getBoundingClientRect();
     const rx1 = Math.min(tdSelStart.x, cur.x), ry1 = Math.min(tdSelStart.y, cur.y);
     const rx2 = Math.max(tdSelStart.x, cur.x), ry2 = Math.max(tdSelStart.y, cur.y);
     const rect = document.getElementById('td-select-rect');
     if (rect) {
       rect.style.display = 'block';
-      rect.style.left   = (rx1 / 100 * pr.width)  + 'px';
-      rect.style.top    = (ry1 / 100 * pr.height) + 'px';
-      rect.style.width  = ((rx2 - rx1) / 100 * pr.width)  + 'px';
-      rect.style.height = ((ry2 - ry1) / 100 * pr.height) + 'px';
+      rect.style.left   = rx1 + '%';
+      rect.style.top    = ry1 + '%';
+      rect.style.width  = (rx2 - rx1) + '%';
+      rect.style.height = (ry2 - ry1) + '%';
     }
     // 실시간 하이라이트 — 드래그 시작점 기준 가장 가까운 토큰의 팀만
     const highlighted = new Set(tdFilteredInRect(rx1, ry1, rx2, ry2, tdSelStart));

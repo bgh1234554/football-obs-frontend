@@ -4,7 +4,7 @@
 
   /** scorePanel 너비를 --score-col CSS 변수에 동기화 (득점자 박스 너비 연동) */
   function syncScoreCol(){
-    const w = el.scorePanel?.getBoundingClientRect().width || 180;
+    const w = el.scorePanel ? getDisplayLayoutRect(el.scorePanel).width || 180 : 180;
     setCSS('--score-col', w + 'px');
   }
   if (window.ResizeObserver && el.scorePanel){
@@ -94,7 +94,7 @@
     }
     if (activeNoteEditor) closeNoteEditor({ save: true });
 
-    const lockedWidth = Math.max(Math.ceil(noteSide.getBoundingClientRect().width || 0), 220);
+    const lockedWidth = Math.max(Math.ceil(getDisplayLayoutRect(noteSide).width || 0), 220);
     const editorWrap = document.createElement('div');
     const textarea = document.createElement('textarea');
     const confirmBtn = document.createElement('button');
@@ -204,8 +204,10 @@
   function render(){
     if (activeNoteEditor && !canEditNotesInline()) closeNoteEditor();
     // 1. 팀명 / 점수 텍스트 갱신
-    el.homeName.textContent = state.homeName || 'HOME';
-    el.awayName.textContent = state.awayName || 'AWAY';
+    const homeNameText = el.homeName.querySelector('.text') || el.homeName;
+    const awayNameText = el.awayName.querySelector('.text') || el.awayName;
+    homeNameText.textContent = state.homeName || 'HOME';
+    awayNameText.textContent = state.awayName || 'AWAY';
     el.homeScore.textContent = state.homeScore;
     el.awayScore.textContent = state.awayScore;
 
@@ -222,11 +224,11 @@
     if(el.aggHomeBase) el.aggHomeBase.value = state.aggHomeBase;
     if(el.aggAwayBase) el.aggAwayBase.value = state.aggAwayBase;
 
-    // 3. 팀 로고 표시/숨김
-    if(state.homeLogo){ el.homeLogo.src=state.homeLogo; el.homeLogo.classList.remove('hidden'); }
-    else { el.homeLogo.removeAttribute('src'); el.homeLogo.classList.add('hidden'); }
-    if(state.awayLogo){ el.awayLogo.src=state.awayLogo; el.awayLogo.classList.remove('hidden'); }
-    else { el.awayLogo.removeAttribute('src'); el.awayLogo.classList.add('hidden'); }
+    // 3. 팀 로고 표시/숨김 및 바깥 투명 여백 보정.
+    // LogoTrim이 URL별 경계를 30일 동안 캐시하고, 미분석·만료 로고만 비동기로 분석한다.
+    // 원본 src는 유지하며 별·반투명 테두리까지 포함한 경계에 맞춰 크기와 중심을 조절한다.
+    // URL 교체 시 이전 보정을 초기화하고, 분석 실패 시 원본을 표시하는 처리도 모듈에 위임한다.
+    // 로고 렌더는 아래에서 색상·배율 적용 후 수행해 최종 표시 크기로 외곽색을 검사한다.
 
     // 4. 색상 CSS 변수 일괄 적용. greenscreen ON일 때는 chromaSafe()로 초록 계열만 시안으로 치환.
     //    --bg-ui는 settings-popup.js의 applyBackgroundSettings가 별도 관리하므로 여기선 건너뜀.
@@ -370,6 +372,12 @@
     renderPK();
     renderRedCards();
     syncScoreCol();
+    for (const side of ['home', 'away']) {
+      LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
+        ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
+          chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
+      });
+    }
     // 전술판 토큰 색상 동기화 — 팀 색상이 실제로 바뀐 경우에만 재렌더 (매 render() 호출 시 DOM 재생성하면 드래그/선택 상태가 깨짐)
     if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') {
       const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');
@@ -620,8 +628,17 @@
   const boardScaleLabel = $('boardScaleLabel');
 
   /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
+  // 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout)에서 점수판을 작게 줄이는 비율.
+  // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
+  const TOUCH_BOARD_SHRINK = 0.7;
   function applyBoardScale(pct){
-    const s = pct / 100;
+    let s = pct / 100;
+    if (document.body.classList.contains('tactics-active') && document.body.classList.contains('td-touch-board')) {
+      const boardEl = boardStageInner.querySelector('.board');
+      const boardW = boardEl ? boardEl.offsetWidth : 0;
+      const avail = document.body.clientWidth - 24;
+      s = Math.min(s * TOUCH_BOARD_SHRINK, boardW > 0 ? avail / boardW : s);
+    }
     boardStageInner.style.transform = `scale(${s})`;
     // wrap 높이를 실제 축소 높이에 맞게 조정
     const naturalH = boardStageInner.scrollHeight;
@@ -635,6 +652,8 @@
     const pct = state.boardScale ?? 75;
     applyBoardScale(pct);
   }
+  // 터치 기기 전술판 배치 전환/탭 이동/화면 회전 시 점수판 배율을 다시 계산하도록 노출
+  window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 75);
 
   // [이벤트 등록] 배율 슬라이더 및 리셋 버튼
   boardScaleRange?.addEventListener('input', e=>{

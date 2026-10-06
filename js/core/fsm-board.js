@@ -1,3 +1,15 @@
+function setFsmStyle(selector, styles, index) {
+  const nodes = document.querySelectorAll(selector);
+  (index == null ? Array.from(nodes) : [nodes[index]]).filter(Boolean).forEach(node => Object.assign(node.style, styles));
+}
+function setFsmText(selector, value) {
+  document.querySelectorAll(selector).forEach(node => { node.textContent = value ?? ''; });
+}
+function setFsmAttr(selector, name, value) {
+  document.querySelectorAll(selector).forEach(node => {
+    if (value) node.setAttribute(name, value); else node.removeAttribute(name);
+  });
+}
 const LEAGUE_THEME_MAP = {
   // EPL: 'pl' 또는 'pl2' 중 선택. pl2는 팀 컬러가 배경이 되는 스타일
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
@@ -64,6 +76,7 @@ function changeCSS(cssFile) {
     oldlink = newlink;
     pendingThemeLink = null;
     requestAnimationFrame(() => {
+      window.fsmBoardRender();
       autoLayoutNotes();
       initBoardScale();
     });
@@ -86,14 +99,14 @@ function applyTheme(theme, logoUrl) {
   switch(theme) {
     case 'pl':
       changeCSS('css/theme/result_style_EPL.css', CSS_LINK_INDEX);
-      jQuery('.epl-lion').attr('src', logoUrl);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'kleague':
       changeCSS('css/theme/result_style_KLEAGUE.css', CSS_LINK_INDEX);
       break;
     case 'seriea':
       changeCSS('css/theme/result_style_SERIEA.css', CSS_LINK_INDEX);
-      jQuery('.epl-lion').attr('src', logoUrl);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'cl':
       changeCSS('css/theme/result_style_CL.css', CSS_LINK_INDEX);
@@ -109,15 +122,15 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'ligue1':
       changeCSS('css/theme/result_style_LIGUE1.css', CSS_LINK_INDEX);
-      jQuery('.epl-lion').attr('src', logoUrl);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'er24':
       changeCSS('css/theme/result_style_EURO24.css', CSS_LINK_INDEX);
       break;
     case 'wc26':
       changeCSS('css/theme/result_style_WC26.css', CSS_LINK_INDEX);
-      jQuery('.epl-lion').attr('src', logoUrl);
-      break; 
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     default:
       _currentTheme = 'default';
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
@@ -126,28 +139,17 @@ function applyTheme(theme, logoUrl) {
 
   // applyText()는 data 대신 state를 읽도록 수정
   function applyText() {
-    jQuery('.fsm-board #team-text-left').text(state.homeName);   // data.teamLeft.name → state.homeName
-    jQuery('.fsm-board #score-left').text(state.homeScore);
-    jQuery('.fsm-board #team-text-right').text(state.awayName);
-    jQuery('.fsm-board #score-right').text(state.awayScore);
+    setFsmText('.fsm-board #team-text-left', state.homeName);   // data.teamLeft.name → state.homeName
+    setFsmText('.fsm-board #homeScore', state.homeScore);
+    setFsmText('.fsm-board #team-text-right', state.awayName);
+    setFsmText('.fsm-board #awayScore', state.awayScore);
 
-    // jQuery('.fsm-board #homeName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #homeName'), state.homeName) + 'px');
-    // jQuery('.fsm-board #awayName').css('font-size', getTeamNameFontSize(document.querySelector('.fsm-board #awayName'), state.awayName) + 'px');
 
-    fitTeamName(document.querySelector('.fsm-board #homeName'));
-    fitTeamName(document.querySelector('.fsm-board #awayName'));
-    adjustScoreboardWidth();
+
 
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
     // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영됩니다.
 
-    if(_currentType == 'national') {
-      jQuery('.fsm-board #logo-imgLeft').css({objectFit: 'cover'}).attr('src', state.homeLogo);
-      jQuery('.fsm-board #logo-imgRight').css({objectFit: 'cover'}).attr('src', state.awayLogo);
-    } else {
-      jQuery('.fsm-board #logo-imgLeft').css({objectFit: 'contain'}).attr('src', state.homeLogo);
-      jQuery('.fsm-board #logo-imgRight').css({objectFit: 'contain'}).attr('src', state.awayLogo);
-    }
 
     // 팀 컬러 언더라인 — 현재 테마에 따라 다르게 처리 (applyTheme()에서 호출됨)
     // pl2 테마는 언더라인 대신 팀 컬러 배경을 사용: state.colors.homeBg / state.colors.awayBg
@@ -155,209 +157,100 @@ function applyTheme(theme, logoUrl) {
     applyTeamColors();
 
     if(state.extra > 0) {
-      jQuery('.fsm-board .extra-time').css({marginLeft: '180px'});
+      setFsmStyle('.fsm-board .extra-time', {marginLeft: '180px'});
     } else {
-      jQuery('.fsm-board .extra-time').css({marginLeft: '0px'});
+      setFsmStyle('.fsm-board .extra-time', {marginLeft: '0px'});
     }
 
     if(state.half == 'PK') {
-       jQuery('.pso-main').css({height: '32px'});
-       jQuery('.pso-status').css({display: 'flex'});
+       setFsmStyle('.pso-main', {height: '32px'});
+       setFsmStyle('.pso-status', {display: 'flex'});
     } else {
-       jQuery('.pso-main').css({height: '0px'});
-       jQuery('.pso-status').css({display: 'none'});
+       setFsmStyle('.pso-main', {height: '0px'});
+       setFsmStyle('.pso-status', {display: 'none'});
     }
 
     if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle' || _currentTheme == 'default') {
       if(state.aggEnabled) {
         var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
         var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
-        jQuery('.fsm-board #totalScoreLeft').text(aggHome);
-        jQuery('.fsm-board #totalScoreRight').text(aggAway);
-        jQuery('.fsm-board .total-score').css({display: 'flex', opacity: '100%'});
+        setFsmText('.fsm-board #totalScoreLeft', aggHome);
+        setFsmText('.fsm-board #totalScoreRight', aggAway);
+        setFsmStyle('.fsm-board .total-score', {display: 'flex', opacity: '100%'});
       } else {
-        jQuery('.fsm-board .total-score').css({display: 'none', opacity: '0'});
+        setFsmStyle('.fsm-board .total-score', {display: 'none', opacity: '0'});
       }
     } else {
-        jQuery('.fsm-board .total-score').css({display: 'none', opacity: '0'});
+        setFsmStyle('.fsm-board .total-score', {display: 'none', opacity: '0'});
     }
+    adjustScoreboardWidth();
   }
 
   // 팀명 길이에 따라 폰트 크기 조정
-function getTeamNameFontSize(element, teamName) {
-    const maxFontSize = 33;
-    const minFontSize = 12;
-    const maxWidth = element.clientWidth - 25;
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-
-    const style = getComputedStyle(element);
-
-    for (let fontSize = maxFontSize; fontSize >= minFontSize; fontSize -= 2) {
-        context.font = `${fontSize}px ${style.fontFamily}`;
-
-        if (context.measureText(teamName).width <= maxWidth) {
-            return fontSize;
-        }
-    }
-    return minFontSize;
-}
-
-function fitTeamName(element) {
-    const text = element.querySelector('.text');
-
-    if (!text) return;
-
-    const maxFontSize = 33;
-    const minFontSize = 12;
-
-    // 현재 team-name이 사용할 수 있는 실제 너비
-    const availableWidth = element.clientWidth
-        - parseFloat(getComputedStyle(element).paddingLeft)
-        - parseFloat(getComputedStyle(element).paddingRight);
-
-    let fontSize = maxFontSize;
-
-    text.style.whiteSpace = 'nowrap';
-    text.style.fontSize = `${fontSize}px`;
-
-    while (text.scrollWidth > availableWidth && fontSize > minFontSize) {
-        fontSize -= 1;
-        text.style.fontSize = `${fontSize}px`;
-    }
-}
+const FSM_WIDTH_LIMITS = Object.freeze({
+  minBoard: 656, maxBoard: 984, minTeam: 240, maxTeam: 420,
+  teamPadding: 80, maxFont: 33, minFont: 12
+});
 
 function adjustScoreboardWidth() {
-    const scoreboard = document.querySelector('.scoreboard-main');
-
-    const homeCard = document.getElementById('homeCard');
-    const awayCard = document.getElementById('awayCard');
-
-    const homeText = document.getElementById('homeName');
-    const awayText = document.getElementById('awayName');
-
-    const background = document.querySelector('.div-background');
-
-    if (!scoreboard || !homeCard || !awayCard || !homeText || !awayText) {
-        return;
-    }
-
-    // =========================
-    // 설정값
-    // =========================
-
-    const MIN_BOARD_WIDTH = 656;
-    const MAX_BOARD_WIDTH = 984;
-
-    const MIN_TEAM_WIDTH = 240;
-    const MAX_TEAM_WIDTH = 420;
-
-    // 팀명 양쪽 여유
-    const TEAM_PADDING = 80;
-
-    // 로고
-    const LOGO_WIDTH = 80;
-
-    // 가운데 점수 영역
-    const CENTER_WIDTH = 176;
-
-
-    // =========================
-    // 실제 팀명 너비 측정
-    // =========================
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    function getTextWidth(text, element) {
-        const style = getComputedStyle(element);
-
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-
-        context.font =
-            `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-
-        return context.measureText(text).width;
-    }
-
-    const homeTextWidth = getTextWidth(homeText.textContent, homeText);
-    const awayTextWidth = getTextWidth(awayText.textContent, awayText);
-
-
-    // =========================
-    // 팀 영역 너비 계산
-    // =========================
-
-    let homeWidth = homeTextWidth + TEAM_PADDING;
-    let awayWidth = awayTextWidth + TEAM_PADDING;
-
-    homeWidth = Math.max(
-        MIN_TEAM_WIDTH,
-        Math.min(MAX_TEAM_WIDTH, homeWidth)
-    );
-
-    awayWidth = Math.max(
-        MIN_TEAM_WIDTH,
-        Math.min(MAX_TEAM_WIDTH, awayWidth)
-    );
-
-
-    // =========================
-    // 전체 보드 너비 계산
-    // =========================
-
-    let boardWidth =
-        LOGO_WIDTH +
-        homeWidth +
-        CENTER_WIDTH +
-        awayWidth +
-        LOGO_WIDTH;
-
-
-    // 최소 / 최대 제한
-    boardWidth = Math.max(
-        MIN_BOARD_WIDTH,
-        Math.min(MAX_BOARD_WIDTH, boardWidth)
-    );
-
-
-    // =========================
-    // 실제 적용
-    // =========================
-
-    if(homeWidth > awayWidth) {
-      homeCard.style.width = `${homeWidth}px`;
-      awayCard.style.width = `${homeWidth}px`;
-    } else if(awayWidth > homeWidth) {
-      homeCard.style.width = `${awayWidth}px`;
-      awayCard.style.width = `${awayWidth}px`;
-    }
-
-    scoreboard.style.width = `${boardWidth}px`;
-
-    if (background) {
-        background.style.width = `${boardWidth}px`;
-    }
+  const board = document.querySelector('.fsm-board');
+  const scoreboard = board?.querySelector('.scoreboard-main');
+  const cards = [document.getElementById('homeCard'), document.getElementById('awayCard')];
+  const names = cards.map(card => card?.querySelector('.team-name'));
+  const texts = names.map(name => name?.querySelector('.text'));
+  if (!scoreboard || texts.some(text => !text)) return;
+  const limits = FSM_WIDTH_LIMITS;
+  // Measure at the original size, independent of the previous render.
+  const widths = texts.map(text => {
+    text.style.fontSize = limits.maxFont + 'px';
+    text.style.width = 'max-content';
+    const width = text.scrollWidth;
+    text.style.width = '';
+    return width;
+  });
+  // Measure actual theme slots, including aggregate scores when visible.
+  const fixedWidth = Array.from(scoreboard.children).reduce((sum, child) => {
+    const style = getComputedStyle(child);
+    if (cards.includes(child) || style.position === 'absolute' || style.display === 'none') return sum;
+    return sum + child.offsetWidth + (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0);
+  }, 0);
+  const requestedTeam = Math.max(limits.minTeam, Math.max(...widths) + limits.teamPadding);
+  const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
+  const boardWidth = Math.min(limits.maxBoard, requestedBoard, fixedWidth + 2 * limits.maxTeam);
+  const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
+  cards.forEach(card => { card.style.width = teamWidth + 'px'; });
+  scoreboard.style.width = boardWidth + 'px';
+  const background = board.querySelector('.div-background');
+  if (background) background.style.width = boardWidth + 'px';
+  // Fit text only after the final equal team widths have been applied.
+  texts.forEach((text, index) => {
+    const style = getComputedStyle(names[index]);
+    const available = Math.max(0, names[index].clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
+    let size = limits.maxFont;
+    text.style.width = 'max-content';
+    while (text.scrollWidth > available && size > limits.minFont) text.style.fontSize = --size + 'px';
+    if (text.scrollWidth > available && available > 0) text.style.fontSize = (size * available / text.scrollWidth) + 'px';
+    text.style.width = '';
+  });
 }
+
 
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
     if (theme == 'pl') {
-      jQuery('.fsm-board .teams-left').css({background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
-      jQuery('.fsm-board .teams-right').css({background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-left', {background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-right', {background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
     } if (theme == 'wc26') {
-      jQuery('.fsm-board .teams-left').css({background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
-      jQuery('.fsm-board .teams-right').css({background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
-      jQuery('.fsm-board #homeColor').css({background: state.colors.homeBg});
-      jQuery('.fsm-board #awayColor').css({background: state.colors.awayBg});
+      setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
+      setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
+      setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
+      setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
     } else if(theme != 'pl' && theme != 'wc26') {
       // default / pl / cl / uel / 나머지 모든 테마
-      jQuery('.fsm-board .teams-left').css({background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
-      jQuery('.fsm-board .teams-right').css({background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
-      jQuery('.fsm-board .team-logo > img').css({outline: 'none'});
+      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
+      setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
       // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
   }
@@ -373,17 +266,21 @@ function adjustScoreboardWidth() {
   // applyPSO()도 state.pk 배열 읽도록 수정 (자세한 내용은 6-5 참조)
   function applyPSO() {
     const isPso = state.half === 'PK';
-    jQuery('.fsm-board .pso-status').css('height', isPso ? '32px' : '0');
+    setFsmStyle('.fsm-board .pso-status', {height: isPso ? '32px' : '0'});
     if (!isPso) return;
     const homePso = toPsoArr(state.pk.home);  // 'G'/'M' → [1,0,-1,...] 변환
     const awayPso = toPsoArr(state.pk.away);
 
-    for (let i = 0; i < Math.max(homePso.length, 5); i++) {
-      const lColor = homePso[i] === 1 ? 'limegreen' : homePso[i] === 0 ? 'red' : '';
-      const rColor = awayPso[i] === 1 ? 'limegreen' : awayPso[i] === 0 ? 'red' : '';
-      jQuery('.fsm-board #pso-left .pso-circle').eq(i).css({background: lColor});
-      jQuery('.fsm-board #pso-right .pso-circle').eq(i).css({background: rColor});
-    }
+    [homePso, awayPso].forEach((attempts, side) => {
+      const list = document.querySelector(side === 0 ? '#pso-left ul' : '#pso-right ul');
+      if (!list) return;
+      list.replaceChildren(...attempts.map(value => {
+        const item = document.createElement('li');
+        item.className = 'pso-circle';
+        item.style.background = value === 1 ? 'limegreen' : value === 0 ? 'red' : '';
+        return item;
+      }));
+    });
   }
 
   function getColorContract(hex) {
@@ -397,12 +294,9 @@ function adjustScoreboardWidth() {
     function hexToB(h) {return parseInt((cutHex(h)).substring(4,6),16)}
     function cutHex(h) {return (h.charAt(0)=="#") ? h.substring(1,7):h}
 
-    cBrightness = ((hRed * 299) + (hGreen * 587) + (hBlue * 114)) / 1000;
-      if (cBrightness > threshold) { return "#000000"; } else { return "#ffffff"; } 
+    const cBrightness = ((hRed * 299) + (hGreen * 587) + (hBlue * 114)) / 1000;
+      if (cBrightness > threshold) { return "#000000"; } else { return "#ffffff"; }
   }
-
-  // render.js가 호출할 수 있도록 단 한 줄 추가
-  window.fsmBoardRender = function() { applyText(); applyPSO(); };
 
 (function init() {
   // 페이지 로드 즉시 default(친선경기) CSS 적용(저장된 리그 아이디가 없을 시)
@@ -411,4 +305,6 @@ function adjustScoreboardWidth() {
   }
 })();
 
-window.fsmBoardRender = function() { applyText(); applyPSO(); };
+window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); };
+
+if (document.fonts) document.fonts.ready.then(() => window.fsmBoardRender());

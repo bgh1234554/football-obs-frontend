@@ -8,7 +8,7 @@
     /* lp-stat 패널 순환 버튼 — 세 패널(스탯/이벤트/상대전적) 사이 전환 */
     .lp-stat-cycle-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       left: 8px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -32,7 +32,7 @@
     /* lp-stat 자동 전환 일시정지 버튼 — cycle 버튼과 동일 스타일, 우측 상단에 배치. statCycleAuto ON일 때만 표시. */
     .lp-stat-pause-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       right: 8px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -57,9 +57,33 @@
       margin-right: calc(var(--panel-title-control-size) + 6px);
     }
     .lp-stat-pause-btn.is-paused { border-color: rgba(255,255,255,.35); color: #fff; }
+    /* 교체 명단 입력(연필) 버튼 — 홈/원정 교체 명단 모드에서만 표시(stat-cycle.js lpStatUpdateBenchEditBtn).
+       일시정지 버튼이 떠 있으면 그 왼쪽, 없으면 일시정지 버튼 자리(우측 상단). */
+    .lp-stat-bench-edit-btn {
+      position: absolute;
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
+      right: 8px;
+      z-index: 20;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 4px;
+      color: rgba(255,255,255,.72);
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      transition: background 120ms;
+    }
+    .lp-stat.has-pause-btn .lp-stat-bench-edit-btn { right: calc(8px + var(--panel-title-control-size) + 6px); }
+    .lp-stat-bench-edit-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
+    .lp-stat-bench-edit-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
     .lp-stat-standings-popup-btn {
       position: absolute;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       left: 36px;
       z-index: 20;
       background: rgba(255,255,255,.1);
@@ -109,7 +133,7 @@
     .lp-stat-refresh-btn {
       position: absolute;
       z-index: 20;
-      top: calc(4px + ((var(--panel-title-bar-height) - var(--panel-title-control-size)) / 2));
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
       left: 36px;
       height: var(--panel-title-control-size);
       width: var(--panel-title-control-size);
@@ -127,7 +151,15 @@
        텍스트를 감싸는 정도로만 테두리를 두른다. */
     .lp-bench-refresh-btn {
       font: inherit;
-      padding: 1px 7px;
+      height: 22px;
+      padding: 0 7px;
+      line-height: 1;
+      justify-content: center;
+    }
+    .lp-bench-refresh-btn .lp-force-refresh-label,
+    .lp-bench-refresh-btn .lp-force-refresh-count {
+      display: block;
+      line-height: 13px;
     }
 
     /* bench cycle 패널 공통 — [data-stat-panel] 과 동일한 패딩으로 타이틀 높이 맞춤 */
@@ -262,7 +294,7 @@
     .scoreaxis-small-popup-btn {
       position: absolute;
       right: 8px;
-      top: 50%;
+      top: calc((100% - 1px) / 2 - 2px);
       transform: translateY(-50%);
       width: 22px;
       height: 22px;
@@ -296,8 +328,8 @@
       text-align: center;
     }
     .scoreaxis-standings-modal {
-      width: min(980px, calc(100vw - 48px));
-      height: min(820px, calc(100vh - 48px));
+      width: min(980px, calc(calc(var(--display-vw, 1vw) * 100) - 48px));
+      height: min(820px, calc(calc(var(--display-vh, 1vh) * 100) - 48px));
       border-radius: 12px;
       background: #0B1220;
     }
@@ -355,7 +387,8 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       color: #fff;
-      padding: 0;
+      /* 상단 패널 여백 4px을 포함한 헤더 중앙에 제목을 맞춘다. */
+      padding: 0 0 4px;
       border-bottom: 1px solid rgba(255,255,255,.12);
       margin-bottom: 6px;
     }
@@ -398,7 +431,8 @@
     }
     .st-title {
       text-align: center;
-      font-size: 12px;
+      /* 설정 팝업 "경기 스탯 글씨 크기" 슬라이더로 조정 (settings-popup.js: applyLayoutSettings). */
+      font-size: var(--st-name-base-size, 12px);
       font-weight: 700;
       color: rgba(255,255,255,.85);
       white-space: nowrap;
@@ -406,7 +440,7 @@
       text-overflow: ellipsis;
     }
     .st-val {
-      font-size: 12px;
+      font-size: var(--st-name-base-size, 12px);
       font-weight: 800;
       text-align: center;
       color: rgba(255,255,255,.85);
@@ -425,7 +459,9 @@
       position: relative;
       display: flex;
       width: 100%;
-      height: 6px;
+      /* 글씨 크기(--st-name-base-size)와 같은 비율로 굵어짐 (settings-popup.js: applyLayoutSettings
+         가 statsNameSize/12 배율을 곱해 계산). 예: 12px→13px면 6px→6.5px. */
+      height: var(--st-bar-height, 6px);
       border-radius: 3px;
       overflow: hidden;
       background: rgba(255,255,255,.08);
@@ -440,7 +476,11 @@
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 1.5px;
+      /* 2px(짝수)로 고정 — translateX(-50%)의 이동량이 정확히 -1px(정수)가 되어, JS가
+         left를 정수 px로 스냅한 것과 합쳐지면 서브픽셀 안티앨리어싱이 전혀 생기지 않는다.
+         예전 1.5px는 그 자체로 -0.75px(소수) 이동이라 left를 아무리 정수로 맞춰도 폭
+         렌더링이 매번 미묘하게 달라 보였다(행마다 굵기가 들쭉날쭉하다는 피드백의 원인). */
+      width: 2px;
       transform: translateX(-50%);
       background: rgba(0,0,0,.5);
       pointer-events: none;

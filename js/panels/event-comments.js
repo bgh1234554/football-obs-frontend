@@ -35,6 +35,7 @@ window.EVENT_COMMENT_KO = {
   'Abusive Language':           '모욕적인 언행',
   'Violent conduct':            '폭력 행위',
   'Persistent fouling':         '반복적 파울',
+  'Persistent Infringement':    '반복적 규칙 위반',
   'Simulation':                 '시뮬레이션',
   'Dangerous play':             '위험한 플레이',
   'Professional foul last man': '최종 수비수 고의 반칙',
@@ -47,6 +48,7 @@ window.EVENT_COMMENT_KO = {
   'misses next match':          '다음 경기 출장 정지',
   'Offside':                    '오프사이드',
   'Dissent':                    '판정 항의',
+  'Not Retreating':             '세트피스 거리 미준수',
   
   // 페널티 슛아웃
   'Penalty Shootout':             '승부차기',

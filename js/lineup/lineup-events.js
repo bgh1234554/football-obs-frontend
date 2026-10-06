@@ -39,12 +39,20 @@ function lpCollectPlayerNames(player) {
   if (!player || typeof player !== 'object') return [];
   return [
     typeof getPlayerNickname === 'function' && player.playerId != null
-      ? getPlayerNickname(player.playerId)
+      ? getPlayerNickname(
+        player.playerId,
+        // id=0 선수만 이름 키로 조회(id≠0이면 두 번째 인자는 무시됨)
+        Number(player.playerId) === 0 && typeof playerNicknameSourceName === 'function'
+          ? playerNicknameSourceName(player)
+          : undefined
+      )
       : null,
     player.name,
     player.nameKoLong,
     player.playerName,
     player.playerNameKoLong,
+    player.origName,
+    player.playerOrigName,
   ]
     .map(lpNormalizePlayerName)
     .filter(Boolean);
@@ -52,39 +60,140 @@ function lpCollectPlayerNames(player) {
 
 /**
  * 라인업/벤치 배열에서 matcher와 매칭되는 선수의 인덱스를 찾는다.
- * 1) playerId가 있으면 그것을 1순위로 시도(가장 안정적).
- * 2) 못 찾으면 정규화 이름으로 fallback — 이벤트의 playerName과 라인업 데이터의 이름 키들 교집합 검색.
+ * ID를 우선하되, 이름이 명확하게 다른 한 선수를 가리키면 해당 선수를 사용한다.
+ * API가 서로 다른 선수에게 같은 이벤트 ID를 주는 경우에도 이름이 모호하면 추측하지 않는다.
  * 3) 둘 다 실패 시 -1 반환 (호출자가 swap 스킵 + 경고 로그).
  */
 function lpFindLineupPlayerIndex(players, matcher) {
   if (!Array.isArray(players) || !matcher || typeof matcher !== 'object') return -1;
 
-  // 1) playerId 우선 매칭.
-  const targetId = matcher.playerId == null ? null : String(matcher.playerId);
-  if (targetId) {
-    const byId = players.findIndex(player => String(player?.playerId) === targetId);
-    if (byId !== -1) return byId;
-  }
+  // 1) playerId 우선 매칭 — 실제 ID(0 초과)일 때만. 0은 "ID 없음"이라 ID로 찾으면 명단에서 ID가 0인
+  //    첫 선수가 엉뚱하게 잡힌다(예: 교체 IN을 ID 0 선수로 고르면 다른 ID 0 벤치 선수가 대신 투입됨).
+  const targetId = Number(matcher.playerId) > 0 ? String(Number(matcher.playerId)) : null;
+  const byId = targetId ? players.findIndex(player => String(player?.playerId) === targetId) : -1;
 
   // 2) 이름 fallback — 이벤트 측 이름 후보 정규화.
   const targetNames = [
     matcher.playerName,
     matcher.playerNameKoLong,
+    matcher.playerOrigName,
   ]
     .map(lpNormalizePlayerName)
     .filter(Boolean);
-  if (!targetNames.length) return -1;
+  if (!targetNames.length) return byId;
 
-  // 3) 라인업 측 이름 후보군과 교집합 있는 첫 인덱스.
-  return players.findIndex(player => {
+  // 이름만 일치하는 첫 항목을 고르면 동명이인이 잘못 교체될 수 있으므로 유일성을 확인한다.
+  const matches = [];
+  players.forEach((player, index) => {
     const candidateNames = lpCollectPlayerNames(player);
-    return candidateNames.some(name => targetNames.includes(name));
+    if (candidateNames.some(name => targetNames.includes(name))) matches.push(index);
+  });
+  if (matches.includes(byId)) return byId;
+  if (matches.length === 1) return matches[0];
+  return matches.length ? -1 : byId;
+}
+
+/** 이미 명단에 있는 ID가 다른 선수의 이름으로 사용된 이벤트만 개별 보정한다.
+ * ID 전체를 리매핑하면 정상 이벤트까지 다른 선수에게 넘어가므로 이벤트 단위로 처리한다.
+ * ID 없는 선수는 0 + 명단 표시명을 유지해 카드/교체 집계의 이름 키도 일치시킨다.
+ */
+function lpReconcileConflictingEventIds(data, manualLinks = {}) {
+  if (!Array.isArray(data?.events)) return;
+  data.events = data.events.map(ev => {
+    if (!ev) return ev;
+    const lineup = data[`${ev.side}Lineup`];
+    const roster = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])];
+    let next = ev;
+    ['player', 'assist'].forEach(field => {
+      const id = Number(ev[`${field}Id`]);
+      if (!(id > 0) || !roster.some(p => Number(p?.playerId) === id)) return;
+      // 교체 이벤트 자체의 수동 선택, 또는 이 이벤트의 이름에 해당하는 선수 링크만 우선한다.
+      const fixtureId = String(data.matchInfo?.fixtureId ?? '');
+      if (String(ev.type || '').toLowerCase() === 'subst' && fixtureId
+        && typeof evGetSubstOverride === 'function' && evGetSubstOverride(fixtureId, ev, field)) return;
+      const eventNames = [ev[`${field}Name`], ev[`${field}NameKoLong`], ev[`${field}OrigName`]]
+        .map(lpNormalizePlayerName).filter(Boolean);
+      const namePrefix = `${ev.side}:n:`;
+      if (eventNames.length && Object.entries(manualLinks).some(([key, value]) => {
+        const idLink = key === `${ev.side}:id:${id}`;
+        const nameLink = key.startsWith(namePrefix) && Number(value?.playerId) === id;
+        if (!idLink && !nameLink) return false;
+        const linkNames = [value?.name, value?.nameKoLong, nameLink ? key.slice(namePrefix.length) : null]
+          .map(lpNormalizePlayerName).filter(Boolean);
+        return linkNames.some(name => eventNames.includes(name));
+      })) return;
+      const index = lpFindLineupPlayerIndex(roster, {
+        playerId: id,
+        playerName: ev[`${field}Name`],
+        playerNameKoLong: ev[`${field}NameKoLong`],
+        playerOrigName: ev[`${field}OrigName`],
+      });
+      const player = roster[index];
+      if (!player || Number(player.playerId) === id) return;
+      next = {
+        ...next,
+        [`${field}Id`]: Number(player.playerId) || 0,
+        [`${field}Name`]: player.name || player.playerName || '',
+        [`${field}NameKoLong`]: player.nameKoLong || null,
+        [`${field}OrigName`]: player.origName || null,
+      };
+    });
+    return next;
   });
 }
 
 /**
+ * playerId가 실제 값(0 아님)이면 그대로 문자열 키로 쓰고, 0/null이면 "0:{side}:{정규화된 이름}"
+ * 합성 키로 구분한다. API가 여러 선수의 ID를 다 못 준 팀(하위 리그 등)에서, 라인업/벤치에
+ * playerId=0인 선수가 여럿 있을 때 전부 같은 "0" 키로 뭉쳐 한 이벤트(카드/골/교체)가 무관한
+ * 선수 전원에게 표시되던 충돌을 막는다. 이름은 이벤트 쪽(playerName/assistName)과 라인업 쪽
+ * (player.name) 둘 다 백엔드 KoResolver를 거쳐 동일한 표시명을 쓰므로 정규화 후 일치한다.
+ * 이름조차 없으면(사실상 식별 불가) null을 반환해 호출자가 집계를 건너뛰게 한다.
+ */
+function lpEventPersonKey(id, side, name) {
+  const pid = Number(id);
+  if (pid) return String(pid);
+  const normalized = lpNormalizePlayerName(name);
+  if (!normalized) return null;
+  return `0:${side || ''}:${normalized}`;
+}
+window.lpEventPersonKey = lpEventPersonKey;
+
+/**
+ * 라인업 풀폼(완전 수동 입력, `_manual: true`)으로 만든 선수는 playerId가 없어 API events와
+ * 전혀 연결될 수 없다 — lineup-manual-modal.js의 골/자책골/도움/경고/퇴장 입력칸에 사용자가
+ * 직접 넣은 값을 lpAggregatePlayerEvents가 만드는 events와 정확히 같은 모양으로 변환해,
+ * lpBuildNodeBadgesHtml/lpBuildCardMarkersHtml/lpBuildGoalsAssistsHtml/lpCardKind 등
+ * 기존 배지 렌더링 함수를 그대로 재사용할 수 있게 한다. 분(minute) 정보가 없으므로
+ * time은 전부 null — 위 렌더 함수들은 개수/존재 여부만 보고 time은 쓰지 않아 안전하다.
+ * 값이 하나도 없으면 null(호출자가 일반 이벤트 조회로 폴백).
+ */
+function lpManualPlayerEventsOverride(player) {
+  if (!player) return null;
+  const goals = Number(player.manualGoals) || 0;
+  const ownGoals = Number(player.manualOwnGoals) || 0;
+  const assists = Number(player.manualAssists) || 0;
+  const yellow = !!player.manualYellow;
+  const red = !!player.manualRed;
+  if (!goals && !ownGoals && !assists && !yellow && !red) return null;
+
+  return {
+    goals: Array.from({ length: goals }, () => ({ time: null, isPenalty: false, isOwnGoal: false })),
+    ownGoals: Array.from({ length: ownGoals }, () => ({ time: null })),
+    assists: Array.from({ length: assists }, () => ({ time: null })),
+    yellow: yellow ? { time: null } : null,
+    // 옐로+레드 둘 다 체크 = "2번째 경고 누적 퇴장"(lpCardKind가 yellow+red.isCumulative일 때만
+    // 'cumulative'로 판정해 카드 2장을 같이 그림). 레드만 체크하면 일반 단독 퇴장.
+    red: red ? { time: null, isCumulative: yellow } : null,
+    subIn: null,
+    subOut: null,
+  };
+}
+window.lpManualPlayerEventsOverride = lpManualPlayerEventsOverride;
+
+/**
  * fixtureData.events를 선수별로 집계.
- * 반환 Map<playerIdString, {
+ * 반환 Map<personKey, {
  *   goals: [{ time, isPenalty, isOwnGoal }],  // 정규 득점만 (자책골 제외)
  *   ownGoals: [{ time }],                     // 이 선수의 자책골
  *   assists: [{ time }],
@@ -93,6 +202,8 @@ function lpFindLineupPlayerIndex(players, matcher) {
  *   subIn: { time } | null,           // 이 선수가 교체 IN 됐을 때
  *   subOut: { time } | null,          // 이 선수가 교체 OUT 됐을 때
  * }>
+ * personKey는 lpEventPersonKey 참고 — playerId가 있으면 그 숫자 그대로, 없으면
+ * "0:{side}:{이름}" 합성 키. 렌더 쪽 lpGetPlayerEvents도 같은 함수로 조회해야 일치한다.
  *
  * Penalty Shootout 이벤트(comments==='Penalty Shootout')는 제외.
  * Own Goal은 goals가 아닌 별도의 ownGoals에 집계 — 정규 득점과 구분해서 표시하기 위함
@@ -102,15 +213,14 @@ function lpAggregatePlayerEvents(events) {
   const map = new Map();
   if (!Array.isArray(events)) return map;
 
-  function ensure(pid) {
-    const key = String(pid);
+  function ensure(key) {
     if (!map.has(key)) {
       map.set(key, { goals: [], ownGoals: [], assists: [], yellow: null, red: null, subIn: null, subOut: null });
     }
     return map.get(key);
   }
 
-  // 같은 선수 두 번째 옐로 → red(누적) 변환을 위해 yellow 카운트 추적.
+  // 같은 선수 두 번째 옐로 → red(누적) 변환을 위해 yellow 카운트 추적(personKey 기준).
   const yellowCount = new Map();
 
   events.forEach(ev => {
@@ -123,28 +233,31 @@ function lpAggregatePlayerEvents(events) {
     if (isPso) return;
 
     if (type === 'goal') {
-      if (ev.playerId == null) return;
+      const playerKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      if (!playerKey) return;
       if (detail === 'Missed Penalty') return;
       const isOwn = detail === 'Own Goal';
       const isPenalty = detail === 'Penalty';
       if (isOwn) {
-        ensure(ev.playerId).ownGoals.push({ time });
+        ensure(playerKey).ownGoals.push({ time });
       } else {
-        ensure(ev.playerId).goals.push({ time, isPenalty, isOwnGoal: false });
+        ensure(playerKey).goals.push({ time, isPenalty, isOwnGoal: false });
       }
       // 어시스트는 Own Goal만 제외. 페널티는 보통 assistId가 없어 기록되지 않지만, 있으면 그대로 반영.
-      if (ev.assistId != null && !isOwn) {
-        ensure(ev.assistId).assists.push({ time });
+      const assistKey = lpEventPersonKey(ev.assistId, ev.side, ev.assistName);
+      if (assistKey && !isOwn) {
+        ensure(assistKey).assists.push({ time });
       }
       return;
     }
 
     if (type === 'card') {
-      if (ev.playerId == null) return;
-      const e = ensure(ev.playerId);
+      const playerKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      if (!playerKey) return;
+      const e = ensure(playerKey);
       if (detail === 'Yellow Card') {
-        const next = (yellowCount.get(String(ev.playerId)) || 0) + 1;
-        yellowCount.set(String(ev.playerId), next);
+        const next = (yellowCount.get(playerKey) || 0) + 1;
+        yellowCount.set(playerKey, next);
         if (!e.yellow) e.yellow = { time };
         // 두 번째 옐로면 누적 퇴장으로 자동 마킹 (API가 별도 Red를 안 보낼 수도 있음).
         if (next >= 2 && !e.red) e.red = { time, isCumulative: true };
@@ -152,7 +265,7 @@ function lpAggregatePlayerEvents(events) {
         if (!e.yellow) e.yellow = { time }; // 두 번째 옐로만 와도 첫번째 옐로가 있었음을 함의 → 노란 표시
         e.red = { time, isCumulative: true };
       } else if (detail === 'Red Card') {
-        const hadYellow = (yellowCount.get(String(ev.playerId)) || 0) > 0;
+        const hadYellow = (yellowCount.get(playerKey) || 0) > 0;
         e.red = { time, isCumulative: hadYellow };
       }
       return;
@@ -160,8 +273,10 @@ function lpAggregatePlayerEvents(events) {
 
     if (type === 'subst') {
       // playerId = OUT, assistId = IN (이벤트 패널과 동일한 컨벤션)
-      if (ev.playerId != null) ensure(ev.playerId).subOut = { time };
-      if (ev.assistId != null) ensure(ev.assistId).subIn = { time };
+      const outKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      const inKey = lpEventPersonKey(ev.assistId, ev.side, ev.assistName);
+      if (outKey) ensure(outKey).subOut = { time };
+      if (inKey) ensure(inKey).subIn = { time };
     }
   });
 
@@ -197,23 +312,30 @@ function lpResolveSubstEventIdsForAggregation(fixtureData) {
         playerId: ev.playerId,
         playerName: ev.playerName,
         playerNameKoLong: ev.playerNameKoLong,
+        playerOrigName: ev.playerOrigName,
       });
       const inIdx = lpFindLineupPlayerIndex(substitutes, {
         playerId: ev.assistId,
         playerName: ev.assistName,
         playerNameKoLong: ev.assistNameKoLong,
+        playerOrigName: ev.assistOrigName,
       });
       if (outIdx === -1 || inIdx === -1) return;
 
       const outPlayer = startXi[outIdx];
       const inPlayer = substitutes[inIdx];
-      const resolvedOutId = Number(outPlayer?.playerId) > 0 ? outPlayer.playerId : ev.playerId;
-      const resolvedInId = Number(inPlayer?.playerId) > 0 ? inPlayer.playerId : ev.assistId;
-      if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId) {
+      const resolvedOutId = Number(outPlayer?.playerId) || 0;
+      const resolvedInId = Number(inPlayer?.playerId) || 0;
+      // ID 0은 이름이 집계 키이므로, ID가 그대로여도 명단의 이름으로 맞춘다.
+      // 수동 선택에서 긴 이름을 저장한 경우에도 노드의 짧은 이름과 연결되어야 한다.
+      if (resolvedOutId !== ev.playerId || resolvedInId !== ev.assistId
+        || resolvedOutId === 0 || resolvedInId === 0) {
         resolved[index] = {
           ...ev,
           playerId: resolvedOutId,
           assistId: resolvedInId,
+          ...(resolvedOutId === 0 ? { playerName: outPlayer.name || outPlayer.playerName } : {}),
+          ...(resolvedInId === 0 ? { assistName: inPlayer.name || inPlayer.playerName } : {}),
         };
       }
 
@@ -244,6 +366,17 @@ function lpBuildRatingMap(players) {
     map.set(String(p.playerId), num);
   });
   return map;
+}
+
+/** fixtureData.players(PlayerStats)에서 captain=true인 playerId 집합. 주장 완장 배지 표시용. */
+function lpBuildCaptainSet(players) {
+  const set = new Set();
+  if (!Array.isArray(players)) return set;
+  players.forEach(p => {
+    if (!p || p.playerId == null || Number(p.playerId) === 0) return;
+    if (p.captain) set.add(String(p.playerId));
+  });
+  return set;
 }
 
 // 평점 색상 기본 팔레트. settings에 사용자 override가 없을 때만 사용.
@@ -320,11 +453,13 @@ function lpApplySubReflectToLineup(lineup, side, events) {
       playerId: ev.playerId,
       playerName: ev.playerName,
       playerNameKoLong: ev.playerNameKoLong,
+      playerOrigName: ev.playerOrigName,
     });
     const inIdx = lpFindLineupPlayerIndex(substitutes, {
       playerId: ev.assistId,
       playerName: ev.assistName,
       playerNameKoLong: ev.assistNameKoLong,
+      playerOrigName: ev.assistOrigName,
     });
     if (outIdx === -1 || inIdx === -1) {
       console.warn('Sub reflect skipped due to unmatched lineup player', {

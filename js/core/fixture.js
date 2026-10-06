@@ -7,6 +7,25 @@
   const copyToast = $('copy-toast');
   const gameTarget = document.querySelector('#game-content');
   let currentFixtureId = null;
+  let fixtureSelectionVersion = 0;
+  // 실제로 스코어보드에 로딩/적용된 fixture ID. currentFixtureId는 위젯에서 "구경만" 해도
+  // 바뀌지만(바로 불러오기 버튼의 대상), 이건 fetchAndApplyFixtureData가 실제로 데이터를
+  // 적용했을 때만 갱신 — forceRefreshCurrentFixture처럼 "지금 화면에 떠 있는 경기"를 다시
+  // 조회해야 하는 기능은 반드시 이 값을 써야 한다. currentFixtureId를 썼을 때는, 이미 A 경기를
+  // 불러온 상태에서 일정 위젯으로 B 경기를 구경만 해도 "새로고침" 버튼이 B를 재조회해버리는
+  // 버그가 있었다.
+  let activeFixtureId = null;
+  // "최근 선택값" 버튼 전용 — 위젯 클릭(persist:false)이든 실제 로딩(persist:true)이든 가장
+  // 최근에 "선택"된 경기 ID를 그대로 기억한다. last_fixture_id(localStorage)는 새로고침 복원용이라
+  // 위젯 클릭으로는 갱신되지 않는데, 그걸 "최근 선택값" 버튼에 그대로 쓰면 위젯에서 경기를
+  // 클릭한 직후에도 예전에 실제로 로딩했던 경기 ID가 나오는 버그가 있었다. "비우기" 버튼도
+  // 이 값은 건드리지 않아 — 보드를 비운 뒤에도 방금 보던 경기를 "최근 선택값"으로 다시 불러올 수 있다.
+  let lastSeenFixtureId = null;
+  // setFixtureId가 저장값을 바꾸기 전에 복원된 타이머의 경기 ID를 보관한다.
+  const initialFixtureId = (() => {
+    try { return String(localStorage.getItem('last_fixture_id') ?? '').trim(); }
+    catch { return ''; }
+  })();
   let toastTimer = null;
 
   /** 화면 하단에 토스트 메시지를 1.8초 동안 표시 */
@@ -50,13 +69,26 @@
   /** 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신 */
   /**
    * 현재 선택된 경기 ID를 전역 변수에 저장하고 UI(표시 텍스트, 인라인 래퍼)를 갱신.
-   * id가 truthy면 last_fixture_id로 영속화 → 다음 세션 "최근값 불러오기" 버튼에서 사용.
+   * persist=true(기본값)면 id가 truthy일 때 last_fixture_id로 영속화 →
+   * 다음 세션 "최근값 불러오기" 버튼 + 새로고침 시 자동 복원에서 사용.
+   *
+   * persist=false는 "일정 확인" 위젯에서 경기를 클릭해 미리보기만 하는 경우 전용 — 이때는
+   * currentFixtureId(= "바로 불러오기" 버튼의 대상)만 바뀔 뿐 실제로 스코어보드에 아직 반영된
+   * 게 아니므로 last_fixture_id를 덮어쓰면 안 된다. 예전에는 무조건 영속화해서, 이미 A 경기를
+   * 불러온 뒤 위젯에서 B 경기를 구경만 해도 last_fixture_id가 B로 바뀌어버려 — 새로고침하면
+   * 실제로 로딩했던 A가 아니라 클릭만 해봤던 B로 복원되는 버그가 있었다. 실제 로딩(위젯 클릭이
+   * 아니라 fetchAndApplyFixtureData 성공 시 호출되는 지점들)에서는 인자를 생략해 기존처럼 영속화한다.
    */
-  function setFixtureId(id) {
+  function setFixtureId(id, { persist = true } = {}) {
+    fixtureSelectionVersion += 1;
     currentFixtureId = id || null;
+    if (currentFixtureId) lastSeenFixtureId = currentFixtureId;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
     fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
-    if (currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
+    if (panelFixtureLoadBtn && !_mainShowBtnBusy) {
+      panelFixtureLoadBtn.disabled = !currentFixtureId;
+    }
+    if (persist && currentFixtureId) localStorage.setItem('last_fixture_id', currentFixtureId);
   }
   /**
    * matchInfo에서 한 팀의 표시명 선택 — 설정의 'teamName' 토글에 따라 long/short 분기.
@@ -122,7 +154,7 @@
       const w = gameTarget.querySelector('api-sports-widget[data-type="game"]');
       const id = w ? w.getAttribute('data-game-id') : null;
       if(id && id !== currentFixtureId){
-        setFixtureId(id);
+        setFixtureId(id, { persist: false });
         setStatus('클릭으로 선택됨');
         autoClickStandings(id);
       }
@@ -156,10 +188,13 @@
   }
 
   /** 경기 ID 입력값으로 API 데이터를 가져와 스코어보드에 반영하는 메인 진입점 */
-  const mainInput      = $('main-fixture-input');
-  const mainShowBtn    = $('main-show-btn');
-  const mainUseLastBtn = $('main-use-last-btn');
-  const mainClearBtn   = $('main-clear-btn');
+  const mainInput          = $('main-fixture-input');
+  const mainShowBtn        = $('main-show-btn');
+  const mainUseLastBtn     = $('main-use-last-btn');
+  const mainClearBtn       = $('main-clear-btn');
+  // Details 패널의 "바로 불러오기" — 위젯에서 클릭으로 선택된 currentFixtureId를
+  // 오버레이를 거치지 않고 즉시 조회. 선택된 경기가 없으면 비활성화(setFixtureId에서 토글).
+  const panelFixtureLoadBtn = $('panel-fixture-load-btn');
 
   /**
    * 입력된 fixtureId로 fetchAndApplyFixtureData를 호출하고 오버레이를 닫음.
@@ -179,30 +214,42 @@
     return fetchAndApplyFixtureData(id);
   }
 
-  // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기)
-  // 메인 표시 버튼 — 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  // [이벤트 등록] 경기 ID 입력 패널 버튼 (조회/최근값 불러오기/비우기/바로 불러오기)
+  // 데이터 로딩 + 설정의 'mainPage'(big/small)에 따라 해당 페이지로 자동 이동.
+  // mainShowBtn(오버레이 안 "불러오기")과 panelFixtureLoadBtn(Details 패널 "바로 불러오기")이 공유.
   //
   // 중복 클릭 가드: 조회 중(_mainShowBtnBusy)에 다시 누르면 무시.
   // 원인 - fetchAndApplyFixtureData가 겹쳐 실행되면 FixtureService.buildInjuries()의
   // 선수별 프로필 API 호출(캐시가 비어있는 첫 로딩 시)이 그대로 2배로 나가는 게 확인됐음
   // (API-Football 대시보드에서 같은 playerId가 동시각에 정확히 2번씩 찍히는 패턴으로 발견).
   let _mainShowBtnBusy = false;
-  if(mainShowBtn)    mainShowBtn.addEventListener('click', ()=>{
+  function triggerFixtureLoad(fixtureId){
     if (_mainShowBtnBusy) return;
-    const result = renderMainGame(mainInput?.value);
+    const result = renderMainGame(fixtureId);
     if (result && typeof result.finally === 'function') {
       _mainShowBtnBusy = true;
-      mainShowBtn.disabled = true;
+      if (mainShowBtn) mainShowBtn.disabled = true;
+      if (panelFixtureLoadBtn) panelFixtureLoadBtn.disabled = true;
       result.finally(() => {
         _mainShowBtnBusy = false;
-        mainShowBtn.disabled = false;
+        if (mainShowBtn) mainShowBtn.disabled = false;
+        if (panelFixtureLoadBtn) panelFixtureLoadBtn.disabled = !currentFixtureId;
       });
     }
     closeOverlay();
     const target = (typeof getSetting === 'function' && getSetting('mainPage') === 'small') ? 'main-small' : 'main-big';
     if (typeof window.activatePage === 'function') window.activatePage(target);
+  }
+  if(mainShowBtn) mainShowBtn.addEventListener('click', ()=> triggerFixtureLoad(mainInput?.value));
+  if(panelFixtureLoadBtn) panelFixtureLoadBtn.addEventListener('click', ()=> triggerFixtureLoad(currentFixtureId));
+  if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{
+    // lastSeenFixtureId 우선(위젯 클릭 포함 최신 선택) — 아직 이번 세션에 아무것도 선택 안 했으면
+    // last_fixture_id(localStorage, 실제 로딩된 마지막 경기)로 폴백.
+    const last = lastSeenFixtureId || localStorage.getItem('last_fixture_id');
+    if(!last) return;
+    if(mainInput) mainInput.value=last;
+    mainInput.focus();
   });
-  if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{ const last=localStorage.getItem('last_fixture_id'); if(!last) return; if(mainInput) mainInput.value=last; mainInput.focus(); });
   if(mainClearBtn)   mainClearBtn.addEventListener('click', ()=>{
     if(mainInput){
       mainInput.value='';
@@ -215,6 +262,121 @@
     });
   });
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // [최근 불러온 경기 목록] 경기 ID 입력 오버레이에 최근 7일 / 최대 20개까지 표시.
+  // "바로 불러오기" 위젯 클릭, 오버레이 입력, Details 패널 로딩 등 실제로 데이터가
+  // 적용된 경우(fetchAndApplyFixtureData 성공 시)에만 recordRecentFixture로 기록한다.
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const RECENT_FIXTURE_KEY = 'recent_fixture_history_v1';
+  const RECENT_FIXTURE_MAX = 20;
+  const RECENT_FIXTURE_MS = 7 * 24 * 60 * 60 * 1000;
+  const RECENT_FIXTURE_VISIBLE_ROWS = 5;
+  const recentFixtureListEl = $('fixture-recent-list');
+  const recentFixtureEmptyEl = document.querySelector('[data-fixture-recent-empty]');
+
+  /** localStorage에서 최근 경기 기록을 읽고, 7일 지난 항목은 걸러낸다 (저장은 별도로 안 함). */
+  function loadRecentFixtureHistory(){
+    let list;
+    try { list = JSON.parse(localStorage.getItem(RECENT_FIXTURE_KEY) || '[]'); }
+    catch { list = []; }
+    if(!Array.isArray(list)) return [];
+    const cutoff = Date.now() - RECENT_FIXTURE_MS;
+    return list.filter(entry => entry && entry.id && Number(entry.ts) >= cutoff);
+  }
+
+  function saveRecentFixtureHistory(list){
+    try { localStorage.setItem(RECENT_FIXTURE_KEY, JSON.stringify(list)); } catch {}
+  }
+
+  /**
+   * 성공적으로 로딩된 경기를 최근 목록 맨 앞에 기록 (같은 id는 갱신 후 맨 앞으로 이동).
+   * long/short 팀 이름을 둘 다 저장 — 목록에 표시할 때 점수판의 'teamName'(풀네임/단축명) 설정을
+   * 그대로 따라가도록 하기 위함이다(로딩 시점 설정값 하나로 고정해버리면, 나중에 설정을 바꿔도
+   * 예전에 기록된 항목은 그때 그 표기로 남아있어 헷갈린다).
+   */
+  function recordRecentFixture(id, matchInfo, kickoffAt){
+    const fixtureId = String(id || '').trim();
+    if(!fixtureId) return;
+    const m = matchInfo || {};
+    const list = loadRecentFixtureHistory().filter(entry => entry.id !== fixtureId);
+    list.unshift({
+      id: fixtureId,
+      homeLong: m.homeTeamName || '',
+      homeShort: m.homeTeamNameShort || '',
+      awayLong: m.awayTeamName || '',
+      awayShort: m.awayTeamNameShort || '',
+      kickoffAt: kickoffAt || null,
+      ts: Date.now(),
+    });
+    saveRecentFixtureHistory(list.slice(0, RECENT_FIXTURE_MAX));
+    renderRecentFixtureList();
+  }
+
+  /**
+   * 최근 목록 항목에서 한 팀의 표시명을 pickMatchTeamName과 동일한 규칙(long/short 토글, fallback)으로
+   * 계산. `home`/`away` 구버전 필드(단일 문자열)만 있는 예전 저장 데이터는 그대로 사용해 호환.
+   */
+  function pickRecentEntryTeamName(entry, side) {
+    const shortName = side === 'home' ? (entry.homeShort || '') : (entry.awayShort || '');
+    const longName = side === 'home' ? (entry.homeLong || '') : (entry.awayLong || '');
+    if (!shortName && !longName) return side === 'home' ? (entry.home || '') : (entry.away || '');
+    const useLong = (typeof isLongName === 'function') && isLongName('teamName');
+    return useLong ? (longName || shortName) : (shortName || longName);
+  }
+
+  /** ISO 문자열/epoch ms를 "YY.MM.DD HH:mm" 형식으로 변환 (로컬 타임존). 값이 없거나 파싱 실패 시 '-'. */
+  function formatRecentFixtureDateTime(value){
+    if(!value) return '-';
+    const d = new Date(value);
+    if(Number.isNaN(d.getTime())) return '-';
+    const pad = n => String(n).padStart(2, '0');
+    return `${String(d.getFullYear()).slice(2)}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** 오버레이 안 최근 목록 UI를 다시 그림. 항목 클릭 시 그 경기를 즉시 불러온다. */
+  function renderRecentFixtureList(){
+    if(!recentFixtureListEl) return;
+    const list = loadRecentFixtureHistory();
+    saveRecentFixtureHistory(list); // 오래된 항목 정리분 즉시 반영
+    recentFixtureListEl.querySelectorAll('.fixture-recent-item').forEach(el => el.remove());
+    if(recentFixtureEmptyEl) recentFixtureEmptyEl.style.display = list.length ? 'none' : '';
+    list.forEach(entry => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fixture-recent-item';
+      const homeDisplay = pickRecentEntryTeamName(entry, 'home');
+      const awayDisplay = pickRecentEntryTeamName(entry, 'away');
+      const teams = (homeDisplay || awayDisplay) ? `${homeDisplay || '?'} vs ${awayDisplay || '?'}` : '팀 정보 없음';
+      const kickoffStr = formatRecentFixtureDateTime(entry.kickoffAt);
+      const loadedStr = formatRecentFixtureDateTime(entry.ts);
+      const idSpan = document.createElement('span');
+      idSpan.className = 'fixture-recent-id';
+      // flex item(span)은 블록화되어 텍스트 앞/뒤 공백이 자동으로 잘려나간다 — 구분용 "-"를
+      // 각 span 앞/뒤에 걸쳐 걸치는 여백 문자로 넣으면 렌더링 시 간격이 사라지므로, 대시는
+      // idSpan 안쪽(공백-대시 순서, 끝 문자가 대시라 안 잘림)에 넣고 나머지 간격은 flex gap으로 처리.
+      idSpan.textContent = `${entry.id} -`;
+      const detailSpan = document.createElement('span');
+      detailSpan.className = 'fixture-recent-detail';
+      detailSpan.textContent = `${teams} - 경기 시간: ${kickoffStr} - 로딩 시점: ${loadedStr}`;
+      btn.append(idSpan, detailSpan);
+      btn.addEventListener('click', () => {
+        if(mainInput) mainInput.value = entry.id;
+        triggerFixtureLoad(entry.id);
+      });
+      recentFixtureListEl.appendChild(btn);
+    });
+    // 5번째 줄까지는 잘리지 않고 보이도록, 실제 렌더된 행 높이를 측정해 max-height를 동적으로 맞춘다
+    // (CSS 고정값은 폰트/줄바꿈에 따라 행 높이가 달라지면 5번째 줄이 살짝 잘려 보이는 문제가 있었음).
+    const firstItem = recentFixtureListEl.querySelector('.fixture-recent-item');
+    if (firstItem) {
+      const rowHeight = firstItem.getBoundingClientRect().height;
+      const visibleRows = Math.min(RECENT_FIXTURE_VISIBLE_ROWS, list.length);
+      recentFixtureListEl.style.maxHeight = rowHeight > 0 ? `${Math.ceil(rowHeight * visibleRows)}px` : '';
+    } else {
+      recentFixtureListEl.style.maxHeight = '';
+    }
+  }
+
   /** 경기 ID 입력 오버레이 패널을 열고 입력 필드에 포커스 */
   const overlay = $('fixture-overlay');
   const openBtn = $('open-fixture-overlay');
@@ -224,6 +386,7 @@
     if(!overlay) return;
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden','false');
+    renderRecentFixtureList();
     setTimeout(()=>mainInput?.focus(),0);
   }
   /** 경기 ID 입력 오버레이 패널을 닫음 */
@@ -479,17 +642,15 @@
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
   //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
-  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 20초 간격으로 호출
-  //     (Bunny CDN 오리진 캐시 TTL이 그보다 짧으면 어차피 낭비 폴링이라 TTL에 맞춰 조정.
-  //     2026-09-13: CDN 캐시가 이미 30초라 15초 폴링의 절반은 캐시만 다시 받아오는 낭비였음 — 20초로 상향)
+  //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
   //   - FT + 3분 경과: 호출 중단
   //   - INT(중단, 재개 가능): 5분 간격으로 재확인. 첫 감지로부터 30분 넘게 지속되면
   //     수동 새로고침을 안내하는 alert를 1회만 띄우고 그 뒤로는 자동 재확인 중단.
   //   - ABD(중단/취소, 재개 안 됨): 감지 즉시 안내 alert를 1회만 띄우고 호출 영구 중단.
   //   - 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO): 조용히 호출 중단.
-  //   - kickoffUtc 없는 NS: 안전하게 20초 간격으로 재호출 (fallback)
-  const POLL_INTERVAL_MS    = 20 * 1000;
+  //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
+  const POLL_INTERVAL_MS    = 15 * 1000;
   const FT_POLL_INTERVAL_MS = 60 * 1000;
   const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
   // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
@@ -537,6 +698,9 @@
    * 실패 시에만 scheduleRetryFromLastFixture로 재예약(타이머 중복 생성 방지).
    */
   function schedulePoll(data) {
+    // 팝업으로 뜬 창(js/core/popout.js)은 모달 하나만 보여주고 곧 닫힐 창이므로,
+    // 메인 창과 중복으로 API를 폴링하지 않는다. 최초 1회 렌더는 이 가드 이전에 이미 끝남.
+    if (window.__POPOUT_MODE__) return;
     clearPolling(false);
 
     const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
@@ -672,7 +836,10 @@
     state.teamColorOverrideFixtureId = null;
 
     if (clearCache) clearCachedFixtureData();
-    if (clearFixtureId) setFixtureId(null);
+    if (clearFixtureId) {
+      setFixtureId(null);
+      activeFixtureId = null;
+    }
 
     if (state.manualMode) {
       if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
@@ -719,7 +886,7 @@
    * 1) 입력 정규화 — 빈 ID면 reset 후 종료. 수동 모드면 적용 건너뜀.
    * 2) silent 옵션 분기 — 폴링용 갱신은 로딩 오버레이/배지 안 띄움.
    * 3) fetchFixture로 데이터 조회. _fetchSeq 비교로 stale 응답 폐기(같은 fixtureId로 겹쳐 호출돼도 구분됨).
-   * 4) fixture 전환 감지 — 이전 ID와 다르면 팀컬러 override / PK / flash 스냅샷 리셋.
+   * 4) fixture 전환 감지 — 이전 ID와 다르면 타이머 / 팀컬러 override / PK / flash 스냅샷 리셋.
    *    같은 ID면 사용자가 켠 타이머를 보존하는 preserveRunningOnRefresh 플래그 set.
    * 5) applyFixtureToState로 state 매핑 + maybeTriggerFixtureFlash로 변경 부위 깜빡임.
    * 6) leagueId 매칭되는 템플릿이 있으면 자동 적용(silent=false일 때만 — 폴링 중 컬러 보호).
@@ -748,23 +915,28 @@
     const overlayOpts = silent ? { noOverlay: true } : undefined;
     _fetchSeq += 1;
     const requestSeq = _fetchSeq;
+    const selectionVersionAtRequest = fixtureSelectionVersion;
     _lastFetchId = normalizedFixtureId;
     if (!silent) setApiStatus('loading');
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
-      const data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
+      let data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
       // requestSeq 비교: 같은 fixtureId로 겹쳐 호출돼도(강제 새로고침 도중 폴링 등) 더 나중에
       // 시작된 호출이 있으면 이 응답은 폐기 — _lastFetchId(fixtureId 문자열) 비교로는 같은
       // fixtureId끼리 겹친 요청을 구분할 수 없었음.
       if (requestSeq !== _fetchSeq) return null;
       if(!data){
         resetFixtureDrivenState({
-          clearFixtureId: true,
+          clearFixtureId: fixtureSelectionVersion === selectionVersionAtRequest,
           clearCache: true,
           statusMessage: '경기 데이터 없음'
         });
         return null;
       }
+
+      // 사용자가 X로 숨긴 이벤트를 제외(event-hide.js) — 이후 점수판 득점자/이벤트 패널/라인업/
+      // 전술판이 전부 이 data를 쓰므로 여기 한 곳에서만 거르면 된다. 원본은 data._rawEvents에 보존.
+      if (typeof window.evHideApplyToFixtureData === 'function') data = window.evHideApplyToFixtureData(data);
 
       const previousFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
       // 새 이벤트 감지용 — _lastFixtureData가 아래서 이번 data로 덮이기 전에 개수를 미리 저장.
@@ -793,13 +965,19 @@
       _lastFixtureData = data;
       // 진행 중인 같은 경기의 수동 타이머는 보존하되, 새 응답의 HT/FT는 항상 시각을 보정한다.
       applyFixtureToState(data, {
+        resetClock: (previousFixtureId || initialFixtureId) !== normalizedFixtureId,
         resetRunning: !preserveRunningOnRefresh,
         syncClockFromFixture: true,
       });
       // applyFixtureToState 직후의 state 값을 이전 스냅샷과 비교 → 변경된 점수/득점자 박스만 깜빡임.
       // 첫 fetch는 _flashSnapshot이 null이라 깜빡임 없이 스냅샷만 채움.
       maybeTriggerFixtureFlash();
-      setFixtureId(normalizedFixtureId);
+      // 자동 갱신은 보드 데이터만 갱신한다. 조회 중 다른 경기를 선택한 경우에도
+      // 늦게 도착한 응답이 선택 ID와 최근 선택값을 되돌리지 않도록 한다.
+      if (!silent && fixtureSelectionVersion === selectionVersionAtRequest) {
+        setFixtureId(normalizedFixtureId);
+      }
+      activeFixtureId = normalizedFixtureId;
       const leagueId = extractLeagueIdFromFixtureData(data);
       state.leagueId = leagueId;
       state.leagueLogoUrl = data.matchInfo?.leagueLogoUrl || null;
@@ -852,6 +1030,8 @@
       const homeName = pickMatchTeamName(m, 'home');
       const awayName = pickMatchTeamName(m, 'away');
       setApiStatus('ok', `${homeName} vs ${awayName}`, overlayOpts);
+      // 최근 목록은 silent(자동 폴링) 갱신마다 남기지 않고 실제 사용자 로딩 시점에만 기록.
+      if (!silent) recordRecentFixture(normalizedFixtureId, m, m.kickoffAt || m.kickoffUtc);
 
       // 다음 호출 자동 예약 (1분 간격, FT+3분 후 중단, 비정상 상태 중단, 경기 시작 전 대기)
       schedulePoll(data);
@@ -887,7 +1067,7 @@
    * 8) 페널티 슛아웃 — events에서 PK 시퀀스 재구성. 단, 새 시퀀스가 더 짧으면 기존 값 유지.
    * 9) 득점자/레드카드 — applyScorersAndCards에서 events 가공.
    * 10) 타이머 — 새 응답의 HT는 45:00, FT 계열/90분 BT는 90:00으로 보정하고 정지.
-   *     진행 중 폴링과 설정 변경에 따른 재적용은 수동 시계를 보존한다.
+   *     다른 경기를 조회하면 00:00으로 초기화하고, 같은 경기 갱신/설정 재적용은 수동 시계를 보존한다.
    */
   function applyFixtureToState(data, options){
     const m = data?.matchInfo || {};
@@ -933,7 +1113,7 @@
       }
     }
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
-    if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m));
+    if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m, data._rawEvents || data.events));
 
     // 추가시간
     // 추가시간: 사용자가 수동으로 토글/조정한 적 있으면(extraManualOverride) API 값으로 덮지 않음.
@@ -972,17 +1152,23 @@
     // 폴링/수동 조회로 받은 새 상태는 같은 경기라도 반드시 보정한다.
     // 설정 토글의 캐시 재적용(resetRunning:false)은 수동으로 편집한 시계를 유지한다.
     const status = String(m.status || '').toUpperCase();
+    const breakElapsed = typeof evBreakElapsed === 'function'
+      ? evBreakElapsed(m, data._rawEvents || data.events)
+      : (status === 'BT' ? 90 : null);
     const stoppedSeconds = status === 'HT' ? 45 * 60
-      : (FT_LIKE_STATUSES.has(status) || (status === 'BT' && Number(m.elapsed) === 90)) ? 90 * 60
+      : breakElapsed !== null ? breakElapsed * 60
+      : FT_LIKE_STATUSES.has(status) ? 90 * 60
       : null;
-    if (stoppedSeconds !== null
+    // 새 경기에는 이전 경기의 시간을 넘기지 않는다. HT/FT의 고정 시각은 우선 적용한다.
+    const nextClockSeconds = stoppedSeconds ?? (options?.resetClock === true ? 0 : null);
+    if (nextClockSeconds !== null
       && (options?.syncClockFromFixture === true || options?.resetRunning !== false)) {
-      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(stoppedSeconds);
+      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(nextClockSeconds);
       else {
-        state.seconds = stoppedSeconds;
+        state.seconds = nextClockSeconds;
         state.running = false;
         state.lastRunningTickMs = 0;
-        if (el.clock) el.clock.textContent = fmtClock(stoppedSeconds);
+        if (el.clock) el.clock.textContent = fmtClock(nextClockSeconds);
       }
     } else if (options?.resetRunning !== false) {
       const LIVE_STATUSES = new Set(['1H','2H','ET1','ET2','PSO']);
@@ -1183,7 +1369,7 @@
   }
 
   /** API status → state.half 매핑 (PSO만 PK로 치환, 나머지는 그대로) */
-  function mapApiStatusToHalf(status, matchInfo){
+  function mapApiStatusToHalf(status, matchInfo, events){
     const s = String(status || '').toUpperCase();
     const elapsed = Number(matchInfo?.elapsed) || 0;
     const hasPenaltyScore = matchInfo?.homePenaltyScore != null || matchInfo?.awayPenaltyScore != null;
@@ -1199,16 +1385,50 @@
       if (elapsed > 105) return 'ET2';
       return '2';
     }
-    // BT = 정규 후반 종료 후 연장전 시작 전 휴식(90분 시점) — '1'(전반) 폴백은 오표시이므로 명시 매핑.
-    if (s === 'BT') return '2';
+    // BT는 종료된 구간에 맞춰 유지: 정규 후반 / 연장 전반 / 연장 후반.
+    if (s === 'BT') {
+      const boundary = typeof evBreakElapsed === 'function' ? evBreakElapsed(matchInfo, events) : 90;
+      return boundary === 120 ? 'ET2' : boundary === 105 ? 'ET1' : '2';
+    }
     return '1';
   }
+
+  /**
+   * 이벤트 숨김/수정/복원 직후 호출(event-hide.js) — 마지막 응답의 원본 이벤트(_rawEvents)·점수(_rawScores)로
+   * 숨김/수정과 점수 보정을 다시 적용하고, 새 응답이 왔을 때와 같은 소비처(점수판 득점자/PK, 라인업, 이벤트 패널, 전술판
+   * 타임라인)를 API 재호출 없이 갱신한다. 타이머는 보존하고, 득점자 박스 깜빡임 스냅샷도 새 값으로
+   * 맞춰 다음 폴링에서 괜히 깜빡이지 않게 한다.
+   */
+  function reapplyFixtureEventHide() {
+    if (!_lastFixtureData || typeof window.evHideApplyToFixtureData !== 'function') return;
+    const data = window.evHideApplyToFixtureData(_lastFixtureData);
+    _lastFixtureData = data;
+    applyFixtureToState(data, { resetRunning: false });
+    if (_flashSnapshot) {
+      _flashSnapshot = { homeScore: state.homeScore, awayScore: state.awayScore, homeNote: state.notes?.home ?? '', awayNote: state.notes?.away ?? '' };
+    }
+    if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
+    if (typeof applyEventsPanel === 'function') {
+      const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
+      applyEventsPanel(eventsPanelData, { animate: false });
+    }
+    // 전술판 타임라인은 슬라이더 위치를 유지한 채 이벤트만 교체(교체 선수 override와 같은 경로).
+    if (typeof window.ttRefreshEventsData === 'function') {
+      const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
+      const events = typeof window.evPatchSubstEvents === 'function' ? window.evPatchSubstEvents(data.events, fixtureId) : data.events;
+      window.ttRefreshEventsData({ ...data, events });
+    }
+    try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
+  }
+  window.fixtureReapplyEventHide = reapplyFixtureEventHide;
 
   // 토글 변경 시 fixture를 다시 적용 — scorer/teamName(이름 표기), teamLogo(기본/협회 로고).
   // 사용자가 수동으로 켠 타이머는 보존(resetRunning: false). 팀 컬러 보존은 state.teamColorOverride
   // 플래그가 처리하므로 별도 옵션 불필요.
   document.addEventListener('settings:change', e => {
     const category = e.detail?.category;
+    // teamName 토글은 최근 목록 표시명에도 영향 — 열려있으면 즉시 다시 그림(닫혀 있으면 no-op).
+    if (category === 'teamName') renderRecentFixtureList();
     if (
       category !== 'scorer' &&
       category !== 'teamName' &&
@@ -1250,7 +1470,9 @@
         });
         return;
       }
-      const data = JSON.parse(raw);
+      let data = JSON.parse(raw);
+      // 캐시에는 원본(_rawEvents)이 함께 저장돼 있어, 숨김 기록을 다시 적용하면 복원도 그대로 동작한다.
+      if (data && typeof window.evHideApplyToFixtureData === 'function') data = window.evHideApplyToFixtureData(data);
       if (!data || !data.matchInfo) {
         resetFixtureDrivenState({
           clearFixtureId: true,
@@ -1275,6 +1497,7 @@
         const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
         if (fixtureId) {
           setFixtureId(fixtureId);
+          activeFixtureId = fixtureId;
           _lastFetchId = fixtureId; // 폴링 콜백의 _lastFetchId 비교용
         }
         if (typeof applyLineupPanels === 'function') applyLineupPanels(data);
@@ -1345,8 +1568,8 @@
   }
 
   function forceRefreshCurrentFixture() {
-    if (_forceRefreshCooldownTimer) return;
-    if (state.manualMode || !currentFixtureId) {
+    if (_forceRefreshCooldownTimer || _mainShowBtnBusy) return;
+    if (state.manualMode || !activeFixtureId) {
       showToast('연동된 경기가 없습니다');
       return;
     }
@@ -1362,7 +1585,7 @@
         updateForceRefreshButtons(secondsLeft);
       }
     }, 1000);
-    fetchAndApplyFixtureData(currentFixtureId, { silent: true, cache: 'reload' })
+    fetchAndApplyFixtureData(activeFixtureId, { silent: true, cache: 'reload' })
       .catch(err => console.error('Force refresh failed:', err));
   }
 
