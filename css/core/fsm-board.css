@@ -47,6 +47,12 @@
 .board.fsm-board[data-fsm-theme="seriea"] .team-name {
   color: white;
 }
+.board.fsm-board[data-fsm-theme="unl"] .team-name {
+  width: calc(100% - var(--fsm-name-reserved-width, 0px));
+  justify-content: center; margin-inline: 0;
+}
+.board.fsm-board[data-fsm-theme="unl"] .teams-left .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board[data-fsm-theme="unl"] .teams-right .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
 .board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .team-name {
   width: calc(100% - var(--fsm-name-reserved-width, 0px));

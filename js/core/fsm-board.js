@@ -232,6 +232,16 @@ function adjustScoreboardWidth() {
   }, 0);
   board.style.removeProperty('--fsm-name-reserved-width');
   board.style.removeProperty('--fsm-score-overlap');
+  if (_currentTheme === 'unl') {
+    // 회전된 로고 박스의 안쪽 꼭짓점까지는 팀명 영역에서 제외합니다.
+    const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
+    const homeLogo = document.getElementById('team-logo-left').getBoundingClientRect();
+    const awayLogo = document.getElementById('team-logo-right').getBoundingClientRect();
+    const overlap = Math.max(0,
+      (homeLogo.right - cards[0].getBoundingClientRect().left) / scale,
+      (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
+    board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
+  }
   if (_currentTheme === 'seriea' || _currentTheme === 'wc26') {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
