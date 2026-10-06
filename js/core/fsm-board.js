@@ -170,18 +170,15 @@ function applyTheme(theme, logoUrl) {
 
     if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle' || _currentTheme == 'default') {
       if(state.aggEnabled) {
-        jQuery('.fsm-board .scoreboard-timer').css({marginLeft: '305px'});
-        jQuery('.fsm-board .total-score').css({display: 'flex'});
         var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
         var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
-        jQuery('.fsm-board .total-score').text(aggHome + ' - ' + aggAway);
-        jQuery('.fsm-board .total-score').css({opacity: '100%'});
+        jQuery('.fsm-board #totalScoreLeft').text(aggHome);
+        jQuery('.fsm-board #totalScoreRight').text(aggAway);
+        jQuery('.fsm-board .total-score').css({display: 'flex', opacity: '100%'});
       } else {
-        jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
         jQuery('.fsm-board .total-score').css({display: 'none', opacity: '0'});
       }
     } else {
-        jQuery('.fsm-board .scoreboard-timer').css({marginLeft: 'none'});
         jQuery('.fsm-board .total-score').css({display: 'none', opacity: '0'});
     }
   }

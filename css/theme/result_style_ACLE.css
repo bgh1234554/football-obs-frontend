@@ -278,17 +278,13 @@
 }
 
 .fsm-board .total-score {
-    width: 120px;
+    width: 40px;
     height: 48px;
-    font-family: 'Pretendard-Medium';
-    font-size: 32px;
+    color: #372150;
+    background: linear-gradient(120deg, #e9d2f3, #b6b1c2);
+    font-size: 24px;
     display: flex;
     justify-content: center;
     align-items: center;
-    background: whitesmoke;
-    border: 1px solid #372150;
-    color: #372150;
-    margin-left: 5px;
-    transition: 0.9s ease-in-out;
-    opacity: 0;
+    font-family: 'Pretendard-Medium';
 }
