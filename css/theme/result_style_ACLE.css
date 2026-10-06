@@ -281,7 +281,7 @@
     width: 40px;
     height: 48px;
     color: #372150;
-    background: linear-gradient(120deg, #e9d2f3, #b6b1c2);
+    background: linear-gradient(0deg, #EFEEE6 80%, #d6cea6);
     font-size: 24px;
     display: flex;
     justify-content: center;
