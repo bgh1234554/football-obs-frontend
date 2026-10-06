@@ -139,6 +139,8 @@ function applyTheme(theme, logoUrl) {
 
   // applyText()는 data 대신 state를 읽도록 수정
   function applyText() {
+    const board = document.querySelector('.fsm-board');
+    if (board) board.dataset.fsmTheme = _currentTheme;
     setFsmText('.fsm-board #team-text-left', state.homeName);   // data.teamLeft.name → state.homeName
     setFsmText('.fsm-board #homeScore', state.homeScore);
     setFsmText('.fsm-board #team-text-right', state.awayName);
@@ -156,11 +158,22 @@ function applyTheme(theme, logoUrl) {
     // 나머지 테마는 state.colors.homeBg 를 border-bottom 색상으로 사용
     applyTeamColors();
 
-    if(state.extra > 0) {
-      setFsmStyle('.fsm-board .extra-time', {marginLeft: '180px'});
-    } else {
-      setFsmStyle('.fsm-board .extra-time', {marginLeft: '0px'});
-    }
+    const clock = board.querySelector('.time');
+    setFsmStyle('.fsm-board .extra-time', {
+      marginLeft: '0px', left: `calc(50% + ${clock.offsetWidth / 2}px)`
+    });
+    // Use one digit reference for both boxes so +7 shares the clock's baseline.
+    // Measuring each value separately moves shorter glyphs down relative to 90:00.
+    board.querySelectorAll('.time, .extra-time').forEach(element => {
+      const style = getComputedStyle(element);
+      const context = document.createElement('canvas').getContext('2d');
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const metrics = context.measureText('0123456789');
+      const shift = Number.isFinite(metrics.fontBoundingBoxAscent)
+        ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2 : 0;
+      element.style.paddingTop = Math.max(0, 2 * shift) + 'px';
+      element.style.paddingBottom = Math.max(0, -2 * shift) + 'px';
+    });
 
     if(state.half == 'PK') {
        setFsmStyle('.pso-main', {height: '32px'});
@@ -214,7 +227,23 @@ function adjustScoreboardWidth() {
     if (cards.includes(child) || style.position === 'absolute' || style.display === 'none') return sum;
     return sum + child.offsetWidth + (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0);
   }, 0);
-  const requestedTeam = Math.max(limits.minTeam, Math.max(...widths) + limits.teamPadding);
+  board.style.removeProperty('--fsm-name-reserved-width');
+  board.style.removeProperty('--fsm-score-overlap');
+  if (_currentTheme === 'seriea' || _currentTheme === 'wc26') {
+    // Absolute score tiles overlap the team cards. Their painted bounds,
+    // including Serie A's skew, determine the usable outer name area.
+    const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
+    const homeScore = document.getElementById('team-score-left').getBoundingClientRect();
+    const awayScore = document.getElementById('team-score-right').getBoundingClientRect();
+    const overlap = Math.max(0,
+      (cards[0].getBoundingClientRect().right - homeScore.left) / scale,
+      (awayScore.right - cards[1].getBoundingClientRect().left) / scale);
+    const reserved = overlap + (_currentTheme === 'wc26' ? 41 : 0);
+    board.style.setProperty('--fsm-score-overlap', overlap + 'px');
+    board.style.setProperty('--fsm-name-reserved-width', reserved + 'px');
+  }
+  const reservedWidth = parseFloat(getComputedStyle(board).getPropertyValue('--fsm-name-reserved-width')) || 0;
+  const requestedTeam = Math.max(limits.minTeam, Math.max(...widths) + limits.teamPadding + reservedWidth);
   const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
   const boardWidth = Math.min(limits.maxBoard, requestedBoard, fixedWidth + 2 * limits.maxTeam);
   const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
@@ -231,6 +260,18 @@ function adjustScoreboardWidth() {
     while (text.scrollWidth > available && size > limits.minFont) text.style.fontSize = --size + 'px';
     if (text.scrollWidth > available && available > 0) text.style.fontSize = (size * available / text.scrollWidth) + 'px';
     text.style.width = '';
+    // Center the visible glyphs, not the font's line box (Gmarket has
+    // asymmetric ascent/descent). Include the team's border imbalance.
+    const textStyle = getComputedStyle(text);
+    const context = document.createElement('canvas').getContext('2d');
+    context.font = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
+    const metrics = context.measureText(text.textContent);
+    const cardStyle = getComputedStyle(cards[index]);
+    const borderOffset = ((parseFloat(cardStyle.borderBottomWidth) || 0) - (parseFloat(cardStyle.borderTopWidth) || 0)) / 2;
+    const inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
+      ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2
+      : 0;
+    text.style.transform = `translateY(${inkOffset + borderOffset}px)`;
   });
 }
 
@@ -241,6 +282,14 @@ function adjustScoreboardWidth() {
     if (theme == 'pl') {
       setFsmStyle('.fsm-board .teams-left', {background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
+      const board = document.querySelector('.fsm-board');
+      ['home', 'away'].forEach((side, index) => {
+        const card = document.getElementById(index === 0 ? 'homeCard' : 'awayCard');
+        const rgb = parseAnyColor(getComputedStyle(card).backgroundColor);
+        const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
+        board.style.setProperty(`--fsm-pl-${side}-overlay`,
+          nearWhite ? '#000000' : '#ffffff');
+      });
     } if (theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
@@ -307,4 +356,9 @@ function adjustScoreboardWidth() {
 
 window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); };
 
-if (document.fonts) document.fonts.ready.then(() => window.fsmBoardRender());
+if (document.fonts) {
+  document.fonts.ready.then(() => window.fsmBoardRender());
+  // A theme can introduce a font after the initial ready promise has resolved.
+  // Recalculate digit offsets using the loaded font, rather than its fallback.
+  document.fonts.addEventListener('loadingdone', () => window.fsmBoardRender());
+}

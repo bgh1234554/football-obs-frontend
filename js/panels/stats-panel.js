@@ -21,6 +21,8 @@
 const statsPanelStates = new WeakMap();
 // 마지막 fixture 데이터 캐시 — settings 변경 / page 활성화 / resize 이벤트에서 재렌더 시 사용.
 let statsLastFixtureData = null;
+// Thin adjacent bars need stronger separation than large team-color surfaces.
+const ST_BAR_SIMILAR_DELTA_E = 25;
 
 /**
  * 현재 활성 페이지(.page.active) 안의 stat 패널만 재렌더.
@@ -44,15 +46,27 @@ function stEnsureHashColor(c) {
   return s;
 }
 
-/** "#RRGGBB"/"#RGB" → {r,g,b}. 실패 시 null. */
+/** HEX/RGB/HSL 등 CSS 표시 색상 → {r,g,b}. 실패 시 null. */
 function stHexToRgb(hex) {
   if (!hex || typeof hex !== 'string') return null;
+  if (typeof parseAnyColor === 'function') {
+    const parsed = parseAnyColor(hex);
+    if (parsed) return parsed;
+  }
   const m = hex.trim().replace('#', '');
   if (/^[0-9a-fA-F]{6}$/.test(m)) {
     return { r: parseInt(m.slice(0, 2), 16), g: parseInt(m.slice(2, 4), 16), b: parseInt(m.slice(4, 6), 16) };
   }
   if (/^[0-9a-fA-F]{3}$/.test(m)) {
     return { r: parseInt(m[0] + m[0], 16), g: parseInt(m[1] + m[1], 16), b: parseInt(m[2] + m[2], 16) };
+  }
+  // Normalize other browser-supported CSS colors (HSL, named colors, etc.).
+  if (typeof document !== 'undefined' && CSS.supports('color', hex)) {
+    const context = document.createElement('canvas').getContext('2d');
+    context.fillStyle = hex;
+    context.fillRect(0, 0, 1, 1);
+    const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+    return { r, g, b };
   }
   return null;
 }
@@ -230,12 +244,17 @@ function stCreateRow(row, fixtureData) {
   bar.appendChild(awayFill);
 
   // 팀 컬러가 비슷할 때 막대 경계에 가는 구분선 추가 (홈 컬러 보색).
-  // 0:0 또는 동률은 50/50이라 경계 의미 약함 → 구분선 X.
+  // 0:0은 회색 막대이므로 구분선 X. 그 외 동률도 팀 색상이 비슷하면 구분한다.
   if (!zeroTotal) {
     const homeRgb = stHexToRgb(homeBg);
     const awayRgb = stHexToRgb(awayBg);
     const dist = stColorDistance(homeRgb, awayRgb);
-    if (dist < 80) {
+    const delta = homeRgb && awayRgb && typeof teamColorDeltaE === 'function'
+      ? teamColorDeltaE(
+        `rgb(${homeRgb.r}, ${homeRgb.g}, ${homeRgb.b})`,
+        `rgb(${awayRgb.r}, ${awayRgb.g}, ${awayRgb.b})`
+      ) : null;
+    if (dist < 80 || (delta !== null && delta < ST_BAR_SIMILAR_DELTA_E)) {
       const divider = document.createElement('div');
       divider.className = 'st-bar-divider';
       divider.style.left = homePct.toFixed(2) + '%';

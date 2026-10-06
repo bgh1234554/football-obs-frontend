@@ -616,6 +616,27 @@
       const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
       if (homeNoteSide) homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
       if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
+      const main = boardEl.querySelector('.scoreboard-main');
+      if (main) {
+        // Rotated/offset logo tiles don't end at the board's layout box.
+        // Anchor notes to the painted slots, converting preview scale too.
+        const stageRect = stageEl.getBoundingClientRect();
+        const scale = stageRect.width / stageEl.offsetWidth || 1;
+        const slots = Array.from(main.children).filter(child => {
+          const style = getComputedStyle(child);
+          return style.display !== 'none' && style.position !== 'absolute';
+        }).map(child => child.getBoundingClientRect());
+        if (slots.length) {
+          const left = (Math.min(...slots.map(rect => rect.left)) - stageRect.left) / scale;
+          const right = (Math.max(...slots.map(rect => rect.right)) - stageRect.left) / scale;
+          const noteGap = 5;
+          if (homeNoteSide) homeNoteSide.style.right = stageEl.offsetWidth - left + noteGap + 'px';
+          if (awayNoteSide) awayNoteSide.style.left = right + noteGap + 'px';
+        }
+      }
+      const noteTop = main ? boardEl.offsetTop + main.offsetTop + main.offsetHeight / 2 + 'px' : '50%';
+      if (homeNoteSide) homeNoteSide.style.top = noteTop;
+      if (awayNoteSide) awayNoteSide.style.top = noteTop;
     }
   }
 

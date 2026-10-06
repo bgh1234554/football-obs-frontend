@@ -10,6 +10,7 @@
   width: max-content;
   background: transparent;
   box-shadow: none;
+  overflow: visible;
 }
 
 .board.fsm-board.outline-on { box-shadow: none; }
@@ -18,8 +19,44 @@
   min-width: 0;
   transition: none;
 }
-.board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: 40px; }
+/* Theme transitions must not move the boundaries after notes are anchored.
+   Keep color effects, but apply calculated geometry immediately. */
+.board.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div) {
+  transition-property: background-color, color, border-color, box-shadow;
+}
+.board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: 40px; margin-top: 0; line-height: 1; display: flex; align-items: center; }
 .fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
+/* The EPL background's pale center is 194px wide (97px per team). */
+.board.fsm-board[data-fsm-theme="pl"] { --fsm-name-reserved-width: 97px; }
+.board.fsm-board[data-fsm-theme="pl"] .div-background {
+  background-image: linear-gradient(to right,
+    var(--fsm-pl-home-overlay, #ffffff) 50%,
+    var(--fsm-pl-away-overlay, #ffffff) 50%);
+  /* Keep the original zigzag edges and alpha; change only the tint. */
+  mask-image: url('/resources/imgs/background_pl2.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: 656px 48px;
+}
+.board.fsm-board[data-fsm-theme="pl"] .team-name {
+  width: calc(100% - 97px); justify-content: center;
+  margin-inline: 0; padding-inline: 12px;
+}
+.board.fsm-board[data-fsm-theme="pl"] .teams-left .team-name { margin-right: 97px; }
+.board.fsm-board[data-fsm-theme="pl"] .teams-right .team-name { margin-left: 97px; }
+.board.fsm-board[data-fsm-theme="seriea"] .team-name {
+  color: white;
+}
+.board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .team-name {
+  width: calc(100% - var(--fsm-name-reserved-width, 0px));
+  justify-content: center; margin-inline: 0; padding-inline: 12px;
+}
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board[data-fsm-theme="wc26"] .team-color { top: 50%; transform: translateY(-50%); }
+.board.fsm-board[data-fsm-theme="wc26"] #homeColor { left: auto; right: calc(var(--fsm-score-overlap, 0px) + 12px); }
+.board.fsm-board[data-fsm-theme="wc26"] #awayColor { right: auto; left: calc(var(--fsm-score-overlap, 0px) + 12px); }
 
 /* clockEditor: .board 바깥으로 이동했으므로 #clock 위에 겹쳐 보이도록 */
 #clockEditor {
@@ -27,7 +64,26 @@
   z-index: 100;
 }
 .fsm-board .scoreboard-timer { position: relative; }
-.fsm-board #clockEditor { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.board.fsm-board :is(.time, .extra-time) {
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  flex-shrink: 0;
+  transition-property: background-color, color, border-color, box-shadow;
+}
+.fsm-board #clockEditor {
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  margin: 0; padding: 2px 4px;
+  width: max-content; min-width: var(--fsm-clock-width);
+  justify-content: center;
+  background: var(--fsm-clock-background);
+  color: var(--fsm-clock-color);
+}
+.fsm-board .time.is-editing { color: transparent !important; }
+.board.fsm-board .time { z-index: 1; }
+.board-stage-inner:has(.fsm-board) .note { padding-inline: 0; }
+.fsm-board #clockEditor :is(.ce-arrow, .ce-num, .ce-colon, .ce-preset-btn) {
+  color: var(--fsm-clock-color);
+}
+.fsm-board #cePresets { background: var(--fsm-clock-background); }
 .board-stage-inner:has(.fsm-board) > .pk-wrap { display: none; }
 
 /* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */
