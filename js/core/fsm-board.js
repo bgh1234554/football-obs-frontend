@@ -13,14 +13,14 @@ function setFsmAttr(selector, name, value) {
 const LEAGUE_THEME_MAP = {
   // EPL: 'pl' 또는 'pl2' 중 선택. pl2는 팀 컬러가 배경이 되는 스타일
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
-  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA Champions League (leagues.csv CDN URL 우선)
-  3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA Europa League
-  17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC Champions League Elite
-  5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA Nations League
-  4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA Euro 2024
+  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
+  3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
+  17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC 챔피언스리그 엘리트
+  5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA 네이션스리그
+  4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png', type: 'club' },
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
-  292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K League 1
+  292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
   1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
   // 리그 추가 시 여기에만 한 줄 추가
@@ -162,8 +162,8 @@ function applyTheme(theme, logoUrl) {
     setFsmStyle('.fsm-board .extra-time', {
       marginLeft: '0px', left: `calc(50% + ${clock.offsetWidth / 2}px)`
     });
-    // Use one digit reference for both boxes so +7 shares the clock's baseline.
-    // Measuring each value separately moves shorter glyphs down relative to 90:00.
+    // 두 박스에 같은 숫자 기준을 사용하여 추가시간과 타이머의 기준선을 맞춥니다.
+    // 각 값을 따로 측정하면 높이가 낮은 글자가 90:00보다 아래로 이동합니다.
     board.querySelectorAll('.time, .extra-time').forEach(element => {
       const style = getComputedStyle(element);
       const context = document.createElement('canvas').getContext('2d');
@@ -201,8 +201,9 @@ function applyTheme(theme, logoUrl) {
 
   // 팀명 길이에 따라 폰트 크기 조정
 const FSM_WIDTH_LIMITS = Object.freeze({
-  minBoard: 656, maxBoard: 984, minTeam: 240, maxTeam: 420,
-  teamPadding: 80, maxFont: 33, minFont: 12
+  minBoard: 520, maxBoard: 984,
+  minTeam: 220, maxTeam: 420,
+  teamPadding: 48, maxFont: 33, minFont: 12
 });
 
 function adjustScoreboardWidth() {
@@ -213,7 +214,7 @@ function adjustScoreboardWidth() {
   const texts = names.map(name => name?.querySelector('.text'));
   if (!scoreboard || texts.some(text => !text)) return;
   const limits = FSM_WIDTH_LIMITS;
-  // Measure at the original size, independent of the previous render.
+  // 이전 렌더링 결과와 무관하게 원래 글꼴 크기로 측정합니다.
   const widths = texts.map(text => {
     text.style.fontSize = limits.maxFont + 'px';
     text.style.width = 'max-content';
@@ -221,7 +222,7 @@ function adjustScoreboardWidth() {
     text.style.width = '';
     return width;
   });
-  // Measure actual theme slots, including aggregate scores when visible.
+  // 합산 점수가 표시되는 경우 이를 포함해 실제 테마 영역을 측정합니다.
   const fixedWidth = Array.from(scoreboard.children).reduce((sum, child) => {
     const style = getComputedStyle(child);
     if (cards.includes(child) || style.position === 'absolute' || style.display === 'none') return sum;
@@ -230,8 +231,8 @@ function adjustScoreboardWidth() {
   board.style.removeProperty('--fsm-name-reserved-width');
   board.style.removeProperty('--fsm-score-overlap');
   if (_currentTheme === 'seriea' || _currentTheme === 'wc26') {
-    // Absolute score tiles overlap the team cards. Their painted bounds,
-    // including Serie A's skew, determine the usable outer name area.
+    // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
+    // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
     const homeScore = document.getElementById('team-score-left').getBoundingClientRect();
     const awayScore = document.getElementById('team-score-right').getBoundingClientRect();
@@ -251,7 +252,7 @@ function adjustScoreboardWidth() {
   scoreboard.style.width = boardWidth + 'px';
   const background = board.querySelector('.div-background');
   if (background) background.style.width = boardWidth + 'px';
-  // Fit text only after the final equal team widths have been applied.
+  // 양쪽 팀 영역에 동일한 최종 너비를 적용한 뒤 글자를 맞춥니다.
   texts.forEach((text, index) => {
     const style = getComputedStyle(names[index]);
     const available = Math.max(0, names[index].clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
@@ -260,17 +261,39 @@ function adjustScoreboardWidth() {
     while (text.scrollWidth > available && size > limits.minFont) text.style.fontSize = --size + 'px';
     if (text.scrollWidth > available && available > 0) text.style.fontSize = (size * available / text.scrollWidth) + 'px';
     text.style.width = '';
-    // Center the visible glyphs, not the font's line box (Gmarket has
-    // asymmetric ascent/descent). Include the team's border imbalance.
+    // 글꼴의 줄 박스가 아니라 실제 글자 높이를 기준으로 가운데 정렬합니다.
+    // Gmarket 글꼴의 비대칭 상하 높이와 팀 카드의 테두리 높이 차이를 반영합니다.
     const textStyle = getComputedStyle(text);
     const context = document.createElement('canvas').getContext('2d');
     context.font = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
     const metrics = context.measureText(text.textContent);
     const cardStyle = getComputedStyle(cards[index]);
     const borderOffset = ((parseFloat(cardStyle.borderBottomWidth) || 0) - (parseFloat(cardStyle.borderTopWidth) || 0)) / 2;
-    const inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
+    let inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
       ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2
       : 0;
+    if (_currentTheme === 'pl' && Number.isFinite(metrics.fontBoundingBoxAscent)) {
+      // 합성 굵기가 적용된 한글은 글꼴 측정값과 실제 픽셀 높이가 다를 수 있습니다.
+      // 실제로 그려진 글자의 상하 경계로 프리미어리그 팀명을 보정합니다.
+      const font = context.font;
+      const baseline = Math.ceil(parseFloat(textStyle.fontSize) * 2);
+      context.canvas.width = Math.ceil(metrics.width) + 16;
+      context.canvas.height = baseline * 2;
+      context.font = font;
+      context.fillText(text.textContent, 8, baseline);
+      const pixels = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+      let top = pixels.height, bottom = -1;
+      for (let y = 0; y < pixels.height; y++) {
+        for (let x = 0; x < pixels.width; x++) {
+          if (pixels.data[(y * pixels.width + x) * 4 + 3] >= 192) {
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+          }
+        }
+      }
+      if (bottom >= top) inkOffset = baseline - (top + bottom + 1) / 2
+        - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
+    }
     text.style.transform = `translateY(${inkOffset + borderOffset}px)`;
   });
 }
@@ -358,7 +381,7 @@ window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes();
 
 if (document.fonts) {
   document.fonts.ready.then(() => window.fsmBoardRender());
-  // A theme can introduce a font after the initial ready promise has resolved.
-  // Recalculate digit offsets using the loaded font, rather than its fallback.
+  // 최초 글꼴 준비 완료 이후에도 테마 변경으로 새 글꼴이 로딩될 수 있습니다.
+  // 대체 글꼴이 아닌 로딩된 글꼴로 숫자의 위치 보정값을 다시 계산합니다.
   document.fonts.addEventListener('loadingdone', () => window.fsmBoardRender());
 }

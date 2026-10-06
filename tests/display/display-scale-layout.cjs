@@ -1,4 +1,4 @@
-// Run: node tests/display/display-scale-layout.cjs (requires Playwright).
+// 실행: node tests/display/display-scale-layout.cjs (Playwright 필요).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -244,13 +244,13 @@ async function testResolutionPersistence(page) {
         near(label.width / (width / 1920), reference.labels[i].width, 'proportional player label', 0.15);
         near(label.font, reference.labels[i].font, 'unchanged logical font', 0.01);
       });
-      // Playwright page.screenshot restores its original context viewport when
-      // metrics were changed through CDP. Capture directly to retain this case.
+      // CDP로 화면 크기를 변경하면 Playwright의 page.screenshot이
+      // 원래 화면 크기로 복원하므로, 이 경우에는 직접 캡처하여 설정을 유지합니다.
       const capture = await cdp.send('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false });
       fs.writeFileSync(path.join(directory, `${width}-${dpr}.png`), Buffer.from(capture.data, 'base64'));
     }
   }
-  // A real double-click clears all width overrides; reload must not restore the old value.
+  // 실제 더블클릭으로 모든 너비 덮어쓰기를 해제하고, 새로고침 후에도 이전 값이 복원되지 않아야 합니다.
   await page.locator('.layout-big .lp-big-col-left-handle').dblclick();
   await frames(page);
   const reset = await read();
@@ -296,9 +296,9 @@ async function testResolutionPersistence(page) {
       await testDrag(page, dpr);
       if (dpr === 1) await testResolutionPersistence(page);
       await testSmallBenchHeight(page, dpr);
-      // Unrelated old theme test refers to a removed css/theme directory.
-      // External libraries/APIs are blocked; the legacy jQuery adapter is outside
-      // this fixture. Core score rendering, animation, and panel sizing run normally.
+      // 별도의 이전 테마 테스트가 삭제된 css/theme 경로를 참조합니다.
+      // 외부 라이브러리와 API는 차단하며, 기존 jQuery 어댑터는
+      // 이 테스트 범위에서 제외합니다. 핵심 점수 렌더링, 애니메이션, 패널 크기 조정은 정상 실행합니다.
       assert(errors.every(message => message === 'jQuery is not defined'), errors.join('\n'));
       console.log(`PASS: ${dpr * 100}% panel sizes, player names, drag and reload`);
       await page.close();

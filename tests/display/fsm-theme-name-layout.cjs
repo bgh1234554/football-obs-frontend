@@ -7,7 +7,7 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 
 
 for(const theme of ['pl','seriea','wc26']){
- // Enter through EPL to expose stale inline color and alignment settings.
+ // 프리미어리그를 거쳐 전환하여 남아 있는 인라인 색상과 정렬 설정을 확인합니다.
  await page.evaluate(()=>applyTheme('pl',null));await page.waitForTimeout(100);
  await page.evaluate(theme=>applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
  for(const names of [['Short','B'],['A Very Long Football Club Name','Another Long Team Name'],['A','B']]){

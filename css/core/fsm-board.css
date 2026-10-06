@@ -19,20 +19,20 @@
   min-width: 0;
   transition: none;
 }
-/* Theme transitions must not move the boundaries after notes are anchored.
-   Keep color effects, but apply calculated geometry immediately. */
+/* 이벤트 텍스트 배치 후 테마 전환 효과로 경계가 이동하지 않도록 합니다.
+   색상 효과는 유지하고 계산된 위치와 크기는 즉시 적용합니다. */
 .board.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div) {
   transition-property: background-color, color, border-color, box-shadow;
 }
 .board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: 40px; margin-top: 0; line-height: 1; display: flex; align-items: center; }
 .fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
-/* The EPL background's pale center is 194px wide (97px per team). */
+/* 프리미어리그 배경의 밝은 중앙 영역은 너비 194px이며, 팀마다 97px씩 제외합니다. */
 .board.fsm-board[data-fsm-theme="pl"] { --fsm-name-reserved-width: 97px; }
 .board.fsm-board[data-fsm-theme="pl"] .div-background {
   background-image: linear-gradient(to right,
     var(--fsm-pl-home-overlay, #ffffff) 50%,
     var(--fsm-pl-away-overlay, #ffffff) 50%);
-  /* Keep the original zigzag edges and alpha; change only the tint. */
+  /* 원래 지그재그 가장자리와 투명도는 유지하고 색상만 바꿉니다. */
   mask-image: url('/resources/imgs/background_pl2.png');
   mask-repeat: no-repeat;
   mask-position: center;

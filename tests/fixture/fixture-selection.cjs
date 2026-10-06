@@ -1,4 +1,4 @@
-// Run: node tests/fixture/fixture-selection.cjs
+// 실행: node tests/fixture/fixture-selection.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

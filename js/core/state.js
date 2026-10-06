@@ -183,9 +183,14 @@
         return;
       }catch(e){
         if(e.name !== 'QuotaExceededError' && e.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e;
-        const fallbacks = [
+        const singleSideFallbacks = [
           { drop: ['homeLogo', 'homeLogoManual'], warn: '홈 로고' },
           { drop: ['awayLogo', 'awayLogoManual'], warn: '원정 로고' },
+        ];
+        const serializedSize = ({ drop }) => drop.reduce((size, key) => size + (JSON.stringify(state[key]) || '').length, 0);
+        singleSideFallbacks.sort((a, b) => serializedSize(b) - serializedSize(a));
+        const fallbacks = [
+          ...singleSideFallbacks,
           { drop: ['homeLogo', 'homeLogoManual', 'awayLogo', 'awayLogoManual'], warn: '홈/원정 로고' },
         ];
         for (const { drop, warn } of fallbacks) {

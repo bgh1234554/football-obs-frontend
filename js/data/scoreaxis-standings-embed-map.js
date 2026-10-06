@@ -1,5 +1,5 @@
-// Generated from tools/scoreaxis-league-embed-codes.json.
-// ScoreAxis entries are kept even when no backend leagueId is known yet.
+// tools/scoreaxis-league-embed-codes.json에서 생성한 데이터입니다.
+// 백엔드 leagueId가 아직 확인되지 않은 ScoreAxis 항목도 유지합니다.
 window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
   {
     "leagueId": 1,

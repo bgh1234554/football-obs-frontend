@@ -566,7 +566,7 @@
     colorInput.addEventListener('input', e => previewThemeColor(e.target.value));
     colorInput.addEventListener('change', e => commitThemeColor(e.target.value));
 
-    // hex 입력 직접 변경은 피커 드래그가 아니므로 즉시 commit. colorInput.value도 같이 동기화.
+    // 16진수 색상 입력 직접 변경은 피커 드래그가 아니므로 즉시 commit. colorInput.value도 같이 동기화.
     hexInput.addEventListener('change', e => {
       const nv = normalizeHex(e.target.value);
       if (!nv) {
@@ -684,10 +684,11 @@
    * 이미지 파일을 읽어 URL 문자열을 콜백으로 전달.
    * - SVG: readAsText → data:image/svg+xml,{encodeURIComponent} 형식
    *   → 브라우저가 벡터로 렌더링하며, localStorage에도 문자열로 저장 가능
-   * - 그 외(PNG 등): 설정 팝업의 배경 이미지 첨부(compressBackgroundImage)와 동일한 압축을
+   * - 그 외(PNG 등): 저장 예산 이하는 원본 data URL로 읽고, 큰 파일만
+   *   설정 팝업의 배경 이미지 첨부(compressBackgroundImage)와 동일한 압축을
    *   재사용 — 1920x1080 초과분만 축소하고 화질을 단계적으로 낮춰 localStorage에 안전하게
-   *   들어가는 크기(약 1.8MB 이하)로 줄인다. 작은 로고는 이미 그 이하라 사실상 그대로
-   *   통과한다. { preserveAlpha: true }로 호출해 JPEG로 폴백하지 않게 한다 — 팀 로고는
+   *   들어가는 크기(약 1.8MB 이하)로 줄인다.
+   *   { preserveAlpha: true }로 호출해 JPEG로 폴백하지 않게 한다 — 팀 로고는
    *   대부분 투명 배경 PNG라, 배경 이미지처럼 JPEG로 넘어가면 투명한 부분이 단색으로
    *   채워져 로고가 망가진다(WebP는 압축하면서도 알파 채널을 유지). 압축 자체가
    *   실패하면(매우 드묾) 원본 base64로 폴백 — 저장 시 용량 초과가 나더라도 persist()의
@@ -701,7 +702,7 @@
       r.readAsText(file);
       return;
     }
-    if(typeof compressBackgroundImage === 'function'){
+    if(file.size > BG_IMAGE_SAFE_PERSIST_BYTES && typeof compressBackgroundImage === 'function'){
       compressBackgroundImage(file, { preserveAlpha: true }).then(cb).catch(()=>{
         const r = new FileReader();
         r.onload = ()=> cb(r.result);

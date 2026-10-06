@@ -21,7 +21,7 @@
 const statsPanelStates = new WeakMap();
 // 마지막 fixture 데이터 캐시 — settings 변경 / page 활성화 / resize 이벤트에서 재렌더 시 사용.
 let statsLastFixtureData = null;
-// Thin adjacent bars need stronger separation than large team-color surfaces.
+// 인접한 얇은 막대는 넓은 팀 색상 영역보다 더 뚜렷하게 구분해야 합니다.
 const ST_BAR_SIMILAR_DELTA_E = 25;
 
 /**
@@ -60,7 +60,7 @@ function stHexToRgb(hex) {
   if (/^[0-9a-fA-F]{3}$/.test(m)) {
     return { r: parseInt(m[0] + m[0], 16), g: parseInt(m[1] + m[1], 16), b: parseInt(m[2] + m[2], 16) };
   }
-  // Normalize other browser-supported CSS colors (HSL, named colors, etc.).
+  // 브라우저가 지원하는 다른 CSS 색상(HSL, 색상 이름 등)을 정규화합니다.
   if (typeof document !== 'undefined' && CSS.supports('color', hex)) {
     const context = document.createElement('canvas').getContext('2d');
     context.fillStyle = hex;

@@ -1,4 +1,4 @@
-// Run: node tests/fixture/fixture-clock.cjs
+// 실행: node tests/fixture/fixture-clock.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -125,7 +125,7 @@ const { chromium } = require('playwright');
         results.push({ name: 'switch fixture without timer helper', expected: 0, ...read() });
         window.setClockSeconds = originalSetClock;
 
-        // A delayed earlier response must not overwrite a newer half-time response.
+        // 늦게 도착한 이전 응답이 더 최신인 하프타임 응답을 덮어쓰면 안 됩니다.
         let resolveOld;
         fetchFixture = () => new Promise(resolve => { resolveOld = resolve; });
         const oldRequest = fetchAndApplyFixtureData(987654, { silent: true });

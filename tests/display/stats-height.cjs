@@ -1,4 +1,4 @@
-// Run: node tests/display/stats-height.cjs
+// 실행: node tests/display/stats-height.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -69,7 +69,7 @@ async function checkScrollingAndOwnGoals(page) {
         width: getComputedStyle(list).scrollbarWidth, display: getComputedStyle(list, '::-webkit-scrollbar').display };
     }, mode);
     assert.deepEqual(metrics, { overflow: true, scrolled: true, width: 'thin', display: 'block' }, mode);
-    // A short list uses overflow:auto, so there is no scrollbar when everything fits.
+    // 짧은 목록은 자동 넘침 처리를 사용하므로 모든 항목이 들어가면 스크롤바가 없습니다.
     const fits = await page.evaluate(mode => {
       const list = document.querySelector(`.lp-events-s [data-${mode}-panel] .ev-list`);
       while (list.children.length > 1) list.lastElementChild.remove();

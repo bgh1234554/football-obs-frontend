@@ -1,6 +1,6 @@
-// Paste this entire file into the dashboard console, then run:
-// fsmTemplateTour(5)       // seconds per theme, 11 themes
-// fsmTemplateTour.stop()  // stop and restore the original theme
+// 이 파일 전체를 대시보드 콘솔에 붙여 넣은 뒤 실행하세요:
+// fsmTemplateTour(5)       // 테마당 표시 시간(초), 총 11개 테마
+// fsmTemplateTour.stop()  // 중지하고 원래 테마로 복원
 (() => {
   if (window.fsmTemplateTour?.running) {
     console.warn('Stop the existing tour before loading this script again.');

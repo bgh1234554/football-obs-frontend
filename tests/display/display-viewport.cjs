@@ -1,4 +1,4 @@
-// Run: node tests/display/display-viewport.cjs (requires Playwright).
+// 실행: node tests/display/display-viewport.cjs (Playwright 필요).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -69,7 +69,7 @@ function fillsViewport(m, label) {
   near(m.body.top, 0, `${label} no top gap`);
   near(m.body.bottom, m.viewport.height, `${label} body bottom`);
   near(m.page.bottom, m.viewport.height, `${label} page bottom`);
-  // Schedule has an 8px inset around the grid.
+  // 경기 일정 그리드 주변에는 안쪽 여백 8px이 있습니다.
   assert((m.viewport.height - m.content.bottom) / m.layoutScale >= -2 && (m.viewport.height - m.content.bottom) / m.layoutScale <= 10,
     `${label} content bottom: ${m.content.bottom} / ${m.viewport.height}`);
 }
@@ -149,7 +149,7 @@ async function testTouchScrolling(page) {
   try {
     const baseline = {};
     for (const dpr of [1, 1.25, 1.5, 2, 0.25, 0.5, 5]) {
-      // DPR emulation below 1 uses CSS zoom; font hinting can round by a pixel.
+      // DPR이 1 미만인 경우 CSS 확대/축소를 사용하며, 글꼴 힌팅으로 1픽셀 반올림이 발생할 수 있습니다.
       const tolerance = dpr < 1 ? 2 : 0.01;
       const page = await openPage(browser, { dpr, platform: 'Win32', viewport: { width: 1920 / dpr, height: 1080 / dpr } });
       for (const name of ['schedule', 'tactics']) {

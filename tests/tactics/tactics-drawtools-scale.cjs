@@ -1,4 +1,4 @@
-// Run: node tests/tactics/tactics-drawtools-scale.cjs (requires Playwright).
+// 실행: node tests/tactics/tactics-drawtools-scale.cjs (Playwright 필요).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

@@ -618,8 +618,8 @@
       if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
       const main = boardEl.querySelector('.scoreboard-main');
       if (main) {
-        // Rotated/offset logo tiles don't end at the board's layout box.
-        // Anchor notes to the painted slots, converting preview scale too.
+        // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
+        // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.
         const stageRect = stageEl.getBoundingClientRect();
         const scale = stageRect.width / stageEl.offsetWidth || 1;
         const slots = Array.from(main.children).filter(child => {

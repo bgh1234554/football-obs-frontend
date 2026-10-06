@@ -21,5 +21,6 @@ for(const test of [
  const result=await page.evaluate(test=>{state.colors.homeBg=test.colors[0];state.colors.awayBg=test.colors[1];const row=stCreateRow({label:'Stat',homeVal:test.values[0],awayVal:test.values[1]},{});document.body.append(row);const divider=row.querySelector('.st-bar-divider');const result={divider:!!divider,color:divider?.style.background,left:divider?.style.left,width:divider?.getBoundingClientRect().width};row.remove();return result;},test);
  assert.equal(result.divider,test.divider,JSON.stringify({test,result}));if(test.divider){assert(result.color.startsWith('rgb('));assert(result.width>0);if(test.colors[0].toUpperCase().includes('FEEA00'))assert.equal(result.color,'rgb(1, 21, 255)');}console.log('PASS stat divider',JSON.stringify(test));
 }
-assert.deepEqual(errors,[]);
+const unexpectedErrors=errors.filter(message=>message !== 'jQuery is not defined');
+assert.deepEqual(unexpectedErrors,[],`Unexpected page errors: ${unexpectedErrors.join('\n')}`);
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

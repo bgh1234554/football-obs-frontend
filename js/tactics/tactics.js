@@ -1826,7 +1826,7 @@
    * 드로잉 데이터(d)에서 SVG 엘리먼트를 생성하여 반환.
    * isPreview=true이면 일부 도형에 opacity를 적용해 미리보기 효과를 부여한다.
    * 지원 타입: box, circle, polygon, line-connect, pencil, curve-arrow, curve-dashed-arrow,
-   *            line, dashed, arrow, dashed-arrow
+   *            실선(line), 점선(dashed), 화살표(arrow), 점선 화살표(dashed-arrow)
    */
   function tdMakeEl(d, isPreview) {
     const NS = 'http://www.w3.org/2000/svg';

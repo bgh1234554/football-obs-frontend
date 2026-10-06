@@ -15,13 +15,13 @@
   <script src="js/core/popout-early.js"></script>
   <!-- Windows 디스플레이 배율 보정: head 맨 앞에서 동기 실행해 본문 레이아웃이 그려지기 전에 적용 -->
   <script src="js/core/display-scale.js"></script>
-  <!-- Fonts -->
+  <!-- 글꼴 -->
   <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet"/>
   <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet"/>
   <!-- <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square.css" rel="stylesheet"> -->
-  <!-- Bootstrap -->
+  <!-- 부트스트랩 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <!-- API-SPORTS Widgets -->
+  <!-- API-SPORTS 위젯 -->
   <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
 
   <link rel="stylesheet" href="css/core/variables.css"/>
@@ -157,7 +157,7 @@
         <span class="pk-score-text">(<span id="pkScoreHome">0</span> PK <span id="pkScoreAway">0</span>)</span>
       </div>
       <span id="half" style="display:none">1H</span>
-      <!-- PK Strip -->
+      <!-- 승부차기 표시줄 -->
       <div class="pk-wrap" id="pkWrap"><div class="pk-strip"><div class="pk-team home" id="pkHome"></div><div class="pk-center"><div class="pk-label"></div></div><div class="pk-team away" id="pkAway"></div></div></div>
       <!-- 원정 득점자 (우측) -->
       <div class="note-side" id="awayNoteSide"><div class="note away" id="awayNote"></div></div>
@@ -1043,7 +1043,7 @@
   </div>
 </div><!-- /page-theme -->
 
-<!-- SCHEDULE -->
+<!-- 경기 일정 -->
 <div id="page-schedule" class="page">
   <div class="page-wrap">
     <div class="widgetGrid">
@@ -1240,7 +1240,7 @@
 </div><!-- /tactics-viewport -->
 </div><!-- /page-tactics -->
 
-<!-- ABOUT -->
+<!-- 서비스 소개 -->
 <div id="page-about" class="page">
   <div class="page-wrap">
     <div class="panel-box">
@@ -1253,7 +1253,7 @@
 
 </div>
 
-<!-- API-Sports config widget -->
+<!-- API-Sports 설정 위젯 -->
 <api-sports-widget
   data-type="config"
   data-sport="football"

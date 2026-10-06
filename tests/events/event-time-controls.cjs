@@ -1,5 +1,5 @@
-// Draft: node tests/events/event-time-controls.cjs tools/event-timing-draft
-// Production: node tests/events/event-time-controls.cjs
+// 초안 실행: node tests/events/event-time-controls.cjs tools/event-timing-draft
+// 현재 코드 실행: node tests/events/event-time-controls.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -126,7 +126,7 @@ const fixture = {
     assert.equal(result.reason, 'halftime-substitution');
     assert.deepEqual(result.stored.periods, {});
 
-    // Without positive first-half evidence, reordering keeps the second-half default.
+    // 명확한 전반 근거가 없으면 순서가 바뀌어도 후반 기본값을 유지합니다.
     await poll({ ...fixture, events: [sub, added, next] });
     result = await read();
     assert.equal(result.period, '2H');
@@ -176,7 +176,7 @@ const fixture = {
     assert(unit);
     await poll();
     await choose('1H');
-    // Browser slider uses the same resolved second-half start.
+    // 브라우저 슬라이더도 같은 후반 시작 기준을 사용합니다.
     await choose('');
     const slider = await page.evaluate(() => {
       const slider = document.getElementById('tactics-time-slider');

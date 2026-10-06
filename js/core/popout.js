@@ -271,7 +271,7 @@ if (window.__POPOUT_MODE__) {
       setTimeout(() => window.close(), 50);
     }, true);
     window.addEventListener('keydown', event => {
-      if (event.key === 'Escape') setTimeout(() => window.close(), 50);
+      if (event.key === 'Escape' && !event.defaultPrevented) setTimeout(() => window.close(), 50);
     });
 
     // 팝업 자신의 settingsState도 부팅 시점 스냅샷이라 곧 낡을 수 있다 — 메인 창이나 다른

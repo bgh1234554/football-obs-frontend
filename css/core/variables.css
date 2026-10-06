@@ -2,7 +2,7 @@
     :root {
       --font-family: 'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif;
 
-      /* Overlay UI */
+      /* 오버레이 화면 */
       --bg-ui: #111827;
       --panel-ui: #0b1220;
       /* Iter 5-7: 패널 배경을 rgba로 분해해 알파 조절 가능하게 함.
