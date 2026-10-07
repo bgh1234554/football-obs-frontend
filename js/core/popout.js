@@ -125,6 +125,7 @@ function syncScoreboardStateFromStorage(newValue) {
     const saved = JSON.parse(newValue || 'null');
     if (!saved) return;
     let changed = false;
+    const previousFsmTheme = state.fsmTheme;
     const apply = (key, value) => { if (state[key] !== value) { state[key] = value; changed = true; } };
     const applyIfPresent = keys => keys.forEach(key => { if (key in saved) apply(key, saved[key]); });
 
@@ -152,7 +153,7 @@ function syncScoreboardStateFromStorage(newValue) {
       'logoAlign', 'radiusMode', 'boardWidth',
       'homeOutlineEnabled', 'awayOutlineEnabled', 'boardOutlineEnabled', 'scoreOutlineEnabled',
       'homeOutlineWidth', 'awayOutlineWidth', 'boardOutlineWidth', 'scoreOutlineWidth',
-      'noteEnabled', 'noteFontSize', 'fontFamily',
+      'noteEnabled', 'noteFontSize', 'fontFamily', 'fsmTheme',
       'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
       'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
       'teamColorOverride', 'teamColorOverrideFixtureId',
@@ -185,6 +186,11 @@ function syncScoreboardStateFromStorage(newValue) {
     // 진행 중인 이벤트 시퀀스라 오래된 값으로 되돌리면 진행 상황이 깨진다).
 
     if (changed) {
+      if (state.fsmTheme !== previousFsmTheme) {
+        const themeSelect = document.getElementById('fsmThemeSelect');
+        if (themeSelect) themeSelect.value = state.fsmTheme;
+        window.autoApplyTemplateByLeagueId?.(state.leagueId, state.leagueLogoUrl);
+      }
       if (state.manualMode && typeof syncManualInputs === 'function') syncManualInputs();
       if (typeof render === 'function') render();
     }

@@ -29,14 +29,38 @@ const LEAGUE_THEME_MAP = {
 };
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
+const FSM_THEMES = Object.freeze({
+  default: '기본', pl: '프리미어리그', cl: '챔피언스리그',
+  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
+  unl: '네이션스리그', er24: '유로', ligue1: '리그 1', ligue2: '리그 2',
+  seriea: '세리에 A', rpl: '러시아 프리미어리그', kleague: 'K리그', wc26: '월드컵'
+});
+
+function initFsmThemeSelect() {
+  const select = document.getElementById('fsmThemeSelect');
+  if (!select) return;
+  if (!Object.hasOwn(FSM_THEMES, state.fsmTheme)) state.fsmTheme = 'auto';
+  select.replaceChildren(...Object.entries({auto: '경기에 맞춰 자동', ...FSM_THEMES})
+    .map(([value, label]) => new Option(label, value)));
+  select.value = state.fsmTheme;
+  select.addEventListener('change', () => {
+    state.fsmTheme = select.value;
+    window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl);
+    render();
+    persist();
+  });
+}
 const CSS_LINK_INDEX = 17;
 var _currentTheme = 'default';
 var _currentType = 'club';
 var _timerMargin = 'none';
 
 window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
-  const entry = LEAGUE_THEME_MAP[leagueId];
-  const theme = entry ? entry.theme : FSM_FALLBACK_THEME;
+  const selectedTheme = Object.hasOwn(FSM_THEMES, state.fsmTheme) ? state.fsmTheme : null;
+  const entry = selectedTheme
+    ? Object.values(LEAGUE_THEME_MAP).find(entry => entry.theme === selectedTheme)
+    : LEAGUE_THEME_MAP[leagueId];
+  const theme = selectedTheme || (entry ? entry.theme : FSM_FALLBACK_THEME);
   const type = entry ? entry.type : FSM_FALLBACK_TYPE;
   // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
   const logoUrl = entry?.logoUrl || apiLeagueLogoUrl || null;
@@ -395,9 +419,10 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board .teams-left', {background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
       const board = document.querySelector('.fsm-board');
-      ['home', 'away'].forEach((side, index) => {
-        const card = document.getElementById(index === 0 ? 'homeCard' : 'awayCard');
-        const rgb = parseAnyColor(getComputedStyle(card).backgroundColor);
+      ['home', 'away'].forEach(side => {
+        // CSS transitions expose the previous/interpolated background here.
+        // Contrast must follow the requested color immediately.
+        const rgb = parseAnyColor(state.colors[`${side}Bg`]);
         const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');

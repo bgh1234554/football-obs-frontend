@@ -4,22 +4,13 @@
 
   // 1. LocalStorage에서 상태 복원
   restore();
-  if (state.leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
-    window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl || null);
-  }
+  initFsmThemeSelect();
+  window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl || null);
   // 1-1. 수동 모드 상태 UI 반영
   if(state.manualMode){
     if(el.manualModeToggle) el.manualModeToggle.checked = true;
     if(el.manualSection) el.manualSection.classList.add('visible');
     syncManualInputs();
-  }
-  // 2. 템플릿 목록 select 채우기 + 마지막 선택 템플릿 복원
-  const selectedTemplateName = (typeof getLastSelectedTemplateName === 'function')
-    ? getLastSelectedTemplateName()
-    : '';
-  loadTemplates(selectedTemplateName).catch(err => console.warn('Template list load failed:', err));
-  if(selectedTemplateName && typeof restoreLastSelectedTemplate === 'function'){
-    restoreLastSelectedTemplate();
   }
   // 3. 시계 텍스트 초기화 및 전체 렌더
   el.clock.textContent = fmtClock(state.seconds);

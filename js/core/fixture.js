@@ -559,6 +559,31 @@
     return false;
   }
 
+  function fixtureDataForColorReset() {
+    if (_lastFixtureData?.matchInfo) return _lastFixtureData;
+    try { return JSON.parse(sessionStorage.getItem('cached_fixture_data') || 'null'); }
+    catch { return null; }
+  }
+
+  window.canResetFixtureTeamColors = () => !!fixtureDataForColorReset()?.matchInfo;
+  window.resetFixtureTeamColors = function() {
+    const data = fixtureDataForColorReset();
+    if (!data?.matchInfo) return false;
+    state.teamColorOverride = false;
+    state.teamColorOverrideFixtureId = null;
+    ['home', 'away'].forEach(side => {
+      const keys = fixtureTeamColorKeys(side);
+      if (!applyFixtureTeamColorsFromApi(side, data.matchInfo[keys.primary], data.matchInfo[keys.number])) {
+        applyFixtureTeamColorPair(side, getFixtureDefaultTeamColors(side));
+      }
+    });
+    render();
+    persist();
+    document.dispatchEvent(new CustomEvent('theme:colors-changed'));
+    queueFixtureLogoTeamColorFallback(data, false);
+    return true;
+  };
+
   // 로고 fallback은 API 색상이 양쪽 모두 없을 때만 실행한다.
   // 백엔드가 primary/number를 주면 (teams.csv override 포함) 로고로 덮지 않는다.
   function fixtureHasAuthoritativeTeamColor(matchInfo, side) {
