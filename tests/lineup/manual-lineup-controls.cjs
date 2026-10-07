@@ -29,6 +29,10 @@ const root = path.resolve(__dirname, '../..');
       openManualPanel('lineup', 'away');
     });
     const field = (name, index) => page.locator(`[name="lineup-${name}-${index}"]`);
+    for (const [name, label] of [['yellow', '경고(옐로카드)'], ['red', '퇴장(레드카드)']]) {
+      assert.equal(await field(name, 1).getAttribute('aria-label'), label);
+      assert.equal(await field(name, 1).locator('..').locator('.dp-manual-card-swatch').getAttribute('aria-hidden'), 'true');
+    }
     const toggle = page.locator('#manualPanelGridToggle');
     assert(await toggle.isVisible());
     assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
@@ -44,7 +48,7 @@ const root = path.resolve(__dirname, '../..');
     await field('captain', 1).check();
     assert.equal(await page.locator('[name^="lineup-captain-"]:checked').count(), 1);
     assert.equal(await field('captain', 2).isChecked(), false);
-    // Partial rows must survive toggling, including unnamed players with stats.
+    // 스탯만 있고 이름이 없는 선수를 포함해 미완성 행도 표시 전환 후 유지되어야 합니다.
     await field('name', 10).fill('');
     await field('number', 10).fill('99');
     await field('goals', 10).fill('4');
@@ -66,7 +70,7 @@ const root = path.resolve(__dirname, '../..');
     assert.equal(await field('number', partialIndex).inputValue(), '99');
     assert.equal(await field('goals', partialIndex).inputValue(), '4');
     assert.equal(await page.locator('#manualLineupFormation').inputValue(), '4-4-2');
-    // Save while the movement UI is active: must save a full lineup, not API grid overrides.
+    // 이동 화면이 활성화된 상태에서 저장하면 API 그리드 덮어쓰기 대신 전체 라인업을 저장해야 합니다.
     await toggle.click();
     await page.locator(`.dp-grid-row[data-slot-index="${movedIndex}"]`).dragTo(page.locator('.dp-grid-row[data-slot-index="5"]'));
     await page.locator('#manualPanelSave').click();
@@ -94,12 +98,12 @@ const root = path.resolve(__dirname, '../..');
     await page.locator('.dp-grid-row[data-slot-index="5"]').dragTo(page.locator('.dp-grid-row[data-slot-index="1"]'));
     await page.locator('#manualPanelCancel').click();
     assert.deepEqual(await page.evaluate(() => getManualEntry('manual-controls-test').away.lineup), saved);
-    // Captain selection can be cleared and must stay cleared on reopen.
+    // 주장 선택을 해제할 수 있어야 하며 다시 열어도 해제 상태가 유지되어야 합니다.
     await page.evaluate(() => openManualPanel('lineup', 'away'));
     await field('captain', 5).uncheck();
     await page.locator('#manualPanelSave').click();
     assert.equal(await page.evaluate(() => getManualEntry('manual-controls-test').away.lineup.startXi.some(p => p.manualCaptain)), false);
-    // Other forms and the existing API grid editor must not show the full-form toggle.
+    // 다른 폼과 기존 API 그리드 편집기에는 전체 라인업 전환 버튼을 표시하지 않습니다.
     await page.evaluate(() => openManualPanel('bench', 'away'));
     assert.equal(await toggle.isVisible(), false);
     await page.locator('#manualPanelCancel').click();

@@ -1,4 +1,4 @@
-// Run: node tests/events/events-period-boundaries.cjs
+// 실행: node tests/events/events-period-boundaries.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -27,7 +27,7 @@ function render(data, api = context) {
   return api.evMergeWithPeriodMarkers(processed, api.evBuildPeriodMarkers(data.matchInfo, processed), active, observations);
 }
 
-// Fixture 1583654: the 45' penalty is still a first-half goal, even after HT/2H polling.
+// 경기 1583654: 하프타임/후반 폴링 이후에도 45분 페널티 골은 전반 골입니다.
 const events = [
   { elapsed: 3, extra: null, side: 'away', playerId: 291649, playerName: '반데르송', assistId: 506275, type: 'Goal', detail: 'Normal Goal', comments: null },
   { elapsed: 28, extra: null, side: 'home', playerId: 348568, playerName: 'A. 치르카티', type: 'Goal', detail: 'Normal Goal', comments: null },
@@ -58,7 +58,7 @@ for (const elapsed of allBoundaries) {
   }
 }
 
-// Receipt after HT alone is not evidence: both cold loads and late arrivals default to 1H.
+// 하프타임 이후 수신만으로는 판단할 수 없으므로, 최초 로딩과 지연 수신 모두 기본값을 전반으로 둡니다.
 const early = { elapsed: 45, extra: null, type: 'Card', detail: 'Yellow Card', side: 'home', playerId: 10, playerName: 'Early' };
 const late = { ...early, playerId: 20, playerName: 'Late' };
 const sub = { ...early, type: 'subst', detail: 'Substitution 1', playerId: 30 };
@@ -84,17 +84,17 @@ const bracketedOriginal = JSON.stringify(bracketed);
 assert.deepEqual(readDecision('neighbors', 'HT', [stoppage, lateSub]), { after: false, reason: 'default-before', key: 4600 });
 assert.deepEqual(readDecision('neighbors', '2H', bracketed), { after: true, reason: 'neighbors-after', key: 4600 });
 assert.deepEqual(readDecision('reversed', 'FT', bracketed.slice().reverse()), { after: true, reason: 'neighbors-after', key: 4600 });
-// Reevaluate at every poll: disappearance/reordering of supporting events revokes a guess.
+// 폴링마다 다시 판단하며, 근거 이벤트가 사라지거나 순서가 바뀌면 추정을 취소합니다.
 assert.deepEqual(readDecision('neighbors', '2H', [lateSub, stoppage, secondHalf]), { after: false, reason: 'default-before', key: 4600 });
 assert.equal(readDecision('neighbors', '2H', bracketed).after, true);
 assert.equal(readDecision('neighbors', '2H', [stoppage, lateSub]).after, false);
 assert.equal(JSON.stringify(bracketed), bracketedOriginal, 'Inference must not reorder source arrays');
-// The earlier 1H observation wins over apparently convincing neighbors.
+// 주변 이벤트가 다른 시점을 가리켜도 먼저 확인된 전반 기록을 우선합니다.
 readDecision('observed-proof', '1H', [lateSub]);
 assert.deepEqual(readDecision('observed-proof', '2H', bracketed), { after: false, reason: 'observed-before', key: 4500 });
 const before45 = { ...early, elapsed: 44, playerId: 90 };
 assert.equal(readDecision('before-neighbors', 'HT', [before45, lateSub, stoppage]).reason, 'neighbors-before');
-// Unsupported/ambiguous order and distant next-period events stay conservative.
+// 판단 근거가 없거나 순서가 모호하거나 다음 구간 이벤트가 멀리 있으면 보수적으로 처리합니다.
 for (const [id, raw] of [
   ['no-extra-anchor', [before45, lateSub, secondHalf]],
   ['no-right', [stoppage, lateSub]],
@@ -110,38 +110,38 @@ for (const target of [lateSub, anotherSub]) {
   assert.equal(readDecision('cluster', '2H', [stoppage, lateSub, anotherSub, secondHalf], target).after, true);
 }
 assert.equal(readDecision('still-1h', '1H', bracketed).after, false);
-// Cards and goals do not become interval events even with the same neighboring timestamps.
+// 주변 이벤트의 시각이 같더라도 카드와 골을 구간 사이 이벤트로 분류하지 않습니다.
 for (const target of [late, { ...late, type: 'Goal', detail: 'Penalty' }]) {
   assert.equal(readDecision(`type-${target.type}`, '2H', [stoppage, target, secondHalf], target).key, 4500);
 }
-// Hidden rows must not remove raw ordering evidence; edited rows must not inherit an API guess.
+// 숨긴 행 때문에 원본 순서의 근거를 잃지 않아야 하며, 편집한 행에는 API 기반 추정을 적용하지 않습니다.
 const hiddenData = { ...fixture('raw-hidden', '2H', [lateSub]), _rawEvents: bracketed };
 const rawObs = evObserveBoundaryEvents(hiddenData);
 assert.equal(evSortKey(lateSub, new Set([45]), rawObs), 4600);
 assert.equal(evSortKey({ ...lateSub, _evEdited: true }, new Set([45]), rawObs), 4500);
-// Missing vs zero extra, translated names and corrected assists must not create new observations.
+// 추가시간 누락과 0의 차이, 번역된 이름, 수정된 도움 정보로 새 관측 기록을 만들지 않습니다.
 const corrected = { ...early, extra: 0, playerName: 'Renamed', assistId: 999 };
 const observed = evObserveBoundaryEvents(fixture('live', '2H', [corrected]));
 assert.equal(evSortKey(corrected, new Set([45]), observed), 4500);
-// Raw signature preserves identity even if display ID/name are remapped by the UI.
+// 화면에서 표시 ID나 이름을 다시 연결해도 원본 서명으로 동일한 이벤트를 식별합니다.
 const rawSig = JSON.stringify(['home', 'Card', 'Yellow Card', '', 45, 0, 70, 'Original', 0, '']);
 render(fixture('raw', '1H', [{ ...early, playerId: 70, _hideSig: rawSig }]));
 const remapped = { ...early, playerId: 700, _hideSig: rawSig };
 assert.equal(evSortKey(remapped, new Set([45]), evObserveBoundaryEvents(fixture('raw', 'HT', [remapped]))), 4500);
-// A late extra correction is stronger evidence than arrival time; retain it if extra disappears again.
+// 늦게 수정된 추가시간은 수신 시각보다 강한 근거이며, 이후 추가시간이 누락되어도 유지합니다.
 assert.equal(readDecision('correction', '2H', bracketed).after, true);
 render(fixture('correction', '2H', [{ ...lateSub, extra: 2 }]));
 assert.deepEqual(readDecision('correction', '2H', bracketed), { after: false, reason: 'added-time', key: 4500 });
-// A fresh fixture has no evidence about old cards: use the conservative default.
+// 새 경기에는 이전 카드의 근거가 없으므로 보수적인 기본값을 사용합니다.
 assert.equal(evSortKey(early, new Set([45]), evObserveBoundaryEvents(fixture('cold', 'HT', [early]))), 4500);
-// Fixture switching and reloads do not erase known first-half events.
+// 경기 전환과 새로고침으로 확인된 전반 이벤트 기록이 지워지지 않습니다.
 render(fixture('live', '1H', [early]));
 const reloaded = load();
 assert.equal(reloaded.evSortKey(early, new Set([45]), reloaded.evObserveBoundaryEvents(fixture('live', 'HT', [early]))), 4500);
-// Observation must happen even with no visible event panel (before category filtering/rendering).
+// 이벤트 패널이 보이지 않아도 분류 필터와 렌더링 전에 이벤트를 관측해야 합니다.
 context.applyEventsPanel(fixture('hidden-panel', '1H', [early]));
 assert.equal(evSortKey(early, new Set([45]), evObserveBoundaryEvents(fixture('hidden-panel', 'HT', [early]))), 4500);
-// Apply the same history policy to extra-time intervals, while keeping 90' before ordinary FT.
+// 연장전 구간에도 같은 기록 정책을 적용하되, 일반 경기 종료 전 90분 이벤트는 유지합니다.
 for (const [elapsed, before, after] of [[90, '2H', 'ET1'], [105, 'ET1', 'ET2'], [120, 'ET2', 'PSO']]) {
   const ev = { ...sub, elapsed };
   render(fixture(`et-${elapsed}`, before, [ev], elapsed));
@@ -152,16 +152,16 @@ for (const [elapsed, before, after] of [[90, '2H', 'ET1'], [105, 'ET1', 'ET2'], 
   assert.equal(evSortKey(ev, active, obs), elapsed * 100);
   assert.equal(evSortKey(newSub, active, obs), elapsed * 100 + 51);
 }
-// Ordinary FT must never enable the 90-minute interval even with plausible neighbors.
+// 주변 이벤트가 그럴듯해도 일반 경기 종료에서는 90분 경계 구간을 활성화하지 않습니다.
 assert.equal(readDecision('no-et', 'FT', bracketed.map(ev => ({ ...ev, elapsed: ev.elapsed + 45 })), { ...lateSub, elapsed: 90 }, 90).key, 9000);
-// Migrate only proven before-boundary facts from v1; its old HT-arrival guesses are discarded.
+// v1에서는 경계 이전으로 확인된 기록만 이전하고, 하프타임 수신 시각에 따른 기존 추정은 버립니다.
 storage.delete('obs.events.boundary-history.v2');
 storage.set('obs.events.boundary-history.v1', JSON.stringify([['migrate', { observations: { [keyOf(sub)]: false, [keyOf(lateSub)]: true } }]]));
 const migrated = load();
 const migratedObs = migrated.evObserveBoundaryEvents(fixture('migrate', '2H', [sub, lateSub]));
 assert.equal(migratedObs[keyOf(sub)].reason, 'observed-before');
 assert.equal(migratedObs[keyOf(lateSub)].reason, 'default-before');
-// Storage is bounded and optional; broken JSON must not prevent rendering.
+// 저장 기록은 크기를 제한하고 선택적으로 사용하며, 손상된 JSON이 렌더링을 막지 않도록 합니다.
 for (let i = 0; i < 20; i += 1) render(fixture(`bounded-${i}`, '1H', [early]));
 assert(JSON.parse(storage.get('obs.events.boundary-history.v2')).length <= 12);
 storage.set('obs.events.boundary-history.v2', 'invalid');
@@ -176,7 +176,7 @@ assert.equal(evSortKey({ elapsed: 90, extra: null, type: 'subst' }, evActiveBoun
 const shootout = { elapsed: 45, extra: null, type: 'Goal', detail: 'Penalty', comments: 'Penalty Shootout' };
 assert.equal(evSortKey(shootout), 12100);
 assert.equal(JSON.stringify(events), original, 'Sorting must not modify source events');
-// BT with missing elapsed still ends regulation; added time must not imply extra time.
+// 경과 시간이 누락된 BT도 정규시간 종료로 처리하고, 추가시간을 연장전으로 해석하지 않습니다.
 for (const elapsed of [0, null, undefined, 90]) {
   const info = { status: 'BT', elapsed };
   const raw = [{ elapsed: 90, extra: 15, type: 'Card' }];

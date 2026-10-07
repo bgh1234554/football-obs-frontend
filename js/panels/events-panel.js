@@ -212,7 +212,7 @@ function evSubstHasUnlinkedId(ev, field) {
 
 /**
  * 교체 이벤트의 선수 이름을 반환. override가 있으면 그것을 우선.
- * field: 'player'(OUT) or 'assist'(IN)
+ * 대상 필드: 'player'(교체 아웃) 또는 'assist'(교체 투입)
  */
 function evGetSubstDisplayName(ev, field, fixtureId) {
   const override = evGetSubstOverride(fixtureId, ev, field);

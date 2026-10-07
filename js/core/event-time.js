@@ -315,8 +315,8 @@ function evObserveBoundaryEvents(fixtureData) {
  * 이웃 추정을 그대로 적용하지 않는다(_evEdited). 원본 시간/선수와 달라졌을 수 있기 때문이다.
  *
  * ── 기존 회귀 사례 1: AS로마 vs 인테르, 연장 없이 FT ────────────────────
- *   { elapsed:90, extra:null, type:"subst", playerOrigName:"M. Thuram" }    (IN: A. Bonny)
- *   { elapsed:90, extra:null, type:"subst", playerOrigName:"L. Martinez" } (IN: F. Esposito)
+ *   { elapsed:90, extra:null, type:"subst", playerOrigName:"M. Thuram" }    (교체 투입: A. Bonny)
+ *   { elapsed:90, extra:null, type:"subst", playerOrigName:"L. Martinez" } (교체 투입: F. Esposito)
  * 과거에는 경계 숫자만 보고 extra=51 → 9051로 만들어 풀타임(9050)보다 위에 표시됐다.
  * 연장이 없으면 activeBoundaryElapsedSet에 90이 없으므로 지금은 두 교체 모두 9000이다.
  * 따라서 풀타임 마커보다 아래(더 과거)에 표시된다. 이 조건을 없애면 종료 후 교체처럼 보인다.

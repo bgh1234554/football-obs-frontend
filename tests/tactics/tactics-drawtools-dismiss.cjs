@@ -1,4 +1,4 @@
-// Run: node tests/tactics/tactics-drawtools-dismiss.cjs (requires Playwright).
+// 실행: node tests/tactics/tactics-drawtools-dismiss.cjs (Playwright 필요).
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { near, settle, openPage, measurePage } = require('./helpers');

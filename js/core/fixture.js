@@ -559,6 +559,31 @@
     return false;
   }
 
+  function fixtureDataForColorReset() {
+    if (_lastFixtureData?.matchInfo) return _lastFixtureData;
+    try { return JSON.parse(sessionStorage.getItem('cached_fixture_data') || 'null'); }
+    catch { return null; }
+  }
+
+  window.canResetFixtureTeamColors = () => !!fixtureDataForColorReset()?.matchInfo;
+  window.resetFixtureTeamColors = function() {
+    const data = fixtureDataForColorReset();
+    if (!data?.matchInfo) return false;
+    state.teamColorOverride = false;
+    state.teamColorOverrideFixtureId = null;
+    ['home', 'away'].forEach(side => {
+      const keys = fixtureTeamColorKeys(side);
+      if (!applyFixtureTeamColorsFromApi(side, data.matchInfo[keys.primary], data.matchInfo[keys.number])) {
+        applyFixtureTeamColorPair(side, getFixtureDefaultTeamColors(side));
+      }
+    });
+    render();
+    persist();
+    document.dispatchEvent(new CustomEvent('theme:colors-changed'));
+    queueFixtureLogoTeamColorFallback(data, false);
+    return true;
+  };
+
   // 로고 fallback은 API 색상이 양쪽 모두 없을 때만 실행한다.
   // 백엔드가 primary/number를 주면 (teams.csv override 포함) 로고로 덮지 않는다.
   function fixtureHasAuthoritativeTeamColor(matchInfo, side) {
@@ -979,9 +1004,15 @@
       }
       activeFixtureId = normalizedFixtureId;
       const leagueId = extractLeagueIdFromFixtureData(data);
+      state.leagueId = leagueId;
+      state.leagueLogoUrl = data.matchInfo?.leagueLogoUrl || null;
+      state.leagueThemeUpdateSilent = silent === true;
+      // 같은 리그를 비-silent로 다시 불러와도 팝업에서 테마 적용을 재개합니다.
+      if (!silent) state.leagueThemeApplyVersion = (Number(state.leagueThemeApplyVersion) || 0) + 1;
+      persist();
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
         try {
-          await window.autoApplyTemplateByLeagueId(leagueId);
+          await window.autoApplyTemplateByLeagueId(leagueId, data.matchInfo.leagueLogoUrl);
         } catch (templateErr) {
           console.warn('Auto template apply failed:', templateErr);
         }
@@ -1029,6 +1060,13 @@
       setApiStatus('ok', `${homeName} vs ${awayName}`, overlayOpts);
       // 최근 목록은 silent(자동 폴링) 갱신마다 남기지 않고 실제 사용자 로딩 시점에만 기록.
       if (!silent) recordRecentFixture(normalizedFixtureId, m, m.kickoffAt || m.kickoffUtc);
+
+      // 같은 점수판 테마를 재사용하는 새 경기에도 최초 표시 효과를 적용합니다.
+      // 자동 폴링/같은 경기 새로 조회에는 반복하지 않고 성공한 새 경기 로딩에만 적용합니다.
+      if (!silent && previousFixtureId !== normalizedFixtureId
+        && typeof window.replayFsmBoardEntrance === 'function') {
+        window.replayFsmBoardEntrance();
+      }
 
       // 다음 호출 자동 예약 (1분 간격, FT+3분 후 중단, 비정상 상태 중단, 경기 시작 전 대기)
       schedulePoll(data);

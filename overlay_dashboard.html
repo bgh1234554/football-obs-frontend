@@ -15,13 +15,13 @@
   <script src="js/core/popout-early.js"></script>
   <!-- Windows 디스플레이 배율 보정: head 맨 앞에서 동기 실행해 본문 레이아웃이 그려지기 전에 적용 -->
   <script src="js/core/display-scale.js"></script>
-  <!-- Fonts -->
+  <!-- 글꼴 -->
   <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet"/>
   <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-barun-gothic.css" rel="stylesheet"/>
   <!-- <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square.css" rel="stylesheet"> -->
-  <!-- Bootstrap -->
+  <!-- 부트스트랩 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <!-- API-SPORTS Widgets -->
+  <!-- API-SPORTS 위젯 -->
   <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
 
   <link rel="stylesheet" href="css/core/variables.css"/>
@@ -38,6 +38,8 @@
   <link rel="stylesheet" href="css/player/player-menu.css"/>
   <link rel="stylesheet" href="css/panels/hth-panel.css"/>
   <link rel="stylesheet" href="css/settings-popup.css"/>
+  <link href="css/core/fsm-board.css" rel="stylesheet">
+  <link id="fsm-theme-link" rel="stylesheet" href="css/theme/result_style_default.css">
   <!-- 마크다운 렌더링: markdown-it (CommonMark + GFM) + 헤딩 anchor 자동 생성 + XSS sanitize -->
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js" integrity="sha384-wLhprpjsmjc/XYIcF+LpMxd8yS1gss6jhevOp6F6zhiIoFK6AmHtm4bGKtehTani" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-anchor@9.2.0/dist/markdownItAnchor.umd.js" integrity="sha384-F82O4o8GLvoQoVK9ZRL8xcftEJ//NJHsvM+rjapg2vEKK0BJSvY2a5F6rTrgePo0" crossorigin="anonymous"></script>
@@ -46,6 +48,8 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-abbr@2.0.0/dist/markdown-it-abbr.min.js" integrity="sha384-IMLykgno5giusK9t0GcQGqE6/opB+dbkalYq7aZwceQglysXkBrHGVxaf1b9zaCQ" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-mark@4.0.0/dist/markdown-it-mark.min.js" integrity="sha384-103ef71r6a4LrDA2zOGPPuPgWj6fME0NHVPTVytUTpFz78x89wq7KOvIX+9E6Nt2" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js" integrity="sha384-eEu5CTj3qGvu9PdJuS+YlkNi7d2XxQROAFYOr59zgObtlcux1ae1Il3u7jvdCSWu" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.5.1/gsap.min.js"></script>
+  <script src="https://code.jquery.com/jquery-4.0.0.min.js" integrity="sha256-OaVG6prZf4v69dPg6PhVattBXkcOWQB62pdZ3ORyrao=" crossorigin="anonymous"></script>
 </head>
 <body>
   <!-- ========== 보드 스테이지 (항상 표시) ========== -->
@@ -54,56 +58,107 @@
       <!-- 홈 득점자 (좌측) -->
       <div class="note-side" id="homeNoteSide"><div class="note home" id="homeNote"></div></div>
       <!-- 보드 -->
-      <div class="board align-outer" id="board">
-        <div class="team home" id="homeCard">
-          <div class="logo-box"><img id="homeLogo" class="logo-img hidden" alt="HOME" /></div>
-          <div class="name" id="homeName">HOME</div>
-          <div class="rc-rail home hidden" id="rcHome"></div>
-        </div>
-        <div class="score" id="scorePanel">
-          <span class="agg hidden" id="aggHomeWrap">(<span id="aggHomeVal">0</span>)</span>
-          <div class="digits"><span id="homeScore">0</span> : <span id="awayScore">0</span></div>
-          <span class="agg hidden" id="aggAwayWrap">(<span id="aggAwayVal">0</span>)</span>
-          <!-- PK 점수 (PK 하프일 때만 표시) -->
-          <div class="pk-score-row hidden" id="pkScoreRow"><span class="pk-score-text">(<span id="pkScoreHome">0</span> PK <span id="pkScoreAway">0</span>)</span></div>
-          <div class="meta">
-            <div class="timer">
-              <span class="t minsec" id="clock" title="더블클릭해서 시간 조정">00:00</span>
-              <!-- 인라인 시간 편집기 (더블클릭 시 활성화) -->
-              <div class="clock-editor" id="clockEditor">
-                <div class="ce-unit">
-                  <button class="ce-arrow" id="ceMinUp">▲</button>
-                  <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
-                  <button class="ce-arrow" id="ceMinDown">▼</button>
-                </div>
-                <div class="ce-colon" id="ceColon" title="시간 프리셋 보기">:</div>
-                <div class="ce-unit">
-                  <button class="ce-arrow" id="ceSecUp">▲</button>
-                  <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
-                  <button class="ce-arrow" id="ceSecDown">▼</button>
-                </div>
-                <button class="ce-confirm" id="ceConfirm">✓</button>
-                <!-- 시간 프리셋 드롭다운 (":" hover 시 스코어박스 너비로 아래 표시) -->
-                <div class="ce-presets" id="cePresets">
-                  <button class="ce-preset-btn" data-min="0">00:00</button>
-                  <button class="ce-preset-btn" data-min="45">45:00</button>
-                  <button class="ce-preset-btn" data-min="90">90:00</button>
-                  <button class="ce-preset-btn" data-min="105">105:00</button>
-                </div>
+      <div class="board fsm-board align-outer fsm-starting" id="board">
+        <div class="scoreboard-main">
+          <div class="team-logo" id="team-logo-left">
+              <img class="logo-imgLeft" id="homeLogo" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_United_FC.svg'/>
+          </div>
+          <div class="div-background"></div>
+          <div class="teams-left" id="homeCard">
+              <div class="div-rc home" id="rcHome">
               </div>
-              <span class="t extra hidden" id="extra">+0</span>
-            </div>
-            <span class="half" id="half">1H</span>
+              <div class="team-name" id="homeName">
+                  <span class="text" id="team-text-left">맨유</span>
+              </div>
+              <div class="team-color" id="homeColor"></div>
+          </div>
+          <div class="total-score">
+            <span class="total" id="totalScoreLeft">0</span>
+          </div>
+          <div class="team-score" id="team-score-left">
+              <span class="score-left" id="homeScore">0</span>
+          </div>
+          <div class="score-div">
+              <span class="hipen">-</span>
+              <div class="divider"></div>
+              <img class="epl-lion" src='https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png'/>
+          </div>
+          <div class="team-score" id="team-score-right">
+              <span class="score-right" id="awayScore">0</span>
+          </div>
+          <div class="total-score">
+            <span class="total" id="totalScoreRight">0</span>
+          </div>
+          <div class="teams-right" id="awayCard">
+              <div class="div-rc away" id="rcAway">
+              </div>
+              <div class="team-name" id="awayName">
+                  <span class="text" id="team-text-right">맨시티</span>
+              </div>
+              <div class="team-color" id="awayColor"></div>
+          </div>
+          <div class="team-logo" id="team-logo-right">
+              <img class="logo-imgRight" id="awayLogo" src='https://indvel.github.io/utils/fsm/logos/EPL/Manchester_City_FC.svg'/>
           </div>
         </div>
-        <div class="team away" id="awayCard">
-          <div class="logo-box"><img id="awayLogo" class="logo-img hidden" alt="AWAY" /></div>
-          <div class="name" id="awayName">AWAY</div>
-          <div class="rc-rail away hidden" id="rcAway"></div>
+        <div class="scoreboard-timer">
+            <span class="time" id="clock">00:00</span>
+            <span class="extra-time" id="extra">+ 0</span>
+      <div class="clock-editor" id="clockEditor" style="position:absolute">
+        <div class="ce-unit">
+          <button class="ce-arrow" id="ceMinUp">▲</button>
+          <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
+          <button class="ce-arrow" id="ceMinDown">▼</button>
         </div>
-        <!-- PK Strip -->
-        <div class="pk-wrap" id="pkWrap"><div class="pk-strip"><div class="pk-team home" id="pkHome"></div><div class="pk-center"><div class="pk-label"></div></div><div class="pk-team away" id="pkAway"></div></div></div>
+        <div class="ce-colon" id="ceColon" title="시간 프리셋 보기">:</div>
+        <div class="ce-unit">
+          <button class="ce-arrow" id="ceSecUp">▲</button>
+          <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
+          <button class="ce-arrow" id="ceSecDown">▼</button>
+        </div>
+        <button class="ce-confirm" id="ceConfirm">✓</button>
+        <div class="ce-presets" id="cePresets">
+          <button class="ce-preset-btn" data-min="0">00:00</button>
+          <button class="ce-preset-btn" data-min="45">45:00</button>
+          <button class="ce-preset-btn" data-min="90">90:00</button>
+          <button class="ce-preset-btn" data-min="105">105:00</button>
+        </div>
+      </div>
+        </div>
+        <div class="pso-status">
+            <div class="pso-main">
+              <div class="pso-content" id="pso-left">
+                  <ul>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                  </ul>
+              </div>
+              <div class="pso-middle">
+                  <span class="pso-text">PSO</span>
+              </div>
+              <div class="pso-content" id="pso-right">
+                  <ul>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                      <li class="pso-circle"></li>
+                  </ul>
+              </div>
+            </div>
+          </div>
       </div><!-- /board -->
+      <!-- obs-frontend 상태 홀더 — FSM HTML 교체 후에도 DOM에 유지되어야 함 -->
+
+      <div class="pk-score-row hidden" id="pkScoreRow" style="position:absolute">
+        <span class="pk-score-text">(<span id="pkScoreHome">0</span> PK <span id="pkScoreAway">0</span>)</span>
+      </div>
+      <span id="half" style="display:none">1H</span>
+      <!-- 승부차기 표시줄 -->
+      <div class="pk-wrap" id="pkWrap"><div class="pk-strip"><div class="pk-team home" id="pkHome"></div><div class="pk-center"><div class="pk-label"></div></div><div class="pk-team away" id="pkAway"></div></div></div>
       <!-- 원정 득점자 (우측) -->
       <div class="note-side" id="awayNoteSide"><div class="note away" id="awayNote"></div></div>
     </div><!-- /board-stage-inner -->
@@ -904,13 +959,13 @@
   <div class="theme-panel-wrap">
     <div class="theme-panel-inner" id="themePanel">
       <!-- 단축키 힌트 + 수동 모드 토글 (오른쪽 끝) -->
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div style="opacity:.75;font-size:12px;">단축키 <span class="kbd">Space</span> 시작/정지 · <span class="kbd">R</span> 리셋 · <span class="kbd">[</span>/<span class="kbd">]</span> 전/후반 이동</div>
+      <div class="theme-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div class="theme-shortcut-hint" style="opacity:.75;font-size:12px;">단축키 <span class="kbd">Space</span> 시작/정지 · 리셋 <span class="kbd">R</span> 00:00 / <span class="kbd">E</span> 45:00 / <span class="kbd">Shift+R</span> 90:00 / <span class="kbd">Shift+E</span> 105:00</div>
         <div class="manual-toggle-wrap" style="margin:0;flex-shrink:0;"><label class="toggle-switch" for="manualModeToggle"><input type="checkbox" id="manualModeToggle" onchange="toggleManualMode()" /><span class="toggle-track"></span></label><label for="manualModeToggle">수동 모드</label></div>
       </div>
 
       <!-- ─── 수동 모드 ─── -->
-      <div id="manual-section">
+      <div id="manual-section" class="theme-card">
         <div class="section-title">수동 모드 입력</div>
         <div style="opacity:.75; font-size:12px; margin-bottom:8px;">점수 조절: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 +/− · <span class="kbd">w</span>/<span class="kbd">s</span> 원정 +/− · <span class="kbd">f</span> 점수 초기화 · <span class="kbd">t</span> 추가시간 표시 · PSO 상태: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 성공/실패 · <span class="kbd">w</span>/<span class="kbd">s</span> 원정 성공/실패 · <span class="kbd">z</span> 되돌리기 · <span class="kbd">x</span> 초기화</div>
         <!-- 팀 이름 + 로고 -->
@@ -930,8 +985,7 @@
           <div class="manual-score-group"><label>원정 점수</label><div class="manual-score-row"><button class="manual-score-btn" id="manualAwayMinus">−</button><span class="manual-score-val" id="manualAwayScoreVal">0</span><button class="manual-score-btn" id="manualAwayPlus">+</button></div></div>
           <div class="manual-side-tools">
             <div class="pgroup" style="flex-direction:row;align-items:center;"><button id="manualResetScore" class="ghost">점수 초기화 (F)</button></div>
-            <div class="pgroup"><label>추가시간 <span style="font-weight:400;opacity:.6;font-size:11px;"><span class="kbd">T</span></span></label><div class="prow"><input id="extraInput" type="number" min="0" value="0" style="width:72px;" /><button id="toggleExtra" class="ghost">표시 토글 (T)</button><button id="extraPlus">+1</button><button id="extraMinus">-1</button></div></div>
-            <div class="pgroup"><label>PK 관리 <span style="font-weight:400;opacity:.6;font-size:11px;">PSO 반 선택 후 사용</span></label><div class="manual-pk-buttons"><button id="pkHomeGoal">홈 성공</button><button id="pkHomeMiss">홈 실패</button><button id="pkAwayGoal">원정 성공</button><button id="pkAwayMiss">원정 실패</button><button id="pkUndo" class="ghost">되돌리기</button><button id="pkReset">초기화</button></div></div>
+            <div class="pgroup"><label>PK 관리 <span style="font-weight:400;opacity:.6;font-size:11px;">PSO 모드에서 사용</span></label><label class="prow" style="align-items:center;gap:6px;"><input id="manualPsoMode" type="checkbox">PSO</label><div class="manual-pk-buttons"><button id="pkHomeGoal">홈 성공</button><button id="pkHomeMiss">홈 실패</button><button id="pkAwayGoal">원정 성공</button><button id="pkAwayMiss">원정 실패</button><button id="pkUndo" class="ghost">되돌리기</button><button id="pkReset">초기화</button></div></div>
           </div>
         </div>
         <!-- 득점자 -->
@@ -939,56 +993,31 @@
       </div>
 
       <!-- ─── 타이머 / 전반 / 추가시간 ─── -->
-      <div>
+      <div class="theme-card theme-timer-card">
         <div class="section-title">타이머 · 경기 정보</div>
         <div class="prow">
-          <div class="pgroup"><label>전/후반 <span style="font-weight:400;opacity:.6;font-size:11px;"><span class="kbd">[</span>/<span class="kbd">]</span></span></label><div class="prow"><button id="prevHalf">이전</button><select id="halfSelect"><option value="1">1H</option><option value="2">2H</option><option value="ET1">ET1</option><option value="ET2">ET2</option><option value="PK">PSO</option></select><button id="nextHalf">다음</button></div></div>
           <div class="pgroup"><label>경기 타이머</label><div class="prow"><button id="startPause" class="primary">시작 (Space)</button><button id="resetTime">리셋 (R)</button></div></div>
           <div class="pgroup"><label>시작 시각 (mm:ss)</label><div class="prow"><input id="startAt" type="text" inputmode="numeric" placeholder="예: 45:00" style="width:110px" /><button id="applyStartAt">적용</button><button id="quick45" class="ghost">45:00</button><button id="quick90" class="ghost">90:00</button></div></div>
           <div class="pgroup"><label>배속</label><input id="secPerTick" type="number" step="0.1" value="1" title="가상 배속" /></div>
+            <div class="pgroup"><label>추가시간 <span style="font-weight:400;opacity:.6;font-size:11px;"><span class="kbd">T</span></span></label><div class="prow"><input id="extraInput" type="number" min="0" value="0" style="width:72px;" /><button id="toggleExtra" class="ghost">표시 토글 (T)</button><button id="extraPlus">+1</button><button id="extraMinus">-1</button></div></div>
           <div class="pgroup"><label>합계 점수 표시 <span style="font-weight:400;opacity:.6;font-size:11px;">체크 시 현재 점수에 자동 반영</span></label><div class="prow"><label style="display:flex;align-items:center;gap:6px;"><input id="aggToggle" type="checkbox"> 표시</label><input id="aggHomeBase" type="number" min="0" step="1" value="0" placeholder="홈 합계" title="홈 합계 기준값" style="width:90px;"><input id="aggAwayBase" type="number" min="0" step="1" value="0" placeholder="원정 합계" title="원정 합계 기준값" style="width:90px;"></div></div>
           <!-- 점수판 배율 -->
           <div class="pgroup"><label>점수판 배율 (<span id="boardScaleLabel">75</span>%)</label><div class="prow"><input type="range" id="boardScaleRange" min="50" max="100" step="1" value="75" style="width:160px; cursor:pointer;" /><button id="boardScaleReset">초기화</button></div></div>
         </div>
       </div>
 
-      <!-- ─── 로고 ─── -->
-      <div>
-        <div class="section-title">로고 · 정렬 · 보드 크기</div>
-        <div class="prow">
-          <div class="pgroup"><label>홈 로고 배율</label><input id="homeLogoScale" type="number" step="0.1" min="0.2" max="5" value="1" /></div>
-          <div class="pgroup"><label>원정 로고 배율</label><input id="awayLogoScale" type="number" step="0.1" min="0.2" max="5" value="1" /></div>
-          <div class="pgroup"><label>홈 로고 좌우(px)</label><input id="homeLogoX" type="number" step="1" min="-1000" max="1000" value="0" /></div>
-          <div class="pgroup"><label>홈 로고 상하(px)</label><input id="homeLogoY" type="number" step="1" min="-1000" max="1000" value="0" /></div>
-          <div class="pgroup"><label style="visibility:hidden">홈 오프셋 초기화</label><button id="homeOffsetReset" class="ghost">초기화</button></div>
-          <div class="pgroup"><label>원정 로고 좌우(px)</label><input id="awayLogoX" type="number" step="1" min="-1000" max="1000" value="0" /></div>
-          <div class="pgroup"><label>원정 로고 상하(px)</label><input id="awayLogoY" type="number" step="1" min="-1000" max="1000" value="0" /></div>
-          <div class="pgroup"><label style="visibility:hidden">원정 오프셋 초기화</label><button id="awayOffsetReset" class="ghost">초기화</button></div>
-          <div class="pgroup"><label>로고 정렬</label><select id="logoAlign"><option value="outer">바깥쪽 (로고-이름 | 점수 | 이름-로고)</option><option value="hybrid">하이브리드 (로고 바깥, 이름 안쪽)</option><option value="inner">안쪽 (이름-로고 | 점수 | 로고-이름)</option></select></div>
-          <div class="pgroup"><label>모서리</label><select id="radiusMode"><option value="round">둥글게</option><option value="square">각지게</option></select></div>
-          <div class="pgroup"><label>보드 너비(px)</label><div class="prow"><input id="boardWidth" type="number" min="10" step="1" value="1080" style="width:90px;" /><button id="boardWidthReset" class="ghost">초기화</button></div></div>
-        </div>
-      </div>
-
       <!-- ─── 색상 ─── -->
-      <div><div class="section-title">색상</div><div class="prow"><div class="pgroup"><label>보드 A</label><input id="inBoardA" type="color" value="#0b1220"></div><div class="pgroup"><label>보드 B</label><input id="inBoardB" type="color" value="#141b2b"></div><div class="pgroup"><label>스코어 배경</label><input id="inScoreBg" type="color" value="#0b1220"></div><div class="pgroup"><label>숫자 색</label><input id="inDigitsColor" type="color" value="#e5e7eb"></div><div class="pgroup"><label>메타/타이머 색</label><input id="inMetaColor" type="color" value="#e5e7eb"></div><div class="pgroup"><label>추가시간 색</label><input id="inExtraColor" type="color" value="#22c55e"></div><div class="pgroup"><label>Half 배경</label><input id="inHalfBg" type="color" value="#16a34a"></div><div class="pgroup"><label>Half 글자</label><input id="inHalfText" type="color" value="#052e16"></div><div class="pgroup"><label>PK 기본 색</label><input id="pkBaseColor" type="color" value="#334155"></div><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div><div class="pgroup"><label>외곽선(보드)</label><input id="inOutline" type="color" value="#2f3b52"></div><div class="pgroup"><label>홈 외곽선 색</label><input id="inHomeOutline" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 외곽선 색</label><input id="inAwayOutline" type="color" value="#ffffff"></div></div></div>
-      <div class="theme-inline-sections">
-        <!-- ─── 득점자 메모 스타일 ─── -->
-        <div class="theme-inline-section"><div class="section-title">득점자 표시</div><div class="prow"><div class="pgroup"><label>득점자 표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div><div class="pgroup"><label>글자 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div><div class="pgroup"><label>글자 크기(px)</label><input id="noteFontSize" type="number" min="10" step="1" value="20"></div><div class="pgroup"><label>글자 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div></div></div>
-        <!-- ─── 테두리 ─── -->
-        <div class="theme-inline-section"><div class="section-title">외곽선</div><div class="prow"><div class="pgroup"><label>홈 외곽선 표시</label><div class="prow"><input id="homeOutlineOn" type="checkbox"></div></div><div class="pgroup"><label>원정 외곽선 표시</label><div class="prow"><input id="awayOutlineOn" type="checkbox"></div></div><div class="pgroup"><label>홈 외곽선 두께(px)</label><input id="homeOutlineWidth" type="number" min="0" step="1" value="1" /></div><div class="pgroup"><label>원정 외곽선 두께(px)</label><input id="awayOutlineWidth" type="number" min="0" step="1" value="1" /></div><div class="pgroup"><label>보드 외곽선 표시</label><div class="prow"><input id="boardOutlineOn" type="checkbox" checked></div></div><div class="pgroup"><label>보드 외곽선 두께(px)</label><input id="boardOutlineWidth" type="number" min="0" step="1" value="1" /></div><div class="pgroup"><label>숫자 테두리 표시</label><div class="prow"><input id="scoreOutlineOn" type="checkbox" checked></div></div><div class="pgroup"><label>숫자 테두리 두께(px)</label><input id="scoreOutlineWidth" type="number" min="0" step="1" value="1" /></div></div></div>
-        <!-- ─── 레드카드 시각 설정 ─── -->
-        <div class="theme-inline-section"><div class="section-title">레드카드 위치</div><div class="prow"><div class="pgroup"><label>레드카드 크기/간격(px)</label><div class="prow"><input id="rcSize" type="number" min="6" max="40" step="1" value="14" /><input id="rcGap" type="number" min="0" max="20" step="1" value="6" /></div><small>기본: 크기 14, 간격 6</small></div><div class="pgroup"><label>레드카드 위치(px)</label><div class="prow"><label class="prow" style="gap:6px;">위쪽<input id="rcTop" type="number" step="1" value="-25" style="width:60px;"></label><label class="prow" style="gap:6px;">홈 안쪽<input id="rcHomeInset" type="number" step="1" value="6" style="width:60px;"></label><label class="prow" style="gap:6px;">원정 안쪽<input id="rcAwayInset" type="number" step="1" value="6" style="width:60px;"></label></div><small>기본값: 위쪽 -25, 안쪽 6</small></div></div></div>
+      <div class="theme-appearance-grid">
+      <div class="theme-card theme-selector-card"><div class="section-title">점수판 테마</div><div class="prow"><div class="pgroup"><label for="fsmThemeSelect">FSM 테마 선택</label><select id="fsmThemeSelect" style="min-width:240px"></select><small>자동 선택은 경기의 리그에 맞춰 적용됩니다.</small></div></div></div>
+      <div class="theme-card theme-colors-card"><div class="section-title">색상</div><button id="resetApiTeamColors" class="theme-color-reset" type="button" title="API 색상으로 초기화" aria-label="API 색상으로 초기화">&#8634;</button><div class="prow"><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div></div></div>
+        <div class="theme-card theme-notes-card"><div class="section-title">득점자 표시</div><div class="prow"><div class="pgroup"><label>득점자 표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div><div class="pgroup"><label>글자 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div><div class="pgroup"><label>글자 크기(px)</label><input id="noteFontSize" type="number" min="10" step="1" value="20"></div><div class="pgroup"><label>글자 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div></div></div>
       </div>
-      <!-- ─── 템플릿 ─── -->
-      <div><div class="section-title">템플릿</div><div class="prow"><div class="pgroup"><label>저장된 템플릿</label><div class="prow"><select id="templateSelect" style="min-width:180px"></select><input id="templateName" type="text" placeholder="예: 프리미어리그" /><button id="saveTemplate" class="primary">로컬에 저장</button><button id="deleteTemplate" class="ghost">삭제</button><button id="resetTemplates" class="ghost">초기화</button><button id="exportTemplates">내보내기(JSON)</button><div class="theme-file-upload"><span class="theme-file-caption">불러오기</span><input id="importTemplates" type="file" accept="application/json" class="file template-import-file" /></div></div><small>기본 템플릿(Lists.json) + 브라우저 LocalStorage 오버라이드 + JSON 내보내기/불러오기</small></div></div></div>
-      <!-- ─── 폰트 ─── -->
-      <div><div class="section-title">폰트</div><div class="prow"><div class="pgroup"><label>프리셋</label><select id="fontPreset"><option value="">직접 입력 / 사용자 지정</option><optgroup label="기본 / 시스템"><option value="'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">기본값</option><option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif">시스템 기본</option><option value="'Segoe UI', 'Malgun Gothic', Arial, sans-serif">Segoe UI + 맑은 고딕</option><option value="'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">맑은 고딕</option><option value="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">Apple SD Gothic Neo</option><option value="'Arial', Helvetica, sans-serif">Arial</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option><option value="'Tahoma', Geneva, sans-serif">Tahoma</option><option value="'Verdana', Geneva, sans-serif">Verdana</option><option value="'Trebuchet MS', Helvetica, sans-serif">Trebuchet MS</option></optgroup><optgroup label="웹 폰트"><option value="'Ubuntu', sans-serif">Ubuntu</option><option value="'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">Nanum Barun Gothic</option><option value="'Roboto', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">Roboto</option><option value="'Noto Sans KR', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">Noto Sans KR</option><option value="'Montserrat', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap">Montserrat</option><option value="'Bebas Neue', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">Bebas Neue</option></optgroup><optgroup label="세리프 / 모노 / 디스플레이"><option value="'Georgia', 'Times New Roman', serif">Georgia</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Courier New', Courier, monospace">Courier New</option><option value="'Consolas', 'Courier New', monospace">Consolas</option><option value="'Impact', 'Arial Black', sans-serif">Impact</option><option value="sans-serif">sans-serif</option><option value="serif">serif</option><option value="monospace">monospace</option></optgroup></select></div><div class="pgroup"><label>기기에 설치된 폰트 (권한 필요)</label><div class="prow"><button id="askLocalFonts">설치 폰트 찾기</button><select id="systemFonts" style="min-width:200px"></select></div></div><div class="pgroup"><label>폰트 파일 업로드 (.ttf/.otf/.woff/.woff2)</label><input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" class="file" /></div><div class="pgroup" style="min-width:340px"><label>커스텀 폰트 CSS URL (Google Fonts 등)</label><input id="fontCssUrl" type="text" placeholder="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" /></div><div class="pgroup"><label>폰트 패밀리</label><input id="fontFamily" type="text" placeholder="'Montserrat', sans-serif" /></div><div class="pgroup"><label style="visibility:hidden">폰트 적용</label><button id="applyFont" class="primary">폰트 적용</button></div><div class="pgroup"><label style="visibility:hidden">폰트 초기화</label><button id="resetFont">폰트 초기화</button></div></div></div>
+      <div class="theme-card theme-font-card"><div class="section-title">폰트</div><div class="theme-font-basic"><div class="pgroup"><label>프리셋</label><select id="fontPreset"><option value="">직접 입력 / 사용자 지정</option><optgroup label="기본 / 시스템"><option value="'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">기본값</option><option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif">시스템 기본</option><option value="'Segoe UI', 'Malgun Gothic', Arial, sans-serif">Segoe UI + 맑은 고딕</option><option value="'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">맑은 고딕</option><option value="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">Apple SD Gothic Neo</option><option value="'Arial', Helvetica, sans-serif">Arial</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option><option value="'Tahoma', Geneva, sans-serif">Tahoma</option><option value="'Verdana', Geneva, sans-serif">Verdana</option><option value="'Trebuchet MS', Helvetica, sans-serif">Trebuchet MS</option></optgroup><optgroup label="웹 폰트"><option value="'Ubuntu', sans-serif">Ubuntu</option><option value="'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">Nanum Barun Gothic</option><option value="'Roboto', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">Roboto</option><option value="'Noto Sans KR', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">Noto Sans KR</option><option value="'Montserrat', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap">Montserrat</option><option value="'Bebas Neue', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">Bebas Neue</option></optgroup><optgroup label="세리프 / 모노 / 디스플레이"><option value="'Georgia', 'Times New Roman', serif">Georgia</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Courier New', Courier, monospace">Courier New</option><option value="'Consolas', 'Courier New', monospace">Consolas</option><option value="'Impact', 'Arial Black', sans-serif">Impact</option><option value="sans-serif">sans-serif</option><option value="serif">serif</option><option value="monospace">monospace</option></optgroup></select></div><button id="resetFont" type="button">초기화</button></div><div class="theme-font-advanced"><div class="prow"><div class="pgroup"><label>기기에 설치된 폰트 (권한 필요)</label><div class="prow"><button id="askLocalFonts">설치 폰트 찾기</button><select id="systemFonts" style="min-width:200px"></select></div></div><div class="pgroup"><label>폰트 파일 업로드 (.ttf/.otf/.woff/.woff2)</label><input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" class="file" /></div><div class="pgroup" style="min-width:340px"><label>커스텀 폰트 CSS URL (Google Fonts 등)</label><input id="fontCssUrl" type="text" placeholder="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" /></div><div class="pgroup"><label>폰트 패밀리</label><input id="fontFamily" type="text" placeholder="'Montserrat', sans-serif" /></div><div class="pgroup theme-font-actions"><label style="visibility:hidden">Font actions</label><div class="prow"><button id="applyFont" class="primary">폰트 적용</button></div></div></div></div></div>
     </div><!-- /theme-panel-inner -->
   </div>
 </div><!-- /page-theme -->
 
-<!-- SCHEDULE -->
+<!-- 경기 일정 -->
 <div id="page-schedule" class="page">
   <div class="page-wrap">
     <div class="widgetGrid">
@@ -1185,7 +1214,7 @@
 </div><!-- /tactics-viewport -->
 </div><!-- /page-tactics -->
 
-<!-- ABOUT -->
+<!-- 서비스 소개 -->
 <div id="page-about" class="page">
   <div class="page-wrap">
     <div class="panel-box">
@@ -1198,7 +1227,7 @@
 
 </div>
 
-<!-- API-Sports config widget -->
+<!-- API-Sports 설정 위젯 -->
 <api-sports-widget
   data-type="config"
   data-sport="football"
@@ -1300,6 +1329,7 @@
 <script src="js/panels/stats-panel.js"></script>
 <script src="js/panels/stat-cycle.js"></script>
 <script src="js/tactics/tactics-timeline.js"></script>
+<script src="js/core/fsm-board.js"></script>
 <script src="js/core/init.js"></script>
 <script src="js/sidebar/sidebar.js"></script>
 <script src="js/core/popout.js"></script>

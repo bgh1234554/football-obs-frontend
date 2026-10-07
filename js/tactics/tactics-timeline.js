@@ -42,8 +42,8 @@ function ttFindPlayerIndex(players, matcher) {
 
 /**
  * 이벤트 종류 판정.
- * - 'subst': type === 'subst' (playerId=OUT, assistId=IN)
- * - 'red'  : type === 'Card' && (detail === 'Red Card' || 'Second Yellow Card')
+ * - 교체('subst'): type === 'subst' (playerId=교체 아웃, assistId=교체 투입)
+ * - 퇴장('red'): type === 'Card' && (detail === 'Red Card' || 'Second Yellow Card')
  * - null   : 라인업 변화에 영향 없음
  */
 function ttClassifyEvent(ev) {

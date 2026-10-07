@@ -1,4 +1,4 @@
-// ScoreAxis standings widget renderer for small events area and big stat cycle.
+// 작은 이벤트 영역과 큰 스탯 순환 화면에 ScoreAxis 순위표 위젯을 표시합니다.
 (function () {
   const PANEL_SELECTOR = '[data-scoreaxis-standings-panel]';
   const SMALL_PANEL_SELECTOR = '.lp-events-s [data-scoreaxis-standings-panel]';

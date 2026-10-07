@@ -44,7 +44,7 @@ for (manualEntry of [null, { refereeName: 'Manual referee' }]) {
   assert.equal(JSON.stringify(fixture), original, 'Rendering must not mutate the response');
 }
 
-// Truly missing IN players must still be synthesized, even with automatic linking disabled.
+// 자동 연결이 꺼져 있어도 실제로 누락된 교체 투입 선수는 생성해야 합니다.
 manualEntry = null;
 autoLink = 'off';
 const missing = structuredClone(fixture);

@@ -4,7 +4,6 @@
   // - Space: 타이머 시작/정지
   // - R / Shift+R: 타이머 00:00 / 90:00 리셋
   // - E / Shift+E: 타이머 45:00 / 105:00 리셋
-  // - [ / ]: 전/후반 이동
   // - PK 하프 중 q/a (홈 골/미스), w/s (어웨이 골/미스), z Undo, x 초기화
   // - 수동 모드: q/a 홈 +/-, w/s 어웨이 +/-, F 점수 초기화, T 추가시간 토글
   // - H: 탭바 숨기기 토글
@@ -48,8 +47,6 @@
     }
     if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
     if(e.key==='t'||e.key==='T'){ toggleManualExtra(); }
-    if(e.key==='['){ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); }
-    if(e.key===']'){ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); }
     // q/a → 홈 점수 +/-, w/s → 원정 점수 +/- (수동 모드에서만 동작)
     // PSO 상태에서는 같은 키가 PK 득점/실축으로 동작 (점수 변경 없음)
     // z/x(PK undo/reset)는 PSO 상태에서만 동작

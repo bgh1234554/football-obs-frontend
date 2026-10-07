@@ -1,10 +1,10 @@
-// Run: node tests/lineup/lineup-initial-badge.cjs
+// 실행: node tests/lineup/lineup-initial-badge.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(__dirname, '../..');
 const override = process.argv[3] ? path.resolve(process.argv[3]) : root;
-const { chromium } = require(path.join(root, 'node_modules/playwright'));
+const { chromium } = require('playwright');
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] });

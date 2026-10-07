@@ -190,7 +190,15 @@
     ceSec.value = s;
 
     // 2. 시계 텍스트 숨기고 편집 UI 표시
-    clockEl.style.display = 'none';
+    if (clockEl.closest('.fsm-board')) {
+      const style = getComputedStyle(clockEl);
+      clockEditor.style.setProperty('--fsm-clock-background', style.background);
+      clockEditor.style.setProperty('--fsm-clock-color', style.color);
+      clockEditor.style.setProperty('--fsm-clock-width', clockEl.offsetWidth + 'px');
+      clockEl.classList.add('is-editing');
+    } else {
+      clockEl.style.display = 'none';
+    }
     clockEditor.classList.add('active');
     ceMin.focus();
     ceMin.select();
@@ -213,6 +221,7 @@
     function closeClockEditor() {
       clockEditor.classList.remove('active');
       clockEl.style.display = '';
+      clockEl.classList.remove('is-editing');
       ceHidePresetsNow();
     }
 

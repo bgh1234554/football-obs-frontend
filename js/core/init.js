@@ -4,19 +4,15 @@
 
   // 1. LocalStorage에서 상태 복원
   restore();
+  initFsmThemeSelect();
+  window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl || null);
+  // 폰트 완료 콜백이 init.js 로딩보다 빨라도 저장 상태 복원 전에는 표시하지 않습니다.
+  fsmInitialStateReady = true;
   // 1-1. 수동 모드 상태 UI 반영
   if(state.manualMode){
     if(el.manualModeToggle) el.manualModeToggle.checked = true;
     if(el.manualSection) el.manualSection.classList.add('visible');
     syncManualInputs();
-  }
-  // 2. 템플릿 목록 select 채우기 + 마지막 선택 템플릿 복원
-  const selectedTemplateName = (typeof getLastSelectedTemplateName === 'function')
-    ? getLastSelectedTemplateName()
-    : '';
-  loadTemplates(selectedTemplateName).catch(err => console.warn('Template list load failed:', err));
-  if(selectedTemplateName && typeof restoreLastSelectedTemplate === 'function'){
-    restoreLastSelectedTemplate();
   }
   // 3. 시계 텍스트 초기화 및 전체 렌더
   el.clock.textContent = fmtClock(state.seconds);
@@ -29,7 +25,12 @@
   window.addEventListener('resize', () => autoLayoutNotes());
   if (window.ResizeObserver) {
     const board = $('board');
-    if (board) new ResizeObserver(() => autoLayoutNotes()).observe(board);
+    if (board) {
+      const noteLayoutObserver = new ResizeObserver(() => autoLayoutNotes());
+      noteLayoutObserver.observe(board);
+      board.querySelectorAll('.scoreboard-main, .scoreboard-timer, .time, .extra-time')
+        .forEach(node => noteLayoutObserver.observe(node));
+    }
   }
 
   /** about.md 파일을 fetch하여 markdown-it으로 파싱 + DOMPurify로 sanitize 후 about-rendered에 삽입 */

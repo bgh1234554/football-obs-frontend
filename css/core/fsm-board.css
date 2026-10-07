@@ -1,0 +1,145 @@
+/* css/fsm-board.css - FSM이 정의하지 않는 obs-frontend 보정 */
+
+/* FSM 점수판이 OBS 캡처 영역 안에서 가운데 정렬되도록 */
+.board.fsm-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 기존 .board의 padding이 테마 로딩 전후 높이를 바꾸지 않도록 공통 초기화. */
+  padding: 0;
+  width: max-content;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.board.fsm-board.outline-on { box-shadow: none; }
+/* 첫 화면은 저장된 테마와 가변 너비를 적용한 뒤 표시합니다.
+   너비/위치를 애니메이션하면 팀명 측정과 득점자 정렬이 흔들리므로
+   최종 레이아웃 위에서 표시 영역과 투명도만 전환합니다. */
+.board.fsm-board.fsm-starting { visibility: hidden; }
+.board.fsm-board.fsm-starting,
+.board.fsm-board.fsm-starting * { transition: none !important; }
+.board.fsm-board.fsm-entering {
+  animation: fsm-board-enter .9s ease-in-out both;
+}
+.board.fsm-board.fsm-entering[data-fsm-theme="pl"] { animation-duration: .4s; }
+@keyframes fsm-board-enter {
+  from { opacity: 0; clip-path: inset(-100% 12% -100% 12%); }
+  to { opacity: 1; clip-path: inset(-100% -12% -100% -12%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board.fsm-board.fsm-entering { animation: none; }
+}
+.fsm-board .scoreboard-main > * { flex-shrink: 0; }
+.board.fsm-board .teams-left, .board.fsm-board .teams-right {
+  min-width: 0;
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+/* 이벤트 텍스트 배치에 사용하는 너비와 변환 경계는 즉시 적용합니다.
+   색상과 모서리, 고정 폭 점수 칸의 글자 크기 효과는 유지합니다. */
+.board.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div) {
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+.board.fsm-board .team-score {
+  transition-property: background-color, color, font-size, border-color, border-radius, box-shadow;
+}
+/* 배경이 없는 점수/로고 칸은 이전 테마의 불투명 배경을 페이드하지 않습니다. */
+.board.fsm-board:is([data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .team-score,
+.board.fsm-board[data-fsm-theme="seriea"] .score-div {
+  background: transparent;
+  transition-property: color, font-size, border-color, border-radius, box-shadow;
+}
+.board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: var(--fsm-team-name-padding, 24px); margin-top: 0; line-height: 1; display: flex; align-items: center; }
+.fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
+/* 프리미어리그 배경의 밝은 중앙 영역은 너비 194px이며, 팀마다 97px씩 제외합니다. */
+.board.fsm-board[data-fsm-theme="pl"] { --fsm-name-reserved-width: 97px; }
+/* 기본 테마의 금색 배경을 큰 EPL 점수/로고 박스로 함께 확대하지 않습니다.
+   팀명 너비는 고정하되 중앙의 글자 크기와 위치는 원래 테마처럼 전환합니다. */
+.board.fsm-board[data-fsm-theme="pl"] :is(.team-score, .score-div) {
+  background: transparent;
+  transition-property: color, font-size, margin-top, margin-left, margin-right, padding, border-color, border-radius, box-shadow;
+}
+.board.fsm-board[data-fsm-theme="pl"] .team-logo {
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+.board.fsm-board[data-fsm-theme="pl"] :is(.time, .extra-time) {
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+.board.fsm-board[data-fsm-theme="pl"] .div-background {
+  background-image: linear-gradient(to right,
+    var(--fsm-pl-home-overlay, #ffffff) 50%,
+    var(--fsm-pl-away-overlay, #ffffff) 50%);
+  /* 원래 지그재그 가장자리와 투명도는 유지하고 색상만 바꿉니다. */
+  mask-image: url('/resources/imgs/background_pl2.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: 656px 48px;
+}
+.board.fsm-board[data-fsm-theme="pl"] .team-name {
+  width: calc(100% - 97px); justify-content: center;
+  margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
+}
+.board.fsm-board[data-fsm-theme="pl"] .teams-left .team-name { margin-right: 97px; }
+.board.fsm-board[data-fsm-theme="pl"] .teams-right .team-name { margin-left: 97px; }
+.board.fsm-board[data-fsm-theme="seriea"] .team-name {
+  color: white;
+}
+.board.fsm-board[data-fsm-theme="unl"] .team-name {
+  width: calc(100% - var(--fsm-name-reserved-width, 0px));
+  justify-content: center; margin-inline: 0;
+}
+.board.fsm-board[data-fsm-theme="unl"] .teams-left .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board[data-fsm-theme="unl"] .teams-right .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .team-name {
+  width: calc(100% - var(--fsm-name-reserved-width, 0px));
+  justify-content: center; margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
+}
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board[data-fsm-theme="wc26"] .team-color { top: 50%; transform: translateY(-50%); }
+.board.fsm-board[data-fsm-theme="wc26"] #homeColor { left: auto; right: calc(var(--fsm-score-overlap, 0px) + 12px); }
+.board.fsm-board[data-fsm-theme="wc26"] #awayColor { right: auto; left: calc(var(--fsm-score-overlap, 0px) + 12px); }
+
+/* clockEditor: .board 바깥으로 이동했으므로 #clock 위에 겹쳐 보이도록 */
+#clockEditor {
+  position: absolute;
+  z-index: 100;
+}
+.fsm-board .scoreboard-timer { position: relative; }
+.board.fsm-board :is(.time, .extra-time) {
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  flex-shrink: 0;
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+.fsm-board #clockEditor {
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  margin: 0; padding: 2px 4px;
+  width: max-content; min-width: var(--fsm-clock-width);
+  justify-content: center;
+  background: var(--fsm-clock-background);
+  color: var(--fsm-clock-color);
+}
+.fsm-board .time.is-editing { color: transparent !important; }
+.board.fsm-board .time { z-index: 1; }
+/* 배경 없는 옆 텍스트는 안쪽 여백 없이 허용 높이를 전부 사용합니다. */
+.board-stage-inner:has(.fsm-board) .note { padding: 0; }
+.fsm-board #clockEditor :is(.ce-arrow, .ce-num, .ce-colon, .ce-preset-btn) {
+  color: var(--fsm-clock-color);
+}
+.fsm-board #cePresets { background: var(--fsm-clock-background); }
+.board-stage-inner:has(.fsm-board) > .pk-wrap { display: none; }
+
+/* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */
+/* #rcHome, #rcAway {
+  position: absolute;
+  top: 0;
+} */
+
+/* PK 점수 행: FSM에 없으므로 별도 표시 */
+#pkScoreRow {
+  position: absolute;
+  text-align: center;
+  width: 100%;
+}

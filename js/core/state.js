@@ -100,6 +100,10 @@
     noteBorderWidth: 1,
     noteMinHeight: 56,
     manualMode: false,
+    leagueId: null,
+    leagueLogoUrl: null,
+    leagueThemeUpdateSilent: false,
+    leagueThemeApplyVersion: 0
   };
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -181,9 +185,14 @@
         return;
       }catch(e){
         if(e.name !== 'QuotaExceededError' && e.name !== 'NS_ERROR_DOM_QUOTA_REACHED') throw e;
-        const fallbacks = [
+        const singleSideFallbacks = [
           { drop: ['homeLogo', 'homeLogoManual'], warn: '홈 로고' },
           { drop: ['awayLogo', 'awayLogoManual'], warn: '원정 로고' },
+        ];
+        const serializedSize = ({ drop }) => drop.reduce((size, key) => size + (JSON.stringify(state[key]) || '').length, 0);
+        singleSideFallbacks.sort((a, b) => serializedSize(b) - serializedSize(a));
+        const fallbacks = [
+          ...singleSideFallbacks,
           { drop: ['homeLogo', 'homeLogoManual', 'awayLogo', 'awayLogoManual'], warn: '홈/원정 로고' },
         ];
         for (const { drop, warn } of fallbacks) {
@@ -260,5 +269,7 @@
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
+      state.leagueId = saved?.leagueId ?? null;
+      state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;
     }catch(e){ console.warn('복원 실패:', e); }
   }

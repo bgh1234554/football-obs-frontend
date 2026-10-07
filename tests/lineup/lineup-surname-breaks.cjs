@@ -1,10 +1,10 @@
-// Run: node tests/lineup/lineup-surname-breaks.cjs
+// 실행: node tests/lineup/lineup-surname-breaks.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(__dirname, '../..');
 const override = process.argv[3] ? path.resolve(process.argv[3]) : root;
-const { chromium } = require(path.join(root, 'node_modules/playwright'));
+const { chromium } = require('playwright');
 
 (async () => {
   const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] });
@@ -72,7 +72,7 @@ const { chromium } = require(path.join(root, 'node_modules/playwright'));
       const unsafe = make('A. <img src=x onerror=alert(1)>메인틀런드-나일스', 70);
       fitLineupNameSelf(unsafe);
       const injectionSafe = !unsafe.querySelector('img');
-      // A new fitting pass after enlarging must discard the previous manual breaks.
+      // 확대 후 다시 맞출 때는 이전에 삽입한 수동 줄바꿈을 제거해야 합니다.
       narrow.parentElement.style.width = '400px';
       fitLineupNamePills(narrow.parentElement);
       const resized = measure(narrow);
@@ -119,7 +119,7 @@ const { chromium } = require(path.join(root, 'node_modules/playwright'));
       const host = document.getElementById('surname-fit-probe');
       const wrap = document.createElement('div');
       wrap.style.cssText = 'position:relative;display:flex;justify-content:center;width:113px;margin-bottom:80px;';
-      const name = 'Arkelle Nicholas Cecil Jude-Boyd'; // Fixture 1639960, home #12.
+      const name = 'Arkelle Nicholas Cecil Jude-Boyd'; // 경기 1639960의 홈팀 12번 선수.
       wrap.innerHTML = buildLineupNameLabelHtml({ number: 12 }, name, 'dp-lineup-name');
       host.appendChild(wrap);
       const el = wrap.firstElementChild;
@@ -190,7 +190,7 @@ const { chromium } = require(path.join(root, 'node_modules/playwright'));
       const blocked = make('A. 메인틀런드-나일스', 82);
       const obstacle = document.createElement('span');
       obstacle.className = 'dp-lineup-name';
-      // At every supported font the third line extends below 25px; two lines at 8px fit.
+      // 지원하는 모든 글꼴 크기에서 세 번째 줄은 높이 25px를 넘지만, 8px의 두 줄은 들어갑니다.
       obstacle.style.cssText = 'position:absolute;left:0;top:25px;width:82px;height:30px;';
       obstacle.textContent = '다른 선수';
       blocked.parentElement.appendChild(obstacle);
@@ -350,7 +350,7 @@ const { chromium } = require(path.join(root, 'node_modules/playwright'));
     assert(formationName.fits && !formationName.overlap, JSON.stringify(formationName));
     fs.mkdirSync(path.join(root, 'screenshots'), { recursive: true });
     await page.screenshot({ path: path.join(root, 'screenshots/lineup-multipart-name.png') });
-    // Visual QA for both scrolling directions using the production modal styles.
+    // 실제 모달 스타일을 적용하여 양쪽 스크롤 방향을 시각적으로 검증합니다.
     await page.evaluate(() => {
       const { modal, mount } = evHideCreateModal('교체 선수 수정', 'ev-subst-cluster-modal');
       const columns = document.createElement('div');

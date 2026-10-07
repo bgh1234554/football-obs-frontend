@@ -233,10 +233,11 @@ function lpAggregatePlayerEvents(events) {
     if (isPso) return;
 
     if (type === 'goal') {
-      const playerKey = lpEventPersonKey(ev.playerId, ev.side, ev.playerName);
+      const isOwn = detail === 'Own Goal';
+      const scorerSide = isOwn ? (ev.side === 'home' ? 'away' : ev.side === 'away' ? 'home' : ev.side) : ev.side;
+      const playerKey = lpEventPersonKey(ev.playerId, scorerSide, ev.playerName);
       if (!playerKey) return;
       if (detail === 'Missed Penalty') return;
-      const isOwn = detail === 'Own Goal';
       const isPenalty = detail === 'Penalty';
       if (isOwn) {
         ensure(playerKey).ownGoals.push({ time });

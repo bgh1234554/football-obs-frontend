@@ -401,7 +401,108 @@
       flex: 1; overflow: auto; min-height: 0;
       padding: 12px 14px;
       background: var(--panel-bg);
-      display: grid; gap: 14px;
+      display: grid; gap: 12px; align-content: start;
+    }
+
+    #themePanel .theme-toolbar { min-height: 32px; flex-wrap: wrap; }
+    .pages:has(> #page-theme.active) { flex: 0 1 auto; margin-top: auto; overflow: auto; }
+    #page-theme.active { height: auto; overflow: visible; }
+    #page-theme .theme-panel-wrap { height: auto; }
+    #themePanel { flex: none; padding: 10px 14px; gap: 10px; }
+    #themePanel .theme-card {
+      min-width: 0; padding: 12px 14px;
+      background: rgba(11, 18, 32, .76);
+      border: 1px solid #ffffff16; border-radius: 14px;
+    }
+    #themePanel .theme-colors-card { position: relative; }
+    #themePanel .theme-color-reset { position: absolute; right: 12px; top: 9px; height: 26px; padding: 3px 8px; font-size: 11px; }
+    #themePanel button:disabled { opacity: .4; cursor: default; }
+    html.popout-target-theme #themePanel { padding: 10px; }
+    html.popout-target-theme #themePanel .theme-appearance-grid { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 620px) {
+      html.popout-target-theme #themePanel .theme-appearance-grid { grid-template-columns: 1fr; }
+    }
+    #themePanel .theme-card .section-title {
+      color: #c4d5f3; letter-spacing: .4px;
+      border: none; padding: 0; margin: 0 0 12px;
+    }
+    #themePanel .theme-appearance-grid {
+      display: grid; grid-template-columns: minmax(240px, 280px) minmax(580px, 620px) minmax(450px, 480px);
+      gap: 12px; align-items: stretch;
+    }
+    #themePanel .prow { gap: 10px; }
+    #themePanel .pgroup { gap: 5px; min-width: 0; }
+    #themePanel .theme-timer-card > .prow { gap: 14px 20px; }
+    #themePanel .theme-selector-card select { width: 100%; min-width: 0 !important; }
+    #themePanel .theme-selector-card .pgroup { width: 100%; }
+    #themePanel small { color: #a8b6cc; font-size: 11px; line-height: 1.5; }
+    #themePanel .theme-selector-card small { margin-top: 4px; }
+    #themePanel .theme-card button.ghost {
+      background: #19273e; border: 1px solid #ffffff24;
+    }
+    #themePanel .theme-card input[type="color"] {
+      width: 42px; height: 30px; cursor: pointer;
+    }
+    #themePanel .theme-colors-card > .prow {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 16px;
+    }
+    #themePanel :is(.theme-colors-card, .theme-notes-card) .pgroup:has(input[type="color"]) {
+      grid-template-columns: 32px 88px; grid-template-rows: auto 32px;
+      gap: 5px 8px; align-items: center;
+    }
+    #themePanel :is(.theme-colors-card, .theme-notes-card) .pgroup:has(input[type="color"]) > label { grid-column: 1 / -1; }
+    #themePanel :is(.theme-colors-card, .theme-notes-card) input[type="color"] {
+      width: 32px; height: 32px; padding: 0; border-radius: 6px; overflow: hidden;
+    }
+    #themePanel :is(.theme-colors-card, .theme-notes-card) input[type="text"] { height: 32px !important; }
+    #themePanel .theme-notes-card > .prow { align-items: flex-end; }
+    #themePanel .theme-notes-card .pgroup:not(:has(input[type="color"])) > :is(.prow, input) { height: 32px; }
+    #themePanel .theme-notes-card .pgroup > .prow { align-items: center; }
+    #themePanel .theme-colors-card input[type="text"],
+    #themePanel .theme-notes-card input[type="text"] {
+      width: 88px !important; margin-left: 0 !important;
+    }
+    #themePanel .theme-notes-card > .prow { justify-content: flex-start; gap: 12px; }
+    #themePanel button {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex: 0 0 auto; width: max-content !important; justify-self: start;
+      box-sizing: border-box; height: 36px; line-height: 1;
+      padding-block: 0 !important; white-space: nowrap;
+    }
+    #themePanel .theme-font-basic { display: flex; align-items: flex-end; gap: 10px; }
+    #themePanel .theme-font-basic .pgroup { width: 210px; max-width: calc(100% - 76px); }
+    #themePanel .theme-font-basic #resetFont { height: 36px; padding: 8px 12px; border-radius: 10px; border: 1px solid #ffffff20; background: #0b1220; color: #e5e7eb; cursor: pointer; }
+    #themePanel .theme-font-advanced { margin-top: 10px; }
+    #themePanel .theme-font-advanced summary { width: max-content; color: #a8b6cc; font-size: 12px; cursor: pointer; }
+    #themePanel .theme-font-advanced[open] summary { margin-bottom: 12px; }
+    #themePanel .theme-font-advanced > .prow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    #themePanel .theme-font-advanced .pgroup { width: 300px; max-width: 100%; }
+    #themePanel .theme-font-advanced .theme-font-actions { width: auto; }
+    #themePanel .theme-font-card > .prow {
+      display: grid; grid-template-columns: 1fr 1.5fr 1.5fr; gap: 12px 16px;
+    }
+    #themePanel .theme-font-card .pgroup { min-width: 0 !important; }
+    #themePanel .theme-font-card .pgroup > .prow { flex-wrap: nowrap; }
+    #themePanel .theme-font-card #askLocalFonts { flex-shrink: 0; }
+    #themePanel .theme-font-card #systemFonts { flex: 1; }
+    #themePanel .theme-font-actions { align-self: end; }
+    #themePanel .theme-font-actions button { width: auto; min-width: 100px; }
+    #themePanel .theme-font-card :is(select, input[type="text"], input[type="file"]) {
+      width: 100%; min-width: 0 !important;
+    }
+    #themePanel .theme-font-card .pgroup > label[style*="visibility"] { display: none; }
+    #themePanel .theme-font-card .pgroup:has(> #applyFont),
+    #themePanel .theme-font-card .pgroup:has(> #resetFont) { align-self: end; }
+    @media (max-width: 1600px) {
+      #themePanel .theme-appearance-grid { grid-template-columns: 1fr 1.5fr; }
+
+
+      #themePanel .theme-font-card > .prow { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 760px) {
+      #themePanel .theme-appearance-grid, #themePanel .theme-font-card > .prow { grid-template-columns: 1fr; }
+      #themePanel .theme-card { padding: 12px; }
+      #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     /* 패널 내부 공통 스타일 */
@@ -585,7 +686,7 @@
        해당 요소의 border-radius 가 자동 클리핑하므로 overflow:hidden 없이도 모서리 처리됨.
        solid 구간이 정확히 구분선(border-bottom) 위치까지 채워야 자연스럽게 끊긴다. */
     .lp.lp-bench, .lp.lp-injury, .lp.lp-lineup-s {
-      /* dp-panel(padding-top:8) + dp-title(pad:2+6, border:1, line-height≈16) = 33px */
+      /* dp-panel 상단 여백 8px + dp-title 여백 2+6px, 테두리 1px, 줄 높이 약 16px = 33px */
       background-image: linear-gradient(
         rgba(0,0,0,.25) 0px,
         rgba(0,0,0,.25) 33px,
@@ -593,7 +694,7 @@
       );
     }
     .lp.lp-stat, .lp.lp-stat-s, .lp.lp-events-s {
-      /* separator = padding-top(4) + title-bar(33px, border-box) = 37px.
+      /* 구분선 위치 = 상단 여백 4px + 제목 표시줄 33px(테두리 포함) = 37px.
          transparent를 separator에 맞추고 3px 앞에서 fade 시작. */
       background-image: linear-gradient(
         rgba(0,0,0,.25) 0px,
@@ -735,3 +836,40 @@
     }
 
     @container display-viewport (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
+
+#themePanel .theme-notes-card > .prow { display: flex; flex-wrap: nowrap; gap: 12px; }
+
+
+
+/* Compact bottom-docked theme controls; popouts retain a scrollable full window. */
+#themePanel .theme-color-reset { width: 26px !important; height: 26px; padding: 0; border: 1px solid #ffffff24; border-radius: 7px; background: #19273e; color: #c4d5f3; font-size: 20px; line-height: 1; cursor: pointer; }
+html.popout-target-theme .pages:has(> #page-theme.active) { flex: 1; margin-top: 0; }
+html.popout-target-theme #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; grid-template-columns: 90px 128px; }
+html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-child(3) { grid-column: 1; grid-row: 2; }
+html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-child(4) { grid-column: 2; grid-row: 2; }
+@media (max-width: 1600px) {
+  #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #themePanel .theme-notes-card > .prow { flex-wrap: wrap; }
+}
+
+#themePanel .theme-notes-card > .prow > .pgroup { flex-shrink: 0; }
+#themePanel .theme-notes-card label { white-space: nowrap; }
+
+/* On wide screens all font controls share a single baseline. */
+@media (min-width: 1601px) {
+  #themePanel .theme-appearance-grid {
+    grid-template-columns: 280px 620px minmax(480px, 1fr);
+  }
+  #themePanel .theme-font-card {
+    display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px;
+  }
+  #themePanel .theme-font-card > .section-title {
+    flex-basis: 100%; margin-bottom: 0;
+  }
+  #themePanel .theme-font-basic { flex: 0 0 auto; }
+  #themePanel .theme-font-advanced { flex: 1; min-width: 0; margin-top: 0; }
+  #themePanel .theme-font-advanced > .prow { flex-wrap: nowrap; }
+  #themePanel .theme-font-advanced .pgroup { width: auto; flex: 1 1 0; }
+  #themePanel .theme-font-advanced .theme-font-actions { flex: 0 0 auto; }
+}

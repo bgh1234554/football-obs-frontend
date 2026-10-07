@@ -159,6 +159,7 @@ function demotePromotedNickname(playerId) {
   const idKey = String(Number(playerId));
   const promoted = readPromotedNicknames();
   if (!promoted[idKey]) return false;
+  if (promoted[idKey] === PLAYER_NICKNAME_SUPPRESSED) return false;
   delete promoted[idKey];
   writePromotedNicknames(promoted);
   try {
@@ -182,7 +183,7 @@ function clearAllPlayerNicknames() {
   }
 }
 
-// ── HTML escape ───────────────────────────────────────────────────────────────
+// ── HTML 특수문자 이스케이프 ───────────────────────────────────────────────────────────────
 
 /** HTML에 삽입할 값을 문자열로 바꾸고 특수문자를 이스케이프한다. nullish 값은 빈 문자열이다. */
 function pmEsc(v) {
@@ -1193,7 +1194,7 @@ function pmInit() {
     } else {
       pmShowMenu(pid, e.clientX, e.clientY);
     }
-  }, true); // capture phase so we fire before other listeners
+  }, true); // ?? ????? ?? ????? ?? ???? ?????
 
   // Esc → 닫기
   document.addEventListener('keydown', e => {

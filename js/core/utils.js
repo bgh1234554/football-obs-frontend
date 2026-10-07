@@ -49,7 +49,7 @@
     const s = String(input).trim();
     if (!s) return null;
 
-    // hex
+    // 16진수 색상
     const hex = s.startsWith('#') ? s.slice(1) : (s.match(/^[0-9a-fA-F]{3,8}$/) ? s : null);
     if (hex) {
       if (hex.length === 3) return { r: parseInt(hex[0]+hex[0],16), g: parseInt(hex[1]+hex[1],16), b: parseInt(hex[2]+hex[2],16), a: 1 };
@@ -57,7 +57,7 @@
       if (hex.length === 8) return { r: parseInt(hex.slice(0,2),16), g: parseInt(hex.slice(2,4),16), b: parseInt(hex.slice(4,6),16), a: parseInt(hex.slice(6,8),16)/255 };
     }
 
-    // rgb / rgba
+    // RGB 및 RGBA 색상
     const m = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i);
     if (m) {
       return { r: +m[1], g: +m[2], b: +m[3], a: m[4] !== undefined ? +m[4] : 1 };
@@ -66,7 +66,7 @@
     return null;
   }
 
-  /** {r,g,b} → {h,s,l} (HSL). h:0~360, s/l:0~1 */
+  /** {r,g,b} → {h,s,l} (HSL). 색조 h:0~360, 채도 s/명도 l:0~1 */
   function rgbToHsl(r, g, b) {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b);

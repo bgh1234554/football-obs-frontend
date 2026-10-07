@@ -1,0 +1,290 @@
+@font-face {
+    font-family: 'SsangmunDongB';
+    src: url('/resources/fonts/Typo_SsangmunDongB.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Koverwatch';
+    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Pretendard-Medium';
+    src: url('/resources/fonts/Pretendard-Medium.woff') format('woff');
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('/resources/fonts/NanumGothic.ttf') format('woff');
+}
+@font-face {
+    font-family: 'GmarketSansMedium';
+    src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
+}
+
+.fsm-board { margin:0; padding:0; }
+
+.fsm-board .scoreboard-main {
+    width: 984px;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    vertical-align: middle;
+    background: rgb(236, 236, 236);
+    margin: 0 auto;
+    margin-top: 30px;
+}
+
+.fsm-board .div-background {
+    width: 984px;
+    height: 48px;
+    position: absolute;
+    background-image: url("/resources/background/background_sbleft.png");
+    background-repeat: no-repeat;
+    background-blend-mode: screen;
+    display: none;
+}
+
+.fsm-board .teams-left, .teams-right {
+    width: 420px;
+    height: 48px;
+    background: linear-gradient(90deg, #200734, #8165B2, #4B0D46);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .team-name {
+    height: 100%;
+    font-family: 'GmarketSansMedium';
+    font-size: 33px;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+   
+.fsm-board .teams-left {
+    border-bottom: 3px solid red;
+}
+
+.fsm-board .teams-right {
+    border-bottom: 3px solid blue;
+}
+
+.fsm-board .team-score {
+    width: 65px;
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 32px;
+    font-weight: bold;
+    color: #372150;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(120deg, #AA92DF, #E4DAE6, #AA92DF);
+}
+
+.fsm-board .score-div {
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 26px;
+    font-weight: bold;
+    color: #372150;
+    text-align: center;
+    background: linear-gradient(90deg, #D7C4E0, #A78EDD);
+    transition: 0.9s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .hipen {
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .divider {
+    display: block;
+    width: 2px;
+    height: 48px;
+    background: #373737;
+    text-align: center;
+}
+.fsm-board .team-logo {
+    width: 100px;
+    height: 48px;
+    background: linear-gradient(90deg, #E4DAE6, #AA92DF);
+    border: 1px solid whitesmoke;
+    position: relative;
+}
+
+.fsm-board .team-logo > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.fsm-board .epl-lion {
+    display: none;
+}
+
+.fsm-board .team-color {
+    display: none;
+}
+
+.fsm-board .scoreboard-timer {
+    width: 180px;
+    height: 32px;
+    margin: 0 auto;
+    text-align: center;
+    vertical-align: middle;
+    color: #372150;
+    font-family: 'NanumGothic';
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: -10px;
+}
+
+.fsm-board .time {
+    width: 111px;
+    height: 100%;
+    background: linear-gradient(0deg, #EFEEE6 80%, #d6cea6);
+    position: relative;
+    z-index: 1;
+}
+
+.fsm-board .extra-time {
+    width: 80px;
+    height: 32px;
+    color: white;
+    background: linear-gradient(90deg, #200734, #8165B2);
+    position: absolute;
+    margin-left: 0px;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-status {
+    width: 360px;
+    height: 32px;
+    top: 78px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    align-items: flex-start;
+    position: absolute;
+    z-index: 1;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-main {
+    width: 100%;
+    height: 0px;
+    transition: 0.9s ease-in-out;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    background: linear-gradient(45deg, #28083F, #8165B2, #4B0D46);
+}
+
+.fsm-board .pso-circle {
+    width: 25px;
+    height: 25px;
+    border-radius: 20px;
+    border: 1px solid white;
+    margin: 2px;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-status > .pso-main ul {
+    width: 100%;
+    height: 32px;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fsm-board .pso-middle {
+    display: flex;
+    font-family: 'NanumGothic';
+    font-weight: bold;
+    font-size: 20px;
+    color: white;
+    margin: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.clock-editor {
+    margin-top: 100px;
+}
+
+.pk-wrap.show, .pk-score-row {
+    display: none;
+}
+
+.fsm-board .div-rc {
+    position: absolute;
+    top: 16px;
+    gap: 6px;
+    z-index: -1;
+}
+
+.fsm-board #rcHome {
+    display: flex;
+    left: 30px;
+    justify-content: flex-end; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board #rcAway {
+    display: flex;
+    right: 30px;
+    justify-content: flex-start; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board .div-rc .rc-card {
+    width: 14px;
+    height: 22px;
+    background: #ef4444;
+    border-radius: 3px;
+}
+
+.fsm-board #rcHome .rc-card {
+    transform: skewX(3deg);
+}
+
+.fsm-board #rcAway .rc-card {
+    transform: skewX(-3deg);
+}
+
+.fsm-board .div-rc.hidden {
+    display: none; 
+}
+
+.fsm-board .total-score {
+    width: 40px;
+    height: 48px;
+    color: #372150;
+    background: linear-gradient(0deg, #EFEEE6 80%, #d6cea6);
+    font-size: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Pretendard-Medium';
+}

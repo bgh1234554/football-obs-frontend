@@ -20,7 +20,7 @@ const fixture = JSON.parse(fs.readFileSync(path.join(root, 'json/CaboVerdeRwanda
     await page.goto('http://localhost/');
     const result = await page.evaluate(f => {
       const original = JSON.stringify(f);
-      // The JSON lacks these IN fields; reproduce the user's explicitly supplied pairings.
+      // JSON에 교체 투입 정보가 없으므로 사용자가 제공한 교체 쌍을 재현합니다.
       for (const [minute, outName, inName] of [[45, 'A. Biramahire', 'E. Tatou Iradukunda'], [90, 'J. 미켈스', 'I. Nshuti'], [90, 'B. Mugisha', 'K. Muhire']]) {
         const ev = f.events.find(e => e.type === 'subst' && e.elapsed === minute && e.playerName === outName);
         evSetSubstOverride(f.matchInfo.fixtureId, ev, 'assist', { playerId: 0, name: inName });
@@ -81,7 +81,7 @@ const fixture = JSON.parse(fs.readFileSync(path.join(root, 'json/CaboVerdeRwanda
     assert.equal(result.starters.length, 11);
     for (const name of ['K. Muhire', 'I. Nshuti', 'J. Kwizera', 'E. Tatou Iradukunda']) assert(result.starters.includes(name), name);
     assert(!result.starters.includes('G. Mugisha'));
-    // Same abbreviation/translated name does not prove identity: keep both 20 and 9.
+    // 약칭이나 번역 이름이 같아도 동일 선수로 단정할 수 없으므로 20번과 9번을 모두 유지합니다.
     assert.equal(result.duplicateCount, 2);
     assert.equal(result.bench.filter(p => p.name === 'J. 미켈스').length, 2);
     assert(result.bench.some(p => p.number === 9 && p.id === 0));

@@ -369,7 +369,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   text-align: center;
 }
 
-/* ===== side header / inline edit ===== */
+/* ===== 팀 헤더 / 인라인 편집 ===== */
 .dp-side-header {
   flex: 0 0 auto;
   display: flex;
@@ -466,7 +466,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   box-shadow: 0 0 0 2px rgba(76,217,100,.18);
 }
 
-/* ===== lineup panel ===== */
+/* ===== 라인업 패널 ===== */
 
 
 /* 패널이 absolute 모드일 때 내부 content가 높이를 채우도록 */
