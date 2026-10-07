@@ -418,8 +418,8 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + state.colors.awayBg + ' 50%, ' + state.colors.awayText + ' 50%)'});    
     } else if(theme != 'pl' && theme != 'wc26' && theme != 'uel' && theme != 'uecl') {
       // default / pl / cl / uel / 나머지 모든 테마
-      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
-      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '5px solid ' + state.colors.homeBg, borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '5px solid ' + state.colors.awayBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
       // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
