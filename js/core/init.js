@@ -6,6 +6,8 @@
   restore();
   initFsmThemeSelect();
   window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl || null);
+  // 폰트 완료 콜백이 init.js 로딩보다 빨라도 저장 상태 복원 전에는 표시하지 않습니다.
+  fsmInitialStateReady = true;
   // 1-1. 수동 모드 상태 UI 반영
   if(state.manualMode){
     if(el.manualModeToggle) el.manualModeToggle.checked = true;

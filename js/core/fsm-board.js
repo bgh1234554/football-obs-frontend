@@ -73,11 +73,12 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
 var oldlink = document.getElementById('fsm-theme-link');
 var pendingThemeLink = null;
 var fsmEntranceEndListener = null;
+var fsmInitialStateReady = false;
 
 window.replayFsmBoardEntrance = function() {
   const board = document.querySelector('.fsm-board');
   // 다른 테마로 바뀌는 경우에는 기존 테마 전환을 유지합니다.
-  if (!board || pendingThemeLink) return;
+  if (!board || pendingThemeLink || !fsmInitialStateReady) return;
   if (fsmEntranceEndListener) {
     board.removeEventListener('animationend', fsmEntranceEndListener);
     fsmEntranceEndListener = null;
@@ -89,13 +90,23 @@ window.replayFsmBoardEntrance = function() {
 
 function revealFsmBoard() {
   const board = document.querySelector('.fsm-board.fsm-starting');
-  if (!board || pendingThemeLink) return;
+  if (!board || pendingThemeLink || !fsmInitialStateReady) return;
+  // 최종 테마의 크기를 transition:none 상태에서 확정합니다. CSS 교체와
+  // fsm-starting 제거가 같은 스타일 계산에 합쳐지면 이전 크기에서 전환됩니다.
+  // 이 계산으로 테마 폰트 로딩도 시작하므로 fonts.status는 이후 확인합니다.
+  void board.offsetHeight;
   if (document.fonts?.status === 'loading') {
     document.fonts.ready.then(revealFsmBoard);
     return;
   }
   requestAnimationFrame(() => {
     if (pendingThemeLink || !board.classList.contains('fsm-starting')) return;
+    // 예약 후 render/폰트 갱신이 발생해도 표시 직전의 레이아웃을 확정합니다.
+    void board.offsetHeight;
+    if (document.fonts?.status === 'loading') {
+      document.fonts.ready.then(revealFsmBoard);
+      return;
+    }
     board.classList.remove('fsm-starting');
     board.classList.add('fsm-entering');
     if (getComputedStyle(board).animationName === 'none') {
