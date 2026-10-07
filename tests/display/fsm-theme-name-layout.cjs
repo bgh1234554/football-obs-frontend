@@ -6,16 +6,20 @@ await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.orig
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
 
-for(const theme of ['pl','seriea','wc26']){
+for(const theme of ['pl','seriea','wc26','ligue1']){
  // 프리미어리그를 거쳐 전환하여 남아 있는 인라인 색상과 정렬 설정을 확인합니다.
  await page.evaluate(()=>applyTheme('pl',null));await page.waitForTimeout(100);
  await page.evaluate(theme=>applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
- for(const names of [['Short','B'],['A Very Long Football Club Name','Another Long Team Name'],['A','B']]){
- await page.evaluate(names=>{state.homeName=names[0];state.awayName=names[1];render();fsmBoardRender();},names);
+ for(const scale of (theme==='ligue1'?[60,100,150]:[100])){
+ await page.evaluate(scale=>{state.boardScale=scale;render();},scale);
+ for(const names of [['Short','B'],['스위스','북마케도니아'],['A Very Long Football Club Name','Another Long Team Name'],['A','B']]){
+ await page.evaluate(names=>{state.homeName=names[0];state.awayName=names[1];state.homeScore=3;state.awayScore=12;render();fsmBoardRender();},names);
  const metrics=await page.evaluate(()=>[...document.querySelectorAll('.team-name')].map((name,i)=>{const text=name.querySelector('.text');const r=text.getBoundingClientRect();const c=name.parentElement.getBoundingClientRect();const marker=name.parentElement.querySelector('.team-color').getBoundingClientRect();const nr=name.getBoundingClientRect();return {color:getComputedStyle(text).color,center:r.x+r.width/2,target:themeTarget(i,c),name:{left:nr.left,right:nr.right},marker:{left:marker.left,right:marker.right},score:(()=>{const r=document.getElementById(i===0?'team-score-left':'team-score-right').getBoundingClientRect();return {left:r.left,right:r.right};})(),fits:text.scrollWidth<=name.clientWidth-parseFloat(getComputedStyle(name).paddingLeft)-parseFloat(getComputedStyle(name).paddingRight)+1};function themeTarget(i,c){const scale=c.width/name.parentElement.offsetWidth;if(_currentTheme==='pl')return c.x+(c.width+(i===0?-97:97)*scale)/2;const score=document.getElementById(i===0?'team-score-left':'team-score-right').getBoundingClientRect();const extra=_currentTheme==='wc26'?41*scale:0;return i===0?(c.left+score.left-extra)/2:(score.right+extra+c.right)/2;}}));
  metrics.forEach((m,i)=>{if(theme!=='pl')assert.equal(m.color,'rgb(255, 255, 255)');assert(Math.abs(m.center-m.target)<1,JSON.stringify({theme,names,m}));assert(m.fits);if(theme==='wc26'){if(i===0){assert(m.name.right<=m.marker.left);assert(m.marker.right<m.score.left);}else{assert(m.name.left>=m.marker.right);assert(m.marker.left>m.score.right);}}});
  }
+ }
  await page.evaluate(()=>{state.homeName='\uB8E8\uB9C8\uB2C8\uC544';state.awayName='\uC2A4\uC6E8\uB374';state.homeScore=0;state.awayScore=1;state.colors.homeBg='#FEEA00';state.colors.awayBg='#F9DE52';state.boardScale=100;render();fsmBoardRender();});
+ if(theme==='ligue1')await page.evaluate(()=>{state.homeName='스위스';state.awayName='북마케도니아';state.homeScore=3;state.awayScore=0;state.seconds=5400;render();fsmBoardRender();});
  fs.mkdirSync(path.join(root,'screenshots','fsm-clock-editor'),{recursive:true});await page.locator('#boardStageInner').screenshot({path:path.join(root,'screenshots','fsm-clock-editor',theme+'-name-layout.png')});
  console.log('PASS',theme,'white text, horizontal centering, reserved jersey zone, long-name fit and recovery');
 }

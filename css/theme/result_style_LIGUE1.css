@@ -79,6 +79,7 @@
 }
 
 .fsm-board .team-score {
+    width: 50px;
     font-family: 'Pretendard-Medium';
     font-size: 32px;
     font-weight: bold;

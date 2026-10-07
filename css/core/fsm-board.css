@@ -14,6 +14,23 @@
 }
 
 .board.fsm-board.outline-on { box-shadow: none; }
+/* 첫 화면은 저장된 테마와 가변 너비를 적용한 뒤 표시합니다.
+   너비/위치를 애니메이션하면 팀명 측정과 득점자 정렬이 흔들리므로
+   최종 레이아웃 위에서 표시 영역과 투명도만 전환합니다. */
+.board.fsm-board.fsm-starting { visibility: hidden; }
+.board.fsm-board.fsm-starting,
+.board.fsm-board.fsm-starting * { transition: none !important; }
+.board.fsm-board.fsm-entering {
+  animation: fsm-board-enter .9s ease-in-out both;
+}
+.board.fsm-board.fsm-entering[data-fsm-theme="pl"] { animation-duration: .4s; }
+@keyframes fsm-board-enter {
+  from { opacity: 0; clip-path: inset(-100% 12% -100% 12%); }
+  to { opacity: 1; clip-path: inset(-100% -12% -100% -12%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board.fsm-board.fsm-entering { animation: none; }
+}
 .fsm-board .scoreboard-main > * { flex-shrink: 0; }
 .board.fsm-board .teams-left, .board.fsm-board .teams-right {
   min-width: 0;
@@ -54,12 +71,12 @@
 .board.fsm-board[data-fsm-theme="unl"] .teams-left .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="unl"] .teams-right .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .team-name {
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"]) .team-name {
   width: calc(100% - var(--fsm-name-reserved-width, 0px));
   justify-content: center; margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
 }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] .team-color { top: 50%; transform: translateY(-50%); }
 .board.fsm-board[data-fsm-theme="wc26"] #homeColor { left: auto; right: calc(var(--fsm-score-overlap, 0px) + 12px); }
 .board.fsm-board[data-fsm-theme="wc26"] #awayColor { right: auto; left: calc(var(--fsm-score-overlap, 0px) + 12px); }

@@ -48,6 +48,31 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
 var oldlink = document.getElementById('fsm-theme-link');
 var pendingThemeLink = null;
 
+function revealFsmBoard() {
+  const board = document.querySelector('.fsm-board.fsm-starting');
+  if (!board || pendingThemeLink) return;
+  if (document.fonts?.status === 'loading') {
+    document.fonts.ready.then(revealFsmBoard);
+    return;
+  }
+  requestAnimationFrame(() => {
+    if (pendingThemeLink || !board.classList.contains('fsm-starting')) return;
+    board.classList.remove('fsm-starting');
+    board.classList.add('fsm-entering');
+    if (getComputedStyle(board).animationName === 'none') {
+      board.classList.remove('fsm-entering');
+      return;
+    }
+    const finishEntrance = event => {
+      if (event.target === board && event.animationName === 'fsm-board-enter') {
+        board.classList.remove('fsm-entering');
+        board.removeEventListener('animationend', finishEntrance);
+      }
+    };
+    board.addEventListener('animationend', finishEntrance);
+  });
+}
+
 function changeCSS(cssFile) {
   const href = new URL(cssFile, document.baseURI).href;
   if (pendingThemeLink?.href === href) return;
@@ -87,6 +112,7 @@ function changeCSS(cssFile) {
     newlink.remove();
     pendingThemeLink = null;
     console.warn('Scoreboard theme stylesheet failed to load:', href);
+    window.fsmBoardRender();
   };
   // 기존 link 바로 뒤에 넣어 다른 스타일시트와의 우선순위도 유지한다.
   if (oldlink) oldlink.after(newlink);
@@ -242,7 +268,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (_currentTheme === 'seriea' || _currentTheme === 'wc26') {
+  if (['seriea', 'wc26', 'ligue1'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -398,7 +424,7 @@ function adjustScoreboardWidth() {
   }
 })();
 
-window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); };
+window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); revealFsmBoard(); };
 
 if (document.fonts) {
   document.fonts.ready.then(() => window.fsmBoardRender());
