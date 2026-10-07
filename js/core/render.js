@@ -575,7 +575,13 @@
     const boardEl = $('board');
     if (!boardEl || !el.homeNote || !el.awayNote) return;
 
-    const boardH = boardEl.offsetHeight;
+    const main = boardEl.querySelector('.scoreboard-main');
+    // 띠의 가운데를 유지하면서 타이머 높이만큼 위/아래 여유를 각각 확보합니다.
+    // offsetHeight는 미리보기 배율 적용 전 크기이며, display:none인 타이머는 0입니다.
+    const timerHeights = Array.from(boardEl.querySelectorAll('.scoreboard-timer, .time, .extra-time'))
+      .map(node => node.offsetHeight);
+    const timerH = Math.max(0, ...timerHeights);
+    const boardH = main ? main.offsetHeight + 2 * timerH : boardEl.offsetHeight;
     if (!boardH) return;
 
     // 2. 득점자 줄 배열 추출
@@ -616,7 +622,6 @@
       const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
       if (homeNoteSide) homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
       if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
-      const main = boardEl.querySelector('.scoreboard-main');
       if (main) {
         // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
         // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.

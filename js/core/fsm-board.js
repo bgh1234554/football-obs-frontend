@@ -95,6 +95,10 @@ function changeCSS(cssFile) {
   newlink.onload = () => {
     if (pendingThemeLink !== newlink) return;
     newlink.onload = newlink.onerror = null;
+    // 목적 테마의 전환 속성을 CSS 교체 전에 준비해야 크기/위치 전환이
+    // 스타일 계산 타이밍에 따라 생략되지 않습니다.
+    const board = document.querySelector('.fsm-board');
+    if (board) board.dataset.fsmTheme = _currentTheme;
     oldlink?.remove();
     newlink.id = 'fsm-theme-link';
     newlink.media = 'all';
@@ -102,6 +106,15 @@ function changeCSS(cssFile) {
     pendingThemeLink = null;
     requestAnimationFrame(() => {
       window.fsmBoardRender();
+      // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않습니다.
+      // 불투명한 배경끼리의 색상 전환과 다른 전환 효과는 그대로 유지합니다.
+      document.querySelectorAll('.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div)')
+        .forEach(node => node.getAnimations().forEach(animation => {
+          if (animation.transitionProperty !== 'background-color') return;
+          const frames = animation.effect.getKeyframes();
+          const target = frames[frames.length - 1]?.backgroundColor;
+          if (target === 'transparent' || target === 'rgba(0, 0, 0, 0)') animation.finish();
+        }));
       autoLayoutNotes();
       initBoardScale();
     });

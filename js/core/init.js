@@ -32,7 +32,12 @@
   window.addEventListener('resize', () => autoLayoutNotes());
   if (window.ResizeObserver) {
     const board = $('board');
-    if (board) new ResizeObserver(() => autoLayoutNotes()).observe(board);
+    if (board) {
+      const noteLayoutObserver = new ResizeObserver(() => autoLayoutNotes());
+      noteLayoutObserver.observe(board);
+      board.querySelectorAll('.scoreboard-main, .scoreboard-timer, .time, .extra-time')
+        .forEach(node => noteLayoutObserver.observe(node));
+    }
   }
 
   /** about.md 파일을 fetch하여 markdown-it으로 파싱 + DOMPurify로 sanitize 후 about-rendered에 삽입 */
