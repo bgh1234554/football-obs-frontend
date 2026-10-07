@@ -120,6 +120,13 @@ const { chromium } = require('playwright');
           await poll(fixture(status, 55));
           livePreserved.push(state.running && state.seconds === 3333);
         }
+        for (const elapsed of [90, 120]) {
+          const pso = fixture('PSO', elapsed);
+          _lastFixtureData = pso;
+          running((elapsed + 3) * 60);
+          await poll(pso, { silent: false });
+          results.push({ name: `same-fixture PSO refresh elapsed ${elapsed}`, expected: elapsed * 60, ...read() });
+        }
         state.manualMode = true;
         running(1234);
         await fetchAndApplyFixtureData(987654, { silent: true });
