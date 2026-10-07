@@ -15,10 +15,11 @@ const LEAGUE_THEME_MAP = {
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
   2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
   3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
+  848: { theme: 'uecl',    logoUrl: null, type: 'club' },  // UEFA 컨퍼런스 리그
   17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC 챔피언스리그 엘리트
   5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA 네이션스리그
   4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
-  61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/ligue-1-2020-2024-logo.png', type: 'club' },
+  61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
@@ -170,6 +171,9 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_WC26.css', CSS_LINK_INDEX);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'uecl':
+      changeCSS('css/theme/result_style_UECL.css', CSS_LINK_INDEX);
+      break;
     default:
       _currentTheme = 'default';
       changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
@@ -222,7 +226,7 @@ function applyTheme(theme, logoUrl) {
        setFsmStyle('.pso-status', {display: 'none'});
     }
 
-    if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'acle' || _currentTheme == 'default') {
+    if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'uecl' || _currentTheme == 'acle' || _currentTheme == 'default') {
       if(state.aggEnabled) {
         var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
         var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
@@ -362,7 +366,7 @@ function adjustScoreboardWidth() {
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
-    if (theme == 'pl') {
+    if(theme == 'pl') {
       setFsmStyle('.fsm-board .teams-left', {background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
       const board = document.querySelector('.fsm-board');
@@ -373,12 +377,17 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
-    } if (theme == 'wc26') {
+    } if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
       setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
-    } else if(theme != 'pl' && theme != 'wc26') {
+    } if(theme == 'uel' || theme == 'uecl') {
+      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + state.colors.homeBg + ' 50%, ' + state.colors.homeText + ' 50%)'});
+      setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + state.colors.awayBg + ' 50%, ' + state.colors.awayText + ' 50%)'});    
+    } else if(theme != 'pl' && theme != 'wc26' && theme != 'uel' && theme != 'uecl') {
       // default / pl / cl / uel / 나머지 모든 테마
       setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});

@@ -31,7 +31,7 @@
     background: rgb(236, 236, 236);
     margin: 0 auto;
     margin-top: 30px;
-    border: 2px solid #FE6900;
+    outline: 2px solid #FE6900;
 }
 
 .fsm-board .div-background {
@@ -47,7 +47,7 @@
 .fsm-board .teams-left, .teams-right {
     width: 360px;
     height: 48px;
-    background: #373737;
+    background: #000;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -66,13 +66,13 @@
     align-items: center;
 }
    
-.fsm-board .teams-left {
+/* .fsm-board .teams-left {
     border-bottom: 3px solid red;
 }
 
 .fsm-board .teams-right {
     border-bottom: 3px solid blue;
-}
+} */
 
 .fsm-board .team-score {
     width: 65px;
@@ -129,10 +129,6 @@
 }
 
 .fsm-board .epl-lion {
-    display: none;
-}
-
-.fsm-board .team-color {
     display: none;
 }
 
@@ -288,4 +284,11 @@
     justify-content: center;
     align-items: center;
     font-family: 'Pretendard-Medium';
+}
+
+.fsm-board .team-color {
+    width: 8px;
+    height: 48px;
+    display: block;
+    outline: 1px solid darkgray;
 }
