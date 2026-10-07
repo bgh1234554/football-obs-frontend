@@ -21,6 +21,7 @@ const LEAGUE_THEME_MAP = {
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
+  235: { theme: 'rpl', logoUrl: null, type: 'club' },  // Russian Premier League - API logo
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
   1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
@@ -159,6 +160,10 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'kleague':
       changeCSS('css/theme/result_style_KLEAGUE.css', CSS_LINK_INDEX);
+      break;
+    case 'rpl':
+      changeCSS('css/theme/result_style_RPL.css', CSS_LINK_INDEX);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'seriea':
       changeCSS('css/theme/result_style_SERIEA.css', CSS_LINK_INDEX);
@@ -305,7 +310,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['seriea', 'wc26', 'ligue1', 'ligue2'].includes(_currentTheme)) {
+  if (['seriea', 'rpl', 'wc26', 'ligue1', 'ligue2'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -314,7 +319,7 @@ function adjustScoreboardWidth() {
     const overlap = Math.max(0,
       (cards[0].getBoundingClientRect().right - homeScore.left) / scale,
       (awayScore.right - cards[1].getBoundingClientRect().left) / scale);
-    const reserved = overlap + (_currentTheme === 'wc26' ? 41 : 0);
+    const reserved = overlap + (_currentTheme === 'wc26' ? 41 : _currentTheme === 'rpl' ? 8 : 0);
     board.style.setProperty('--fsm-score-overlap', overlap + 'px');
     board.style.setProperty('--fsm-name-reserved-width', reserved + 'px');
   }
@@ -402,7 +407,11 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
       setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
-    } if(theme == 'uel' || theme == 'uecl') {
+    } if(theme == 'rpl') {
+      setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
+      setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
+    } else if(theme == 'uel' || theme == 'uecl') {
       setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + state.colors.homeBg + ' 50%, ' + state.colors.homeText + ' 50%)'});
