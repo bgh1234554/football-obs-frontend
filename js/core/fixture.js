@@ -1033,6 +1033,13 @@
       // 최근 목록은 silent(자동 폴링) 갱신마다 남기지 않고 실제 사용자 로딩 시점에만 기록.
       if (!silent) recordRecentFixture(normalizedFixtureId, m, m.kickoffAt || m.kickoffUtc);
 
+      // 같은 점수판 테마를 재사용하는 새 경기에도 최초 표시 효과를 적용합니다.
+      // 자동 폴링/같은 경기 새로 조회에는 반복하지 않고 성공한 새 경기 로딩에만 적용합니다.
+      if (!silent && previousFixtureId !== normalizedFixtureId
+        && typeof window.replayFsmBoardEntrance === 'function') {
+        window.replayFsmBoardEntrance();
+      }
+
       // 다음 호출 자동 예약 (1분 간격, FT+3분 후 중단, 비정상 상태 중단, 경기 시작 전 대기)
       schedulePoll(data);
 

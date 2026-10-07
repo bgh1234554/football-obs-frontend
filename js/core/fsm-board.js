@@ -47,6 +47,20 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
 
 var oldlink = document.getElementById('fsm-theme-link');
 var pendingThemeLink = null;
+var fsmEntranceEndListener = null;
+
+window.replayFsmBoardEntrance = function() {
+  const board = document.querySelector('.fsm-board');
+  // 다른 테마로 바뀌는 경우에는 기존 테마 전환을 유지합니다.
+  if (!board || pendingThemeLink) return;
+  if (fsmEntranceEndListener) {
+    board.removeEventListener('animationend', fsmEntranceEndListener);
+    fsmEntranceEndListener = null;
+  }
+  board.classList.remove('fsm-entering');
+  board.classList.add('fsm-starting');
+  window.fsmBoardRender();
+};
 
 function revealFsmBoard() {
   const board = document.querySelector('.fsm-board.fsm-starting');
@@ -67,8 +81,10 @@ function revealFsmBoard() {
       if (event.target === board && event.animationName === 'fsm-board-enter') {
         board.classList.remove('fsm-entering');
         board.removeEventListener('animationend', finishEntrance);
+        if (fsmEntranceEndListener === finishEntrance) fsmEntranceEndListener = null;
       }
     };
+    fsmEntranceEndListener = finishEntrance;
     board.addEventListener('animationend', finishEntrance);
   });
 }
