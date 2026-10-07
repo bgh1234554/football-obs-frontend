@@ -6,7 +6,7 @@ await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.orig
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
 for(const theme of fs.readdirSync(path.join(root,'css/theme')).filter(name=>name.startsWith('result_style_'))) {
- await page.evaluate(theme=>{const key={default:'default',EPL:'pl',CL:'cl',UEL:'uel',ACLE:'acle',UNL:'unl',EURO24:'er24',LIGUE1:'ligue1',SERIEA:'seriea',KLEAGUE:'kleague',WC26:'wc26'}[theme.replace('result_style_','').replace('.css','')];applyTheme(key,null);},theme);await page.waitForFunction(theme=>document.getElementById('fsm-theme-link').href.endsWith(theme),theme);await page.evaluate(()=>document.fonts.ready);
+ await page.evaluate(theme=>{const key={default:'default',EPL:'pl',CL:'cl',UEL:'uel',ACLE:'acle',UNL:'unl',EURO24:'er24',LIGUE1:'ligue1',RPL:'rpl',LIGUE2:'ligue2',UECL:'uecl',SERIEA:'seriea',KLEAGUE:'kleague',WC26:'wc26'}[theme.replace('result_style_','').replace('.css','')];applyTheme(key,null);},theme);await page.waitForFunction(theme=>document.getElementById('fsm-theme-link').href.endsWith(theme),theme);await page.evaluate(()=>document.fonts.ready);
  await page.evaluate(()=>{state.half='2H';state.seconds=123;state.running=false;render();fsmBoardRender();});await page.waitForTimeout(100);
  const before=await page.locator('#board').boundingBox();
  await page.locator('#clock').dblclick();

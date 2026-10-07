@@ -65,7 +65,6 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
   const logoUrl = entry?.logoUrl || apiLeagueLogoUrl || null;
 
-  _currentTheme = theme;
   _currentType = type;
   // FSM의 기존 switch 로직을 그대로 재활용
   applyTheme(theme, logoUrl);
@@ -115,7 +114,7 @@ function revealFsmBoard() {
   });
 }
 
-function changeCSS(cssFile) {
+function changeCSS(cssFile, requestedTheme = _currentTheme) {
   const href = new URL(cssFile, document.baseURI).href;
   if (pendingThemeLink?.href === href) return;
 
@@ -125,7 +124,10 @@ function changeCSS(cssFile) {
     pendingThemeLink.remove();
     pendingThemeLink = null;
   }
-  if (oldlink?.href === href) return;
+  if (oldlink?.href === href) {
+    _currentTheme = requestedTheme;
+    return;
+  }
 
   const newlink = document.createElement('link');
   newlink.rel = 'stylesheet';
@@ -140,6 +142,7 @@ function changeCSS(cssFile) {
     // 목적 테마의 전환 속성을 CSS 교체 전에 준비해야 크기/위치 전환이
     // 스타일 계산 타이밍에 따라 생략되지 않습니다.
     const board = document.querySelector('.fsm-board');
+    _currentTheme = requestedTheme;
     if (board) board.dataset.fsmTheme = _currentTheme;
     oldlink?.remove();
     newlink.id = 'fsm-theme-link';
@@ -176,56 +179,54 @@ function changeCSS(cssFile) {
 
 function applyTheme(theme, logoUrl) {
   // FSM의 switch(data.theme) 블록을 함수로 추출한 것
-  _currentTheme = theme;
   switch(theme) {
     case 'pl':
-      changeCSS('css/theme/result_style_EPL.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_EPL.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'kleague':
-      changeCSS('css/theme/result_style_KLEAGUE.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_KLEAGUE.css', theme);
       break;
     case 'rpl':
-      changeCSS('css/theme/result_style_RPL.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_RPL.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'seriea':
-      changeCSS('css/theme/result_style_SERIEA.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_SERIEA.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'cl':
-      changeCSS('css/theme/result_style_CL.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_CL.css', theme);
       break;
     case 'uel':
-      changeCSS('css/theme/result_style_UEL.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_UEL.css', theme);
       break;
     case 'unl':
-      changeCSS('css/theme/result_style_UNL.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_UNL.css', theme);
       break;
     case 'acle':
-      changeCSS('css/theme/result_style_ACLE.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_ACLE.css', theme);
       break;
     case 'ligue1':
-      changeCSS('css/theme/result_style_LIGUE1.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_LIGUE1.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'ligue2':
-      changeCSS('css/theme/result_style_LIGUE2.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_LIGUE2.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'er24':
-      changeCSS('css/theme/result_style_EURO24.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_EURO24.css', theme);
       break;
     case 'wc26':
-      changeCSS('css/theme/result_style_WC26.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_WC26.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'uecl':
-      changeCSS('css/theme/result_style_UECL.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_UECL.css', theme);
       break;
     default:
-      _currentTheme = 'default';
-      changeCSS('css/theme/result_style_default.css', CSS_LINK_INDEX);
+      changeCSS('css/theme/result_style_default.css', 'default');
   }
 }
 
