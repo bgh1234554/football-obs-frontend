@@ -4,8 +4,7 @@
 
   // 전/후반 진행 순서 정의 ([ 버튼과 ] 버튼으로 순환)
   const halfOrder = ['1','2','ET1','ET2','PK'];
-  const TKEY = 'obs-scoreboard-templates-v1';
-  const TLASTKEY = 'obs-scoreboard-selected-template-v1';
+  // (2026-10-08) 레거시 점수판 템플릿(Theme Templates/Lists.json) 저장 키 TKEY/TLASTKEY 제거 — FSM 점수판으로 대체됨
   const SKEY = 'obs-scoreboard-state-v2';
   /** 폰트 패밀리 문자열을 정규화 — 콤마로 split, 각 부분 trim, 빈 항목 제거 후 ", "로 join. */
   function normalizeFontFamilySpec(fontMaybe){
@@ -141,8 +140,6 @@
     rcHome: $('rcHome'), rcAway: $('rcAway'),
     rcSize: $('rcSize'), rcGap: $('rcGap'),
     rcTop: $('rcTop'), rcHomeInset: $('rcHomeInset'), rcAwayInset: $('rcAwayInset'),
-    templateSelect: $('templateSelect'), templateName: $('templateName'), saveTemplate: $('saveTemplate'), deleteTemplate: $('deleteTemplate'), resetTemplates: $('resetTemplates'),
-    exportTemplates: $('exportTemplates'), importTemplates: $('importTemplates'),
     fontPreset: $('fontPreset'), fontCssUrl: $('fontCssUrl'), fontFamily: $('fontFamily'), applyFont: $('applyFont'), resetFont: $('resetFont'),
     askLocalFonts: $('askLocalFonts'), systemFonts: $('systemFonts'), fontFile: $('fontFile'),
     logoAlign: $('logoAlign'),
