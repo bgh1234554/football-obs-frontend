@@ -11,7 +11,6 @@ function setFsmAttr(selector, name, value) {
   });
 }
 const LEAGUE_THEME_MAP = {
-  // EPL: 'pl' 또는 'pl2' 중 선택. pl2는 팀 컬러가 배경이 되는 스타일
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
   2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
   3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
@@ -20,6 +19,7 @@ const LEAGUE_THEME_MAP = {
   5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA 네이션스리그
   4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
+  62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
@@ -180,6 +180,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_LIGUE1.css', CSS_LINK_INDEX);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'ligue2':
+      changeCSS('css/theme/result_style_LIGUE2.css', CSS_LINK_INDEX);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'er24':
       changeCSS('css/theme/result_style_EURO24.css', CSS_LINK_INDEX);
       break;
@@ -301,7 +305,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['seriea', 'wc26', 'ligue1'].includes(_currentTheme)) {
+  if (['seriea', 'wc26', 'ligue1', 'ligue2'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;

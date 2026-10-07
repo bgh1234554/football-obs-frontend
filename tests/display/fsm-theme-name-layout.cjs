@@ -6,10 +6,16 @@ await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.orig
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
 
-for(const theme of ['pl','seriea','wc26','ligue1']){
+for(const theme of ['pl','seriea','wc26','ligue1','ligue2']){
  // 프리미어리그를 거쳐 전환하여 남아 있는 인라인 색상과 정렬 설정을 확인합니다.
  await page.evaluate(()=>applyTheme('pl',null));await page.waitForTimeout(100);
- await page.evaluate(theme=>applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
+ await page.evaluate(theme=>theme==='ligue2'?autoApplyTemplateByLeagueId(62,'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"/%3E'):applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
+ if(theme==='ligue2'){
+   assert((await page.locator('#fsm-theme-link').getAttribute('href')).endsWith('result_style_LIGUE2.css'));
+   assert.equal(await page.locator('.score-div').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(0, 252, 208)');
+   assert.equal(await page.locator('.extra-time').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(147, 82, 253)');
+   assert((await page.locator('.epl-lion').getAttribute('src')).startsWith('data:image/svg+xml'));
+ }
  for(const scale of (theme==='ligue1'?[60,100,150]:[100])){
  await page.evaluate(scale=>{state.boardScale=scale;render();},scale);
  for(const names of [['Short','B'],['스위스','북마케도니아'],['A Very Long Football Club Name','Another Long Team Name'],['A','B']]){
