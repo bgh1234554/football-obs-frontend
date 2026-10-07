@@ -8,8 +8,7 @@
  * 기존 채우기 캐시가 있어도 예외가 우선한다. logo-trim.js보다 먼저 로드해야 한다.
  */
 const LOGO_FILL_EXCLUDED_URLS = Object.freeze([
-  // 러시아 축구협회: 문양 사이 빈칸을 원본 그대로 유지(2026-09-30 사용자 지정).
   'https://bgh1234554.github.io/football-obs-logo-cdn/nt/RussiaFA.svg',
-  // 독일 축구협회: 가운데만 흰색으로 채워지는 어색한 표시를 피하고 원본 투명 영역 유지.
   'https://bgh1234554.github.io/football-obs-logo-cdn/nt/GermanyFA.png',
+  'https://media-handle-obsoverlay.b-cdn.net/football/teams/33.png',
 ]);
