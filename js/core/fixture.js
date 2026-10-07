@@ -1006,6 +1006,9 @@
       const leagueId = extractLeagueIdFromFixtureData(data);
       state.leagueId = leagueId;
       state.leagueLogoUrl = data.matchInfo?.leagueLogoUrl || null;
+      state.leagueThemeUpdateSilent = silent === true;
+      // 같은 리그를 비-silent로 다시 불러와도 팝업에서 테마 적용을 재개합니다.
+      if (!silent) state.leagueThemeApplyVersion = (Number(state.leagueThemeApplyVersion) || 0) + 1;
       persist();
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
         try {

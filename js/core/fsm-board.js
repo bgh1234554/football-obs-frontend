@@ -439,12 +439,12 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
-    } if(theme == 'wc26') {
+    } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
       setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
-    } if(theme == 'rpl') {
+    } else if(theme == 'rpl') {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
@@ -490,19 +490,11 @@ function adjustScoreboardWidth() {
     });
   }
 
-  function getColorContract(hex) {
-    var threshold = 130;
-    var hRed = hexToR(hex);
-    var hGreen = hexToG(hex);
-    var hBlue = hexToB(hex);
-
-    function hexToR(h) {return parseInt((cutHex(h)).substring(0,2),16)}
-    function hexToG(h) {return parseInt((cutHex(h)).substring(2,4),16)}
-    function hexToB(h) {return parseInt((cutHex(h)).substring(4,6),16)}
-    function cutHex(h) {return (h.charAt(0)=="#") ? h.substring(1,7):h}
-
-    const cBrightness = ((hRed * 299) + (hGreen * 587) + (hBlue * 114)) / 1000;
-      if (cBrightness > threshold) { return "#000000"; } else { return "#ffffff"; }
+  function getColorContract(color) {
+    const rgb = parseAnyColor(color);
+    if (!rgb || ![rgb.r, rgb.g, rgb.b].every(Number.isFinite)) return '#ffffff';
+    const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+    return brightness > 130 ? '#000000' : '#ffffff';
   }
 
 (function init() {

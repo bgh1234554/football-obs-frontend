@@ -68,6 +68,7 @@
       if (syncColorInput) colorInput.value = value;
       markOverride();
       if (same) return;
+      if (TEAM_COLOR_KEYS.has(key) && typeof applyTeamColors === 'function') applyTeamColors();
       persist();
       render();
       dispatchThemeChange();

@@ -101,7 +101,9 @@
     noteMinHeight: 56,
     manualMode: false,
     leagueId: null,
-    leagueLogoUrl: null
+    leagueLogoUrl: null,
+    leagueThemeUpdateSilent: false,
+    leagueThemeApplyVersion: 0
   };
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -267,7 +269,7 @@
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
-      state.leagueId = saved.leagueId;
-      state.leagueLogoUrl = saved.leagueLogoUrl;
+      state.leagueId = saved?.leagueId ?? null;
+      state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;
     }catch(e){ console.warn('복원 실패:', e); }
   }
