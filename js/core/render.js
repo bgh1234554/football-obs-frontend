@@ -256,6 +256,9 @@
     setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
     setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
     const noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
+    const noteKeyGuardWidth = isGreenscreenOn() && noteStrokeWidth > 0 ? 0.75 : 0;
+    setCSS('--note-key-guard-w', noteKeyGuardWidth + 'px');
+    setCSS('--note-key-guard-visibility', noteKeyGuardWidth > 0 ? 'visible' : 'hidden');
     setCSS('--note-stroke-w', noteStrokeWidth + 'px');
     setCSS('--note-stroke-w-neg', -noteStrokeWidth + 'px');
     if (el.noteStrokeWidth) el.noteStrokeWidth.value = noteStrokeWidth;
@@ -535,7 +538,7 @@
 
   function renderNoteLine(line) {
     const text = escapeNoteHtml(line);
-    return `<span class="${getNoteLineClass(line)}"><span class="note-line-outline" aria-hidden="true">${text}</span><span class="note-line-fill">${text}</span></span>`;
+    return `<span class="${getNoteLineClass(line)}"><span class="note-line-key-guard" aria-hidden="true">${text}</span><span class="note-line-outline" aria-hidden="true">${text}</span><span class="note-line-fill">${text}</span></span>`;
   }
 
   /** 득점자 줄 배열을 perRow 명씩 한 줄로 합쳐 HTML 반환 (perRow=1이면 줄마다 표시) */

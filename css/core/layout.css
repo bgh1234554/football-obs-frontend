@@ -133,7 +133,16 @@
     .note.away { text-align: left;  font-size: var(--note-font-size-away); }
     .note-row { display: block; }
     .note-line { display: inline-grid; color: var(--note-text); }
-    .note-line-outline, .note-line-fill { grid-area: 1 / 1; }
+    .note-line-key-guard, .note-line-outline, .note-line-fill { grid-area: 1 / 1; }
+    .note-line-key-guard {
+      /* Reinforce the selected outline without adding a second color. */
+      visibility: var(--note-key-guard-visibility, hidden);
+      color: var(--note-stroke);
+      -webkit-text-stroke: calc(var(--note-stroke-w) + var(--note-stroke-w) + var(--note-key-guard-w, 0px) + var(--note-key-guard-w, 0px)) var(--note-stroke);
+      text-shadow: none;
+      pointer-events: none;
+      user-select: none;
+    }
     .note-line-outline {
       color: var(--note-stroke);
       -webkit-text-stroke: calc(var(--note-stroke-w) + var(--note-stroke-w)) var(--note-stroke);
