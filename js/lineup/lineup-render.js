@@ -291,9 +291,13 @@ function setSideName(panel, dataAttrPrefix, side, teamName, accentColor, accentT
   if (accentColor) {
     nameEl.style.setProperty('--dp-team-accent', accentColor);
     nameEl.style.setProperty('--dp-team-text', accentTextColor || '#fff');
+    if (dataAttrPrefix === 'bench') {
+      teamOutlineLowContrast(nameEl, accentColor, accentTextColor || '#fff', teamPanelBackground(panel));
+    }
   } else {
     nameEl.style.removeProperty('--dp-team-accent');
     nameEl.style.removeProperty('--dp-team-text');
+    nameEl.style.removeProperty('box-shadow');
   }
 }
 
@@ -1671,7 +1675,7 @@ document.addEventListener('settings:change', event => {
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
   // 평점 색상 7구간(ratingColor*)도 변경 시 노드 평점 박스 즉시 갱신.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
-    'lineupHideInitial', 'lineupShowNumber', 'panelColor',
+    'lineupHideInitial', 'lineupShowNumber', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha', 'bgMode',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
     'lineupShowOutScorers', 'splitLineup', 'leagueLogoPos',
     'ratingColorBelow6', 'ratingColor6', 'ratingColor65',

@@ -574,3 +574,31 @@
     return isGreenscreenOn() ? toChromaSafeGradient(input, forcedIntensity) : input;
   }
 
+
+const TEAM_PANEL_MIN_CONTRAST = 3;
+
+/** 투명 패널은 부모 배경과 합성한 실제 표시색을 기준으로 비교한다. */
+function teamPanelBackground(panel) {
+  const layers = [];
+  for (let el = panel; el; el = el.parentElement) {
+    layers.push(getComputedStyle(el).backgroundColor);
+  }
+  let bg = { r: 17, g: 24, b: 39 };
+  for (const color of layers.reverse()) {
+    const rgb = parseAnyColor(color);
+    if (!rgb) continue;
+    const parts = color.match(/[\d.]+/g);
+    const alpha = color.startsWith('rgba') ? Number(parts?.[3] ?? 1) : 1;
+    bg = Object.fromEntries(['r', 'g', 'b'].map(k => [k, Math.round(rgb[k] * alpha + bg[k] * (1 - alpha))]));
+  }
+  return `rgb(${bg.r}, ${bg.g}, ${bg.b})`;
+}
+
+/** 크기와 팀 색을 유지하면서 number color로 내부 테두리만 표시한다. */
+function teamOutlineLowContrast(el, color, numberColor, panelBackground) {
+  el.style.removeProperty('box-shadow');
+  if (!panelBackground || typeof teamColorContrastRatio !== 'function' ||
+      teamColorContrastRatio(color, panelBackground) >= TEAM_PANEL_MIN_CONTRAST) return;
+  el.style.boxShadow = `inset 0 0 0 0.5px ${numberColor}`;
+}
+
