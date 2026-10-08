@@ -92,12 +92,12 @@
 .board.fsm-board[data-fsm-theme="unl"] .teams-left .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="unl"] .teams-right .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .team-name {
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .team-name {
   width: calc(100% - var(--fsm-name-reserved-width, 0px));
   justify-content: center; margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
 }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] .team-color { top: 50%; transform: translateY(-50%); }
 .board.fsm-board[data-fsm-theme="wc26"] #homeColor { left: auto; right: calc(var(--fsm-score-overlap, 0px) + 12px); }
 .board.fsm-board[data-fsm-theme="wc26"] #awayColor { right: auto; left: calc(var(--fsm-score-overlap, 0px) + 12px); }

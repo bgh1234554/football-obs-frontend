@@ -22,6 +22,13 @@ const LEAGUE_THEME_MAP = {
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
+  236: { theme: 'fnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianFirstLeague.svg', type: 'club' },
+  1025: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
+  1026: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
+  651: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
+  652: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
+  650: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
+  653: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
   294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵
@@ -36,7 +43,8 @@ const FSM_THEMES = Object.freeze({
   default: '기본', pl: '프리미어리그', seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
   cl: '챔피언스리그',  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
   unl: '네이션스리그', er24: '유로',
-  rpl: '러시아 프리미어리그', kleague: 'K리그', wc26: '월드컵'
+  rpl: '러시아 프리미어리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
+  kleague: 'K리그', wc26: '월드컵'
 });
 
 function initFsmThemeSelect() {
@@ -229,6 +237,18 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_LIGUE2.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'fnl':
+      changeCSS('css/theme/result_style_FNL.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'fnl2a':
+      changeCSS('css/theme/result_style_FNL2A.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'fnl2b':
+      changeCSS('css/theme/result_style_FNL2B.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'er24':
       changeCSS('css/theme/result_style_EURO24.css', theme);
       break;
@@ -349,7 +369,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['seriea', 'rpl', 'wc26', 'ligue1', 'ligue2'].includes(_currentTheme)) {
+  if (['seriea', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -437,7 +457,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', state.colors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', state.colors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['pl', 'wc26', 'uel', 'uecl'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['pl', 'fnl', 'fnl2a', 'fnl2b', 'wc26', 'uel', 'uecl'].includes(theme)
         ? 'none' : theme === 'rpl' ? 'chip' : 'strip';
     }
     if(theme == 'pl') {
@@ -452,6 +472,8 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
+    } else if(['fnl', 'fnl2a', 'fnl2b'].includes(theme)) {
+      setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
     } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
