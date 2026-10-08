@@ -50,6 +50,8 @@ const SETTINGS_DEFAULTS = {
   // '메인에 표시' 버튼 클릭 시 자동 이동할 페이지: 'big'(캠 큼) / 'small'(캠 작음 = /detail).
   mainPage: 'big',
   fanReaction: 'on',
+  bigLineupVisible: 'on',
+  bigInfoVisible: 'on',
   // 캠 큰 패널 자동 전환 (stat-cycle.js). off='off', on='on' 토글.
   statCycleAuto: 'on',
   // 자동 전환(statCycleAuto) 순서에 각 패널을 포함시킬지 per-panel 토글 (stat-cycle.js).
@@ -378,6 +380,7 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 // 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
+  'bigLineupVisible', 'bigInfoVisible',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
   'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
@@ -638,6 +641,7 @@ function applySettingSideEffects(category) {
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
+    || category === 'bigLineupVisible' || category === 'bigInfoVisible'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
     || category === 'lineupShowRating' || category === 'lineupShowSubTime'
     || category === 'lineupShowNumber') {
@@ -832,6 +836,8 @@ function applyLayoutSettings() {
   const body = document.body;
   if (body) {
     body.classList.toggle('no-fan-reaction', getSetting('fanReaction') !== 'on');
+    body.classList.toggle('no-big-lineup', getSetting('bigLineupVisible') !== 'on');
+    body.classList.toggle('no-big-info', getSetting('bigInfoVisible') !== 'on');
     body.classList.toggle('no-lineup-goals',   getSetting('lineupShowGoals')   !== 'on');
     body.classList.toggle('no-lineup-cards',   getSetting('lineupShowCards')   !== 'on');
     body.classList.toggle('no-lineup-rating',  getSetting('lineupShowRating')  !== 'on');

@@ -483,16 +483,41 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
-          <div class="sp-section-title">패널 구성</div>
+          <div class="sp-section-title">패널 색상</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">팬 반응 칼럼</span>
-              <span class="sp-label-sub">팬 반응 칼럼 표시 여부입니다.</span>
+              <span class="sp-label-main">패널 배경 색상</span>
+              <span class="sp-label-sub">이벤트·스탯·명단·팬 반응·경기 정보 패널에 공통 적용됩니다.</span>
             </div>
-            <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="off">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="on">ON</span>
+            <div class="sp-bg-input-cluster">
+              <select class="sp-select" id="panelColorPreset" aria-label="패널 배경 색상 프리셋">
+                <option value="#0b1220">기본</option>
+                <option value="#111111">검정</option>
+                <option value="#263445">회색</option>
+                <option value="#202329">차콜</option>
+                <option value="#18243b">네이비</option>
+                <option value="#17382b">초록</option>
+                <option value="#102a56">파랑</option>
+                <option value="#431f2a">빨강</option>
+                <option value="#302044">보라</option>
+                <option value="#153b3b">민트</option>
+                <option value="#382a23">갈색</option>
+                <option value="custom">커스텀</option>
+              </select>
+              <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="panelColor" aria-label="정보 패널 배경 색상" /></label>
+              <button type="button" class="sp-secondary-btn" id="panelColorResetBtn">초기화</button>
+            </div>
+          </div>
+          <div class="sp-section-title">캠 큰 메뉴 패널 구성</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">캠 큰 화면 패널 표시</span>
+              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다.</span>
+            </div>
+            <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap sp-big-panel-toggles">
+              <label class="sp-mini-toggle-item"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigLineupVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">라인업</span></label>
+              <label class="sp-mini-toggle-item" title="캠 작은 화면의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
+              <label class="sp-mini-toggle-item" title="스탯·이벤트·상대전적·교체 명단·경기 정보가 표시되는 패널"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigInfoVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">경기 패널</span></label>
             </div>
           </div>
           <div class="sp-row">
@@ -550,31 +575,6 @@
             </div>
           </div>
 
-          <div class="sp-section-title">패널 색상</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">패널 배경 색상</span>
-              <span class="sp-label-sub">이벤트·스탯·명단·팬 반응·경기 정보 패널에 공통 적용됩니다.</span>
-            </div>
-            <div class="sp-bg-input-cluster">
-              <select class="sp-select" id="panelColorPreset" aria-label="패널 배경 색상 프리셋">
-                <option value="#0b1220">기본</option>
-                <option value="#111111">검정</option>
-                <option value="#263445">회색</option>
-                <option value="#202329">차콜</option>
-                <option value="#18243b">네이비</option>
-                <option value="#17382b">초록</option>
-                <option value="#102a56">파랑</option>
-                <option value="#431f2a">빨강</option>
-                <option value="#302044">보라</option>
-                <option value="#153b3b">민트</option>
-                <option value="#382a23">갈색</option>
-                <option value="custom">커스텀</option>
-              </select>
-              <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="panelColor" aria-label="정보 패널 배경 색상" /></label>
-              <button type="button" class="sp-secondary-btn" id="panelColorResetBtn">초기화</button>
-            </div>
-          </div>
           <div class="sp-section-title">이벤트/스탯 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">

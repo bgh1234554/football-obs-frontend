@@ -272,6 +272,13 @@
 .sp-manual-reset-toggles-nowrap .sp-mini-toggle-label {
   white-space: nowrap;
 }
+.sp-big-panel-toggles {
+  gap: 12px;
+  flex-shrink: 0;
+}
+.sp-big-panel-toggles .sp-mini-toggle-label {
+  font-size: 12px;
+}
 
 /* ----- 토글 양옆 short/long 텍스트 라벨 ----- */
 .sp-toggle-cluster {

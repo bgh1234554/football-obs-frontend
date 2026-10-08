@@ -166,6 +166,8 @@ body.lp-small-resizing * {
    display:none 대신 opacity:0을 사용 — 레이아웃 흐름에서 빠지지 않아 스탯 패널이 그
    자리를 차지하러 늘어나지 않는다. */
 body.no-fan-reaction .layout-big .lp-chat-big,
+body.no-big-lineup .layout-big .lp-lineup,
+body.no-big-info .layout-big .lp-stat,
 body.no-fan-reaction .layout-small .lp-cam-chat {
   opacity: 0;
   pointer-events: none;
