@@ -52,6 +52,12 @@
   transition-duration: var(--fsm-transition-duration);
   transition-timing-function: ease-in-out;
 }
+@media (prefers-reduced-motion: reduce) {
+  .board.fsm-board:not([data-fsm-theme="pl"])
+    :is(.scoreboard-main, .teams-left, .teams-right, .team-logo, .team-score, .score-div, .team-name, .text, .time, .extra-time) {
+    transition-duration: 0s;
+  }
+}
 .board.fsm-board:not([data-fsm-theme="pl"]) .scoreboard-main {
   transition-property: background-color, color, border-color, border-radius, box-shadow, outline-color;
 }

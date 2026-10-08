@@ -785,6 +785,9 @@ function applyLayoutSettings() {
       : (isText ? chromaSafeText(color) : chromaSafe(color));
     root.style.setProperty(variable, safeColor);
   });
+  if (isGreenscreenOn() && getGreenscreenIntensity() === 'purple') {
+    root.style.setProperty('--overlay-node-in-text', '#d8b4fe');
+  }
   root.style.setProperty('--mi-label-color', chromaSafeText(getSetting('matchInfoLabelColor')));
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
@@ -835,6 +838,30 @@ function applyLayoutSettings() {
   // Iter 5-3: per-feature 토글 → body 클래스. CSS에서 .layout-big에서만 적용해 큰 캠 숨김.
   const body = document.body;
   if (body) {
+    const panels = [
+      ['bigLineupVisible', '.layout-big .lp-lineup'],
+      ['bigInfoVisible', '.layout-big .lp-stat'],
+    ].map(([category, selector]) => ({ category, panel: document.querySelector(selector), disabled: getSetting(category) !== 'on' }));
+    panels.forEach(({ category, panel, disabled }) => {
+      if (!panel) return;
+      if (disabled && panel.contains(document.activeElement)) {
+        const candidates = isSettingsOpen()
+          ? document.querySelectorAll(`[data-settings-cat="${category}"], #settingsBackdrop button`)
+          : document.querySelectorAll('#tabsBar');
+        const target = Array.from(candidates).find(el => !el.disabled && !el.closest('[inert]')
+          && !panels.some(item => item.disabled && item.panel?.contains(el))
+          && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+        if (target) target.focus({ preventScroll: true });
+        else {
+          const tabindex = body.getAttribute('tabindex');
+          body.tabIndex = -1;
+          body.focus({ preventScroll: true });
+          if (tabindex === null) body.removeAttribute('tabindex');
+          else body.setAttribute('tabindex', tabindex);
+        }
+      }
+      panel.inert = disabled;
+    });
     body.classList.toggle('no-fan-reaction', getSetting('fanReaction') !== 'on');
     body.classList.toggle('no-big-lineup', getSetting('bigLineupVisible') !== 'on');
     body.classList.toggle('no-big-info', getSetting('bigInfoVisible') !== 'on');
