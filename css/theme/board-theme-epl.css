@@ -248,9 +248,9 @@
       background: linear-gradient(180deg, rgba(17,24,39,.96) 0%, rgba(11,18,32,.98) 100%);
       border: 1px solid rgba(255,255,255,.78);
       box-shadow:
-        0 0 0 1px rgba(34,197,94,.42),
+        0 0 0 1px rgba(var(--control-accent-rgb),.42),
         0 3px 10px rgba(0,0,0,.35);
-      color: #86efac;
+      color: var(--control-accent);
       border-radius: 8px;
       font-size: 13px;
       font-weight: 900;
@@ -263,9 +263,9 @@
     }
     .ce-confirm:hover {
       background: linear-gradient(180deg, rgba(30,41,59,.98) 0%, rgba(15,23,42,1) 100%);
-      color: #dcfce7;
+      color: var(--control-accent-text);
       box-shadow:
-        0 0 0 1px rgba(74,222,128,.62),
+        0 0 0 1px rgba(var(--control-accent-rgb),.62),
         0 4px 12px rgba(0,0,0,.42);
     }
     .ce-confirm:active { transform: translateY(1px); }
@@ -308,7 +308,7 @@
       display: grid; place-items: center;
       font-size: 12px; font-weight: 900; color: #0b1220;
     }
-    .pk-dot.goal { background: #22c55e; }
+    .pk-dot.goal { background: var(--overlay-green, #22c55e); }
     .pk-dot.miss { background: #ef4444; color: #111827; }
     .pk-label { font-size: 12px; opacity: .8; }
 

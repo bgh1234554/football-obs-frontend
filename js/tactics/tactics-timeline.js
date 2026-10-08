@@ -420,9 +420,21 @@ function ttBindFullscreenToggle() {
   const panel = document.getElementById('tactics-timeline-panel');
   if (!panel) return;
 
+  let refitFrame = 0;
+  const refit = () => {
+    cancelAnimationFrame(refitFrame);
+    refitFrame = requestAnimationFrame(() => {
+      const events = panel.querySelector('[data-events-panel]');
+      if (events && typeof window.evRefitPanelRows === 'function') window.evRefitPanelRows(events);
+    });
+  };
+  new ResizeObserver(refit).observe(panel);
+  document.addEventListener('fullscreenchange', refit);
+
   const setOpen = (next) => {
     tacticsTimelineState.isFullscreenPanelOpen = next;
     panel.classList.toggle('is-open', next);
+    if (next) refit();
     if (openBtn) {
       // 화살표/라벨 span 분리 — 세로 화면 전체화면에선 화살표를 숨기고 열림 상태(aria-expanded)를 세그먼트 버튼 색으로 표시
       const arrow = openBtn.querySelector('.td-toggle-arrow');

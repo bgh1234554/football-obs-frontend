@@ -134,7 +134,6 @@
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.02em;
     }
-    body.greenscreen-mode .td-tl-current { color: #f0a3df; }
 
     /* 홈/원정 이벤트 칩 컨테이너 — 슬라이더 위(home), 아래(away).
        JS가 lane 수에 따라 height를 동적으로 설정. */
@@ -204,14 +203,14 @@
     }
     /* 종류별 색상 강조 — 칩 배경/테두리에 살짝 색감 부여 */
     .td-tl-event.kind-subst {
-      background: rgba(34,197,94,.12);
-      border-color: rgba(34,197,94,.32);
+      background: var(--overlay-timeline-bg, rgba(34,197,94,.12));
+      border-color: var(--overlay-timeline-border, rgba(34,197,94,.32));
     }
     .td-tl-event.kind-subst:hover {
-      background: rgba(34,197,94,.22);
-      border-color: rgba(34,197,94,.55);
+      background: var(--overlay-timeline-hover-bg, rgba(34,197,94,.22));
+      border-color: var(--overlay-timeline-hover-border, rgba(34,197,94,.55));
     }
-    .td-tl-event.kind-subst .td-tl-glyph { color: #4ade80; }
+    .td-tl-event.kind-subst .td-tl-glyph { color: var(--overlay-timeline-glyph, #4ade80); }
 
     .td-tl-event.kind-red {
       background: rgba(239,68,68,.14);
@@ -223,15 +222,6 @@
     }
     .td-tl-event.kind-red .td-tl-glyph { color: #f87171; }
 
-    body.greenscreen-mode .td-tl-event.kind-subst {
-      background: rgba(232,121,201,.14);
-      border-color: rgba(232,121,201,.38);
-    }
-    body.greenscreen-mode .td-tl-event.kind-subst:hover {
-      background: rgba(232,121,201,.24);
-      border-color: rgba(232,121,201,.6);
-    }
-    body.greenscreen-mode .td-tl-event.kind-subst .td-tl-glyph { color: #e879c9; }
 
     /* 0'/max 경계 라벨 (슬라이더 아래) */
     #tactics-timeline-bounds {
@@ -292,8 +282,6 @@
       cursor: grab;
       box-shadow: 0 2px 6px rgba(0,0,0,.45);
     }
-    body.greenscreen-mode #tactics-time-slider::-webkit-slider-thumb { border-color: #c026d3; }
-    body.greenscreen-mode #tactics-time-slider::-moz-range-thumb    { border-color: #c026d3; }
     #tactics-events-host {
       flex: 1 1 auto;
       min-height: 0;
@@ -641,8 +629,20 @@
        #td-pitch-resize-handle 자체는 폭 0인 flex 항목(레이아웃 공간 차지 없음)이고, ::before가 피치 오른쪽 가장자리
        (전체화면 오른쪽 정렬이면 왼쪽 가장자리) 위에 걸친 투명 잡기 영역이 된다. hover/드래그 중에만 살짝 밝아진다.
        드래그로 피치 폭만 조절, 더블클릭/더블탭으로 초기화(js/tactics/tactics.js: tacticsBindPitchResizeHandle). */
+    #tactics-timeline-panel .ev-list {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.25) transparent;
+    }
+    #tactics-timeline-panel .ev-list::-webkit-scrollbar { width: 6px; }
+    #tactics-timeline-panel .ev-list::-webkit-scrollbar-track { background: transparent; }
+    #tactics-timeline-panel .ev-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    #tactics-timeline-panel .ev-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+    #page-tactics:not(:fullscreen):not(.td-touch-layout) #tactics-pitch-wrap {
+      padding-left: 0 !important;
+    }
     #td-pitch-resize-handle { display: none; }
-    #page-tactics.td-pitch-vertical #td-pitch-resize-handle {
+    #page-tactics.td-pitch-vertical #td-pitch-resize-handle,
+    #page-tactics:not(.td-pitch-vertical):not(:fullscreen):not(.td-touch-layout) #td-pitch-resize-handle {
       display: block;
       position: relative;
       flex: 0 0 0px;
@@ -652,7 +652,7 @@
       touch-action: none;
       user-select: none;
     }
-    #page-tactics.td-pitch-vertical #td-pitch-resize-handle::before {
+    #page-tactics #td-pitch-resize-handle::before {
       content: '';
       position: absolute;
       top: 0;
@@ -664,8 +664,8 @@
       background: transparent;
       transition: background .15s;
     }
-    #page-tactics.td-pitch-vertical #td-pitch-resize-handle:hover::before,
-    #page-tactics.td-pitch-vertical #td-pitch-resize-handle.is-dragging::before {
+    #page-tactics #td-pitch-resize-handle:hover::before,
+    #page-tactics #td-pitch-resize-handle.is-dragging::before {
       background: rgba(255,255,255,.18);
     }
     #page-tactics:is(:fullscreen, .td-touch-layout).tactics-fullscreen-panels-left.td-pitch-vertical #td-pitch-resize-handle {

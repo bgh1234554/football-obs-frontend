@@ -559,6 +559,15 @@
     return isGreenscreenOn() ? toChromaSafeColor(input, forcedIntensity) : input;
   }
 
+  /** 어두운 초록 프리셋의 글자는 흰색으로 분리해 라벨 안에서도 읽히게 한다. */
+  function chromaSafeText(input) {
+    const color = chromaSafe(input);
+    if (!isGreenscreenOn() || getGreenscreenIntensity() !== 'natural' || !isGreenLike(input)) return color;
+    const rgb = parseAnyColor(color);
+    if (!rgb) return color;
+    return rgb.a < 1 ? `rgba(255, 255, 255, ${rgb.a})` : '#ffffff';
+  }
+
   /** greenscreen ON일 때만 toChromaSafeGradient 적용. 그라디언트 문자열용. */
   function chromaSafeGradient(input, forcedIntensity) {
     return isGreenscreenOn() ? toChromaSafeGradient(input, forcedIntensity) : input;

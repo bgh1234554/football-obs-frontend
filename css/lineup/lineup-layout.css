@@ -458,7 +458,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   box-sizing: border-box;
   padding: 2px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(76,217,100,.55);
+  border: 1px solid rgba(var(--control-accent-rgb),.55);
   background: rgba(15,17,22,.96);
   color: #f0f0f0;
   font-size: 11px;
@@ -470,7 +470,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 .dp-coach-inline-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+  box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18);
 }
 
 /* ===== 라인업 패널 ===== */

@@ -96,6 +96,7 @@
     noteEnabled: true,
     notes: { home: '', away: '' },
     noteFontSize: 18,
+    noteStrokeWidth: 1,
     noteBorderWidth: 1,
     noteMinHeight: 56,
     manualMode: false,
@@ -160,6 +161,7 @@
     homeNote: $('homeNote'), awayNote: $('awayNote'),
     homeNoteSide: $('homeNoteSide'), awayNoteSide: $('awayNoteSide'),
     noteOn: $('noteOn'), noteFontSize: $('noteFontSize'),
+    noteStrokeWidth: $('noteStrokeWidth'),
     inNoteStroke: $('inNoteStroke'), inNoteText: $('inNoteText'),
   };
 
@@ -264,6 +266,7 @@
       delete state.awayLogoManualOverride;
       state.fontFamily = sanitizeFontFamily(state.fontFamily) || DEFAULT_FONT_FAMILY;
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
+      state.noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
       state.leagueId = saved?.leagueId ?? null;

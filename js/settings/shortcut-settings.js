@@ -18,8 +18,9 @@
   window.renderShortcutSettings=function(){
     panel.querySelector('#shortcutUndoBtn').disabled=!history.length;
     const rows=panel.querySelector('#shortcutRows');rows.replaceChildren();let group='';let count=0;
+    const query=search.value.trim().toLowerCase();
     for(const action of shortcutActions){
-      if(!(action[1]+action[2]).includes(search.value.trim()))continue;
+      if(!(action[1]+action[2]).toLowerCase().includes(query))continue;
       count++;
       if(group!==action[1]){group=action[1];const heading=document.createElement('h3');heading.className='sc-group';heading.textContent=group;rows.append(heading);}
       const row=document.createElement('div');row.className='sc-row';

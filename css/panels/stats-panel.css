@@ -558,9 +558,9 @@
       color: #fff;
     }
     .st-pause.is-paused {
-      background: rgba(76,217,100,.18);
-      border-color: rgba(76,217,100,.55);
-      color: #4cd964;
+      background: rgba(var(--control-accent-rgb),.18);
+      border-color: rgba(var(--control-accent-rgb),.55);
+      color: var(--control-accent);
       letter-spacing: 0;
     }
 

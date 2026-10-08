@@ -215,15 +215,10 @@ body.low-panel-alpha #injuryPanel :is(.dp-title, .dp-side-name, .dp-item-num, .d
   background: rgba(255,59,48,.18);
 }
 .dp-sub-marker.is-in {
-  color: #7CFC8E;
-  background: rgba(124,252,142,.18);
+  color: var(--overlay-in-text, #7CFC8E);
+  background: var(--overlay-in-bg, rgba(124,252,142,.18));
 }
-/* greenscreen 모드 (Iter 5-7): 교체 IN 마커를 파란 계열로 치환.
-   OUT의 빨강(.is-out)과 보색 대비 + chromakey 안전. ev-text-in과 동일한 #7cb1fc 톤. */
-body.greenscreen-mode .dp-sub-marker.is-in {
-  color: #7cb1fc;
-  background: rgba(124,177,252,.18);
-}
+/* Green overlay colors follow the selected chroma safety preset. */
 .dp-sub-time-text { font-weight: 700; }
 
 /* 골 / 어시 이모티콘 — 횟수만큼 반복 (한 줄 안에서 자연스럽게 wrap 가능) */
@@ -283,9 +278,8 @@ body.greenscreen-mode .dp-sub-marker.is-in {
 
 /* ===== 선수 이름 상태별 색상 (교체/카드) ===== */
 /* 교체 들어온 선수 — 연두색 */
-.dp-item-name.is-sub-in   { color: #7CFC8E; }
-/* greenscreen 모드 (Iter 5-7): 교체 IN 선수명을 파란 계열로 치환. */
-body.greenscreen-mode .dp-item-name.is-sub-in { color: #7cb1fc; }
+.dp-item-name.is-sub-in   { color: var(--overlay-in-text, #7CFC8E); }
+/* Green overlay colors follow the selected chroma safety preset. */
 /* 빠진 선수 (벤치 외 영역에서만 사용 — 라인업 그리드용) */
 .dp-item-name.is-sub-out  { color: rgba(255,255,255,.40); text-decoration: line-through; }
 /* 경고 — 노랑 */
@@ -300,8 +294,8 @@ body.greenscreen-mode .dp-item-name.is-sub-in { color: #7cb1fc; }
   font-weight: 700;
   padding: 0 4px;
   border-radius: 6px;
-  background: rgba(124,252,142,.18);
-  color: #7CFC8E;
+  background: var(--overlay-in-bg, rgba(124,252,142,.18));
+  color: var(--overlay-in-text, #7CFC8E);
   font-variant-numeric: tabular-nums;
 }
 .dp-sub-time.is-out {

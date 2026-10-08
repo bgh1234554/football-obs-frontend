@@ -37,7 +37,7 @@
   <link rel="stylesheet" href="css/lineup/lineup-manual.css"/>
   <link rel="stylesheet" href="css/player/player-menu.css"/>
   <link rel="stylesheet" href="css/panels/hth-panel.css"/>
-  <link rel="stylesheet" href="css/settings-popup.css"/>
+  <link rel="stylesheet" href="css/settings-popup.css?v=20261008-rgb2"/>
   <link href="css/core/fsm-board.css" rel="stylesheet">
   <link id="fsm-theme-link" rel="stylesheet" href="css/theme/result_style_default.css">
   <!-- 마크다운 렌더링: markdown-it (CommonMark + GFM) + 헤딩 anchor 자동 생성 + XSS sanitize -->
@@ -483,6 +483,14 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
+          <div class="sp-section-title">경기 정보</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">항목명 색상</span>
+              <span class="sp-label-sub">주심·대회·경기장·킥오프의 글자 색입니다.</span>
+            </div>
+            <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="matchInfoLabelColor" aria-label="경기 정보 항목명 색상" /></label>
+          </div>
           <div class="sp-section-title">패널 구성</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -617,7 +625,26 @@
             </div>
             <div class="sp-bg-input-cluster">
               <label class="sp-rating-color-item" style="flex:0 0 auto;"><span>색상</span><input type="color" data-settings-color="bgColor" /></label>
+              <input type="text" class="sp-text-input sp-color-code" data-settings-text="bgColor" data-color-format="hex" aria-label="배경 색 HEX 코드" placeholder="#111827" maxlength="7" spellcheck="false" />
+              <div class="sp-color-rgb" id="settingsBgRgb" hidden>
+                <label>R <input type="number" min="0" max="255" step="1" inputmode="numeric" data-bg-rgb="0" aria-label="배경 색 R" /></label>
+                <label>G <input type="number" min="0" max="255" step="1" inputmode="numeric" data-bg-rgb="1" aria-label="배경 색 G" /></label>
+                <label>B <input type="number" min="0" max="255" step="1" inputmode="numeric" data-bg-rgb="2" aria-label="배경 색 B" /></label>
+              </div>
+              <button type="button" class="sp-color-format-btn" id="settingsBgColorFormat" aria-label="RGB 입력으로 전환" title="RGB 입력으로 전환">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h10m-3-3 3 3-3 3M13 11H3m3-3-3 3 3 3" /></svg>
+              </button>
               <button type="button" class="sp-secondary-btn" data-bg-clear="color">초기화</button>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">배경 색 투명도</span>
+              <span class="sp-label-sub">OBS 브라우저 소스로 사용 시 100%일 경우 뒤 화면이 보이고, 패널 반투명 효과도 적용됩니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="0" max="100" step="5" data-settings-slider="bgAlpha" aria-label="배경 색 투명도" />
+              <span class="sp-slider-value">0%</span>
             </div>
           </div>
           <div class="sp-row">
@@ -678,7 +705,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">그린스크린 모드</span>
-              <span class="sp-label-sub">크로마키에서 초록 계열이 빠지지 않게 오버레이 색만 바꾸고, 배경 단색/이미지는 그대로 둡니다.</span>
+              <span class="sp-label-sub">배경 자체를 초록색 단색으로 사용 시, 크로마키에서 초록 계열이 빠지지 않게 오버레이 색만 바꿉니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -733,7 +760,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">입력창/설정을 새 창으로 열기</span>
-              <span class="sp-label-sub">ON 선택 시, 방송 화면에 잡히지 않도록 테마 탭과 모든 팝업창이 새창에서 열립니다.</span>
+              <span class="sp-label-sub">ON 선택 시, 방송 화면에 잡히지 않도록 테마 탭과 모든 팝업창이 새창에서 열립니다.<br>(단, OBS 브라우저 소스에선 제외)</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -771,14 +798,14 @@
             <div class="sp-row">
               <div class="sp-row-label">
                 <span class="sp-label-main">설정 초기화</span>
-                <span class="sp-label-sub">이름/라인업/패널·스탯/배경·OBS/관리 탭의 모든 토글·슬라이더 설정을 기본값으로 되돌립니다. 경기 데이터, 수동 입력, 선수 ID·닉네임 연결은 건드리지 않습니다.</span>
+                <span class="sp-label-sub">이름/라인업/패널·스탯/배경·OBS/관리 탭의 모든 토글·슬라이더 설정을 기본값으로 되돌립니다.<br>경기 데이터, 수동 입력, 선수 ID·닉네임 연결은 건드리지 않습니다.</span>
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="settingsResetBtn">초기화</button>
             </div>
             <div class="sp-row">
               <div class="sp-row-label">
                 <span class="sp-label-main">캐시 초기화</span>
-                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다. 포메이션/라인업/벤치/미출전 선수/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
+                <span class="sp-label-sub">저장해둔 API 응답 캐시와 '최근 경기 ID'만 지웁니다.<br>포메이션/라인업/벤치/미출전 선수/감독/주심에 직접 입력한 수동 데이터의 경우 밑에서 지울 수 있습니다.</span>
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="cacheResetBtn">초기화</button>
             </div>
@@ -1016,7 +1043,7 @@
       <div class="theme-appearance-grid">
       <div class="theme-card theme-selector-card"><div class="section-title">점수판 테마</div><div class="prow"><div class="pgroup"><label for="fsmThemeSelect">FSM 테마 선택</label><select id="fsmThemeSelect" style="min-width:240px"></select><small>자동 선택은 경기의 리그에 맞춰 적용됩니다.</small></div></div></div>
       <div class="theme-card theme-colors-card"><div class="section-title">색상</div><button id="resetApiTeamColors" class="theme-color-reset" type="button" title="API 색상으로 초기화" aria-label="API 색상으로 초기화">&#8634;</button><div class="prow"><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div></div></div>
-        <div class="theme-card theme-notes-card"><div class="section-title">득점자 표시</div><div class="prow"><div class="pgroup"><label>득점자 표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div><div class="pgroup"><label>글자 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div><div class="pgroup"><label>글자 크기(px)</label><input id="noteFontSize" type="number" min="10" step="1" value="20"></div><div class="pgroup"><label>글자 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div></div></div>
+        <div class="theme-card theme-notes-card"><div class="section-title">득점자 표시</div><div class="prow"><div class="pgroup"><label>득점자 표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div><div class="pgroup"><label>글자 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div><div class="pgroup"><label for="noteStrokeWidth">글자 테두리 굵기(px)</label><input id="noteStrokeWidth" type="number" min="0" max="10" step="0.5" value="1"></div><div class="pgroup"><label>글자 크기(px)</label><input id="noteFontSize" type="number" min="10" step="1" value="20"></div><div class="pgroup"><label>글자 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div></div></div>
       </div>
       <div class="theme-card theme-font-card"><div class="section-title">폰트</div><div class="theme-font-basic"><div class="pgroup"><label>프리셋</label><select id="fontPreset"><option value="">직접 입력 / 사용자 지정</option><optgroup label="기본 / 시스템"><option value="'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">기본값</option><option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif">시스템 기본</option><option value="'Segoe UI', 'Malgun Gothic', Arial, sans-serif">Segoe UI + 맑은 고딕</option><option value="'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">맑은 고딕</option><option value="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">Apple SD Gothic Neo</option><option value="'Arial', Helvetica, sans-serif">Arial</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option><option value="'Tahoma', Geneva, sans-serif">Tahoma</option><option value="'Verdana', Geneva, sans-serif">Verdana</option><option value="'Trebuchet MS', Helvetica, sans-serif">Trebuchet MS</option></optgroup><optgroup label="웹 폰트"><option value="'Ubuntu', sans-serif">Ubuntu</option><option value="'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">Nanum Barun Gothic</option><option value="'Roboto', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">Roboto</option><option value="'Noto Sans KR', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">Noto Sans KR</option><option value="'Montserrat', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap">Montserrat</option><option value="'Bebas Neue', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">Bebas Neue</option></optgroup><optgroup label="세리프 / 모노 / 디스플레이"><option value="'Georgia', 'Times New Roman', serif">Georgia</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Courier New', Courier, monospace">Courier New</option><option value="'Consolas', 'Courier New', monospace">Consolas</option><option value="'Impact', 'Arial Black', sans-serif">Impact</option><option value="sans-serif">sans-serif</option><option value="serif">serif</option><option value="monospace">monospace</option></optgroup></select></div><button id="resetFont" type="button">초기화</button></div><div class="theme-font-advanced"><div class="prow"><div class="pgroup"><label>기기에 설치된 폰트 (권한 필요)</label><div class="prow"><button id="askLocalFonts">설치 폰트 찾기</button><select id="systemFonts" style="min-width:200px"></select></div></div><div class="pgroup"><label>폰트 파일 업로드 (.ttf/.otf/.woff/.woff2)</label><input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" class="file" /></div><div class="pgroup" style="min-width:340px"><label>커스텀 폰트 CSS URL (Google Fonts 등)</label><input id="fontCssUrl" type="text" placeholder="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" /></div><div class="pgroup"><label>폰트 패밀리</label><input id="fontFamily" type="text" placeholder="'Montserrat', sans-serif" /></div><div class="pgroup theme-font-actions"><label style="visibility:hidden">Font actions</label><div class="prow"><button id="applyFont" class="primary">폰트 적용</button></div></div></div></div></div>
     </div><!-- /theme-panel-inner -->

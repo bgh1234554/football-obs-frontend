@@ -86,9 +86,9 @@
       border-color: rgba(255,255,255,.24);
     }
     .ev-filter-btn.is-active {
-      color: #dcfce7;
-      background: rgba(34,197,94,.14);
-      border-color: rgba(34,197,94,.4);
+      color: var(--control-accent-text);
+      background: rgba(var(--control-accent-rgb),.14);
+      border-color: rgba(var(--control-accent-rgb),.4);
     }
     .ev-filter-btn svg {
       width: 11px;
@@ -166,7 +166,7 @@
     }
     .ev-filter-option input {
       margin: 0;
-      accent-color: #22c55e;
+      accent-color: var(--control-accent);
       cursor: pointer;
     }
     .ev-filter-swatch {
@@ -179,7 +179,7 @@
     .ev-filter-swatch-blue { background: #3b82f6; }
     .ev-filter-swatch-yellow { background: #f5c518; }
     .ev-filter-swatch-red { background: #ef4444; }
-    .ev-filter-swatch-green { background: #22c55e; }
+    .ev-filter-swatch-green { background: var(--overlay-green, #22c55e); }
     .ev-filter-swatch-orange { background: #f97316; }
     .ev-filter-swatch-white { background: rgba(255,255,255,.92); }
     .ev-filter-option-text {
@@ -312,8 +312,8 @@
       background: rgba(255,255,255,.07);
     }
     .ev-subst-picker-item.is-selected {
-      background: rgba(34,197,94,.14);
-      border-color: rgba(34,197,94,.4);
+      background: rgba(var(--control-accent-rgb),.14);
+      border-color: rgba(var(--control-accent-rgb),.4);
     }
     .ev-subst-picker-number {
       flex: 0 0 26px;
@@ -346,9 +346,9 @@
     }
     .ev-subst-picker-confirm {
       flex: 1 1 auto;
-      background: rgba(34,197,94,.22);
-      border: 1px solid rgba(34,197,94,.45);
-      color: #86efac;
+      background: rgba(var(--control-accent-rgb),.22);
+      border: 1px solid rgba(var(--control-accent-rgb),.45);
+      color: var(--control-accent);
       font-size: 13px;
       font-weight: 700;
       border-radius: 6px;
@@ -356,7 +356,7 @@
       cursor: pointer;
       transition: background .14s ease;
     }
-    .ev-subst-picker-confirm:hover { background: rgba(34,197,94,.35); }
+    .ev-subst-picker-confirm:hover { background: rgba(var(--control-accent-rgb),.35); }
     .ev-subst-picker-cancel {
       flex: 0 0 auto;
       background: rgba(255,255,255,.06);
@@ -444,16 +444,16 @@
     .ev-hide-mgr-item .ev-subst-picker-number { flex-basis: 40px; }
     .ev-hide-mgr-restore {
       flex: 0 0 auto;
-      background: rgba(34,197,94,.14);
-      border: 1px solid rgba(34,197,94,.4);
-      color: #86efac;
+      background: rgba(var(--control-accent-rgb),.14);
+      border: 1px solid rgba(var(--control-accent-rgb),.4);
+      color: var(--control-accent);
       font-size: 11px;
       font-weight: 700;
       border-radius: 6px;
       padding: 3px 10px;
       cursor: pointer;
     }
-    .ev-hide-mgr-restore:hover { background: rgba(34,197,94,.3); }
+    .ev-hide-mgr-restore:hover { background: rgba(var(--control-accent-rgb),.3); }
 
     /* 골/카드 정보 수정 (event-hide.js) — row 클릭 메뉴 + 수정 팝업 */
     .ev-row.is-editable { cursor: pointer; }
@@ -570,9 +570,9 @@
       white-space: nowrap;
     }
     .ev-edit-seg-btn.is-active {
-      color: #dcfce7;
-      background: rgba(34,197,94,.18);
-      border-color: rgba(34,197,94,.5);
+      color: var(--control-accent-text);
+      background: rgba(var(--control-accent-rgb),.18);
+      border-color: rgba(var(--control-accent-rgb),.5);
     }
     .ev-period-modal { height: auto; max-height: calc(var(--display-vh, 1vh) * 90); }
     .ev-period-body { padding: 12px 14px; overflow-y: auto; scrollbar-width: thin; }
@@ -658,26 +658,21 @@
       flex: 0 0 4px;
       background: rgba(255,255,255,.6);
     }
-    /* 이벤트 종류별 색상 막대.
-       greenscreen 모드(.greenscreen-mode body 클래스) ON일 때 .ev-bar-green과 .ev-label-green을
-       시안 계열로 자동 치환 — OBS 크로마키와 충돌 방지. */
+    /* Green overlay colors follow the selected chroma safety preset. */
     .ev-bar-blue   .ev-bar { background: #3b82f6; }
     .ev-bar-yellow .ev-bar { background: #f5c518; }
     .ev-bar-red    .ev-bar { background: #ef4444; }
-    .ev-bar-green  .ev-bar { background: #22c55e; }
+    .ev-bar-green  .ev-bar { background: var(--overlay-green, #22c55e); }
     .ev-bar-orange .ev-bar { background: #f97316; }
     .ev-bar-white  .ev-bar { background: rgba(255, 255, 255, 0.925); }
-    /* greenscreen 모드: 교체 막대를 마젠타로 치환 (utils.js의 toChromaSafeColor와 같은 hue 영역).
-       기본 #22c55e (134°) → 마젠타 (~314°). */
-    body.greenscreen-mode .ev-bar-green .ev-bar { background: #c522b8; }
+    /* Green overlay colors follow the selected chroma safety preset. */
     /* 새 이벤트 글로우 색 — 위 막대 색과 동일하게, 종류별로 --ev-new-glow만 재정의. */
     .ev-row-new.ev-bar-blue   { --ev-new-glow: #3b82f6; }
     .ev-row-new.ev-bar-yellow { --ev-new-glow: #f5c518; }
     .ev-row-new.ev-bar-red    { --ev-new-glow: #ef4444; }
-    .ev-row-new.ev-bar-green  { --ev-new-glow: #22c55e; }
+    .ev-row-new.ev-bar-green  { --ev-new-glow: var(--overlay-green, #22c55e); }
     .ev-row-new.ev-bar-orange { --ev-new-glow: #f97316; }
     .ev-row-new.ev-bar-white  { --ev-new-glow: rgba(255, 255, 255, 0.925); }
-    body.greenscreen-mode .ev-row-new.ev-bar-green { --ev-new-glow: #c522b8; }
 
     /* 메인 줄 (단일 flex row): 시간 + 라벨 + 아이콘 + 텍스트 + 인라인 코멘트 + 팀 로고 */
     .ev-main {
@@ -713,14 +708,10 @@
     .ev-label-blue   { background: rgba(59,130,246,.30);  color: #bfdbfe; }
     .ev-label-yellow { background: rgba(245,197,24,.30);  color: #fde68a; }
     .ev-label-red    { background: rgba(239,68,68,.30);   color: #fecaca; }
-    .ev-label-green  { background: rgba(34,197,94,.30);   color: #bbf7d0; }
+    .ev-label-green  { background: var(--overlay-label-bg, rgba(34,197,94,.30)); color: var(--overlay-label-text, #bbf7d0); }
     .ev-label-orange { background: rgba(249,115,22,.30);  color: #fed7aa; }
     .ev-label-white  { background: rgba(255,255,255,.18); color: #fff; }
-    /* greenscreen 모드 ON: 교체 라벨도 마젠타 계열로 치환 (시안은 평점 8.0~8.9와 충돌). */
-    body.greenscreen-mode .ev-label-green {
-      background: rgba(197,34,184,.30);
-      color: #f7bce8;
-    }
+    /* Green overlay colors follow the selected chroma safety preset. */
     .ev-icon {
       flex: 0 0 auto;
       display: inline-flex;
@@ -800,10 +791,9 @@
       overflow-wrap: anywhere;
       line-height: 1.25;
     }
-    .ev-text-in  { color: #7CFC8E; }   /* 들어옴 — 연두 */
+    .ev-text-in  { color: var(--overlay-in-text, #7CFC8E); }   /* 들어옴 — 연두 */
     .ev-text-out { color: rgba(255,255,255,.65); }
-    /* greenscreen 모드: 교체 IN 선수명도 파란 계열로 치환 (sub-in 마커와 통일된 톤). */
-    body.greenscreen-mode .ev-text-in { color: #7cb1fc; }
+    /* Green overlay colors follow the selected chroma safety preset. */
     /* 교체 row는 IN/OUT 2줄 보장하기 위해 더 큰 min-height. */
     .ev-row-subst { min-height: 52px; }
     /* 인라인 코멘트 — .ev-text 또는 .ev-text-line 내부에서 선수 이름 바로 옆에 인라인 표시.

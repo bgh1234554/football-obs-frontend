@@ -13,6 +13,14 @@ await page.locator('#settingsGearBtn').evaluate(n=>n.click());await page.locator
 await page.locator('#shortcutManageBtn').click();
 assert(await page.locator('#shortcutSettings').isVisible());
 assert.equal(await page.locator('.sc-key').count(),25);
+const originalAction=await page.evaluate(()=>{const a=shortcutActions[0];const original=a.slice();a[1]='Clock Group';a[2]='Timer Action';renderShortcutSettings();return original;});
+for(const query of ['  cLoCk GrOuP  ','tIMER aCTION','GROUPtimer']){
+  await page.locator('#shortcutSearch').fill(query);
+  assert.equal(await page.locator('.sc-key').count(),1);
+}
+await page.locator('#shortcutSearch').fill('Space');
+assert.equal(await page.locator('.sc-key').count(),0);
+await page.evaluate(original=>{shortcutActions[0].splice(0,shortcutActions[0].length,...original);document.getElementById('shortcutSearch').value='';renderShortcutSettings();},originalAction);
 async function verifySearchHeight(){
   await page.waitForTimeout(150);
   const modal=page.locator('.sp-modal');const baseline=await modal.boundingBox();
