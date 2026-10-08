@@ -308,8 +308,8 @@
       display: grid; place-items: center;
       font-size: 12px; font-weight: 900; color: #0b1220;
     }
-    .pk-dot.goal { background: var(--overlay-green, #22c55e); }
-    .pk-dot.miss { background: #ef4444; color: #111827; }
+    .pk-dot.goal { background: var(--pk-goal, #32cd32); }
+    .pk-dot.miss { background: var(--pk-miss, #ff0000); color: #111827; }
     .pk-label { font-size: 12px; opacity: .8; }
 
     /* ========== 탭 바 ========== */

@@ -13,6 +13,8 @@
     ['inAwayText','awayText','--away-text'],
     ['inOutline','outline','--card-outline'],
     ['pkBaseColor','pkBase','--pk-base'],
+    ['inPkGoal','pkGoal','--pk-goal'],
+    ['inPkMiss','pkMiss','--pk-miss'],
     ['inHomeOutline','homeOutline','--home-outline'],
     ['inAwayOutline','awayOutline','--away-outline'],
     ['inNoteText','noteText','--note-text'],

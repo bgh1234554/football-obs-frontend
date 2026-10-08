@@ -42,7 +42,12 @@
   function updateHints(){
     window.updateScoreShortcutHint?.();
     const hint=document.querySelector('.theme-shortcut-hint');if(!hint)return;
-    hint.textContent='단축키 '+shortcutLabel(shortcutBinding(shortcutActions[0]))+' 시작/정지 · 리셋 '+shortcutActions.slice(1,5).map(a=>shortcutLabel(shortcutBinding(a))+' '+a[2].replace('으로 초기화','')).join(' / ');
+    const keycap=action=>{const key=document.createElement('span');key.className='kbd';key.textContent=shortcutLabel(shortcutBinding(action));return key;};
+    hint.replaceChildren('단축키 ',keycap(shortcutActions[0]),' 시작/정지 · 리셋 ');
+    shortcutActions.slice(1,5).forEach((action,index)=>{
+      if(index)hint.append(' / ');
+      hint.append(keycap(action),' '+action[2].replace('으로 초기화',''));
+    });
   }
   function back(focus=true){
     editing=null;panel.hidden=true;tabs.hidden=false;document.getElementById('settingsTitle').textContent='설정';applySettingsTab('general');body.scrollTop=scrollTop;if(focus)document.getElementById('shortcutManageBtn').focus();

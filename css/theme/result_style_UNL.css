@@ -171,8 +171,8 @@
 .fsm-board .extra-time {
     width: 80px;
     height: 32px;
-    color: black;
-    background: lime;
+    color: white;
+    background: #48516E;
     position: absolute;
     margin-left: 0px;
     transition: 0.9s ease-in-out;

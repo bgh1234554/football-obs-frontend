@@ -875,8 +875,9 @@ html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-chi
 /* On wide screens all font controls share a single baseline. */
 @media (min-width: 1601px) {
   #themePanel .theme-appearance-grid {
-    grid-template-columns: 280px 620px minmax(480px, 1fr);
+    grid-template-columns: 280px 860px minmax(480px, 1fr);
   }
+  #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 12px; }
   #themePanel .theme-font-card {
     display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px;
   }

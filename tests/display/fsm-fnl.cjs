@@ -56,6 +56,14 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(variant.homeName.color, 'rgb(18, 52, 86)');
       assert.equal(variant.awayName.color, 'rgb(255, 224, 128)');
       assert.equal(await page.locator(`#fsmThemeSelect option[value="${theme}"]`).count(), 1);
+      const bounds = await page.evaluate(() => ['.score-div', '#team-score-left', '#team-score-right'].map(selector => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return { top: rect.top, bottom: rect.bottom };
+      }));
+      bounds.slice(1).forEach(rect => {
+        assert(Math.abs(rect.top - bounds[0].top) < .1);
+        assert(Math.abs(rect.bottom - bounds[0].bottom) < .1);
+      });
     }
     for (const scale of [60, 100, 150]) {
       await page.evaluate(scale => { state.boardScale = scale; state.homeName = 'A very long football club name to test fitting'; render(); fsmBoardRender(); }, scale);
