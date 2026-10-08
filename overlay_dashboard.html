@@ -483,14 +483,6 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
-          <div class="sp-section-title">경기 정보</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">항목명 색상</span>
-              <span class="sp-label-sub">주심·대회·경기장·킥오프의 글자 색입니다.</span>
-            </div>
-            <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="matchInfoLabelColor" aria-label="경기 정보 항목명 색상" /></label>
-          </div>
           <div class="sp-section-title">패널 구성</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -587,6 +579,17 @@
             <div class="sp-slider-cluster">
               <input type="range" min="10" max="18" step="1" data-settings-slider="statsNameSize" />
               <span class="sp-slider-value">12px</span>
+            </div>
+          </div>
+          <div class="sp-section-title">경기 정보</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">항목명 색상</span>
+              <span class="sp-label-sub">주심·대회·경기장·킥오프의 글자 색입니다.</span>
+            </div>
+            <div class="sp-bg-input-cluster">
+              <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="matchInfoLabelColor" aria-label="경기 정보 항목명 색상" /></label>
+              <button type="button" class="sp-secondary-btn" id="matchInfoLabelColorResetBtn">초기화</button>
             </div>
           </div>
           <div class="sp-section-title">경기 스탯 페이지 전환</div>

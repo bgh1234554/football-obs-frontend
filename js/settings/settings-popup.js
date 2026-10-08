@@ -1641,6 +1641,9 @@ function initSettingsPopup() {
   if (ratingColorsResetBtn) {
     ratingColorsResetBtn.addEventListener('click', resetRatingColorsToDefaults);
   }
+  document.getElementById('matchInfoLabelColorResetBtn')?.addEventListener('click', () => {
+    setSetting('matchInfoLabelColor', SETTINGS_DEFAULTS.matchInfoLabelColor);
+  });
 
   if (settingsResetBtn) {
     settingsResetBtn.addEventListener('click', () => {
