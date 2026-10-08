@@ -143,3 +143,59 @@
   text-align: center;
   width: 100%;
 }
+
+/* 팀 컬러 영역 내부에 number color 테두리를 그려 기존 크기를 유지한다. */
+.board.fsm-board .teams-left { --fsm-number-color: var(--fsm-home-number-color); --fsm-primary-color: var(--fsm-home-primary-color); }
+.board.fsm-board .teams-right { --fsm-number-color: var(--fsm-away-number-color); --fsm-primary-color: var(--fsm-away-primary-color); }
+.board.fsm-board[data-fsm-color-edge="chip"] .team-color {
+  outline: none;
+  border-top: none;
+  border-bottom: none;
+  box-shadow: inset 1px 0 0 var(--fsm-number-color), inset -1px 0 0 var(--fsm-number-color);
+}
+/* 하단 컬러 띠와 팀명 패널의 경계에만 선을 그린다.
+   position을 바꾸면 기울어진 점수 박스의 표시 순서가 달라진다. */
+.board.fsm-board[data-fsm-color-edge="strip"] :is(.teams-left, .teams-right) {
+  box-shadow: inset 0 -1px 0 var(--fsm-number-color);
+}
+
+
+/* 컬러 띠를 한 면으로 그려 원정 쪽 연결 조각의 이음선을 없앤다. */
+.board.fsm-board[data-fsm-theme="kleague"] :is(.teams-left, .teams-right) {
+  position: relative;
+  border-bottom-color: transparent !important;
+  box-shadow: none;
+}
+.board.fsm-board[data-fsm-theme="kleague"] .team-score { z-index: 1; }
+.board.fsm-board[data-fsm-theme="kleague"] :is(.teams-left, .teams-right)::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  height: 5px;
+  background: var(--fsm-primary-color);
+  box-shadow: inset 0 1px 0 var(--fsm-number-color);
+  pointer-events: none;
+}
+.board.fsm-board[data-fsm-theme="kleague"] .teams-left::after { left: 0; right: 4px; }
+.board.fsm-board[data-fsm-theme="kleague"] .teams-right::after { left: -4px; right: 0; }
+/* RPL 중앙에는 상하 테두리를 추가하지 않는다. 세로 컬러 칩은 좌우만 강조한다. */
+.board.fsm-board[data-fsm-theme="rpl"] :is(.team-score, .score-div) {
+  box-sizing: border-box;
+  height: 48px;
+  border-top: none;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+/* RPL 로고 박스에는 상하 경계선을, 팀 컬러 밴드에는 좌우 선만 표시한다. */
+.board.fsm-board[data-fsm-theme="rpl"] :is(.team-score, .score-div) {
+  border-top: 1px solid #0e2a5c;
+  border-bottom: 1px solid #0e2a5c;
+}
+
+/* RPL 밴드의 상하는 점수 박스와 통일하고 좌우 number color 선은 유지한다. */
+.board.fsm-board[data-fsm-theme="rpl"] .team-color {
+  box-sizing: border-box;
+  border-top: 1px solid #0e2a5c;
+  border-bottom: 1px solid #0e2a5c;
+}
