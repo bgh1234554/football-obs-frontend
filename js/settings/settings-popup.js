@@ -113,6 +113,7 @@ const SETTINGS_DEFAULTS = {
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
   matchInfoLabelColor: '#60A5FA', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
+  matchInfoLabelColorRev: 1, // 이전 주황 기본값을 1회만 새 기본색으로 이전.
   panelColor: '#0b1220',
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
   bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
@@ -405,6 +406,7 @@ function isValidSetting(category, value) {
   if (category === 'greenscreenIntensity') return ['strong','purple','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
   if (category === 'tacticsDrawtoolsScaleRev') return value === 'v150';
+  if (category === 'matchInfoLabelColorRev') return value === SETTINGS_DEFAULTS.matchInfoLabelColorRev;
   if (category === 'tacticsFullscreenAlign') return ['left', 'center', 'right'].includes(value);
   if (category === 'tacticsTouchLayout') return ['auto', 'on', 'off'].includes(value);
   if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
@@ -512,6 +514,15 @@ function loadSettings() {
         settingsState.tacticsDrawtoolsScale = SETTINGS_DEFAULTS.tacticsDrawtoolsScale;
       }
       settingsState.tacticsDrawtoolsScaleRev = SETTINGS_DEFAULTS.tacticsDrawtoolsScaleRev;
+      normalizedSettings = true;
+    }
+
+    // 이전 기본색만 1회 이전한다. 이후 사용자가 주황색을 선택해도 다시 바꾸지 않는다.
+    if (parsed.matchInfoLabelColorRev !== SETTINGS_DEFAULTS.matchInfoLabelColorRev) {
+      if (String(parsed.matchInfoLabelColor || '').toLowerCase() === '#ff9900') {
+        settingsState.matchInfoLabelColor = SETTINGS_DEFAULTS.matchInfoLabelColor;
+      }
+      settingsState.matchInfoLabelColorRev = SETTINGS_DEFAULTS.matchInfoLabelColorRev;
       normalizedSettings = true;
     }
 
