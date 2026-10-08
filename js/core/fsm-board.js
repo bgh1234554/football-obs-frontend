@@ -184,6 +184,12 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
         }));
       autoLayoutNotes();
       initBoardScale();
+      document.fonts.ready.then(() => {
+        if (oldlink !== newlink || pendingThemeLink) return;
+        window.fsmBoardRender();
+        autoLayoutNotes();
+        initBoardScale();
+      });
     });
   };
   newlink.onerror = () => {
