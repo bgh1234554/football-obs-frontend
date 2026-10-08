@@ -40,10 +40,10 @@ const LEAGUE_THEME_MAP = {
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
-  default: '기본', pl: '프리미어리그', seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
-  cl: '챔피언스리그',  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
+  default: '기본', pl: '프리미어 리그', seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
+  cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', acle: 'AFC 챔피언스리그 엘리트',
   unl: '네이션스리그', er24: '유로',
-  rpl: '러시아 프리미어리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
+  rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
   kleague: 'K리그', wc26: '월드컵'
 });
 
@@ -414,7 +414,15 @@ function adjustScoreboardWidth() {
     context.font = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
     const metrics = context.measureText(text.textContent);
     const cardStyle = getComputedStyle(cards[index]);
-    const borderOffset = ((parseFloat(cardStyle.borderBottomWidth) || 0) - (parseFloat(cardStyle.borderTopWidth) || 0)) / 2;
+    text.style.transform = 'none';
+    const cardRect = cards[index].getBoundingClientRect();
+    const textRect = text.getBoundingClientRect();
+    const layoutScale = cardRect.height / cards[index].offsetHeight || 1;
+    const topInset = (parseFloat(cardStyle.borderTopWidth) || 0) + (parseFloat(cardStyle.paddingTop) || 0);
+    const stripEdge = board.dataset.fsmColorEdge === 'strip' && cardStyle.boxShadow !== 'none' ? 1 : 0;
+    const bottomInset = (parseFloat(cardStyle.borderBottomWidth) || 0) + (parseFloat(cardStyle.paddingBottom) || 0) + stripEdge;
+    const contentCenter = cardRect.top + (cardRect.height + (topInset - bottomInset) * layoutScale) / 2;
+    const layoutOffset = (contentCenter - (textRect.top + textRect.bottom) / 2) / layoutScale;
     let inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
       ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2
       : 0;
@@ -442,7 +450,7 @@ function adjustScoreboardWidth() {
       if (bottom >= top) inkOffset = baseline - (top + bottom + 1) / (2 * renderScale)
         - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
     }
-    text.style.transform = `translateY(${inkOffset + borderOffset}px)`;
+    text.style.transform = `translateY(${inkOffset + layoutOffset}px)`;
   });
 }
 
