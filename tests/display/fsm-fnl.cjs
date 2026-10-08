@@ -1,9 +1,13 @@
 const assert = require('node:assert/strict');
+const { mkdtempSync, rmSync } = require('node:fs');
+const { tmpdir } = require('node:os');
+const path = require('node:path');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
 
 (async () => {
   const browser = await chromium.launch();
+  const screenshotDir = mkdtempSync(path.join(tmpdir(), "fsm-fnl-"));
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
     await page.evaluate(() => {
@@ -41,7 +45,7 @@ const { openPage, settle } = require('../tactics/helpers');
     assert.equal(colors.logoBox.bg, 'rgb(0, 0, 0)');
     assert.equal(colors.teamLogo.bg, 'rgb(255, 255, 255)');
     assert.equal(await page.locator('#fsmThemeSelect option[value="fnl"]').count(), 1);
-    await page.locator('.scoreboard-main').screenshot({ path: 'tests/display/fsm-fnl.png' });
+    await page.locator('.scoreboard-main').screenshot({ path: path.join(screenshotDir, 'fsm-fnl.png') });
     for (const [leagueId, theme] of [[1025, 'fnl2a'], [1026, 'fnl2a'], [651, 'fnl2b'], [652, 'fnl2b'], [650, 'fnl2b'], [653, 'fnl2b']]) {
       await page.evaluate(leagueId => { state.fsmTheme = 'auto'; autoApplyTemplateByLeagueId(leagueId, null); render(); }, leagueId);
       await page.waitForFunction(() => !pendingThemeLink);
@@ -82,5 +86,5 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.waitForFunction(() => !pendingThemeLink);
     assert.equal((await measure()).homeName.color, 'rgb(18, 52, 86)');
     console.log('PASS FNL automatic/manual theme, logo, colors, long names, scales and theme switching');
-  } finally { await browser.close(); }
+  } finally { await browser.close(); rmSync(screenshotDir, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

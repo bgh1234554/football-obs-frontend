@@ -8,7 +8,7 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.evaluate(() => {
       state.colors.homeBg = '#00c424'; state.colors.homeText = '#ffffff';
       state.pk.home = ['G', 'M']; state.half = 'PK';
-      state.colors.pkGoal = '#00c424'; state.colors.pkMiss = '#aa1122';
+      state.colors.pkGoal = '#00c424'; state.colors.pkMiss = '#22bb44';
       applyTheme('ligue2', null);
     });
     await page.waitForFunction(() => !pendingThemeLink);
@@ -26,6 +26,7 @@ const { openPage, settle } = require('../tactics/helpers');
           team: rgb(chromaSafe('#00c424')),
           fixed: getComputedStyle(document.querySelector('.score-div')).backgroundColor,
           expectedFixed: rgb(chromaSafe('#00fcd0')),
+          expectedMiss: rgb(chromaSafe('#22bb44')),
           pk: [...document.querySelectorAll('#pso-left li')].slice(0, 2).map(el => el.style.backgroundColor),
           saved: state.colors.homeBg,
         };
@@ -33,7 +34,8 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(values.strip, values.team, mode);
       assert.equal(values.fixed, values.expectedFixed, mode);
       assert.equal(values.pk[0], values.team, mode);
-      assert.equal(values.pk[1], 'rgb(170, 17, 34)');
+      assert.equal(values.pk[1], values.expectedMiss, mode);
+      if (mode !== 'off') assert.notEqual(values.pk[1], 'rgb(34, 187, 68)', mode);
       assert.equal(values.saved, '#00c424');
     }
     await page.evaluate(() => { applyTheme('fnl', null); });

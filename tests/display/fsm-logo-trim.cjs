@@ -1,9 +1,13 @@
 const assert = require('node:assert/strict');
+const { mkdtempSync, rmSync } = require('node:fs');
+const { tmpdir } = require('node:os');
+const path = require('node:path');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
 
 (async () => {
   const browser = await chromium.launch();
+  const screenshotDir = mkdtempSync(path.join(tmpdir(), "fsm-logo-trim-"));
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
     await page.evaluate(() => {
@@ -46,7 +50,7 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => { render(); fsmBoardRender(); });
     await settle(page);
-    await page.locator('.scoreboard-main').screenshot({ path: 'tests/display/fsm-unl-logo-trim.png' });
+    await page.locator('.scoreboard-main').screenshot({ path: path.join(screenshotDir, 'fsm-unl-logo-trim.png') });
     await page.evaluate(() => {
       state.homeLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="blue"/></svg>');
       render();
@@ -54,5 +58,5 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.waitForFunction(() => !document.getElementById('homeLogo').classList.contains('logo-trimmed'));
     assert.equal(await page.locator('#homeLogo').evaluate(img => img.style.getPropertyValue('--logo-trim-width-factor')), '');
     console.log('PASS stale trim cleared on logo replacement');
-  } finally { await browser.close(); }
+  } finally { await browser.close(); rmSync(screenshotDir, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
