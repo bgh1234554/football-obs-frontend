@@ -246,6 +246,8 @@
     setCSS('--away-text',   chromaSafe(state.colors.awayText));
     setCSS('--card-outline',chromaSafe(state.colors.outline));
     setCSS('--pk-base',     chromaSafe(state.colors.pkBase));
+    setCSS('--pk-goal', chromaSafe(state.colors.pkGoal));
+    setCSS('--pk-miss', chromaSafe(state.colors.pkMiss));
     setCSS('--home-outline',chromaSafe(state.colors.homeOutline));
     setCSS('--away-outline',chromaSafe(state.colors.awayOutline));
     setCSS('--home-outline-w', (state.homeOutlineWidth??1)+'px');
@@ -379,6 +381,8 @@
     if(el.inAwayText) el.inAwayText.value = state.colors.awayText;
     if(el.inOutline) el.inOutline.value = state.colors.outline;
     if(el.pkBaseColor) el.pkBaseColor.value = state.colors.pkBase;
+    if($('inPkGoal')) $('inPkGoal').value = state.colors.pkGoal;
+    if($('inPkMiss')) $('inPkMiss').value = state.colors.pkMiss;
 
     if(window.colorMap){
       window.colorMap.forEach(([id, key]) => {

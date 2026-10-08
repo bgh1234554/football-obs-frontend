@@ -73,7 +73,7 @@
       extra: '#22c55e', halfBg: '#a70e80', halfText: '#f6fd8e',
       homeBg: '#1d4ed8', homeText: '#ffffff',
       awayBg: '#ef4444', awayText: '#ffffff',
-      outline: '#ffffff15', pkBase: '#334155',
+      outline: '#ffffff15', pkBase: '#334155', pkGoal: '#32cd32', pkMiss: '#ff0000',
       homeOutline: '#ffffff40', awayOutline: '#ffffff40',
       noteText: '#e5e7eb', noteStroke: '#000000',
     },

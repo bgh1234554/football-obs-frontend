@@ -505,7 +505,7 @@
     #themePanel .theme-font-card .pgroup > label[style*="visibility"] { display: none; }
     #themePanel .theme-font-card .pgroup:has(> #applyFont),
     #themePanel .theme-font-card .pgroup:has(> #resetFont) { align-self: end; }
-    @media (max-width: 1600px) {
+    @media (max-width: 1799px) {
       #themePanel .theme-appearance-grid { grid-template-columns: 1fr 1.5fr; }
 
 
@@ -864,7 +864,7 @@ html.popout-target-theme #themePanel .theme-colors-card > .prow { grid-template-
 html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; grid-template-columns: 90px 128px; }
 html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-child(3) { grid-column: 1; grid-row: 2; }
 html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-child(4) { grid-column: 2; grid-row: 2; }
-@media (max-width: 1600px) {
+@media (max-width: 1799px) {
   #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #themePanel .theme-notes-card > .prow { flex-wrap: wrap; }
 }
@@ -873,10 +873,11 @@ html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-chi
 #themePanel .theme-notes-card label { white-space: nowrap; }
 
 /* On wide screens all font controls share a single baseline. */
-@media (min-width: 1601px) {
+@media (min-width: 1800px) {
   #themePanel .theme-appearance-grid {
-    grid-template-columns: 280px 620px minmax(480px, 1fr);
+    grid-template-columns: 280px 860px minmax(480px, 1fr);
   }
+  #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 12px; }
   #themePanel .theme-font-card {
     display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px;
   }

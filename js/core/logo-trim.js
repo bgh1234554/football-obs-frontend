@@ -77,7 +77,7 @@ const LogoTrim = (() => {
   // 자체의 이미지 HTTP 캐시까지 확실히 비우려면 하드 리프레시(Ctrl+Shift+R)가 필요하다 —
   // 이 문제가 재발하면 이번엔 의도적인 수동 조치이므로 자동 복구가 아니어도 된다.
   // 자동 보정용 속성만 관리한다. 사용자가 지정한 배율·위치 속성은 건드리지 않는다.
-  const properties = ['--logo-trim-width', '--logo-trim-height', '--logo-trim-x', '--logo-trim-y'];
+  const properties = ['--logo-trim-width', '--logo-trim-height', '--logo-trim-width-factor', '--logo-trim-height-factor', '--logo-trim-x', '--logo-trim-y'];
 
   /**
    * 투명하지 않은 모든 픽셀을 감싸는 최소 사각형을 구한다.
@@ -453,6 +453,8 @@ const LogoTrim = (() => {
     // 양옆 여백만 있는 세로형 로고는 이미 높이가 꽉 차 있으므로 불필요하게 확대되지 않는다.
     img.style.setProperty('--logo-trim-width', `${b.width / size * 100}%`);
     img.style.setProperty('--logo-trim-height', `${b.height / size * 100}%`);
+    img.style.setProperty('--logo-trim-width-factor', String(b.width / size));
+    img.style.setProperty('--logo-trim-height-factor', String(b.height / size));
     // 이동량 = 원본 중심 - 보이는 경계의 중심. translate의 % 기준은 이미지 자신의 크기다.
     // 원본 크기로 나누어 백분율로 전달하면 분석 해상도가 달라도 같은 위치로 정렬된다.
     img.style.setProperty('--logo-trim-x', `${(b.width - left - right) / (2 * b.width) * 100}%`);
