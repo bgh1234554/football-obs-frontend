@@ -564,6 +564,26 @@
       letter-spacing: 0;
     }
 
+    /* 캠 큰 미출전 명단: 홈/원정 세로 배치와 상시 사유 표시. */
+    .lp-stat [data-injury-cycle-panel] {
+      width: 100%; height: 100%; min-height: 0;
+      display: flex; flex-direction: column;
+      padding: 4px 10px 6px; box-sizing: border-box;
+      color: #f0f0f0; font-family: var(--font-family); overflow: hidden;
+    }
+    .ic-body { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+    .lp-stat .ic-body::-webkit-scrollbar { display: block; width: 6px; }
+    .lp-stat .ic-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .lp-stat .ic-body::-webkit-scrollbar-track { background: transparent; }
+    [data-injury-cycle-panel] .st-title-bar { margin-bottom: 0; }
+    .ic-team { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; }
+    .ic-team + .ic-team { border-top: 1px solid rgba(255,255,255,.16); }
+    .ic-team .dp-side-header { padding: 0 4px; margin: 0; }
+    .ic-team .dp-side-name { line-height: 1.4; }
+    .ic-list { display: flex; flex-direction: column; gap: 2px; }
+    .ic-team .dp-item { padding: 0 4px; white-space: normal; overflow: visible; align-items: baseline; }
+    .ic-team .dp-item-name { overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+
     /* ── 경기 정보 사이클 패널 ── */
     .lp-stat [data-match-info-panel] {
       width: 100%;

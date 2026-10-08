@@ -63,6 +63,7 @@ const SETTINGS_DEFAULTS = {
   statCycleModeBenchHome: 'on',
   statCycleModeBenchAway: 'on',
   statCycleModeMatchInfo: 'on',
+  statCycleModeInjuries: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
   statsAutoSwipeSec: 10,
@@ -385,7 +386,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
-  'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
+  'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo', 'statCycleModeInjuries',
   'popoutModals',
 ]);
 
