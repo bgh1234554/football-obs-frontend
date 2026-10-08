@@ -705,3 +705,41 @@
   color: #fca5a5;
 }
 .sp-action-btn-danger:hover { background: rgba(220,38,38,.65); }
+
+/* ??? ?? ?? */
+.sp-tabs[hidden], #shortcutSettings[hidden] { display: none !important; }
+.sc-toolbar { display:flex;justify-content:space-between;gap:12px;padding:2px 0 14px; }
+.sc-intro h2 { margin:0 0 8px;font-size:20px; }
+.sc-intro p { margin:4px 0;color:#aeb3bd;font-size:12px;line-height:1.6; }
+.sc-search-label { display:flex;align-items:center;gap:12px;margin:18px 0 8px;font-size:12px;color:#d4d8df; }
+.sc-search-label input { width:100%; }
+.sc-status { min-height:36px;margin:8px 0;color:#a5deb0;font-size:12px;line-height:1.5; }
+.sc-group { margin:18px 0 6px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12);color:#aeb3bd;font-size:11px;letter-spacing:.06em; }
+.sc-row { display:flex;justify-content:space-between;align-items:center;gap:14px;padding:9px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px; }
+.sc-controls { display:flex;align-items:center;gap:8px;flex-shrink:0; }
+.sc-key { min-width:128px;padding:8px 12px;border:1px solid #525761;border-bottom-width:3px;border-radius:7px;background:#292c33;color:#f0f0f0;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer; }
+.sc-key:hover,.sc-key.is-recording { border-color:#4cd964;background:rgba(76,217,100,.12);color:#d4ffd9; }
+.sc-clear { border:0;background:transparent;color:#aeb3bd;padding:8px 4px;font:inherit;font-size:11px;cursor:pointer; }
+.sc-clear:hover { color:#fff; }
+#shortcutSettings button:focus-visible { outline:2px solid #4cd964;outline-offset:3px; }
+.sc-empty { padding:30px;text-align:center;color:#aeb3bd;font-size:13px; }
+@container display-viewport (max-width:560px) { .sc-row { align-items:flex-start;flex-direction:column;gap:8px; }.sc-controls { width:100%; }.sc-key { flex:1; } }
+
+.sc-search-label > span { flex-shrink:0;white-space:nowrap; }
+.sp-secondary-btn:disabled { opacity:.4;cursor:default; }
+
+/* 기존 설정 팝업과 같은 타이포그래피 및 컨트롤 규격 */
+.sc-intro h2 { font-size:14px;font-weight:800;letter-spacing:.03em; }
+.sc-intro p,.sc-status { font-size:11px;line-height:1.45; }
+.sc-intro p { color:rgba(255,255,255,.45); }
+.sc-group { font-size:11px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.45);margin:14px 0 6px;padding-bottom:6px; }
+.sc-row { padding:7px 2px;font-size:13px; }
+.sc-row > span { font-weight:700; }
+.sc-key { height:32px;padding:0 12px;border:1px solid rgba(255,255,255,.18);border-radius:8px;background:rgba(255,255,255,.06);font-size:12px;font-weight:700;color:rgba(255,255,255,.85); }
+.sc-key:hover { background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3); }
+.sc-clear { font-family:inherit;font-weight:700; }
+
+/* 검색 결과 수와 무관하게 단축키 관리 화면의 높이를 유지한다. */
+.sp-modal:has(#shortcutSettings:not([hidden])) {
+  height: min(820px, calc(calc(var(--display-vh, 1vh) * 100) - 24px));
+}

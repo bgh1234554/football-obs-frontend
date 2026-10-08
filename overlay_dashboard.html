@@ -701,6 +701,10 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="general" hidden>
+          <div class="sp-row">
+            <div class="sp-row-label"><span class="sp-label-main">단축키 관리</span><span class="sp-label-sub">방송 조작에 사용하는 키를 확인하고 변경합니다.</span></div>
+            <button type="button" class="sp-secondary-btn" id="shortcutManageBtn">단축키 관리 →</button>
+          </div>
           <div class="sp-section-title">기본 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -967,6 +971,8 @@
       <!-- ─── 수동 모드 ─── -->
       <div id="manual-section" class="theme-card">
         <div class="section-title">수동 모드 입력</div>
+        <label class="prow" style="align-items:center;gap:8px;margin-bottom:8px;"><input id="manualPsoMode" type="checkbox">승부차기 (PSO)</label>
+        <div id="manualScoreShortcutHint" role="status" style="color:#a5deb0;font-size:12px;line-height:1.6;margin-bottom:12px;"></div>
         <div style="opacity:.75; font-size:12px; margin-bottom:8px;">점수 조절: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 +/− · <span class="kbd">w</span>/<span class="kbd">s</span> 원정 +/− · <span class="kbd">f</span> 점수 초기화 · <span class="kbd">t</span> 추가시간 표시 · PSO 상태: <span class="kbd">q</span>/<span class="kbd">a</span> 홈 성공/실패 · <span class="kbd">w</span>/<span class="kbd">s</span> 원정 성공/실패 · <span class="kbd">z</span> 되돌리기 · <span class="kbd">x</span> 초기화</div>
         <!-- 팀 이름 + 로고 -->
         <div class="prow">
@@ -985,7 +991,7 @@
           <div class="manual-score-group"><label>원정 점수</label><div class="manual-score-row"><button class="manual-score-btn" id="manualAwayMinus">−</button><span class="manual-score-val" id="manualAwayScoreVal">0</span><button class="manual-score-btn" id="manualAwayPlus">+</button></div></div>
           <div class="manual-side-tools">
             <div class="pgroup" style="flex-direction:row;align-items:center;"><button id="manualResetScore" class="ghost">점수 초기화 (F)</button></div>
-            <div class="pgroup"><label>PK 관리 <span style="font-weight:400;opacity:.6;font-size:11px;">PSO 모드에서 사용</span></label><label class="prow" style="align-items:center;gap:6px;"><input id="manualPsoMode" type="checkbox">PSO</label><div class="manual-pk-buttons"><button id="pkHomeGoal">홈 성공</button><button id="pkHomeMiss">홈 실패</button><button id="pkAwayGoal">원정 성공</button><button id="pkAwayMiss">원정 실패</button><button id="pkUndo" class="ghost">되돌리기</button><button id="pkReset">초기화</button></div></div>
+            <div class="pgroup"><label>PK 관리 <span style="font-weight:400;opacity:.6;font-size:11px;">PSO 모드에서 사용</span></label><div class="manual-pk-buttons"><button id="pkHomeGoal">홈 성공</button><button id="pkHomeMiss">홈 실패</button><button id="pkAwayGoal">원정 성공</button><button id="pkAwayMiss">원정 실패</button><button id="pkUndo" class="ghost">되돌리기</button><button id="pkReset">초기화</button></div></div>
           </div>
         </div>
         <!-- 득점자 -->
@@ -1306,6 +1312,7 @@
 <script src="js/tactics/tactics-manual-names.js"></script>
 <script src="js/data/injury-reason.js"></script>
 <script src="js/settings/settings-popup.js"></script>
+<script src="js/settings/shortcut-settings.js"></script>
 <script src="js/lineup/lineup-events.js"></script>
 <script src="js/lineup/lineup-manual-store.js"></script>
 <script src="js/lineup/lineup-data.js"></script>

@@ -1,76 +1,39 @@
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // [전역 키보드 단축키]
-  // - Ctrl+Z/Y: Undo/Redo (전술판)
-  // - Space: 타이머 시작/정지
-  // - R / Shift+R: 타이머 00:00 / 90:00 리셋
-  // - E / Shift+E: 타이머 45:00 / 105:00 리셋
-  // - PK 하프 중 q/a (홈 골/미스), w/s (어웨이 골/미스), z Undo, x 초기화
-  // - 수동 모드: q/a 홈 +/-, w/s 어웨이 +/-, F 점수 초기화, T 추가시간 토글
-  // - H: 탭바 숨기기 토글
-  // - \: 전술판 전체화면 (전술판 탭 활성화 시에만)
-  // - 1~6: 탭 전환, 7: 경기 ID 오버레이, 8: Buy me a coffee
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 사용자 단축키 정의와 실행
+const shortcutActions = [
+  ['clockToggle','타이머','시작 / 정지','Space',()=>{ window.toggleClockRunning ? window.toggleClockRunning() : state.running=!state.running; render(); persist(); }],
+  ...[['clock0','00:00으로 초기화','KeyR',0],['clock45','45:00으로 초기화','KeyE',2700],['clock90','90:00으로 초기화','Shift+KeyR',5400],['clock105','105:00으로 초기화','Shift+KeyE',6300]].map(([id,label,key,seconds])=>[id,'타이머',label,key,()=>{ if(window.setClockSeconds) window.setClockSeconds(seconds); else {state.seconds=seconds;state.running=false;el.clock.textContent=fmtClock(seconds);} render();persist(); }]),
+  ...[['homePlus','홈 점수 + / PK 득점','KeyQ','home','G',1],['homeMinus','홈 점수 − / PK 실축','KeyA','home','M',-1],['awayPlus','원정 점수 + / PK 득점','KeyW','away','G',1],['awayMinus','원정 점수 − / PK 실축','KeyS','away','M',-1]].map(([id,label,key,team,result,delta])=>[id,'점수 · 승부차기',label,key,()=>{if(state.half==='PK') pkPush(team,result); else if(state.manualMode){state[team+'Score']=Math.max(0,state[team+'Score']+delta);syncManualInputs();render();persist();}}]),
+  ['scoreReset','점수 · 승부차기','수동 점수 초기화','KeyF',()=>{if(state.manualMode)resetManualScore();}],
+  ['extra','점수 · 승부차기','추가시간 표시 전환','KeyT',()=>toggleManualExtra()],
+  ['pkUndo','점수 · 승부차기','PK 기록 되돌리기','KeyZ',()=>{if(state.half==='PK')pkUndo();}],
+  ['pkReset','점수 · 승부차기','PK 기록 초기화','KeyX',()=>{if(state.half==='PK')pkReset();}],
+  ['undo','전술판','되돌리기','Ctrl+KeyZ',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdUndo();}],
+  ['redo','전술판','다시 실행','Ctrl+KeyY',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdRedo();}],
+  ['fullscreen','전술판','전체화면 전환','Backslash',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tacticsToggleFullscreen();}],
+  ['tabs','화면 이동','탭바 표시 / 숨기기','KeyH',()=>toggleTabsAndPages()],
+  ...['main-big','main-small','theme','schedule','tactics','about'].map((page,i)=>['page'+i,'화면 이동',['캠 큼','캠 작음','테마','일정','전술판','소개'][i]+' 화면','Digit'+(i+1),()=>activatePage(page)]),
+  ['fixture','화면 이동','경기 ID 입력','Digit7',()=>document.getElementById('open-fixture-overlay')?.click()],
+  ['support','화면 이동','후원 페이지 열기','Digit8',()=>window.open('https://www.buymeacoffee.com/bgh1234554','_blank')]
+];
+const SHORTCUT_STORAGE_KEY='obs.shortcuts.v1';
+let shortcutBindings={};
+try { const saved=JSON.parse(localStorage.getItem(SHORTCUT_STORAGE_KEY)||'{}'); if(saved && typeof saved==='object') shortcutBindings=saved; } catch {}
+function shortcutBinding(action){const value=shortcutBindings[action[0]];return typeof value==='string'?value:action[3];}
+function shortcutKey(event){return [event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,event.code].filter(Boolean).join('+');}
+function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').split('+').join(' + ') : '미지정';}
+function saveShortcutBindings(){try{localStorage.setItem(SHORTCUT_STORAGE_KEY,JSON.stringify(shortcutBindings));return true;}catch{return false;}}
+window.addEventListener('storage',event=>{if(event.key===SHORTCUT_STORAGE_KEY){try{shortcutBindings=JSON.parse(event.newValue||'{}')||{};}catch{shortcutBindings={};}window.renderShortcutSettings?.();}});
+window.addEventListener('keydown',event=>{
+  if(event.defaultPrevented || event.repeat || event.isComposing || document.activeElement?.closest('input,textarea,select,[contenteditable="true"]') || document.getElementById('settingsBackdrop')?.classList.contains('open'))return;
+  const action=shortcutActions.find(action=>shortcutBinding(action)===shortcutKey(event));
+  if(action){event.preventDefault();action[4]();}
+});
 
-  window.addEventListener('keydown', e=>{
-    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
-    // Ctrl+Z/Y: 전술판 탭이 활성화된 경우에만 undo/redo 실행
-    if(e.ctrlKey && (e.key==='z'||e.key==='Z')){ if(document.getElementById('page-tactics')?.classList.contains('active')){ e.preventDefault(); tdUndo(); } return; }
-    if(e.ctrlKey && (e.key==='y'||e.key==='Y')){ if(document.getElementById('page-tactics')?.classList.contains('active')){ e.preventDefault(); tdRedo(); } return; }
-    if(e.code==='Space'){
-      e.preventDefault();
-      if (typeof window.toggleClockRunning === 'function') window.toggleClockRunning();
-      else state.running = !state.running;
-      render();
-      persist();
-    }
-    if(e.key==='r'||e.key==='R'){
-      const nextSeconds = e.shiftKey ? 90 * 60 : 0;
-      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(nextSeconds);
-      else {
-        state.seconds = nextSeconds;
-        state.running = false;
-        el.clock.textContent = fmtClock(state.seconds);
-      }
-      render();
-      persist();
-    }
-    if(e.key==='e'||e.key==='E'){
-      const nextSeconds = e.shiftKey ? 105 * 60 : 45 * 60;
-      if (typeof window.setClockSeconds === 'function') window.setClockSeconds(nextSeconds);
-      else {
-        state.seconds = nextSeconds;
-        state.running = false;
-        el.clock.textContent = fmtClock(state.seconds);
-      }
-      render();
-      persist();
-    }
-    if(state.manualMode && (e.key==='f'||e.key==='F')){ resetManualScore(); }
-    if(e.key==='t'||e.key==='T'){ toggleManualExtra(); }
-    // q/a → 홈 점수 +/-, w/s → 원정 점수 +/- (수동 모드에서만 동작)
-    // PSO 상태에서는 같은 키가 PK 득점/실축으로 동작 (점수 변경 없음)
-    // z/x(PK undo/reset)는 PSO 상태에서만 동작
-    if(state.half==='PK'){
-      if(e.key==='q'||e.key==='Q') pkPush('home','G');
-      if(e.key==='a'||e.key==='A') pkPush('home','M');
-      if(e.key==='w'||e.key==='W') pkPush('away','G');
-      if(e.key==='s'||e.key==='S') pkPush('away','M');
-      if(e.key==='z'||e.key==='Z') pkUndo();
-      if(e.key==='x'||e.key==='X') pkReset();
-    } else if(state.manualMode){
-      if(e.key==='q'||e.key==='Q'){ state.homeScore++; syncManualInputs(); render(); persist(); }
-      if(e.key==='a'||e.key==='A'){ state.homeScore=Math.max(0,state.homeScore-1); syncManualInputs(); render(); persist(); }
-      if(e.key==='w'||e.key==='W'){ state.awayScore++; syncManualInputs(); render(); persist(); }
-      if(e.key==='s'||e.key==='S'){ state.awayScore=Math.max(0,state.awayScore-1); syncManualInputs(); render(); persist(); }
-    }
-    if(e.key==='h'||e.key==='H'){ toggleTabsAndPages(); }
-    // \: 전술판 전체화면 토글 (전술판 탭 활성화 시에만)
-    if(e.key==='\\' && document.getElementById('page-tactics')?.classList.contains('active')){
-      tacticsToggleFullscreen();
-    }
-    // 1~6: 탭 전환, 7: 경기ID 입력, 8: Buy me a coffee
-    const tabPages = ['main-big','main-small','theme','schedule','tactics','about'];
-    if(e.key>='1'&&e.key<='6'){ activatePage(tabPages[+e.key-1]); }
-    if(e.key==='7'){ document.getElementById('open-fixture-overlay')?.click(); }
-    if(e.key==='8'){ window.open('https://www.buymeacoffee.com/bgh1234554','_blank'); }
-  });
+window.updateScoreShortcutHint = function() {
+  const hint = document.getElementById('manualScoreShortcutHint');
+  if (!hint) return;
+  const keys = ['homePlus','homeMinus','awayPlus','awayMinus'].map(id => shortcutLabel(shortcutBinding(shortcutActions.find(a => a[0] === id))));
+  hint.textContent = state.half === 'PK'
+    ? `승부차기 입력 중 · 홈 성공 / 실패: ${keys[0]} / ${keys[1]} · 원정 성공 / 실패: ${keys[2]} / ${keys[3]} · 일반 점수는 변경되지 않습니다.`
+    : `일반 점수 입력 중 · 홈 + / −: ${keys[0]} / ${keys[1]} · 원정 + / −: ${keys[2]} / ${keys[3]} · 승부차기 입력은 위 체크박스를 켜세요.`;
+};

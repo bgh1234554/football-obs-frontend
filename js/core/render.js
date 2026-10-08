@@ -340,7 +340,15 @@
     el.extra.textContent = `+${state.extra}`;
     el.extra.classList.toggle('hidden', !state.extraShown||state.extra<=0);
     const manualPsoMode = document.getElementById('manualPsoMode');
-    if (manualPsoMode) manualPsoMode.checked = state.half === 'PK';
+    if (manualPsoMode) {
+      manualPsoMode.checked = state.half === 'PK';
+      manualPsoMode.disabled = !state.manualMode;
+    }
+    if (typeof window.updateScoreShortcutHint === 'function') window.updateScoreShortcutHint();
+    ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss','pkUndo','pkReset'].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.disabled = !state.manualMode || state.half !== 'PK';
+    });
     el.extraInput.value = state.extra;
     el.secPerTick.value = state.secPerTick;
     el.startPause.textContent = state.running ? '일시정지 (Space)' : '시작 (Space)';
@@ -709,10 +717,10 @@
   el.awayOffsetReset?.addEventListener('click', ()=>{ state.awayLogoX=0; state.awayLogoY=0; render(); persist(); });
 
   // [이벤트 등록] 전/후반 선택, 타이머 시작/정지/리셋 및 시작 시각 설정
-  let manualPsoPreviousHalf = '2';
   document.getElementById('manualPsoMode')?.addEventListener('change', e => {
-    if (e.target.checked) manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
-    setMatchHalf(e.target.checked ? 'PK' : manualPsoPreviousHalf);
+    if (!state.manualMode) { e.target.checked = state.half === 'PK'; return; }
+    if (e.target.checked) state.manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
+    setMatchHalf(e.target.checked ? 'PK' : (state.manualPsoPreviousHalf || '2'));
     render();
     persist();
   });
