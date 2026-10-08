@@ -12,7 +12,7 @@ const { openPage, settle } = require('../tactics/helpers');
       applyTheme('ligue2', null);
     });
     await page.waitForFunction(() => !pendingThemeLink);
-    for (const mode of ['strong', 'moderate', 'mild', 'natural', 'off']) {
+    for (const mode of ['strong', 'purple', 'moderate', 'mild', 'natural', 'off']) {
       await page.evaluate(mode => {
         setSetting('greenscreen', mode === 'off' ? 'off' : 'on');
         if (mode !== 'off') setSetting('greenscreenIntensity', mode);
@@ -45,6 +45,6 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.locator('#inPkGoalHex').evaluate(el => { el.value = '#2266dd'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     await page.reload();
     assert.equal(await page.evaluate(() => state.colors.pkGoal), '#2266dd');
-    console.log('PASS 4 chroma presets/OFF, strip and fixed-theme colors, PK colors, mint preservation and HEX persistence');
+    console.log('PASS 5 chroma presets/OFF, strip and fixed-theme colors, PK colors, mint preservation and HEX persistence');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

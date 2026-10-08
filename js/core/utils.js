@@ -484,6 +484,7 @@
    */
   const CHROMA_SAFE_PRESETS = {
     strong:   { start: 290, end: 330, sScale: 1.00, lDelta:  0.00 },                    // 마젠타/핑크 (default 안전)
+    purple:   { start: 260, end: 285, sScale: 0.95, lDelta:  0.00 },                    // 보라
     moderate: { start: 215, end: 245, sScale: 0.95, lDelta:  0.00 },                    // 파랑/네이비
     mild:     { start: 175, end: 200, sScale: 0.85, lDelta: -0.08 },                    // 어두운 청록
     // 어두운 포레스트 그린.
@@ -495,11 +496,11 @@
     natural:  { start: 140, end: 155, sScale: 0.45, lDelta:  0.00, lCap: 0.22 },
   };
 
-  /** 현재 사용자 설정의 그린스크린 강도. 미설정 시 기본 'moderate'. */
+  /** 현재 사용자 설정의 그린스크린 강도. 미설정 시 기본 'purple'. */
   function getGreenscreenIntensity() {
-    if (typeof getSetting !== 'function') return 'moderate';
+    if (typeof getSetting !== 'function') return 'purple';
     const v = getSetting('greenscreenIntensity');
-    return CHROMA_SAFE_PRESETS[v] ? v : 'moderate';
+    return CHROMA_SAFE_PRESETS[v] ? v : 'purple';
   }
 
   /**
@@ -521,7 +522,7 @@
     const intensity = forcedIntensity && CHROMA_SAFE_PRESETS[forcedIntensity]
       ? forcedIntensity
       : getGreenscreenIntensity();
-    const preset = CHROMA_SAFE_PRESETS[intensity] || CHROMA_SAFE_PRESETS.moderate;
+    const preset = CHROMA_SAFE_PRESETS[intensity] || CHROMA_SAFE_PRESETS.purple;
 
     // 60~170° → preset.start~end로 선형 매핑.
     const t = (h - 60) / (170 - 60);   // 0~1

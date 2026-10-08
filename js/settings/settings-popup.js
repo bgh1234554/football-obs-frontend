@@ -143,7 +143,7 @@ const SETTINGS_DEFAULTS = {
   //   mild     → 어두운 청록 (그린 느낌 유지, 자연스러움 — 기본값)
   //   natural  → 어두운 초록 (가장 자연스러움. chromakey 위험 — strict 키 설정엔 키잉될 수 있음)
   // 적용 범위: 팀 컬러 / PK / 평점 / 이벤트 / 교체 표시 / 피치 / 경기 정보 항목명.
-  greenscreenIntensity: 'mild',
+  greenscreenIntensity: 'purple',
   // 캠 큰 우측 패널 연결. on=두 패널 합계가 칼럼 높이를 꽉 채움, off=각 패널 독립 리사이즈.
   bigPanelLinked: 'on',
 };
@@ -398,7 +398,7 @@ function isValidSetting(category, value) {
   if (category === 'lineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
   if (category === 'statCycleAuto') return value === 'on' || value === 'off';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
-  if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
+  if (category === 'greenscreenIntensity') return ['strong','purple','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
   if (category === 'tacticsDrawtoolsScaleRev') return value === 'v150';
   if (category === 'tacticsFullscreenAlign') return ['left', 'center', 'right'].includes(value);
