@@ -302,7 +302,7 @@
       z-index: 9999;
     }
     .copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .widgetGrid { position: relative; flex: 1; display: grid; grid-template-columns: 247px minmax(0,1fr) minmax(0,2.366fr) minmax(0,2.226fr); gap: 8px; height: 100%; min-height: 0; overflow: hidden; }
+    .widgetGrid { position: relative; flex: 1; display: grid; grid-template-columns: 247px minmax(0,316fr) minmax(0,667fr) minmax(0,650fr); gap: 8px; height: 100%; min-height: 0; overflow: hidden; }
     /* 사용자가 칼럼 폭을 드래그로 조정하면(js/core/schedule-resize.js) 4칼럼 전부 px 변수로 전환 */
     .widgetGrid.sched-columns-custom {
       grid-template-columns: var(--sched-col-1) var(--sched-col-2) var(--sched-col-3) var(--sched-col-4);
