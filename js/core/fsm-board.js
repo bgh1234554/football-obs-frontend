@@ -33,10 +33,10 @@ const LEAGUE_THEME_MAP = {
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
-  default: '기본', pl: '프리미어리그', cl: '챔피언스리그',
-  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
-  unl: '네이션스리그', er24: '유로', ligue1: '리그 1', ligue2: '리그 2',
-  seriea: '세리에 A', rpl: '러시아 프리미어리그', kleague: 'K리그', wc26: '월드컵'
+  default: '기본', pl: '프리미어리그', seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
+  cl: '챔피언스리그',  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
+  unl: '네이션스리그', er24: '유로',
+  rpl: '러시아 프리미어리그', kleague: 'K리그', wc26: '월드컵'
 });
 
 function initFsmThemeSelect() {
