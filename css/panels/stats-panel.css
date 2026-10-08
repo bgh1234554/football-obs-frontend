@@ -644,7 +644,7 @@
     .mi-label {
       flex: 0 0 auto;
       white-space: nowrap;
-      color: var(--mi-label-color, #ff9900);
+      color: var(--mi-label-color, #60A5FA);
       font-weight: 600;
       font-size: 12px;
       padding-top: 1px;

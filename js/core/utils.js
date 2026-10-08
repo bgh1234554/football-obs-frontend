@@ -575,7 +575,42 @@
   }
 
 
-const TEAM_PANEL_MIN_CONTRAST = 3;
+// 배경에 묻히는 색의 제품 기준. WCAG 적합성 기준이 아니라 장식 테두리 표시 조건이다.
+// 낮은 명도 대비 AND 작은 지각 색차일 때만 표시해 선명한 파랑 등의 과잉 테두리를 피한다.
+const TEAM_PANEL_OUTLINE_MAX_CONTRAST = 1.8;
+const TEAM_PANEL_OUTLINE_MAX_DELTA_OK = 0.22;
+
+/** sRGB → Oklab. CSS Color 4의 ΔEOK(유클리드 거리) 계산에 사용한다. */
+function teamPanelOklab(rgb) {
+  const linear = n => { const v = n / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const r = linear(rgb.r), g = linear(rgb.g), b = linear(rgb.b);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+}
+
+function teamPanelColorMetrics(color, background) {
+  const rgb = parseAnyColor(color), bg = parseAnyColor(background);
+  if (!rgb || !bg) return null;
+  // 반투명 팀 색도 배경과 합성한 실제 표시색으로 비교한다.
+  const shown = Object.fromEntries(['r', 'g', 'b'].map(k => [k, rgb[k] * rgb.a + bg[k] * (1 - rgb.a)]));
+  const lab = teamPanelOklab(shown), panelLab = teamPanelOklab(bg);
+  return {
+    contrast: teamColorContrastRatio(`rgb(${Math.round(shown.r)}, ${Math.round(shown.g)}, ${Math.round(shown.b)})`, background),
+    deltaOK: Math.hypot(...lab.map((value, i) => value - panelLab[i])),
+  };
+}
+
+function teamColorBlendsIntoPanel(color, background) {
+  const metrics = teamPanelColorMetrics(color, background);
+  return !!metrics && metrics.contrast < TEAM_PANEL_OUTLINE_MAX_CONTRAST
+    && metrics.deltaOK < TEAM_PANEL_OUTLINE_MAX_DELTA_OK;
+}
 
 /** 투명 패널은 부모 배경과 합성한 실제 표시색을 기준으로 비교한다. */
 function teamPanelBackground(panel) {
@@ -597,8 +632,7 @@ function teamPanelBackground(panel) {
 /** 크기와 팀 색을 유지하면서 number color로 내부 테두리만 표시한다. */
 function teamOutlineLowContrast(el, color, numberColor, panelBackground) {
   el.style.removeProperty('box-shadow');
-  if (!panelBackground || typeof teamColorContrastRatio !== 'function' ||
-      teamColorContrastRatio(color, panelBackground) >= TEAM_PANEL_MIN_CONTRAST) return;
+  if (!panelBackground || !teamColorBlendsIntoPanel(color, panelBackground)) return;
   el.style.boxShadow = `inset 0 0 0 0.5px ${numberColor}`;
 }
 

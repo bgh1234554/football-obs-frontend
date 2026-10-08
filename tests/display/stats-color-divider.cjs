@@ -66,6 +66,32 @@ for (const result of outlines) {
   assert.equal(result.bench.cleared, '');
 }
 console.log('PASS stat panel contrast outlines (big/small, original colors, zero values)');
+const panelPalette = [
+  ['black/dark panel', '#000000', '#0b1220', true],
+  ['dark brown/dark panel', '#171513', '#0b1220', true],
+  ['navy/dark panel', '#18244b', '#0b1220', true],
+  ['dark blue/dark panel', '#000040', '#0b1220', true],
+  ['Atalanta-like blue/dark panel', '#0055aa', '#0b1220', false],
+  ['royal blue/dark panel', '#0057b8', '#0b1220', false],
+  ['same blue background', '#0055aa', '#0055aa', true],
+  ['red/dark panel', '#ff0000', '#0b1220', false],
+  ['gray/dark panel', '#404040', '#0b1220', false],
+  ['white/dark panel', '#ffffff', '#0b1220', false],
+  ['white/white panel', '#ffffff', '#ffffff', true],
+  ['near white/white panel', '#eeeeee', '#ffffff', true],
+  ['blue/white panel', '#0055aa', '#ffffff', false],
+  ['near gray/gray panel', '#888888', '#808080', true],
+  ['blue/gray panel', '#0055aa', '#808080', false],
+];
+for (const [name, color, background, expected] of panelPalette) {
+  const result = await page.evaluate(({ color, background }) => {
+    const node = document.createElement('div');
+    teamOutlineLowContrast(node, color, '#ffffff', background);
+    return { outline: !!node.style.boxShadow, metrics: teamPanelColorMetrics(color, background) };
+  }, { color, background });
+  assert.equal(result.outline, expected, JSON.stringify({ name, result }));
+}
+console.log('PASS perceptual panel palette', panelPalette.length);
 const settingsChecks = await page.evaluate(() => {
   applyStatsPanel({ teamStats: [{ side: 'home', totalShots: 7 }, { side: 'away', totalShots: 6 }] });
   const checks = [];
@@ -75,8 +101,8 @@ const settingsChecks = await page.evaluate(() => {
     for (const panel of document.querySelectorAll('[data-stat-panel]')) {
       const fill = panel.querySelector('.st-bar-home');
       if (!fill) continue;
-      const contrast = teamColorContrastRatio(state.colors.homeBg, teamPanelBackground(panel));
-      checks.push({ color, alpha, expected: contrast < TEAM_PANEL_MIN_CONTRAST, actual: !!fill.style.boxShadow });
+      const expected = teamColorBlendsIntoPanel(state.colors.homeBg, teamPanelBackground(panel));
+      checks.push({ color, alpha, expected, actual: !!fill.style.boxShadow });
     }
   }
   return checks;
