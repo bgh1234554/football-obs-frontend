@@ -84,6 +84,49 @@ const settingsChecks = await page.evaluate(() => {
 assert(settingsChecks.length >= 8);
 for (const check of settingsChecks) assert.equal(check.actual, check.expected, JSON.stringify(check));
 console.log('PASS live panelColor/panelAlpha setting changes', settingsChecks.length);
+const hthChecks = await page.evaluate(() => {
+  const fixture = { matchInfo: { homeTeamId: 1, awayTeamId: 2 } };
+  const matches = [
+    { homeTeamId: 1, awayTeamId: 2, homeScore: 2, awayScore: 1 },
+    { homeTeamId: 2, awayTeamId: 1, homeScore: 1, awayScore: 2 },
+    { homeTeamId: 1, awayTeamId: 2, homeScore: 1, awayScore: 1 },
+    { homeTeamId: 1, awayTeamId: 2, homeScore: 0, awayScore: 1 },
+  ];
+  setSetting('panelColor', '#0b1220');
+  setSetting('panelAlpha', 0);
+  applyHthPanel({ matches }, fixture);
+  const read = () => [...document.querySelector('[data-hth-panel]').querySelectorAll('.hth-bar')].map(el => el.style.boxShadow);
+  const dark = read();
+  setSetting('panelColor', '#ffffff');
+  const light = read();
+  return { dark, light };
+});
+assert.match(hthChecks.dark[0], /0\.5px/);
+assert.equal(hthChecks.dark[0], hthChecks.dark[1]); // 과거 원정으로 이겨도 현재 홈 팀 색 사용
+assert.equal(hthChecks.dark[2], ''); // 무승부
+assert.equal(hthChecks.dark[3], ''); // 밝은 팀 색
+assert.equal(hthChecks.light[0], '');
+assert.match(hthChecks.light[3], /0\.5px/);
+console.log('PASS HTH contrast outlines and live background changes');
+const labels = await page.evaluate(() => {
+  setSetting('panelColor', '#0b1220');
+  setSetting('panelAlpha', 0);
+  activatePage('main-small');
+  const data = {
+    matchInfo: { homeTeamName: 'Home', awayTeamName: 'Away' },
+    homeLineup: { substitutes: [] }, awayLineup: { substitutes: [] },
+    homeInjuries: [], awayInjuries: [],
+  };
+  renderBenchPanel(data, data);
+  renderInjuryPanel(data, data);
+  return ['benchPanel', 'injuryPanel'].map(id => [...document.querySelectorAll(`#${id} .dp-side-name`)].map(el => {
+    const css = getComputedStyle(el);
+    return { background: css.backgroundColor, color: css.color, padding: css.padding, radius: css.borderRadius, outline: el.style.boxShadow };
+  }));
+});
+assert.equal(labels[0].length, 2);
+assert.deepEqual(labels[0], labels[1]);
+console.log('PASS identical bench/injury team labels');
 const unexpectedErrors=errors.filter(message=>message !== 'jQuery is not defined');
 assert.deepEqual(unexpectedErrors,[],`Unexpected page errors: ${unexpectedErrors.join('\n')}`);
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

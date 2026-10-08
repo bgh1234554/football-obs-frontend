@@ -291,7 +291,7 @@ function setSideName(panel, dataAttrPrefix, side, teamName, accentColor, accentT
   if (accentColor) {
     nameEl.style.setProperty('--dp-team-accent', accentColor);
     nameEl.style.setProperty('--dp-team-text', accentTextColor || '#fff');
-    if (dataAttrPrefix === 'bench') {
+    if (dataAttrPrefix === 'bench' || dataAttrPrefix === 'injury') {
       teamOutlineLowContrast(nameEl, accentColor, accentTextColor || '#fff', teamPanelBackground(panel));
     }
   } else {
@@ -1355,9 +1355,12 @@ function renderInjuryPanel(effectiveData, rawData) {
     shouldShowInjuryManualButton(rawData, 'away') ? buildTitleActionButton('injury', 'away') : '',
   ].filter(Boolean).join(''));
 
-  // 2) 좌우 팀명을 갱신한다.
-  setSideName(panel, 'injury', 'home', getTeamName(effectiveData, 'home'));
-  setSideName(panel, 'injury', 'away', getTeamName(effectiveData, 'away'));
+  // 2) 교체명단과 동일한 팀 색 라벨로 좌우 팀명을 갱신한다.
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  setSideName(panel, 'injury', 'home', getTeamName(effectiveData, 'home'),
+    cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')), cs(normalizeHexColor(state?.colors?.homeText, '#ffffff')));
+  setSideName(panel, 'injury', 'away', getTeamName(effectiveData, 'away'),
+    cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626')), cs(normalizeHexColor(state?.colors?.awayText, '#ffffff')));
 
   // 3) raw/effective 어느 쪽이든 데이터가 있는지 판단해 empty 문구를 제어한다.
   const hasHomeInjuryData = Array.isArray(rawData?.homeInjuries) || Array.isArray(effectiveData?.homeInjuries);

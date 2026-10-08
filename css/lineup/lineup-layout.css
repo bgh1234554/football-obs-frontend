@@ -421,7 +421,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 /* Iter 11-A후속: .dp-lineup-team-main과 같은 pill 스타일(팀 primary 배경 + number color 글자)로
    통일 — 기존 반투명 검정 + 얇은 accent 테두리는 캠 작음에서 특히 주목도가 떨어진다는 피드백. */
-#benchPanel .dp-side-name {
+#benchPanel .dp-side-name,
+#injuryPanel .dp-side-name {
   padding: 5px 10px;
   border-radius: 12px;
   background: var(--dp-team-accent, #1d4ed8);
