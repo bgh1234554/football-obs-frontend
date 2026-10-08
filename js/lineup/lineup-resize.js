@@ -406,6 +406,8 @@ function getSmallLayoutResizeMetrics(layout) {
     chat,
     eventsCol,
     gapPx,
+    innerWidth,
+    lineupWidth,
     layout,
     leftMin,
     rightMin,
@@ -468,6 +470,12 @@ function resetSmallLayoutResize(layout = null) {
     node.classList.remove('lp-small-columns-custom');
     node.style.removeProperty('--lp-small-events-width');
     node.style.removeProperty('--lp-small-chat-width');
+    const metrics = getSmallLayoutResizeMetrics(node);
+    if (metrics) {
+      // 2·3열 사이 간격의 중심을 화면 중앙에 맞춘다.
+      const leftWidth = metrics.innerWidth / 2 - metrics.lineupWidth - metrics.gapPx * 1.5;
+      applySmallLayoutResizeRatio(node, leftWidth / metrics.sideWidth);
+    }
   });
 }
 
@@ -586,7 +594,7 @@ function observeSmallLayoutResize() {
   if (typeof ResizeObserver === 'function') {
     if (!smallLayoutResizeObserver) {
       smallLayoutResizeObserver = new ResizeObserver(() => {
-        if (loadSmallLayoutResizeRatio() != null) applyStoredSmallLayoutResize();
+        applyStoredSmallLayoutResize();
       });
     } else {
       // 이미 옵저버 있으면 재구독을 위해 disconnect → 아래 forEach에서 다시 observe.
@@ -600,7 +608,7 @@ function observeSmallLayoutResize() {
   if (!smallLayoutResizeFallbackBound) {
     smallLayoutResizeFallbackBound = true;
     window.addEventListener('resize', () => {
-      if (loadSmallLayoutResizeRatio() != null) applyStoredSmallLayoutResize();
+      applyStoredSmallLayoutResize();
     });
   }
 }
