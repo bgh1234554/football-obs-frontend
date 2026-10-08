@@ -77,7 +77,7 @@ const LogoTrim = (() => {
   // 자체의 이미지 HTTP 캐시까지 확실히 비우려면 하드 리프레시(Ctrl+Shift+R)가 필요하다 —
   // 이 문제가 재발하면 이번엔 의도적인 수동 조치이므로 자동 복구가 아니어도 된다.
   // 자동 보정용 속성만 관리한다. 사용자가 지정한 배율·위치 속성은 건드리지 않는다.
-  const properties = ['--logo-trim-width', '--logo-trim-height', '--logo-trim-width-factor', '--logo-trim-height-factor', '--logo-trim-x', '--logo-trim-y'];
+  const properties = ['--logo-trim-width', '--logo-trim-height', '--logo-trim-width-factor', '--logo-trim-height-factor', '--logo-fit-aspect', '--logo-fit-width', '--logo-fit-height', '--logo-trim-x', '--logo-trim-y'];
 
   /**
    * 투명하지 않은 모든 픽셀을 감싸는 최소 사각형을 구한다.
@@ -446,6 +446,10 @@ const LogoTrim = (() => {
     const pad = Math.max(1, Math.ceil(Math.max(b.right - b.left, b.bottom - b.top) * 0.01));
     const left = Math.max(0, b.left - pad), top = Math.max(0, b.top - pad);
     const right = Math.min(b.width, b.right + pad), bottom = Math.min(b.height, b.bottom + pad);
+    // 직사각형 표시 칸에도 원본 비율을 유지하며 보이는 경계를 맞춥니다.
+    img.style.setProperty('--logo-fit-aspect', String(b.width / b.height));
+    img.style.setProperty('--logo-fit-width', String(b.width / (right - left)));
+    img.style.setProperty('--logo-fit-height', String(b.height / (bottom - top)));
     // 안전 여백을 포함했을 때 원본 전체와 같으면 기존 contain 표시를 그대로 사용한다.
     if (left === 0 && top === 0 && right === b.width && bottom === b.height) return;
     const size = Math.max(right - left, bottom - top);

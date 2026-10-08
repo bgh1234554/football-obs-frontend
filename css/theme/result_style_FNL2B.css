@@ -311,7 +311,7 @@
 .fsm-board .teams-left .team-name { color: var(--fsm-home-number-color); }
 .fsm-board .teams-right .team-name { color: var(--fsm-away-number-color); }
 .fsm-board .team-logo { background: #ffffff; border-color: #ffffff; }
-.fsm-board .score-div, .fsm-board .epl-lion { background: #000000; color: #ffffff; }
+.fsm-board .score-div, .fsm-board .epl-lion { background: #ffffff; color: #ffffff; }
 .fsm-board .team-score, .fsm-board #team-score-left, .fsm-board #team-score-right { background: #e31d29; color: #ffffff; }
 .fsm-board .scoreboard-timer { color: #e31d29; }
 .fsm-board .time { background: #ffffff; color: #e31d29; }

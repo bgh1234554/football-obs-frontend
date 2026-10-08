@@ -2,6 +2,7 @@
 
 /* FSM 점수판이 OBS 캡처 영역 안에서 가운데 정렬되도록 */
 .board.fsm-board {
+  --fsm-transition-duration: .9s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,10 +21,10 @@
 .board.fsm-board.fsm-starting { visibility: hidden; }
 .board.fsm-board.fsm-starting,
 .board.fsm-board.fsm-starting * { transition: none !important; }
+.board.fsm-board[data-fsm-theme="pl"] { --fsm-transition-duration: .4s; }
 .board.fsm-board.fsm-entering {
-  animation: fsm-board-enter .9s ease-in-out both;
+  animation: fsm-board-enter var(--fsm-transition-duration) ease-in-out both;
 }
-.board.fsm-board.fsm-entering[data-fsm-theme="pl"] { animation-duration: .4s; }
 @keyframes fsm-board-enter {
   from { opacity: 0; clip-path: inset(-100% 12% -100% 12%); }
   to { opacity: 1; clip-path: inset(-100% -12% -100% -12%); }
@@ -44,6 +45,27 @@
 .board.fsm-board .team-score {
   transition-property: background-color, color, font-size, border-color, border-radius, box-shadow;
 }
+
+/* 일반 테마의 전환 속도를 공통으로 관리합니다. EPL은 전용 전환을 유지합니다. */
+.board.fsm-board:not([data-fsm-theme="pl"])
+  :is(.scoreboard-main, .teams-left, .teams-right, .team-logo, .team-score, .score-div, .team-name, .text, .time, .extra-time) {
+  transition-duration: var(--fsm-transition-duration);
+  transition-timing-function: ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .board.fsm-board:not([data-fsm-theme="pl"])
+    :is(.scoreboard-main, .teams-left, .teams-right, .team-logo, .team-score, .score-div, .team-name, .text, .time, .extra-time) {
+    transition-duration: 0s;
+  }
+}
+.board.fsm-board:not([data-fsm-theme="pl"]) .scoreboard-main {
+  transition-property: background-color, color, border-color, border-radius, box-shadow, outline-color;
+}
+.board.fsm-board:not([data-fsm-theme="pl"]) :is(.team-name, .text) {
+  /* 너비 계산에 사용하는 팀명 여백과 크기는 이전 테마에서 보간하지 않습니다. */
+  transition-property: color, border-color, border-radius, box-shadow;
+}
+
 /* 배경이 없는 점수/로고 칸은 이전 테마의 불투명 배경을 페이드하지 않습니다. */
 .board.fsm-board:is([data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .team-score,
 .board.fsm-board[data-fsm-theme="seriea"] .score-div {
@@ -61,8 +83,8 @@
 .board.fsm-board .team-logo > img {
   position: absolute;
   top: 50%; left: 50%;
-  width: calc(var(--fsm-logo-size, 48px) * var(--logo-trim-width-factor, 1));
-  height: calc(var(--fsm-logo-size, 48px) * var(--logo-trim-height-factor, 1));
+  width: min(calc(var(--fsm-logo-width, 48px) * var(--logo-fit-width, 1)), calc(var(--fsm-logo-height, 48px) * var(--logo-fit-height, 1) * var(--logo-fit-aspect, 1)));
+  height: min(calc(var(--fsm-logo-height, 48px) * var(--logo-fit-height, 1)), calc(var(--fsm-logo-width, 48px) * var(--logo-fit-width, 1) / var(--logo-fit-aspect, 1)));
   max-width: none; max-height: none;
   object-fit: contain;
   transform-origin: center;

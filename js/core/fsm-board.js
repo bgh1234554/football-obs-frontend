@@ -184,6 +184,12 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
         }));
       autoLayoutNotes();
       initBoardScale();
+      document.fonts.ready.then(() => {
+        if (oldlink !== newlink || pendingThemeLink) return;
+        window.fsmBoardRender();
+        autoLayoutNotes();
+        initBoardScale();
+      });
     });
   };
   newlink.onerror = () => {
@@ -325,7 +331,8 @@ function applyTheme(theme, logoUrl) {
       const style = getComputedStyle(box);
       const width = box.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
       const height = box.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
-      box.style.setProperty('--fsm-logo-size', Math.max(0, Math.min(width, height)) + 'px');
+      box.style.setProperty('--fsm-logo-width', Math.max(0, width) + 'px');
+      box.style.setProperty('--fsm-logo-height', Math.max(0, height) + 'px');
     });
 
     const clock = board.querySelector('.time');

@@ -166,6 +166,8 @@ body.lp-small-resizing * {
    display:none 대신 opacity:0을 사용 — 레이아웃 흐름에서 빠지지 않아 스탯 패널이 그
    자리를 차지하러 늘어나지 않는다. */
 body.no-fan-reaction .layout-big .lp-chat-big,
+body.no-big-lineup .layout-big .lp-lineup,
+body.no-big-info .layout-big .lp-stat,
 body.no-fan-reaction .layout-small .lp-cam-chat {
   opacity: 0;
   pointer-events: none;
@@ -350,6 +352,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 .layout-big .lp-lineup .dp-lineup-team-name {
   font-size: calc(11px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
+  /* 축소된 한글과 대체 글꼴의 상단 획이 overflow:hidden에 잘리지 않도록 합니다. */
+  line-height: 1.4;
   max-width: calc(150px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
   display: -webkit-box;
   -webkit-line-clamp: 2;
