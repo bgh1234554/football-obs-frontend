@@ -77,8 +77,8 @@
 .board.fsm-board .team-logo > img {
   position: absolute;
   top: 50%; left: 50%;
-  width: calc(var(--fsm-logo-size, 48px) * var(--logo-trim-width-factor, 1));
-  height: calc(var(--fsm-logo-size, 48px) * var(--logo-trim-height-factor, 1));
+  width: min(calc(var(--fsm-logo-width, 48px) * var(--logo-fit-width, 1)), calc(var(--fsm-logo-height, 48px) * var(--logo-fit-height, 1) * var(--logo-fit-aspect, 1)));
+  height: min(calc(var(--fsm-logo-height, 48px) * var(--logo-fit-height, 1)), calc(var(--fsm-logo-width, 48px) * var(--logo-fit-width, 1) / var(--logo-fit-aspect, 1)));
   max-width: none; max-height: none;
   object-fit: contain;
   transform-origin: center;
