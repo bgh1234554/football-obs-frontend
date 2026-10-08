@@ -12,6 +12,7 @@ const { openPage, settle } = require('../tactics/helpers');
     });
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => document.fonts.ready);
+    const measuredThemes = new Set();
     for (const theme of await page.evaluate(() => Object.keys(FSM_THEMES))) {
       await page.evaluate(theme => applyTheme(theme, null), theme);
       await page.waitForFunction(() => !pendingThemeLink);
@@ -48,6 +49,9 @@ const { openPage, settle } = require('../tactics/helpers');
         for (const value of measurements) assert(Math.abs(value.error) <= 1, JSON.stringify({ theme, scale, ...value }));
         console.log('PASS strip-theme visible text centering', theme, scale, JSON.stringify(measurements));
       }
+      measuredThemes.add(theme);
     }
+    assert(measuredThemes.size > 0, 'At least one strip-edge theme must be measured');
+    assert(measuredThemes.has('unl'), 'Nations League (unl) must be measured');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

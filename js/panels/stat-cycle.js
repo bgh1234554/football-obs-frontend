@@ -356,13 +356,14 @@ function _lpHthScrollOptions(baseIntervalMs) {
   };
 }
 
-/** 합계 10명부터 시작·종료 대기를 유지하고 이동 시간을 인원수 비율로 늘린다. */
+/** 합계 INJURY_SINGLE_PAGE명이 넘을 경우 시작·종료 대기를 유지하고 이동 시간을 인원수 비율로 늘린다. */
+const INJURY_SINGLE_PAGE = 12;
 function _lpInjuryScrollOptions(baseIntervalMs) {
   const count = window._lpStatInjuryCount || 0;
-  if (count < 10 || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
+  if (count < INJURY_SINGLE_PAGE || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
   return {
     startHoldMs: baseIntervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO,
-    scrollDurationMs: Math.round(baseIntervalMs * count / 10),
+    scrollDurationMs: Math.round(baseIntervalMs * count / INJURY_SINGLE_PAGE),
     endHoldMs: baseIntervalMs * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO),
   };
 }
