@@ -18,5 +18,33 @@ for(const [width,height] of [[1920,900],[1920,1080],[1920,900],[2560,1440],[1280
  assert(Math.abs(result.middle-width/2)<2,JSON.stringify({width,height,result}));
  assert(result.right<=result.layoutRight+1,JSON.stringify({width,height,result}));
 }
-assert.deepEqual(errors,[]);console.log('PASS small layout reset centers middle column boundary');
+// Both existing boundaries resize the bench without adding a middle handle.
+await page.setViewportSize({width:1920,height:900});await page.waitForTimeout(200);
+const measure=()=>page.evaluate(()=>Object.fromEntries(['.lp-col-events-stat','.lp-lineup-s','.lp-col-bench','.lp-cam-chat'].map(sel=>{const r=document.querySelector('.layout-small '+sel).getBoundingClientRect();return [sel,{width:r.width,left:r.left,right:r.right}];})));
+const close=(a,b)=>assert(Math.abs(a-b)<2,JSON.stringify({a,b}));
+const drag=async(sel,delta)=>{const h=await page.locator('.layout-small '+sel).boundingBox();await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x+h.width/2+delta,h.y+h.height/2,{steps:8});await page.mouse.up();};
+let before=await measure();
+await drag('.lp-small-col-resize',60);let after=await measure();
+close(after['.lp-col-events-stat'].width,before['.lp-col-events-stat'].width+60);
+close(after['.lp-col-bench'].width,before['.lp-col-bench'].width-60);
+close(after['.lp-lineup-s'].width,before['.lp-lineup-s'].width);
+close(after['.lp-cam-chat'].width,before['.lp-cam-chat'].width);
+before=after;await drag('.lp-small-col-resize-end',70);after=await measure();
+close(after['.lp-col-bench'].width,before['.lp-col-bench'].width+70);
+close(after['.lp-cam-chat'].width,before['.lp-cam-chat'].width-70);
+close(after['.lp-col-events-stat'].width,before['.lp-col-events-stat'].width);
+close(after['.lp-lineup-s'].left,before['.lp-lineup-s'].left);
+await page.reload();await page.evaluate(()=>{activatePage('main-small');});await page.waitForTimeout(250);
+let restored=await measure();for(const key of Object.keys(after))close(restored[key].width,after[key].width);
+await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(200);
+const bounds=await page.evaluate(()=>{const l=document.querySelector('.layout-small').getBoundingClientRect();const c=document.querySelector('.layout-small .lp-cam-chat').getBoundingClientRect();return {right:c.right,limit:l.right};});assert(bounds.right<=bounds.limit+1);
+await page.locator('.layout-small .lp-small-col-resize-end').dblclick();
+assert.equal(await page.evaluate(()=>localStorage.getItem('obs.smallLayout.columnWidths.v2')),null);
+// A legacy setting remains usable until the user makes a new adjustment.
+await page.evaluate(()=>{localStorage.setItem('obs.smallLayout.eventsStatRatio.v1','0.45');applyStoredSmallLayoutResize();});
+await drag('.lp-small-col-resize-end',-25);
+assert(await page.evaluate(()=>localStorage.getItem('obs.smallLayout.columnWidths.v2')));
+await page.evaluate(()=>resetAllLayoutSizes());
+assert.equal(await page.evaluate(()=>localStorage.getItem('obs.smallLayout.columnWidths.v2')),null);
+assert.deepEqual(errors,[]);console.log('PASS small layout independent boundary resizing, persistence, migration and centered reset');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
