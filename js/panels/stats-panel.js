@@ -23,7 +23,6 @@ const statsPanelStates = new WeakMap();
 let statsLastFixtureData = null;
 // 인접한 얇은 막대는 넓은 팀 색상 영역보다 더 뚜렷하게 구분해야 합니다.
 const ST_BAR_SIMILAR_DELTA_E = 25;
-
 /**
  * 현재 활성 페이지(.page.active) 안의 stat 패널만 재렌더.
  * page activated / window resize / settings 변경 시 호출 — 비활성 페이지의 패널은 다음 활성화 시 자연 갱신.
@@ -184,7 +183,7 @@ function stComputeBar(homeVal, awayVal) {
  * 4) 하단(.st-bar) — 비율 막대 두 개. 0:0이면 회색 50/50.
  * 5) 팀 컬러 RGB 거리 < 80이면 막대 경계에 보색 구분선 1.5px 자동 삽입.
  */
-function stCreateRow(row, fixtureData) {
+function stCreateRow(row, fixtureData, panelBackground) {
   const m = fixtureData?.matchInfo || {};
   // 우선순위: API matchInfo 컬러 → state.colors(사용자 override 반영) → 하드코딩 default.
   // greenscreen ON일 때는 chromaSafe()를 거쳐 초록 계열 → 시안 자동 치환.
@@ -210,6 +209,7 @@ function stCreateRow(row, fixtureData) {
   if (emphasize === 'home') {
     homeV.style.background = homeBg;
     homeV.style.color = homeText;
+    teamOutlineLowContrast(homeV, homeBg, homeText, panelBackground);
   }
   top.appendChild(homeV);
 
@@ -224,6 +224,7 @@ function stCreateRow(row, fixtureData) {
   if (emphasize === 'away') {
     awayV.style.background = awayBg;
     awayV.style.color = awayText;
+    teamOutlineLowContrast(awayV, awayBg, awayText, panelBackground);
   }
   top.appendChild(awayV);
 
@@ -240,6 +241,10 @@ function stCreateRow(row, fixtureData) {
   awayFill.className = 'st-bar-away';
   awayFill.style.width = awayPct.toFixed(2) + '%';
   awayFill.style.background = zeroTotal ? 'rgba(255,255,255,.25)' : awayBg;
+  if (!zeroTotal) {
+    teamOutlineLowContrast(homeFill, homeBg, homeText, panelBackground);
+    teamOutlineLowContrast(awayFill, awayBg, awayText, panelBackground);
+  }
   bar.appendChild(homeFill);
   bar.appendChild(awayFill);
 
@@ -481,7 +486,8 @@ function stRenderPanel(panel, fixtureData) {
 
   const pageEl = document.createElement('div');
   pageEl.className = 'st-page';
-  pages[state.page].forEach(row => pageEl.appendChild(stCreateRow(row, fixtureData)));
+  const panelBackground = teamPanelBackground(panel);
+  pages[state.page].forEach(row => pageEl.appendChild(stCreateRow(row, fixtureData, panelBackground)));
   wrap.appendChild(pageEl);
 
   // 페이지 컨트롤 (페이지 2개 이상일 때만)
@@ -567,7 +573,7 @@ function applyStatsPanel(fixtureData) {
 // settings-popup.js가 document에 dispatch함.
 document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
-  if (cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec') {
+  if (['statsAutoSwipe', 'statsAutoSwipeSec', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha', 'bgMode'].includes(cat)) {
     if (statsLastFixtureData != null) applyStatsPanel(statsLastFixtureData);
   }
 });

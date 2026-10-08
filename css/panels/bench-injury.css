@@ -370,6 +370,13 @@ body.low-panel-alpha #injuryPanel :is(.dp-title, .dp-side-name, .dp-item-num, .d
 
 /* ===== 부상 명단 — 호버 시 reason 툴팁 ===== */
 /* 이름 자체에 underline + native title 툴팁 (HTML title 속성 활용) */
+.dp-item.has-inline-reason .dp-item-name { white-space: nowrap; }
+.dp-item.has-inline-reason .dp-item-name.ic-reason-wrap { white-space: normal; overflow-wrap: anywhere; }
+#injuryPanel .dp-item.has-inline-reason { flex-wrap: nowrap; }
+#injuryPanel .dp-item.has-inline-reason .dp-item-name { flex: 1 1 auto; }
+.ic-reason { color: #f87171; font-size: .85em; }
+.ic-reason.is-questionable { color: #FFD93D; }
+
 .dp-injury-name {
   cursor: help;
   border-bottom: 1px dotted transparent;

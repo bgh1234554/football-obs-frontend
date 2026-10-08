@@ -39,6 +39,7 @@ const _STAT_CYCLE_LABELS = {
   bench_away: '원정 교체',
   standings: '순위표',
   match_info: '경기 정보',
+  injuries: '미출전 선수 명단',
 };
 
 const _STAT_CYCLE_ICONS = {
@@ -49,6 +50,7 @@ const _STAT_CYCLE_ICONS = {
   bench_away: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1 14h4V8.5L3 7 1 8.5V14zm8 0h4V8.5L11 7 9 8.5V14z"/><path d="M5 10h4v1H5z" opacity=".45"/></svg>`,
   standings:  `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="2" rx="1"/><rect x="1" y="6" width="12" height="2" rx="1"/><rect x="1" y="10" width="12" height="2" rx="1"/></svg>`,
   match_info: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6.25" y="6" width="1.5" height="4.5" rx=".6"/><circle cx="7" cy="3.75" r=".9"/></svg>`,
+  injuries: `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M5 1h4v4h4v4H9v4H5V9H1V5h4z"/></svg>`,
 };
 
 const _STAT_PAUSE_ICONS = {
@@ -94,9 +96,11 @@ function _lpEventsScrollEl(mode = 'events') {
   if (mode === 'bench_home') panelSelector = '[data-bench-home-panel]';
   if (mode === 'bench_away') panelSelector = '[data-bench-away-panel]';
   if (mode === 'match_info') panelSelector = '[data-match-info-panel]';
+  if (mode === 'injuries') panelSelector = '[data-injury-cycle-panel]';
   const panel = document.querySelector(`.lp-stat ${panelSelector}`);
   if (mode === 'bench_home' || mode === 'bench_away') return panel?.querySelector('.bc-body') || null;
   if (mode === 'match_info') return panel?.querySelector('.mi-body') || null;
+  if (mode === 'injuries') return panel?.querySelector('.ic-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
 /** 현재 모드가 자동 스크롤 대상인지 판단한다. 교체 명단은 패널이 스크롤 필요 상태일 때만 포함한다. */
@@ -110,7 +114,7 @@ function _lpModeUsesPanelAutoScroll(mode) {
   // match_info는 교체명단과 달리 2열 폴백 개념이 없고 .mi-body가 항상 overflow-y:auto라
   // 내용이 짧아 안 넘칠 때도 그냥 무해하게 대기 후 다음 모드로 넘어간다(_lpStartEventsScroll의
   // maxScroll<=0 분기) — 별도 overflow 게이트 없이 이벤트/HTH와 동일하게 항상 true.
-  if (mode === 'match_info') return true;
+  if (mode === 'match_info' || mode === 'injuries') return true;
   return false;
 }
 
@@ -217,7 +221,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
   // 1) 이전 스크롤을 정리하고 대상 요소·이동 방향을 결정한 뒤 사용자 조작 시 중단 처리를 연결한다.
   _lpStopEventsScroll();
   const el = _lpEventsScrollEl(mode);
-  const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info';
+  const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info' || mode === 'injuries';
   if (!el) {
     _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     return;
@@ -352,6 +356,18 @@ function _lpHthScrollOptions(baseIntervalMs) {
   };
 }
 
+/** 합계 INJURY_SINGLE_PAGE명이 넘을 경우 시작·종료 대기를 유지하고 이동 시간을 인원수 비율로 늘린다. */
+const INJURY_SINGLE_PAGE = 12;
+function _lpInjuryScrollOptions(baseIntervalMs) {
+  const count = window._lpStatInjuryCount || 0;
+  if (count < INJURY_SINGLE_PAGE || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
+  return {
+    startHoldMs: baseIntervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO,
+    scrollDurationMs: Math.round(baseIntervalMs * count / INJURY_SINGLE_PAGE),
+    endHoldMs: baseIntervalMs * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO),
+  };
+}
+
 /** 상대 전적 데이터를 준비한 뒤 스크롤을 시작한다. 로딩 중에는 다음 패널로 넘어갈 대체 타이머를 둔다. */
 function _lpStartHthScrollWhenReady(intervalMs) {
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
@@ -403,7 +419,7 @@ function _lpAutoStart() {
     lpStatUpdateVisibility();
     return;
   }
-  if (modes.length < 2) return;
+  if (modes.length < 2 && _lpStatCycle.mode !== 'injuries') return;
 
   const intervalMs = _lpGetIntervalMs();
   const mode = _lpStatCycle.mode;
@@ -432,6 +448,8 @@ function _lpAutoStart() {
     _lpStartEventsScroll(intervalMs, mode, 0, options);
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
+  } else if (mode === 'injuries') {
+    _lpStartEventsScroll(intervalMs, mode, 0, _lpInjuryScrollOptions(intervalMs));
   } else {
     // bench_home / bench_away(2열도 overflow인 경우) / match_info — 위→아래 자동 스크롤
     if (_lpModeUsesPanelAutoScroll(mode)) {
@@ -485,6 +503,7 @@ function lpStatAvailableModes() {
   if (hasHth) modes.push('hth');
   if (hasBenchHome) modes.push('bench_home');
   if (hasBenchAway) modes.push('bench_away');
+  if (window._lpStatInjuryCount > 0 && (typeof getSetting !== 'function' || getSetting('statCycleModeInjuries') !== 'off')) modes.push('injuries');
   if (hasMatchInfo) modes.push('match_info');
   return modes;
 }
@@ -497,6 +516,7 @@ const _STAT_CYCLE_AUTO_SETTING_KEY = {
   bench_home: 'statCycleModeBenchHome',
   bench_away: 'statCycleModeBenchAway',
   match_info: 'statCycleModeMatchInfo',
+  injuries: 'statCycleModeInjuries',
 };
 
 /**
@@ -570,6 +590,10 @@ function lpStatUpdateVisibility() {
   });
   document.querySelectorAll('.lp-stat [data-match-info-panel]').forEach(el => {
     el.style.display = mode === 'match_info' ? '' : 'none';
+  });
+  document.querySelectorAll('.lp-stat [data-injury-cycle-panel]').forEach(el => {
+    el.style.display = mode === 'injuries' ? '' : 'none';
+    if (mode === 'injuries') queueFitInjuryReasons(el);
   });
   document.querySelectorAll('.lp-stat [data-scoreaxis-standings-panel]').forEach(el => {
     el.style.display = 'none';
@@ -737,13 +761,17 @@ document.addEventListener('settings:change', e => {
   if (cat === 'statCycleAuto' || cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec' || isModeToggle) {
     if (cat === 'statCycleAuto') _lpStatCycle.paused = false;
     _lpAutoClear();
-    _lpAutoStart();
+    lpStatUpdateVisibility();
     lpStatUpdateBtn();
     lpStatUpdatePauseBtn();
   }
 });
 
 // window 노출
+window.lpStatInjuryContentChanged = () => {
+  if (_lpStatCycle.mode === 'injuries') _lpAutoClear();
+  lpStatUpdateVisibility();
+};
 window.lpStatCycleNext = lpStatCycleNext;
 window.lpStatReset = lpStatReset;
 window.lpStatPrepareForNewEvent = lpStatPrepareForNewEvent;

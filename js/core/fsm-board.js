@@ -476,9 +476,9 @@ function adjustScoreboardWidth() {
     let inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
       ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2
       : 0;
-    if (['pl', 'unl'].includes(_currentTheme) && Number.isFinite(metrics.fontBoundingBoxAscent)) {
+    if (_currentTheme === 'pl' && Number.isFinite(metrics.fontBoundingBoxAscent)) {
       // 합성 굵기가 적용된 한글은 글꼴 측정값과 실제 픽셀 높이가 다를 수 있습니다.
-      // 실제로 그려진 글자의 상하 경계로 프리미어리그와 네이션스리그 팀명을 보정합니다.
+      // 실제로 그려진 글자의 상하 경계로 프리미어리그 팀명을 보정합니다.
       const font = context.font;
       const renderScale = cards[index].getBoundingClientRect().width / cards[index].offsetWidth || 1;
       const baseline = Math.ceil(parseFloat(textStyle.fontSize) * 2);

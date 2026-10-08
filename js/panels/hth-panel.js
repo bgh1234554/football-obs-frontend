@@ -216,7 +216,7 @@ function hthResolveLogoUrl(teamId, fallbackLogo, fixtureData) {
 }
 
 /** HTH 경기 한 줄 row DOM 생성 */
-function hthCreateRow(match, fixtureData) {
+function hthCreateRow(match, fixtureData, panelBackground) {
   const winner = hthGetWinner(match);
   const colorSide = hthGetColorSide(match, fixtureData);
 
@@ -225,6 +225,13 @@ function hthCreateRow(match, fixtureData) {
 
   const bar = document.createElement('div');
   bar.className = 'hth-bar';
+  if (colorSide === 'home' || colorSide === 'away') {
+    const cs = typeof chromaSafe === 'function' ? chromaSafe : (v => v);
+    const colors = typeof state !== 'undefined' ? state?.colors : {};
+    const bg = cs(colors?.[`${colorSide}Bg`] || getCSS(`--${colorSide}-bg`));
+    const text = cs(colors?.[`${colorSide}Text`] || getCSS(`--${colorSide}-text`) || '#ffffff');
+    teamOutlineLowContrast(bar, bg, text, panelBackground);
+  }
   row.appendChild(bar);
 
   const content = document.createElement('div');
@@ -404,7 +411,8 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
     }
     const list = document.createElement('div');
     list.className = 'hth-list ev-list';
-    matches.forEach(m => list.appendChild(hthCreateRow(m, fixtureData)));
+    const panelBackground = teamPanelBackground(container);
+    matches.forEach(m => list.appendChild(hthCreateRow(m, fixtureData, panelBackground)));
     if (titleBar) container.replaceChildren(titleBar, list);
     else container.replaceChildren(list);
   });
@@ -560,9 +568,8 @@ function hthReset() {
   document.querySelectorAll('[data-hth-panel]').forEach(el => { el.replaceChildren(); });
 }
 
-// teamLogo 설정 변경 시 HTH 패널 재렌더
-document.addEventListener('settings:change', e => {
-  if (e.detail?.category !== 'teamLogo') return;
+// 색상/배경 설정 변경 시 저장된 상대 전적을 재렌더한다. API 재조회는 하지 않는다.
+function hthRerenderColors() {
   if (_hthState.hthData && _hthState.fixtureData) {
     applyHthPanel(_hthState.hthData, _hthState.fixtureData, {
       cacheKey: _hthState.cacheKey,
@@ -570,7 +577,12 @@ document.addEventListener('settings:change', e => {
       expiresAt: _hthState.expiresAt,
     });
   }
+}
+document.addEventListener('settings:change', e => {
+  if (!['teamLogo', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha'].includes(e.detail?.category)) return;
+  hthRerenderColors();
 });
+document.addEventListener('theme:colors-changed', hthRerenderColors);
 
 window.applyHthPanel = applyHthPanel;
 window.hthCanLoadForFixture = hthCanLoadForFixture;
