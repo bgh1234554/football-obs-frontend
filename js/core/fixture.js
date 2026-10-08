@@ -1148,7 +1148,11 @@
       }
     }
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
-    if (m.status) setMatchHalf(mapApiStatusToHalf(m.status, m, data._rawEvents || data.events));
+    if (m.status) {
+      const nextHalf = mapApiStatusToHalf(m.status, m, data._rawEvents || data.events);
+      if (!state.manualMode && nextHalf === 'PK') state.manualPsoPreviousHalf = null;
+      setMatchHalf(nextHalf);
+    }
 
     // 추가시간
     // 추가시간: 사용자가 수동으로 토글/조정한 적 있으면(extraManualOverride) API 값으로 덮지 않음.

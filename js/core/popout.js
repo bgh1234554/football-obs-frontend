@@ -79,9 +79,9 @@ function popoutOpen(key, params) {
 }
 window.Popout = { open: popoutOpen };
 
-/** "새 창에 열기" 설정이 ON이고, 지금 이 창 자체가 팝업이 아닐 때만 true. */
+/** OBS에서는 새 창이 차단되므로 기존 페이지 내부 모달을 사용한다. */
 function popoutModeEnabled() {
-  return typeof getSetting === 'function' && getSetting('popoutModals') === 'on' && !window.__POPOUT_MODE__;
+  return !window.obsstudio && typeof getSetting === 'function' && getSetting('popoutModals') === 'on' && !window.__POPOUT_MODE__;
 }
 window.popoutModeEnabled = popoutModeEnabled;
 
@@ -156,7 +156,7 @@ function syncScoreboardStateFromStorage(newValue) {
       'logoAlign', 'radiusMode', 'boardWidth',
       'homeOutlineEnabled', 'awayOutlineEnabled', 'boardOutlineEnabled', 'scoreOutlineEnabled',
       'homeOutlineWidth', 'awayOutlineWidth', 'boardOutlineWidth', 'scoreOutlineWidth',
-      'noteEnabled', 'noteFontSize', 'fontFamily', 'fsmTheme', 'leagueId', 'leagueLogoUrl',
+      'noteEnabled', 'noteFontSize', 'noteStrokeWidth', 'fontFamily', 'fsmTheme', 'leagueId', 'leagueLogoUrl',
       'leagueThemeUpdateSilent', 'leagueThemeApplyVersion',
       'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
       'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',

@@ -1244,7 +1244,7 @@ function renderBenchCyclePanels(effectiveData) {
  * (그린스크린 모드 등으로 `--bg-ui`가 진한 초록이고 패널이 반투명하면 그 색이 비쳐 보임).
  */
 function miResolveEffectiveBgHex() {
-  const panelRgb = (typeof parseAnyColor === 'function') ? parseAnyColor(`rgb(${getCSS('--panel-ui-rgb') || '11, 18, 32'})`) : null;
+  const panelRgb = (typeof parseAnyColor === 'function') ? parseAnyColor(`rgb(${getCSS('--info-panel-rgb') || '11, 18, 32'})`) : null;
   const base = (typeof parseAnyColor === 'function') ? parseAnyColor(normalizeTeamColorHex(getCSS('--bg-ui')) || '#111827') : null;
   if (!panelRgb || !base || typeof rgbToHex !== 'function') return '#0b1220';
   const alpha = clampNum(parseFloat(getCSS('--panel-alpha')), 0, 1, 1);
@@ -1671,7 +1671,7 @@ document.addEventListener('settings:change', event => {
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
   // 평점 색상 7구간(ratingColor*)도 변경 시 노드 평점 박스 즉시 갱신.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
-    'lineupHideInitial', 'lineupShowNumber',
+    'lineupHideInitial', 'lineupShowNumber', 'panelColor',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
     'lineupShowOutScorers', 'splitLineup', 'leagueLogoPos',
     'ratingColorBelow6', 'ratingColor6', 'ratingColor65',

@@ -255,6 +255,13 @@
     setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
     setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
     setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
+    const noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
+    const noteKeyGuardWidth = isGreenscreenOn() && noteStrokeWidth > 0 ? 0.75 : 0;
+    setCSS('--note-key-guard-w', noteKeyGuardWidth + 'px');
+    setCSS('--note-key-guard-visibility', noteKeyGuardWidth > 0 ? 'visible' : 'hidden');
+    setCSS('--note-stroke-w', noteStrokeWidth + 'px');
+    setCSS('--note-stroke-w-neg', -noteStrokeWidth + 'px');
+    if (el.noteStrokeWidth) el.noteStrokeWidth.value = noteStrokeWidth;
     setCSS('--note-text', chromaSafe(state.colors.noteText));
     setCSS('--home-logo-x', (state.homeLogoX??0)+'px');
     setCSS('--home-logo-y', (state.homeLogoY??0)+'px');
@@ -340,7 +347,15 @@
     el.extra.textContent = `+${state.extra}`;
     el.extra.classList.toggle('hidden', !state.extraShown||state.extra<=0);
     const manualPsoMode = document.getElementById('manualPsoMode');
-    if (manualPsoMode) manualPsoMode.checked = state.half === 'PK';
+    if (manualPsoMode) {
+      manualPsoMode.checked = state.half === 'PK';
+      manualPsoMode.disabled = !state.manualMode;
+    }
+    if (typeof window.updateScoreShortcutHint === 'function') window.updateScoreShortcutHint();
+    ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss','pkUndo','pkReset'].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.disabled = !state.manualMode || state.half !== 'PK';
+    });
     el.extraInput.value = state.extra;
     el.secPerTick.value = state.secPerTick;
     el.startPause.textContent = state.running ? '일시정지 (Space)' : '시작 (Space)';
@@ -522,7 +537,8 @@
   }
 
   function renderNoteLine(line) {
-    return `<span class="${getNoteLineClass(line)}">${escapeNoteHtml(line)}</span>`;
+    const text = escapeNoteHtml(line);
+    return `<span class="${getNoteLineClass(line)}"><span class="note-line-key-guard" aria-hidden="true">${text}</span><span class="note-line-outline" aria-hidden="true">${text}</span><span class="note-line-fill">${text}</span></span>`;
   }
 
   /** 득점자 줄 배열을 perRow 명씩 한 줄로 합쳐 HTML 반환 (perRow=1이면 줄마다 표시) */
@@ -709,10 +725,10 @@
   el.awayOffsetReset?.addEventListener('click', ()=>{ state.awayLogoX=0; state.awayLogoY=0; render(); persist(); });
 
   // [이벤트 등록] 전/후반 선택, 타이머 시작/정지/리셋 및 시작 시각 설정
-  let manualPsoPreviousHalf = '2';
   document.getElementById('manualPsoMode')?.addEventListener('change', e => {
-    if (e.target.checked) manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
-    setMatchHalf(e.target.checked ? 'PK' : manualPsoPreviousHalf);
+    if (!state.manualMode) { e.target.checked = state.half === 'PK'; return; }
+    if (e.target.checked) state.manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
+    setMatchHalf(e.target.checked ? 'PK' : (state.manualPsoPreviousHalf || '2'));
     render();
     persist();
   });
@@ -784,6 +800,7 @@
   // [이벤트 등록] 득점자 표시 여부 및 폰트 크기
   el.noteOn?.addEventListener('change', e=>{ state.noteEnabled=!!e.target.checked; render(); persist(); });
   el.noteFontSize?.addEventListener('input', e=>{ state.noteFontSize=Math.max(10,Number(e.target.value)||18); render(); persist(); });
+  el.noteStrokeWidth?.addEventListener('input', e=>{ state.noteStrokeWidth=clampNum(e.target.value,0,10,1); render(); persist(); });
 
   // [이벤트 등록] 보드/점수/팀카드 테두리 ON/OFF 및 두께 조정
   el.boardOutlineOn?.addEventListener('change', e=>{ state.boardOutlineEnabled=!!e.target.checked; render(); persist(); });

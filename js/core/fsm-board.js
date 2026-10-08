@@ -21,8 +21,11 @@ const LEAGUE_THEME_MAP = {
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
-  235: { theme: 'rpl', logoUrl: null, type: 'club' },  // Russian Premier League - API logo
+  235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
+  293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
+  294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵
+  295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
   1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
   // 리그 추가 시 여기에만 한 줄 추가
@@ -30,10 +33,10 @@ const LEAGUE_THEME_MAP = {
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
-  default: '기본', pl: '프리미어리그', cl: '챔피언스리그',
-  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
-  unl: '네이션스리그', er24: '유로', ligue1: '리그 1', ligue2: '리그 2',
-  seriea: '세리에 A', rpl: '러시아 프리미어리그', kleague: 'K리그', wc26: '월드컵'
+  default: '기본', pl: '프리미어리그', seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
+  cl: '챔피언스리그',  uel: '유로파리그', uecl: '컨퍼런스리그', acle: 'AFC 챔피언스리그 엘리트',
+  unl: '네이션스리그', er24: '유로',
+  rpl: '러시아 프리미어리그', kleague: 'K리그', wc26: '월드컵'
 });
 
 function initFsmThemeSelect() {
@@ -427,6 +430,16 @@ function adjustScoreboardWidth() {
   // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
   function applyTeamColors() {
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
+    const colorBoard = document.querySelector('.fsm-board');
+    if (colorBoard) {
+      colorBoard.style.setProperty('--fsm-home-number-color', state.colors.homeText);
+      colorBoard.style.setProperty('--fsm-away-number-color', state.colors.awayText);
+      colorBoard.style.setProperty('--fsm-away-primary-color', state.colors.awayBg);
+      colorBoard.style.setProperty('--fsm-home-primary-color', state.colors.homeBg);
+
+      colorBoard.dataset.fsmColorEdge = ['pl', 'wc26', 'uel', 'uecl'].includes(theme)
+        ? 'none' : theme === 'rpl' ? 'chip' : 'strip';
+    }
     if(theme == 'pl') {
       setFsmStyle('.fsm-board .teams-left', {background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});

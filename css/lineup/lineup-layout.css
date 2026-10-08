@@ -27,7 +27,15 @@
    1.45 → 1.55 (벤치 +)/ 1 → 0.95 (부상 -). 부상은 보통 3-5명이라 줄어들어도 영향 적음. */
 .layout-small .lp-col-bench .lp-bench  { flex: 1.62; }
 .layout-small .lp-col-bench .lp-injury { flex: 0.88; }
-.layout-small .lp-col-bench { position: relative; }
+.layout-small .lp-col-bench {
+  position: relative;
+  aspect-ratio: auto;
+  min-width: 0;
+  flex: 1 1 0;
+}
+.layout-small.lp-small-columns-custom .lp-col-bench {
+  flex: 0 0 var(--lp-small-bench-width);
+}
 .lp-small-bench-height-resize,
 .lp-small-stats-height-resize {
   position: absolute;
@@ -98,8 +106,7 @@ body.lp-small-stats-height-resizing * {
   touch-action: none;
   background: transparent;
 }
-/* 맨 오른쪽(팬 반응) 칼럼 좌측 경계 핸들 — events-stat 쪽과 동일한 좌/우 비율을
-   공유하므로(가운데 라인업/벤치는 고정) 위치만 반대쪽(left)이고 로직은 완전히 동일. */
+/* Right boundary adjusts bench/chat widths independently. */
 .layout-small .lp-small-col-resize-end {
   position: absolute;
   top: 0;
@@ -451,7 +458,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   box-sizing: border-box;
   padding: 2px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(76,217,100,.55);
+  border: 1px solid rgba(var(--control-accent-rgb),.55);
   background: rgba(15,17,22,.96);
   color: #f0f0f0;
   font-size: 11px;
@@ -463,7 +470,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 .dp-coach-inline-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+  box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18);
 }
 
 /* ===== 라인업 패널 ===== */

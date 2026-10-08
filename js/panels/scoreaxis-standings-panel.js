@@ -196,7 +196,7 @@
     try {
       const styles = getComputedStyle(document.documentElement);
       return {
-        rgb: styles.getPropertyValue('--panel-ui-rgb').trim() || '11, 18, 32',
+        rgb: styles.getPropertyValue('--info-panel-rgb').trim() || '11, 18, 32',
         alpha: styles.getPropertyValue('--panel-alpha').trim() || '1',
       };
     } catch (err) {
