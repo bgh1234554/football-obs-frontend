@@ -680,6 +680,10 @@
       gap: 6px;
       min-width: 0;
     }
+    .lp:not(.lp-lineup):not(.lp-lineup-s), #tactics-timeline-panel {
+      --panel-ui-rgb: var(--info-panel-rgb, 11, 18, 32);
+      --panel-bg: rgba(var(--panel-ui-rgb), var(--panel-alpha));
+    }
     .lp {
       background: var(--panel-bg);
       border: 1px dashed rgba(255,255,255,.18);

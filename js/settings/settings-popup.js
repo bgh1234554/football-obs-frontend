@@ -110,6 +110,7 @@ const SETTINGS_DEFAULTS = {
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
   matchInfoLabelColor: '#ff9900', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
+  panelColor: '#0b1220',
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
   bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
   // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
@@ -387,7 +388,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 
 function isValidSetting(category, value) {
   if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
-  if (category === 'bgColor' || category === 'matchInfoLabelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
+  if (category === 'bgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgImageUrl') return typeof value === 'string';     // 빈 문자열 허용 (= 배경 없음)
   if (category === 'bgImageData') return typeof value === 'string';    // 빈 문자열 또는 data URL
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
@@ -644,6 +645,7 @@ function applySettingSideEffects(category) {
   }
   // Iter 5-7: 배경 색/이미지 변경 → 즉시 :root CSS 변수 갱신.
   if (category === 'bgColor'
+    || category === 'panelColor'
     || category === 'bgAlpha'
     || category === 'bgImageUrl'
     || category === 'bgImageData'
@@ -855,6 +857,8 @@ function applyLayoutSettings() {
  */
 function applyBackgroundSettings() {
   const root = document.documentElement;
+  const panelRgb = parseAnyColor(chromaSafe(getSetting('panelColor')));
+  root.style.setProperty('--info-panel-rgb', `${panelRgb.r}, ${panelRgb.g}, ${panelRgb.b}`);
   const forceOpaquePanels = getSetting('greenscreen') === 'on';
   const bgColor = getSetting('bgColor') || '#111827';
   const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl') || '');
@@ -930,7 +934,88 @@ function syncColorUi(category) {
   const input = document.querySelector(`input[data-settings-color="${category}"]`);
   if (!input) return;
   const value = String(getSetting(category) || '').toLowerCase();
+  if (category === 'panelColor') {
+    const preset = document.getElementById('panelColorPreset');
+    if (preset) preset.value = [...preset.options].some(option => option.value === value) ? value : 'custom';
+  }
   if (HEX_COLOR_RE.test(value) && input.value.toLowerCase() !== value) input.value = value;
+  const editor = document.querySelector(`[data-color-editor="${category}"]`);
+  if (editor && HEX_COLOR_RE.test(value)) {
+    editor.querySelector('[data-color-hex]').value = value;
+    editor.querySelectorAll('[data-color-channel]').forEach(channel => {
+      const start = 1 + Number(channel.dataset.colorChannel) * 2;
+      channel.value = parseInt(value.slice(start, start + 2), 16);
+    });
+  }
+}
+
+function initSettingsColorEditors() {
+  document.querySelectorAll('input[data-settings-color]').forEach(swatch => {
+    const category = swatch.dataset.settingsColor;
+    if (category === 'bgColor' || swatch.closest('[data-color-editor]')) return;
+    const label = swatch.closest('label');
+    const title = swatch.getAttribute('aria-label') || label.textContent.trim();
+    swatch.setAttribute('aria-label', title);
+    const editor = document.createElement('div');
+    editor.className = 'sp-color-editor';
+    editor.dataset.colorEditor = category;
+    label.replaceWith(editor);
+    editor.append(label);
+    const hex = document.createElement('input');
+    hex.type = 'text';
+    hex.className = 'sp-text-input sp-color-code';
+    hex.dataset.colorHex = '';
+    hex.maxLength = 7;
+    hex.spellcheck = false;
+    hex.setAttribute('aria-label', `${title} HEX`);
+    const rgb = document.createElement('div');
+    rgb.className = 'sp-color-rgb';
+    rgb.hidden = true;
+    ['R', 'G', 'B'].forEach((name, index) => {
+      const channelLabel = document.createElement('label');
+      channelLabel.append(name);
+      const channel = document.createElement('input');
+      Object.assign(channel, { type: 'number', min: '0', max: '255', step: '1', inputMode: 'numeric' });
+      channel.dataset.colorChannel = index;
+      channel.setAttribute('aria-label', `${title} ${name}`);
+      channelLabel.append(channel);
+      rgb.append(channelLabel);
+    });
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'sp-color-format-btn';
+    toggle.innerHTML = document.getElementById('settingsBgColorFormat').innerHTML;
+    const updateToggle = () => {
+      toggle.title = rgb.hidden ? 'RGB 입력으로 전환' : 'HEX 입력으로 전환';
+      toggle.setAttribute('aria-label', `${title} ${toggle.title}`);
+    };
+    editor.append(hex, rgb, toggle);
+    updateToggle();
+    toggle.addEventListener('click', () => {
+      rgb.hidden = !rgb.hidden;
+      hex.hidden = !rgb.hidden;
+      editor.classList.toggle('is-rgb', !rgb.hidden);
+      syncColorUi(category);
+      updateToggle();
+      (rgb.hidden ? hex : rgb.querySelector('input')).focus();
+    });
+    hex.addEventListener('change', () => {
+      const value = hex.value.trim().toLowerCase();
+      if (HEX_COLOR_RE.test(value)) setSetting(category, value);
+      syncColorUi(category);
+    });
+    const commitRgb = () => {
+      const channels = [...rgb.querySelectorAll('input')];
+      if (channels.some(channel => !channel.value || !channel.validity.valid)) return false;
+      setSetting(category, '#' + channels.map(channel => Number(channel.value).toString(16).padStart(2, '0')).join(''));
+      return true;
+    };
+    rgb.querySelectorAll('input').forEach(channel => {
+      channel.addEventListener('input', commitRgb);
+      channel.addEventListener('change', () => { if (!commitRgb()) syncColorUi(category); });
+    });
+    syncColorUi(category);
+  });
 }
 
 /** 텍스트 input(<input type="text">) UI 동기화. bgImageUrl 등에 사용. */
@@ -1410,6 +1495,15 @@ function initSettingsTabs() {
  * loadSettings는 모듈 로드 시 즉시 한 번 실행되고, 여기서는 UI만 와이어업한다.
  */
 function initSettingsPopup() {
+  initSettingsColorEditors();
+  document.getElementById('panelColorPreset')?.addEventListener('change', event => {
+    const value = event.currentTarget.value;
+    if (value === 'custom') {
+      const editor = document.querySelector('[data-color-editor="panelColor"]');
+      const input = editor.querySelector('[data-color-hex]');
+      (input.hidden ? editor.querySelector('[data-color-channel]') : input).focus();
+    } else setSetting('panelColor', value);
+  });
   // loadSettings는 모듈 로드 시 이미 한 번 실행됨 (아래 즉시 호출). 여기서는 UI 와이어업만.
   const gearBtn = document.getElementById('settingsGearBtn');
   const closeBtn = document.getElementById('settingsCloseBtn');
@@ -1643,6 +1737,9 @@ function initSettingsPopup() {
   }
   document.getElementById('matchInfoLabelColorResetBtn')?.addEventListener('click', () => {
     setSetting('matchInfoLabelColor', SETTINGS_DEFAULTS.matchInfoLabelColor);
+  });
+  document.getElementById('panelColorResetBtn')?.addEventListener('click', () => {
+    setSetting('panelColor', SETTINGS_DEFAULTS.panelColor);
   });
 
   if (settingsResetBtn) {

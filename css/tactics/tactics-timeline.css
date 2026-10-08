@@ -383,16 +383,16 @@
       z-index: 100;
       transform: translateX(100%);
       transition: transform .22s ease;
-      background: #0b1220 !important;
+      background: rgb(var(--info-panel-rgb, 11, 18, 32)) !important;
       box-shadow: -4px 0 20px rgba(0,0,0,.45);
       border-left: 1px solid rgba(255,255,255,.12);
       border-top: none;
       --panel-alpha: 1;
-      --panel-bg: #0b1220;
+      --panel-bg: rgb(var(--info-panel-rgb, 11, 18, 32));
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel #tactics-timeline-bar,
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel #tactics-events-host > [data-events-panel] {
-      background: #0b1220 !important;
+      background: rgb(var(--info-panel-rgb, 11, 18, 32)) !important;
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar {
       /* zoom은 실제 버튼 영역과 줄바꿈 높이를 함께 키운다. */
