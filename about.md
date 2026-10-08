@@ -1,4 +1,4 @@
-# ⚽ Football Scoreboard Dashboard
+# ⚽ OBS Football Dashboard
 
 OBS 스트리밍용 축구 스코어보드 대시보드입니다. 경기 ID로 점수·라인업·이벤트·부상 정보를 불러오고, FSM 점수판의 대회별 디자인을 방송 화면에 맞게 선택할 수 있습니다. API가 지원하지 않는 경기는 수동 모드로 팀 정보와 점수를 직접 입력해 사용해 보세요.
 
