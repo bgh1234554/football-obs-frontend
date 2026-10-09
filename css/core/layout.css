@@ -218,6 +218,21 @@
     /* ========== 수동 모드 섹션 ========== */
     #manual-section { display: none; border-top: 1px solid var(--line); margin-top: 4px; padding-top: 16px; }
     #manual-section.visible { display: block; }
+    .manual-team-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .manual-team-fields { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(150px, 1.2fr) minmax(130px, 1fr) auto; gap: 10px; align-items: end; }
+    .manual-team-fields .pgroup { min-width: 0; }
+    .manual-team-fields input { width: 100%; min-width: 0; box-sizing: border-box; }
+    .manual-score-notes { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px; margin-top: 14px; }
+    #manual-section .manual-controls-row { margin-top: 0; gap: 20px; }
+    .manual-notes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .manual-notes-grid .pgroup { min-width: 0; }
+    .manual-notes-grid textarea { width: 100%; box-sizing: border-box; }
+    @media (max-width: 1400px) { .manual-team-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+    @media (max-width: 900px) { .manual-score-notes { grid-template-columns: minmax(0, 1fr); gap: 12px; } }
+    @media (max-width: 620px) {
+      .manual-team-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .manual-notes-grid { grid-template-columns: minmax(0, 1fr); }
+    }
     .manual-controls-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 24px; margin-top: 8px; }
     .manual-score-row { display: flex; align-items: center; gap: 8px; }
     .manual-score-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 18px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -228,6 +243,12 @@
     .manual-side-tools { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
     .manual-side-tools .pgroup { justify-items: start; }
     .manual-pk-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+    #themePanel .theme-pso-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; }
+    #themePanel #manual-section .theme-pso-row { margin-top: 0; }
+    #themePanel .theme-pso-toggle { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    #themePanel .theme-pso-row .manual-pk-buttons { gap: 6px; }
+    #themePanel .theme-pso-row button { padding: 7px 10px; white-space: nowrap; background: #0b1220; color: #e5e7eb; border: 1px solid #ffffff20; border-radius: 10px; cursor: pointer; font-weight: 700; }
+    #psoControlHint { font-size: 12px; opacity: .7; }
 
     /* ========== 페이지 영역 ========== */
     .pages { flex: 1; min-height: 0; overflow: hidden; }

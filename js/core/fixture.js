@@ -892,6 +892,8 @@
     state.pk = { home: [], away: [] };
     state.pkScore = { home: null, away: null };
     state.pkLastExitedAt = 0;
+    state.psoModeForced = false;
+    state.psoModeFixtureId = null;
     setMatchHalf('1');
 
     if (typeof applyLineupPanels === 'function') applyLineupPanels(null);
@@ -1105,6 +1107,11 @@
    *     다른 경기를 조회하면 00:00으로 초기화하고, 같은 경기 갱신/설정 재적용은 수동 시계를 보존한다.
    */
   function applyFixtureToState(data, options){
+    if (state.psoModeForced && String(state.psoModeFixtureId ?? '') !== String(data?.matchInfo?.fixtureId ?? '')) {
+      state.psoModeForced = false;
+      state.psoModeFixtureId = null;
+      state.manualPsoPreviousHalf = null;
+    }
     const m = data?.matchInfo || {};
     const fixtureId = String(m.fixtureId ?? '').trim();
     const preserveTeamColors = !!state.teamColorOverride
@@ -1150,8 +1157,10 @@
     // 하프 (PSO만 PK로 변환, 그 외 그대로)
     if (m.status) {
       const nextHalf = mapApiStatusToHalf(m.status, m, data._rawEvents || data.events);
-      if (!state.manualMode && nextHalf === 'PK') state.manualPsoPreviousHalf = null;
-      setMatchHalf(nextHalf);
+      if (!state.psoModeForced) {
+        if (!state.manualMode && nextHalf === 'PK') state.manualPsoPreviousHalf = null;
+        setMatchHalf(nextHalf);
+      }
     }
 
     // 추가시간
@@ -1182,7 +1191,7 @@
     } else {
       state.pkScore.home = null;
       state.pkScore.away = null;
-      clearPkState();
+      if (!state.psoModeForced) clearPkState();
     }
 
     // 득점자/레드카드 (events 가공)

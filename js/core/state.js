@@ -89,6 +89,9 @@
     pk: { home: [], away: [] },
     pkScore: { home: null, away: null },
     pkLastExitedAt: 0,
+    // Direct PSO selection survives polling for this fixture, including missing API PSO status.
+    psoModeForced: false,
+    psoModeFixtureId: null,
     // 사용자가 테마 탭에서 home/away 컬러를 직접 수정한 적이 있으면 true.
     // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드용. localStorage로 영속화돼서 새로고침 후에도 보존.
     teamColorOverride: false,
@@ -248,6 +251,8 @@
       state.pkScore.home = normalizePenaltyScore(state.pkScore.home);
       state.pkScore.away = normalizePenaltyScore(state.pkScore.away);
       state.pkLastExitedAt = Math.max(0, Number(state.pkLastExitedAt) || 0);
+      state.psoModeForced = state.psoModeForced === true;
+      state.psoModeFixtureId = state.psoModeForced ? String(state.psoModeFixtureId ?? '') : null;
       expireStalePkState();
       const legacyHomeManual = !!state.homeLogoManualOverride;
       const legacyAwayManual = !!state.awayLogoManualOverride;

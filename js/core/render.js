@@ -349,14 +349,17 @@
     el.extra.textContent = `+${state.extra}`;
     el.extra.classList.toggle('hidden', !state.extraShown||state.extra<=0);
     const manualPsoMode = document.getElementById('manualPsoMode');
+    const psoControls = document.getElementById('psoControls');
+    const psoHost = document.querySelector(state.manualMode ? '#manual-section .manual-controls-row' : '.theme-timer-card');
+    if (psoControls && psoHost && psoControls.parentElement !== psoHost) psoHost.appendChild(psoControls);
     if (manualPsoMode) {
       manualPsoMode.checked = state.half === 'PK';
-      manualPsoMode.disabled = !state.manualMode;
+      manualPsoMode.disabled = false;
     }
     if (typeof window.updateScoreShortcutHint === 'function') window.updateScoreShortcutHint();
     ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss','pkUndo','pkReset'].forEach(id => {
       const button = document.getElementById(id);
-      if (button) button.disabled = !state.manualMode || state.half !== 'PK';
+      if (button) button.disabled = state.half !== 'PK';
     });
     el.extraInput.value = state.extra;
     el.secPerTick.value = state.secPerTick;
@@ -730,7 +733,8 @@
 
   // [이벤트 등록] 전/후반 선택, 타이머 시작/정지/리셋 및 시작 시각 설정
   document.getElementById('manualPsoMode')?.addEventListener('change', e => {
-    if (!state.manualMode) { e.target.checked = state.half === 'PK'; return; }
+    state.psoModeForced = e.target.checked;
+    state.psoModeFixtureId = e.target.checked ? String(_lastFixtureData?.matchInfo?.fixtureId ?? '') : null;
     if (e.target.checked) state.manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
     setMatchHalf(e.target.checked ? 'PK' : (state.manualPsoPreviousHalf || '2'));
     render();
