@@ -25,10 +25,17 @@ await page.evaluate(()=>{state.manualMode=false;el.manualSection.classList.remov
 assert(await page.locator('#pkHomeGoal').isVisible());assert(await page.locator('#pkHomeGoal').isEnabled());
 assert(await page.locator('#manualPsoMode').isEnabled());
 assert.equal(await page.locator('#manual-section #pkHomeGoal, #manual-section #manualPsoMode').count(),0);
+await page.evaluate(()=>{state.pkScore={home:3,away:2};render();});
 await page.locator('#pkHomeGoal').click();await page.locator('#pkAwayMiss').click();
+assert.equal(await page.locator('#pkScoreHome').textContent(),'4');
+assert.equal(await page.locator('#pkScoreAway').textContent(),'2');
 assert.deepEqual(await page.evaluate(()=>state.pk),{home:['G'],away:['M']});
 await page.locator('#pkUndo').click();assert.deepEqual(await page.evaluate(()=>state.pk),{home:[],away:['M']});
+assert.equal(await page.locator('#pkScoreHome').textContent(),'3');
+await page.locator('#pkUndo').click();
+assert.equal(await page.locator('#pkScoreAway').textContent(),'2');
 await page.locator('#pkReset').click();assert.deepEqual(await page.evaluate(()=>state.pk),{home:[],away:[]});
+assert.deepEqual(await page.evaluate(()=>state.pkScore),{home:0,away:0});
 await page.setViewportSize({width:1920,height:1080});
 const lines=await page.locator('#psoControls input, #psoControls button').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return r.y+r.height/2;}));
 assert(Math.max(...lines)-Math.min(...lines)<1,'PSO toggle and buttons should share one line');

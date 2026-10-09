@@ -832,11 +832,30 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /** 해당 팀(home/away)의 PK 결과 배열에 'G'(골) 또는 'M'(실패)을 추가 */
-  function pkPush(team,res){ if(team==='home') state.pk.home.push(res); else state.pk.away.push(res); render(); persist(); }
+  function pkPush(team,res){
+    const score = getPkDisplayScore(team);
+    state.pk[team].push(res);
+    if (!state.manualMode) {
+      state.pkScore ??= {};
+      state.pkScore[team] = score + (res === 'G' ? 1 : 0);
+    }
+    render(); persist();
+  }
   /** 마지막으로 추가된 PK 결과를 제거 (홈/어웨이 중 더 많은 쪽에서 pop) */
-  function pkUndo(){ const h=state.pk.home.length,a=state.pk.away.length; if(h===0&&a===0) return; if(h>=a) state.pk.home.pop(); else state.pk.away.pop(); render(); persist(); }
+  function pkUndo(){
+    const h=state.pk.home.length,a=state.pk.away.length;
+    if(h===0&&a===0) return;
+    const team = h >= a ? 'home' : 'away';
+    const score = getPkDisplayScore(team);
+    const result = state.pk[team].pop();
+    if (!state.manualMode) {
+      state.pkScore ??= {};
+      state.pkScore[team] = Math.max(0, score - (result === 'G' ? 1 : 0));
+    }
+    render(); persist();
+  }
   /** PK 결과 전체 초기화 */
-  function pkReset(){ clearPkState(); render(); persist(); }
+  function pkReset(){ clearPkState(); if (!state.manualMode) state.pkScore = { home: 0, away: 0 }; render(); persist(); }
   // [이벤트 등록] PK 버튼 (홈/어웨이 골/미스, 되돌리기, 초기화)
   el.pkHomeGoal?.addEventListener('click', ()=>pkPush('home','G'));
   el.pkHomeMiss?.addEventListener('click', ()=>pkPush('home','M'));

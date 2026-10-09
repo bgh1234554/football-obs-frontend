@@ -798,6 +798,12 @@
     if (data?.matchInfo?.status !== 'ABD') _abdAlertShown = false;
     showPollingStopReason(plan.reason);
     cancelPollingWake();
+    console.info('[경기 폴링 예약]', {
+      fixtureId, status: data?.matchInfo?.status,
+      nextPollAt: plan.delay == null || state.manualMode ? null : new Date(Date.now() + plan.delay).toISOString(),
+      stopped: !fixtureId || state.manualMode || plan.delay == null,
+      visibility: document.visibilityState, focused: document.hasFocus()
+    });
     if (!fixtureId || state.manualMode || plan.delay == null) return;
     const wakeAndFetch = async () => {
       if (_lastFetchId !== fixtureId || state.manualMode || window.__POPOUT_MODE__) return;
@@ -922,7 +928,8 @@
     const overlayOpts = silent ? { noOverlay: true } : undefined;
     _fetchSeq += 1;
     const requestSeq = _fetchSeq;
-    lastFixturePoll = { fixtureId: normalizedFixtureId, at: Date.now(), status: '조회 중' };
+    const pollStartedAt = Date.now();
+    lastFixturePoll = { fixtureId: normalizedFixtureId, at: pollStartedAt, status: '조회 중' };
     renderLastFixturePoll();
     const selectionVersionAtRequest = fixtureSelectionVersion;
     _lastFetchId = normalizedFixtureId;
@@ -1062,9 +1069,26 @@
       try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
       try { localStorage.removeItem('cached_fixture_data'); } catch {}  // 구버전 잔여물 정리
       try { localStorage.setItem('last_fixture_id', normalizedFixtureId); } catch {}
-      lastFixturePoll = { fixtureId: normalizedFixtureId, at: lastFixturePoll.at, status: '성공' };
-      renderLastFixturePoll();
-      console.info(`[경기 조회] ${pollSource} 성공 · 경기 ${normalizedFixtureId} · 마지막 폴링 시각 ${new Date(lastFixturePoll.at).toLocaleString('ko-KR', { hour12: false })}`);
+      if (requestSeq === _fetchSeq) {
+        lastFixturePoll = { fixtureId: normalizedFixtureId, at: pollStartedAt, status: '성공' };
+        renderLastFixturePoll();
+      }
+      console.info(`[경기 조회] ${pollSource} 성공 · 경기 ${normalizedFixtureId} · 마지막 폴링 시각 ${new Date(pollStartedAt).toLocaleString('ko-KR', { hour12: false })}`);
+      // DOM 반영과 화면 프레임 실행은 별개다. 프레임 지연 여부를 비교할 수 있도록 각각 기록한다.
+      // requestAnimationFrame 실행도 실제 모니터 출력 완료를 보장하지는 않는다.
+      const appliedAt = Date.now();
+      console.info('[경기 화면 DOM 반영]', {
+        fixtureId: normalizedFixtureId, requestSeq, status: data.matchInfo?.status,
+        eventCount: data.events?.length || 0,
+        visibility: document.visibilityState, focused: document.hasFocus()
+      });
+      requestAnimationFrame(() => {
+        console.info('[경기 화면 프레임 실행]', {
+          fixtureId: normalizedFixtureId, requestSeq, superseded: requestSeq !== _fetchSeq,
+          delayMs: Date.now() - appliedAt, visibility: document.visibilityState,
+          focused: document.hasFocus()
+        });
+      });
       return data;
     }catch(e){
       if (requestSeq === _fetchSeq && lastFixturePoll?.fixtureId === normalizedFixtureId) {

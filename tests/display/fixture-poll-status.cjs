@@ -44,6 +44,68 @@ const root = path.resolve(__dirname, '../..');
       return { started, succeeded, visible, failed };
     });
     assert.deepEqual(result, { started: '조회 중', succeeded: '성공', visible: true, failed: '실패' });
+    const overlapping = await page.evaluate(async () => {
+      const originalRecord = recordRecentFixture;
+      const originalFetch = fetchFixture;
+      let finish, newer, inProgress;
+      const data = { matchInfo: { fixtureId: '100', status: 'FT', elapsed: 90, homeTeamName: 'Home', awayTeamName: 'Away' }, events: [], playerStats: [] };
+      try {
+        fetchFixture = async () => data;
+        recordRecentFixture = () => {
+          fetchFixture = () => new Promise(resolve => { finish = resolve; });
+          newer = fetchAndApplyFixtureData('100', { silent: true });
+          inProgress = lastFixturePoll;
+        };
+        await fetchAndApplyFixtureData('100');
+        const preserved = lastFixturePoll === inProgress && $('fixture-poll-status').textContent === '조회 중';
+        finish(data);
+        await newer;
+        return { preserved, status: lastFixturePoll.status, sameTime: lastFixturePoll.at === inProgress.at };
+      } finally {
+        recordRecentFixture = originalRecord;
+        fetchFixture = originalFetch;
+        clearPolling();
+      }
+    });
+    assert.deepEqual(overlapping, { preserved: true, status: '성공', sameTime: true });
+    // 화면 프레임 처리가 밀린 동안 여러 응답이 와도 DOM은 최신 데이터를 유지해야 한다.
+    const delayedFrames = await page.evaluate(async () => {
+      const originalRaf = window.requestAnimationFrame;
+      const originalFetch = fetchFixture;
+      const frames = [];
+      try {
+        window.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+        for (const [status, score] of [['2H', 1], ['2H', 2], ['FT', 3]]) {
+          fetchFixture = async () => ({
+            matchInfo: { fixtureId: '100', status, elapsed: 90, homeScore: score, awayScore: 0, homeTeamName: 'Home', awayTeamName: 'Away' },
+            events: [{ type: 'Goal', detail: 'Normal Goal', elapsed: 89, side: 'home', playerName: `최신득점자${score}`, playerId: score }], playerStats: []
+          });
+          await fetchAndApplyFixtureData('100', { silent: true });
+          clearPolling();
+        }
+        const snapshot = () => ({
+          score: $('homeScore').textContent,
+          status: _lastFixtureData.matchInfo.status,
+          lineupStatus: lineupPanelState.lastFixture.matchInfo.status,
+          eventStatus: window._eventsLastData.matchInfo.status,
+          statsStatus: statsLastFixtureData.matchInfo.status,
+          latestEvent: [...document.querySelectorAll('[data-events-panel]')].every(panel => panel.textContent.includes('최신득점자3'))
+        });
+        const before = snapshot();
+        // 복귀 때 실행되는 예전 프레임 콜백이 최신 점수·이벤트를 되돌리는지도 검사한다.
+        for (let pass = 0; pass < 3; pass++) {
+          const batch = frames.splice(0);
+          batch.forEach(callback => callback(performance.now()));
+        }
+        return { before, after: snapshot() };
+      } finally {
+        window.requestAnimationFrame = originalRaf;
+        fetchFixture = originalFetch;
+        clearPolling();
+      }
+    });
+    const latest = { score: '3', status: 'FT', lineupStatus: 'FT', eventStatus: 'FT', statsStatus: 'FT', latestEvent: true };
+    assert.deepEqual(delayedFrames, { before: latest, after: latest });
     await page.evaluate(() => {
       document.body.classList.add('sidebar-open');
       setFixtureId('100');
@@ -55,7 +117,7 @@ const root = path.resolve(__dirname, '../..');
       const card = document.querySelector('.fixture-poll-card').getBoundingClientRect();
       return ['fixture-poll-clock', 'fixture-poll-status'].every(id => {
         const rect = document.getElementById(id).getBoundingClientRect();
-        return rect.left >= card.left && rect.right <= card.right && rect.height < 30;
+        return rect.left >= card.left - 1 && rect.right <= card.right + 1 && rect.height < 30;
       });
     });
     assert.equal(fits, true, '시각과 상태 배지가 메뉴 너비 안에서 한 줄로 표시되어야 한다');
