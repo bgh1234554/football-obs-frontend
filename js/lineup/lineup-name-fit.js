@@ -2123,11 +2123,18 @@ function syncBigLineupFullscreenGeometry() {
     // 사용자가 엣지 핸들로 폭을 직접 조절한 패널은 그 값을 보존한다.
     if (panel.classList.contains('has-edge-override') || panel.classList.contains('has-w-override')) return;
 
+    // 숨겨진 메뉴에서는 크기를 확정하지 않는다. CEF에서 페이지 전환 직후
+    // aspect-ratio의 가로 배치가 끝나기 전 읽은 좁은 폭을 영구 고정하지 않도록,
+    // 최초 폭은 이미 배치된 높이와 피치 비율로 직접 계산한다.
+    const panelRect = typeof getDisplayLayoutRect === 'function'
+      ? getDisplayLayoutRect(panel)
+      : panel.getBoundingClientRect();
+    if (!(panelRect.height > 0) || !panel.getClientRects().length) return;
+
     let rememberedWidth = Number(panel.dataset.lineupWindowWidth);
     if (!(rememberedWidth > 0)) {
-      rememberedWidth = typeof getDisplayLayoutRect === 'function'
-        ? getDisplayLayoutRect(panel).width
-        : panel.getBoundingClientRect().width;
+      const ratio = panel.classList.contains('dp-mode-split') ? (94 / 210) : (62 / 105);
+      rememberedWidth = panelRect.height * ratio;
       if (rememberedWidth > 0) panel.dataset.lineupWindowWidth = String(rememberedWidth);
     }
     if (rememberedWidth > 0) {
