@@ -297,7 +297,10 @@ function ttRenderMarkers() {
     else wrap.style.top = '0';
     wrap.title = titleText;
 
-    const glyph = groupKind === 'subst' ? '⇅' : '▮';
+    const redEvent = group.items.find(ev => ev._kind === 'red');
+    const redIcon = String(redEvent?.detail || '').trim().toLowerCase() === 'second yellow card'
+      ? 'cumulative-red' : 'red-card';
+    const glyph = footballIconHtml(groupKind === 'subst' ? 'subst' : redIcon);
     const countBadge = group.items.length > 1 ? `<span class="td-tl-count">×${group.items.length}</span>` : '';
     wrap.innerHTML = `<span class="td-tl-glyph">${glyph}</span>${countBadge}<span class="td-tl-time">${positionLabel}</span>`;
 

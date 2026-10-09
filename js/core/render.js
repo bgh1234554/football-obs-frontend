@@ -14,7 +14,7 @@
 
   /** 레드카드 수만큼 .rc-card div를 생성해 홈/어웨이 컨테이너에 삽입 */
   function renderRedCards(){
-    const make = n => { const nodes=[]; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='rc-card'; nodes.push(d);} return nodes; };
+    const make = n => { const nodes=[]; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='rc-card has-event-icon'; d.innerHTML=footballIconHtml('red-card'); nodes.push(d);} return nodes; };
     if(el.rcHome){ el.rcHome.replaceChildren(...make(state.redHome)); el.rcHome.classList.toggle('hidden', state.redHome===0); }
     if(el.rcAway){ el.rcAway.replaceChildren(...make(state.redAway)); el.rcAway.classList.toggle('hidden', state.redAway===0); }
   }

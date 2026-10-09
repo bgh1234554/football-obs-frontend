@@ -429,8 +429,8 @@ function buildLineupManualStatCellsHtml(player, index) {
   return `<input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-goals-${index}" value="${goals || ''}" placeholder="0" title="득점" />
     <input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-owngoals-${index}" value="${ownGoals || ''}" placeholder="0" title="자책골" />
     <input type="number" min="0" max="99" class="dp-input dp-input-mini" name="lineup-assists-${index}" value="${assists || ''}" placeholder="0" title="도움" />
-    <label class="dp-manual-stat-check" title="경고(옐로카드)"><input type="checkbox" name="lineup-yellow-${index}" aria-label="경고(옐로카드)"${yellow ? ' checked' : ''} /><span class="dp-manual-card-swatch is-yellow" aria-hidden="true"></span></label>
-    <label class="dp-manual-stat-check" title="퇴장(레드카드)"><input type="checkbox" name="lineup-red-${index}" aria-label="퇴장(레드카드)"${red ? ' checked' : ''} /><span class="dp-manual-card-swatch is-red" aria-hidden="true"></span></label>
+    <label class="dp-manual-stat-check" title="경고(옐로카드)"><input type="checkbox" name="lineup-yellow-${index}" aria-label="경고(옐로카드)"${yellow ? ' checked' : ''} /><span class="dp-manual-card-swatch is-yellow" aria-hidden="true">${footballIconHtml('yellow-card')}</span></label>
+    <label class="dp-manual-stat-check" title="퇴장(레드카드)"><input type="checkbox" name="lineup-red-${index}" aria-label="퇴장(레드카드)"${red ? ' checked' : ''} /><span class="dp-manual-card-swatch is-red" aria-hidden="true">${footballIconHtml('red-card')}</span></label>
     <label class="dp-manual-stat-check" title="주장"><input type="checkbox" name="lineup-captain-${index}" aria-label="주장"${player?.manualCaptain ? ' checked' : ''} /><span class="dp-manual-card-swatch is-captain" aria-hidden="true">C</span></label>`;
 }
 
@@ -455,11 +455,11 @@ function buildLineupManualFormHtml(lineup) {
               ${buildFormationOptionsHtml(formation)}
             </select>
           </label>
-          <span class="dp-manual-stat-header" title="득점">⚽</span>
-          <span class="dp-manual-stat-header" title="자책골">OG</span>
-          <span class="dp-manual-stat-header" title="도움">👟</span>
-          <span class="dp-manual-stat-header" title="경고(옐로카드)">🟨</span>
-          <span class="dp-manual-stat-header" title="퇴장(레드카드)">🟥</span>
+          <span class="dp-manual-stat-header" title="득점">${footballIconHtml('goal')}</span>
+          <span class="dp-manual-stat-header" title="자책골">${footballIconHtml('own-goal')}</span>
+          <span class="dp-manual-stat-header" title="도움">${footballIconHtml('assist')}</span>
+          <span class="dp-manual-stat-header" title="경고(옐로카드)">${footballIconHtml('yellow-card')}</span>
+          <span class="dp-manual-stat-header" title="퇴장(레드카드)">${footballIconHtml('red-card')}</span>
           <span class="dp-manual-stat-header" title="주장">C</span>
         </div>
         ${Array.from({ length: 11 }, (_, index) => `<div class="dp-manual-row has-stats">
