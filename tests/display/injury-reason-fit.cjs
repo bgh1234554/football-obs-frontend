@@ -11,6 +11,11 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 
 await page.evaluate(()=>{setSetting('statCycleAuto','off');activatePage('main-big');const data={matchInfo:{homeTeamName:'Home',awayTeamName:'Away'},homeInjuries:[{playerId:991,name:'Tom Cairney',reason:'Knee Injury',type:'Questionable'}],awayInjuries:[]};renderInjuryPanel(data,data);renderInjuryCyclePanel(data,data);});
 await page.evaluate(()=>document.fonts.ready);
+const visibleReasons = await page.evaluate(() => ['[data-injury-cycle-panel]', '#injuryPanel'].map(selector => {
+  const label = document.querySelector(selector).querySelector('.dp-item-name');
+  return { text: label.querySelector('.ic-reason').textContent, tooltip: label.title, detailed: getInjuryReasonDisplayText('Knee Injury', 'Questionable') };
+}));
+for (const reason of visibleReasons) { assert.equal(reason.text, '출전 여부 미정'); assert.equal(reason.tooltip, reason.detailed); assert.notEqual(reason.tooltip, reason.text); }
     for (const [mode, selector] of [['main-big', '[data-injury-cycle-panel]'], ['main-small', '#injuryPanel']]) {
       const sizing = await page.evaluate(({ mode, selector }) => {
         activatePage(mode); _lpStatCycle.mode = 'injuries'; lpStatUpdateVisibility();
@@ -32,7 +37,21 @@ await page.evaluate(()=>document.fonts.ready);
       }, { mode, selector });
       assert(sizing.shrunk.font < sizing.base && sizing.shrunk.font >= 8, JSON.stringify(sizing));
       assert(sizing.shrunk.fits); assert.equal(sizing.shrunk.name, sizing.nameSize);
-      assert.equal(sizing.restored, sizing.base); assert(sizing.fallback); assert.equal(sizing.minimum, 8);
+      assert.equal(sizing.restored, sizing.base); assert(sizing.fallback); assert.equal(sizing.minimum, sizing.base);
+
+      // 최소 크기로도 한 줄에 못 들어가는 사유는 기본 크기의 두 줄로 표시한다.
+      const twoLines = await page.evaluate(selector => {
+        const panel = document.querySelector(selector), label = panel.querySelector('.dp-item-name'), reason = label.querySelector('.ic-reason');
+        label.firstChild.textContent = 'Tom Cairney ';
+        reason.textContent = '\uCD9C\uC804 \uC5EC\uBD80 \uBBF8\uC815 - \uCD9C\uC804 \uBD88\uAC00';
+        label.style.width = '150px'; fitInjuryReasons(panel);
+        return { font: parseFloat(getComputedStyle(reason).fontSize), lines: Math.round(label.clientHeight / parseFloat(getComputedStyle(label).lineHeight)), wrap: label.classList.contains('ic-reason-wrap'), display: getComputedStyle(reason).display };
+      }, selector);
+      assert.equal(twoLines.font, sizing.base); assert.equal(twoLines.lines, 2); assert(twoLines.wrap); assert.equal(twoLines.display, 'block');
+      if (process.argv.includes('--screenshot')) {
+        const folder = path.join(root, 'screenshots'); fs.mkdirSync(folder, { recursive: true });
+        await page.locator(selector).screenshot({ path: path.join(folder, `injury-reason-newline-${mode}.png`) });
+      }
 
       const wrapped = await page.evaluate(selector => {
         const panel = document.querySelector(selector), label = panel.querySelector('.dp-item-name'), reason = label.querySelector('.ic-reason');
@@ -44,6 +63,7 @@ await page.evaluate(()=>document.fonts.ready);
         for (const reasonText of ['Knee injury', 'Recovering from knee injury', 'Recovering from a serious injury']) {
           reason.textContent = reasonText;
           for (let width = 80; width <= 400; width++) {
+            label.classList.remove('ic-reason-newline');
             label.style.width = `${width}px`; label.classList.add('ic-reason-wrap');
             reason.style.display = 'none'; const nameHeight = label.clientHeight; reason.style.display = '';
             if (Math.round(nameHeight / lineHeight) !== 2) continue;

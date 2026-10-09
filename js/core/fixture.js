@@ -666,7 +666,7 @@
 
   // ─── 자동 폴링 ─────────────────────────────────────────────────
   // 정책:
-  //   - 경기 시작 전(NS + kickoffUtc 있음): 킥오프 30초 전까지 대기 후 호출 시작
+  //   - 경기 시작 전(NS + kickoffUtc 있음): 1시간 전부터 10분 간격, 1분 전부터 15초 간격
   //   - 진행 중(1H/HT/2H/ET1/ET2/PSO): 15초 간격으로 호출
   //   - FT 첫 감지 후 3분까지: 1분 간격 (스탯 후처리 갱신 가능성)
   //   - FT + 3분 경과: 호출 중단
@@ -675,20 +675,68 @@
   //   - ABD(중단/취소, 재개 안 됨): 감지 즉시 안내 alert를 1회만 띄우고 호출 영구 중단.
   //   - 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO): 조용히 호출 중단.
   //   - kickoffUtc 없는 NS: 안전하게 15초 간격으로 재호출 (fallback)
-  const POLL_INTERVAL_MS    = 15 * 1000;
-  const FT_POLL_INTERVAL_MS = 60 * 1000;
-  const POST_FT_WINDOW_MS   = 3 * 60 * 1000;
-  // FT 상태인데 킥오프로부터 이 시간 이상 지났으면 더 이상 폴링하지 않음 (첫 1회 로딩으로 충분).
-  // 일정 페이지에서 며칠 전 끝난 경기를 클릭한 경우 등 쓸데없이 매분 호출하는 것 방지.
-  const FT_STALE_AFTER_MS   = 4 * 60 * 60 * 1000;
-  const PRE_KICKOFF_BUFFER_MS = 30 * 1000;
-  const INT_POLL_INTERVAL_MS = 5 * 60 * 1000;  // INT(중단) 상태 재확인 간격
-  const INT_ALERT_AFTER_MS   = 30 * 60 * 1000; // INT가 이만큼 지속되면 수동 새로고침 안내
   const FT_LIKE_STATUSES    = new Set(['FT','AET','PEN']); // 백엔드는 'FT'로 통일하지만 방어
-  const ABNORMAL_STATUSES   = new Set(['PST','CANC','SUSP','INT','ABD','AWD','WO']);
-  const LIVE_STATUSES_POLL  = new Set(['1H','HT','2H','ET1','ET2','PSO']);
 
   let _pollTimer = null;
+  let _pollWake = null;
+  let _pollDueAt = 0;
+  let _pollWakeToken = 0;
+
+  function cancelPollingWake() {
+    if (_pollTimer != null) clearTimeout(_pollTimer);
+    _pollTimer = null;
+    _pollWake = null;
+    _pollDueAt = 0;
+    _pollWakeToken++;
+  }
+
+  function showPollingStopReason(reason) {
+    if (reason === 'ABD' && !_abdAlertShown) {
+      _abdAlertShown = true;
+      showToast('경기가 중단(Abandoned)되어 자동 갱신을 중단합니다.');
+      setApiStatus('idle', '경기 중단 (ABD) — 자동 갱신 중단');
+    }
+    if (reason === 'INT' && !_intAlertShown) {
+      _intAlertShown = true;
+      alert('경기가 30분 넘게 중단(Interrupted)된 상태입니다. 경기 재개 시 수동으로 새로고침해 주세요.');
+    }
+  }
+
+  // 절대 시각으로 예약해 복귀 시 밀린 호출을 한 번만 실행한다.
+  // 브라우저 자체의 실행 중단은 웹 타이머로 해제할 수 없다.
+  function schedulePollingWake(callback, delayMs) {
+    cancelPollingWake();
+    const token = _pollWakeToken;
+    _pollDueAt = Date.now() + Math.max(0, delayMs);
+    const arm = () => {
+      const delay = Math.min(2147483647, Math.max(0, _pollDueAt - Date.now()));
+      _pollTimer = setTimeout(fire, delay);
+    };
+    const fire = () => {
+      if (token !== _pollWakeToken || !_pollWake) return;
+      if (Date.now() < _pollDueAt) {
+        if (_pollTimer != null) clearTimeout(_pollTimer);
+        arm();
+        return;
+      }
+      cancelPollingWake();
+      callback();
+    };
+    _pollWake = fire;
+    arm();
+  }
+
+  function resumeOverduePolling() {
+    if (_pollWake && Date.now() >= _pollDueAt) _pollWake();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resumeOverduePolling();
+  });
+  document.addEventListener('resume', resumeOverduePolling);
+  window.addEventListener('pageshow', resumeOverduePolling);
+  window.addEventListener('focus', resumeOverduePolling);
+  window.addEventListener('online', resumeOverduePolling);
+
   let _ftFirstDetectedAt = null;
   let _intFirstDetectedAt = null; // INT 첫 감지 시각 — 30분 경과 판정용
   let _intAlertShown = false;     // 같은 중단 동안 alert 중복 표시 방지
@@ -696,7 +744,7 @@
 
   /** 진행 중인 폴링 타이머 취소 + FT/INT/ABD 추적 상태 리셋 */
   function clearPolling(resetFt = true) {
-    if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+    cancelPollingWake();
     if (resetFt) {
       _ftFirstDetectedAt = null;
       _intFirstDetectedAt = null;
@@ -712,129 +760,36 @@
    * 1) FT 도달 — 킥오프 후 4시간 이상 경과면 폴링 종료. 그 외엔 3분 윈도우 내에서만 1분 간격 유지.
    * 2) ABD(중단/취소, 재개 안 됨) — 안내 alert 1회 후 폴링 영구 중단.
    * 3) 그 외 비정상 상태(PST/CANC/SUSP/AWD/WO) — 조용히 폴링 중단. (INT는 5)에서 별도 처리)
-   * 4) NS + kickoffUtc 알면 — 킥오프 30초 전까지 대기 후 wakeAndFetch.
+   * 4) NS + kickoffUtc 알면 — 1시간 전부터 10분 간격, 1분 전부터 15초 간격.
    * 5) INT(중단, 재개 가능) — 5분 간격 재확인. 30분 경과 시 안내 alert 1회 후 재확인도 중단.
    * 6) FT-like — 1분 간격.
    * 7) LIVE/NS — 15초 간격.
    * 8) 그 외 미지의 status — 안전하게 폴링 안 함.
-   *
-   * wakeAndFetch는 fetchAndApplyFixtureData를 silent=true로 호출하고,
-   * 성공 시 fetchAndApplyFixtureData가 내부에서 다시 schedulePoll을 부르며 체인이 이어진다.
-   * 실패 시에만 scheduleRetryFromLastFixture로 재예약(타이머 중복 생성 방지).
    */
   function schedulePoll(data) {
-    // 팝업으로 뜬 창(js/core/popout.js)은 모달 하나만 보여주고 곧 닫힐 창이므로,
-    // 메인 창과 중복으로 API를 폴링하지 않는다. 최초 1회 렌더는 이 가드 이전에 이미 끝남.
     if (window.__POPOUT_MODE__) return;
-    clearPolling(false);
-
     const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
-    if (!fixtureId) return;
-
-    const status = String(data?.matchInfo?.status || '');
-    const kickoffUtc = data?.matchInfo?.kickoffAt || data?.matchInfo?.kickoffUtc;
-    const now = Date.now();
-
-    // 1) FT 도달 — 킥오프 후 4시간 이상 경과 시 즉시 종료. 그 외에는 3분 윈도우 내에서만 유지.
-    if (FT_LIKE_STATUSES.has(status)) {
-      if (kickoffUtc) {
-        const kickoffMs = Date.parse(kickoffUtc);
-        if (!isNaN(kickoffMs) && (now - kickoffMs) >= FT_STALE_AFTER_MS) return;
-      }
-      if (!_ftFirstDetectedAt) _ftFirstDetectedAt = now;
-      if (now - _ftFirstDetectedAt >= POST_FT_WINDOW_MS) return;
-    } else {
-      _ftFirstDetectedAt = null;
-    }
-
-    // INT가 아닌 상태로 넘어왔으면 중단 추적을 리셋 — 재개됐다가 나중에 다시 INT가 되면
-    // 30분 카운트가 처음부터 다시 시작되고 alert도 다시 뜰 수 있어야 한다.
-    if (status !== 'INT') { _intFirstDetectedAt = null; _intAlertShown = false; }
-
-    // 2) ABD(중단/취소) — 재개되지 않는 경기이므로 안내 1회만 띄우고 폴링 영구 중단.
-    if (status === 'ABD') {
-      if (!_abdAlertShown) {
-        _abdAlertShown = true;
-        showToast('경기가 중단(Abandoned)되어 자동 갱신을 중단합니다.');
-        setApiStatus('idle', '경기 중단 (ABD) — 자동 갱신 중단');
-      }
-      return;
-    }
-    _abdAlertShown = false;
-
-    // 3) 그 외 비정상 상태면 폴링 중단 (INT는 5)에서 재확인 로직으로 따로 처리)
-    if (ABNORMAL_STATUSES.has(status) && status !== 'INT') return;
-
-    const scheduleRetryFromLastFixture = () => {
-      if (!_lastFixtureData) return;
-      const lastStatus = String(_lastFixtureData?.matchInfo?.status || '');
-      if (lastStatus === 'INT') { handleIntRecheck(); return; }
-      if (ABNORMAL_STATUSES.has(lastStatus)) return;
-      if (FT_LIKE_STATUSES.has(lastStatus)) {
-        _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
-        return;
-      }
-      if (LIVE_STATUSES_POLL.has(lastStatus) || lastStatus === 'NS') {
-        _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-      }
-    };
-
+    const tracking = { ftFirstDetectedAt: _ftFirstDetectedAt, intFirstDetectedAt: _intFirstDetectedAt };
+    const plan = getFixturePollingPlan(data, tracking);
+    _ftFirstDetectedAt = tracking.ftFirstDetectedAt;
+    _intFirstDetectedAt = tracking.intFirstDetectedAt;
+    if (tracking.intFirstDetectedAt == null) _intAlertShown = false;
+    if (data?.matchInfo?.status !== 'ABD') _abdAlertShown = false;
+    showPollingStopReason(plan.reason);
+    cancelPollingWake();
+    if (!fixtureId || state.manualMode || plan.delay == null) return;
     const wakeAndFetch = async () => {
-      // 폴링 진행 중에 사용자가 다른 ID로 바꾸거나 reset한 경우 폐기
-      if (_lastFetchId !== fixtureId) return;
-      // silent=true → 풀스크린 로딩 오버레이 안 띄움 (시청자 화면 깜빡임 방지)
+      if (_lastFetchId !== fixtureId || state.manualMode || window.__POPOUT_MODE__) return;
+      const before = _fetchSeq;
       try {
-        const data = await fetchAndApplyFixtureData(fixtureId, { silent: true });
-        // 성공 시에는 fetchAndApplyFixtureData 내부의 schedulePoll(data)가 다음 폴을 예약한다.
-        // 여기서 또 setTimeout을 잡으면 동일 시점에 타이머가 2개 생긴다.
-        if (!data) scheduleRetryFromLastFixture();
-      } catch (e) {
-        console.error('Silent poll error:', e);
-        // fetchAndApplyFixtureData가 내부에서 잡지 못한 예외만 여기로 온다.
-        scheduleRetryFromLastFixture();
+        const result = await fetchAndApplyFixtureData(fixtureId, { silent: true });
+        if (result) return;
+      } catch (error) { console.error('Silent poll error:', error); }
+      if (_fetchSeq === before + 1 && _lastFetchId === fixtureId && !state.manualMode && _lastFixtureData && !_pollWake) {
+        schedulePoll(_lastFixtureData);
       }
     };
-
-    // INT(중단, 재개 가능) — 5분 간격으로 재확인하다가 첫 감지로부터 30분 넘게 지속되면
-    // 수동 새로고침을 안내하는 alert를 1회만 띄우고 그 뒤로는 자동 재확인을 멈춘다.
-    // schedulePoll의 메인 흐름과 scheduleRetryFromLastFixture(네트워크 에러 재시도 경로)
-    // 양쪽에서 같은 판단이 필요해 헬퍼로 뺐다.
-    const handleIntRecheck = () => {
-      if (!_intFirstDetectedAt) _intFirstDetectedAt = Date.now();
-      if (Date.now() - _intFirstDetectedAt >= INT_ALERT_AFTER_MS) {
-        if (!_intAlertShown) {
-          _intAlertShown = true;
-          alert('경기가 30분 넘게 중단(Interrupted)된 상태입니다. 경기 재개 시 수동으로 새로고침해 주세요.');
-        }
-        return;
-      }
-      _pollTimer = setTimeout(wakeAndFetch, INT_POLL_INTERVAL_MS);
-    };
-
-    if (status === 'INT') {
-      handleIntRecheck();
-      return;
-    }
-
-    // 4) 경기 시작 전(NS) + kickoffUtc 알면 시작 직전까지 대기
-    if (status === 'NS' && kickoffUtc) {
-      const kickoffMs = Date.parse(kickoffUtc);
-      if (!isNaN(kickoffMs) && kickoffMs > now + PRE_KICKOFF_BUFFER_MS) {
-        const waitMs = kickoffMs - now - PRE_KICKOFF_BUFFER_MS;
-        _pollTimer = setTimeout(wakeAndFetch, waitMs);
-        return;
-      }
-    }
-
-    if (FT_LIKE_STATUSES.has(status)) {
-      _pollTimer = setTimeout(wakeAndFetch, FT_POLL_INTERVAL_MS);
-      return;
-    }
-
-    if (LIVE_STATUSES_POLL.has(status) || status === 'NS') {
-      _pollTimer = setTimeout(wakeAndFetch, POLL_INTERVAL_MS);
-    }
-    // 그 외(미지의 status)는 안전하게 폴링하지 않음
+    schedulePollingWake(wakeAndFetch, plan.delay);
   }
 
   /** sessionStorage + localStorage(legacy)에 저장된 fixture 캐시 모두 제거. */
@@ -944,6 +899,8 @@
     const requestSeq = _fetchSeq;
     const selectionVersionAtRequest = fixtureSelectionVersion;
     _lastFetchId = normalizedFixtureId;
+    // 새 조회를 시작할 때 이전 폴링 예약을 취소한다.
+    clearPolling(String(_lastFixtureData?.matchInfo?.fixtureId ?? '') !== normalizedFixtureId);
     if (!silent) setApiStatus('loading');
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
@@ -951,7 +908,7 @@
       // requestSeq 비교: 같은 fixtureId로 겹쳐 호출돼도(강제 새로고침 도중 폴링 등) 더 나중에
       // 시작된 호출이 있으면 이 응답은 폐기 — _lastFetchId(fixtureId 문자열) 비교로는 같은
       // fixtureId끼리 겹친 요청을 구분할 수 없었음.
-      if (requestSeq !== _fetchSeq) return null;
+      if (requestSeq !== _fetchSeq || state.manualMode) return null;
       if(!data){
         resetFixtureDrivenState({
           clearFixtureId: fixtureSelectionVersion === selectionVersionAtRequest,
@@ -1081,6 +1038,11 @@
       return data;
     }catch(e){
       console.error('API 오류:', e);
+      // 같은 경기의 수동 새로고침이 실패해도 기존 자동 갱신은 이어간다.
+      if (requestSeq === _fetchSeq && !state.manualMode
+        && String(_lastFixtureData?.matchInfo?.fixtureId ?? '') === normalizedFixtureId) {
+        schedulePoll(_lastFixtureData);
+      }
       // silent(폴링) 에러는 배지 그대로 두고 콘솔에만 — 시청자 화면 그대로 유지
       if (!silent) {
         const msg = (e && e.code) ? `${e.code}: ${e.message}` : (e?.message || '데이터 가져오기 실패');

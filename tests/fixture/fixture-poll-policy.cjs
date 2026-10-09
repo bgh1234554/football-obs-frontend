@@ -1,0 +1,36 @@
+// 실행: node tests/fixture/fixture-poll-policy.cjs
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const plan = vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../js/core/fixture-poll-policy.js'), 'utf8') + '\ngetFixturePollingPlan');
+const now = Date.parse('2026-10-10T12:00:00Z');
+const fixture = (status, kickoffAt) => ({ matchInfo: { status, kickoffAt } });
+for (const status of ['1H', 'HT', '2H', 'ET1', 'ET2', 'PSO', 'NS']) assert.equal(plan(fixture(status), {}, now).delay, 15000);
+for (const status of ['PST', 'CANC', 'SUSP', 'AWD', 'WO', 'UNKNOWN']) assert.equal(plan(fixture(status), {}, now).delay, null);
+assert.equal(plan(fixture('NS', new Date(now + 60000).toISOString()), {}, now).delay, 15000);
+// 경기 전 조회 시작과 주기 전환 경계를 확인한다.
+const beforeKickoff = remaining => plan(fixture('NS', new Date(now + remaining).toISOString()), {}, now).delay;
+assert.equal(beforeKickoff(2 * 3600000), 3600000);
+assert.equal(beforeKickoff(3600001), 1);
+assert.equal(beforeKickoff(3600000), 600000);
+assert.equal(beforeKickoff(1800000), 600000);
+assert.equal(beforeKickoff(660000), 600000);
+assert.equal(beforeKickoff(300000), 240000);
+assert.equal(beforeKickoff(60001), 1);
+assert.equal(beforeKickoff(60000), 15000);
+assert.equal(beforeKickoff(30000), 15000);
+assert.equal(beforeKickoff(0), 15000);
+assert.equal(beforeKickoff(-60000), 15000);
+assert.equal(plan(fixture('FT', new Date(now - 4 * 3600000).toISOString()), {}, now).delay, null);
+const finished = {};
+assert.equal(plan(fixture('FT'), finished, now).delay, 60000);
+assert.equal(plan(fixture('FT'), finished, now + 180000).delay, null);
+const interrupted = {};
+assert.equal(plan(fixture('INT'), interrupted, now).delay, 300000);
+assert.equal(plan(fixture('INT'), interrupted, now + 1800000).reason, 'INT');
+plan(fixture('1H'), interrupted, now + 1800001);
+assert.equal(interrupted.intFirstDetectedAt, null);
+assert.equal(plan(fixture('INT'), interrupted, now + 1800002).delay, 300000);
+assert.equal(plan(fixture('ABD'), {}, now).reason, 'ABD');
+console.log('PASS shared polling policy: live, kickoff, terminal, FT grace, interruption and resume');

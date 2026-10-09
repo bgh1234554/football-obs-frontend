@@ -458,8 +458,9 @@ function buildInjuryListHtml(injuries, provided, options = {}) {
   return sortedInjuries.map(injury => {
     const reasonKo = getInjuryReasonDisplayText(injury.reason, injury.type);
     const tooltip = reasonKo ? ` title="${dpEscape(reasonKo)}"` : '';
+    const visibleReason = getInjuryCategoryRank(injury) === 1 ? '출전 여부 미정' : (reasonKo || '정보 없음');
     const inlineReason = options.inlineReason
-      ? ` <span class="ic-reason${isQuestionableInjuryReason(injury.reason, injury.type) ? ' is-questionable' : ''}">${dpEscape(reasonKo || '정보 없음')}</span>` : '';
+      ? ` <span class="ic-reason${isQuestionableInjuryReason(injury.reason, injury.type) ? ' is-questionable' : ''}">${dpEscape(visibleReason)}</span>` : '';
 
     let iconHtml = '<span class="dp-icon dp-icon-injury" aria-label="부상"></span>';
     if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) {
@@ -1126,16 +1127,16 @@ const injuryReasonFitObserved = new WeakSet();
 const injuryReasonFitQueued = new WeakSet();
 let injuryReasonFitObserver = null;
 
-/** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 넘치면 줄바꿈한다. */
+/** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
 function fitInjuryReasons(panel) {
   panel?.querySelectorAll('.has-inline-reason .dp-item-name').forEach(label => {
     const reason = label.querySelector('.ic-reason');
     if (!reason || !label.clientWidth) return;
-    label.classList.remove('ic-reason-wrap');
+    label.classList.remove('ic-reason-wrap', 'ic-reason-newline');
     reason.style.removeProperty('font-size');
     const base = parseFloat(getComputedStyle(reason).fontSize);
     const minimum = Math.min(8, base);
-    // Preserve the height already required by the player name.
+    // 선수 이름 때문에 이미 필요한 줄 수는 그대로 유지한다.
     label.classList.add('ic-reason-wrap');
     const previousDisplay = reason.style.display;
     reason.style.display = 'none';
@@ -1149,7 +1150,9 @@ function fitInjuryReasons(panel) {
     if (fits()) return;
     reason.style.fontSize = `${minimum}px`;
     if (!fits()) {
-      label.classList.add('ic-reason-wrap');
+      label.classList.add('ic-reason-wrap', 'ic-reason-newline');
+      // 축소해도 줄 수가 늘어난다면 작은 글씨를 유지할 이유가 없다.
+      reason.style.removeProperty('font-size');
       return;
     }
     let low = minimum, high = base;
