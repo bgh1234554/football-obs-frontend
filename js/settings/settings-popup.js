@@ -894,6 +894,23 @@ function applyLayoutSettings() {
   }
 }
 
+/** 사용자가 초록색 단색 배경을 확정했을 때만 그린스크린 모드 사용을 권장한다. */
+function commitBackgroundColor(value, recommendGreenscreen = true) {
+  if (!setSetting('bgColor', value)) return false;
+  if (!recommendGreenscreen || getSetting('greenscreen') === 'on'
+    || String(getSetting('bgImageUrl') || '').trim()
+    || String(getSetting('bgImageData') || '').trim()
+    || Number(getSetting('bgAlpha')) >= 100) return true;
+  const [r, g, b] = [1, 3, 5].map(start => parseInt(value.slice(start, start + 2), 16));
+  // #00ff00 근처의 밝고 선명한 초록색만 감지하며, 어두운 초록색과 다른 색상은 제외한다.
+  if (r > 64 || g < 200 || b > 64) return true;
+  if (confirm('단색 초록색 배경에 크로마키를 사용할 때는 그린스크린 모드 ON을 권장합니다.\n\n'
+    + '그린스크린 모드를 켜면 초록 계열의 팀컬러·평점·교체 표시·이벤트·전술판 색상을 크로마키 제거에 적합한 색상으로 치환합니다.\n'
+    + '패널·피치·전술판 투명도는 0%로 고정되며, 직접 선택한 배경색은 유지됩니다.\n\n'
+    + '그린스크린 모드를 켤까요?')) setSetting('greenscreen', 'on');
+  return true;
+}
+
 /**
  * 배경 색 + 배경 이미지를 :root에 CSS 변수로 반영.
  * - bgColor: greenscreen ON이어도 그대로 유지 (크로마키용 단색 배경 보호)
@@ -1670,7 +1687,10 @@ function initSettingsPopup() {
     // input 이벤트는 무시 — 드래그마다 commit하면 patch 재계산 + render 트리거로 lag 발생.
     input.addEventListener('change', () => {
       const v = String(input.value || '').toLowerCase();
-      if (HEX_COLOR_RE.test(v)) setSetting(category, v);
+      if (HEX_COLOR_RE.test(v)) {
+        if (category === 'bgColor') commitBackgroundColor(v);
+        else setSetting(category, v);
+      }
     });
   });
 
@@ -1681,7 +1701,7 @@ function initSettingsPopup() {
     input.addEventListener('change', () => {
       const rawValue = String(input.value || '').trim();
       if (category === 'bgColor') {
-        if (HEX_COLOR_RE.test(rawValue)) setSetting(category, rawValue.toLowerCase());
+        if (HEX_COLOR_RE.test(rawValue)) commitBackgroundColor(rawValue.toLowerCase());
         syncTextUi(category);
         return;
       }
@@ -1714,14 +1734,14 @@ function initSettingsPopup() {
   });
 
   document.querySelectorAll('input[data-bg-rgb]').forEach(input => {
-    const commit = () => {
+    const commit = (recommendGreenscreen = false) => {
       const inputs = [...document.querySelectorAll('input[data-bg-rgb]')];
       if (inputs.some(channel => channel.value === '' || !channel.validity.valid)) return false;
       const channels = inputs.map(channel => Number(channel.value));
-      return setSetting('bgColor', '#' + channels.map(channel => channel.toString(16).padStart(2, '0')).join(''));
+      return commitBackgroundColor('#' + channels.map(channel => channel.toString(16).padStart(2, '0')).join(''), recommendGreenscreen);
     };
-    input.addEventListener('input', commit);
-    input.addEventListener('change', () => { if (!commit()) syncTextUi('bgColor'); });
+    input.addEventListener('input', () => commit(false));
+    input.addEventListener('change', () => { if (!commit(true)) syncTextUi('bgColor'); });
   });
 
   // select 드롭다운 (greenscreenIntensity 등). change에 즉시 commit.

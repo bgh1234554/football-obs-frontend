@@ -1,4 +1,10 @@
-overlay_dashboard_five_cols.v2.html
 .github
 docs
 tests
+
+# Repository configuration
+.gitignore
+
+# Repository documentation (about.md is loaded by the app)
+README.md
+CHANGELOG.md

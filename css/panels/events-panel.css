@@ -719,41 +719,6 @@
       gap: 2px;
       line-height: 1;
     }
-    .ev-icon-glyph {
-      font-size: 13px;
-      line-height: 1;
-    }
-    .ev-icon-own { filter: hue-rotate(180deg) saturate(1.2); }
-    .ev-icon-sub {
-      font-size: 9px;
-      font-weight: 800;
-      color: rgba(255,255,255,.7);
-    }
-    .ev-icon-sub.ev-icon-x { color: #ef4444; }
-    .ev-icon-var {
-      font-size: 9px;
-      font-weight: 900;
-      color: rgba(255,255,255,.85);
-      padding: 1px 3px;
-      border: 1px solid rgba(255,255,255,.55);
-      border-radius: 2px;
-      letter-spacing: .04em;
-    }
-    .ev-icon-card {
-      display: inline-block;
-      width: 8px;
-      height: 11px;
-      border-radius: 1px;
-    }
-    .ev-icon-card-yellow { background: #f5c518; }
-    .ev-icon-card-red    { background: #ef4444; }
-    /* 경고누적 — 노랑 아래 빨강 살짝 겹쳐서 표시 */
-    .ev-icon-card-stack {
-      margin-right: -3px;
-    }
-    .ev-icon-card-stack:last-child { margin-right: 0; }
-
-    /* 텍스트 — 기본은 한 줄 시도, 잘리면 2줄 wrap (line-clamp). evFitText에서 fontSize/lineClamp 동적 조정. */
     .ev-text {
       flex: 1 1 auto;
       min-width: 0;

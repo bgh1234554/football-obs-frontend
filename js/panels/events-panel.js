@@ -886,20 +886,7 @@ function evAnimateListInsertion(list, previousRects) {
 }
 
 function evIconHtml(iconKey) {
-  // 기본 placeholder — 단순한 도형/유니코드. 추후 .ev-icon-{key} 클래스에 background-image로 커스텀 가능.
-  switch (iconKey) {
-    case 'goal':           return '<span class="ev-icon-glyph">⚽</span>';
-    case 'pk-goal':        return '<span class="ev-icon-glyph">⚽</span><span class="ev-icon-sub">PK</span>';
-    case 'own-goal':       return '<span class="ev-icon-glyph ev-icon-own">⚽</span>';
-    case 'pk-miss':        return '<span class="ev-icon-glyph">⚽</span><span class="ev-icon-sub ev-icon-x">✕</span>';
-    case 'yellow-card':    return '<span class="ev-icon-card ev-icon-card-yellow"></span>';
-    case 'red-card':       return '<span class="ev-icon-card ev-icon-card-red"></span>';
-    case 'cumulative-red': return '<span class="ev-icon-card ev-icon-card-yellow ev-icon-card-stack"></span><span class="ev-icon-card ev-icon-card-red ev-icon-card-stack"></span>';
-    case 'subst':          return '<span class="ev-icon-glyph">⇅</span>';
-    case 'var-cancel':     return '<span class="ev-icon-var">VAR</span><span class="ev-icon-sub ev-icon-x">✕</span>';
-    case 'var-confirm':    return '<span class="ev-icon-var">VAR</span><span class="ev-icon-sub">✓</span>';
-    default:               return '<span class="ev-icon-glyph">•</span>';
-  }
+  return footballIconHtml(iconKey);
 }
 
 /**

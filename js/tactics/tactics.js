@@ -766,7 +766,7 @@
     return wrap;
   }
 
-  /** 공 토큰 div를 생성하여 반환 (⚽ 이모지, 드래그 가능) */
+  /** 공 토큰 div를 생성하여 반환 (shared goal image, draggable) */
   function tacticsCreateBallToken(x, y) {
     const wrap = document.createElement('div');
     wrap.className = 'tactics-ball-token';
@@ -781,7 +781,7 @@
       filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
       transition:left .15s ease, top .15s ease;
     `;
-    wrap.textContent = '⚽';
+    wrap.innerHTML = footballIconHtml('goal');
     wrap.title = '드래그해서 공 위치 이동';
     return wrap;
   }

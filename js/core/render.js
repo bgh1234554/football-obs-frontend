@@ -14,7 +14,7 @@
 
   /** 레드카드 수만큼 .rc-card div를 생성해 홈/어웨이 컨테이너에 삽입 */
   function renderRedCards(){
-    const make = n => { const nodes=[]; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='rc-card'; nodes.push(d);} return nodes; };
+    const make = n => { const nodes=[]; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='rc-card has-event-icon'; d.innerHTML=footballIconHtml('red-card'); nodes.push(d);} return nodes; };
     if(el.rcHome){ el.rcHome.replaceChildren(...make(state.redHome)); el.rcHome.classList.toggle('hidden', state.redHome===0); }
     if(el.rcAway){ el.rcAway.replaceChildren(...make(state.redAway)); el.rcAway.classList.toggle('hidden', state.redAway===0); }
   }
@@ -349,14 +349,17 @@
     el.extra.textContent = `+${state.extra}`;
     el.extra.classList.toggle('hidden', !state.extraShown||state.extra<=0);
     const manualPsoMode = document.getElementById('manualPsoMode');
+    const psoControls = document.getElementById('psoControls');
+    const psoHost = document.querySelector(state.manualMode ? '#manual-section .manual-controls-row' : '.theme-timer-card');
+    if (psoControls && psoHost && psoControls.parentElement !== psoHost) psoHost.appendChild(psoControls);
     if (manualPsoMode) {
       manualPsoMode.checked = state.half === 'PK';
-      manualPsoMode.disabled = !state.manualMode;
+      manualPsoMode.disabled = false;
     }
     if (typeof window.updateScoreShortcutHint === 'function') window.updateScoreShortcutHint();
     ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss','pkUndo','pkReset'].forEach(id => {
       const button = document.getElementById(id);
-      if (button) button.disabled = !state.manualMode || state.half !== 'PK';
+      if (button) button.disabled = state.half !== 'PK';
     });
     el.extraInput.value = state.extra;
     el.secPerTick.value = state.secPerTick;
@@ -730,7 +733,8 @@
 
   // [이벤트 등록] 전/후반 선택, 타이머 시작/정지/리셋 및 시작 시각 설정
   document.getElementById('manualPsoMode')?.addEventListener('change', e => {
-    if (!state.manualMode) { e.target.checked = state.half === 'PK'; return; }
+    state.psoModeForced = e.target.checked;
+    state.psoModeFixtureId = e.target.checked ? String(_lastFixtureData?.matchInfo?.fixtureId ?? '') : null;
     if (e.target.checked) state.manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
     setMatchHalf(e.target.checked ? 'PK' : (state.manualPsoPreviousHalf || '2'));
     render();
@@ -828,11 +832,30 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /** 해당 팀(home/away)의 PK 결과 배열에 'G'(골) 또는 'M'(실패)을 추가 */
-  function pkPush(team,res){ if(team==='home') state.pk.home.push(res); else state.pk.away.push(res); render(); persist(); }
+  function pkPush(team,res){
+    const score = getPkDisplayScore(team);
+    state.pk[team].push(res);
+    if (!state.manualMode) {
+      state.pkScore ??= {};
+      state.pkScore[team] = score + (res === 'G' ? 1 : 0);
+    }
+    render(); persist();
+  }
   /** 마지막으로 추가된 PK 결과를 제거 (홈/어웨이 중 더 많은 쪽에서 pop) */
-  function pkUndo(){ const h=state.pk.home.length,a=state.pk.away.length; if(h===0&&a===0) return; if(h>=a) state.pk.home.pop(); else state.pk.away.pop(); render(); persist(); }
+  function pkUndo(){
+    const h=state.pk.home.length,a=state.pk.away.length;
+    if(h===0&&a===0) return;
+    const team = h >= a ? 'home' : 'away';
+    const score = getPkDisplayScore(team);
+    const result = state.pk[team].pop();
+    if (!state.manualMode) {
+      state.pkScore ??= {};
+      state.pkScore[team] = Math.max(0, score - (result === 'G' ? 1 : 0));
+    }
+    render(); persist();
+  }
   /** PK 결과 전체 초기화 */
-  function pkReset(){ clearPkState(); render(); persist(); }
+  function pkReset(){ clearPkState(); if (!state.manualMode) state.pkScore = { home: 0, away: 0 }; render(); persist(); }
   // [이벤트 등록] PK 버튼 (홈/어웨이 골/미스, 되돌리기, 초기화)
   el.pkHomeGoal?.addEventListener('click', ()=>pkPush('home','G'));
   el.pkHomeMiss?.addEventListener('click', ()=>pkPush('home','M'));

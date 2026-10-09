@@ -152,14 +152,30 @@ body.sidebar-open .sidebar-nav {
 }
 .sidebar-action-btn:hover { background: rgba(255,255,255,.07); }
 
+/* 날짜·시각·결과를 분리해 좁은 메뉴에서도 줄이 어색하게 끊기지 않게 한다. */
+.fixture-poll-card { align-self: stretch; margin-top: 7px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); text-align: left; }
+.fixture-last-polled { display: block; margin-top: 6px; color: #e2e8f0; font-variant-numeric: tabular-nums; }
+.fixture-poll-date { display: block; color: #94a3b8; font-size: 10px; line-height: 1.5; }
+.fixture-poll-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.fixture-poll-clock { font-size: 20px; font-weight: 700; line-height: 1.4; letter-spacing: .02em; white-space: nowrap; }
+.fixture-poll-status { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 6px; background: rgba(148,163,184,.1); color: #94a3b8; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.fixture-poll-status::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.fixture-poll-status[data-status="ok"] { color: #86efac; background: rgba(34,197,94,.1); }
+.fixture-poll-status[data-status="loading"] { color: #93c5fd; background: rgba(59,130,246,.12); }
+.fixture-poll-status[data-status="error"] { color: #fca5a5; background: rgba(239,68,68,.12); }
+.fixture-poll-match { display: block; margin-top: 5px; color: #94a3b8; font-size: 10px; }
+.fixture-poll-match[hidden] { display: none; }
+
 /* 사이드바 내 fixture-inline 래퍼 */
 .sidebar-body .fixture-inline {
-  padding: 7px 12px;
+  padding: 12px;
   background: rgba(255,255,255,.05);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 9px;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  text-align: left;
   gap: 3px;
 }
 .sidebar-body .fixture-inline-label {
@@ -170,11 +186,20 @@ body.sidebar-open .sidebar-nav {
   letter-spacing: .04em;
 }
 .sidebar-body .fixture-inline-id {
-  font-size: 14px;
-  font-weight: 900;
-  color: rgba(255,255,255,.9);
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+  color: #e2e8f0;
   cursor: pointer;
 }
+.sidebar-body .fixture-inline-id:hover { background: transparent; color: #93c5fd; }
 .sidebar-body .fixture-inline-status {
   font-size: 10px;
   color: rgba(255,255,255,.45);

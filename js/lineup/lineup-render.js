@@ -56,10 +56,8 @@ function lpIsCaptain(playerId, player) {
 /** 카드 마커 HTML — yellow / red / 누적(yellow+red) / null */
 function lpBuildCardMarkersHtml(events) {
   const kind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
-  if (kind === 'yellow') return '<span class="dp-card is-yellow"></span>';
-  if (kind === 'red') return '<span class="dp-card is-red"></span>';
-  if (kind === 'cumulative') return '<span class="dp-card is-yellow"></span><span class="dp-card is-red"></span>';
-  return '';
+  const icon = { yellow: 'yellow-card', red: 'red-card', cumulative: 'cumulative-red' }[kind];
+  return icon ? `<span class="dp-card is-${kind}">${footballIconHtml(icon)}</span>` : '';
 }
 
 /** subOut/subIn 마커 HTML — kind('bench'|'starter') 기반으로 화살표 색상/방향 결정.
@@ -92,7 +90,7 @@ function lpBuildSubMarkerHtml(events, kind) {
   return '';
 }
 
-/** 골/어시 이모티콘 — 정규 득점·도움은 반복, 자책골은 피치와 같은 빨간 횟수 배지. */
+/** 골/도움 이미지 — 정규 득점·도움은 반복, 자책골은 2회 이상만 횟수 배지. */
 function lpBuildGoalsAssistsHtml(events) {
   if (!events) return '';
   const goalCount = events.goals?.length || 0;
@@ -100,9 +98,9 @@ function lpBuildGoalsAssistsHtml(events) {
   const assistCount = events.assists?.length || 0;
   if (!goalCount && !ownGoalCount && !assistCount) return '';
   let html = '';
-  for (let i = 0; i < goalCount; i++) html += '<span class="dp-event-icon dp-event-goal" title="득점">⚽</span>';
-  if (ownGoalCount) html += `<span class="dp-event-icon dp-event-goal dp-event-own-goal" title="자책골 ${ownGoalCount}회">⚽<span class="dp-event-own-goal-count">${ownGoalCount}</span></span>`;
-  for (let i = 0; i < assistCount; i++) html += '<span class="dp-event-icon dp-event-assist" title="도움">👟</span>';
+  for (let i = 0; i < goalCount; i++) html += `<span class="dp-event-icon dp-event-goal" title="득점">${footballIconHtml('goal')}</span>`;
+  if (ownGoalCount) html += `<span class="dp-event-icon dp-event-goal dp-event-own-goal${ownGoalCount > 1 ? ' has-count' : ''}" title="자책골 ${ownGoalCount}회">${footballIconHtml('own-goal')}${ownGoalCount > 1 ? `<span class="dp-event-own-goal-count">${ownGoalCount}</span>` : ''}</span>`;
+  for (let i = 0; i < assistCount; i++) html += `<span class="dp-event-icon dp-event-assist" title="도움">${footballIconHtml('assist')}</span>`;
   return html;
 }
 
@@ -174,32 +172,21 @@ function lpBuildNodeBadgesHtml(events) {
   // top-right: 어시스트
   if (events.assists?.length) {
     const n = events.assists.length;
-    html += `<span class="dp-node-badge dp-node-assist" title="도움 ${n}회">👟${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
+    html += `<span class="dp-node-badge dp-node-assist" title="도움 ${n}회">${footballIconHtml('assist')}${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
   }
-  // bottom-right: 골(자책골 포함). 공 이모티콘 자체는 색을 바꿀 수 없으므로, 자책골은 카운트
-  // 배지(원형 숫자)만 빨간 배경으로 구분한다. 자책골이 같이 있으면 정규 골이 1개뿐이어도
-  // "1 1"처럼 나란히 보이도록 정규 골 카운트도 함께 표시한다(기존엔 2개 이상일 때만 숫자 표시).
+  // bottom-right: 정규 골과 자책골은 별도 공으로 구분하고 2회 이상만 숫자 표시.
   {
     const goalCount = events.goals?.length || 0;
     const ownGoalCount = events.ownGoals?.length || 0;
     if (goalCount || ownGoalCount) {
       const paired = goalCount > 0 && ownGoalCount > 0;
-      const titleParts = [];
-      if (goalCount) titleParts.push(`득점 ${goalCount}회`);
-      if (ownGoalCount) titleParts.push(`자책골 ${ownGoalCount}회`);
-      const goalCountHtml = goalCount && (goalCount > 1 || paired)
-        ? `<span class="dp-node-count">${goalCount}</span>` : '';
-      const ownGoalCountHtml = ownGoalCount
-        ? `<span class="dp-node-count dp-node-count-og${paired ? ' dp-node-count-paired' : ''}">${ownGoalCount}</span>`
-        : '';
-      html += `<span class="dp-node-badge dp-node-goal" title="${titleParts.join(', ')}">⚽${goalCountHtml}${ownGoalCountHtml}</span>`;
+      const entry = (key, n, label) => `<span class="dp-node-goal-entry" title="${label} ${n}회">${footballIconHtml(key)}${n > 1 ? `<span class="dp-node-count${key === 'own-goal' ? ' dp-node-count-og' : ''}">${n}</span>` : ''}</span>`;
+      html += `<span class="dp-node-badge dp-node-goal${paired ? ' has-both' : ''}">${goalCount ? entry('goal', goalCount, '득점') : ''}${ownGoalCount ? entry('own-goal', ownGoalCount, '자책골') : ''}</span>`;
     }
   }
   // left side: 카드
-  const cardKind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
-  if (cardKind === 'yellow') html += '<span class="dp-node-badge dp-node-card"><span class="dp-card is-yellow"></span></span>';
-  else if (cardKind === 'red') html += '<span class="dp-node-badge dp-node-card"><span class="dp-card is-red"></span></span>';
-  else if (cardKind === 'cumulative') html += '<span class="dp-node-badge dp-node-card"><span class="dp-card is-yellow"></span><span class="dp-card is-red"></span></span>';
+  const cards = lpBuildCardMarkersHtml(events);
+  if (cards) html += `<span class="dp-node-badge dp-node-card">${cards}</span>`;
   return html;
 }
 
@@ -471,8 +458,10 @@ function buildInjuryListHtml(injuries, provided, options = {}) {
   return sortedInjuries.map(injury => {
     const reasonKo = getInjuryReasonDisplayText(injury.reason, injury.type);
     const tooltip = reasonKo ? ` title="${dpEscape(reasonKo)}"` : '';
+    // 의심 여부는 ? 아이콘으로 나타내고, 본문에는 접두어 뒤의 실제 사유를 표시한다.
+    const visibleReason = (reasonKo || '정보 없음').replace(/^출전 여부 미정\s*-\s*/, '').trim() || '출전 여부 미정';
     const inlineReason = options.inlineReason
-      ? ` <span class="ic-reason${isQuestionableInjuryReason(injury.reason, injury.type) ? ' is-questionable' : ''}">${dpEscape(reasonKo || '정보 없음')}</span>` : '';
+      ? ` <span class="ic-reason${isQuestionableInjuryReason(injury.reason, injury.type) ? ' is-questionable' : ''}">${dpEscape(visibleReason)}</span>` : '';
 
     let iconHtml = '<span class="dp-icon dp-icon-injury" aria-label="부상"></span>';
     if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) {
@@ -482,7 +471,7 @@ function buildInjuryListHtml(injuries, provided, options = {}) {
     } else if (isQuestionableInjuryReason(injury.reason, injury.type)) {
       iconHtml = '<span class="dp-icon dp-icon-questionable" aria-label="의심"></span>';
     } else if (typeof isSuspension === 'function' && isSuspension(injury.reason)) {
-      iconHtml = '<span class="dp-icon dp-icon-redcard" aria-label="출장 정지"></span>';
+      iconHtml = `<span class="dp-icon dp-icon-redcard" aria-label="출장 정지">${footballIconHtml('red-card')}</span>`;
     }
 
     return `<div class="dp-item${options.inlineReason ? ' has-inline-reason' : ''}" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || injury.playerName || '')}"` : ''}>
@@ -1139,20 +1128,32 @@ const injuryReasonFitObserved = new WeakSet();
 const injuryReasonFitQueued = new WeakSet();
 let injuryReasonFitObserver = null;
 
-/** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 넘치면 줄바꿈한다. */
+/** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
 function fitInjuryReasons(panel) {
   panel?.querySelectorAll('.has-inline-reason .dp-item-name').forEach(label => {
     const reason = label.querySelector('.ic-reason');
     if (!reason || !label.clientWidth) return;
-    label.classList.remove('ic-reason-wrap');
+    label.classList.remove('ic-reason-wrap', 'ic-reason-newline');
     reason.style.removeProperty('font-size');
     const base = parseFloat(getComputedStyle(reason).fontSize);
     const minimum = Math.min(8, base);
-    const fits = () => label.scrollWidth <= label.clientWidth;
+    // 선수 이름 때문에 이미 필요한 줄 수는 그대로 유지한다.
+    label.classList.add('ic-reason-wrap');
+    const previousDisplay = reason.style.display;
+    reason.style.display = 'none';
+    const nameHeight = label.clientHeight;
+    const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
+    reason.style.display = previousDisplay;
+    const nameWraps = nameHeight > lineHeight + 1;
+    if (!nameWraps) label.classList.remove('ic-reason-wrap');
+    const fits = () => label.scrollWidth <= label.clientWidth &&
+      (!nameWraps || label.clientHeight <= nameHeight + 1);
     if (fits()) return;
     reason.style.fontSize = `${minimum}px`;
     if (!fits()) {
-      label.classList.add('ic-reason-wrap');
+      label.classList.add('ic-reason-wrap', 'ic-reason-newline');
+      // 축소해도 줄 수가 늘어난다면 작은 글씨를 유지할 이유가 없다.
+      reason.style.removeProperty('font-size');
       return;
     }
     let low = minimum, high = base;

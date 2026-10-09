@@ -35,5 +35,14 @@ window.updateScoreShortcutHint = function() {
   const keys = ['homePlus','homeMinus','awayPlus','awayMinus'].map(id => shortcutLabel(shortcutBinding(shortcutActions.find(a => a[0] === id))));
   hint.textContent = state.half === 'PK'
     ? `승부차기 입력 중 · 홈 성공 / 실패: ${keys[0]} / ${keys[1]} · 원정 성공 / 실패: ${keys[2]} / ${keys[3]} · 일반 점수는 변경되지 않습니다.`
-    : `일반 점수 입력 중 · 홈 + / −: ${keys[0]} / ${keys[1]} · 원정 + / −: ${keys[2]} / ${keys[3]} · 승부차기 입력은 위 체크박스를 켜세요.`;
+    : `일반 점수 입력 중 · 홈 + / −: ${keys[0]} / ${keys[1]} · 원정 + / −: ${keys[2]} / ${keys[3]} · 승부차기 입력은 ‘승부차기 (PSO)’에서 전환하세요.`;
+  const psoHint = document.getElementById('psoControlHint');
+  if (psoHint) {
+    const pkKeys = ['pkUndo','pkReset'].map(id => shortcutLabel(shortcutBinding(shortcutActions.find(a => a[0] === id))));
+    const keycap = value => { const span = document.createElement('span'); span.className = 'kbd'; span.textContent = value; return span; };
+    psoHint.replaceChildren(state.half === 'PK' ? '' : 'PSO 입력: ',
+      '홈 성공/실패 ', keycap(keys[0]), '/', keycap(keys[1]),
+      ' · 원정 성공/실패 ', keycap(keys[2]), '/', keycap(keys[3]),
+      ' · 되돌리기 ', keycap(pkKeys[0]), ' · 초기화 ', keycap(pkKeys[1]));
+  }
 };

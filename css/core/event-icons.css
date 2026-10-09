@@ -1,0 +1,67 @@
+/* Shared artwork sizing; each host retains its existing layout and interaction. */
+.football-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+.football-icon-subst, .football-icon-check {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.football-icon-subst { stroke-width: 3; }
+.football-icon-in, .football-icon-check { stroke: var(--overlay-in-text, #22c55e); }
+.football-icon-out { stroke: #ef4444; }
+.football-icon-check { stroke-width: 100; }
+.football-icon-confirm-chroma { display: none; }
+.greenscreen-mode .football-icon-confirm-original { display: none; }
+.greenscreen-mode .football-icon-confirm-chroma { display: inline; }
+.football-icon-unknown { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+
+.ev-icon > .football-icon { width: 14px; height: 14px; }
+.ev-icon > .football-icon-subst { width: 16px; height: 16px; }
+.ev-icon > .football-icon-pk-goal, .ev-icon > .football-icon-pk-miss { width: 21px; }
+.ev-icon > .football-icon-var, .ev-icon > .football-icon-var-confirm,
+.ev-icon > .football-icon-var-cancel { width: 21px; }
+.ev-icon > .football-icon-yellow-card, .ev-icon > .football-icon-red-card { width: 8px; height: 11px; }
+.ev-icon > .football-icon-cumulative-red { width: 9px; height: 12px; }
+
+.dp-card > .football-icon, .dp-node-assist > .football-icon,
+.dp-node-goal > .football-icon, .dp-node-goal-entry > .football-icon { display: block; width: 100%; height: 100%; }
+.dp-event-icon { display: inline-flex; align-items: center; }
+.dp-card.is-yellow, .dp-card.is-red, .dp-card.is-cumulative { background: transparent; }
+.dp-card.is-cumulative { width: 9px; height: 12px; }
+.dp-node-goal { right: -3px; justify-content: flex-start; }
+.dp-node-assist { right: -2px; }
+.dp-node-goal, .dp-node-assist { width: 14px; height: 14px; }
+.dp-node-goal.has-both { justify-content: flex-start; gap: 6px; }
+.dp-node-goal-entry { position: relative; width: 100%; height: 100%; flex: 0 0 auto; }
+.dp-node-goal.has-both .dp-node-goal-entry:has(.dp-node-count) { margin-right: 4px; }
+.layout-big .lp-lineup .dp-node-goal,
+.layout-big .lp-lineup .dp-node-assist { width: calc(14px * var(--lp-node-scale, 1)); height: calc(14px * var(--lp-node-scale, 1)); }
+.dp-node-goal .dp-node-count, .dp-node-assist .dp-node-count { right: -6px; bottom: -4px; min-width: 12px; height: 12px; font-size: 9px; padding: 0 2px; }
+.dp-node-count, .dp-event-own-goal-count {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  line-height: 1;
+}
+.layout-big .lp-lineup .dp-node-goal .dp-node-count,
+.layout-big .lp-lineup .dp-node-assist .dp-node-count { min-width: calc(12px * var(--lp-node-scale, 1)); height: calc(12px * var(--lp-node-scale, 1)); font-size: calc(9px * var(--lp-node-scale, 1)); }
+.layout-big .lp-lineup .dp-node-card .dp-card.is-cumulative { width: calc(9px * var(--lp-node-scale, 1)); height: calc(12px * var(--lp-node-scale, 1)); }
+.dp-icon-redcard::before { display: none; }
+.dp-icon-redcard > .football-icon { width: 9px; height: 12px; }
+.dp-event-own-goal:not(.has-count) { margin-right: 0; }
+.dp-manual-stat-header > .football-icon { width: 16px; height: 16px; }
+.dp-manual-card-swatch:not(.is-captain) { background: transparent; border-color: transparent; }
+.dp-manual-card-swatch > .football-icon { display: block; width: 100%; height: 100%; opacity: .25; }
+.dp-manual-stat-check input:checked + .dp-manual-card-swatch:not(.is-captain) { background: transparent; border-color: transparent; }
+.dp-manual-stat-check input:checked + .dp-manual-card-swatch > .football-icon { opacity: 1; }
+.dp-manual-stat-check input:focus-visible + .dp-manual-card-swatch { outline: 2px solid #fff; outline-offset: 2px; }
+.td-tl-glyph { display: inline-flex; align-items: center; }
+.td-tl-glyph > .football-icon-red-card,
+.td-tl-glyph > .football-icon-cumulative-red { width: 9px; height: 13px; }
+#board .rc-card.has-event-icon { background: transparent; box-shadow: none; border: 0; border-radius: 0; }
+.rc-card.has-event-icon > .football-icon { display: block; width: 100%; height: 100%; }
