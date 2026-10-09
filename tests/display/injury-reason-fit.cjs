@@ -15,7 +15,7 @@ const visibleReasons = await page.evaluate(() => ['[data-injury-cycle-panel]', '
   const label = document.querySelector(selector).querySelector('.dp-item-name');
   return { text: label.querySelector('.ic-reason').textContent, tooltip: label.title, detailed: getInjuryReasonDisplayText('Knee Injury', 'Questionable') };
 }));
-for (const reason of visibleReasons) { assert.equal(reason.text, '출전 여부 미정'); assert.equal(reason.tooltip, reason.detailed); assert.notEqual(reason.tooltip, reason.text); }
+for (const reason of visibleReasons) { assert.equal(reason.text, '무릎 부상'); assert.equal(reason.tooltip, reason.detailed); assert.notEqual(reason.tooltip, reason.text); }
     for (const [mode, selector] of [['main-big', '[data-injury-cycle-panel]'], ['main-small', '#injuryPanel']]) {
       const sizing = await page.evaluate(({ mode, selector }) => {
         activatePage(mode); _lpStatCycle.mode = 'injuries'; lpStatUpdateVisibility();

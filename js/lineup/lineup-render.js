@@ -458,7 +458,8 @@ function buildInjuryListHtml(injuries, provided, options = {}) {
   return sortedInjuries.map(injury => {
     const reasonKo = getInjuryReasonDisplayText(injury.reason, injury.type);
     const tooltip = reasonKo ? ` title="${dpEscape(reasonKo)}"` : '';
-    const visibleReason = getInjuryCategoryRank(injury) === 1 ? '출전 여부 미정' : (reasonKo || '정보 없음');
+    // 의심 여부는 ? 아이콘으로 나타내고, 본문에는 접두어 뒤의 실제 사유를 표시한다.
+    const visibleReason = (reasonKo || '정보 없음').replace(/^출전 여부 미정\s*-\s*/, '').trim() || '출전 여부 미정';
     const inlineReason = options.inlineReason
       ? ` <span class="ic-reason${isQuestionableInjuryReason(injury.reason, injury.type) ? ' is-questionable' : ''}">${dpEscape(visibleReason)}</span>` : '';
 
