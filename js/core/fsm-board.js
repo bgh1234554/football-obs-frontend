@@ -23,6 +23,7 @@ const LEAGUE_THEME_MAP = {
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   94: { theme: 'ligaportugal', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/PrimeiraLiga.png', type: 'club' },
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
+  253: { theme: 'mls', logoUrl: null, type: 'club' },
   144: { theme: 'belgian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelgianProLeague.svg', type: 'club' },
   203: { theme: 'superlig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishSuperLig.svg', type: 'club' },
   235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
@@ -49,7 +50,7 @@ const FSM_THEMES = Object.freeze({
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', acle: 'AFC 챔피언스리그 엘리트',
   unl: '네이션스리그', er24: '유로',
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
-  kleague: 'K리그', wc26: '월드컵'
+  kleague: 'K리그', mls: 'MLS', wc26: '월드컵'
 });
 
 function initFsmThemeSelect() {
@@ -270,6 +271,9 @@ function applyTheme(theme, logoUrl) {
     case 'cl':
       changeCSS('css/theme/result_style_CL.css', theme);
       break;
+    case 'mls':
+      changeCSS('css/theme/result_style_MLS.css', theme);
+      break;
     case 'eredivisie':
       changeCSS('css/theme/result_style_EREDIVISIE.css', theme);
       break;
@@ -429,6 +433,7 @@ function adjustScoreboardWidth() {
   }, 0);
   board.style.removeProperty('--fsm-name-reserved-width');
   board.style.removeProperty('--fsm-score-overlap');
+  if (_currentTheme === 'mls') board.style.setProperty('--fsm-name-reserved-width', '28px');
   if (_currentTheme === 'eredivisie') board.style.setProperty('--fsm-name-reserved-width', '8px');
   if (_currentTheme === 'unl') {
     // 회전된 로고 박스의 안쪽 꼭짓점까지는 팀명 영역에서 제외합니다.
@@ -538,7 +543,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['pl', 'fnl', 'fnl2a', 'fnl2b', 'wc26', 'uel', 'uecl', 'eredivisie'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['pl', 'fnl', 'fnl2a', 'fnl2b', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
         ? 'none' : ['rpl', 'belgian', 'ligaportugal'].includes(theme) ? 'chip' : 'strip';
     }
     if(theme == 'pl') {
@@ -558,6 +563,10 @@ function adjustScoreboardWidth() {
     } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid ' + chromaSafe('#BDE74C'), borderTop: '3px solid #AD8BF7'});
+      setFsmStyle('.fsm-board #homeColor', {background: teamColors.homeBg});
+      setFsmStyle('.fsm-board #awayColor', {background: teamColors.awayBg});
+    } else if(theme == 'mls') {
+      setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board #homeColor', {background: teamColors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: teamColors.awayBg});
     } else if(theme == 'eredivisie') {
