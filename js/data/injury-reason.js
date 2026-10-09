@@ -64,6 +64,7 @@
     'Ligament Injury':   '인대 부상',
     'ACL Injury':        '전방십자인대 부상',
     'Meniscus Injury':   '반월판 부상',
+    'Heel Injury':       '발뒤꿈치 부상',
     'Jumpers Knee':      '슬개건염',
     'Surgery':           '수술',
     'Heart Problems':    '심장 문제',

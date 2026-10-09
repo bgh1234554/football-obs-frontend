@@ -911,3 +911,45 @@ html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-chi
   #themePanel .theme-font-advanced .pgroup { width: auto; flex: 1 1 0; }
   #themePanel .theme-font-advanced .theme-font-actions { flex: 0 0 auto; }
 }
+
+
+/* Keep select menus consistent with the panel scrollbars. Native select behavior
+   remains available in browsers that do not support customizable pickers. */
+@supports (appearance: base-select) {
+  :is(.pgroup select, .sp-select):not([multiple]):not([size]),
+  :is(.pgroup select, .sp-select):not([multiple]):not([size])::picker(select) {
+    appearance: base-select;
+  }
+  :is(.pgroup select, .sp-select):not([multiple]):not([size]) {
+    align-items: center;
+    background-image: none;
+    font-family: inherit;
+  }
+  :is(.pgroup select, .sp-select)::picker(select) {
+    max-height: min(360px, 60dvh);
+    overflow-y: auto;
+    background: #0b1220;
+    color: #e5e7eb;
+    border: 1px solid #ffffff20;
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 8px 24px #00000055;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.25) transparent;
+  }
+  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar { width: 6px; }
+  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-track { background: transparent; }
+  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+  :is(.pgroup select, .sp-select) option {
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #0b1220;
+    color: #e5e7eb;
+  }
+  :is(.pgroup select, .sp-select) option:is(:hover, :focus-visible, :checked) {
+    background: var(--control-accent);
+    color: var(--control-accent-on);
+  }
+}

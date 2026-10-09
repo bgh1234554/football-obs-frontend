@@ -1135,7 +1135,17 @@ function fitInjuryReasons(panel) {
     reason.style.removeProperty('font-size');
     const base = parseFloat(getComputedStyle(reason).fontSize);
     const minimum = Math.min(8, base);
-    const fits = () => label.scrollWidth <= label.clientWidth;
+    // Preserve the height already required by the player name.
+    label.classList.add('ic-reason-wrap');
+    const previousDisplay = reason.style.display;
+    reason.style.display = 'none';
+    const nameHeight = label.clientHeight;
+    const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
+    reason.style.display = previousDisplay;
+    const nameWraps = nameHeight > lineHeight + 1;
+    if (!nameWraps) label.classList.remove('ic-reason-wrap');
+    const fits = () => label.scrollWidth <= label.clientWidth &&
+      (!nameWraps || label.clientHeight <= nameHeight + 1);
     if (fits()) return;
     reason.style.fontSize = `${minimum}px`;
     if (!fits()) {
