@@ -15,6 +15,26 @@
   // 불러온 상태에서 일정 위젯으로 B 경기를 구경만 해도 "새로고침" 버튼이 B를 재조회해버리는
   // 버그가 있었다.
   let activeFixtureId = null;
+  // 조회를 시작한 시각과 결과를 함께 표시해 버튼 클릭 직후에도 요청 여부를 확인할 수 있게 한다.
+  let lastFixturePoll = null;
+  function renderLastFixturePoll() {
+    const el = $('fixture-last-polled');
+    if (!el) return;
+    // 일정 미리보기의 선택 ID와 실제 조회 경기 ID는 다를 수 있다. 선택이 바뀌어도 조회 기록은 숨기지 않는다.
+    const poll = lastFixturePoll;
+    const date = poll ? new Date(poll.at) : null;
+    $('fixture-poll-date').textContent = date ? date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '아직 조회하지 않음';
+    $('fixture-poll-clock').textContent = date ? date.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--';
+    const status = $('fixture-poll-status');
+    status.textContent = poll?.status || '대기';
+    status.dataset.status = poll ? ({ '조회 중': 'loading', '성공': 'ok', '실패': 'error' }[poll.status] || 'idle') : 'idle';
+    const match = $('fixture-poll-match');
+    match.hidden = !poll || poll.fixtureId === String(currentFixtureId);
+    match.textContent = poll ? `조회 경기 ID ${poll.fixtureId}` : '';
+    el.title = poll ? `경기 ${poll.fixtureId} · 마지막 조회 시작 시각과 결과` : '현재 경기의 마지막 조회 시작 시각과 결과';
+    if (poll) el.setAttribute('datetime', new Date(poll.at).toISOString());
+    else el.removeAttribute('datetime');
+  }
   // "최근 선택값" 버튼 전용 — 위젯 클릭(persist:false)이든 실제 로딩(persist:true)이든 가장
   // 최근에 "선택"된 경기 ID를 그대로 기억한다. last_fixture_id(localStorage)는 새로고침 복원용이라
   // 위젯 클릭으로는 갱신되지 않는데, 그걸 "최근 선택값" 버튼에 그대로 쓰면 위젯에서 경기를
@@ -82,6 +102,7 @@
   function setFixtureId(id, { persist = true } = {}) {
     fixtureSelectionVersion += 1;
     currentFixtureId = id || null;
+    renderLastFixturePoll();
     if (currentFixtureId) lastSeenFixtureId = currentFixtureId;
     selectedEls.forEach(selectedEl => { selectedEl.textContent = currentFixtureId ?? '-'; });
     fixtureInlineWraps.forEach(fixtureInlineWrap => { fixtureInlineWrap.style.display = currentFixtureId ? '' : 'none'; });
@@ -809,6 +830,8 @@
    */
   function resetFixtureDrivenState({ clearFixtureId = false, clearCache = false, statusMessage = '' } = {}) {
     clearPolling();
+    lastFixturePoll = null;
+    renderLastFixturePoll();
     _lastFetchId = null;
     _lastFixtureData = null;
     _flashSnapshot = null;
@@ -894,9 +917,13 @@
     //   - 에러         : console.error만, 배지는 직전 'ok' 상태 유지
     const silent = options && options.silent === true;
     const cacheMode = options && options.cache;
+    const pollSource = cacheMode === 'reload' ? '수동 새로고침' : silent ? '자동 폴링' : '경기 불러오기';
+    console.info(`[경기 조회] ${pollSource} 시작 · 경기 ${normalizedFixtureId} · ${new Date().toLocaleString('ko-KR', { hour12: false })}`);
     const overlayOpts = silent ? { noOverlay: true } : undefined;
     _fetchSeq += 1;
     const requestSeq = _fetchSeq;
+    lastFixturePoll = { fixtureId: normalizedFixtureId, at: Date.now(), status: '조회 중' };
+    renderLastFixturePoll();
     const selectionVersionAtRequest = fixtureSelectionVersion;
     _lastFetchId = normalizedFixtureId;
     // 새 조회를 시작할 때 이전 폴링 예약을 취소한다.
@@ -1035,8 +1062,16 @@
       try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}
       try { localStorage.removeItem('cached_fixture_data'); } catch {}  // 구버전 잔여물 정리
       try { localStorage.setItem('last_fixture_id', normalizedFixtureId); } catch {}
+      lastFixturePoll = { fixtureId: normalizedFixtureId, at: lastFixturePoll.at, status: '성공' };
+      renderLastFixturePoll();
+      console.info(`[경기 조회] ${pollSource} 성공 · 경기 ${normalizedFixtureId} · 마지막 폴링 시각 ${new Date(lastFixturePoll.at).toLocaleString('ko-KR', { hour12: false })}`);
       return data;
     }catch(e){
+      if (requestSeq === _fetchSeq && lastFixturePoll?.fixtureId === normalizedFixtureId) {
+        lastFixturePoll.status = '실패';
+        renderLastFixturePoll();
+      }
+      console.warn(`[경기 조회] ${pollSource} 실패 · 경기 ${normalizedFixtureId} · ${new Date().toLocaleString('ko-KR', { hour12: false })}`);
       console.error('API 오류:', e);
       // 같은 경기의 수동 새로고침이 실패해도 기존 자동 갱신은 이어간다.
       if (requestSeq === _fetchSeq && !state.manualMode

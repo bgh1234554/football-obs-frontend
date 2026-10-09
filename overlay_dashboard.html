@@ -184,7 +184,19 @@
       <button class="tab sidebar-tab" data-page="about">About <span class="tab-key">6</span></button>
       <div class="sidebar-divider"></div>
       <!-- 선택된 경기 ID -->
-      <div class="fixture-inline" id="fixture-inline-wrap" data-fixture-inline-wrap style="display:none"><span class="fixture-inline-label">경기 ID</span><span id="selected-fixture-id" data-selected-fixture-id class="fixture-inline-id" title="클릭해서 복사">-</span><span id="fixture-status" class="fixture-inline-status"></span></div>
+      <div class="fixture-inline" id="fixture-inline-wrap" data-fixture-inline-wrap style="display:none">
+        <span class="fixture-inline-label">경기 ID</span>
+        <span id="selected-fixture-id" data-selected-fixture-id class="fixture-inline-id" title="클릭해서 복사">-</span>
+        <span id="fixture-status" class="fixture-inline-status"></span>
+        <div class="fixture-poll-card">
+          <span class="fixture-inline-label">마지막 폴링 시각</span>
+          <time id="fixture-last-polled" class="fixture-last-polled" title="현재 경기의 마지막 조회 시작 시각과 결과">
+            <span id="fixture-poll-date" class="fixture-poll-date">아직 조회하지 않음</span>
+            <span class="fixture-poll-result"><span id="fixture-poll-clock" class="fixture-poll-clock">--:--:--</span><span id="fixture-poll-status" class="fixture-poll-status" data-status="idle">대기</span></span>
+          </time>
+          <span id="fixture-poll-match" class="fixture-poll-match" hidden></span>
+        </div>
+      </div>
       <div class="sidebar-divider"></div>
       <div id="manual-toggle-tabbar" style="display:none;"></div>
       <!-- 수동 모드 (사이드바 미러 토글) -->
