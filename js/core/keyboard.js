@@ -8,7 +8,7 @@ const shortcutActions = [
   ['pkUndo','점수 · 승부차기','PK 기록 되돌리기','KeyZ',()=>{if(state.half==='PK')pkUndo();}],
   ['pkReset','점수 · 승부차기','PK 기록 초기화','KeyX',()=>{if(state.half==='PK')pkReset();}],
   ['undo','전술판','되돌리기','Ctrl+KeyZ',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdUndo();}],
-  ['redo','전술판','다시 실행','Ctrl+KeyY',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdRedo();}],
+  ['redo','전술판','다시 실행',window.obsstudio ? 'Ctrl+KeyG' : 'Ctrl+KeyY',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdRedo();}],
   ['fullscreen','전술판','전체화면 전환','Backslash',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tacticsToggleFullscreen();}],
   ['tabs','화면 이동','탭바 표시 / 숨기기','KeyH',()=>toggleTabsAndPages()],
   ...['main-big','main-small','theme','schedule','tactics','about'].map((page,i)=>['page'+i,'화면 이동',['캠 큼','캠 작음','테마','일정','전술판','소개'][i]+' 화면','Digit'+(i+1),()=>activatePage(page)]),
@@ -19,13 +19,39 @@ const SHORTCUT_STORAGE_KEY='obs.shortcuts.v1';
 let shortcutBindings={};
 try { const saved=JSON.parse(localStorage.getItem(SHORTCUT_STORAGE_KEY)||'{}'); if(saved && typeof saved==='object') shortcutBindings=saved; } catch {}
 function shortcutBinding(action){const value=shortcutBindings[action[0]];return typeof value==='string'?value:action[3];}
-function shortcutKey(event){return [event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,event.code].filter(Boolean).join('+');}
+function shortcutCode(event){
+  if(event.code && event.code!=='Unidentified')return event.code;
+  // OBS 브라우저 소스에서의 단축키 대응
+  const virtualKey=event.keyCode || event.which;
+  if(virtualKey>=65 && virtualKey<=90)return 'Key'+String.fromCharCode(virtualKey);
+  if(virtualKey>=48 && virtualKey<=57)return 'Digit'+String.fromCharCode(virtualKey);
+  if(virtualKey>=96 && virtualKey<=105)return 'Numpad'+(virtualKey-96);
+  if(virtualKey>=112 && virtualKey<=135)return 'F'+(virtualKey-111);
+  const codes={8:'Backspace',9:'Tab',13:event.location===3?'NumpadEnter':'Enter',27:'Escape',32:'Space',33:'PageUp',34:'PageDown',35:'End',36:'Home',37:'ArrowLeft',38:'ArrowUp',39:'ArrowRight',40:'ArrowDown',45:'Insert',46:'Delete',106:'NumpadMultiply',107:'NumpadAdd',109:'NumpadSubtract',110:'NumpadDecimal',111:'NumpadDivide',186:'Semicolon',187:'Equal',188:'Comma',189:'Minus',190:'Period',191:'Slash',192:'Backquote',219:'BracketLeft',220:'Backslash',221:'BracketRight',222:'Quote',226:'IntlBackslash'};
+  if(codes[virtualKey])return codes[virtualKey];
+  const key=event.key;
+  if(/^[a-z]$/i.test(key || ''))return 'Key'+key.toUpperCase();
+  if(/^[0-9]$/.test(key || ''))return 'Digit'+key;
+  const names={' ':'Space',Spacebar:'Space',Esc:'Escape',';':'Semicolon',':':'Semicolon','=':'Equal','+':'Equal',',':'Comma','<':'Comma','-':'Minus','_':'Minus','.':'Period','>':'Period','/':'Slash','?':'Slash','`':'Backquote','~':'Backquote','[':'BracketLeft','{':'BracketLeft',']':'BracketRight','}':'BracketRight','\\':'Backslash','|':'Backslash',"'":'Quote','"':'Quote'};
+  if(names[key])return names[key];
+  return /^(Escape|Tab|Enter|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Arrow(Left|Right|Up|Down)|F([1-9]|1[0-9]|2[0-4]))$/.test(key || '')?key:'';
+}
+function shortcutKey(event){const code=shortcutCode(event);return code?[event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,code].filter(Boolean).join('+'):'';}
 function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').split('+').join(' + ') : '미지정';}
+function updateTacticsShortcutHints(){
+  for(const [id,buttonId] of [['undo','td-undo-btn'],['redo','td-redo-btn']]){
+    const action=shortcutActions.find(action=>action[0]===id);
+    const button=document.getElementById(buttonId);
+    if(button)button.title=action[2]+' ('+shortcutLabel(shortcutBinding(action))+')';
+  }
+}
 function saveShortcutBindings(){try{localStorage.setItem(SHORTCUT_STORAGE_KEY,JSON.stringify(shortcutBindings));return true;}catch{return false;}}
 window.addEventListener('storage',event=>{if(event.key===SHORTCUT_STORAGE_KEY){try{shortcutBindings=JSON.parse(event.newValue||'{}')||{};}catch{shortcutBindings={};}window.renderShortcutSettings?.();}});
 window.addEventListener('keydown',event=>{
   if(event.defaultPrevented || event.repeat || event.isComposing || document.activeElement?.closest('input,textarea,select,[contenteditable="true"]') || document.getElementById('settingsBackdrop')?.classList.contains('open'))return;
-  const action=shortcutActions.find(action=>shortcutBinding(action)===shortcutKey(event));
+  const key=shortcutKey(event);
+  const action=shortcutActions.find(action=>shortcutBinding(action)===key)
+    || (/Numpad[0-9]$/.test(key) ? shortcutActions.find(action=>shortcutBinding(action)===key.replace(/Numpad([0-9])$/, 'Digit$1')) : null);
   if(action){event.preventDefault();action[4]();}
 });
 

@@ -16,6 +16,7 @@
   function message(text){status.textContent=text;}
   function stopEditing(){editing=null;renderShortcutSettings();}
   window.renderShortcutSettings=function(){
+    updateTacticsShortcutHints();
     panel.querySelector('#shortcutUndoBtn').disabled=!history.length;
     const rows=panel.querySelector('#shortcutRows');rows.replaceChildren();let group='';let count=0;
     const query=search.value.trim().toLowerCase();
@@ -73,7 +74,8 @@
       event.preventDefault();event.stopImmediatePropagation();
       if(event.key==='Escape'){stopEditing();message('키 변경을 취소했습니다.');return;}
       if(event.isComposing || event.repeat || ['Control','Shift','Alt','Meta'].includes(event.key))return;
-      if(!event.code || ['Tab','Enter','Backspace','Delete'].includes(event.code) && !event.ctrlKey && !event.altKey && !event.shiftKey){message('Tab, Enter, Backspace, Delete는 조합 키와 함께 사용하세요.');return;}
+      const code=shortcutCode(event);
+      if(!code || ['Tab','Enter','Backspace','Delete'].includes(code) && !event.ctrlKey && !event.altKey && !event.shiftKey){message('Tab, Enter, Backspace, Delete는 조합 키와 함께 사용하세요.');return;}
       const key=shortcutKey(event);const conflict=shortcutActions.find(a=>a[0]!==editing && shortcutBinding(a)===key);
       if(conflict){message('이미 “'+conflict[2]+'”에 사용 중입니다. 다른 키를 입력하거나 기존 단축키를 해제하세요.');return;}
       commit(shortcutActions.find(a=>a[0]===editing),key);
