@@ -84,6 +84,7 @@
     'Transfer negotiations': '이적 협상 중',
     'Rest':              '휴식',
     'Inactive':          '출전 불가',
+    'Doping':            '도핑 징계',
     'Off the roster':    '선수단 미등록',
     'Unknown':           '원인 미상',
     'null':              '정보 없음',
