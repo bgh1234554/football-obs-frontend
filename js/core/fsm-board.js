@@ -390,7 +390,7 @@ function applyTheme(theme, logoUrl) {
     });
 
     if(state.half == 'PK') {
-       setFsmStyle('.pso-main', {height: '32px'});
+       setFsmStyle('.pso-main', {height: 'auto'});
        setFsmStyle('.pso-status', {display: 'flex'});
     } else {
        setFsmStyle('.pso-main', {height: '0px'});
@@ -620,11 +620,37 @@ function adjustScoreboardWidth() {
     });
   }
 
+  // 점수 또는 시계에 이미 쓰이는 고정 색상만 사용한다. 전환 중 보간색은 읽지 않는다.
+  const FSM_PSO_PALETTES = Object.freeze({
+    default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
+    seriea: ['#0456e5', '#f5f5f5'], superlig: ['#ff0203', '#ffffff'],
+    ligue1: ['#ffffff', '#000000'], ligue2: ['#ffffff', '#000000'],
+    ligaportugal: ['#ffffff', '#102556'], eredivisie: ['#d1d1d1', '#0a0a0a'],
+    belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
+    uel: ['#ffffff', '#000000'], uecl: ['#ffffff', '#000000'], acle: ['#ffffff', '#000000'],
+    unl: ['#48516E', '#ffffff'], er24: ['#ffffff', '#000000'],
+    rpl: ['#ffffff', '#0e2a5c'], fnl: ['#00c7b2', '#000000'],
+    fnl2a: ['#000000', '#e31d29'], fnl2b: ['#e31d29', '#ffffff'],
+    eflchampionship: ['#b69b42', '#ffffff'], eflleagueone: ['#7f8384', '#ffffff'],
+    eflleaguetwo: ['#cc0935', '#ffffff'], kleague: ['#1F3459', '#ffffff'],
+    mls: ['#e1e3e7', '#000000'], wc26: ['#A0FBDC', '#000000'],
+  });
+
   // applyPSO()도 state.pk 배열 읽도록 수정 (자세한 내용은 6-5 참조)
   function applyPSO() {
     const isPso = state.half === 'PK';
-    setFsmStyle('.fsm-board .pso-status', {height: isPso ? '32px' : '0'});
+    setFsmStyle('.fsm-board .pso-status', {height: isPso ? 'auto' : '0'});
+    document.querySelector('.fsm-board').dataset.fsmPso = String(isPso);
     if (!isPso) return;
+    const board = document.querySelector('.fsm-board');
+    const clock = board.querySelector('.time');
+    const boardRect = board.getBoundingClientRect();
+    const scale = boardRect.width / board.offsetWidth || 1;
+    const top = (clock.getBoundingClientRect().top - boardRect.top) / scale;
+    setFsmStyle('.fsm-board .pso-status', {top: `${top}px`});
+    const [background, ink] = FSM_PSO_PALETTES[_currentTheme] || FSM_PSO_PALETTES.default;
+    board.style.setProperty('--fsm-pso-background', chromaSafe(background));
+    board.style.setProperty('--fsm-pso-ink', chromaSafe(ink));
     const homePso = toPsoArr(state.pk.home);  // 'G'/'M' → [1,0,-1,...] 변환
     const awayPso = toPsoArr(state.pk.away);
 

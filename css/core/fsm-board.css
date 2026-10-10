@@ -15,6 +15,41 @@
 }
 
 .board.fsm-board.outline-on { box-shadow: none; }
+/* PSO가 읽는 시계 위치는 테마 전환 즉시 확정하고 색상만 전환한다. */
+.board.fsm-board[data-fsm-pso="true"] .scoreboard-timer {
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+/* 기존처럼 시계 위에 승부차기 띠를 표시하되 모서리에 시계가 비치지 않게 한다. */
+.board.fsm-board[data-fsm-pso="true"] .scoreboard-timer { visibility: hidden; }
+.board.fsm-board .pso-status {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  width: min(360px, 100%);
+  transition-property: background-color, color;
+}
+.board.fsm-board .pso-main {
+  min-height: 32px;
+  align-items: center;
+  background: var(--fsm-pso-background);
+  color: var(--fsm-pso-ink);
+}
+.board.fsm-board .pso-middle {
+  color: var(--fsm-pso-ink);
+  flex: 0 0 auto;
+  margin-block: 0;
+}
+/* 서든데스에서도 칸을 압축하지 않고 양 팀 목록을 각각 줄바꿈한다. */
+.board.fsm-board .pso-content { flex: 1 1 0; min-width: 0; }
+.board.fsm-board .pso-status > .pso-main ul {
+  height: auto;
+  min-height: 32px;
+  flex-wrap: wrap;
+}
+.board.fsm-board .pso-circle {
+  flex-shrink: 0;
+  border-color: var(--fsm-pso-ink);
+}
 /* 첫 화면은 저장된 테마와 가변 너비를 적용한 뒤 표시합니다.
    너비/위치를 애니메이션하면 팀명 측정과 득점자 정렬이 흔들리므로
    최종 레이아웃 위에서 표시 영역과 투명도만 전환합니다. */
