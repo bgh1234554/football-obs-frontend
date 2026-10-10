@@ -395,14 +395,16 @@ function applySmallLayoutWidths(layout, left, right) {
   layout.style.setProperty('--lp-small-chat-width', `${right}px`);
   layout.style.setProperty('--lp-small-bench-width', `${Math.max(0, m.freeWidth - left - right)}px`);
   layout.classList.add('lp-small-columns-custom');
-  return { left: left / m.freeWidth, right: right / m.freeWidth };
+  return { left: left / m.freeWidth, right: right / m.freeWidth,
+    benchFraction: Math.max(0, m.freeWidth - left - right) / m.innerWidth,
+    chatFraction: right / m.innerWidth };
 }
 
-// Preserve the old bench width when reading a v1 setting.
+// 기존 v1 설정의 좌우 분할을 유지하되 벤치 폭은 화면 너비를 기준으로 계산한다.
 function applySmallLayoutResizeRatio(layout, ratio) {
   const m = getSmallLayoutResizeMetrics(layout);
   if (!m) return null;
-  const benchWidth = Math.min(m.freeWidth - m.leftMin - m.rightMin, layout.clientHeight * 68 / 105);
+  const benchWidth = Math.min(m.freeWidth - m.leftMin - m.rightMin, m.innerWidth * 0.25);
   const sideWidth = m.freeWidth - benchWidth;
   const widths = applySmallLayoutWidths(layout, sideWidth * ratio, sideWidth * (1 - ratio));
   return widths ? widths.left * m.freeWidth / sideWidth : null;
@@ -423,7 +425,19 @@ function applyStoredSmallLayoutResize() {
   document.querySelectorAll('.layout-small').forEach(layout => {
     const m = getSmallLayoutResizeMetrics(layout);
     if (!m || smallLayoutActiveResizePointers.has(layout)) return;
-    if (widths) applySmallLayoutWidths(layout, m.freeWidth * widths.left, m.freeWidth * widths.right);
+    if (widths) {
+      // 높이가 달라져도 벤치와 팬 반응 폭은 화면 너비를 기준으로 유지한다.
+      const anchored = Number.isFinite(widths.benchFraction) && widths.benchFraction > 0 &&
+        Number.isFinite(widths.chatFraction) && widths.chatFraction > 0 &&
+        widths.benchFraction + widths.chatFraction < 1;
+      const right = anchored ? m.innerWidth * widths.chatFraction : m.freeWidth * widths.right;
+      const left = anchored ? m.freeWidth - m.innerWidth * widths.benchFraction - right : m.freeWidth * widths.left;
+      const applied = applySmallLayoutWidths(layout, left, right);
+      // 기존 저장값에 현재 폭을 보존하는 너비 기준 비율을 한 번 추가한다.
+      if (!anchored && applied) {
+        try { localStorage.setItem(SMALL_LAYOUT_COLUMNS_KEY, JSON.stringify(applied)); } catch {}
+      }
+    }
     else if (legacyRatio != null) applySmallLayoutResizeRatio(layout, legacyRatio);
     else resetSmallLayoutResize(layout);
   });
@@ -435,7 +449,7 @@ function resetSmallLayoutResize(layout = null) {
   targets.forEach(node => {
     const m = getSmallLayoutResizeMetrics(node);
     if (!m) return;
-    const benchWidth = Math.min(m.freeWidth - m.leftMin - m.rightMin, node.clientHeight * 68 / 105);
+    const benchWidth = Math.min(m.freeWidth - m.leftMin - m.rightMin, m.innerWidth * 0.25);
     const left = m.innerWidth / 2 - m.lineupWidth - m.gapPx * 1.5;
     applySmallLayoutWidths(node, left, m.freeWidth - benchWidth - left);
   });

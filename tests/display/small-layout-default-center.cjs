@@ -18,6 +18,19 @@ for(const [width,height] of [[1920,900],[1920,1080],[1920,900],[2560,1440],[1280
  assert(Math.abs(result.middle-width/2)<2,JSON.stringify({width,height,result}));
  assert(result.right<=result.layoutRight+1,JSON.stringify({width,height,result}));
 }
+// Height-only fullscreen changes stretch the bench downward without widening it or chat.
+for (const custom of [false, true]) {
+ await page.setViewportSize({width:1920,height:900});await page.waitForTimeout(250);
+ await page.evaluate(custom=>{resetAllLayoutSizes();if(custom){const l=document.querySelector('.layout-small');const w=applySmallLayoutWidths(l,350,360);localStorage.setItem('obs.smallLayout.columnWidths.v2',JSON.stringify(w));}},custom);
+ const sizes=()=>page.evaluate(()=>['.lp-col-bench','.lp-cam-chat'].map(sel=>{const r=document.querySelector('.layout-small '+sel).getBoundingClientRect();return {width:r.width,height:r.height,top:r.top};}));
+ const initial=await sizes();
+ await page.setViewportSize({width:1920,height:1080});await page.waitForTimeout(250);
+ const full=await sizes();
+ full.forEach((r,i)=>{assert(Math.abs(r.width-initial[i].width)<2,JSON.stringify({custom,initial,full}));assert(Math.abs(r.top-initial[i].top)<2);assert(r.height>initial[i].height+170);});
+ await page.setViewportSize({width:1920,height:900});await page.waitForTimeout(250);
+ const restored=await sizes();restored.forEach((r,i)=>assert(Math.abs(r.width-initial[i].width)<2));
+}
+await page.evaluate(()=>resetAllLayoutSizes());
 // Both existing boundaries resize the bench without adding a middle handle.
 await page.setViewportSize({width:1920,height:900});await page.waitForTimeout(200);
 const measure=()=>page.evaluate(()=>Object.fromEntries(['.lp-col-events-stat','.lp-lineup-s','.lp-col-bench','.lp-cam-chat'].map(sel=>{const r=document.querySelector('.layout-small '+sel).getBoundingClientRect();return [sel,{width:r.width,left:r.left,right:r.right}];})));
