@@ -460,22 +460,32 @@
   }
 
   /**
-   * 색상이 "초록 계열"인지 판정.
-   * - HSL hue가 60~170° 범위 (노란-초록부터 청록 직전까지)
+   * 기존 초록 계열 중 OBS 기본 유사성(400)에서 제거되는 색상인지 판정.
+   * - HSL hue가 60~170° 범위이며 #00ff00과의 CbCr 거리가 0.4 이하
    * - 채도 ≥ 18% (회색·검정·흰색은 제외)
    * - 명도 5%~95% (순수 흑/백 제외)
    */
   function isGreenLike(input) {
     const rgb = parseAnyColor(input);
     if (!rgb) return false;
+    return isChromaKeyGreen(rgb);
+  }
+
+  function isChromaKeyGreen(rgb) {
     const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    return h >= 60 && h <= 170 && s >= 0.18 && l > 0.05 && l < 0.95;
+    if (!(h >= 60 && h <= 170 && s >= 0.18 && l > 0.05 && l < 0.95)) return false;
+    // OBS의 CbCr 계수로 순수 초록과의 거리를 구한다. 공통 오프셋은 상쇄된다.
+    // 부드러움·스필에 의한 부분 영향까지 포함하면 노란색도 과도하게 치환될 수 있다.
+    const r = rgb.r / 255, g = rgb.g / 255 - 1, b = rgb.b / 255;
+    const cb = -0.100644 * r - 0.338572 * g + 0.439216 * b;
+    const cr = 0.439216 * r - 0.398942 * g - 0.040274 * b;
+    return Math.hypot(cb, cr) <= 0.4;
   }
 
   /**
    * 강도 프리셋별 hue/S/L 매핑 정의 (Iter 5-7).
    * 안전 순서 (가장 안전 → 가장 위험): strong → moderate → mild → natural.
-   * 모든 프리셋은 60~170° 초록을 그대로 두지 않고 다른 영역으로 이동시킨다.
+   * 치환 대상으로 판정된 초록만 다른 영역으로 이동시킨다.
    *
    *   start, end : 입력 hue 60° / 170°에 매핑되는 출력 hue
    *   sScale     : 채도 배율 (1 = 그대로)
@@ -517,7 +527,7 @@
     const rgb = parseAnyColor(input);
     if (!rgb) return input;
     const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    if (!(h >= 60 && h <= 170 && s >= 0.18 && l > 0.05 && l < 0.95)) return input;
+    if (!isChromaKeyGreen(rgb)) return input;
 
     const intensity = forcedIntensity && CHROMA_SAFE_PRESETS[forcedIntensity]
       ? forcedIntensity

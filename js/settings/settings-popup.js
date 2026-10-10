@@ -137,7 +137,7 @@ const SETTINGS_DEFAULTS = {
   alphaTransparencyMode: 'transparency',
   // 그리기 도구 크기 기본값 100% -> 150% 변경 마이그레이션 완료 표시. 이전 기본값(100)이 저장된 브라우저를 1회만 150으로 올린다.
   tacticsDrawtoolsScaleRev: 'v150',
-  // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
+  // 그린스크린 모드. ON시 초록 계열 중 OBS 기본 유사성의 CbCr 거리 기준에 해당하는 색만 치환.
   // OBS 크로마키와 충돌 방지용.
   // 팀 컬러·평점·교체 표시·이벤트·전술판은 같은 greenscreenIntensity를 따른다.
   greenscreen:    'off',
