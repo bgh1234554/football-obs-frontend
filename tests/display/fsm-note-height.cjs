@@ -76,6 +76,37 @@ const root = path.resolve(__dirname, '../..');
       state.notes.home = "9' 조나탕 밤바\n27' (PK 실축) 필리프 징커나겔\n50' 필리프 징커나겔\n88' 마렌 하일레셀라시";
       setClockSeconds(5400, { autoStart: false }); render(); fsmBoardRender();
     });
+    for (const green of ['off', 'on']) {
+      for (const width of [0, 1, 3]) {
+        const svgMetrics = await page.evaluate(({ green, width }) => {
+          setSetting('greenscreen', green);
+          state.noteStrokeWidth = width;
+          state.notes.home = "11' 얀 우르비히\n27' (PK 실축) 선수\n50' (OG) 선수\n88' (퇴장) 선수";
+          render(); fsmBoardRender();
+          return [...document.querySelectorAll('#homeNote .note-line')].map(line => {
+            const text = line.querySelector('svg text');
+            const style = getComputedStyle(text);
+            const box = text.getBBox();
+            const matrix = text.transform.baseVal.consolidate().matrix;
+            return { stroke: parseFloat(style.strokeWidth), fill: style.fill,
+              expectedFill: getComputedStyle(line).color, join: style.strokeLinejoin,
+              paint: style.paintOrder, x: box.x + matrix.e,
+              center: box.y + matrix.f + box.height / 2, expectedCenter: line.offsetHeight / 2,
+              label: line.getAttribute('aria-label') };
+          });
+        }, { green, width });
+        assert.equal(svgMetrics.length, 4);
+        for (const metric of svgMetrics) {
+          assert.equal(metric.stroke, 2 * (width + (green === 'on' && width > 0 ? 0.75 : 0)));
+          assert.equal(metric.fill, metric.expectedFill);
+          assert.equal(metric.join, 'round');
+          assert.equal(metric.paint, 'stroke');
+          assert(Math.abs(metric.x) < 0.1 && Math.abs(metric.center - metric.expectedCenter) < 0.1);
+          assert(metric.label.length > 0);
+        }
+      }
+    }
+    console.log('PASS SVG event colors, rounded strokes, alignment and greenscreen reinforcement');
     await page.screenshot({ path: 'tests/display/fsm-note-height.png' });
     assert.deepEqual(errors, []);
     console.log('PASS dynamic clock height, hidden timer and automatic relayout');

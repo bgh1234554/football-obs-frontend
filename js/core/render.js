@@ -545,7 +545,16 @@
 
   function renderNoteLine(line) {
     const text = escapeNoteHtml(line);
-    return `<span class="${getNoteLineClass(line)}"><span class="note-line-key-guard" aria-hidden="true">${text}</span><span class="note-line-outline" aria-hidden="true">${text}</span><span class="note-line-fill">${text}</span></span>`;
+    return `<span class="${getNoteLineClass(line)}" role="img" aria-label="${text}"><span class="note-line-measure" aria-hidden="true">${text}</span><svg class="note-line-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><text class="note-line-svg-text">${text}</text></svg></span>`;
+  }
+
+  function alignNoteSvg(noteEl) {
+    // HTML의 자동 줄 배치와 폭 측정은 유지하고 SVG 글자만 같은 영역에 맞춘다.
+    noteEl.querySelectorAll('.note-line').forEach(line => {
+      const text = line.querySelector('.note-line-svg-text');
+      const box = text.getBBox();
+      text.setAttribute('transform', `translate(${-box.x} ${(line.offsetHeight - box.height) / 2 - box.y})`);
+    });
   }
 
   /** 득점자 줄 배열을 perRow 명씩 한 줄로 합쳐 HTML 반환 (perRow=1이면 줄마다 표시) */
@@ -589,6 +598,7 @@
       setCSS(cssVar, effectiveSize + 'px');
     }
 
+    alignNoteSvg(noteEl);
     return effectiveSize;
   }
 
