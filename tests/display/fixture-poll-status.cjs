@@ -37,7 +37,7 @@ const root = path.resolve(__dirname, '../..');
       const succeeded = $('fixture-poll-status').textContent;
       // 일정의 선택 경기와 송출 경기가 달라도 마지막 조회 기록을 유지한다.
       setFixtureId('200', { persist: false });
-      const visible = $('fixture-poll-status').textContent === '성공' && !$('fixture-poll-match').hidden;
+      const visible = $('fixture-poll-status').textContent === '성공' && !$('fixture-poll-match');
       fetchFixture = async () => { throw new Error('의도한 조회 실패'); };
       await fetchAndApplyFixtureData('100', { silent: true });
       clearPolling();
