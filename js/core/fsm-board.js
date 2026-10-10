@@ -11,6 +11,9 @@ function setFsmAttr(selector, name, value) {
   });
 }
 const LEAGUE_THEME_MAP = {
+  40: { theme: 'eflchampionship', logoUrl: null, type: 'club' },
+  41: { theme: 'eflleagueone', logoUrl: null, type: 'club' },
+  42: { theme: 'eflleaguetwo', logoUrl: null, type: 'club' },
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
   2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
   3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
@@ -45,7 +48,8 @@ const LEAGUE_THEME_MAP = {
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
-  default: '기본', pl: '프리미어 리그', seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
+  default: '기본', pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투',
+  seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
   ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그',
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', acle: 'AFC 챔피언스리그 엘리트',
   unl: '네이션스리그', er24: '유로',
@@ -302,6 +306,15 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_LIGUE2.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'eflchampionship':
+      changeCSS('css/theme/result_style_EFL_CHAMPIONSHIP.css', theme);
+      break;
+    case 'eflleagueone':
+      changeCSS('css/theme/result_style_EFL_LEAGUE_ONE.css', theme);
+      break;
+    case 'eflleaguetwo':
+      changeCSS('css/theme/result_style_EFL_LEAGUE_TWO.css', theme);
+      break;
     case 'fnl':
       changeCSS('css/theme/result_style_FNL.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -445,7 +458,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['seriea', 'superlig', 'belgian', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b'].includes(_currentTheme)) {
+  if (['seriea', 'superlig', 'belgian', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -543,7 +556,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['pl', 'fnl', 'fnl2a', 'fnl2b', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['pl', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
         ? 'none' : ['rpl', 'belgian', 'ligaportugal'].includes(theme) ? 'chip' : 'strip';
     }
     if(theme == 'pl') {
@@ -558,7 +571,7 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
-    } else if(['fnl', 'fnl2a', 'fnl2b'].includes(theme)) {
+    } else if(['fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
     } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
