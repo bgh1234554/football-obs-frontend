@@ -54,6 +54,7 @@
     'Broken Leg':        '다리 골절',
     'Broken Arm':        '팔 골절',
     'Broken calfbone':   '종아리뼈 골절',
+    'Broken shinbone':   '정강이뼈 골절',
     'Fracture':          '골절',
     'Abdominal strain':  '복부 근육 긴장',
     'Sprain':            '염좌',
