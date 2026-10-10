@@ -448,7 +448,14 @@
       border: 1px solid #ffffff16; border-radius: 14px;
     }
     #themePanel .theme-colors-card { position: relative; }
-    #themePanel .theme-color-reset { position: absolute; right: 12px; top: 9px; height: 26px; padding: 3px 8px; font-size: 11px; }
+    #themePanel .theme-color-header { min-height: 34px; padding-right: 180px; }
+    #themePanel .theme-color-actions { position: absolute; right: 12px; top: 9px; display: flex; align-items: center; gap: 6px; }
+    #themePanel .theme-color-actions button:not(.theme-color-reset) {
+      height: 26px; padding: 0 9px; border: 1px solid #ffffff24; border-radius: 7px;
+      background: #19273e; color: #c4d5f3; font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
+    }
+    #themePanel .theme-color-actions button:hover { background: #253650; border-color: #ffffff40; }
+    #themePanel .theme-color-actions button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
     #themePanel button:disabled { opacity: .4; cursor: default; }
     html.popout-target-theme #themePanel { padding: 10px; }
     html.popout-target-theme #themePanel .theme-appearance-grid { grid-template-columns: 1fr 1fr; }

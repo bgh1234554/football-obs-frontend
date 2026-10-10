@@ -93,6 +93,27 @@
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
 
+  // ? ??? ?? ??? ? ?? ??? ?? ??? ? ?? ????.
+  function swapTeamColors(side){
+    const bgKey = side + 'Bg';
+    const textKey = side + 'Text';
+    [state.colors[bgKey], state.colors[textKey]] = [state.colors[textKey], state.colors[bgKey]];
+    state.teamColorOverride = true;
+    state.teamColorOverrideFixtureId = typeof getLastFixtureId === 'function' ? getLastFixtureId() : null;
+    window.colorMap.filter(([, key]) => key === bgKey || key === textKey).forEach(([id, key, cssVar]) => {
+      setCSS(cssVar, state.colors[key]);
+      if ($(id)) $(id).value = state.colors[key];
+      if ($(id + 'Hex')) $(id + 'Hex').value = state.colors[key];
+    });
+    if (typeof applyTeamColors === 'function') applyTeamColors();
+    persist();
+    render();
+    document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: bgKey } }));
+  }
+  $('swapHomeTeamColors')?.addEventListener('click', () => swapTeamColors('home'));
+  $('swapAwayTeamColors')?.addEventListener('click', () => swapTeamColors('away'));
+
+
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [이벤트 바인딩] 각종 UI 컨트롤에 이벤트 리스너를 연결
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
