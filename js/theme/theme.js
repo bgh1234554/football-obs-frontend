@@ -32,6 +32,27 @@
   // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
   const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
+  function commitThemeColors(updates, syncColorInput = true) {
+    const keys = Object.keys(updates);
+    const changed = keys.some(key => state.colors[key] !== updates[key]);
+    const teamColorChanged = keys.some(key => TEAM_COLOR_KEYS.has(key));
+    if (teamColorChanged) {
+      state.teamColorOverride = true;
+      state.teamColorOverrideFixtureId = typeof getLastFixtureId === 'function' ? getLastFixtureId() : null;
+    }
+    window.colorMap.filter(([, key]) => keys.includes(key)).forEach(([id, key, cssVar]) => {
+      state.colors[key] = updates[key];
+      setCSS(cssVar, updates[key]);
+      if (syncColorInput && $(id)) $(id).value = updates[key];
+      if ($(id + 'Hex')) $(id + 'Hex').value = updates[key];
+    });
+    if (!changed) return;
+    if (teamColorChanged && typeof applyTeamColors === 'function') applyTeamColors();
+    persist();
+    render();
+    document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: keys[0] } }));
+  }
+
   /**
    * 색상 피커와 HEX 텍스트 입력 필드를 양방향으로 연결.
    *
@@ -46,13 +67,6 @@
     // bootstrap 스타일 적용
     hexInput.style.background='#0b1220'; hexInput.style.color='#e5e7eb'; hexInput.style.border='1px solid #ffffff20'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
     colorInput.insertAdjacentElement('afterend', hexInput);
-    // 'theme:colors-changed' 이벤트 — 라인업/스탯 패널이 받아 재렌더(commit 시점에만 호출).
-    const dispatchThemeChange = () => document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key } }));
-    const markOverride = () => {
-      if (!TEAM_COLOR_KEYS.has(key)) return;
-      state.teamColorOverride = true;
-      state.teamColorOverrideFixtureId = (typeof getLastFixtureId === 'function') ? getLastFixtureId() : null;
-    };
 
     /** 드래그 중 가벼운 라이브 프리뷰 — CSS 변수와 hex 표시만 갱신. state/persist/render/dispatch 안 함. */
     const previewThemeColor = value => {
@@ -62,18 +76,7 @@
 
     /** 피커 닫힘/HEX 입력 확정 시 한 번만 실행되는 무거운 commit. */
     const commitThemeColor = (value, syncColorInput = false) => {
-      // 동일 값이면 dispatch/render 생략 — 사용자가 피커 열었다 그냥 닫은 경우 효율화.
-      const same = state.colors[key] === value;
-      state.colors[key] = value;
-      setCSS(cssVar, value);
-      hexInput.value = value;
-      if (syncColorInput) colorInput.value = value;
-      markOverride();
-      if (same) return;
-      if (TEAM_COLOR_KEYS.has(key) && typeof applyTeamColors === 'function') applyTeamColors();
-      persist();
-      render();
-      dispatchThemeChange();
+      commitThemeColors({ [key]: value }, syncColorInput);
     };
 
     // input(드래그): 라이브 프리뷰만. change(피커 닫힘): 최종 commit.
@@ -92,6 +95,17 @@
     });
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
+
+  // 선택한 팀의 배경색과 글자색을 서로 바꾸고 사용자 지정 색상으로 저장한다.
+  function swapTeamColors(side){
+    if (side !== 'home' && side !== 'away') return;
+    const bgKey = side + 'Bg';
+    const textKey = side + 'Text';
+    commitThemeColors({ [bgKey]: state.colors[textKey], [textKey]: state.colors[bgKey] });
+  }
+  $('swapHomeTeamColors')?.addEventListener('click', () => swapTeamColors('home'));
+  $('swapAwayTeamColors')?.addEventListener('click', () => swapTeamColors('away'));
+
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [이벤트 바인딩] 각종 UI 컨트롤에 이벤트 리스너를 연결

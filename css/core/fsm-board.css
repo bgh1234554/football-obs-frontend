@@ -15,6 +15,41 @@
 }
 
 .board.fsm-board.outline-on { box-shadow: none; }
+/* PSO가 읽는 시계 위치는 테마 전환 즉시 확정하고 색상만 전환한다. */
+.board.fsm-board[data-fsm-pso="true"] .scoreboard-timer {
+  transition-property: background-color, color, border-color, border-radius, box-shadow;
+}
+/* 기존처럼 시계 위에 승부차기 띠를 표시하되 모서리에 시계가 비치지 않게 한다. */
+.board.fsm-board[data-fsm-pso="true"] .scoreboard-timer { visibility: hidden; }
+.board.fsm-board .pso-status {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  width: min(360px, 100%);
+  transition-property: background-color, color;
+}
+.board.fsm-board .pso-main {
+  min-height: 32px;
+  align-items: center;
+  background: var(--fsm-pso-background);
+  color: var(--fsm-pso-ink);
+}
+.board.fsm-board .pso-middle {
+  color: var(--fsm-pso-ink);
+  flex: 0 0 auto;
+  margin-block: 0;
+}
+/* 서든데스에서도 칸을 압축하지 않고 양 팀 목록을 각각 줄바꿈한다. */
+.board.fsm-board .pso-content { flex: 1 1 0; min-width: 0; }
+.board.fsm-board .pso-status > .pso-main ul {
+  height: auto;
+  min-height: 32px;
+  flex-wrap: wrap;
+}
+.board.fsm-board .pso-circle {
+  flex-shrink: 0;
+  border-color: var(--fsm-pso-ink);
+}
 /* 첫 화면은 저장된 테마와 가변 너비를 적용한 뒤 표시합니다.
    너비/위치를 애니메이션하면 팀명 측정과 득점자 정렬이 흔들리므로
    최종 레이아웃 위에서 표시 영역과 투명도만 전환합니다. */
@@ -74,12 +109,64 @@
 }
 .board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: var(--fsm-team-name-padding, 24px); margin-top: 0; line-height: 1; display: flex; align-items: center; }
 .fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .team-score {
+/* J리그는 곡선 장식 가까이까지 팀명을 배치해 좌우 여백을 줄인다. */
+.board.fsm-board[data-fsm-theme="jleague"] .team-name {
+  position: relative;
+  z-index: 1;
+  justify-content: center;
+  margin: 0;
+  padding-inline: var(--fsm-jleague-name-padding, 24px);
+  color: #ffffff;
+}
+.fsm-board .jleague-arc { display: none; }
+/* 축소 배율에서 별도로 그려지는 배경 사이의 소수 픽셀 이음선을 덮는다.
+   실제 칸 너비와 팀명 배치는 바꾸지 않고 중앙 배경만 양옆으로 겹친다. */
+.board.fsm-board:is([data-fsm-theme="er24"], [data-fsm-theme="unl"]) .score-div {
+  position: relative;
+  z-index: 1;
+  box-shadow: -1px 0 0 var(--fsm-center-join-color), 1px 0 0 var(--fsm-center-join-color);
+}
+.board.fsm-board[data-fsm-theme="er24"] { --fsm-center-join-color: #ffffff; }
+.board.fsm-board[data-fsm-theme="unl"] { --fsm-center-join-color: #48516E; }
+/* 글꼴의 줄 높이 대신 공통 48px 박스를 사용해 중앙 칸의 상하 경계를 맞춘다. */
+.board.fsm-board:not([data-fsm-theme="pl"]) .team-score {
+  box-sizing: border-box;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+/* 러시아 하부리그와 리그앙 계열은 점수와 중앙 칸을 같은 배치 흐름에 둔다.
+   절대 위치와 일반 배치 사이에서 생기는 소수 픽셀 경계 차이를 없앤다. */
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) #team-score-left,
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) #team-score-right {
+  position: relative;
+  margin: 0;
+}
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-score {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 팀명과 점수 칸 사이에만 선을 그려 점수 묶음의 내부 간격은 유지한다. */
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) {
+  --fsm-score-separator: #000000;
+}
+.board.fsm-board:is([data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) {
+  --fsm-score-separator: #999B9A;
+}
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-score::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--fsm-score-separator);
+  pointer-events: none;
+}
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) #team-score-left::after { left: 0; }
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) #team-score-right::after { right: 0; }
 .board.fsm-board .team-logo > img {
   position: absolute;
   top: 50%; left: 50%;
@@ -136,12 +223,12 @@
 .board.fsm-board[data-fsm-theme="unl"] .teams-left .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="unl"] .teams-right .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .team-name {
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-name {
   width: calc(100% - var(--fsm-name-reserved-width, 0px));
   justify-content: center; margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
 }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
-.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="wc26"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] .team-color { top: 50%; transform: translateY(-50%); }
 .board.fsm-board[data-fsm-theme="wc26"] #homeColor { left: auto; right: calc(var(--fsm-score-overlap, 0px) + 12px); }
 .board.fsm-board[data-fsm-theme="wc26"] #awayColor { right: auto; left: calc(var(--fsm-score-overlap, 0px) + 12px); }

@@ -49,6 +49,204 @@
       .replace(/^-|-$/g, '');
   }
 
+  function buildAboutTabs(scrollPane) {
+    const groups = [
+      ['start', '시작하기'], ['broadcast', 'OBS 송출 환경'],
+      ['guide', '데이터 안내'], ['keys', '단축키'],
+      ['main', '메인 화면'], ['settings', '설정'], ['theme', '테마'],
+      ['schedule', '일정'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
+    ];
+    const sections = new Map(groups.map(([key, label]) => {
+      const panel = document.createElement('section');
+      panel.id = `about-panel-${key}`;
+      panel.className = 'about-tab-panel';
+      panel.setAttribute('role', 'tabpanel');
+      panel.setAttribute('aria-labelledby', `about-tab-${key}`);
+      panel.tabIndex = 0;
+      return [key, { panel, label }];
+    }));
+    const nav = document.createElement('div');
+    nav.className = 'about-tabs';
+    const tabRow = document.createElement('div');
+    tabRow.className = 'about-tab-row';
+    tabRow.setAttribute('role', 'tablist');
+    tabRow.setAttribute('aria-label', '사용 안내');
+    nav.append(tabRow);
+    // 문서는 그대로 두고 렌더링된 제목을 기준으로 내용만 탭에 나눈다.
+    let group = null;
+    let featureSection = false;
+    for (const node of [...aboutEl.children]) {
+      if (node.tagName === 'H2') {
+        const title = aboutSlug(node.textContent);
+        featureSection = title === '탭별-기능-설명';
+        if (title === '목차' || featureSection) {
+          group = 'skip';
+          node.remove();
+          continue;
+        }
+        group = ['처음-사용하기', '메뉴-바-구성', '주요-기능'].includes(title) ? 'start'
+          : ['권장-환경', '송출-방식에-따른-차이'].includes(title) ? 'broadcast'
+          : ['주요-안내-사항', '데이터가-없거나-잘못-표시될-때'].includes(title) ? 'guide'
+          : title === '주요-키보드-단축키' ? 'keys'
+          : title.startsWith('고급-팁') ? 'advanced' : 'info';
+      } else if (featureSection && node.tagName === 'H3') {
+        const title = aboutSlug(node.textContent);
+        group = title.startsWith('메인-탭') ? 'main'
+          : title.startsWith('설정-팝업') ? 'settings'
+          : title.startsWith('테마-탭') ? 'theme'
+          : title.startsWith('일정-확인') ? 'schedule' : 'tactics';
+      }
+      if (group === 'skip') node.remove();
+      else if (group) sections.get(group).panel.append(node);
+      else if (node.tagName === 'HR') node.remove();
+    }
+    function select(panel, { resetScroll = true, focus = false } = {}) {
+      for (const { panel: item, button } of sections.values()) {
+        const active = item === panel;
+        item.hidden = !active;
+        button.setAttribute('aria-selected', String(active));
+        button.tabIndex = active ? 0 : -1;
+        if (active && focus) button.focus();
+      }
+      if (resetScroll && scrollPane) scrollPane.scrollTop = 0;
+      restoreMenu();
+      updateCurrentHeading();
+    }
+    function closeMenus() {
+      for (const { button, menu } of sections.values()) {
+        if (!menu) continue;
+        menu.hidden = true;
+        button.setAttribute('aria-expanded', 'false');
+      }
+    }
+    function openMenu(section) {
+      closeMenus();
+      section.menu.hidden = false;
+      section.button.setAttribute('aria-expanded', 'true');
+    }
+    function restoreMenu() {
+      const current = [...sections.values()].find(section => !section.panel.hidden);
+      if (current) openMenu(current);
+    }
+    function updateCurrentHeading() {
+      const section = [...sections.values()].find(item => !item.panel.hidden);
+      if (!section) return;
+      const edge = nav.getBoundingClientRect().bottom + 16;
+      let active = section.targets[0];
+      for (const heading of section.targets) {
+        if (heading.getBoundingClientRect().top <= edge) active = heading;
+      }
+      if (scrollPane?.clientHeight && scrollPane.scrollTop > 0
+          && scrollPane.scrollTop + scrollPane.clientHeight >= scrollPane.scrollHeight - 2) {
+        active = section.targets.at(-1);
+      }
+      for (const [index, link] of [...section.menu.children].entries()) {
+        if (section.targets[index] === active) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      }
+    }
+    for (const [key, section] of sections) {
+      const item = document.createElement('div');
+      item.className = 'about-tab-item';
+      item.setAttribute('role', 'presentation');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = `about-tab-${key}`;
+      button.textContent = section.label;
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-controls', section.panel.id);
+      button.setAttribute('aria-expanded', 'false');
+      section.button = button;
+      const menu = document.createElement('div');
+      menu.id = `about-submenu-${key}`;
+      menu.className = 'about-submenu';
+      menu.hidden = true;
+      menu.setAttribute('role', 'navigation');
+      menu.setAttribute('aria-label', `${section.label} 소메뉴`);
+      section.menu = menu;
+      const headings = [...section.panel.querySelectorAll('h2,h3,h4')];
+      // 대표 제목만 하나 있는 탭은 그대로 보여 주고, 세부 제목이 있으면 함께 제공한다.
+      const targets = headings.length > 1 && headings[0].tagName === 'H3' ? headings.slice(1) : headings;
+      section.targets = targets;
+      for (const heading of targets) {
+        const link = document.createElement('button');
+        link.type = 'button';
+        link.textContent = heading.textContent;
+        link.className = 'about-submenu-link';
+        link.addEventListener('click', () => {
+          select(section.panel, { resetScroll: false });
+          openMenu(section);
+          if (scrollPane) {
+            const scale = scrollPane.getBoundingClientRect().height / scrollPane.offsetHeight || 1;
+            // 스크롤로 고정 메뉴 위치가 바뀌면 바뀐 경계를 기준으로 한 번 더 맞춘다.
+            for (let i = 0; i < 2; i++) {
+              scrollPane.scrollTop += (heading.getBoundingClientRect().top - nav.getBoundingClientRect().bottom) / scale - 12;
+            }
+          }
+          heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+          updateCurrentHeading();
+        });
+        menu.append(link);
+      }
+      button.addEventListener('click', () => {
+        select(section.panel);
+        openMenu(section);
+        updateCurrentHeading();
+      });
+      item.addEventListener('mouseenter', () => openMenu(section));
+      button.addEventListener('keydown', event => {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          event.stopPropagation();
+          openMenu(section);
+          menu.querySelector('button')?.focus({ preventScroll: true });
+          return;
+        }
+        const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const panels = [...sections.values()].map(item => item.panel);
+        const index = panels.indexOf(section.panel);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? panels.length - 1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + panels.length) % panels.length;
+        closeMenus();
+        select(panels[next], { focus: true });
+        restoreMenu();
+        updateCurrentHeading();
+      });
+      item.append(button);
+      tabRow.append(item);
+      nav.append(menu);
+    }
+    nav.addEventListener('mouseleave', restoreMenu);
+    nav.addEventListener('focusout', event => {
+      if (!nav.contains(event.relatedTarget)) restoreMenu();
+    });
+    nav.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const section = [...sections.values()].find(item => item.menu.contains(event.target) || item.button === event.target);
+      restoreMenu();
+      section?.button.focus({ preventScroll: true });
+    });
+    // 문서를 다시 불러와도 바깥 클릭 이벤트가 중복 등록되지 않도록 한다.
+    aboutEl.aboutTabsController?.abort();
+    aboutEl.aboutTabsController = new AbortController();
+    document.addEventListener('pointerdown', event => {
+      if (!nav.contains(event.target)) restoreMenu();
+    }, { signal: aboutEl.aboutTabsController.signal });
+    scrollPane?.addEventListener('scroll', updateCurrentHeading, { passive: true, signal: aboutEl.aboutTabsController.signal });
+    window.addEventListener('resize', updateCurrentHeading, { signal: aboutEl.aboutTabsController.signal });
+    aboutEl.append(nav, ...[...sections.values()].map(item => item.panel));
+    select(sections.get('start').panel, { resetScroll: false });
+    restoreMenu();
+    updateCurrentHeading();
+    return { nav, select };
+  }
+
   /**
    * about.md 페이지 로드 + 렌더링.
    *
@@ -117,6 +315,7 @@
       // 3) 내부 앵커(#section) 클릭은 hash routing과 충돌하지 않게 직접 가로채 scroll.
       const pageAbout = document.getElementById('page-about');
       const scrollPane = pageAbout?.querySelector('.panelBody');
+      const tabs = buildAboutTabs(scrollPane);
       const allHeadings = Array.from(aboutEl.querySelectorAll('h1,h2,h3,h4,h5,h6'));
       aboutEl.querySelectorAll('a[href^="#"]').forEach(a => {
         a.addEventListener('click', e => {
@@ -125,9 +324,12 @@
           const id = decodeURIComponent(a.getAttribute('href').slice(1));
           const target = allHeadings.find(h => h.id === id);
           if(!target || !scrollPane) return;
+          const panel = target.closest('.about-tab-panel');
+          if (panel) tabs.select(panel, { resetScroll: false });
           const paneRect = scrollPane.getBoundingClientRect();
           const targetRect = target.getBoundingClientRect();
-          scrollPane.scrollTop = scrollPane.scrollTop + (targetRect.top - paneRect.top);
+          const scale = paneRect.height / scrollPane.offsetHeight || 1;
+          scrollPane.scrollTop += (targetRect.top - tabs.nav.getBoundingClientRect().bottom) / scale - 12;
         });
       });
     } catch(e) {

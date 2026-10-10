@@ -56,7 +56,7 @@ const { openPage, settle } = require('../tactics/helpers');
       assert(variant.logo.endsWith(theme === 'fnl2a' ? '/RussianSecondLeagueA.svg' : '/RussianSecondLeagueB.svg'));
       for (const key of ['homeScore', 'awayScore', 'extra']) assert.deepEqual(variant[key], { bg: 'rgb(227, 29, 41)', color: ink });
       assert.deepEqual(variant.time, { bg: ink, color: 'rgb(227, 29, 41)' });
-      assert.equal(variant.logoBox.bg, 'rgb(0, 0, 0)');
+      assert.equal(variant.logoBox.bg, theme === 'fnl2b' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)');
       assert.equal(variant.homeName.color, 'rgb(18, 52, 86)');
       assert.equal(variant.awayName.color, 'rgb(255, 224, 128)');
       assert.equal(await page.locator(`#fsmThemeSelect option[value="${theme}"]`).count(), 1);
