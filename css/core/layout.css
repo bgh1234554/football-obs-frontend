@@ -583,6 +583,58 @@
     }
 
     /* ========== 마크다운 렌더 ========== */
+    .about-tabs {
+      position: sticky;
+      top: -20px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 0;
+      background: var(--panel, #111827);
+      border-bottom: 1px solid var(--line);
+    }
+    .about-tab-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .about-tabs [role="tab"] {
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      cursor: pointer;
+    }
+    .about-tabs [aria-selected="true"] { background: rgba(96,165,250,.15); color: var(--text); border-color: #60a5fa; }
+    .about-tabs [role="tab"]:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    .about-tab-item { position: relative; }
+    .about-tabs [role="tab"]::after { content: ' ▾'; font-size: .8em; opacity: .65; }
+    .about-tabs [aria-expanded="true"] { border-color: #60a5fa; color: var(--text); }
+    .about-submenu {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .about-submenu[hidden] { display: none; }
+    .about-submenu-link {
+      display: block;
+      max-width: 100%;
+      padding: 4px 8px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      white-space: normal;
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+    .about-submenu-link:hover, .about-submenu-link:focus-visible { background: rgba(96,165,250,.15); outline: none; }
+    .about-submenu-link[aria-current="location"] { background: rgba(96,165,250,.15); color: #93c5fd; box-shadow: inset 0 -2px #60a5fa; }
+    .about-tab-panel[hidden] { display: none; }
     .md-body { color: var(--text); line-height: 1.75; font-size: 14px; }
     .md-body h1 { font-size: 24px; font-weight: 900; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
     .md-body h2 { font-size: 18px; font-weight: 800; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
