@@ -20,8 +20,22 @@ assert.equal(beforeKickoff(300000), 240000);
 assert.equal(beforeKickoff(60001), 1);
 assert.equal(beforeKickoff(60000), 15000);
 assert.equal(beforeKickoff(30000), 15000);
+assert.equal(beforeKickoff(15001), 15000);
+assert.equal(beforeKickoff(15000), 15000);
+assert.equal(beforeKickoff(14999), 14999);
+assert.equal(beforeKickoff(3000), 3000);
+assert.equal(beforeKickoff(1), 1);
 assert.equal(beforeKickoff(0), 15000);
 assert.equal(beforeKickoff(-60000), 15000);
+// 응답이 2초씩 걸려 주기가 밀려도 킥오프 예약을 넘기지 않는다.
+const kickoff = now + 60000;
+let responseAt = now;
+while (responseAt < kickoff) {
+  const dueAt = responseAt + plan(fixture('NS', new Date(kickoff).toISOString()), {}, responseAt).delay;
+  assert(dueAt <= kickoff);
+  if (dueAt === kickoff) break;
+  responseAt = dueAt + 2000;
+}
 assert.equal(plan(fixture('FT', new Date(now - 4 * 3600000).toISOString()), {}, now).delay, null);
 const finished = {};
 assert.equal(plan(fixture('FT'), finished, now).delay, 60000);

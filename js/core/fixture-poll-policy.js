@@ -58,6 +58,11 @@ function getFixturePollingPlan(data, tracking, now = Date.now()) {
     // 킥오프 1분 전까지 남은 시간이 더 짧으면 그 시각에 맞춰 조회한다.
     return { delay: Math.min(10 * 60 * 1000, remaining - 60 * 1000) };
   }
+  // 마지막 1분에는 15초 주기를 유지하되 예정 킥오프 시각을 넘어 기다리지 않는다.
+  // 응답 지연이나 수동 조회로 주기가 어긋나도 킥오프 시각에 시작 여부를 확인한다.
+  if (status === 'NS' && Number.isFinite(kickoff) && kickoff > now) {
+    return { delay: Math.min(15000, kickoff - now) };
+  }
 
   // 6) 진행 중인 전·후반, 하프타임, 연장 전·후반, 승부차기는 15초 간격으로 조회한다.
   // NS도 킥오프 1분 이내이거나 예정 시각이 지났으면 같은 간격으로 시작 여부를 확인한다.
