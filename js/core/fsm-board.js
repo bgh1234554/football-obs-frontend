@@ -11,6 +11,9 @@ function setFsmAttr(selector, name, value) {
   });
 }
 const LEAGUE_THEME_MAP = {
+  98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   40: { theme: 'eflchampionship', logoUrl: null, type: 'club' },
   41: { theme: 'eflleagueone', logoUrl: null, type: 'club' },
   42: { theme: 'eflleaguetwo', logoUrl: null, type: 'club' },
@@ -54,7 +57,7 @@ const FSM_THEMES = Object.freeze({
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', acle: 'AFC 챔피언스리그 엘리트',
   unl: '네이션스리그', er24: '유로',
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
-  kleague: 'K리그', mls: 'MLS', wc26: '월드컵'
+  kleague: 'K리그', jleague: 'J리그', mls: 'MLS', wc26: '월드컵'
 });
 
 function initFsmThemeSelect() {
@@ -315,6 +318,10 @@ function applyTheme(theme, logoUrl) {
     case 'eflleaguetwo':
       changeCSS('css/theme/result_style_EFL_LEAGUE_TWO.css', theme);
       break;
+    case 'jleague':
+      changeCSS('css/theme/result_style_JLEAGUE.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'fnl':
       changeCSS('css/theme/result_style_FNL.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -438,6 +445,20 @@ function adjustScoreboardWidth() {
     text.style.width = '';
     return width;
   });
+  if (_currentTheme === 'jleague') {
+    // 글자의 실제 높이에서 원호가 차지하는 최대 폭을 구해 최소한의 여백만 확보한다.
+    const radius = cards[0].clientHeight;
+    const context = document.createElement('canvas').getContext('2d');
+    const inkHeight = Math.max(...texts.map(text => {
+      const style = getComputedStyle(text);
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const metrics = context.measureText(text.textContent);
+      return metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    }));
+    const reach = Math.min(radius, (radius + inkHeight) / 2);
+    const padding = Math.ceil(radius - Math.sqrt(Math.max(0, radius * radius - reach * reach)) + 3);
+    board.style.setProperty('--fsm-jleague-name-padding', `${Math.max(16, padding)}px`);
+  }
   // 합산 점수가 표시되는 경우 이를 포함해 실제 테마 영역을 측정합니다.
   const fixedWidth = Array.from(scoreboard.children).reduce((sum, child) => {
     const style = getComputedStyle(child);
@@ -478,7 +499,7 @@ function adjustScoreboardWidth() {
     // 점수 영역을 위해 이미 확보한 여백은 중복해서 더하지 않습니다.
     const margin = Math.max(0,
       (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0) - reservedWidth);
-    return width + Math.max(limits.teamPadding, padding + margin) + reservedWidth;
+    return width + Math.max(_currentTheme === 'jleague' ? 32 : limits.teamPadding, padding + margin) + reservedWidth;
   }));
   const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
   const boardWidth = Math.min(limits.maxBoard, requestedBoard, fixedWidth + 2 * limits.maxTeam);
@@ -556,7 +577,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['pl', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['pl', 'jleague', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
         ? 'none' : ['rpl', 'belgian', 'ligaportugal'].includes(theme) ? 'chip' : 'strip';
     }
     if(theme == 'pl') {
@@ -571,8 +592,12 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
-    } else if(['fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
+    } else if(['jleague', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
+      if (theme === 'jleague') {
+        setFsmStyle('.fsm-board .team-color', {background: ''});
+        ensureJleagueArcs();
+      }
     } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid ' + chromaSafe('#BDE74C'), borderTop: '3px solid #AD8BF7'});
@@ -612,6 +637,27 @@ function adjustScoreboardWidth() {
     }
   }
 
+  function ensureJleagueArcs() {
+    const namespace = 'http://www.w3.org/2000/svg';
+    document.querySelectorAll('.fsm-board .team-color').forEach(panel => {
+      if (panel.querySelector('.jleague-arc')) return;
+      ['start', 'end'].forEach(edge => {
+        const svg = document.createElementNS(namespace, 'svg');
+        svg.setAttribute('class', `jleague-arc jleague-arc-${edge}`);
+        svg.setAttribute('viewBox', '0 0 48 48');
+        svg.setAttribute('aria-hidden', 'true');
+        const fill = document.createElementNS(namespace, 'path');
+        fill.setAttribute('class', 'jleague-arc-fill');
+        fill.setAttribute('d', 'M0 0 A48 48 0 0 0 48 48 L0 48 Z');
+        const curve = document.createElementNS(namespace, 'path');
+        curve.setAttribute('class', 'jleague-arc-border');
+        curve.setAttribute('d', 'M0 0 A48 48 0 0 0 48 48');
+        svg.append(fill, curve);
+        panel.append(svg);
+      });
+    });
+  }
+
   function toPsoArr(pkArr) {
     const base = Math.max(5, (pkArr || []).length);
     return Array.from({ length: base }, (_, i) => {
@@ -622,6 +668,7 @@ function adjustScoreboardWidth() {
 
   // 점수 또는 시계에 이미 쓰이는 고정 색상만 사용한다. 전환 중 보간색은 읽지 않는다.
   const FSM_PSO_PALETTES = Object.freeze({
+    jleague: ['#0D0D0D', '#ffffff'],
     default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
     seriea: ['#0456e5', '#f5f5f5'], superlig: ['#ff0203', '#ffffff'],
     ligue1: ['#ffffff', '#000000'], ligue2: ['#ffffff', '#000000'],
