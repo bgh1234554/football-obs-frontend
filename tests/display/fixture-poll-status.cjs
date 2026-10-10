@@ -26,9 +26,10 @@ const root = path.resolve(__dirname, '../..');
       await fetchAndApplyFixtureData('100');
       clearPolling();
       // 실제 새로고침 버튼의 위임 클릭 경로에서 요청 직후와 완료 후 표시를 검사한다.
-      let finish;
-      fetchFixture = () => new Promise(resolve => { finish = resolve; });
-      document.querySelector('.lp-force-refresh-btn').click();
+      let finish, requestedCache;
+      fetchFixture = (id, options) => { requestedCache = options.cache; return new Promise(resolve => { finish = resolve; }); };
+      document.querySelector('.fixture-poll-refresh').click();
+      const sharedCooldown = [...document.querySelectorAll('.lp-force-refresh-btn')].every(button => button.disabled && button.classList.contains('is-cooldown'));
       const started = $('fixture-poll-status').textContent;
       finish(data);
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -41,9 +42,9 @@ const root = path.resolve(__dirname, '../..');
       await fetchAndApplyFixtureData('100', { silent: true });
       clearPolling();
       const failed = $('fixture-poll-status').textContent;
-      return { started, succeeded, visible, failed };
+      return { started, succeeded, visible, failed, sharedCooldown, requestedCache };
     });
-    assert.deepEqual(result, { started: '조회 중', succeeded: '성공', visible: true, failed: '실패' });
+    assert.deepEqual(result, { started: '조회 중', succeeded: '성공', visible: true, failed: '실패', sharedCooldown: true, requestedCache: 'reload' });
     const overlapping = await page.evaluate(async () => {
       const originalRecord = recordRecentFixture;
       const originalFetch = fetchFixture;
