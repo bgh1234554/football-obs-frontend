@@ -329,4 +329,4 @@
 .fsm-board #homeColor { right: var(--fsm-score-overlap, 80px); }
 .fsm-board #awayColor { left: var(--fsm-score-overlap, 80px); }
 .fsm-board .time { color: #0e2a5c; background: #ffffff; }
-.fsm-board .extra-time { color: #ffffff; background: #E62F2F; }
+.fsm-board .extra-time { color: #ffffff; background: #1979F4; }
