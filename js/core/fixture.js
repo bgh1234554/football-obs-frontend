@@ -28,9 +28,6 @@
     const status = $('fixture-poll-status');
     status.textContent = poll?.status || '대기';
     status.dataset.status = poll ? ({ '조회 중': 'loading', '성공': 'ok', '실패': 'error' }[poll.status] || 'idle') : 'idle';
-    const match = $('fixture-poll-match');
-    match.hidden = !poll || poll.fixtureId === String(currentFixtureId);
-    match.textContent = poll ? `조회 경기 ID ${poll.fixtureId}` : '';
     el.title = poll ? `경기 ${poll.fixtureId} · 마지막 조회 시작 시각과 결과` : '현재 경기의 마지막 조회 시작 시각과 결과';
     if (poll) el.setAttribute('datetime', new Date(poll.at).toISOString());
     else el.removeAttribute('datetime');

@@ -163,8 +163,11 @@ body.sidebar-open .sidebar-nav {
 .fixture-poll-status[data-status="ok"] { color: #86efac; background: rgba(34,197,94,.1); }
 .fixture-poll-status[data-status="loading"] { color: #93c5fd; background: rgba(59,130,246,.12); }
 .fixture-poll-status[data-status="error"] { color: #fca5a5; background: rgba(239,68,68,.12); }
-.fixture-poll-match { display: block; margin-top: 5px; color: #94a3b8; font-size: 10px; }
-.fixture-poll-match[hidden] { display: none; }
+.fixture-poll-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.fixture-poll-header .fixture-poll-refresh { min-width: 26px; height: 26px; padding: 0 6px; justify-content: center; border-radius: 7px; }
+.fixture-poll-refresh .lp-force-refresh-label { display: none; }
+.fixture-poll-refresh .lp-force-refresh-count { font-size: 11px; font-weight: 700; }
+.fixture-poll-refresh:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
 
 /* 사이드바 내 fixture-inline 래퍼 */
 .sidebar-body .fixture-inline {

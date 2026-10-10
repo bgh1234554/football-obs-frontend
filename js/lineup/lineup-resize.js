@@ -210,6 +210,9 @@ function getSmallStatsHeightMetrics() {
 function applySmallStatsHeight() {
   const metrics = getSmallStatsHeightMetrics();
   if (!metrics) return;
+  // 가로 경계를 움직이는 동안에는 폭 변화마다 스탯 DOM을 다시 만들지 않는다.
+  // 드래그가 끝나면 최종 폭을 기준으로 높이와 표시 행을 한 번 갱신한다.
+  if (smallLayoutActiveResizePointers.has(metrics.column.closest('.layout-small'))) return;
   const { column, eventsPanel, statPanel, available, minimum, gap } = metrics;
   const requested = smallStatsHeightRatio == null ? stDefaultPanelHeight(statPanel) : available * smallStatsHeightRatio;
   const statHeight = Math.max(minimum, Math.min(available - minimum, requested));
@@ -536,6 +539,7 @@ function startSmallLayoutResize(event) {
     else if (lastWidths) {
       try { localStorage.setItem(SMALL_LAYOUT_COLUMNS_KEY, JSON.stringify(lastWidths)); } catch {}
     }
+    if (!rightHandle && (lastWidths || e?.type === 'pointercancel')) applySmallStatsHeight();
   };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);

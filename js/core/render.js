@@ -265,6 +265,7 @@
     setCSS('--note-stroke-w-neg', -noteStrokeWidth + 'px');
     if (el.noteStrokeWidth) el.noteStrokeWidth.value = noteStrokeWidth;
     setCSS('--note-text', chromaSafe(state.colors.noteText));
+    if (typeof applyPageBackground === 'function') applyPageBackground();
     setCSS('--home-logo-x', (state.homeLogoX??0)+'px');
     setCSS('--home-logo-y', (state.homeLogoY??0)+'px');
     setCSS('--away-logo-x', (state.awayLogoX??0)+'px');

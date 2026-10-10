@@ -111,6 +111,7 @@ const SETTINGS_DEFAULTS = {
   ratingColor95:        '#7f1d6d',  // ≥ 9.5
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
+  bgTeamDirection: 'off',
   bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
   matchInfoLabelColor: '#60A5FA', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
   matchInfoLabelColorRev: 1, // 이전 주황 기본값을 1회만 새 기본색으로 이전.
@@ -136,7 +137,7 @@ const SETTINGS_DEFAULTS = {
   alphaTransparencyMode: 'transparency',
   // 그리기 도구 크기 기본값 100% -> 150% 변경 마이그레이션 완료 표시. 이전 기본값(100)이 저장된 브라우저를 1회만 150으로 올린다.
   tacticsDrawtoolsScaleRev: 'v150',
-  // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
+  // 그린스크린 모드. ON시 초록 계열 중 OBS 기본 유사성의 CbCr 거리 기준에 해당하는 색만 치환.
   // OBS 크로마키와 충돌 방지용.
   // 팀 컬러·평점·교체 표시·이벤트·전술판은 같은 greenscreenIntensity를 따른다.
   greenscreen:    'off',
@@ -392,6 +393,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 ]);
 
 function isValidSetting(category, value) {
+  if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical'].includes(value);
   if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgImageUrl') return typeof value === 'string';     // 빈 문자열 허용 (= 배경 없음)
@@ -482,6 +484,12 @@ function loadSettings() {
     const shouldMigrateAlphaTransparency =
       parsed.alphaTransparencyMode !== SETTINGS_DEFAULTS.alphaTransparencyMode;
     let normalizedSettings = false;
+    // 이전 ON/OFF와 방향 설정을 하나의 선택값으로 합친다.
+    if (parsed.bgTeamColors === 'on' || parsed.bgTeamColors === 'off') {
+      parsed.bgTeamDirection = parsed.bgTeamColors === 'on'
+        ? (parsed.bgTeamDirection === 'vertical' ? 'vertical' : 'horizontal') : 'off';
+      normalizedSettings = true;
+    }
 
     // 2) 카테고리별 적용 + legacy 마이그레이션 보정.
     Object.keys(SETTINGS_DEFAULTS).forEach(category => {
@@ -661,6 +669,7 @@ function applySettingSideEffects(category) {
   }
   // Iter 5-7: 배경 색/이미지 변경 → 즉시 :root CSS 변수 갱신.
   if (category === 'bgColor'
+    || category === 'bgTeamDirection'
     || category === 'panelColor'
     || category === 'bgAlpha'
     || category === 'bgImageUrl'
@@ -897,7 +906,7 @@ function applyLayoutSettings() {
 /** 사용자가 초록색 단색 배경을 확정했을 때만 그린스크린 모드 사용을 권장한다. */
 function commitBackgroundColor(value, recommendGreenscreen = true) {
   if (!setSetting('bgColor', value)) return false;
-  if (!recommendGreenscreen || getSetting('greenscreen') === 'on'
+  if (!recommendGreenscreen || getSetting('greenscreen') === 'on' || getSetting('bgTeamDirection') !== 'off'
     || String(getSetting('bgImageUrl') || '').trim()
     || String(getSetting('bgImageData') || '').trim()
     || Number(getSetting('bgAlpha')) >= 100) return true;
@@ -917,11 +926,8 @@ function commitBackgroundColor(value, recommendGreenscreen = true) {
  * - bgImageUrl 우선, 없으면 bgImageData (file 첨부 base64)
  * - 둘 다 비어있으면 이미지 없이 색만 적용
  */
-function applyBackgroundSettings() {
+function applyPageBackground() {
   const root = document.documentElement;
-  const panelRgb = parseAnyColor(chromaSafe(getSetting('panelColor')));
-  root.style.setProperty('--info-panel-rgb', `${panelRgb.r}, ${panelRgb.g}, ${panelRgb.b}`);
-  const forceOpaquePanels = getSetting('greenscreen') === 'on';
   const bgColor = getSetting('bgColor') || '#111827';
   const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl') || '');
   const data = String(getSetting('bgImageData') || '').trim();
@@ -931,13 +937,29 @@ function applyBackgroundSettings() {
   const bgOpacity = (100 - clampPercent(getSetting('bgAlpha'), SETTINGS_DEFAULTS.bgAlpha)) / 100;
   const bgRgb = [1, 3, 5].map(start => parseInt(bgColor.slice(start, start + 2), 16));
   root.style.setProperty('--page-bg', `rgba(${bgRgb.join(', ')}, ${bgOpacity})`);
-  if (imgSrc) {
+  if (getSetting('bgTeamDirection') !== 'off') {
+    const color = value => {
+      const rgb = parseAnyColor(chromaSafe(value));
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${bgOpacity})`;
+    };
+    const direction = getSetting('bgTeamDirection') === 'vertical' ? 'to bottom' : 'to right';
+    root.style.setProperty('--page-bg', 'transparent');
+    root.style.setProperty('--bg-image', `linear-gradient(${direction}, ${color(state.colors.homeBg)}, ${color(state.colors.awayBg)})`);
+  } else if (imgSrc) {
     // CSS url() 안에 큰따옴표가 들어가면 깨질 수 있어 escape.
     const safeSrc = imgSrc.replace(/"/g, '\\"');
     root.style.setProperty('--bg-image', `url("${safeSrc}")`);
   } else {
     root.style.setProperty('--bg-image', 'none');
   }
+}
+
+function applyBackgroundSettings() {
+  applyPageBackground();
+  const root = document.documentElement;
+  const panelRgb = parseAnyColor(chromaSafe(getSetting('panelColor')));
+  root.style.setProperty('--info-panel-rgb', `${panelRgb.r}, ${panelRgb.g}, ${panelRgb.b}`);
+  const forceOpaquePanels = getSetting('greenscreen') === 'on';
 
   // 패널 투명도 — UI는 0=불투명, 100=완전 투명. CSS alpha에는 반전된 opacity를 넣는다.
   const panelTransparencyPct = forceOpaquePanels

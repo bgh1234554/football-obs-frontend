@@ -42,6 +42,25 @@ const { openPage, settle } = require('../tactics/helpers');
         render(); fsmBoardRender();
       }, mode);
       await settle(page);
+      const boundary = await page.evaluate(() => ({
+        preserved: ['#ffff00', '#fcdb2c', '#d9af00'].map(color => ({
+          color, converted: chromaSafe(color), text: chromaSafeText(color), green: isGreenLike(color),
+        })),
+        green: chromaSafe('#00ff00'),
+        // 같은 색상각이어도 키 색에서 먼 어두운 색은 유지한다.
+        darkGreen: chromaSafe('#002000'),
+        rgba: chromaSafe('rgba(255, 255, 0, 0.5)'),
+        gradient: chromaSafeGradient('linear-gradient(#ffff00, #00ff00)'),
+      }));
+      for (const item of boundary.preserved) {
+        assert.equal(item.converted, item.color, mode);
+        assert.equal(item.text, item.color, mode);
+        assert.equal(item.green, false, mode);
+      }
+      assert.equal(boundary.darkGreen, '#002000', mode);
+      assert.equal(boundary.rgba, 'rgba(255, 255, 0, 0.5)', mode);
+      assert.equal(boundary.gradient, `linear-gradient(#ffff00, ${boundary.green})`, mode);
+      if (mode !== 'off') assert.notEqual(boundary.green, '#00ff00', mode);
       const values = await page.evaluate(() => {
         const rgb = value => { const el = document.createElement('span'); el.style.color = value; return el.style.color; };
         return {

@@ -189,12 +189,14 @@
         <span id="selected-fixture-id" data-selected-fixture-id class="fixture-inline-id" title="클릭해서 복사">-</span>
         <span id="fixture-status" class="fixture-inline-status"></span>
         <div class="fixture-poll-card">
-          <span class="fixture-inline-label">마지막 폴링 시각</span>
+          <div class="fixture-poll-header">
+            <span class="fixture-inline-label">마지막 폴링 시각</span>
+            <button class="lp-force-refresh-btn fixture-poll-refresh" type="button" title="새로고침" aria-label="경기 데이터 새로고침"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg><span class="lp-force-refresh-label">새로고침</span></button>
+          </div>
           <time id="fixture-last-polled" class="fixture-last-polled" title="현재 경기의 마지막 조회 시작 시각과 결과">
             <span id="fixture-poll-date" class="fixture-poll-date">아직 조회하지 않음</span>
             <span class="fixture-poll-result"><span id="fixture-poll-clock" class="fixture-poll-clock">--:--:--</span><span id="fixture-poll-status" class="fixture-poll-status" data-status="idle">대기</span></span>
           </time>
-          <span id="fixture-poll-match" class="fixture-poll-match" hidden></span>
         </div>
       </div>
       <div class="sidebar-divider"></div>
@@ -685,6 +687,17 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
+              <span class="sp-label-main">팀 컬러 배경</span>
+              <span class="sp-label-sub">홈·원정 팀 배경색으로 그라데이션을 표시합니다. 끄면 기존 배경으로 돌아갑니다.</span>
+            </div>
+            <select class="sp-select" data-settings-select="bgTeamDirection" aria-label="팀 컬러 배경">
+              <option value="off">OFF</option>
+              <option value="horizontal">좌우</option>
+              <option value="vertical">상하</option>
+            </select>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
               <span class="sp-label-main">배경 색</span>
               <span class="sp-label-sub">점수판 바깥 배경색입니다. 초기화로 기본값을 복원합니다.</span>
             </div>
@@ -727,7 +740,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">크로마키 안전도</span>
-              <span class="sp-label-sub">강할수록 크로마키에 안전합니다.</span>
+              <span class="sp-label-sub">크로마키로 투명해지는 색깔을 어느 색으로 대체할지 정합니다. 마젠타에 가까워질수록 크로마키에 안전합니다.</span>
             </div>
             <select class="sp-select" data-settings-select="greenscreenIntensity">
               <option value="strong">마젠타 (가장 안전)</option>
