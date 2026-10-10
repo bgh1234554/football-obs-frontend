@@ -5,6 +5,29 @@ const { openPage, settle } = require('../tactics/helpers');
   const browser = await chromium.launch();
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
+    const commits = await page.evaluate(() => {
+      const calls = [];
+      const listener = event => calls.push(event.detail.key);
+      document.addEventListener('theme:colors-changed', listener);
+      try {
+        state.colors.homeBg = '#112233'; state.colors.homeText = '#ddeeff';
+        const before = JSON.stringify(state);
+        swapTeamColors('invalid');
+        if (JSON.stringify(state) !== before || calls.length) throw Error('Invalid side changed state');
+        swapTeamColors('home');
+        if (state.colors.homeBg !== '#ddeeff' || state.colors.homeText !== '#112233') throw Error('Swap failed');
+        if (!state.teamColorOverride) throw Error('Missing override');
+        for (const [id, key] of [['inHomeBg', 'homeBg'], ['inHomeText', 'homeText']]) {
+          if ($(id).value !== state.colors[key] || $(id + 'Hex').value !== state.colors[key]) throw Error('Inputs out of sync');
+        }
+        const hex = $('inHomeBgHex');
+        hex.value = '#445566'; hex.dispatchEvent(new Event('change'));
+        if (state.colors.homeBg !== '#445566' || $('inHomeBg').value !== '#445566') throw Error('HEX commit failed');
+        hex.dispatchEvent(new Event('change'));
+        return calls;
+      } finally { document.removeEventListener('theme:colors-changed', listener); }
+    });
+    assert.deepEqual(commits, ['homeBg', 'homeBg']);
     await page.evaluate(() => {
       state.colors.homeBg = '#00c424'; state.colors.homeText = '#ffffff';
       state.pk.home = ['G', 'M']; state.half = 'PK';

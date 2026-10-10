@@ -107,6 +107,16 @@ const root = path.resolve(__dirname, '../..');
       }
     }
     console.log('PASS SVG event colors, rounded strokes, alignment and greenscreen reinforcement');
+    await page.evaluate(() => {
+      const note = document.getElementById('homeNote');
+      const text = note.querySelector('svg text');
+      const original = text.getBBox;
+      note.style.display = 'none';
+      text.getBBox = () => { throw new Error('Hidden SVG must not be measured'); };
+      try { alignNoteSvg(note); }
+      finally { text.getBBox = original; note.style.display = ''; }
+      alignNoteSvg(note);
+    });
     await page.screenshot({ path: 'tests/display/fsm-note-height.png' });
     assert.deepEqual(errors, []);
     console.log('PASS dynamic clock height, hidden timer and automatic relayout');

@@ -25,6 +25,8 @@ const root = path.resolve(__dirname, '../..');
     await page.waitForSelector('.about-tabs');
     const tabs = page.locator('.about-tabs [role="tab"]');
     assert.equal(await tabs.count(), 11);
+    assert.equal(await page.locator('#about-rendered > h1').count(), 1);
+    assert.equal(await page.locator('#about-rendered > p').count(), 1);
     for (let index = 0; index < 11; index++) {
       await tabs.nth(index).click();
       assert.equal(await page.locator('.about-tab-panel:visible').count(), 1);

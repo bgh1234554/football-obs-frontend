@@ -549,11 +549,14 @@
   }
 
   function alignNoteSvg(noteEl) {
+    if (!noteEl.getClientRects().length) return;
     // HTML의 자동 줄 배치와 폭 측정은 유지하고 SVG 글자만 같은 영역에 맞춘다.
-    noteEl.querySelectorAll('.note-line').forEach(line => {
+    const measurements = [...noteEl.querySelectorAll('.note-line')].map(line => {
       const text = line.querySelector('.note-line-svg-text');
-      const box = text.getBBox();
-      text.setAttribute('transform', `translate(${-box.x} ${(line.offsetHeight - box.height) / 2 - box.y})`);
+      return { text, box: text.getBBox(), height: line.offsetHeight };
+    });
+    measurements.forEach(({ text, box, height }) => {
+      text.setAttribute('transform', `translate(${-box.x} ${(height - box.height) / 2 - box.y})`);
     });
   }
 
