@@ -260,11 +260,20 @@
   transform: translateX(12px);
 }
 
-/* "자동 전환 시 표시할 패널" 6개 체크박스 — 줄바꿈 없이 한 줄로. 기본 .sp-row-label의
-   max-width(430px) 제한을 풀어 모달 너비를 그대로 활용하고, 아이템 간격을 살짝 줄인다. */
+/* 자동 전환 패널 선택은 기본 모달에서 4개씩 두 줄로, 좁은 창에서는 열 수를 줄인다. */
 .sp-row-panel-modes .sp-row-label {
   max-width: none;
 }
+html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
+.sp-panel-mode-toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 10px 14px;
+  width: 100%;
+}
+.sp-panel-mode-toggles .sp-mini-toggle-item { min-width: 0; }
+.sp-panel-mode-toggles .sp-switch { flex-shrink: 0; }
+.sp-panel-mode-toggles .sp-mini-toggle-label { white-space: normal; overflow-wrap: anywhere; }
 .sp-manual-reset-toggles-nowrap {
   flex-wrap: nowrap;
   gap: 10px;

@@ -37,6 +37,7 @@
   <link rel="stylesheet" href="css/lineup/lineup-manual.css"/>
   <link rel="stylesheet" href="css/player/player-menu.css"/>
   <link rel="stylesheet" href="css/panels/hth-panel.css"/>
+  <link rel="stylesheet" href="css/panels/team-fixtures-panel.css"/>
   <link rel="stylesheet" href="css/settings-popup.css?v=20261008-color-editors"/>
   <link href="css/core/fsm-board.css" rel="stylesheet">
   <link id="fsm-theme-link" rel="stylesheet" href="css/theme/result_style_default.css">
@@ -561,7 +562,7 @@
             <div class="sp-row-label">
               <span class="sp-label-main">자동 전환 시 표시할 패널</span>
               <span class="sp-label-sub">경기 데이터 자체가 없는 패널(예: 스탯 미제공 리그)은 체크돼 있어도 자동으로 건너뜁니다.</span>
-              <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap">
+              <div class="sp-manual-reset-toggles sp-panel-mode-toggles">
                 <label class="sp-mini-toggle-item" title="경기 스탯">
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeStats" checked/><span class="sp-switch-slider"></span></span>
                   <span class="sp-mini-toggle-label">스탯</span>
@@ -573,6 +574,10 @@
                 <label class="sp-mini-toggle-item" title="상대전적">
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeHth" checked/><span class="sp-switch-slider"></span></span>
                   <span class="sp-mini-toggle-label">상대전적</span>
+                </label>
+                <label class="sp-mini-toggle-item" title="최근·예정 경기">
+                  <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeTeamFixtures" checked/><span class="sp-switch-slider"></span></span>
+                  <span class="sp-mini-toggle-label">최근·예정 경기</span>
                 </label>
                 <label class="sp-mini-toggle-item" title="홈팀 교체 명단">
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeBenchHome" checked/><span class="sp-switch-slider"></span></span>
@@ -951,6 +956,7 @@
             <button class="lp-stat-standings-popup-btn" style="display:none"></button>
             <button class="lp-force-refresh-btn lp-stat-refresh-btn" type="button" title="새로고침"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7A5 5 0 1 1 10.4 3.4"/><path d="M12 2.2v3.6H8.4"/></svg><span class="lp-force-refresh-label">새로고침</span></button>
             <div data-stat-panel></div>
+            <div data-team-fixtures-panel style="display:none"></div>
             <div data-hth-panel style="display:none"></div>
             <div data-events-panel style="display:none"></div>
             <div data-bench-home-panel style="display:none"></div>
@@ -969,6 +975,7 @@
         <!-- 이벤트 (문자중계 타임라인) + 경기 스탯 — events-panel.js / stats-panel.js가 fixture 데이터로 채움 -->
         <div class="lp-col lp-col-events-stat">
           <div class="lp lp-events-s">
+            <div data-team-fixtures-panel style="display:none"></div>
             <div data-events-panel></div>
             <div data-scoreaxis-standings-panel style="display:none"></div>
             <div data-hth-panel style="display:none"></div>
@@ -1431,6 +1438,7 @@
 <script src="js/panels/events-panel.js"></script>
 <script src="js/panels/event-hide.js"></script>
 <script src="js/panels/hth-panel.js"></script>
+<script src="js/panels/team-fixtures-panel.js"></script>
 <script src="js/panels/stats-panel.js"></script>
 <script src="js/panels/stat-cycle.js"></script>
 <script src="js/tactics/tactics-timeline.js"></script>

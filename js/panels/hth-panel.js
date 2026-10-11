@@ -13,7 +13,7 @@ const HTH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const HTH_CACHE_STORAGE_KEY = 'obs.hth.cache.v1';
 const _hthCache = new Map();
 const _hthState = {
-  mode: 'events',      // 'events' | 'hth'
+  mode: 'events',      // 'events' | 'hth' | 'fixtures'
   manualSelection: false, // 직접 선택한 화면은 이벤트 갱신으로 전환하지 않는다.
   hthData: null,       // HthResponseDto { matches: HthMatchDto[] }
   fixtureData: null,   // 마지막 fixture 데이터 — 팀 ID 비교용
@@ -505,8 +505,8 @@ function hthShowForFixture(fixtureData = null, options = {}) {
  * 'events'로 전환 시 이벤트 패널 제목 바 재렌더 (토글 버튼 표시 갱신).
  */
 function hthSetMode(mode, { automatic = false } = {}) {
-  if (mode === 'hth') window.scoreaxisStandingsHideSmall?.({ skipHthUpdate: true });
-  _hthState.mode = mode === 'hth' ? 'hth' : 'events';
+  if (mode === 'hth' || mode === 'fixtures') window.scoreaxisStandingsHideSmall?.({ skipHthUpdate: true });
+  _hthState.mode = ['hth', 'fixtures'].includes(mode) ? mode : 'events';
   _hthState.manualSelection = !automatic;
   hthUpdateVisibility();
   if (_hthState.mode === 'hth') {
@@ -519,6 +519,14 @@ function hthSetMode(mode, { automatic = false } = {}) {
 /** lp-events-s 안의 [data-hth-panel]과 [data-events-panel] 가시성 갱신.
  *  .lp-stat [data-hth-panel]은 stat-cycle.js가 독립 관리하므로 건드리지 않음. */
 function hthUpdateVisibility() {
+  const isFixtures = _hthState.mode === 'fixtures' && !window.scoreaxisStandingsIsSmallMode?.();
+  document.querySelectorAll('.lp-events-s [data-team-fixtures-panel]').forEach(el => {
+    el.style.display = isFixtures ? '' : 'none';
+  });
+  if (isFixtures) {
+    document.querySelectorAll('.lp-events-s [data-events-panel], .lp-events-s [data-hth-panel], .lp-events-s [data-scoreaxis-standings-panel]').forEach(el => { el.style.display = 'none'; });
+    return;
+  }
   if (window.scoreaxisStandingsIsSmallMode?.()) {
     document.querySelectorAll('.lp-events-s [data-hth-panel]').forEach(el => {
       el.style.display = 'none';
@@ -554,6 +562,7 @@ function hthAutoSwitch(events) {
 
 /** fixture 전환 시 HTH 상태 초기화 */
 function hthReset() {
+  window.teamFixturesReset?.();
   _hthState.hthData = null;
   _hthState.displayMatches = [];
   _hthState.fixtureData = null;

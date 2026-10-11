@@ -60,6 +60,7 @@ const SETTINGS_DEFAULTS = {
   statCycleModeStats: 'on',
   statCycleModeEvents: 'on',
   statCycleModeHth: 'on',
+  statCycleModeTeamFixtures: 'on',
   statCycleModeBenchHome: 'on',
   statCycleModeBenchAway: 'on',
   statCycleModeMatchInfo: 'on',
@@ -387,7 +388,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
   'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
-  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
+  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth', 'statCycleModeTeamFixtures',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo', 'statCycleModeInjuries',
   'popoutModals',
 ]);

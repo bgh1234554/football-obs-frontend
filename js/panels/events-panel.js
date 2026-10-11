@@ -1326,6 +1326,7 @@ function evCreateFilterUi(filterOptions) {
 function applyEventsPanel(fixtureData, options = {}) {
   // settings:change에서 재사용할 마지막 fixture 캐시
   window._eventsLastData = fixtureData;
+  window.teamFixturesSync?.(fixtureData);
   window.applyScoreaxisStandingsPanel?.(fixtureData);
   // 패널 표시 여부/필터/설정 재렌더와 무관하게 같은 fixture의 최초 관측 구간을 유지한다.
   const timeContext = evBuildTimeContext(fixtureData);
