@@ -24,7 +24,7 @@ const { openPage, settle } = require('../tactics/helpers');
         }
         return { title: title.textContent, controls };
       });
-      assert.equal(transitionSection.title, '경기 스탯 페이지 전환');
+      assert.equal(transitionSection.title, '캠 큰 메뉴 우측 하단 패널 전환');
       assert(transitionSection.controls.includes('statCycleAuto'));
       assert(transitionSection.controls.includes('statCycleModeTeamFixtures'));
       assert(transitionSection.controls.includes('statsAutoSwipe'));
