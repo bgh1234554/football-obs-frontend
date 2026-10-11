@@ -14,6 +14,7 @@ const { openPage, settle } = require('../tactics/helpers');
       state.fsmTheme = 'auto'; state.leagueId = 236;
       state.homeName = 'Home Team'; state.awayName = 'Away Team';
       state.homeScore = 2; state.awayScore = 1;
+      state.extra = 3; state.extraShown = true;
       state.colors.homeBg = '#ffffff'; state.colors.homeText = '#123456';
       state.colors.awayBg = '#a02030'; state.colors.awayText = '#ffe080';
       state.added = 4;

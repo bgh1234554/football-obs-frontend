@@ -6,6 +6,7 @@ await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.orig
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
 
+await page.evaluate(()=>setManualExtra(3));
 for(const theme of ['pl','seriea','wc26','ligue1','ligue2']){
  // 프리미어리그를 거쳐 전환하여 남아 있는 인라인 색상과 정렬 설정을 확인합니다.
  await page.evaluate(()=>applyTheme('pl',null));await page.waitForTimeout(100);

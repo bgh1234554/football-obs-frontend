@@ -13,7 +13,7 @@ assert.equal(await page.locator('#templateSelect, #homeLogoScale, #homeOutlineOn
 assert(await page.locator('#inHomeBg').isVisible());assert(await page.locator('#noteOn').isVisible());assert(await page.locator('#extraInput').isVisible());
 const position=await page.evaluate(()=>{const e=document.querySelector('#extraInput').closest('.pgroup'),a=document.querySelector('#aggToggle').closest('.pgroup');return !!(e.compareDocumentPosition(a)&Node.DOCUMENT_POSITION_FOLLOWING)&&!document.querySelector('#manual-section').contains(e);});assert(position);
 await page.locator('#extraInput').fill('4');await page.locator('#extraPlus').click();assert.equal(await page.evaluate(()=>state.extra),5);assert.equal(await page.evaluate(()=>state.extraManualOverride),true);await page.locator('#toggleExtra').click();assert.equal(await page.evaluate(()=>state.extraShown),false);
-const themes=await page.locator('#fsmThemeSelect option').evaluateAll(ns=>ns.map(n=>n.value));assert.equal(themes.length,15);
+const themes=await page.locator('#fsmThemeSelect option').evaluateAll(ns=>ns.map(n=>n.value));assert.deepEqual([...themes].sort(),await page.evaluate(()=>['auto',...Object.keys(FSM_THEMES)].sort()));
 console.log('THEMES',themes);for(const theme of themes.filter(t=>t!=='auto')){console.log('SELECT',theme);await page.locator('#fsmThemeSelect').selectOption(theme);await page.waitForFunction(t=>!pendingThemeLink&&_currentTheme===t,theme);}
 await page.locator('#fsmThemeSelect').selectOption('rpl');await page.waitForFunction(()=>!pendingThemeLink&&_currentTheme==='rpl');
 await page.evaluate(()=>{state.leagueId=39;autoApplyTemplateByLeagueId(39,null);persist();});assert.equal(await page.evaluate(()=>_currentTheme),'rpl');

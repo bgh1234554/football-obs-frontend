@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -43,7 +44,7 @@ const root = path.resolve(__dirname, '../..');
           assert(backgrounds[0].animations.includes('font-size'), 'Restore the original score size transition');
           assert(backgrounds[0].animations.includes('margin-top'), 'Restore the original score movement');
         }
-        await page.screenshot({ path: `tests/display/pl-${revision}-${delay}.png` });
+        await page.screenshot({ path: `screenshots/tests/pl-${revision}-${delay}.png` });
         if (revision === 'current') backgrounds.forEach(value => assert.equal(value.background, 'rgba(0, 0, 0, 0)'));
       }
       console.log('PASS', revision, 'EPL transition frames; current score and logo backgrounds stay transparent');

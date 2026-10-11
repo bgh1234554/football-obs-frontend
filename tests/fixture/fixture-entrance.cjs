@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -39,7 +40,7 @@ const root = path.resolve(__dirname, '../..');
       await page.waitForFunction(() => window.entranceStarts === 2);
       const before = await page.locator('#board').evaluate(node => ({ width: node.offsetWidth, height: node.offsetHeight }));
       await page.waitForTimeout(theme === 'pl' ? 150 : 300);
-      await page.locator('#boardStageInner').screenshot({ path: `tests/fixture/entrance-${theme}.png` });
+      await page.locator('#boardStageInner').screenshot({ path: `screenshots/tests/entrance-${theme}.png` });
       await page.waitForFunction(() => !document.querySelector('.fsm-starting, .fsm-entering'));
       assert.deepEqual(await page.locator('#board').evaluate(node => ({ width: node.offsetWidth, height: node.offsetHeight })), before);
       await load(String(Number(id) + 1), true);

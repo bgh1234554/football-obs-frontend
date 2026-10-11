@@ -5,14 +5,16 @@ const page=await browser.newPage({viewport:{width:1280,height:720}});const error
 await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!=='http://localhost')return route.abort();const f=path.join(root,u.pathname==='/'?'overlay_dashboard.html':decodeURIComponent(u.pathname));if(!fs.existsSync(f)||fs.statSync(f).isDirectory())return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(f),contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.ttf':'font/ttf','.woff':'font/woff'}[path.extname(f)]||'application/octet-stream'});});
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
-for(const theme of fs.readdirSync(path.join(root,'css/theme')).filter(name=>name.startsWith('result_style_'))) {
- await page.evaluate(theme=>{const key={default:'default',EPL:'pl',CL:'cl',UEL:'uel',ACLE:'acle',UNL:'unl',EURO24:'er24',LIGUE1:'ligue1',RPL:'rpl',LIGUE2:'ligue2',UECL:'uecl',SERIEA:'seriea',KLEAGUE:'kleague',WC26:'wc26'}[theme.replace('result_style_','').replace('.css','')];applyTheme(key,null);},theme);await page.waitForFunction(theme=>document.getElementById('fsm-theme-link').href.endsWith(theme),theme);await page.evaluate(()=>document.fonts.ready);
+for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
+ await page.evaluate(theme=>applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
  await page.evaluate(()=>{state.half='2H';state.seconds=123;state.running=false;render();fsmBoardRender();});await page.waitForTimeout(100);
  const before=await page.locator('#board').boundingBox();
  await page.locator('#clock').dblclick();
  assert(await page.locator('#clockEditor').isVisible());
- await page.mouse.move(0,0);assert.equal(await page.locator('#ceConfirm').evaluate(e=>getComputedStyle(e).color),'rgb(134, 239, 172)');
- await page.locator('#ceConfirm').hover();assert.equal(await page.locator('#ceConfirm').evaluate(e=>getComputedStyle(e).color),'rgb(220, 252, 231)');
+ const accent=await page.evaluate(()=>{const e=document.createElement('span');e.style.color='var(--control-accent)';document.body.append(e);const color=getComputedStyle(e).color;e.remove();return color;});
+ const accentText=await page.evaluate(()=>{const e=document.createElement('span');e.style.color='var(--control-accent-text)';document.body.append(e);const color=getComputedStyle(e).color;e.remove();return color;});
+ await page.mouse.move(0,0);assert.equal(await page.locator('#ceConfirm').evaluate(e=>getComputedStyle(e).color),accent);
+ await page.locator('#ceConfirm').hover();assert.equal(await page.locator('#ceConfirm').evaluate(e=>getComputedStyle(e).color),accentText);
  assert(await page.locator('.scoreboard-main').isVisible());
  const during=await page.locator('#board').boundingBox();assert(Math.abs(before.height-during.height)<1);assert(Math.abs(before.width-during.width)<1);
  const styles=await page.locator('#clock').evaluate(e=>({display:getComputedStyle(e).display,background:getComputedStyle(e).backgroundColor,editorBackground:getComputedStyle(document.querySelector('#clockEditor')).backgroundColor,margin:getComputedStyle(document.querySelector('#clockEditor')).marginTop}));

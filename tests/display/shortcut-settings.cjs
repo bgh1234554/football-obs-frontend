@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'../..');
 (async()=>{const browser=await chromium.launch({headless:true});try{
@@ -47,8 +48,8 @@ await page.setViewportSize({width:390,height:844});
 assert(await page.locator('#shortcutBackBtn').isVisible());
 await verifySearchHeight();
 const overflow=await page.locator('.sp-body').evaluate(n=>n.scrollWidth>n.clientWidth+1);assert.equal(overflow,false);
-await page.screenshot({path:'tests/display/shortcut-settings-mobile.png'});
-await page.setViewportSize({width:1920,height:1080});await verifySearchHeight();await page.screenshot({path:'tests/display/shortcut-settings-desktop.png'});
+await page.screenshot({path:'screenshots/tests/shortcut-settings-mobile.png'});
+await page.setViewportSize({width:1920,height:1080});await verifySearchHeight();await page.screenshot({path:'screenshots/tests/shortcut-settings-desktop.png'});
 page.on('dialog',d=>d.accept());await page.locator('#shortcutResetBtn').click();assert.equal(await page.locator('.sc-key').first().textContent(),'Space');
 await page.locator('#shortcutUndoBtn').click();assert.equal(await page.locator('.sc-key').first().textContent(),'Ctrl + K');
 await page.locator('#shortcutBackBtn').click();assert(await page.locator('[data-sp-tab-section="general"]').isVisible());

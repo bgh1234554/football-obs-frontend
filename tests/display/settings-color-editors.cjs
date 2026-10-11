@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
@@ -34,11 +35,11 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.keyboard.press('Tab');
     assert(await first.locator('[data-color-channel="1"]').evaluate(input => input === document.activeElement));
     await settle(page);
-    await page.locator('.sp-modal').screenshot({ path: 'tests/display/settings-rating-color-editors.png' });
+    await page.locator('.sp-modal').screenshot({ path: 'screenshots/tests/settings-rating-color-editors.png' });
     await page.locator('[data-sp-tab="events"]').click();
     assert.equal(await page.locator('#panelColorPreset').inputValue(), 'custom');
     await settle(page);
-    await page.locator('.sp-modal').screenshot({ path: 'tests/display/settings-panel-color-editors.png' });
+    await page.locator('.sp-modal').screenshot({ path: 'screenshots/tests/settings-panel-color-editors.png' });
     await page.locator('#panelColorResetBtn').click();
     assert.equal(await page.locator('#panelColorPreset').inputValue(), '#0b1220');
     assert.equal(await page.locator('[data-color-editor="panelColor"] [data-color-channel="0"]').inputValue(), '11');

@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'../..');
 (async()=>{const browser=await chromium.launch({headless:true});try{
@@ -17,7 +18,7 @@ for(const theme of ['default','pl','wc26','rpl','uel','uecl','cl','kleague','ser
  assert.equal(result.theme,theme);assert.equal(result.home,'#ffffff');assert.equal(result.away,'#ffcc00');
  if(['pl','wc26','uel','uecl'].includes(theme)){assert.equal(result.mode,'none');for(const edge of result.edges)assert.equal(edge.content,'none');}
  else {assert.equal(result.mode,theme==='rpl'?'chip':'strip');for(const edge of result.edges){const shadow=result.mode==='chip'?edge.chip:theme==='kleague'?edge.kleagueStrip:edge.strip;assert(shadow.includes('inset'));if(result.mode==='chip'){assert(shadow.includes('1px 0px 0px 0px'));assert(shadow.includes('-1px 0px 0px 0px'));}else assert(shadow.includes(theme==='kleague'?'0px 1px 0px 0px':'0px -1px 0px 0px'));}}
- if(theme==='cl'||theme==='rpl')await page.screenshot({path:'tests/display/team-color-edge-'+theme+'.png'});
+ if(theme==='cl'||theme==='rpl')await page.screenshot({path:'screenshots/tests/team-color-edge-'+theme+'.png'});
 }
 assert.deepEqual(errors,[]);console.log('PASS number color outlines across 14 themes, EPL and World Cup excluded');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

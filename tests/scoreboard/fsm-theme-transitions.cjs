@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -45,7 +46,7 @@ const themes = { default: 'default', pl: 'EPL', cl: 'CL', uel: 'UEL', acle: 'ACL
             transition: style.transitionProperty, radius: style.borderTopLeftRadius
           }; }) };
         });
-        if (source === 'default') await page.screenshot({ path: `tests/display/transition-${theme}-middle.png` });
+        if (source === 'default') await page.screenshot({ path: `screenshots/tests/transition-${theme}-middle.png` });
         await page.waitForTimeout(theme === 'pl' ? 450 : 950);
         const final = await page.evaluate(() => ({ width: document.querySelector('.scoreboard-main').offsetWidth, names:[...document.querySelectorAll('.team-name .text')].map(n=>({text:n.textContent,width:n.scrollWidth,font:getComputedStyle(n).font,animations:n.parentElement.getAnimations().map(a=>a.transitionProperty)})),
           backgrounds: [...document.querySelectorAll('.team-score, .score-div, .team-logo, .time, .extra-time')].map(node => getComputedStyle(node).backgroundColor) }));

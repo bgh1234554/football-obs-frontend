@@ -2,6 +2,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
+// 테스트 이미지 저장 위치를 준비해 실행 코드 폴더에 결과물이 쌓이지 않게 한다.
+fs.mkdirSync(path.join(root, 'screenshots/tests'), { recursive: true });
 const near = (actual, expected, label, tolerance = 2) =>
   assert(Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected}`);
 const settle = page => page.evaluate(() => new Promise(resolve =>

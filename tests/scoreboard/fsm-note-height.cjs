@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 ﻿const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -117,7 +118,7 @@ const root = path.resolve(__dirname, '../..');
       finally { text.getBBox = original; note.style.display = ''; }
       alignNoteSvg(note);
     });
-    await page.screenshot({ path: 'tests/display/fsm-note-height.png' });
+    await page.screenshot({ path: 'screenshots/tests/fsm-note-height.png' });
     assert.deepEqual(errors, []);
     console.log('PASS dynamic clock height, hidden timer and automatic relayout');
   } finally { await browser.close(); }

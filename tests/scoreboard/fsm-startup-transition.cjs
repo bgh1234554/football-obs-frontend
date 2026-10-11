@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -43,11 +44,11 @@ const root = path.resolve(__dirname, '../..');
       assert.equal(initial.duration, leagueId === 39 ? '0.4s' : '0.9s');
       assert(!initial.transition.split(', ').includes('width'));
       await page.waitForTimeout(parseFloat(initial.duration) * 400);
-      await page.screenshot({ path: `tests/display/startup-${leagueId}-entering.png` });
+      await page.screenshot({ path: `screenshots/tests/startup-${leagueId}-entering.png` });
       await page.waitForFunction(() => !document.querySelector('.fsm-entering'));
       const final = await page.locator('#board').evaluate(board => ({ width: board.offsetWidth, height: board.offsetHeight }));
       assert.deepEqual(final, { width: initial.width, height: initial.height });
-      await page.screenshot({ path: `tests/display/startup-${leagueId}-ready.png` });
+      await page.screenshot({ path: `screenshots/tests/startup-${leagueId}-ready.png` });
       console.log('PASS restored theme, smooth entrance and stable geometry:', leagueId);
     }
     await page.emulateMedia({ reducedMotion: 'reduce' });
