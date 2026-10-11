@@ -1,7 +1,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [상대 전적 패널 — Iter 7]
 // fixtureId 로드 시 /api/hth를 호출해 [data-hth-panel]에 렌더링.
-// 이벤트가 없을 때 자동으로 HTH 패널 표시, 이벤트 발생 시 자동 복귀.
+// 이벤트가 없는 새 경기에서는 HTH를 표시하고 첫 이벤트에 복귀하되, 수동 선택은 유지한다.
 // ev-title-bar 내 토글 버튼으로 수동 전환 가능.
 //
 // 조회 순서: 홈/원정 팀 ID 정규화 → 6시간 캐시 확인 → 진행 중인 요청 재사용 → API 조회.
@@ -14,6 +14,7 @@ const HTH_CACHE_STORAGE_KEY = 'obs.hth.cache.v1';
 const _hthCache = new Map();
 const _hthState = {
   mode: 'events',      // 'events' | 'hth'
+  manualSelection: false, // 직접 선택한 화면은 이벤트 갱신으로 전환하지 않는다.
   hthData: null,       // HthResponseDto { matches: HthMatchDto[] }
   fixtureData: null,   // 마지막 fixture 데이터 — 팀 ID 비교용
   cacheKey: '',
@@ -494,8 +495,8 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
 }
 
 /** 상대 전적 화면으로 전환하고 데이터를 보장한다. 현재 데이터가 만료됐을 때만 로딩 안내를 요청한다. */
-function hthShowForFixture(fixtureData = null) {
-  hthSetMode('hth');
+function hthShowForFixture(fixtureData = null, options = {}) {
+  hthSetMode('hth', options);
   return hthEnsureLoadedForFixture(fixtureData, { renderLoading: !hthCurrentDataIsFresh(fixtureData) });
 }
 
@@ -503,9 +504,10 @@ function hthShowForFixture(fixtureData = null) {
  * 이벤트/HTH 패널 표시 전환.
  * 'events'로 전환 시 이벤트 패널 제목 바 재렌더 (토글 버튼 표시 갱신).
  */
-function hthSetMode(mode) {
+function hthSetMode(mode, { automatic = false } = {}) {
   if (mode === 'hth') window.scoreaxisStandingsHideSmall?.({ skipHthUpdate: true });
   _hthState.mode = mode === 'hth' ? 'hth' : 'events';
+  _hthState.manualSelection = !automatic;
   hthUpdateVisibility();
   if (_hthState.mode === 'hth') {
     requestAnimationFrame(hthCheckMetaWrap);
@@ -542,14 +544,11 @@ function hthUpdateVisibility() {
   });
 }
 
-/**
- * 이벤트 배열이 비어있다가 채워질 때 HTH -> 이벤트 자동 전환.
- * fixture.js에서 applyEventsPanel 직후 호출.
- */
+/** 자동 표시된 상대전적만 첫 이벤트가 들어왔을 때 이벤트 화면으로 전환한다. */
 function hthAutoSwitch(events) {
-  const hasEvents = Array.isArray(events) && events.length > 0;
-  if (hasEvents && _hthState.mode === 'hth') {
-    hthSetMode('events');
+  if (Array.isArray(events) && events.length > 0
+    && _hthState.mode === 'hth' && !_hthState.manualSelection) {
+    hthSetMode('events', { automatic: true });
   }
 }
 
@@ -564,6 +563,7 @@ function hthReset() {
   _hthState.fetchPromise = null;
   _hthState.requestSeq++;
   _hthState.mode = 'events';
+  _hthState.manualSelection = false;
   hthUpdateVisibility();
   document.querySelectorAll('[data-hth-panel]').forEach(el => { el.replaceChildren(); });
 }
@@ -589,9 +589,9 @@ window.hthCanLoadForFixture = hthCanLoadForFixture;
 window.hthCurrentDataIsFresh = hthCurrentDataIsFresh;
 window.hthEnsureLoadedForFixture = hthEnsureLoadedForFixture;
 window.hthShowForFixture = hthShowForFixture;
+window.hthAutoSwitch = hthAutoSwitch;
 window.hthSetMode = hthSetMode;
 window.hthUpdateVisibility = hthUpdateVisibility;
-window.hthAutoSwitch = hthAutoSwitch;
 window.hthReset = hthReset;
 window.hthCheckMetaWrap = hthCheckMetaWrap;
 /** 메모리와 sessionStorage의 상대 전적 캐시를 비운다. 현재 표시 중인 패널 상태는 별도로 유지된다. */

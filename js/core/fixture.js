@@ -1032,7 +1032,7 @@
       if (preparedForNewEvent && typeof window.lpStatResumeAfterNewEventRendered === 'function') {
         window.lpStatResumeAfterNewEventRendered();
       }
-      // HTH 자동 전환: 이벤트가 생기면 hth → events (Iter 7)
+      // 자동 표시된 상대전적만 이벤트 발생 시 전환하고 직접 선택한 화면은 유지한다.
       if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
       if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
       if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
@@ -1041,7 +1041,7 @@
       if (previousFixtureId !== normalizedFixtureId
         && !hasEvents
         && typeof window.hthShowForFixture === 'function') {
-        window.hthShowForFixture(data).catch(err => console.warn('HTH fetch failed:', err));
+        window.hthShowForFixture(data, { automatic: true }).catch(err => console.warn('HTH fetch failed:', err));
       }
 
       const m = data.matchInfo || {};
@@ -1572,13 +1572,13 @@
           const eventsPanelData = (typeof buildEffectiveFixtureData === 'function') ? buildEffectiveFixtureData(data) : data;
           applyEventsPanel(eventsPanelData);
         }
-        if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
         if (typeof applyStatsPanel === 'function') applyStatsPanel(data);
         if (typeof applyTacticsTimeline === 'function') applyTacticsTimeline(data);
+        if (typeof window.hthAutoSwitch === 'function') window.hthAutoSwitch(data.events);
         // 캐시 복원에서도 events가 없을 때만 HTH를 대체 메인 패널로 lazy-load한다.
         if ((!Array.isArray(data.events) || data.events.length === 0)
           && typeof window.hthShowForFixture === 'function') {
-          window.hthShowForFixture(data).catch(() => {});
+          window.hthShowForFixture(data, { automatic: true }).catch(() => {});
         }
         const m = data.matchInfo;
         const homeName = pickMatchTeamName(m, 'home');
