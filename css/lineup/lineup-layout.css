@@ -78,6 +78,7 @@ body.lp-small-stats-height-resizing * {
 /* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
    컬럼 = 피치 가득 채움 → 옆에 빈 공간 안 생김. */
 .layout-small .lp-lineup-s {
+  position: relative;
   flex: 0 0 auto;
   height: 100%;
   aspect-ratio: 62 / 105;
@@ -95,7 +96,8 @@ body.lp-small-stats-height-resizing * {
   flex: 0 0 var(--lp-small-chat-width);
 }
 
-.layout-small .lp-small-col-resize {
+.layout-small .lp-small-col-resize,
+.layout-small .lp-small-col-resize-middle {
   position: absolute;
   top: 0;
   right: -6px;

@@ -459,17 +459,18 @@ function resetSmallLayoutResize(layout = null) {
 }
 
 /**
- * 작은 캠 layout의 events-stat 칼럼 우측 경계 + cam-chat 칼럼 좌측 경계에 리사이즈 핸들 생성.
- * 가운데 두 패널(라인업/벤치)은 고정 폭이라, 어느 쪽 핸들을 드래그해도 좌(events)/우(chat)
- * 비율이 완전히 같은 방식으로 조정된다(합이 일정하므로 handle 위치와 무관하게 동일한 로직).
+ * 작은 캠의 events-stat/라인업 우측과 cam-chat 좌측 경계에 핸들을 생성한다.
+ * events-stat/라인업 우측 핸들은 같은 동작으로 events-stat과 벤치 폭을 조정한다.
+ * 라인업 폭은 유지하며, cam-chat 좌측 핸들은 벤치와 cam-chat 폭을 조정한다.
  * - pointerdown → 드래그 세션 시작.
  * - dblclick → 기본 비율 복원.
  */
 function ensureSmallLayoutResizeHandles() {
-  document.querySelectorAll('.layout-small .lp-col-events-stat').forEach(panel => {
-    if (panel.querySelector(':scope > .lp-small-col-resize')) return;
+  document.querySelectorAll('.layout-small .lp-col-events-stat, .layout-small .lp-lineup-s').forEach(panel => {
+    const className = panel.classList.contains('lp-lineup-s') ? 'lp-small-col-resize-middle' : 'lp-small-col-resize';
+    if (panel.querySelector(':scope > .' + className)) return;
     const handle = document.createElement('div');
-    handle.className = 'lp-small-col-resize';
+    handle.className = className;
     handle.setAttribute('aria-hidden', 'true');
     handle.title = '칼럼 크기 조정 · 더블클릭으로 초기화';
     handle.addEventListener('pointerdown', startSmallLayoutResize);
