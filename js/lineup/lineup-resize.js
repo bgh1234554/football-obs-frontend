@@ -1200,6 +1200,29 @@ function ensureBigPanelHandles() {
       });
     };
 
+    // 연동 모드는 패널 내부 엣지 대신 두 패널 사이 간격 전체를 경계로 사용한다.
+    if (!col.querySelector(':scope > .lp-big-height-resize')) {
+      const handle = document.createElement('div');
+      handle.className = 'lp-big-height-resize';
+      handle.setAttribute('aria-hidden', 'true');
+      handle.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
+      handle.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'chatBottom'));
+      handle.addEventListener('dblclick', resetAll);
+      col.appendChild(handle);
+      const updatePosition = () => {
+        const rect = getDisplayLayoutRect(col);
+        const chat = getDisplayLayoutRect(chatPanel);
+        const stat = getDisplayLayoutRect(statPanel);
+        handle.style.top = `${(chat.bottom + stat.top) / 2 - rect.top}px`;
+      };
+      if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(updatePosition);
+        [col, chatPanel, statPanel].forEach(panel => observer.observe(panel));
+      } else window.addEventListener('resize', updatePosition);
+      document.addEventListener('page:activated', () => requestAnimationFrame(updatePosition));
+      requestAnimationFrame(updatePosition);
+    }
+
     // ON 모드 전용: lp-col 왼쪽 엣지 (공유 너비)
     if (!col.querySelector(':scope > .lp-big-col-left-handle')) {
       const el = document.createElement('div');

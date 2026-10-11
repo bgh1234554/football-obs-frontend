@@ -551,9 +551,22 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   cursor: ns-resize;
 }
 .lp-big-col-left-handle:hover,
-.lp-big-edge-left:hover,
-.lp-big-chat-edge-bottom:hover,
-.lp-big-stat-edge-top:hover { background: rgba(255,255,255,.18); }
+.lp-big-edge-left:hover { background: rgba(255,255,255,.18); }
+
+/* 캠 작은 메뉴처럼 간격 중앙의 투명한 전체 폭 영역에서 높이를 조절한다. */
+.lp-big-height-resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  transform: translateY(-50%);
+  z-index: 20;
+  cursor: row-resize;
+  touch-action: none;
+}
+.layout-big .lp-col:not(.is-big-linked) > .lp-big-height-resize,
+.layout-big .lp-col.is-big-linked .lp-big-chat-edge-bottom,
+.layout-big .lp-col.is-big-linked .lp-big-stat-edge-top { display: none; }
 
 /* ON 모드: lp-col에 .is-big-linked → col-left 보임, panel-left 숨김 */
 .layout-big .lp-col.is-big-linked > .lp-big-col-left-handle { display: block; }
