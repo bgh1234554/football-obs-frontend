@@ -594,6 +594,7 @@ function startLineupResize(event) {
   const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
   const hasEdgeOverride = panel.classList.contains('has-w-override')
     || panel.classList.contains('has-h-override');
+  const hasFixedSize = hasEdgeOverride || panel.classList.contains('lp-width-locked');
   const currentHeightPct = Math.round((getDisplayLayoutRect(panel).height / layoutHeight) * 100);
   const startScalePct = hasEdgeOverride
     ? Math.max(
@@ -620,9 +621,9 @@ function startLineupResize(event) {
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
     if (next === lastPct) return;
 
-    // 엣지 리사이즈 뒤 남은 개별 width/height override가 있으면
-    // 첫 대각선 드래그 순간에 해제해 비율 스케일이 다시 주도권을 갖게 한다.
-    if (!releasedEdgeOverrides && hasEdgeOverride) {
+    // 개별 크기 지정뿐 아니라 전체화면용 폭 잠금도 첫 이동에서 해제한다.
+    // 폭 잠금이 남아 있으면 배율을 줄여도 높이만 줄어든다.
+    if (!releasedEdgeOverrides && hasFixedSize) {
       _lineupEdgeClear(LINEUP_EDGE_W_KEY);
       _lineupEdgeClear(LINEUP_EDGE_H_KEY);
       _lineupClearWidthOverride(panel);
@@ -1679,11 +1680,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof ResizeObserver === 'function') {
     const _onLineupPanelResize = (() => {
       let timer = null;
+      const isDragging = () => document.body.matches(
+        '.lp-lineup-resizing, .lp-lineup-w-resizing, .lp-lineup-h-resizing'
+      );
       return () => {
-        if (document.body.classList.contains('lp-lineup-w-resizing') ||
-            document.body.classList.contains('lp-lineup-h-resizing')) return;
+        // 드래그 전 예약된 작업까지 취소하고, 드래그 종료 경로에서 최종 이름을 재배치한다.
         clearTimeout(timer);
+        if (isDragging()) return;
         timer = setTimeout(() => {
+          // 크기가 아직 변하지 않은 드래그 시작 직후에도 예약 작업이 실행되지 않게 한다.
+          if (isDragging()) return;
           applyStoredLineupEdgeOverrides();
           window.fitLineupNamePills?.();
         }, 150);
