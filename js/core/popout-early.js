@@ -58,16 +58,9 @@
     'html.is-popout .dp-manual-row { grid-template-columns: 52px 78px minmax(0, 1fr) !important; }',
     'html.is-popout .dp-manual-row.is-injury { grid-template-columns: 72px 72px minmax(0, 1fr) minmax(180px, 240px) !important; }',
     'html.is-popout .dp-slot-label { text-align: center !important; }',
-    // 설정 팝업도 같은 이유(팝업 창의 실제 폭이 좁으면 @container 반응형이 "좁은 화면"으로
-    // 오인)로 settings-popup.css의 두 반응형 분기(740px/560px)가 오작동할 수 있어, 팝업
-    // 창 크기를 자유롭게 줄일 수 있도록 두 분기 모두 무력화하고 원래(데스크톱) 값을 강제한다.
+    // 일반 설정 행의 토글·슬라이더는 라벨 오른쪽에 유지한다.
     'html.is-popout .sp-row,',
     'html.is-popout .sp-row:has(.sp-bg-input-cluster) { flex-direction: row !important; align-items: center !important; }',
-    // .sp-row-rating-colors는 반응형 분기와 무관하게 원래부터(데스크톱 기본값으로) column
-    // 배치다 — 라벨과 색상 그리드를 세로로 쌓아 그리드가 가로 폭을 전부 쓰게 하기 위함.
-    // 위 .sp-row 규칙이 이 row에도 걸려 row로 바뀌면 그리드 폭이 좁아져 auto-fit 컬럼이
-    // 1개로 줄어버리므로(세로로 길게 쌓임), 같은 우선순위(!important)에서 순서로 다시 되돌린다.
-    'html.is-popout .sp-row-rating-colors { flex-direction: column !important; align-items: stretch !important; }',
     'html.is-popout .sp-row-label { max-width: 430px !important; }',
     'html.is-popout .sp-toggle-cluster,',
     'html.is-popout .sp-slider-cluster,',
@@ -75,6 +68,10 @@
     'html.is-popout .sp-radio-cluster { width: auto !important; }',
     'html.is-popout .sp-file-input { max-width: 320px !important; }',
     'html.is-popout .sp-manual-reset-toggles-nowrap { flex-wrap: nowrap !important; }',
+    // 색상 편집 영역만 라벨 아래에서 창의 가로 폭을 사용한다.
+    'html.is-popout .sp-row:has(#panelColorPreset) { flex-direction: column !important; align-items: stretch !important; }',
+    'html.is-popout .sp-row:has(#panelColorPreset) .sp-row-label { max-width: none !important; }',
+    'html.is-popout .sp-row-rating-colors { flex-direction: column !important; align-items: stretch !important; }',
     'html.is-popout .sp-tabs { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; overflow-x: visible !important; }',
     'html.is-popout .sp-tab { width: 100% !important; padding-inline: 10px !important; }',
   ].join('\n');

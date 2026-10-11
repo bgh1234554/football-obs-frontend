@@ -60,6 +60,7 @@ const SETTINGS_DEFAULTS = {
   statCycleModeStats: 'on',
   statCycleModeEvents: 'on',
   statCycleModeHth: 'on',
+  statCycleModeTeamFixtures: 'on',
   statCycleModeBenchHome: 'on',
   statCycleModeBenchAway: 'on',
   statCycleModeMatchInfo: 'on',
@@ -387,7 +388,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
   'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
-  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
+  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth', 'statCycleModeTeamFixtures',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo', 'statCycleModeInjuries',
   'popoutModals',
 ]);
@@ -923,8 +924,7 @@ function commitBackgroundColor(value, recommendGreenscreen = true) {
 /**
  * 배경 색 + 배경 이미지를 :root에 CSS 변수로 반영.
  * - bgColor: greenscreen ON이어도 그대로 유지 (크로마키용 단색 배경 보호)
- * - bgImageUrl 우선, 없으면 bgImageData (file 첨부 base64)
- * - 둘 다 비어있으면 이미지 없이 색만 적용
+ * - 설정 표시 순서대로 URL → 파일 첨부 → 팀 컬러 → 배경 색 우선 적용
  */
 function applyPageBackground() {
   const root = document.documentElement;
@@ -937,7 +937,7 @@ function applyPageBackground() {
   const bgOpacity = (100 - clampPercent(getSetting('bgAlpha'), SETTINGS_DEFAULTS.bgAlpha)) / 100;
   const bgRgb = [1, 3, 5].map(start => parseInt(bgColor.slice(start, start + 2), 16));
   root.style.setProperty('--page-bg', `rgba(${bgRgb.join(', ')}, ${bgOpacity})`);
-  if (getSetting('bgTeamDirection') !== 'off') {
+  if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
     const color = value => {
       const rgb = parseAnyColor(chromaSafe(value));
       return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${bgOpacity})`;

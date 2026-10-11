@@ -262,3 +262,8 @@
     const qs = `teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`;
     return await apiFetch(`/api/hth?${qs}`, options);
   }
+
+// 최근·예정 경기에도 공통 오류 및 재시도 처리를 적용한다.
+async function fetchTeamFixtures(teamId, period, options = {}) {
+  return await apiFetch(`/api/fixtures/${period === 'next' ? 'next' : 'last'}?teamId=${encodeURIComponent(teamId)}`, options);
+}

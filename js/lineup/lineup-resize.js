@@ -459,17 +459,18 @@ function resetSmallLayoutResize(layout = null) {
 }
 
 /**
- * 작은 캠 layout의 events-stat 칼럼 우측 경계 + cam-chat 칼럼 좌측 경계에 리사이즈 핸들 생성.
- * 가운데 두 패널(라인업/벤치)은 고정 폭이라, 어느 쪽 핸들을 드래그해도 좌(events)/우(chat)
- * 비율이 완전히 같은 방식으로 조정된다(합이 일정하므로 handle 위치와 무관하게 동일한 로직).
+ * 작은 캠의 events-stat/라인업 우측과 cam-chat 좌측 경계에 핸들을 생성한다.
+ * events-stat/라인업 우측 핸들은 같은 동작으로 events-stat과 벤치 폭을 조정한다.
+ * 라인업 폭은 유지하며, cam-chat 좌측 핸들은 벤치와 cam-chat 폭을 조정한다.
  * - pointerdown → 드래그 세션 시작.
  * - dblclick → 기본 비율 복원.
  */
 function ensureSmallLayoutResizeHandles() {
-  document.querySelectorAll('.layout-small .lp-col-events-stat').forEach(panel => {
-    if (panel.querySelector(':scope > .lp-small-col-resize')) return;
+  document.querySelectorAll('.layout-small .lp-col-events-stat, .layout-small .lp-lineup-s').forEach(panel => {
+    const className = panel.classList.contains('lp-lineup-s') ? 'lp-small-col-resize-middle' : 'lp-small-col-resize';
+    if (panel.querySelector(':scope > .' + className)) return;
     const handle = document.createElement('div');
-    handle.className = 'lp-small-col-resize';
+    handle.className = className;
     handle.setAttribute('aria-hidden', 'true');
     handle.title = '칼럼 크기 조정 · 더블클릭으로 초기화';
     handle.addEventListener('pointerdown', startSmallLayoutResize);
@@ -593,6 +594,7 @@ function startLineupResize(event) {
   const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
   const hasEdgeOverride = panel.classList.contains('has-w-override')
     || panel.classList.contains('has-h-override');
+  const hasFixedSize = hasEdgeOverride || panel.classList.contains('lp-width-locked');
   const currentHeightPct = Math.round((getDisplayLayoutRect(panel).height / layoutHeight) * 100);
   const startScalePct = hasEdgeOverride
     ? Math.max(
@@ -619,9 +621,9 @@ function startLineupResize(event) {
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
     if (next === lastPct) return;
 
-    // 엣지 리사이즈 뒤 남은 개별 width/height override가 있으면
-    // 첫 대각선 드래그 순간에 해제해 비율 스케일이 다시 주도권을 갖게 한다.
-    if (!releasedEdgeOverrides && hasEdgeOverride) {
+    // 개별 크기 지정뿐 아니라 전체화면용 폭 잠금도 첫 이동에서 해제한다.
+    // 폭 잠금이 남아 있으면 배율을 줄여도 높이만 줄어든다.
+    if (!releasedEdgeOverrides && hasFixedSize) {
       _lineupEdgeClear(LINEUP_EDGE_W_KEY);
       _lineupEdgeClear(LINEUP_EDGE_H_KEY);
       _lineupClearWidthOverride(panel);
@@ -1198,6 +1200,29 @@ function ensureBigPanelHandles() {
       });
     };
 
+    // 연동 모드는 패널 내부 엣지 대신 두 패널 사이 간격 전체를 경계로 사용한다.
+    if (!col.querySelector(':scope > .lp-big-height-resize')) {
+      const handle = document.createElement('div');
+      handle.className = 'lp-big-height-resize';
+      handle.setAttribute('aria-hidden', 'true');
+      handle.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
+      handle.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'chatBottom'));
+      handle.addEventListener('dblclick', resetAll);
+      col.appendChild(handle);
+      const updatePosition = () => {
+        const rect = getDisplayLayoutRect(col);
+        const chat = getDisplayLayoutRect(chatPanel);
+        const stat = getDisplayLayoutRect(statPanel);
+        handle.style.top = `${(chat.bottom + stat.top) / 2 - rect.top}px`;
+      };
+      if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(updatePosition);
+        [col, chatPanel, statPanel].forEach(panel => observer.observe(panel));
+      } else window.addEventListener('resize', updatePosition);
+      document.addEventListener('page:activated', () => requestAnimationFrame(updatePosition));
+      requestAnimationFrame(updatePosition);
+    }
+
     // ON 모드 전용: lp-col 왼쪽 엣지 (공유 너비)
     if (!col.querySelector(':scope > .lp-big-col-left-handle')) {
       const el = document.createElement('div');
@@ -1678,11 +1703,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof ResizeObserver === 'function') {
     const _onLineupPanelResize = (() => {
       let timer = null;
+      const isDragging = () => document.body.matches(
+        '.lp-lineup-resizing, .lp-lineup-w-resizing, .lp-lineup-h-resizing'
+      );
       return () => {
-        if (document.body.classList.contains('lp-lineup-w-resizing') ||
-            document.body.classList.contains('lp-lineup-h-resizing')) return;
+        // 드래그 전 예약된 작업까지 취소하고, 드래그 종료 경로에서 최종 이름을 재배치한다.
         clearTimeout(timer);
+        if (isDragging()) return;
         timer = setTimeout(() => {
+          // 크기가 아직 변하지 않은 드래그 시작 직후에도 예약 작업이 실행되지 않게 한다.
+          if (isDragging()) return;
           applyStoredLineupEdgeOverrides();
           window.fitLineupNamePills?.();
         }, 150);

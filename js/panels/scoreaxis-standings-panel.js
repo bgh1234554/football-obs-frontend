@@ -109,10 +109,10 @@
   }
 
   /**
-   * 이벤트/순위표/HTH 3-버튼 토글 그룹을 생성해 반환한다. window에 노출됨.
+   * 이벤트/순위표/상대전적/최근·예정 경기 전환 버튼을 생성한다. window에 노출됨.
    * @param {string} [activeMode='events'] - 초기 활성 모드 식별자.
    * @param {object} [fixtureData] - 현재 경기 데이터. 버튼 비활성화 여부 판별에 사용.
-   * @returns {HTMLDivElement} 버튼 3개가 담긴 그룹 엘리먼트.
+   * @returns {HTMLDivElement} 전환 버튼이 담긴 그룹 엘리먼트.
    */
   function createSmallPanelModeButtons(activeMode = 'events', fixtureData = state.fixtureData) {
     const data = fixtureData || state.fixtureData;
@@ -149,6 +149,12 @@
           window.hthShowForFixture(data).catch(err => console.warn('HTH fetch failed:', err));
         }
       },
+    }));
+    group.appendChild(createSmallPanelModeButton({
+      mode: 'fixtures', activeMode, title: '최근·예정 경기 보기',
+      iconHtml: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3" width="11" height="9.5" rx="1"/><path d="M4 1v4M10 1v4M2 6h10M4 8h2M8 8h2M4 10h2"/></svg>',
+      disabled: !window.hthCanLoadForFixture?.(data),
+      onClick: () => window.teamFixturesShow?.(data),
     }));
     return group;
   }
@@ -653,6 +659,10 @@
    * 그 외에는 HTH 상태에 따라 이벤트/HTH 패널만 전환한다.
    */
   function scoreaxisStandingsUpdateSmallVisibility() {
+    if (window._hthState?.mode === 'fixtures') {
+      window.hthUpdateVisibility?.();
+      return;
+    }
     const isStandings = state.smallMode === 'standings';
     document.querySelectorAll(SMALL_PANEL_SELECTOR).forEach(el => {
       el.style.display = isStandings ? '' : 'none';

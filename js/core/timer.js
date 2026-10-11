@@ -303,5 +303,49 @@
 
   // [이벤트 등록] 시계 더블클릭 → 인라인 편집기 열기
   clockEl?.addEventListener('dblclick', openClockEditor);
+  clockEl?.setAttribute('title', '더블클릭하여 경기 시간 수정');
+
+  // 추가시간 편집은 시계를 정지하지 않고 기존 수동 추가시간 적용 경로를 사용한다.
+  const extraEl = $('extra');
+  extraEl?.setAttribute('title', '더블클릭하여 추가시간 수정');
+  extraEl?.addEventListener('dblclick', () => {
+    if (document.getElementById('extraEditor')) return;
+    const editor = document.createElement('div');
+    editor.id = 'extraEditor';
+    editor.className = 'extra-editor';
+    const style = getComputedStyle(extraEl);
+    editor.style.background = style.backgroundColor;
+    editor.style.color = style.color;
+    editor.style.left = `${extraEl.offsetLeft + extraEl.offsetWidth / 2}px`;
+    editor.style.top = `${extraEl.offsetTop + extraEl.offsetHeight / 2}px`;
+    const input = document.createElement('input');
+    input.type = 'number'; input.min = '0'; input.step = '1';
+    input.value = state.extra;
+    input.setAttribute('aria-label', '추가시간 (분)');
+    const confirm = document.createElement('button');
+    confirm.type = 'button'; confirm.textContent = '✓'; confirm.title = '추가시간 적용';
+    editor.append('+', input, confirm);
+    extraEl.parentElement.append(editor);
+    extraEl.classList.add('is-editing-extra');
+    function close() {
+      editor.remove();
+      extraEl.classList.remove('is-editing-extra');
+      document.removeEventListener('mousedown', outside);
+      document.removeEventListener('keydown', keydown);
+    }
+    function apply() {
+      setManualExtra(Math.max(0, Math.floor(Number(input.value) || 0)));
+      close();
+    }
+    function outside(event) { if (!editor.contains(event.target)) close(); }
+    function keydown(event) {
+      if (event.key === 'Enter') { event.preventDefault(); apply(); }
+      else if (event.key === 'Escape') { event.preventDefault(); close(); }
+    }
+    confirm.addEventListener('click', apply);
+    document.addEventListener('mousedown', outside);
+    document.addEventListener('keydown', keydown);
+    input.focus(); input.select();
+  });
 
 

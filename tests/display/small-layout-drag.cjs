@@ -20,7 +20,7 @@ const { openPage } = require('../tactics/helpers');
       window.dragRenders = 0;
       window.stRerenderActivePanels = (...args) => { window.dragRenders++; return original(...args); };
     });
-    for (const handle of ['.lp-small-col-resize', '.lp-small-col-resize-end']) {
+    for (const handle of ['.lp-small-col-resize', '.lp-small-col-resize-middle', '.lp-small-col-resize-end']) {
       await page.evaluate(() => { resetAllLayoutSizes(); });
       await page.waitForTimeout(100);
       const box = await page.locator('.layout-small ' + handle).boundingBox();
@@ -34,7 +34,7 @@ const { openPage } = require('../tactics/helpers');
       const after = await page.evaluate(() => window.dragRenders);
       console.log(JSON.stringify({ handle, during, after }));
       assert.equal(during, 0, '가로 드래그 중 스탯 전체 재렌더를 반복하지 않는다');
-      if (handle === '.lp-small-col-resize') assert(after >= 1 && after <= 2, '드래그 종료 후 최종 폭으로 스탯을 갱신한다');
+      if (handle !== '.lp-small-col-resize-end') assert(after >= 1 && after <= 2, '드래그 종료 후 최종 폭으로 스탯을 갱신한다');
       else assert.equal(after, 0, '스탯 폭이 유지되는 오른쪽 경계는 스탯을 다시 그리지 않는다');
     }
   } finally { await browser.close(); }

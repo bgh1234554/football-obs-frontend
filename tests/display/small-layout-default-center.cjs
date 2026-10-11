@@ -31,7 +31,7 @@ for (const custom of [false, true]) {
  const restored=await sizes();restored.forEach((r,i)=>assert(Math.abs(r.width-initial[i].width)<2));
 }
 await page.evaluate(()=>resetAllLayoutSizes());
-// Both existing boundaries resize the bench without adding a middle handle.
+// 세 경계의 폭 조정과 저장 복원을 확인한다.
 await page.setViewportSize({width:1920,height:900});await page.waitForTimeout(200);
 const measure=()=>page.evaluate(()=>Object.fromEntries(['.lp-col-events-stat','.lp-lineup-s','.lp-col-bench','.lp-cam-chat'].map(sel=>{const r=document.querySelector('.layout-small '+sel).getBoundingClientRect();return [sel,{width:r.width,left:r.left,right:r.right}];})));
 const close=(a,b)=>assert(Math.abs(a-b)<2,JSON.stringify({a,b}));
@@ -42,6 +42,12 @@ close(after['.lp-col-events-stat'].width,before['.lp-col-events-stat'].width+60)
 close(after['.lp-col-bench'].width,before['.lp-col-bench'].width-60);
 close(after['.lp-lineup-s'].width,before['.lp-lineup-s'].width);
 close(after['.lp-cam-chat'].width,before['.lp-cam-chat'].width);
+before=after;await drag('.lp-small-col-resize-middle',-30);after=await measure();
+close(after['.lp-col-events-stat'].width,before['.lp-col-events-stat'].width-30);
+close(after['.lp-col-bench'].width,before['.lp-col-bench'].width+30);
+close(after['.lp-lineup-s'].width,before['.lp-lineup-s'].width);
+close(after['.lp-lineup-s'].left,before['.lp-lineup-s'].left-30);
+close(after['.lp-cam-chat'].width,before['.lp-cam-chat'].width);
 before=after;await drag('.lp-small-col-resize-end',70);after=await measure();
 close(after['.lp-col-bench'].width,before['.lp-col-bench'].width+70);
 close(after['.lp-cam-chat'].width,before['.lp-cam-chat'].width-70);
@@ -51,7 +57,7 @@ await page.reload();await page.evaluate(()=>{activatePage('main-small');});await
 let restored=await measure();for(const key of Object.keys(after))close(restored[key].width,after[key].width);
 await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(200);
 const bounds=await page.evaluate(()=>{const l=document.querySelector('.layout-small').getBoundingClientRect();const c=document.querySelector('.layout-small .lp-cam-chat').getBoundingClientRect();return {right:c.right,limit:l.right};});assert(bounds.right<=bounds.limit+1);
-await page.locator('.layout-small .lp-small-col-resize-end').dblclick();
+await page.locator('.layout-small .lp-small-col-resize-middle').dblclick();
 assert.equal(await page.evaluate(()=>localStorage.getItem('obs.smallLayout.columnWidths.v2')),null);
 // A legacy setting remains usable until the user makes a new adjustment.
 await page.evaluate(()=>{localStorage.setItem('obs.smallLayout.eventsStatRatio.v1','0.45');applyStoredSmallLayoutResize();});
