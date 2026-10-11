@@ -195,13 +195,15 @@ body.no-fan-reaction .layout-small .lp-cam-chat {
 /* 라인업 우상단 resize 핸들 — 마우스 드래그로 라인업 크기 조정.
    .layout-big .lp-lineup 내부에만 출현 (작은 캠 페이지/모바일에서는 미생성). */
 .lp-lineup-resize {
+  --lp-lineup-corner-size: 32px;
   position: absolute;
   top: 0;
   right: 0;
-  width: 22px;
-  height: 22px;
+  width: var(--lp-lineup-corner-size);
+  height: var(--lp-lineup-corner-size);
   cursor: nesw-resize;
-  z-index: 10;
+  z-index: 11;
+  touch-action: none;
   border-radius: 0 14px 0 6px;
   background: linear-gradient(225deg,
     rgba(255,255,255,.55) 0%, rgba(255,255,255,.55) 18%,
@@ -606,11 +608,11 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
   aspect-ratio: auto;
 }
 
-/* 오른쪽 엣지 — 너비 독립 조절 (기존 우상단 핸들 22px 아래에서 시작) */
+/* 오른쪽 엣지 — 우상단 대각선 핸들의 조작 영역 아래에서 시작한다. */
 .lp-lineup-right-edge {
   position: absolute;
   right: 0;
-  top: 22px;
+  top: 32px;
   bottom: 0;
   width: 6px;
   cursor: ew-resize;
@@ -621,12 +623,12 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
 }
 .lp-lineup-right-edge:hover { background: rgba(255,255,255,.18); }
 
-/* 위쪽 엣지 — 높이 독립 조절 (기존 우상단 핸들 22px 왼쪽까지) */
+/* 위쪽 엣지 — 우상단 대각선 핸들의 조작 영역을 비워 둔다. */
 .lp-lineup-top-edge {
   position: absolute;
   top: 0;
   left: 0;
-  right: 22px;
+  right: 32px;
   height: 6px;
   cursor: ns-resize;
   z-index: 10;
