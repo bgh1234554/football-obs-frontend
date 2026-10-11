@@ -15,6 +15,20 @@ const { openPage, settle } = require('../tactics/helpers');
       const page = await openPage(browser, { dpr: 1, platform: 'Win32', ...config });
       await page.evaluate(() => openSettingsPopup());
       await page.locator('[data-sp-tab="events"]').click();
+      const transitionSection = await page.locator('[data-sp-tab-section="events"]').evaluate(section => {
+        const titles = [...section.querySelectorAll('.sp-section-title')];
+        const title = titles[1];
+        const controls = [];
+        for (let row = title.nextElementSibling; row && !row.classList.contains('sp-section-title'); row = row.nextElementSibling) {
+          controls.push(...[...row.querySelectorAll('[data-settings-cat],[data-settings-number]')].map(el => el.dataset.settingsCat || el.dataset.settingsNumber));
+        }
+        return { title: title.textContent, controls };
+      });
+      assert.equal(transitionSection.title, '경기 스탯 페이지 전환');
+      assert(transitionSection.controls.includes('statCycleAuto'));
+      assert(transitionSection.controls.includes('statCycleModeTeamFixtures'));
+      assert(transitionSection.controls.includes('statsAutoSwipe'));
+      assert(transitionSection.controls.includes('statsAutoSwipeSec'));
       const group = page.locator('.sp-panel-mode-toggles');
       await group.scrollIntoViewIfNeeded();
       await settle(page);
