@@ -2,9 +2,11 @@
 const shortcutActions = [
   ['clockToggle','타이머','시작 / 정지','Space',()=>{ window.toggleClockRunning ? window.toggleClockRunning() : state.running=!state.running; render(); persist(); }],
   ...[['clock0','00:00으로 초기화','KeyR',0],['clock45','45:00으로 초기화','KeyE',2700],['clock90','90:00으로 초기화','Shift+KeyR',5400],['clock105','105:00으로 초기화','Shift+KeyE',6300]].map(([id,label,key,seconds])=>[id,'타이머',label,key,()=>{ if(window.setClockSeconds) window.setClockSeconds(seconds); else {state.seconds=seconds;state.running=false;el.clock.textContent=fmtClock(seconds);} render();persist(); }]),
+  ['extra','타이머','추가시간 표시 전환','KeyT',()=>toggleManualExtra()],
+  ['extraPlus','타이머','추가시간 +1분','BracketRight',()=>setManualExtra(state.extra+1)],
+  ['extraMinus','타이머','추가시간 −1분','BracketLeft',()=>setManualExtra(state.extra-1)],
   ...[['homePlus','홈 점수 + / PK 득점','KeyQ','home','G',1],['homeMinus','홈 점수 − / PK 실축','KeyA','home','M',-1],['awayPlus','원정 점수 + / PK 득점','KeyW','away','G',1],['awayMinus','원정 점수 − / PK 실축','KeyS','away','M',-1]].map(([id,label,key,team,result,delta])=>[id,'점수 · 승부차기',label,key,()=>{if(state.half==='PK') pkPush(team,result); else if(state.manualMode){state[team+'Score']=Math.max(0,state[team+'Score']+delta);syncManualInputs();render();persist();}}]),
   ['scoreReset','점수 · 승부차기','수동 점수 초기화','KeyF',()=>{if(state.manualMode)resetManualScore();}],
-  ['extra','점수 · 승부차기','추가시간 표시 전환','KeyT',()=>toggleManualExtra()],
   ['pkUndo','점수 · 승부차기','PK 기록 되돌리기','KeyZ',()=>{if(state.half==='PK')pkUndo();}],
   ['pkReset','점수 · 승부차기','PK 기록 초기화','KeyX',()=>{if(state.half==='PK')pkReset();}],
   ['undo','전술판','되돌리기','Ctrl+KeyZ',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdUndo();}],
@@ -37,7 +39,7 @@ function shortcutCode(event){
   return /^(Escape|Tab|Enter|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Arrow(Left|Right|Up|Down)|F([1-9]|1[0-9]|2[0-4]))$/.test(key || '')?key:'';
 }
 function shortcutKey(event){const code=shortcutCode(event);return code?[event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,code].filter(Boolean).join('+'):'';}
-function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').split('+').join(' + ') : '미지정';}
+function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').replace('Equal','=').replace('Minus','−').replace('BracketLeft','[').replace('BracketRight',']').split('+').join(' + ') : '미지정';}
 function updateTacticsShortcutHints(){
   for(const [id,buttonId] of [['undo','td-undo-btn'],['redo','td-redo-btn']]){
     const action=shortcutActions.find(action=>action[0]===id);

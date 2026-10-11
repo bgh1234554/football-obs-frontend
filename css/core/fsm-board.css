@@ -239,6 +239,16 @@
   z-index: 100;
 }
 .fsm-board .scoreboard-timer { position: relative; }
+.board :is(#clock, #extra) { cursor: pointer !important; }
+.board :is(#clock, #extra):hover { outline: 1px solid rgba(255,255,255,.55); outline-offset: 2px; }
+.board #extra.is-editing-extra { color: transparent !important; }
+.extra-editor {
+  position: absolute; z-index: 101; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 3px; padding: 3px 5px;
+  border: 1px solid currentColor; border-radius: 4px; font-size: 16px;
+}
+.extra-editor input { width: 42px; min-width: 0; padding: 2px; color: inherit; background: rgba(0,0,0,.15); border: 0; font: inherit; text-align: center; }
+.extra-editor button { padding: 2px 4px; color: inherit; background: transparent; border: 0; font: inherit; cursor: pointer; }
 .board.fsm-board :is(.time, .extra-time) {
   display: flex; align-items: center; justify-content: center; line-height: 1;
   flex-shrink: 0;
