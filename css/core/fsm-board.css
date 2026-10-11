@@ -241,7 +241,17 @@
 .fsm-board .scoreboard-timer { position: relative; }
 .board :is(#clock, #extra) { cursor: pointer !important; }
 .board :is(#clock, #extra):hover { outline: 1px solid rgba(255,255,255,.55); outline-offset: 2px; }
+/* 추가시간을 숨겨도 원래 위치에서 마우스로 켤 수 있게 투명한 클릭 영역을 남긴다. */
+.board.fsm-board #extra.hidden {
+  display: flex !important;
+  background: transparent !important;
+  color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
 .board #extra.is-editing-extra { color: transparent !important; }
+.board #extra.has-extra-editor { transition: none !important; }
 .extra-editor {
   position: absolute; z-index: 101; transform: translate(-50%, -50%);
   display: flex; align-items: center; gap: 3px; padding: 3px 5px;

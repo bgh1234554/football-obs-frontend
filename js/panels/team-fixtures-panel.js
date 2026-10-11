@@ -162,7 +162,7 @@
         const initialSize = parseFloat(getComputedStyle(label).fontSize);
         const fits = () => {
           const css = getComputedStyle(label);
-          if (isCard) return label.offsetHeight <= Math.ceil(parseFloat(css.lineHeight) * 2) + 1;
+          if (isCard) return label.offsetHeight <= Math.ceil(parseFloat(css.lineHeight) * 3) + 1;
           // 말줄임된 flex 텍스트는 scrollWidth가 같을 수 있어 실제 글자 폭을 잰다.
           const range = document.createRange();
           range.selectNodeContents(label);
