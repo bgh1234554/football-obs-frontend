@@ -68,7 +68,7 @@ const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모�
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
   default: '기본', pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투', nationalleague: '내셔널리그',
-  seriea: '세리에 A', ligue1: '리그 1', ligue2: '리그 2',
+  seriea: '세리에 A', laliga: '라리가', bundes: '분데스리가', ligue1: '리그 1', ligue2: '리그 2',
   ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그',
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
   czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', danish: '덴마크 수페르리가', romanian: '루마니아 리가 I', belarus: '벨라루스 프리미어 리그', armenian: '아르메니아 프리미어 리그',
