@@ -30,11 +30,13 @@ const LEAGUE_THEME_MAP = {
   3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
   848: { theme: 'uecl',    logoUrl: null, type: 'club' },  // UEFA 컨퍼런스 리그
   17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC 챔피언스리그 엘리트
+  78:  { theme: 'bundes',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Bundesliga/Bundesliga-logo.svg', type: 'club' },  // 분데스리가
   5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA 네이션스리그
   4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
-  61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
-  62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
-  135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
+  135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' }, // 세리에A
+  140: { theme: 'laliga',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
+  61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' }, //리그 1
+  62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },
   94: { theme: 'ligaportugal', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/PrimeiraLiga.png', type: 'club' },
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
   253: { theme: 'mls', logoUrl: null, type: 'club' },
@@ -392,6 +394,14 @@ function applyTheme(theme, logoUrl) {
     case 'uecl':
       changeCSS('css/theme/result_style_UECL.css', theme);
       break;
+    case 'laliga':
+      changeCSS('css/theme/result_style_LALIGA.css', CSS_LINK_INDEX);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'bundes':
+      changeCSS('css/theme/result_style_BUNDESLIGA.css', CSS_LINK_INDEX);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     default:
       changeCSS('css/theme/result_style_default.css', 'default');
   }
@@ -739,6 +749,24 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
+    } if(theme == 'bundes') {
+        setFsmStyle('.fsm-board .teams-left', {background: state.colors.homeBg, color: getColorContract(state.colors.homeBg), borderBottom: 'none', borderTop: 'none'});
+        setFsmStyle('.fsm-board .teams-right', {background: state.colors.awayBg, color: getColorContract(state.colors.awayBg), borderBottom: 'none', borderTop: 'none'});
+        const board = document.querySelector('.fsm-board');
+        ['home', 'away'].forEach((side, index) => {
+          const card = document.getElementById(index === 0 ? 'homeCard' : 'awayCard');
+          const rgb = parseAnyColor(getComputedStyle(card).backgroundColor);
+          const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
+          board.style.setProperty(`--fsm-pl-${side}-overlay`,
+            nearWhite ? '#000000' : '#ffffff');
+        });
+    } if(theme == 'unl') {
+        setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
+        setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
+        setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
+        setFsmStyle('.fsm-board #team-logo-left', {background: state.colors.homeBg});
+        setFsmStyle('.fsm-board #team-logo-right', {background: state.colors.awayBg});
+    } if(theme == 'wc26') {
     } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
@@ -747,6 +775,10 @@ function adjustScoreboardWidth() {
       }
     } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
+      setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
+      setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
+      setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
+    } if(theme == 'uel' || theme == 'uecl' || theme == 'laliga') {
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid ' + chromaSafe('#BDE74C'), borderTop: '3px solid #AD8BF7'});
       setFsmStyle('.fsm-board #homeColor', {background: teamColors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: teamColors.awayBg});
@@ -784,6 +816,9 @@ function adjustScoreboardWidth() {
     } else if(theme == 'uel' || theme == 'uecl') {
       setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + state.colors.homeBg + ' 50%, ' + state.colors.homeText + ' 50%)'});
+      setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + state.colors.awayBg + ' 50%, ' + state.colors.awayText + ' 50%)'});    
+    } else if(theme != 'pl' && theme != 'wc26' && theme != 'uel' && theme != 'uecl' && theme != 'bundes') {
       setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + teamColors.homeBg + ' 50%, ' + teamColors.homeText + ' 50%)'});
       setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + teamColors.awayBg + ' 50%, ' + teamColors.awayText + ' 50%)'});
     } else if(theme != 'pl' && theme != 'wc26' && theme != 'uel' && theme != 'uecl') {
