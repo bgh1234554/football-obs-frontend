@@ -6,7 +6,7 @@ const { openPage, settle } = require('../tactics/helpers');
   const browser = await chromium.launch();
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
-    for (const theme of ['er24', 'unl', 'belgian']) {
+    for (const theme of ['er24', 'unl', 'bundes', 'belgian']) {
       await page.evaluate(theme => { applyTheme(theme, null); render(); }, theme);
       await page.waitForFunction(() => !pendingThemeLink);
       for (const scale of [60, 75, 100, 125, 150]) {

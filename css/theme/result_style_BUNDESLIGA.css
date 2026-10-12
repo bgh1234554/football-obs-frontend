@@ -140,12 +140,13 @@
     object-fit: contain;
 }
 
+/* 글자 없이 자른 직사각형 로고(가로:세로 약 1.25)를 가운데 칸 높이에 꽉 맞춰 가운데 정렬한다. */
 .fsm-board .epl-lion {
-    width: 58px;
-    height: 58px;
-    text-align: center;
+    display: block;
+    width: auto;
+    height: 48px;
+    margin: 0 auto;
     z-index: 1;
-    object-fit: fill;
 }
 
 .fsm-board .scoreboard-timer {
@@ -169,7 +170,8 @@
 .fsm-board .time {
     width: 114px;
     height: 100%;
-    background: rgb(196, 196, 196);
+    background: #333333;
+    color: #ffffff;
     position: relative;
     z-index: 1;
     transition: 0.9s ease-in-out;
