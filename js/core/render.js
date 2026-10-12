@@ -824,6 +824,13 @@
   el.noteOn?.addEventListener('change', e=>{ state.noteEnabled=!!e.target.checked; render(); persist(); });
   el.noteFontSize?.addEventListener('input', e=>{ state.noteFontSize=Math.max(10,Number(e.target.value)||18); render(); persist(); });
   el.noteStrokeWidth?.addEventListener('input', e=>{ state.noteStrokeWidth=clampNum(e.target.value,0,10,1); render(); persist(); });
+  // 각 초기화 버튼은 해당 항목만 기본값으로 복원한다.
+  [
+    ['resetNoteSize', () => { state.noteFontSize = 18; }],
+    ['resetNoteText', () => { commitThemeColors({ noteText: '#e5e7eb' }); }],
+    ['resetNoteStroke', () => { commitThemeColors({ noteStroke: '#000000' }); }],
+    ['resetNoteStrokeWidth', () => { state.noteStrokeWidth = 1; }],
+  ].forEach(([id, reset]) => $(id)?.addEventListener('click', () => { reset(); render(); persist(); }));
 
   // [이벤트 등록] 보드/점수/팀카드 테두리 ON/OFF 및 두께 조정
   el.boardOutlineOn?.addEventListener('change', e=>{ state.boardOutlineEnabled=!!e.target.checked; render(); persist(); });

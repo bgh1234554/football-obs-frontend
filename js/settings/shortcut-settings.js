@@ -49,6 +49,10 @@
       if(index)hint.append(' / ');
       hint.append(keycap(action),' '+action[2].replace('으로 초기화',''));
     });
+    ['extraPlus','extraMinus'].forEach(id=>{
+      const action=shortcutActions.find(action=>action[0]===id);
+      hint.append(' · ',keycap(action),' '+action[2]);
+    });
   }
   function back(focus=true){
     editing=null;panel.hidden=true;tabs.hidden=false;document.getElementById('settingsTitle').textContent='설정';applySettingsTab('general');body.scrollTop=scrollTop;if(focus)document.getElementById('shortcutManageBtn').focus();
