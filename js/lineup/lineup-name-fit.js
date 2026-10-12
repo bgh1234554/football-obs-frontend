@@ -1683,6 +1683,9 @@ function settleTeamChipNameCandidate(nameEl, mainEl, collisionEls, text) {
  */
 function tryTeamChipBetterName(nameEl, mainEl, collisionEls) {
   if (!nameEl || nameEl.dataset.teamNameShortTried === 'true') return false;
+  // 저장한 닉네임을 API 단축명으로 바꾸지 않는다.
+  const side = nameEl.dataset.teamNicknameSide;
+  if (side && getTeamNickname(teamNicknameIdentity(lineupPanelState.lastEffectiveData?.matchInfo, side))) return false;
   nameEl.dataset.teamNameShortTried = 'true';
 
   const shortName = String(nameEl.dataset.teamNameShort || '').trim();

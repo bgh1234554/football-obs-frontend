@@ -446,8 +446,8 @@ function getTeamName(data, side) {
   // 'teamName' 토글: long이면 풀네임, short이면 단축명. 빈 값은 다른 쪽으로 자동 폴백.
   const useLong = (typeof isLongName === 'function') && isLongName('teamName');
   const fallback = side === 'home' ? 'HOME' : 'AWAY';
-  if (useLong) return longName || shortName || fallback;
-  return shortName || longName || fallback;
+  const original = useLong ? longName || shortName || fallback : shortName || longName || fallback;
+  return teamNicknameDisplay(matchInfo, side, original);
 }
 
 /** API의 grid 값("X:Y") → {line, col} 객체. 잘못된 형식이면 null. */

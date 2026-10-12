@@ -172,7 +172,7 @@ function syncScoreboardStateFromStorage(newValue) {
     // 있으면 이 값들(이름/전후반/점수/로고)은 API 폴링이 대신 채우므로, 팝업이 부팅
     // 시점에 들고 있던 오래된 스냅샷으로 덮어쓰면 안 된다.
     if (state.manualMode) {
-      applyIfPresent(['homeName', 'awayName', 'half', 'homeScore', 'awayScore',
+      applyIfPresent(['homeName', 'awayName', 'teamNicknameTeams', 'half', 'homeScore', 'awayScore',
         'homeLogoManual', 'awayLogoManual', 'homeLogo', 'awayLogo']);
       if (saved.notes) {
         ['home', 'away'].forEach(side => {

@@ -31,7 +31,7 @@
   function teamName(data, side) {
     const long = data?.[`${side}TeamName`] || '';
     const short = data?.[`${side}TeamNameShort`] || '';
-    return isLongName('teamName') ? long || short : short || long;
+    return teamNicknameDisplay(data, side, isLongName('teamName') ? long || short : short || long);
   }
 
   function card(match, teamId, viewPage) {
@@ -57,8 +57,9 @@
     el.append(box);
     const name = `${teamName(match, opponent) || '상대팀'} (${home ? 'H' : 'A'})`;
     const label = node('div', 'tf-opponent', name);
-    label.dataset.longName = `${match[`${opponent}TeamName`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
-    label.dataset.shortName = `${match[`${opponent}TeamNameShort`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
+    bindTeamNicknameLabel(label, match, opponent);
+    label.dataset.longName = `${getTeamNickname(teamNicknameIdentity(match, opponent)) || match[`${opponent}TeamName`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
+    label.dataset.shortName = `${getTeamNickname(teamNicknameIdentity(match, opponent)) || match[`${opponent}TeamNameShort`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
     label.title = label.dataset.longName;
     el.append(label);
     const score = node('div', 'tf-score');
@@ -95,9 +96,10 @@
         const section = node('section', 'tf-team');
         const header = node('div', 'dp-side-header');
         const label = node('span', 'dp-side-name', teamName(fixture?.matchInfo, side) || (side === 'home' ? '홈팀' : '원정팀'));
+        bindTeamNicknameLabel(label, fixture?.matchInfo, side);
         label.title = label.textContent;
-        label.dataset.longName = fixture?.matchInfo?.[`${side}TeamName`] || label.textContent;
-        label.dataset.shortName = fixture?.matchInfo?.[`${side}TeamNameShort`] || label.textContent;
+        label.dataset.longName = getTeamNickname(teamNicknameIdentity(fixture?.matchInfo, side)) || fixture?.matchInfo?.[`${side}TeamName`] || label.textContent;
+        label.dataset.shortName = getTeamNickname(teamNicknameIdentity(fixture?.matchInfo, side)) || fixture?.matchInfo?.[`${side}TeamNameShort`] || label.textContent;
         label.title = label.dataset.longName;
         const cs = typeof chromaSafe === 'function' ? chromaSafe : value => value;
         const bg = cs(state.colors?.[`${side}Bg`] || getCSS(`--${side}-bg`));
@@ -264,6 +266,7 @@
     }
     fixture = data;
   };
+  document.addEventListener('team-nicknames:change', () => { if (fixture) render(); });
   document.addEventListener('theme:colors-changed', () => { if (fixture) render(); });
   document.addEventListener('settings:change', () => { if (fixture) render(); });
 })();

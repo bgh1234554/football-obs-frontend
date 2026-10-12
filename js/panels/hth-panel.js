@@ -259,7 +259,8 @@ function hthCreateRow(match, fixtureData, panelBackground) {
   }
   const homeNameEl = document.createElement('span');
   homeNameEl.className = 'hth-team-name';
-  homeNameEl.textContent = match.homeTeamName || '';
+  homeNameEl.textContent = teamNicknameDisplay(match, 'home', match.homeTeamName || '');
+  bindTeamNicknameLabel(homeNameEl, match, 'home');
   homeSide.appendChild(homeNameEl);
 
   // 점수 중앙
@@ -310,7 +311,8 @@ function hthCreateRow(match, fixtureData, panelBackground) {
   awaySide.className = 'hth-team-side hth-team-away';
   const awayNameEl = document.createElement('span');
   awayNameEl.className = 'hth-team-name';
-  awayNameEl.textContent = match.awayTeamName || '';
+  awayNameEl.textContent = teamNicknameDisplay(match, 'away', match.awayTeamName || '');
+  bindTeamNicknameLabel(awayNameEl, match, 'away');
   awaySide.appendChild(awayNameEl);
   const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
   if (awayLogoUrl) {
@@ -587,6 +589,7 @@ function hthRerenderColors() {
     });
   }
 }
+document.addEventListener('team-nicknames:change', hthRerenderColors);
 document.addEventListener('settings:change', e => {
   if (!['teamLogo', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha'].includes(e.detail?.category)) return;
   hthRerenderColors();

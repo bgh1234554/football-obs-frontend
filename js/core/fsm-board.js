@@ -394,9 +394,9 @@ function applyTheme(theme, logoUrl) {
     applyFsmChromaTheme();
     const board = document.querySelector('.fsm-board');
     if (board) board.dataset.fsmTheme = _currentTheme;
-    setFsmText('.fsm-board #team-text-left', state.homeName);   // data.teamLeft.name → state.homeName
+    setFsmText('.fsm-board #team-text-left', scoreboardTeamDisplayName('home'));   // data.teamLeft.name → state.homeName
     setFsmText('.fsm-board #homeScore', state.homeScore);
-    setFsmText('.fsm-board #team-text-right', state.awayName);
+    setFsmText('.fsm-board #team-text-right', scoreboardTeamDisplayName('away'));
     setFsmText('.fsm-board #awayScore', state.awayScore);
 
 

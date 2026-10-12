@@ -206,8 +206,14 @@
     // 1. 팀명 / 점수 텍스트 갱신
     const homeNameText = el.homeName.querySelector('.text') || el.homeName;
     const awayNameText = el.awayName.querySelector('.text') || el.awayName;
-    homeNameText.textContent = state.homeName || 'HOME';
-    awayNameText.textContent = state.awayName || 'AWAY';
+    homeNameText.textContent = scoreboardTeamDisplayName('home');
+    el.homeName.setAttribute('role', 'button');
+    el.homeName.tabIndex = 0;
+    el.homeName.setAttribute('aria-label', '홈 팀 닉네임 편집');
+    awayNameText.textContent = scoreboardTeamDisplayName('away');
+    el.awayName.setAttribute('role', 'button');
+    el.awayName.tabIndex = 0;
+    el.awayName.setAttribute('aria-label', '원정 팀 닉네임 편집');
     el.homeScore.textContent = state.homeScore;
     el.awayScore.textContent = state.awayScore;
 

@@ -188,8 +188,15 @@
   }
 
   // [이벤트 등록] 수동 모드 — 팀 이름·득점자 텍스트 입력
-  el.manualHomeName?.addEventListener('input', e=>{ state.homeName=e.target.value; render(); persist(); });
-  el.manualAwayName?.addEventListener('input', e=>{ state.awayName=e.target.value; render(); persist(); });
+  el.manualHomeName?.addEventListener('input', e=>{
+    // 수동으로 다른 팀 이름을 입력하면 이전 API 팀 ID와 분리한다.
+    if (state.teamNicknameTeams) state.teamNicknameTeams.home = null;
+    state.homeName=e.target.value; render(); persist();
+  });
+  el.manualAwayName?.addEventListener('input', e=>{
+    if (state.teamNicknameTeams) state.teamNicknameTeams.away = null;
+    state.awayName=e.target.value; render(); persist();
+  });
   el.manualHomeNote?.addEventListener('input', e=>{ state.notes.home=e.target.value; render(); persist(); });
   el.manualAwayNote?.addEventListener('input', e=>{ state.notes.away=e.target.value; render(); persist(); });
 
