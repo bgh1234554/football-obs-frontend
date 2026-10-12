@@ -330,6 +330,8 @@
 .fsm-board .score-div { position: relative; }
 /* 세 칸의 배경을 한 번에 그려 축소 배율에서 내부 이음선이 생기지 않게 합니다. */
 .fsm-board .scoreboard-main { position: relative; isolation: isolate; }
+/* scoreboard-main이 레드카드의 기준 박스가 되므로, EFL 테마와 같은 높이로 카드 윗부분을 팀 영역 위에 노출합니다. */
+.fsm-board .div-rc { top: -14px; }
 .fsm-board .scoreboard-main::before {
     content: ''; position: absolute; left: 50%; top: 0; transform: translateX(-50%);
     width: 100px; height: 48px; background: #FDFB03; z-index: -1; pointer-events: none;

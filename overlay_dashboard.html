@@ -1101,6 +1101,11 @@
           <div class="manual-side-tools">
             <div class="pgroup" style="flex-direction:row;align-items:center;"><button id="manualResetScore" class="ghost">점수 초기화 (F)</button></div>
           </div>
+          <!-- 퇴장 수 (render.js가 승부차기 컨트롤 바로 뒤로 옮긴다) -->
+          <div class="manual-red-cards" id="manualRedCards">
+            <div class="manual-score-group"><label>홈 퇴장 <span class="manual-red-keys" id="manualHomeRedKeys"></span></label><div class="manual-score-row"><button class="manual-score-btn" id="manualHomeRedMinus" type="button" aria-label="홈 퇴장 −1">−</button><span class="manual-score-val manual-red-val" id="manualHomeRedVal">0</span><button class="manual-score-btn" id="manualHomeRedPlus" type="button" aria-label="홈 퇴장 +1">+</button></div></div>
+            <div class="manual-score-group"><label>원정 퇴장 <span class="manual-red-keys" id="manualAwayRedKeys"></span></label><div class="manual-score-row"><button class="manual-score-btn" id="manualAwayRedMinus" type="button" aria-label="원정 퇴장 −1">−</button><span class="manual-score-val manual-red-val" id="manualAwayRedVal">0</span><button class="manual-score-btn" id="manualAwayRedPlus" type="button" aria-label="원정 퇴장 +1">+</button></div></div>
+          </div>
         </div>
         <!-- 득점자 -->
         <div class="manual-notes-grid"><div class="pgroup"><label>홈 득점자</label><textarea id="manualHomeNote" rows="3" placeholder="예: 12' 손흥민&#10;45' 이강인"></textarea></div><div class="pgroup"><label>원정 득점자</label><textarea id="manualAwayNote" rows="3" placeholder="예: 55' 하베르츠"></textarea></div></div>

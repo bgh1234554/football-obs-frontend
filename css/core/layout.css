@@ -249,6 +249,14 @@
     #themePanel .theme-pso-row .manual-pk-buttons { gap: 6px; }
     #themePanel .theme-pso-row button { padding: 7px 10px; white-space: nowrap; background: #0b1220; color: #e5e7eb; border: 1px solid #ffffff20; border-radius: 10px; cursor: pointer; font-weight: 700; }
     #psoControlHint { font-size: 12px; opacity: .7; }
+    /* 수동 모드에서는 PSO 단축키 안내를 버튼 위(점수 라벨과 같은 줄)에 두고, 오른쪽 빈 자리에 퇴장 입력을 놓는다. */
+    #themePanel #manual-section .theme-pso-row { display: grid; grid-template-columns: auto auto; align-items: center; gap: 8px 14px; }
+    #themePanel #manual-section #psoControlHint { grid-column: 1 / -1; grid-row: 1; line-height: 1.4; white-space: nowrap; }
+    .manual-red-cards { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px; }
+    .manual-red-val { color: #f87171; }
+    .manual-red-keys { font-weight: 400; opacity: .75; margin-left: 4px; }
+    /* 라벨(단축키 포함)이 +/− 줄보다 넓어 두 줄의 가운데를 맞춘다. */
+    .manual-red-cards .manual-score-group { justify-items: center; }
 
     /* ========== 페이지 영역 ========== */
     .pages { flex: 1; min-height: 0; overflow: hidden; }

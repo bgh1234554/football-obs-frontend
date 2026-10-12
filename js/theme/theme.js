@@ -214,6 +214,16 @@
     persist();
   }
   el.manualResetScore?.addEventListener('click', resetManualScore);
+  // [이벤트 등록] 수동 모드 — 퇴장 수 +/- (0~5장, 단축키와 공용)
+  function changeManualRedCards(team, delta){
+    const key = team === 'home' ? 'redHome' : 'redAway';
+    state[key] = clampNum((state[key] || 0) + delta, 0, 5, 0);
+    render();
+    persist();
+  }
+  window.changeManualRedCards = changeManualRedCards;
+  [['manualHomeRedPlus','home',1],['manualHomeRedMinus','home',-1],['manualAwayRedPlus','away',1],['manualAwayRedMinus','away',-1]]
+    .forEach(([id, team, delta]) => $(id)?.addEventListener('click', () => changeManualRedCards(team, delta)));
 
   /**
    * 이미지 파일을 읽어 URL 문자열을 콜백으로 전달.

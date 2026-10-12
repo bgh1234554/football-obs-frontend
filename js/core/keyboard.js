@@ -7,6 +7,8 @@ const shortcutActions = [
   ['extraPlus','타이머','추가시간 +1분','BracketRight',()=>setManualExtra(state.extra+1)],
   ...[['homePlus','홈 점수 + / PK 득점','KeyQ','home','G',1],['homeMinus','홈 점수 − / PK 실축','KeyA','home','M',-1],['awayPlus','원정 점수 + / PK 득점','KeyW','away','G',1],['awayMinus','원정 점수 − / PK 실축','KeyS','away','M',-1]].map(([id,label,key,team,result,delta])=>[id,'점수 · 승부차기',label,key,()=>{if(state.half==='PK') pkPush(team,result); else if(state.manualMode){state[team+'Score']=Math.max(0,state[team+'Score']+delta);syncManualInputs();render();persist();}}]),
   ['scoreReset','점수 · 승부차기','수동 점수 초기화','KeyF',()=>{if(state.manualMode)resetManualScore();}],
+  // 수동 모드 퇴장 수 조절 (점수 키에 Shift 조합)
+  ...[['homeRedPlus','홈 퇴장 +1','Shift+KeyQ','home',1],['homeRedMinus','홈 퇴장 −1','Shift+KeyA','home',-1],['awayRedPlus','원정 퇴장 +1','Shift+KeyW','away',1],['awayRedMinus','원정 퇴장 −1','Shift+KeyS','away',-1]].map(([id,label,key,team,delta])=>[id,'퇴장 (수동 모드)',label,key,()=>{if(state.manualMode)changeManualRedCards(team,delta);}]),
   ['pkUndo','점수 · 승부차기','PK 기록 되돌리기','KeyZ',()=>{if(state.half==='PK')pkUndo();}],
   ['pkReset','점수 · 승부차기','PK 기록 초기화','KeyX',()=>{if(state.half==='PK')pkReset();}],
   ['undo','전술판','되돌리기','Ctrl+KeyZ',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdUndo();}],
@@ -73,4 +75,18 @@ window.updateScoreShortcutHint = function() {
       ' · 원정 성공/실패 ', keycap(keys[2]), '/', keycap(keys[3]),
       ' · 되돌리기 ', keycap(pkKeys[0]), ' · 초기화 ', keycap(pkKeys[1]));
   }
+  // 퇴장 +/- 버튼 툴팁에도 현재 단축키를 표시한다.
+  const redIds = ['homeRedPlus','homeRedMinus','awayRedPlus','awayRedMinus'];
+  const redKeys = redIds.map(id => shortcutLabel(shortcutBinding(shortcutActions.find(a => a[0] === id))));
+  ['manualHomeRedPlus','manualHomeRedMinus','manualAwayRedPlus','manualAwayRedMinus'].forEach((id, i) => {
+    const button = document.getElementById(id);
+    if (button) button.title = `${shortcutActions.find(a => a[0] === redIds[i])[2]} (${redKeys[i]})`;
+  });
+  // 라벨 옆에 +/− 키를 표시한다 (예: 홈 퇴장 Shift + Q / Shift + A).
+  [['manualHomeRedKeys', 0], ['manualAwayRedKeys', 2]].forEach(([id, i]) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    const keycap = value => { const span = document.createElement('span'); span.className = 'kbd'; span.textContent = value; return span; };
+    target.replaceChildren(keycap(redKeys[i]), '/', keycap(redKeys[i + 1]));
+  });
 };

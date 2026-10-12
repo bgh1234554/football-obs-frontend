@@ -359,6 +359,11 @@
     const psoControls = document.getElementById('psoControls');
     const psoHost = document.querySelector(state.manualMode ? '#manual-section .manual-controls-row' : '.theme-timer-card');
     if (psoControls && psoHost && psoControls.parentElement !== psoHost) psoHost.appendChild(psoControls);
+    // 수동 모드 퇴장 입력은 항상 승부차기 컨트롤 오른쪽에 둔다.
+    const manualRedCards = document.getElementById('manualRedCards');
+    if (state.manualMode && psoControls && manualRedCards && psoControls.nextElementSibling !== manualRedCards) psoControls.after(manualRedCards);
+    if ($('manualHomeRedVal')) $('manualHomeRedVal').textContent = state.redHome ?? 0;
+    if ($('manualAwayRedVal')) $('manualAwayRedVal').textContent = state.redAway ?? 0;
     if (manualPsoMode) {
       manualPsoMode.checked = state.half === 'PK';
       manualPsoMode.disabled = false;

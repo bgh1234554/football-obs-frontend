@@ -13,7 +13,7 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 await page.locator('#settingsGearBtn').evaluate(n=>n.click());await page.locator('[data-sp-tab="general"]').click();
 await page.locator('#shortcutManageBtn').click();
 assert(await page.locator('#shortcutSettings').isVisible());
-assert.equal(await page.locator('.sc-key').count(),27);
+assert.equal(await page.locator('.sc-key').count(),31);
 const originalAction=await page.evaluate(()=>{const a=shortcutActions[0];const original=a.slice();a[1]='Clock Group';a[2]='Timer Action';renderShortcutSettings();return original;});
 for(const query of ['  cLoCk GrOuP  ','tIMER aCTION','GROUPtimer']){
   await page.locator('#shortcutSearch').fill(query);

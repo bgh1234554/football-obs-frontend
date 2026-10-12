@@ -206,6 +206,8 @@ function ttRenderMarkers() {
   if (!homeHost || !awayHost) return;
   homeHost.innerHTML = '';
   awayHost.innerHTML = '';
+  // 경기 데이터 전에는 events가 초기값 빈 배열([])이라 홈/원정 목록이 없어 그릴 칩도 없다.
+  if (!tacticsTimelineState.events.home || !tacticsTimelineState.events.away) return;
 
   const slider = document.getElementById('tactics-time-slider');
   const max = tacticsTimelineState.maxElapsed || 90;
