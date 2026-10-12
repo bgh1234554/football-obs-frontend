@@ -398,6 +398,12 @@ function adjustScoreboardWidth() {
           board.style.setProperty(`--fsm-pl-${side}-overlay`,
             nearWhite ? '#000000' : '#ffffff');
         });
+    } if(theme == 'unl') {
+        setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
+        setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
+        setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
+        setFsmStyle('.fsm-board #team-logo-left', {background: state.colors.homeBg});
+        setFsmStyle('.fsm-board #team-logo-right', {background: state.colors.awayBg});
     } if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});

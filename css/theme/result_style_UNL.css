@@ -118,6 +118,10 @@
     overflow: hidden;
 }
 
+.fsm-board .team-logo > img {
+    display: none;
+}
+
 .fsm-board #team-logo-left {
     left: 15px;
 }
