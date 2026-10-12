@@ -738,6 +738,9 @@ function adjustScoreboardWidth() {
   function applyTeamColors() {
     const teamColors = Object.fromEntries(Object.entries(state.colors).map(([key, value]) => [key, chromaSafe(value)]));
     setFsmStyle('.fsm-board .team-name', {color: ''});
+    // 네이션스리그 분기가 로고 칸에 넣은 팀 컬러 배경을 지운다. 지우지 않으면 다른 테마로 바꿔도
+    // 인라인 스타일이 남아 로고 칸이 테마 CSS 색(whitesmoke/검정 등) 대신 팀 컬러로 보인다.
+    setFsmStyle('.fsm-board .team-logo', {background: ''});
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
@@ -761,42 +764,33 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
-    } if(theme == 'bundes' || theme == 'bundes2') {
-        // 팀명 칸은 팀 컬러(FNL처럼), 글자는 프리미어리그처럼 칸마다 흰색/검은색 중 더 잘 보이는 쪽.
-        ['home', 'away'].forEach(side => {
-          const bg = teamColors[`${side}Bg`];
-          const ink = getColorContract(bg);
-          setFsmStyle(`.fsm-board .teams-${side === 'home' ? 'left' : 'right'}`, {background: bg, color: ink, borderBottom: 'none', borderTop: 'none'});
-          setFsmStyle(`.fsm-board #${side}Name`, {color: ink});
-        });
-        const board = document.querySelector('.fsm-board');
-        ['home', 'away'].forEach((side, index) => {
-          const card = document.getElementById(index === 0 ? 'homeCard' : 'awayCard');
-          const rgb = parseAnyColor(getComputedStyle(card).backgroundColor);
-          const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
-          board.style.setProperty(`--fsm-pl-${side}-overlay`,
-            nearWhite ? '#000000' : '#ffffff');
-        });
-    } if(theme == 'unl') {
-        setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '3px solid ' + state.colors.homeBg, borderTop: 'none'});
-        setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '3px solid ' + state.colors.awayBg, borderTop: 'none'});
-        setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
-        setFsmStyle('.fsm-board #team-logo-left', {background: state.colors.homeBg});
-        setFsmStyle('.fsm-board #team-logo-right', {background: state.colors.awayBg});
-    } if(theme == 'wc26') {
-    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'laliga', 'laliga2'].includes(theme)) {
-      // 라리가·라리가 2는 팀명 칸 아래 팀 컬러 줄 없이 점수 옆 컬러 띠만 쓴다 (이전 테마의 인라인 테두리도 지운다).
+    } else if(theme == 'bundes' || theme == 'bundes2') {
+      // 팀명 칸은 팀 컬러(FNL처럼), 글자는 프리미어리그처럼 칸마다 흰색/검은색 중 더 잘 보이는 쪽.
+      ['home', 'away'].forEach(side => {
+        const bg = teamColors[`${side}Bg`];
+        const ink = getColorContract(bg);
+        setFsmStyle(`.fsm-board .teams-${side === 'home' ? 'left' : 'right'}`, {background: bg, color: ink, borderBottom: 'none', borderTop: 'none'});
+        setFsmStyle(`.fsm-board #${side}Name`, {color: ink});
+      });
+    } else if(theme == 'unl') {
+      // 네이션스리그 — 팀 컬러는 로고 칸(마름모) 배경으로만 표시하고 팀명 칸 아래 줄은 쓰지 않는다
+      setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
+      setFsmStyle('.fsm-board #team-logo-left', {background: teamColors.homeBg});
+      setFsmStyle('.fsm-board #team-logo-right', {background: teamColors.awayBg});
+    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
         setFsmStyle('.fsm-board .team-color', {background: ''});
         ensureJleagueArcs();
       }
+    } else if(theme == 'laliga' || theme == 'laliga2') {
+      // 라리가·라리가 2 — 팀명 칸 아래 팀 컬러 줄 없이, 점수 옆 컬러 띠만 primary/number 반반으로 표시
+      setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
+      setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + teamColors.homeBg + ' 50%, ' + teamColors.homeText + ' 50%)'});
+      setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + teamColors.awayBg + ' 50%, ' + teamColors.awayText + ' 50%)'});
     } else if(theme == 'wc26') {
       setFsmStyle('.fsm-board .teams-left', {background: 'black', color: 'white', borderBottom: '3px solid #E9A186', borderTop: '3px solid #661D18'});
-      setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid #BDE74C', borderTop: '3px solid #AD8BF7'});
-      setFsmStyle('.fsm-board #homeColor', {background: state.colors.homeBg});
-      setFsmStyle('.fsm-board #awayColor', {background: state.colors.awayBg});
-    } if(theme == 'uel' || theme == 'uecl') {
       setFsmStyle('.fsm-board .teams-right', {background: 'black', color: 'white', borderBottom: '3px solid ' + chromaSafe('#BDE74C'), borderTop: '3px solid #AD8BF7'});
       setFsmStyle('.fsm-board #homeColor', {background: teamColors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: teamColors.awayBg});
@@ -834,17 +828,14 @@ function adjustScoreboardWidth() {
     } else if(theme == 'uel' || theme == 'uecl') {
       setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
-      setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + state.colors.homeBg + ' 50%, ' + state.colors.homeText + ' 50%)'});
-      setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + state.colors.awayBg + ' 50%, ' + state.colors.awayText + ' 50%)'});    
-    } else if(theme != 'pl' && theme != 'wc26' && theme != 'uel' && theme != 'uecl' && theme != 'bundes' && theme != 'bundes2') {
       setFsmStyle('.fsm-board #homeColor', {background: 'linear-gradient(to bottom, ' + teamColors.homeBg + ' 50%, ' + teamColors.homeText + ' 50%)'});
       setFsmStyle('.fsm-board #awayColor', {background: 'linear-gradient(to bottom, ' + teamColors.awayBg + ' 50%, ' + teamColors.awayText + ' 50%)'});
-    } else if(theme != 'pl' && theme != 'wc26' && theme != 'uel' && theme != 'uecl' && theme != 'bundes' && theme != 'bundes2') {
-      // default / pl / cl / uel / 나머지 모든 테마
+    } else {
+      // default / cl / seriea / ligue1 등 나머지 모든 테마 — 팀명 칸 아래 5px 팀 컬러 줄
+      // (테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨)
       setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '5px solid ' + teamColors.homeBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '5px solid ' + teamColors.awayBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
-      // 테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨 — 여기서 다시 쓸 필요 없음
     }
   }
 

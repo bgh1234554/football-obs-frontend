@@ -18,7 +18,7 @@ const { openPage, settle } = require('../tactics/helpers');
       render();
     });
     await page.waitForFunction(() => document.getElementById('homeLogo').classList.contains('logo-trimmed'));
-    for (const theme of await page.evaluate(() => Object.keys(FSM_THEMES))) {
+    for (const theme of await page.evaluate(() => Object.keys(FSM_THEMES).filter(t => t !== 'unl'))) { // 네이션스리그는 로고 이미지를 숨기는 디자인
       await page.evaluate(theme => applyTheme(theme, null), theme);
       await page.waitForFunction(() => !pendingThemeLink);
       await page.evaluate(() => { render(); fsmBoardRender(); });
@@ -64,7 +64,7 @@ const { openPage, settle } = require('../tactics/helpers');
         state.homeLogo = logo; state.awayLogo = logo; render();
       }, [width, height]);
       await page.waitForFunction(ratio => Math.abs(parseFloat(document.getElementById('homeLogo').style.getPropertyValue('--logo-fit-aspect')) - ratio) < .001, width / height);
-      for (const theme of await page.evaluate(() => Object.keys(FSM_THEMES))) {
+      for (const theme of await page.evaluate(() => Object.keys(FSM_THEMES).filter(t => t !== 'unl'))) { // 네이션스리그는 로고 이미지를 숨기는 디자인
         await page.evaluate(theme => applyTheme(theme, null), theme);
         await page.waitForFunction(() => !pendingThemeLink);
         await page.evaluate(() => { render(); fsmBoardRender(); });
