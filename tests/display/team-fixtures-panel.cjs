@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { openPage } = require('../tactics/helpers');
@@ -55,7 +56,7 @@ const { openPage } = require('../tactics/helpers');
     assert.equal(await panel.locator('.tf-opponent').first().innerText(), '울브스 (H)');
     await page.evaluate(() => setSetting('teamName', 'long'));
     assert.equal(await panel.locator('.dp-side-name').first().innerText(), '크리스탈 팰리스');
-    await page.screenshot({ path: 'tests/display/team-fixtures-preview.png' });
+    await page.screenshot({ path: 'screenshots/tests/team-fixtures-preview.png' });
     await panel.getByTitle('다음 페이지', { exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll('.lp-events-s .tf-card').length === 10 && document.querySelectorAll('.lp-events-s .tf-result').length === 0);
     assert.equal(await panel.locator('.tf-result').count(), 0);
@@ -75,7 +76,7 @@ const { openPage } = require('../tactics/helpers');
     assert.match(await page.locator('.lp-stat-cycle-btn').getAttribute('title'), /최근·예정 경기/);
     assert.equal(await bigPanel.locator('.tf-result').count(), 0);
     await checkHalves(bigPanel);
-    await page.screenshot({ path: 'tests/display/team-fixtures-big-preview.png' });
+    await page.screenshot({ path: 'screenshots/tests/team-fixtures-big-preview.png' });
     await page.evaluate(() => lpStatCycleNext());
     assert.equal(await bigPanel.isVisible(), false);
     await page.evaluate(() => {

@@ -28,12 +28,19 @@
     return promise;
   }
 
+  /** 'teamName' 설정(풀네임/단축명)에 맞는 팀 이름. 저장한 팀 닉네임이 있으면 닉네임이 우선. */
   function teamName(data, side) {
     const long = data?.[`${side}TeamName`] || '';
     const short = data?.[`${side}TeamNameShort`] || '';
-    return isLongName('teamName') ? long || short : short || long;
+    return teamNicknameDisplay(data, side, isLongName('teamName') ? long || short : short || long);
   }
 
+  /**
+   * 최근 경기 카드 1장(상대팀 로고·이름(H/A)·점수·날짜)을 만든다.
+   * @param {object} match  최근 경기 행
+   * @param {number|string} teamId  기준 팀 ID (상대팀 판별용)
+   * @param {number} viewPage  현재 보고 있는 기간 페이지
+   */
   function card(match, teamId, viewPage) {
     const home = Number(match.homeTeamId) === Number(teamId);
     const opponent = home ? 'away' : 'home';
@@ -57,8 +64,9 @@
     el.append(box);
     const name = `${teamName(match, opponent) || '상대팀'} (${home ? 'H' : 'A'})`;
     const label = node('div', 'tf-opponent', name);
-    label.dataset.longName = `${match[`${opponent}TeamName`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
-    label.dataset.shortName = `${match[`${opponent}TeamNameShort`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
+    bindTeamNicknameLabel(label, match, opponent);
+    label.dataset.longName = `${getTeamNickname(teamNicknameIdentity(match, opponent)) || match[`${opponent}TeamName`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
+    label.dataset.shortName = `${getTeamNickname(teamNicknameIdentity(match, opponent)) || match[`${opponent}TeamNameShort`] || teamName(match, opponent)} (${home ? 'H' : 'A'})`;
     label.title = label.dataset.longName;
     el.append(label);
     const score = node('div', 'tf-score');
@@ -82,6 +90,7 @@
     return el;
   }
 
+  /** 캠 큼/캠 작음의 최근 경기 패널을 현재 페이지 기준으로 다시 그리고, 다음 프레임에 카드 줄을 맞춘다. */
   function render() {
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(container => {
       const isBig = !!container.closest('.lp-stat');
@@ -95,9 +104,10 @@
         const section = node('section', 'tf-team');
         const header = node('div', 'dp-side-header');
         const label = node('span', 'dp-side-name', teamName(fixture?.matchInfo, side) || (side === 'home' ? '홈팀' : '원정팀'));
+        bindTeamNicknameLabel(label, fixture?.matchInfo, side);
         label.title = label.textContent;
-        label.dataset.longName = fixture?.matchInfo?.[`${side}TeamName`] || label.textContent;
-        label.dataset.shortName = fixture?.matchInfo?.[`${side}TeamNameShort`] || label.textContent;
+        label.dataset.longName = getTeamNickname(teamNicknameIdentity(fixture?.matchInfo, side)) || fixture?.matchInfo?.[`${side}TeamName`] || label.textContent;
+        label.dataset.shortName = getTeamNickname(teamNicknameIdentity(fixture?.matchInfo, side)) || fixture?.matchInfo?.[`${side}TeamNameShort`] || label.textContent;
         label.title = label.dataset.longName;
         const cs = typeof chromaSafe === 'function' ? chromaSafe : value => value;
         const bg = cs(state.colors?.[`${side}Bg`] || getCSS(`--${side}-bg`));
@@ -149,7 +159,7 @@
     requestAnimationFrame(alignCardRows);
   }
 
-  // 긴 이름과 승부차기가 있어도 같은 팀 카드들의 점수·날짜 시작선을 맞춘다.
+  /** 긴 이름과 승부차기가 있어도 같은 팀 카드들의 점수·날짜 시작선을 맞춘다. 넘치는 이름은 폰트를 줄이고 3줄로 자른다. */
   function alignCardRows() {
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(panel => {
       if (!panel.offsetWidth) return;
@@ -160,9 +170,10 @@
         label.style.minHeight = '0';
         label.textContent = isLongName('teamName') ? label.dataset.longName : label.dataset.shortName;
         const initialSize = parseFloat(getComputedStyle(label).fontSize);
+        /** 카드 이름은 3줄 이내, 팀 헤더는 한 줄 폭 안에 들어가는지. */
         const fits = () => {
           const css = getComputedStyle(label);
-          if (isCard) return label.offsetHeight <= Math.ceil(parseFloat(css.lineHeight) * 2) + 1;
+          if (isCard) return label.offsetHeight <= Math.ceil(parseFloat(css.lineHeight) * 3) + 1;
           // 말줄임된 flex 텍스트는 scrollWidth가 같을 수 있어 실제 글자 폭을 잰다.
           const range = document.createRange();
           range.selectNodeContents(label);
@@ -264,6 +275,7 @@
     }
     fixture = data;
   };
+  document.addEventListener('team-nicknames:change', () => { if (fixture) render(); });
   document.addEventListener('theme:colors-changed', () => { if (fixture) render(); });
   document.addEventListener('settings:change', () => { if (fixture) render(); });
 })();

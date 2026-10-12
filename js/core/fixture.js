@@ -856,6 +856,7 @@
       return;
     }
 
+    state.teamNicknameTeams = null;
     state.homeName = 'HOME';
     state.awayName = 'AWAY';
     state.homeScore = 0;
@@ -1141,6 +1142,10 @@
       state.teamColorOverrideFixtureId = null;
     }
 
+    state.teamNicknameTeams = {
+      home: teamNicknameIdentity(m, 'home'),
+      away: teamNicknameIdentity(m, 'away'),
+    };
     // 팀 이름 (단축명 우선, 없으면 풀네임)
     const homeTeamName = pickMatchTeamName(m, 'home');
     const awayTeamName = pickMatchTeamName(m, 'away');

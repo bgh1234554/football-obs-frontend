@@ -308,8 +308,14 @@
   // 추가시간 편집은 시계를 정지하지 않고 기존 수동 추가시간 적용 경로를 사용한다.
   const extraEl = $('extra');
   extraEl?.setAttribute('title', '더블클릭하여 추가시간 수정');
-  extraEl?.addEventListener('dblclick', () => {
+  /**
+   * 추가시간 배지 위에 분 입력 편집기를 연다(이미 열려 있으면 무시).
+   * ✓/Enter는 적용, Esc나 바깥 클릭은 닫기. 배지 색상을 그대로 따라 그린다.
+   */
+  function openExtraEditor() {
     if (document.getElementById('extraEditor')) return;
+    // 숨김 해제 직후에도 전환 중인 투명색 대신 최종 테마 색상을 읽는다.
+    extraEl.classList.add('has-extra-editor');
     const editor = document.createElement('div');
     editor.id = 'extraEditor';
     editor.className = 'extra-editor';
@@ -327,9 +333,11 @@
     editor.append('+', input, confirm);
     extraEl.parentElement.append(editor);
     extraEl.classList.add('is-editing-extra');
+    /** 편집기를 제거하고 배지 상태와 전역 리스너를 원래대로 되돌린다. */
     function close() {
       editor.remove();
       extraEl.classList.remove('is-editing-extra');
+      extraEl.classList.remove('has-extra-editor');
       document.removeEventListener('mousedown', outside);
       document.removeEventListener('keydown', keydown);
     }
@@ -346,6 +354,12 @@
     document.addEventListener('mousedown', outside);
     document.addEventListener('keydown', keydown);
     input.focus(); input.select();
+  }
+  extraEl?.addEventListener('dblclick', openExtraEditor);
+  extraEl?.addEventListener('click', () => {
+    if (state.extraShown && state.extra > 0) return;
+    setManualExtra(1);
+    openExtraEditor();
   });
 
 

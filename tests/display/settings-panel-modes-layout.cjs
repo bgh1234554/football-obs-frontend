@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
@@ -65,7 +66,7 @@ const { openPage, settle } = require('../tactics/helpers');
       if (config.rows) assert.equal(geometry.rows, config.rows, JSON.stringify(geometry));
       await group.locator('label[title="최근·예정 경기"]').click();
       assert.equal(await page.evaluate(() => getSetting('statCycleModeTeamFixtures')), 'off');
-      await page.screenshot({ path: `tests/display/settings-panel-modes-${config.name}.png` });
+      await page.screenshot({ path: `screenshots/tests/settings-panel-modes-${config.name}.png` });
       console.log('PASS', config.name, JSON.stringify(geometry));
       await page.close();
     }

@@ -333,6 +333,16 @@
               <button id="clearAllNicknamesBtn" class="sp-action-btn sp-action-btn-danger">초기화</button>
             </div>
           </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">팀 닉네임 전체 초기화</span>
+              <span class="sp-label-sub">저장된 모든 팀 닉네임을 삭제합니다.</span>
+            </div>
+            <div style="display:flex;gap:6px;flex:0 0 auto;">
+              <button id="showTeamNicknameListBtn" class="sp-action-btn">목록 보기</button>
+              <button id="clearAllTeamNicknamesBtn" class="sp-action-btn sp-action-btn-danger">초기화</button>
+            </div>
+          </div>
         </div>
 
         <div class="sp-section" data-sp-tab-section="lineup" hidden>
@@ -1091,6 +1101,11 @@
           <div class="manual-side-tools">
             <div class="pgroup" style="flex-direction:row;align-items:center;"><button id="manualResetScore" class="ghost">점수 초기화 (F)</button></div>
           </div>
+          <!-- 퇴장 수 (render.js가 승부차기 컨트롤 바로 뒤로 옮긴다) -->
+          <div class="manual-red-cards" id="manualRedCards">
+            <div class="manual-score-group"><label>홈 퇴장 <span class="manual-red-keys" id="manualHomeRedKeys"></span></label><div class="manual-score-row"><button class="manual-score-btn" id="manualHomeRedMinus" type="button" aria-label="홈 퇴장 −1">−</button><span class="manual-score-val manual-red-val" id="manualHomeRedVal">0</span><button class="manual-score-btn" id="manualHomeRedPlus" type="button" aria-label="홈 퇴장 +1">+</button></div></div>
+            <div class="manual-score-group"><label>원정 퇴장 <span class="manual-red-keys" id="manualAwayRedKeys"></span></label><div class="manual-score-row"><button class="manual-score-btn" id="manualAwayRedMinus" type="button" aria-label="원정 퇴장 −1">−</button><span class="manual-score-val manual-red-val" id="manualAwayRedVal">0</span><button class="manual-score-btn" id="manualAwayRedPlus" type="button" aria-label="원정 퇴장 +1">+</button></div></div>
+          </div>
         </div>
         <!-- 득점자 -->
         <div class="manual-notes-grid"><div class="pgroup"><label>홈 득점자</label><textarea id="manualHomeNote" rows="3" placeholder="예: 12' 손흥민&#10;45' 이강인"></textarea></div><div class="pgroup"><label>원정 득점자</label><textarea id="manualAwayNote" rows="3" placeholder="예: 55' 하베르츠"></textarea></div></div>
@@ -1120,7 +1135,16 @@
       <div class="theme-appearance-grid">
       <div class="theme-card theme-selector-card"><div class="section-title">점수판 테마</div><div class="prow"><div class="pgroup"><label for="fsmThemeSelect">FSM 테마 선택</label><select id="fsmThemeSelect" style="min-width:240px"></select><small>자동 선택은 경기의 리그에 맞춰 적용됩니다.</small></div></div></div>
       <div class="theme-card theme-colors-card"><div class="theme-color-header"><div class="section-title">색상</div><div class="theme-color-actions"><button id="swapHomeTeamColors" type="button" title="홈 배경색과 글자색 바꾸기" aria-label="홈 배경색과 글자색 바꾸기">홈 &#8644;</button><button id="swapAwayTeamColors" type="button" title="원정 배경색과 글자색 바꾸기" aria-label="원정 배경색과 글자색 바꾸기">원정 &#8644;</button><button id="resetApiTeamColors" class="theme-color-reset" type="button" title="API 색상으로 초기화" aria-label="API 색상으로 초기화">&#8634;</button></div></div><div class="prow"><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div><div class="pgroup"><label for="inPkGoal">승부차기 성공</label><input id="inPkGoal" type="color" value="#32cd32"></div><div class="pgroup"><label for="inPkMiss">승부차기 실패</label><input id="inPkMiss" type="color" value="#ff0000"></div></div></div>
-        <div class="theme-card theme-notes-card"><div class="section-title">득점자 표시</div><div class="prow"><div class="pgroup"><label>득점자 표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div><div class="pgroup"><label>글자 테두리 색</label><input id="inNoteStroke" type="color" value="#000000"></div><div class="pgroup"><label for="noteStrokeWidth">글자 테두리 굵기(px)</label><input id="noteStrokeWidth" type="number" min="0" max="10" step="0.5" value="1"></div><div class="pgroup"><label>글자 크기(px)</label><input id="noteFontSize" type="number" min="10" step="1" value="20"></div><div class="pgroup"><label>글자 색</label><input id="inNoteText" type="color" value="#e5e7eb"></div></div></div>
+        <div class="theme-card theme-notes-card">
+          <div class="section-title">득점자 표시</div>
+          <div class="prow">
+            <div class="pgroup"><label for="noteOn">표시</label><div class="prow"><input id="noteOn" type="checkbox" checked></div></div>
+            <div class="pgroup"><label for="noteFontSize">크기(px)</label><div class="prow"><input id="noteFontSize" type="number" value="18" min="10" step="1"><button id="resetNoteSize" type="button" class="theme-color-reset" title="글자 크기 초기화" aria-label="득점자 글자 크기 초기화">&#8634;</button></div></div>
+            <div class="pgroup"><label for="inNoteText">글자 색</label><div class="prow"><input id="inNoteText" type="color" value="#e5e7eb" ><button id="resetNoteText" type="button" class="theme-color-reset" title="글자 색 초기화" aria-label="득점자 글자 색 초기화">&#8634;</button></div></div>
+            <div class="pgroup"><label for="inNoteStroke">테두리 색</label><div class="prow"><input id="inNoteStroke" type="color" value="#000000" ><button id="resetNoteStroke" type="button" class="theme-color-reset" title="테두리 색 초기화" aria-label="득점자 테두리 색 초기화">&#8634;</button></div></div>
+            <div class="pgroup"><label for="noteStrokeWidth">굵기(px)</label><div class="prow"><input id="noteStrokeWidth" type="number" value="1" min="0" max="10" step="0.5"><button id="resetNoteStrokeWidth" type="button" class="theme-color-reset" title="테두리 굵기 초기화" aria-label="득점자 테두리 굵기 초기화">&#8634;</button></div></div>
+          </div>
+        </div>
       </div>
       <div class="theme-card theme-font-card"><div class="section-title">폰트</div><div class="theme-font-basic"><div class="pgroup"><label>프리셋</label><select id="fontPreset"><option value="">직접 입력 / 사용자 지정</option><optgroup label="기본 / 시스템"><option value="'Ubuntu', 'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">기본값</option><option value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif">시스템 기본</option><option value="'Segoe UI', 'Malgun Gothic', Arial, sans-serif">Segoe UI + 맑은 고딕</option><option value="'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif">맑은 고딕</option><option value="'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif">Apple SD Gothic Neo</option><option value="'Arial', Helvetica, sans-serif">Arial</option><option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica Neue</option><option value="'Tahoma', Geneva, sans-serif">Tahoma</option><option value="'Verdana', Geneva, sans-serif">Verdana</option><option value="'Trebuchet MS', Helvetica, sans-serif">Trebuchet MS</option></optgroup><optgroup label="웹 폰트"><option value="'Ubuntu', sans-serif">Ubuntu</option><option value="'Nanum Barun Gothic', 'Malgun Gothic', sans-serif">Nanum Barun Gothic</option><option value="'Roboto', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">Roboto</option><option value="'Noto Sans KR', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">Noto Sans KR</option><option value="'Montserrat', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;900&display=swap">Montserrat</option><option value="'Bebas Neue', sans-serif" data-font-url="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">Bebas Neue</option></optgroup><optgroup label="세리프 / 모노 / 디스플레이"><option value="'Georgia', 'Times New Roman', serif">Georgia</option><option value="'Times New Roman', Times, serif">Times New Roman</option><option value="'Courier New', Courier, monospace">Courier New</option><option value="'Consolas', 'Courier New', monospace">Consolas</option><option value="'Impact', 'Arial Black', sans-serif">Impact</option><option value="sans-serif">sans-serif</option><option value="serif">serif</option><option value="monospace">monospace</option></optgroup></select></div><button id="resetFont" type="button">초기화</button></div><div class="theme-font-advanced"><div class="prow"><div class="pgroup"><label>기기에 설치된 폰트 (권한 필요)</label><div class="prow"><button id="askLocalFonts">설치 폰트 찾기</button><select id="systemFonts" style="min-width:200px"></select></div></div><div class="pgroup"><label>폰트 파일 업로드 (.ttf/.otf/.woff/.woff2)</label><input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" class="file" /></div><div class="pgroup" style="min-width:340px"><label>커스텀 폰트 CSS URL (Google Fonts 등)</label><input id="fontCssUrl" type="text" placeholder="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" /></div><div class="pgroup"><label>폰트 패밀리</label><input id="fontFamily" type="text" placeholder="'Montserrat', sans-serif" /></div><div class="pgroup theme-font-actions"><label style="visibility:hidden">Font actions</label><div class="prow"><button id="applyFont" class="primary">폰트 적용</button></div></div></div></div></div>
     </div><!-- /theme-panel-inner -->
@@ -1405,6 +1429,7 @@
 <script src="js/core/logo-fill-exceptions.js"></script>
 <script src="js/core/logo-trim.js"></script>
 <script src="js/core/scoreboard-logo-contrast.js"></script>
+<script src="js/core/team-nicknames.js"></script>
 <script src="js/core/render.js"></script>
 <script src="js/core/timer.js"></script>
 <script src="js/core/fixture-poll-policy.js"></script>

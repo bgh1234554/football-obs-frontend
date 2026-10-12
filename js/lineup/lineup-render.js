@@ -263,7 +263,7 @@ function shouldShowLineupManualButton(/* rawFixture, side */) {
 /** 라인업 패널 한쪽(홈/원정) 헤더 HTML — 팀명 + 포메이션 + (있으면) 입력 버튼. */
 function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
   return `<div class="dp-side-header">
-    <span class="dp-side-name" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
+    <span class="dp-side-name"${teamNicknameLabelAttrs(side)} title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
     ${formationText ? `<span class="dp-side-formation">${dpEscape(formationText)}</span>` : ''}
     ${showManual ? buildTitleActionButton('lineup', side) : ''}
   </div>`;
@@ -273,6 +273,10 @@ function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
 function setSideName(panel, dataAttrPrefix, side, teamName, accentColor, accentTextColor) {
   const nameEl = panel?.querySelector(`[data-${dataAttrPrefix}-side="${side}"] .dp-side-name`);
   if (!nameEl) return;
+  nameEl.dataset.teamNicknameSide = side;
+  nameEl.setAttribute('role', 'button');
+  nameEl.tabIndex = 0;
+  nameEl.setAttribute('aria-label', `${side === 'home' ? '홈' : '원정'} 팀 닉네임 편집`);
   nameEl.textContent = teamName;
   nameEl.title = teamName;
   if (accentColor) {
@@ -775,7 +779,7 @@ function buildLineupPitchTeamChipHtml(side, effectiveData, rawData, options = {}
     : getTeamName(effectiveData, side);
   const primaryTitle = formationOnly ? primaryLabel : getTeamName(effectiveData, side);
   const teamNameAttrs = formationOnly ? ''
-    : ` data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}"`;
+    : `${teamNicknameLabelAttrs(side)} data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}"`;
   return `<div class="dp-lineup-team-chip is-${side}">
     <div class="dp-lineup-team-main${formationOnly ? ' is-formation-only' : ''}" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
       <span class="dp-lineup-team-name"${teamNameAttrs} title="${dpEscape(primaryTitle)}">${dpEscape(primaryLabel)}</span>
@@ -798,7 +802,7 @@ function buildLineupPitchTeamNameTagHtml(side, effectiveData) {
     : (matchInfo.awayTeamName || '')).trim();
   return `<div class="dp-lineup-team-name-tag is-${side}">
     <div class="dp-lineup-team-main" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
-      <span class="dp-lineup-team-name" data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
+      <span class="dp-lineup-team-name"${teamNicknameLabelAttrs(side)} data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
     </div>
   </div>`;
 }
@@ -1220,7 +1224,7 @@ function renderInjuryCyclePanel(effectiveData, rawData) {
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor, side) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
-  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}>${dpEscape(teamName)} 교체명단</div>`;
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span> 교체명단</div>`;
   if (!players || !players.length) {
     return `${title}<div class="st-empty">교체 선수 없음</div>`;
   }

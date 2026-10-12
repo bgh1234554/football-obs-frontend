@@ -198,6 +198,13 @@
 }
 
 /* ── 닉네임 편집 ── */
+/* 팀 이름 라벨도 선수와 같은 인라인 편집 진입점으로 표시한다. */
+#homeName, #awayName, [data-team-nickname-side], [data-team-nickname-key] { cursor: pointer; }
+#homeName:focus-visible, #awayName:focus-visible, [data-team-nickname-side]:focus-visible, [data-team-nickname-key]:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
 .pm-nick-wrap { padding: 2px 0; }
 
 .pm-nick-title {

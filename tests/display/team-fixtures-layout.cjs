@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
@@ -56,8 +57,22 @@ const { openPage, settle } = require('../tactics/helpers');
         else assert(Math.abs(item.top) < 2, JSON.stringify(item));
       }
       console.log(context, width, height, JSON.stringify(measurements));
-      await page.screenshot({ path: `tests/display/team-fixtures-${context}-${height}-stress.png`, clip: await panel.boundingBox() });
+      await page.screenshot({ path: `screenshots/tests/team-fixtures-${context}-${height}-stress.png`, clip: await panel.boundingBox() });
     }
+    await page.evaluate(() => {
+      layoutMatches[22][0].awayTeamName = 'SG Sonnenhof Grossaspach';
+      layoutMatches[22][0].awayTeamNameShort = 'SG Sonnenhof Grossaspach';
+      document.dispatchEvent(new CustomEvent('settings:change', { detail: { category: 'teamName' } }));
+    });
+    await settle(page);
+    const longName = page.locator('.lp-stat .tf-opponent').nth(5);
+    assert.equal(await longName.innerText(), 'SG Sonnenhof Grossaspach (H)');
+    assert(await longName.evaluate(el => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const lines = new Set([...range.getClientRects()].map(rect => Math.round(rect.top)));
+      return lines.size === 3 && !el.classList.contains('tf-name-clamped');
+    }));
     // 매우 긴 이름은 최소 글자 크기 아래로 축소하지 않고 단축명으로 전환한다.
     await page.evaluate(() => {
       layoutMatches[22][0].awayTeamName = '클루브 아틀레티코 데 마드리드 인터내셔널 유나이티드 풋볼 클럽';

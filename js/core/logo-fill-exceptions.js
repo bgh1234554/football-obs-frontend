@@ -14,4 +14,5 @@ const LOGO_FILL_EXCLUDED_URLS = Object.freeze([
   'https://bgh1234554.github.io/football-obs-logo-cdn/clubs/England/NewcastleUnited.svg',
   'https://bgh1234554.github.io/football-obs-logo-cdn/clubs/Russia/Zenit.png',
   'https://indvel.github.io/utils/fsm/logos/EPL/Liverpool_FC_New.svg',
+  'https://bgh1234554.github.io/football-obs-logo-cdn/clubs/Russia/DynamoMoscow.png'
 ]);

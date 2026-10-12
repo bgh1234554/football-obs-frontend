@@ -56,6 +56,7 @@
   const state = {
     logoAlign: 'hybrid',
     homeName: 'HOME', awayName: 'AWAY',
+    teamNicknameTeams: null,
     homeScore: 0, awayScore: 0,
     aggEnabled: false, aggHomeBase: 0, aggAwayBase: 0,
     homeLogo: '', awayLogo: '',

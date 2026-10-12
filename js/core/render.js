@@ -206,8 +206,14 @@
     // 1. 팀명 / 점수 텍스트 갱신
     const homeNameText = el.homeName.querySelector('.text') || el.homeName;
     const awayNameText = el.awayName.querySelector('.text') || el.awayName;
-    homeNameText.textContent = state.homeName || 'HOME';
-    awayNameText.textContent = state.awayName || 'AWAY';
+    homeNameText.textContent = scoreboardTeamDisplayName('home');
+    el.homeName.setAttribute('role', 'button');
+    el.homeName.tabIndex = 0;
+    el.homeName.setAttribute('aria-label', '홈 팀 닉네임 편집');
+    awayNameText.textContent = scoreboardTeamDisplayName('away');
+    el.awayName.setAttribute('role', 'button');
+    el.awayName.tabIndex = 0;
+    el.awayName.setAttribute('aria-label', '원정 팀 닉네임 편집');
     el.homeScore.textContent = state.homeScore;
     el.awayScore.textContent = state.awayScore;
 
@@ -353,6 +359,11 @@
     const psoControls = document.getElementById('psoControls');
     const psoHost = document.querySelector(state.manualMode ? '#manual-section .manual-controls-row' : '.theme-timer-card');
     if (psoControls && psoHost && psoControls.parentElement !== psoHost) psoHost.appendChild(psoControls);
+    // 수동 모드 퇴장 입력은 항상 승부차기 컨트롤 오른쪽에 둔다.
+    const manualRedCards = document.getElementById('manualRedCards');
+    if (state.manualMode && psoControls && manualRedCards && psoControls.nextElementSibling !== manualRedCards) psoControls.after(manualRedCards);
+    if ($('manualHomeRedVal')) $('manualHomeRedVal').textContent = state.redHome ?? 0;
+    if ($('manualAwayRedVal')) $('manualAwayRedVal').textContent = state.redAway ?? 0;
     if (manualPsoMode) {
       manualPsoMode.checked = state.half === 'PK';
       manualPsoMode.disabled = false;
@@ -694,10 +705,10 @@
   const boardScaleRange = $('boardScaleRange');
   const boardScaleLabel = $('boardScaleLabel');
 
-  /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
   // 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout)에서 점수판을 작게 줄이는 비율.
   // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
   const TOUCH_BOARD_SHRINK = 0.7;
+  /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
   function applyBoardScale(pct){
     let s = pct / 100;
     if (document.body.classList.contains('tactics-active') && document.body.classList.contains('td-touch-board')) {
@@ -712,6 +723,8 @@
     boardStageWrap.style.height = (naturalH * s) + 'px';
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
+    window.syncBelarusBoundaryPixelGrid?.();
+    window.syncEkstraklasaBoundaryPixelGrid?.();
   }
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
@@ -823,6 +836,13 @@
   el.noteOn?.addEventListener('change', e=>{ state.noteEnabled=!!e.target.checked; render(); persist(); });
   el.noteFontSize?.addEventListener('input', e=>{ state.noteFontSize=Math.max(10,Number(e.target.value)||18); render(); persist(); });
   el.noteStrokeWidth?.addEventListener('input', e=>{ state.noteStrokeWidth=clampNum(e.target.value,0,10,1); render(); persist(); });
+  // 각 초기화 버튼은 해당 항목만 기본값으로 복원한다.
+  [
+    ['resetNoteSize', () => { state.noteFontSize = 18; }],
+    ['resetNoteText', () => { commitThemeColors({ noteText: '#e5e7eb' }); }],
+    ['resetNoteStroke', () => { commitThemeColors({ noteStroke: '#000000' }); }],
+    ['resetNoteStrokeWidth', () => { state.noteStrokeWidth = 1; }],
+  ].forEach(([id, reset]) => $(id)?.addEventListener('click', () => { reset(); render(); persist(); }));
 
   // [이벤트 등록] 보드/점수/팀카드 테두리 ON/OFF 및 두께 조정
   el.boardOutlineOn?.addEventListener('change', e=>{ state.boardOutlineEnabled=!!e.target.checked; render(); persist(); });

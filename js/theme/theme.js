@@ -188,8 +188,15 @@
   }
 
   // [이벤트 등록] 수동 모드 — 팀 이름·득점자 텍스트 입력
-  el.manualHomeName?.addEventListener('input', e=>{ state.homeName=e.target.value; render(); persist(); });
-  el.manualAwayName?.addEventListener('input', e=>{ state.awayName=e.target.value; render(); persist(); });
+  el.manualHomeName?.addEventListener('input', e=>{
+    // 수동으로 다른 팀 이름을 입력하면 이전 API 팀 ID와 분리한다.
+    if (state.teamNicknameTeams) state.teamNicknameTeams.home = null;
+    state.homeName=e.target.value; render(); persist();
+  });
+  el.manualAwayName?.addEventListener('input', e=>{
+    if (state.teamNicknameTeams) state.teamNicknameTeams.away = null;
+    state.awayName=e.target.value; render(); persist();
+  });
   el.manualHomeNote?.addEventListener('input', e=>{ state.notes.home=e.target.value; render(); persist(); });
   el.manualAwayNote?.addEventListener('input', e=>{ state.notes.away=e.target.value; render(); persist(); });
 
@@ -207,6 +214,21 @@
     persist();
   }
   el.manualResetScore?.addEventListener('click', resetManualScore);
+  // [이벤트 등록] 수동 모드 — 퇴장 수 +/- 버튼
+  /**
+   * 수동 모드 퇴장 수(점수판 레드카드 수)를 delta만큼 바꾼다. 0~5장으로 제한, 버튼과 단축키가 공용으로 사용.
+   * @param {'home'|'away'} team
+   * @param {number} delta  +1 또는 -1
+   */
+  function changeManualRedCards(team, delta){
+    const key = team === 'home' ? 'redHome' : 'redAway';
+    state[key] = clampNum((state[key] || 0) + delta, 0, 5, 0);
+    render();
+    persist();
+  }
+  window.changeManualRedCards = changeManualRedCards;
+  [['manualHomeRedPlus','home',1],['manualHomeRedMinus','home',-1],['manualAwayRedPlus','away',1],['manualAwayRedMinus','away',-1]]
+    .forEach(([id, team, delta]) => $(id)?.addEventListener('click', () => changeManualRedCards(team, delta)));
 
   /**
    * 이미지 파일을 읽어 URL 문자열을 콜백으로 전달.

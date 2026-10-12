@@ -249,6 +249,14 @@
     #themePanel .theme-pso-row .manual-pk-buttons { gap: 6px; }
     #themePanel .theme-pso-row button { padding: 7px 10px; white-space: nowrap; background: #0b1220; color: #e5e7eb; border: 1px solid #ffffff20; border-radius: 10px; cursor: pointer; font-weight: 700; }
     #psoControlHint { font-size: 12px; opacity: .7; }
+    /* 수동 모드에서는 PSO 단축키 안내를 버튼 위(점수 라벨과 같은 줄)에 두고, 오른쪽 빈 자리에 퇴장 입력을 놓는다. */
+    #themePanel #manual-section .theme-pso-row { display: grid; grid-template-columns: auto auto; align-items: center; gap: 8px 14px; }
+    #themePanel #manual-section #psoControlHint { grid-column: 1 / -1; grid-row: 1; line-height: 1.4; white-space: nowrap; }
+    .manual-red-cards { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px; }
+    .manual-red-val { color: #f87171; }
+    .manual-red-keys { font-weight: 400; opacity: .75; margin-left: 4px; }
+    /* 라벨(단축키 포함)이 +/− 줄보다 넓어 두 줄의 가운데를 맞춘다. */
+    .manual-red-cards .manual-score-group { justify-items: center; }
 
     /* ========== 페이지 영역 ========== */
     .pages { flex: 1; min-height: 0; overflow: hidden; }
@@ -933,7 +941,11 @@
 
     @container display-viewport (max-width: 720px) { .board .name { font-size: 18px; } .board .digits { font-size: 36px; } .board .score { min-width: 140px; } .note-side { width: 120px; flex-basis: 120px; } }
 
-#themePanel .theme-notes-card > .prow { display: flex; flex-wrap: nowrap; gap: 12px; }
+#themePanel .theme-notes-card > .prow { display: flex; flex-wrap: wrap; gap: 12px; }
+#themePanel .theme-notes-card .pgroup:has(input[type="color"]) { grid-template-columns: auto; }
+#themePanel .theme-notes-card .pgroup > .prow { grid-column: 1 / -1; flex-wrap: nowrap; gap: 6px; }
+#themePanel .theme-notes-card .pgroup > .prow > input[type="number"] { width: 68px; min-width: 0; }
+#themePanel .theme-notes-card .pgroup > .prow > button { padding: 0; }
 
 
 
@@ -941,9 +953,7 @@
 #themePanel .theme-color-reset { width: 26px !important; height: 26px; padding: 0; border: 1px solid #ffffff24; border-radius: 7px; background: #19273e; color: #c4d5f3; font-size: 20px; line-height: 1; cursor: pointer; }
 html.popout-target-theme .pages:has(> #page-theme.active) { flex: 1; margin-top: 0; }
 html.popout-target-theme #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; grid-template-columns: 90px 128px; }
-html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-child(3) { grid-column: 1; grid-row: 2; }
-html.popout-target-theme #themePanel .theme-notes-card > .prow > .pgroup:nth-child(4) { grid-column: 2; grid-row: 2; }
+html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); }
 @media (max-width: 1799px) {
   #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #themePanel .theme-notes-card > .prow { flex-wrap: wrap; }
