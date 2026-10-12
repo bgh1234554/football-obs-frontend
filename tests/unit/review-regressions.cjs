@@ -1,6 +1,8 @@
 ﻿const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
 const path=require('node:path');
+/** 저장소 루트 기준 경로의 파일 내용을 읽는다. */
 const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
+/** 파일 p에서 function name( 부터 end 문자열 직전까지의 소스를 잘라낸다. */
 const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function '+name+'('),s.indexOf(end,s.indexOf('function '+name+'(')));};
 // 저장 용량 초과 시 직렬화 크기가 큰 로고부터 제외하고, 양쪽 제외는 마지막에 시도합니다.
 const persist=extract('js/core/state.js','persist','  /**');

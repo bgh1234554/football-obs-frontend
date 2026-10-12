@@ -1,10 +1,13 @@
-﻿function setFsmStyle(selector, styles, index) {
+﻿/** selector에 맞는 노드(index를 주면 그 하나만)에 인라인 스타일 객체를 적용한다. */
+function setFsmStyle(selector, styles, index) {
   const nodes = document.querySelectorAll(selector);
   (index == null ? Array.from(nodes) : [nodes[index]]).filter(Boolean).forEach(node => Object.assign(node.style, styles));
 }
+/** selector에 맞는 모든 노드의 텍스트를 바꾼다. null/undefined는 빈 문자열. */
 function setFsmText(selector, value) {
   document.querySelectorAll(selector).forEach(node => { node.textContent = value ?? ''; });
 }
+/** selector에 맞는 모든 노드의 속성을 설정한다. 값이 비어 있으면 속성을 제거한다. */
 function setFsmAttr(selector, name, value) {
   document.querySelectorAll(selector).forEach(node => {
     if (value) node.setAttribute(name, value); else node.removeAttribute(name);
@@ -265,8 +268,13 @@ function applyFsmChromaTheme() {
   fsmChromaMode = mode;
 }
 
+/**
+ * FSM 점수판 테마를 적용한다 — 테마 CSS(changeCSS)를 교체하고 리그 로고 src를 지정한다.
+ * FSM의 switch(data.theme) 블록을 함수로 추출한 것.
+ * @param {string} theme  FSM_THEMES의 키 (알 수 없는 값은 기본 테마)
+ * @param {string|null} logoUrl  리그 로고 URL (LEAGUE_THEME_MAP 값, 없으면 null)
+ */
 function applyTheme(theme, logoUrl) {
-  // FSM의 switch(data.theme) 블록을 함수로 추출한 것
   switch(theme) {
     case 'pl':
       changeCSS('css/theme/result_style_EPL.css', theme);
@@ -389,7 +397,7 @@ function applyTheme(theme, logoUrl) {
   }
 }
 
-  // applyText()는 data 대신 state를 읽도록 수정
+  /** 팀 이름·점수 등 점수판 텍스트를 state 기준으로 다시 채운다 (FSM 원본의 data 대신 state를 읽도록 수정). */
   function applyText() {
     applyFsmChromaTheme();
     const board = document.querySelector('.fsm-board');
@@ -478,7 +486,7 @@ function applyTheme(theme, logoUrl) {
   }
 
   // 팀명 길이에 따라 폰트 크기 조정
-// 실제 화면 픽셀에 수평 연결부를 맞추되 사선 기울기와 돌출 폭은 유지한다.
+/** 벨라루스 테마 — 실제 화면 픽셀에 수평 연결부를 맞추되 사선 기울기와 돌출 폭은 유지한다. */
 window.syncBelarusBoundaryPixelGrid = function() {
   const board = document.querySelector('.fsm-board[data-fsm-theme="belarus"]');
   const score = board?.querySelector('#team-score-left');
@@ -509,6 +517,7 @@ window.addEventListener('resize', () => {
   if (_currentTheme === 'ekstraklasa') requestAnimationFrame(window.syncEkstraklasaBoundaryPixelGrid);
 });
 
+/** 엑스트라클라사 테마 — 반 픽셀에 걸린 위쪽 그라데이션과 구분선을 실제 화면 픽셀에 맞춰 흐림을 없앤다. */
 window.syncEkstraklasaBoundaryPixelGrid = function() {
   const board = document.querySelector('.fsm-board[data-fsm-theme="ekstraklasa"]');
   const score = board?.querySelector('#team-score-left');
@@ -521,6 +530,7 @@ window.syncEkstraklasaBoundaryPixelGrid = function() {
   const overscan = (rect.top - Math.floor(rect.top * dpr + 1e-7) / dpr) / scale;
   board.style.setProperty('--fsm-ekstraklasa-paint-top', `${-overscan}px`);
   // 구분선의 시작점과 폭을 실제 화면 픽셀에 맞춰 흐릿한 반 픽셀 선을 없앱니다.
+  /** CSS px 값을 가장 가까운 화면 픽셀 경계로 반올림한다. */
   const snap = value => Math.round(value * dpr) / dpr;
   board.querySelectorAll('.team-score, .score-div').forEach(node => {
     const r = node.getBoundingClientRect();
@@ -542,6 +552,10 @@ const FSM_WIDTH_LIMITS = Object.freeze({
   teamPadding: 48, maxFont: 33, minFont: 12
 });
 
+/**
+ * 두 팀 이름이 원래 글꼴 크기로 들어가도록 점수판 너비를 조정한다(FSM_WIDTH_LIMITS 범위 안).
+ * 테마별로 점수 영역·로고와 겹치는 폭을 팀명 영역에서 빼고, 그래도 넘치면 글꼴을 줄인다.
+ */
 function adjustScoreboardWidth() {
   const board = document.querySelector('.fsm-board');
   const scoreboard = board?.querySelector('.scoreboard-main');
@@ -698,7 +712,7 @@ function adjustScoreboardWidth() {
 }
 
 
-  // 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출
+  /** 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출. 크로마키 모드면 안전한 색으로 바꿔 적용. */
   function applyTeamColors() {
     const teamColors = Object.fromEntries(Object.entries(state.colors).map(([key, value]) => [key, chromaSafe(value)]));
     setFsmStyle('.fsm-board .team-name', {color: ''});
@@ -781,6 +795,7 @@ function adjustScoreboardWidth() {
     }
   }
 
+  /** 덴마크 테마 — 팀 컬러 칸마다 타이머와 같은 기울기의 SVG 삼각형(번호색 선 포함)을 한 번만 만들어 넣는다. */
   function ensureDanishTriangles() {
     const namespace = 'http://www.w3.org/2000/svg';
     document.querySelectorAll('.fsm-board .team-color').forEach(panel => {

@@ -24,6 +24,7 @@ for(const theme of ['default','pl','cl','eflchampionship','seriea']){
  assert.equal(await extra.evaluate(e=>getComputedStyle(e).outlineStyle),'solid');
  await extra.click();
  assert.deepEqual(await page.evaluate(()=>[state.extra,state.extraShown,state.extraManualOverride]),[1,true,true]);
+ /** 추가시간 편집기의 배경·글자·테두리 색과 크기를 읽는다. */
  const editorStyle=()=>page.locator('#extraEditor').evaluate(e=>{const s=getComputedStyle(e);return {background:s.backgroundColor,color:s.color,border:s.border,width:e.offsetWidth,height:e.offsetHeight,left:e.style.left,top:e.style.top};});
  const fromHidden=await editorStyle();
  assert.notEqual(fromHidden.color,'rgba(0, 0, 0, 0)');
@@ -53,7 +54,7 @@ await page.mouse.click(0,0);await page.keyboard.press('BracketRight');assert.equ
 await page.locator('#clock').dblclick();assert(await page.locator('#clockEditor').isVisible());await page.locator('#ceMin').fill('12');await page.locator('#ceSec').fill('34');await page.locator('#ceConfirm').click();assert.equal(await page.evaluate(()=>Math.floor(state.seconds)),754);await page.evaluate(()=>pauseClockTimer());
 for(let i=0;i<7;i++)await page.keyboard.press('BracketLeft');assert.equal(await page.evaluate(()=>state.extra),0);assert.equal(await page.evaluate(()=>state.extraShown),false);
 await page.locator('#settingsGearBtn').evaluate(e=>e.click());await page.locator('[data-sp-tab="general"]').click();await page.locator('#shortcutManageBtn').click();
-assert.deepEqual(await page.evaluate(()=>shortcutActions.slice(1,8).map(a=>a[0])),['clock0','clock45','clock90','clock105','extra','extraPlus','extraMinus']);
+assert.deepEqual(await page.evaluate(()=>shortcutActions.slice(1,8).map(a=>a[0])),['clock0','clock45','clock90','clock105','extra','extraMinus','extraPlus']);
 assert(await page.evaluate(()=>shortcutActions.filter(a=>a[0].startsWith('extra')).every(a=>a[1]==='타이머')));
 const row=page.locator('.sc-row').filter({has:page.getByText('추가시간 +1분',{exact:true})});await row.locator('.sc-key').click();await page.keyboard.press('Control+j');
 await page.locator('#shortcutBackBtn').click();await page.locator('#settingsCloseBtn').click();await page.keyboard.press('Control+j');assert.equal(await page.evaluate(()=>state.extra),1);

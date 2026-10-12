@@ -15,12 +15,14 @@ const { openPage, settle } = require('../tactics/helpers');
       state.boardScale = 100;
       Object.assign(state.colors, { homeBg: '#aa0011', homeText: '#ffffff', awayBg: '#003377', awayText: '#ffee00' });
     });
+    /** 테마와 리그 ID로 점수판을 전환하고 로딩·재렌더가 끝날 때까지 기다린다. */
     const select = async (theme, id) => {
       await page.evaluate(({ theme, id }) => { state.fsmTheme = theme; autoApplyTemplateByLeagueId(id, null); render(); }, { theme, id });
       await page.waitForFunction(() => !pendingThemeLink);
       await page.evaluate(async () => { await document.fonts.ready; fsmBoardRender(); reapplyBoardScale(); });
       await settle(page);
     };
+    /** 점수판 주요 요소의 사각형과 배경색/글자색을 측정한다. */
     const measure = () => page.evaluate(() => {
       const selectors = ['#homeCard', '#awayCard', '#homeName', '#awayName', '#team-score-left', '.score-div', '#team-score-right', '.team-logo', '.time', '.extra-time'];
       return selectors.map(q => {

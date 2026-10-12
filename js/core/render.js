@@ -705,10 +705,10 @@
   const boardScaleRange = $('boardScaleRange');
   const boardScaleLabel = $('boardScaleLabel');
 
-  /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
   // 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout)에서 점수판을 작게 줄이는 비율.
   // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
   const TOUCH_BOARD_SHRINK = 0.7;
+  /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
   function applyBoardScale(pct){
     let s = pct / 100;
     if (document.body.classList.contains('tactics-active') && document.body.classList.contains('td-touch-board')) {

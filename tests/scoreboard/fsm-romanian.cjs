@@ -1,10 +1,11 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
 const output = path.resolve('screenshots/tests');
-const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaI.svg';
+const cupLogo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg';
+// 네트워크 없이 디코딩할 수 있도록 컵 로고와 같은 viewBox의 최소 SVG로 응답합니다.
+const cupLogoBody = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="924 0 712 946"><path fill="#FE0F09" d="M924 0h712v946H924z"/></svg>';
 
 (async () => {
   const browser = await chromium.launch();
@@ -12,11 +13,7 @@ const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Romania
     for (const dpr of [1, 1.25, 2]) {
       const page = await openPage(browser, { dpr, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
       const errors = []; page.on('pageerror', error => errors.push(error.message));
-      await page.route('**/resources/imgs/romanian-liga-i-cup.svg', route => route.fulfill({
-        body: fs.readFileSync(path.resolve('resources/imgs/romanian-liga-i-cup.svg')), contentType: 'image/svg+xml'
-      }));
-      const localLogo = path.join(output, 'romanian-logo.svg');
-      if (fs.existsSync(localLogo)) await page.route(logo, route => route.fulfill({ body: fs.readFileSync(localLogo), contentType: 'image/svg+xml' }));
+      await page.route(cupLogo, route => route.fulfill({ body: cupLogoBody, contentType: 'image/svg+xml' }));
       for (const source of ['fnl', 'pl', 'danish']) {
         await page.evaluate(source => { state.fsmTheme = source; autoApplyTemplateByLeagueId(283, null); render(); }, source);
         await page.waitForFunction(() => !pendingThemeLink);
@@ -29,9 +26,10 @@ const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Romania
         await page.waitForFunction(() => !pendingThemeLink && _currentTheme === 'romanian');
         await page.evaluate(async () => { await document.fonts.ready; fsmBoardRender(); });
         await settle(page);
-        assert.equal(await page.locator('.epl-lion').getAttribute('src'), 'resources/imgs/romanian-liga-i-cup.svg');
+        assert.equal(await page.locator('.epl-lion').getAttribute('src'), cupLogo);
         await page.locator('.epl-lion').evaluate(n => n.decode());
         const styles = await page.evaluate(() => {
+          /** 요소(또는 의사 요소)의 계산된 스타일. */
           const s = (q, pseudo) => getComputedStyle(document.querySelector(q), pseudo);
           return { home: [s('#homeCard').backgroundColor, s('#homeName').color, s('#homeCard').borderTop],
             away: [s('#awayCard').backgroundColor, s('#awayName').color, s('#awayCard').borderTop],
@@ -55,6 +53,7 @@ const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Romania
           await page.evaluate(scale => { state.boardScale = scale; reapplyBoardScale(); }, scale);
           await settle(page);
           const g = await page.evaluate(() => {
+            /** 요소의 화면 사각형을 직렬화 가능한 객체로 읽는다. */
             const r = q => { const b = document.querySelector(q).getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width, height: b.height }; };
             const slot = r('.score-div'); const size = parseFloat(getComputedStyle(document.querySelector('.score-div'), '::before').width) * slot.height / 48; const circle = { width: size, height: size, left: (slot.left + slot.right - size) / 2, right: (slot.left + slot.right + size) / 2, bottom: (slot.top + slot.bottom + size) / 2 };
             return { circle, slot: r('.score-div'), home: r('#homeCard'), away: r('#awayCard'), score: r('#team-score-left'), clock: r('.time'), extra: r('.extra-time'),

@@ -16,7 +16,9 @@ for (const source of ['eredivisie', 'pl', 'rpl', 'uel']) {
  await page.waitForFunction(()=>!pendingThemeLink&&_currentTheme==='mls');
  await page.evaluate(async()=>{await document.fonts.ready;fsmBoardRender();});
  const m=await page.evaluate(()=>{
+  /** 요소의 계산된 스타일. */
   const s=q=>getComputedStyle(document.querySelector(q));
+  /** 요소의 화면 사각형. */
   const r=q=>document.querySelector(q).getBoundingClientRect();
   return {panels:['#homeCard','#awayCard','#team-score-left','#team-score-right'].map(q=>[s(q).backgroundColor,s(q).backgroundImage]),names:['#homeName .text','#awayName .text'].map(q=>[s(q).color,s(q).webkitTextStrokeWidth]),scores:['#team-score-left','#team-score-right'].map(q=>s(q).color),divider:[s('.divider').height,s('.divider').backgroundColor,r('.divider').top-r('.scoreboard-main').top],clock:[s('.time').backgroundColor,s('.time').color],extra:[s('.extra-time').backgroundColor,s('.extra-time').color],chips:['#homeColor','#awayColor'].map(q=>[s(q).width,s(q).backgroundColor,s(q).backgroundImage]),edges:[r('#homeColor').right-r('#team-score-left').left,r('#awayColor').left-r('#team-score-right').right]};
  });

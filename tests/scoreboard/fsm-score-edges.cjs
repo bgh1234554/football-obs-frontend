@@ -3,7 +3,7 @@
 const edges=await page.evaluate(()=>['home','away'].map(side=>{
  const score=document.getElementById(side==='home'?'team-score-left':'team-score-right');
  const box=score.getBoundingClientRect();const scale=box.height/score.offsetHeight;
- // ?곗긽?⑥뿉???媛곸꽑 ?앹씠 ?紐??⑤꼸 ?꾩뿉 蹂댁씠?붿? hit-test?쒕떎.
+ // 점수 숫자와 우상단 대각선 끝이 팀 패널 위에 보이는지 hit-test한다.
  const text=score.querySelector('span').getBoundingClientRect();
  const hit=document.elementFromPoint(text.x+text.width/2,text.y+text.height/2);
  const diagonalHit=document.elementFromPoint(box.right-2*scale,box.top+2*scale);

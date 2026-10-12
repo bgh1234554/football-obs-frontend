@@ -15,6 +15,7 @@ const { openPage, settle } = require('../tactics/helpers');
       state.homeScore = 0; state.awayScore = 0; state.extra = 4; state.extraShown = true; state.boardScale = 100;
       Object.assign(state.colors, { homeBg: '#ffffff', homeText: '#123456', awayBg: '#a02030', awayText: '#ffe080' });
     });
+    /** 테마와 리그 ID로 점수판을 전환하고 로딩이 끝날 때까지 기다린다. */
     const select = async (theme, leagueId) => {
       await page.evaluate(({ theme, leagueId }) => {
         state.fsmTheme = leagueId ? 'auto' : theme;
@@ -24,11 +25,14 @@ const { openPage, settle } = require('../tactics/helpers');
       await page.evaluate(() => document.fonts.ready);
       await settle(page);
     };
+    /** 점수판 주요 요소의 색·위치와 점수 구분선을 측정한다. */
     const measure = () => page.evaluate(() => {
+      /** 요소의 계산된 스타일과 사각형을 읽는다. */
       const read = selector => {
         const el = document.querySelector(selector), s = getComputedStyle(el), r = el.getBoundingClientRect();
         return { bg: s.backgroundColor, color: s.color, display: s.display, width: r.width, left: r.left, right: r.right, top: r.top, bottom: r.bottom };
       };
+      /** 요소 ::after 구분선의 색·폭·content를 읽는다. */
       const line = selector => { const s = getComputedStyle(document.querySelector(selector), '::after'); return { color: s.backgroundColor, width: s.width, content: s.content }; };
       return { theme: _currentTheme, home: read('.teams-left'), away: read('.teams-right'), homeName: read('#homeName'), awayName: read('#awayName'),
         homeScore: read('#team-score-left'), awayScore: read('#team-score-right'), center: read('.score-div'), logo: read('.epl-lion'),

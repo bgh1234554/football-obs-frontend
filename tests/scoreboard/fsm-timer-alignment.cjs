@@ -17,6 +17,7 @@ console.log('PASS',theme,'timer and +7 glyph centers at 00:00 / 90:00 / 105:00 /
 }
 await page.evaluate(async()=>{
  const original=window.fsmBoardRender;window.fontCompletionRenders=0;
+ /** 폰트 로딩 완료 후 다시 그린 횟수를 세도록 fsmBoardRender를 감싼다. */
  window.fsmBoardRender=()=>{window.fontCompletionRenders++;original();};
  const font=new FontFace('FSMDelayedTimerFont','url(http://localhost/resources/fonts/Pretendard-Medium.woff)');
  document.fonts.add(font);

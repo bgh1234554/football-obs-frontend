@@ -28,12 +28,19 @@
     return promise;
   }
 
+  /** 'teamName' 설정(풀네임/단축명)에 맞는 팀 이름. 저장한 팀 닉네임이 있으면 닉네임이 우선. */
   function teamName(data, side) {
     const long = data?.[`${side}TeamName`] || '';
     const short = data?.[`${side}TeamNameShort`] || '';
     return teamNicknameDisplay(data, side, isLongName('teamName') ? long || short : short || long);
   }
 
+  /**
+   * 최근 경기 카드 1장(상대팀 로고·이름(H/A)·점수·날짜)을 만든다.
+   * @param {object} match  최근 경기 행
+   * @param {number|string} teamId  기준 팀 ID (상대팀 판별용)
+   * @param {number} viewPage  현재 보고 있는 기간 페이지
+   */
   function card(match, teamId, viewPage) {
     const home = Number(match.homeTeamId) === Number(teamId);
     const opponent = home ? 'away' : 'home';
@@ -83,6 +90,7 @@
     return el;
   }
 
+  /** 캠 큼/캠 작음의 최근 경기 패널을 현재 페이지 기준으로 다시 그리고, 다음 프레임에 카드 줄을 맞춘다. */
   function render() {
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(container => {
       const isBig = !!container.closest('.lp-stat');
@@ -151,7 +159,7 @@
     requestAnimationFrame(alignCardRows);
   }
 
-  // 긴 이름과 승부차기가 있어도 같은 팀 카드들의 점수·날짜 시작선을 맞춘다.
+  /** 긴 이름과 승부차기가 있어도 같은 팀 카드들의 점수·날짜 시작선을 맞춘다. 넘치는 이름은 폰트를 줄이고 3줄로 자른다. */
   function alignCardRows() {
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(panel => {
       if (!panel.offsetWidth) return;
@@ -162,6 +170,7 @@
         label.style.minHeight = '0';
         label.textContent = isLongName('teamName') ? label.dataset.longName : label.dataset.shortName;
         const initialSize = parseFloat(getComputedStyle(label).fontSize);
+        /** 카드 이름은 3줄 이내, 팀 헤더는 한 줄 폭 안에 들어가는지. */
         const fits = () => {
           const css = getComputedStyle(label);
           if (isCard) return label.offsetHeight <= Math.ceil(parseFloat(css.lineHeight) * 3) + 1;

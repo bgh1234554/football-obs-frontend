@@ -31,6 +31,7 @@ const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishS
         await settle(page);
         assert.equal(await page.locator('.epl-lion').getAttribute('src'), logo);
         const colors = await page.evaluate(() => {
+          /** 요소(또는 의사 요소)의 계산된 스타일. */
           const s = (q, pseudo) => getComputedStyle(document.querySelector(q), pseudo);
           return { score: [s('.team-score').backgroundColor, s('.team-score').color],
             logo: s('.score-div').backgroundColor, name: s('.team-name').color,
@@ -50,12 +51,14 @@ const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishS
           await page.evaluate(scale => { state.boardScale = scale; reapplyBoardScale(); }, scale);
           await settle(page);
           const geometry = await page.evaluate(() => {
+            /** 요소의 화면 사각형을 직렬화 가능한 객체로 읽는다. */
             const r = q => { const b = document.querySelector(q).getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width, height: b.height }; };
             return { home: r('#homeColor'), away: r('#awayColor'), hs: r('#team-score-left'), as: r('#team-score-right'), clock: r('.time'), extra: r('.extra-time'), logo: r('.epl-lion'),
               names: ['#homeName', '#awayName'].map(r),
               cards: ['#homeCard', '#awayCard'].map(r),
               texts: ['#team-text-left', '#team-text-right'].map(r) };
           });
+          /** 두 값이 0.1px 이내인지 검사한다. */
           const near = (a, b) => assert(Math.abs(a - b) < .1, JSON.stringify(geometry));
           near(geometry.home.right, geometry.hs.left); near(geometry.away.left, geometry.as.right);
           near(geometry.clock.left, geometry.hs.left); near(geometry.clock.right, geometry.as.right);
@@ -77,6 +80,7 @@ const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishS
               const img = new Image(); img.src = 'data:image/png;base64,' + png; await img.decode();
               const canvas = document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height;
               const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+              /** 스크린샷에서 사각형 r 왼쪽 가장자리의 rgb 색 경계점을 모아 최소제곱 기울기(dx/dy)를 구한다. 점이 5개 미만이면 null. */
               const fit = (r, rgb) => {
                 const points = [];
                 for (let y = Math.ceil((r.top + r.height * .2) * dpr); y < (r.top + r.height * .7) * dpr; y++) {

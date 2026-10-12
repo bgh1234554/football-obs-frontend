@@ -1,6 +1,13 @@
 // 팀 ID를 기준으로 저장하고, ID가 없는 팀만 원래 이름으로 구분한다.
 const TEAM_NICKNAME_KEY = 'obs.team.nicknames.v1';
 
+/**
+ * 경기 정보에서 한쪽 팀의 닉네임 저장 키를 만든다.
+ * 팀 ID가 있으면 ID 문자열, 없으면 `n:{팀 이름}`(기본값 HOME/AWAY는 제외), 둘 다 없으면 빈 키.
+ * @param {object} matchInfo  matchInfo 또는 같은 필드({side}TeamId/{side}TeamName)를 가진 객체
+ * @param {'home'|'away'} side
+ * @returns {{key: string, name: string}} key가 비어 있으면 저장할 수 없는 팀
+ */
 function teamNicknameIdentity(matchInfo, side) {
   const id = Number(matchInfo?.[`${side}TeamId`]);
   const name = String(matchInfo?.[`${side}TeamName`] || matchInfo?.[`${side}TeamNameShort`] || '').trim();
@@ -9,6 +16,7 @@ function teamNicknameIdentity(matchInfo, side) {
   return { key, name };
 }
 
+/** 저장된 팀 닉네임 맵({키: {name, nickname}})을 읽는다. 저장값이 없거나 깨졌으면 빈 객체. */
 function readTeamNicknames() {
   try {
     const map = JSON.parse(localStorage.getItem(TEAM_NICKNAME_KEY) || '{}');
@@ -16,11 +24,18 @@ function readTeamNicknames() {
   } catch { return {}; }
 }
 
+/** identity 키로 저장된 닉네임. 없으면 빈 문자열. */
 function getTeamNickname(identity) {
   const entry = readTeamNicknames()[identity?.key];
   return typeof entry?.nickname === 'string' ? entry.nickname : '';
 }
 
+/**
+ * 팀 닉네임을 저장한다. 앞뒤 공백을 지우고 30자까지만 저장하며, 빈 값이면 그 팀 항목을 삭제한다.
+ * @param {{key: string, name?: string}} identity  teamNicknameIdentity 결과
+ * @param {string} value  새 닉네임 (빈 값 = 초기화)
+ * @returns {boolean} 저장 성공 여부 (키가 없거나 localStorage 쓰기 실패 시 false)
+ */
 function setTeamNickname(identity, value) {
   if (!identity?.key) return false;
   const map = readTeamNicknames();
@@ -33,25 +48,34 @@ function setTeamNickname(identity, value) {
   } catch { return false; }
 }
 
+/** 패널 표시용 팀 이름 — 저장한 닉네임이 있으면 닉네임, 없으면 fallback(원래 이름). */
 function teamNicknameDisplay(matchInfo, side, fallback) {
   return getTeamNickname(teamNicknameIdentity(matchInfo, side)) || fallback;
 }
 
-// 점수판 원본 이름은 그대로 보존해 폴링·초기화·긴 이름 설정과 닉네임이 섞이지 않게 한다.
+/**
+ * 점수판 한쪽 팀의 닉네임 identity. 경기 연동 중이면 fixture.js가 보관한 팀 ID 기준, 아니면(수동 모드) 현재 팀 이름 기준.
+ * 점수판 원본 이름은 그대로 보존해 폴링·초기화·긴 이름 설정과 닉네임이 섞이지 않게 한다.
+ */
 function scoreboardTeamIdentity(side) {
   return state.teamNicknameTeams?.[side]
     || teamNicknameIdentity({ [`${side}TeamName`]: state[`${side}Name`] }, side);
 }
 
+/** 점수판에 표시할 팀 이름 — 닉네임 > state의 원래 이름 > HOME/AWAY 순. */
 function scoreboardTeamDisplayName(side) {
   return getTeamNickname(scoreboardTeamIdentity(side)) || state[`${side}Name`] || side.toUpperCase();
 }
 
+/** 현재 경기 홈/원정 팀 라벨에 붙일 클릭·키보드 편집용 HTML 속성 문자열 (앞에 공백 포함). */
 function teamNicknameLabelAttrs(side) {
   return ` data-team-nickname-side="${side}" role="button" tabindex="0" aria-label="${side === 'home' ? '홈' : '원정'} 팀 닉네임 편집"`;
 }
 
-// 상대전적·최근 경기 목록은 현재 경기의 홈/원정 대신 각 행의 팀을 편집한다.
+/**
+ * 상대전적·최근 경기 목록처럼 행마다 팀이 다른 라벨을 편집 대상으로 만든다.
+ * 현재 경기의 홈/원정 대신 그 행 팀의 키를 data 속성에 저장한다. 키를 만들 수 없는 팀은 건드리지 않는다.
+ */
 function bindTeamNicknameLabel(element, matchInfo, side) {
   const identity = teamNicknameIdentity(matchInfo, side);
   if (!identity.key) return;
@@ -62,12 +86,19 @@ function bindTeamNicknameLabel(element, matchInfo, side) {
   element.tabIndex = 0;
 }
 
+/** 닉네임 변경 후 점수판·라인업 패널을 다시 그리고, 그 밖의 패널에는 'team-nicknames:change' 이벤트로 알린다. */
 function refreshTeamNicknames() {
   render();
   if (typeof rerenderLineupPanels === 'function') rerenderLineupPanels();
   document.dispatchEvent(new CustomEvent('team-nicknames:change'));
 }
 
+/**
+ * 선수 닉네임과 같은 팝업(pm-*)으로 팀 닉네임 편집 창을 연다. 저장/초기화/취소, Enter 저장, Esc 닫기.
+ * @param {{key: string, name?: string}} identity  편집할 팀 (창을 연 뒤 경기가 바뀌어도 이 팀에 저장)
+ * @param {number} x  팝업 위치 (클릭 좌표)
+ * @param {number} y
+ */
 function showTeamNicknameEditor(identity, x, y) {
   if (!identity?.key) return;
   pmHideAll();
@@ -89,7 +120,7 @@ function showTeamNicknameEditor(identity, x, y) {
   pmPositionPopup(popup, x, y);
   input.focus();
   input.select();
-  // 열린 뒤 경기가 바뀌어도 클릭 당시의 팀에 저장한다.
+  /** 클릭 당시의 팀에 저장하고 창을 닫는다. 저장 실패 시 창에 오류를 표시한다. */
   const save = value => {
     if (!setTeamNickname(identity, value)) {
       document.getElementById('teamNickError').textContent = '닉네임을 저장하지 못했습니다.';
@@ -107,6 +138,7 @@ function showTeamNicknameEditor(identity, x, y) {
   });
 }
 
+/** 설정 이름 탭 '목록 보기' — 저장된 팀 닉네임 표와 개별 삭제 버튼을 모달로 연다. */
 function showTeamNicknameList() {
   const entries = Object.entries(readTeamNicknames()).filter(([, entry]) => typeof entry?.nickname === 'string');
   pmHideAll();
@@ -138,6 +170,7 @@ function showTeamNicknameList() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const selector = '#homeName, #awayName, [data-team-nickname-side], [data-team-nickname-key]';
+  /** 클릭/키보드로 선택한 라벨의 팀을 찾아 편집 창을 연다 — 행 단위 키 > 점수판 > 현재 경기 라인업 순. */
   const open = (target, x, y) => {
     if (target.dataset.teamNicknameKey) {
       showTeamNicknameEditor({ key: target.dataset.teamNicknameKey, name: target.dataset.teamNicknameName }, x, y);
@@ -155,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (target) open(target, e.clientX, e.clientY);
   });
   document.addEventListener('keydown', e => {
+    // 키를 누르고 있을 때의 반복 입력과 Element가 아닌 대상(document 등)은 무시한다.
+    if (e.repeat || !(e.target instanceof Element)) return;
     const target = e.target.closest(selector);
     if (!target || !['Enter', ' '].includes(e.key)) return;
     e.preventDefault();

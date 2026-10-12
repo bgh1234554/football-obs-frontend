@@ -13,6 +13,7 @@ const { openPage, settle } = require('../tactics/helpers');
     const fixture = await page.evaluate(async () => {
       activatePage('main-small');
       setSetting('statsAutoSwipe', 'off');
+      /** 4-4-2 그리드를 가진 선발 11명을 만든다 (offset = 시작 playerId). */
       const roster = offset => Array.from({ length: 11 }, (_, i) => ({ playerId: offset + i, number: i + 1, name: `선수 ${i}`, grid: buildManualGridValues('4-4-2')[i] }));
       const f = { matchInfo: { fixtureId: 10001, homeTeamId: 101, awayTeamId: 202,
         homeTeamName: '홈팀 전체 이름', homeTeamNameShort: '홈팀', awayTeamName: '원정팀 전체 이름', awayTeamNameShort: '원정팀',
@@ -20,17 +21,20 @@ const { openPage, settle } = require('../tactics/helpers');
         homeLineup: { formation: '4-4-2', startXi: roster(1000), substitutes: [] },
         awayLineup: { formation: '4-4-2', startXi: roster(2000), substitutes: [] },
         homeInjuries: [], awayInjuries: [], events: [], playerStats: [] };
+      /** API 대신 테스트 경기 데이터의 복사본을 돌려준다. */
       fetchFixture = async () => structuredClone(f);
       await fetchAndApplyFixtureData(f.matchInfo.fixtureId, { silent: true });
       setPlayerNickname(1000, '선수 별명');
       return f;
     });
+    /** 점수판과 패널에 표시된 홈/원정 팀 이름을 읽는다. */
     const displayed = () => page.evaluate(() => ({
       home: document.querySelector('#team-text-left').textContent,
       away: document.querySelector('#team-text-right').textContent,
       homeLabels: [...document.querySelectorAll('[data-team-nickname-side="home"]')].map(el => el.textContent),
       awayLabels: [...document.querySelectorAll('[data-team-nickname-side="away"]')].map(el => el.textContent),
     }));
+    /** selector 라벨을 클릭해 팀 닉네임을 name으로 저장한다. */
     const edit = async (selector, name) => {
       await page.locator(selector).click();
       await page.locator('#teamNickInput').fill(name);
@@ -74,6 +78,7 @@ const { openPage, settle } = require('../tactics/helpers');
       const m = f.matchInfo;
       for (const field of ['TeamId', 'TeamName', 'TeamNameShort']) [m[`home${field}`], m[`away${field}`]] = [m[`away${field}`], m[`home${field}`]];
       m.fixtureId = 10002;
+      /** 홈/원정을 바꾼 테스트 경기 데이터를 돌려준다. */
       fetchFixture = async () => f;
       await fetchAndApplyFixtureData(10002, { silent: true });
     }, fixture);

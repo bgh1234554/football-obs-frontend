@@ -59,6 +59,10 @@ window.addEventListener('keydown',event=>{
   if(action){event.preventDefault();action[4]();}
 });
 
+/**
+ * 현재 단축키 설정으로 수동 입력 안내를 다시 그린다 — 입력 모드 안내(일반 점수/승부차기),
+ * PSO 버튼 위 키 안내, 퇴장 라벨 옆 키와 +/− 버튼 툴팁. render()와 단축키 변경 시 호출된다.
+ */
 window.updateScoreShortcutHint = function() {
   const hint = document.getElementById('manualScoreShortcutHint');
   if (!hint) return;
@@ -86,6 +90,7 @@ window.updateScoreShortcutHint = function() {
   [['manualHomeRedKeys', 0], ['manualAwayRedKeys', 2]].forEach(([id, i]) => {
     const target = document.getElementById(id);
     if (!target) return;
+    /** 키 이름을 .kbd 배지 span으로 만든다. */
     const keycap = value => { const span = document.createElement('span'); span.className = 'kbd'; span.textContent = value; return span; };
     target.replaceChildren(keycap(redKeys[i]), '/', keycap(redKeys[i + 1]));
   });

@@ -28,12 +28,14 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await page.locator('.epl-lion').getAttribute('src'), logoUrl);
     }
     assert.equal(await page.locator('#fsmThemeSelect option[value="jleague"]').count(), 1);
+    /** 첫 번째 일치 요소의 배경색과 글자색. */
     const style = selector => page.locator(selector).first().evaluate(el => { const s = getComputedStyle(el); return { bg: s.backgroundColor, ink: s.color }; });
     assert.deepEqual(await style('.time'), { bg: 'rgb(255, 255, 255)', ink: 'rgb(0, 0, 0)' });
     assert.deepEqual(await style('.extra-time'), { bg: 'rgb(225, 32, 51)', ink: 'rgb(255, 255, 255)' });
     assert.equal((await style('.score-div')).bg, 'rgb(255, 255, 255)');
     assert.equal((await style('.team-logo')).bg, 'rgb(255, 255, 255)');
     const colors = await page.evaluate(() => {
+      /** 요소의 배경 이미지(그라데이션) 값. */
       const bg = sel => getComputedStyle(document.querySelector(sel)).backgroundImage;
       return [bg('.teams-left'), bg('.teams-right'), bg('#team-score-left'), bg('#team-score-right')];
     });

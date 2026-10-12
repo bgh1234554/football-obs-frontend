@@ -23,7 +23,9 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => document.fonts.ready);
     await settle(page);
+    /** 현재 테마·로고와 점수판 주요 요소의 배경색/글자색을 측정한다. */
     const measure = () => page.evaluate(() => {
+      /** 요소의 배경색과 글자색. */
       const style = selector => { const s = getComputedStyle(document.querySelector(selector)); return { bg: s.backgroundColor, color: s.color }; };
       return {
         theme: _currentTheme, logo: document.querySelector('.epl-lion').getAttribute('src'),

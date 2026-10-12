@@ -14,6 +14,7 @@ const { openPage, settle } = require('../tactics/helpers');
         await settle(page);
         const measured = await page.evaluate(() => {
           const center = document.querySelector('.score-div');
+          /** 요소(또는 의사 요소)의 계산된 스타일을 읽는다. */
           const read = (selector, pseudo) => {
             const s = getComputedStyle(document.querySelector(selector), pseudo);
             return { left: s.left, right: s.right, width: s.width };

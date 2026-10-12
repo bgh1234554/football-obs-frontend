@@ -7,6 +7,7 @@ const { openPage, settle } = require('../tactics/helpers');
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
     const commits = await page.evaluate(() => {
       const calls = [];
+      /** theme:colors-changed 이벤트로 바뀐 색상 key를 기록한다. */
       const listener = event => calls.push(event.detail.key);
       document.addEventListener('theme:colors-changed', listener);
       try {
@@ -62,6 +63,7 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(boundary.gradient, `linear-gradient(#ffff00, ${boundary.green})`, mode);
       if (mode !== 'off') assert.notEqual(boundary.green, '#00ff00', mode);
       const values = await page.evaluate(() => {
+        /** CSS 색 문자열을 브라우저가 정규화한 rgb() 형식으로 바꾼다. */
         const rgb = value => { const el = document.createElement('span'); el.style.color = value; return el.style.color; };
         return {
           strip: getComputedStyle(document.querySelector('.teams-left')).borderBottomColor,

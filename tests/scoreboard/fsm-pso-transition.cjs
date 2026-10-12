@@ -14,6 +14,7 @@ const { openPage, settle } = require('../tactics/helpers');
       state.pk.home = ['G', 'M']; state.pk.away = ['G'];
     });
     const themes = process.env.FSM_PSO_TRANSITION_THEMES?.split(',') || await page.evaluate(() => Object.keys(FSM_THEMES));
+    /** 테마를 전환하고 로딩·폰트 준비가 끝날 때까지 기다린다. */
     const switchTheme = async theme => {
       await page.evaluate(theme => { state.fsmTheme = theme; autoApplyTemplateByLeagueId(39, null); render(); }, theme);
       await page.waitForFunction(() => !pendingThemeLink);

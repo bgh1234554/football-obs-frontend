@@ -942,6 +942,12 @@ function pmRenderSeasonProfile(p, number) {
 </div>`;
 }
 
+/**
+ * 키·몸무게를 '값+단위' 칩 텍스트로 만든다. API가 '180 cm'처럼 단위를 붙여 보내도 단위는 한 번만 표시.
+ * @param {number|string|null} value  API 원본 값
+ * @param {'cm'|'kg'} unit
+ * @returns {string|null} HTML 이스케이프된 문자열, 값이 비어 있으면 null
+ */
 function pmFormatBodyMeasurement(value, unit) {
   if (value == null) return null;
   // API에서 단위를 포함해 보내는 경우에도 단위는 한 번만 표시합니다.

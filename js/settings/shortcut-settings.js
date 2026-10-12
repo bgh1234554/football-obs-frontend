@@ -40,6 +40,7 @@
     history.push(previous);editing=null;renderShortcutSettings();message(action[2]+': '+shortcutLabel(key)+' · 저장됨');
     updateHints();
   }
+  /** 단축키 변경 후 수동 입력 안내와 테마 탭 상단 단축키 줄을 현재 키로 다시 그린다. */
   function updateHints(){
     window.updateScoreShortcutHint?.();
     const hint=document.querySelector('.theme-shortcut-hint');if(!hint)return;

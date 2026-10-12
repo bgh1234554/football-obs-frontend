@@ -28,9 +28,11 @@ const { openPage, settle } = require('../tactics/helpers');
           await settle(page);
           const m = await page.evaluate(() => {
             const board = document.querySelector('#board');
+            /** 요소의 화면 사각형을 직렬화 가능한 객체로 읽는다. */
             const rect = el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
             const panel = document.querySelector('.pso-main'), label = document.querySelector('.pso-middle');
             const s = getComputedStyle(panel), ink = getComputedStyle(label).color;
+            /** 요소 가운데 지점이 실제로 그 요소에 hit-test되는지. */
             const hit = el => { const r = el.getBoundingClientRect(); const h = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2); return el.contains(h); };
             return {
               panel: rect(panel), clock: rect(document.querySelector('.time')), status: rect(document.querySelector('.pso-status')),

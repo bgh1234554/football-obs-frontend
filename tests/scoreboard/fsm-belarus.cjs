@@ -4,12 +4,16 @@ const path = require('node:path');
 const os = require('node:os');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
+const output = path.resolve(__dirname, '../../screenshots/tests');
 (async () => {
   const browser = await chromium.launch();
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
     const logo = 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg';
-    await page.route(logo, route => route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(os.tmpdir(), 'fsm-Belarus.svg')) }));
+    // 로컬에 받아 둔 로고가 있을 때만 대신 응답합니다(없으면 외부 요청이 차단돼 src만 검사).
+    const localLogo = path.join(os.tmpdir(), 'fsm-Belarus.svg');
+    if (fs.existsSync(localLogo)) await page.route(logo, route => route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(localLogo) }));
+    fs.mkdirSync(output, { recursive: true });
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     for (const previous of ['fnl', 'pl', 'jleague', 'rpl']) {
       await page.evaluate(t => applyTheme(t, null), previous);
@@ -35,7 +39,7 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(colors[4][1], 'rgb(0, 75, 38)');
     }
     await page.waitForTimeout(150);
-    await page.locator('#boardStageInner').screenshot({ path: 'screenshots/tests/belarus.png' });
+    await page.locator('#boardStageInner').screenshot({ path: path.join(output, 'belarus.png') });
     for (const scale of [100, 75]) {
       await page.evaluate(scale => { state.boardScale = scale; reapplyBoardScale(); }, scale);
       await settle(page);
@@ -43,6 +47,7 @@ const { openPage, settle } = require('../tactics/helpers');
       const geometry = await page.locator('#team-score-left').evaluate(n => {
         const r = n.getBoundingClientRect();
         const style = getComputedStyle(n), ratio = r.height / n.offsetHeight;
+        /** 벨라루스 경계 CSS 변수(--fsm-belarus-{name}) 값을 숫자로 읽는다. */
         const value = name => parseFloat(style.getPropertyValue('--fsm-belarus-' + name));
         return { bends: ['upper', 'lower'].map(name => {
           const y = value(name + '-y'), outer = value(name + '-outer'), inner = value(name + '-inner');
@@ -56,7 +61,7 @@ const { openPage, settle } = require('../tactics/helpers');
       }
       assert.equal(geometry.paths[0], geometry.paths[1]);
       console.log('PASS', scale, 'pixel alignment, slope, bump width, shared mirrored path');
-      await page.locator('#boardStageInner').screenshot({ path: `screenshots/tests/belarus-${scale}.png` });
+      await page.locator('#boardStageInner').screenshot({ path: path.join(output, `belarus-${scale}.png`) });
     }
     for (const score of [0, 1, 8, 10]) {
       await page.evaluate(score => { state.homeScore = score; state.awayScore = score; render(); fsmBoardRender(); }, score);

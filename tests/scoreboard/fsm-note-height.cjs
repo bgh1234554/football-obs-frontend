@@ -113,6 +113,7 @@ const root = path.resolve(__dirname, '../..');
       const text = note.querySelector('svg text');
       const original = text.getBBox;
       note.style.display = 'none';
+      /** 숨겨진 SVG를 측정하면 실패하도록 getBBox를 막는다. */
       text.getBBox = () => { throw new Error('Hidden SVG must not be measured'); };
       try { alignNoteSvg(note); }
       finally { text.getBBox = original; note.style.display = ''; }

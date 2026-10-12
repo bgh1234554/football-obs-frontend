@@ -17,6 +17,7 @@ const { openPage, settle } = require('../tactics/helpers');
       state.redHome = 0; state.redAway = 0; render();
     });
     await settle(page);
+    /** state 퇴장 수, 수동 입력 표시값, 점수판 레드카드 개수를 함께 읽는다. */
     const counts = () => page.evaluate(() => ({
       home: state.redHome, away: state.redAway,
       homeVal: document.getElementById('manualHomeRedVal').textContent,
@@ -43,6 +44,7 @@ const { openPage, settle } = require('../tactics/helpers');
     assert.equal(await page.locator('#manualHomeRedPlus').getAttribute('title'), '홈 퇴장 +1 (Shift + Q)');
 
     // 레이아웃: PSO 안내는 PSO 버튼 바로 위, 퇴장 입력은 PSO 컨트롤 오른쪽 같은 줄.
+    /** 요소의 화면 위치/크기(boundingBox). */
     const box = sel => page.locator(sel).boundingBox();
     const hint = await box('#psoControlHint'), buttons = await box('#psoControls .manual-pk-buttons');
     const toggle = await box('#psoControls .theme-pso-toggle'), red = await box('#manualRedCards'), homeLabel = await box('.manual-score-group >> nth=0 >> label');

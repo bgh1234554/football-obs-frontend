@@ -214,7 +214,12 @@
     persist();
   }
   el.manualResetScore?.addEventListener('click', resetManualScore);
-  // [이벤트 등록] 수동 모드 — 퇴장 수 +/- (0~5장, 단축키와 공용)
+  // [이벤트 등록] 수동 모드 — 퇴장 수 +/- 버튼
+  /**
+   * 수동 모드 퇴장 수(점수판 레드카드 수)를 delta만큼 바꾼다. 0~5장으로 제한, 버튼과 단축키가 공용으로 사용.
+   * @param {'home'|'away'} team
+   * @param {number} delta  +1 또는 -1
+   */
   function changeManualRedCards(team, delta){
     const key = team === 'home' ? 'redHome' : 'redAway';
     state[key] = clampNum((state[key] || 0) + delta, 0, 5, 0);

@@ -7,6 +7,7 @@ const output = path.resolve('screenshots/tests/belarus-pixel-grid');
 const variables = ['upper-y', 'upper-outer', 'upper-inner', 'lower-y', 'lower-outer', 'lower-inner',
   'upper-paint-y', 'lower-paint-y', 'edge-top', 'edge-bottom', 'edge-top-x', 'edge-bottom-x'];
 
+/** 벨라루스 경계선 연결부가 실제 화면 픽셀에 정렬됐는지 검사한다 (label = 실패 메시지용 조합 이름). */
 async function assertAligned(page, label) {
   const positions = await page.evaluate(() => {
     const board = document.querySelector('.fsm-board'), style = getComputedStyle(board);
