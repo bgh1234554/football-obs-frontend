@@ -36,7 +36,7 @@ const { openPage, settle } = require('../tactics/helpers');
       const actual = await measure();
       actual.forEach((item, i) => {
         assert(Math.abs(item.rect[3] - efl[i].rect[3]) < .1);
-        assert(Math.abs(item.rect[2] - efl[i].rect[2] - (i === 5 ? 12 : 0)) < .1);
+        assert(Math.abs(item.rect[2] - efl[i].rect[2] - (i === 5 ? -12 : 0)) < .1);
       });
       for (const i of [0, 1, 2, 3, 7]) {
         assert.equal(actual[i].bg, efl[i].bg); assert.equal(actual[i].ink, efl[i].ink);
@@ -63,6 +63,14 @@ const { openPage, settle } = require('../tactics/helpers');
         return [a.right - b.left, b.right - c.left, a.top - b.top, b.bottom - c.bottom];
       });
       assert(joins.every(value => Math.abs(value) < .1), JSON.stringify(joins));
+      const spacing = await page.evaluate(() => {
+        const a = document.querySelector('#homeScore').getBoundingClientRect();
+        const b = document.querySelector('#awayScore').getBoundingClientRect();
+        const center = document.querySelector('.score-div').getBoundingClientRect();
+        const unit = center.height / 48;
+        return { width: center.width / unit, digitDistance: ((b.left + b.right - a.left - a.right) / 2) / unit };
+      });
+      assert(Math.abs(spacing.width - 12) < .1 && Math.abs(spacing.digitDistance - 56) < .1, JSON.stringify(spacing));
       const samples = await page.locator('.score-div').evaluate(n => {
         const r = n.getBoundingClientRect();
         return [r.left, r.right].flatMap(x => [-1, 0, 1].map(offset => [Math.floor(x * devicePixelRatio) + offset, Math.floor((r.top + r.height / 2) * devicePixelRatio)]));

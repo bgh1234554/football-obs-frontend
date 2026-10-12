@@ -311,7 +311,7 @@
 .fsm-board .teams-left .team-name { color: var(--fsm-home-number-color); }
 .fsm-board .teams-right .team-name { color: var(--fsm-away-number-color); }
 .fsm-board .team-logo { background: #E4E4E4; border-color: #E4E4E4; }
-.fsm-board .score-div { width: 36px; background: transparent; color: #000000; font-size: 32px; }
+.fsm-board .score-div { width: 12px; background: transparent; color: #000000; font-size: 32px; }
 .fsm-board .epl-lion { display: none; }
 .fsm-board .hipen { display: flex; }
 .fsm-board .team-score { width: 44px; height: 48px; display: flex; align-items: center; justify-content: center; }
@@ -332,7 +332,7 @@
 .fsm-board .scoreboard-main { position: relative; isolation: isolate; }
 .fsm-board .scoreboard-main::before {
     content: ''; position: absolute; left: 50%; top: 0; transform: translateX(-50%);
-    width: 124px; height: 48px; background: #FDFB03; z-index: -1; pointer-events: none;
+    width: 100px; height: 48px; background: #FDFB03; z-index: -1; pointer-events: none;
 }
 .fsm-board .score-div::after {
     content: ''; position: absolute; left: 50%; top: 50%;
