@@ -33,6 +33,7 @@ const LEAGUE_THEME_MAP = {
   144: { theme: 'belgian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelgianProLeague.svg', type: 'club' },
   203: { theme: 'superlig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishSuperLig.svg', type: 'club' },
   235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
+  116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
   236: { theme: 'fnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianFirstLeague.svg', type: 'club' },
   1025: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
   1026: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
@@ -56,7 +57,7 @@ const FSM_THEMES = Object.freeze({
   ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그',
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', acle: 'AFC 챔피언스리그 엘리트',
   unl: '네이션스리그', er24: '유로',
-  rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B',
+  rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B', belarus: '벨라루스 프리미어 리그',
   kleague: 'K리그', jleague: 'J리그', mls: 'MLS', wc26: '월드컵'
 });
 
@@ -322,6 +323,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_JLEAGUE.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'belarus':
+      changeCSS('css/theme/result_style_BELARUS.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'fnl':
       changeCSS('css/theme/result_style_FNL.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -417,10 +422,57 @@ function applyTheme(theme, logoUrl) {
     } else {
         setFsmStyle('.fsm-board .total-score', {display: 'none', opacity: '0'});
     }
+    if (_currentTheme === 'belarus') {
+      // 실제 숫자 높이에 상하 5px 여백을 두고 두 자리 점수도 박스 안에 넣는다.
+      ['home', 'away'].forEach(side => {
+        const score = document.getElementById(side + 'Score');
+        const style = getComputedStyle(score);
+        const context = document.createElement('canvas').getContext('2d');
+        context.font = `${style.fontWeight} 64px ${style.fontFamily}`;
+        const initial = context.measureText(score.textContent);
+        const size = Math.min(64, 64 * 38 / (initial.actualBoundingBoxAscent + initial.actualBoundingBoxDescent), 64 * (score.parentElement.clientWidth - 4) / initial.width);
+        context.font = `${style.fontWeight} ${size}px ${style.fontFamily}`;
+        const ink = context.measureText(score.textContent);
+        const baseline = (48 - ink.fontBoundingBoxAscent - ink.fontBoundingBoxDescent) / 2 + ink.fontBoundingBoxAscent;
+        board.style.setProperty(`--fsm-belarus-${side}-size`, `${size}px`);
+        const inkHeight = ink.actualBoundingBoxAscent + ink.actualBoundingBoxDescent;
+        board.style.setProperty(`--fsm-belarus-${side}-shift`, `${(48 + inkHeight) / 2 - ink.actualBoundingBoxDescent - baseline}px`);
+      });
+    }
     adjustScoreboardWidth();
   }
 
   // 팀명 길이에 따라 폰트 크기 조정
+// 실제 화면 픽셀에 수평 연결부를 맞추되 사선 기울기와 돌출 폭은 유지한다.
+window.syncBelarusBoundaryPixelGrid = function() {
+  const board = document.querySelector('.fsm-board[data-fsm-theme="belarus"]');
+  const score = board?.querySelector('#team-score-left');
+  if (!score || !score.offsetHeight) return;
+  const rect = score.getBoundingClientRect();
+  const scale = rect.height / score.offsetHeight;
+  const dpr = window.devicePixelRatio || 1;
+  if (!(scale > 0)) return;
+  // 바탕 팀 색상이 반 픽셀 높이로 먼저 칠해진 뒤 비치지 않도록 끝 행 전체를 덮는다.
+  const overscanTop = (rect.top - Math.floor(rect.top * dpr + 1e-7) / dpr) / scale;
+  const overscanBottom = (Math.ceil(rect.bottom * dpr - 1e-7) / dpr - rect.bottom) / scale;
+  board.style.setProperty('--fsm-belarus-edge-top', `${-overscanTop}px`);
+  board.style.setProperty('--fsm-belarus-edge-bottom', `${-overscanBottom}px`);
+  board.style.setProperty('--fsm-belarus-edge-top-x', `${1.36 - overscanTop / 12}px`);
+  board.style.setProperty('--fsm-belarus-edge-bottom-x', `${5.36 + overscanBottom / 12}px`);
+  [['upper', 48 * .2045], ['lower', 36]].forEach(([name, originalY]) => {
+    const screenY = Math.round((rect.top + originalY * scale) * dpr) / dpr;
+    const y = (screenY - rect.top) / scale;
+    const outerX = 1.36 + y / 12;
+    board.style.setProperty(`--fsm-belarus-${name}-y`, `${y}px`);
+    board.style.setProperty(`--fsm-belarus-${name}-paint-y`, `${y + overscanTop}px`);
+    board.style.setProperty(`--fsm-belarus-${name}-outer`, `${outerX}px`);
+    board.style.setProperty(`--fsm-belarus-${name}-inner`, `${outerX + 5.46}px`);
+  });
+};
+window.addEventListener('resize', () => {
+  if (_currentTheme === 'belarus') requestAnimationFrame(window.syncBelarusBoundaryPixelGrid);
+});
+
 const FSM_WIDTH_LIMITS = Object.freeze({
   minBoard: 520, maxBoard: 1080,
   minTeam: 220, maxTeam: 480,
@@ -577,7 +629,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['pl', 'jleague', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
         ? 'none' : ['rpl', 'belgian', 'ligaportugal'].includes(theme) ? 'chip' : 'strip';
     }
     if(theme == 'pl') {
@@ -592,7 +644,7 @@ function adjustScoreboardWidth() {
         board.style.setProperty(`--fsm-pl-${side}-overlay`,
           nearWhite ? '#000000' : '#ffffff');
       });
-    } else if(['jleague', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
+    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
         setFsmStyle('.fsm-board .team-color', {background: ''});
@@ -668,6 +720,7 @@ function adjustScoreboardWidth() {
 
   // 점수 또는 시계에 이미 쓰이는 고정 색상만 사용한다. 전환 중 보간색은 읽지 않는다.
   const FSM_PSO_PALETTES = Object.freeze({
+    belarus: ['#233434', '#14EB4B'],
     jleague: ['#0D0D0D', '#ffffff'],
     default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
     seriea: ['#0456e5', '#f5f5f5'], superlig: ['#ff0203', '#ffffff'],

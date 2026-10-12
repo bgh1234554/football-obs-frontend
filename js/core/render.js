@@ -712,6 +712,7 @@
     boardStageWrap.style.height = (naturalH * s) + 'px';
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
+    window.syncBelarusBoundaryPixelGrid?.();
   }
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
