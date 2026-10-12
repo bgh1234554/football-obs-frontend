@@ -410,8 +410,8 @@ function applyTheme(theme, logoUrl) {
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'bundes2':
-      // 분데스리가와 같은 디자인(CSS 복사본), 로고만 LEAGUE_THEME_MAP[79]에서 다르게 지정
-      changeCSS('css/theme/result_style_BUNDESLIGA2.css', theme);
+      // 분데스리가와 같은 CSS를 쓰고 로고만 LEAGUE_THEME_MAP[79]에서 다르게 지정
+      changeCSS('css/theme/result_style_BUNDESLIGA.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     default:
@@ -762,11 +762,13 @@ function adjustScoreboardWidth() {
           nearWhite ? '#000000' : '#ffffff');
       });
     } if(theme == 'bundes' || theme == 'bundes2') {
-        // 팀명 칸은 팀 컬러(FNL처럼), 글자는 홈/원정이 같은 색 — 흰색/검은색 중 두 배경 모두에서 더 잘 읽히는 쪽.
-        const ink = getSharedFsmNameInk(teamColors.homeBg, teamColors.awayBg);
-        setFsmStyle('.fsm-board .teams-left', {background: teamColors.homeBg, color: ink, borderBottom: 'none', borderTop: 'none'});
-        setFsmStyle('.fsm-board .teams-right', {background: teamColors.awayBg, color: ink, borderBottom: 'none', borderTop: 'none'});
-        setFsmStyle('.fsm-board .team-name', {color: ink});
+        // 팀명 칸은 팀 컬러(FNL처럼), 글자는 프리미어리그처럼 칸마다 흰색/검은색 중 더 잘 보이는 쪽.
+        ['home', 'away'].forEach(side => {
+          const bg = teamColors[`${side}Bg`];
+          const ink = getColorContract(bg);
+          setFsmStyle(`.fsm-board .teams-${side === 'home' ? 'left' : 'right'}`, {background: bg, color: ink, borderBottom: 'none', borderTop: 'none'});
+          setFsmStyle(`.fsm-board #${side}Name`, {color: ink});
+        });
         const board = document.querySelector('.fsm-board');
         ['home', 'away'].forEach((side, index) => {
           const card = document.getElementById(index === 0 ? 'homeCard' : 'awayCard');
@@ -973,15 +975,6 @@ function adjustScoreboardWidth() {
       return teamColorContrastRatio(color, '#000000');
     });
     return Math.min(...blackContrast) >= 4.5 ? 'black' : 'white';
-  }
-
-  /**
-   * 홈/원정 팀명에 함께 쓸 글자색. 한쪽만 흰색이 되는 일이 없도록 흰색과 검은색 중
-   * 두 배경과의 WCAG 대비 중 작은 값이 더 큰 쪽을 고른다 (같으면 흰색).
-   */
-  function getSharedFsmNameInk(homeBg, awayBg) {
-    const worst = ink => Math.min(teamColorContrastRatio(homeBg, ink), teamColorContrastRatio(awayBg, ink));
-    return worst('#000000') > worst('#ffffff') ? '#000000' : '#ffffff';
   }
 
   function getColorContract(color) {
