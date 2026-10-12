@@ -926,8 +926,8 @@ function pmRenderSeasonProfile(p, number) {
   const chips = [
     p.nationality ? pmEsc(p.nationality) : null,
     p.age         ? `${p.age}세`         : null,
-    p.height      ? `${p.height}cm`      : null,
-    p.weight      ? `${p.weight}kg`      : null,
+    pmFormatBodyMeasurement(p.height, 'cm'),
+    pmFormatBodyMeasurement(p.weight, 'kg'),
   ].filter(Boolean).map(v => `<span class="pm-chip">${v}</span>`).join('');
 
   el.innerHTML = `
@@ -940,6 +940,13 @@ function pmRenderSeasonProfile(p, number) {
     ${birthPlace ? `<div class="pm-profile-birth">출생지: ${pmEsc(birthPlace)}</div>` : ''}
   </div>
 </div>`;
+}
+
+function pmFormatBodyMeasurement(value, unit) {
+  if (value == null) return null;
+  // API에서 단위를 포함해 보내는 경우에도 단위는 한 번만 표시합니다.
+  const text = String(value).trim().replace(new RegExp(`(?:\\s*${unit})+$`, 'i'), '').trim();
+  return text ? `${pmEsc(text)}${unit}` : null;
 }
 
 /** 평점을 소수 첫째 자리와 설정된 구간 색상의 배지로 반환한다. 빈 값은 '-', 숫자가 아니면 텍스트. */
