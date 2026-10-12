@@ -37,9 +37,9 @@
 .dp-node-goal { right: -3px; justify-content: flex-start; }
 .dp-node-assist { right: -2px; }
 .dp-node-goal, .dp-node-assist { width: 14px; height: 14px; }
-.dp-node-goal.has-both { justify-content: flex-start; gap: 6px; }
+.dp-node-goal.has-both { justify-content: flex-start; gap: 0; }
 .dp-node-goal-entry { position: relative; width: 100%; height: 100%; flex: 0 0 auto; }
-.dp-node-goal.has-both .dp-node-goal-entry:has(.dp-node-count) { margin-right: 4px; }
+.dp-node-goal.has-both .dp-node-goal-entry + .dp-node-goal-entry { margin-left: -50%; }
 .layout-big .lp-lineup .dp-node-goal,
 .layout-big .lp-lineup .dp-node-assist { width: calc(14px * var(--lp-node-scale, 1)); height: calc(14px * var(--lp-node-scale, 1)); }
 .dp-node-goal .dp-node-count, .dp-node-assist .dp-node-count { right: -6px; bottom: -4px; min-width: 12px; height: 12px; font-size: 9px; padding: 0 2px; }
