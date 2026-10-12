@@ -360,7 +360,7 @@ function applyTheme(theme, logoUrl) {
     case 'romanian':
       changeCSS('css/theme/result_style_ROMANIAN.css', theme);
       // 지정 SVG에서 글자를 제외하고 분리한 컵 경로를 표시합니다.
-      setFsmAttr('.epl-lion', 'src', 'resources/imgs/romanian-liga-i-cup.svg');
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'fnl':
       changeCSS('css/theme/result_style_FNL.css', theme);
