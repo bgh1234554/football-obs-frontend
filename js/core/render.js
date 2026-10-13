@@ -801,7 +801,14 @@
     syncBoardPosition();
     persist();
   });
-  window.addEventListener('resize', () => requestAnimationFrame(() => { autoLayoutNotes(); syncBoardPosition(); }));
+  let noteResizeFrame = null;
+  window.addEventListener('resize', () => {
+    if (noteResizeFrame !== null) return;
+    noteResizeFrame = requestAnimationFrame(() => {
+      noteResizeFrame = null;
+      autoLayoutNotes();
+    });
+  });
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
   function initBoardScale(){

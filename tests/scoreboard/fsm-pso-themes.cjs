@@ -48,7 +48,11 @@ const { openPage, settle } = require('../tactics/helpers');
           const context = JSON.stringify({ theme, scale, count, m });
           assert.equal(m.timerHidden, 'hidden', context);
           assert(Math.abs(m.status.top - m.clock.top) < .1, context);
-          assert(m.panel.bottom >= m.clock.bottom - .1, context);
+          // 루마니아 PSO는 숨겨진 40px 시계와 독립적으로 32px 기본 높이를 유지하고, 줄바꿈으로 늘어납니다.
+          if (theme === 'romanian') {
+            assert(m.panel.height >= 32 * m.scale - .1, context);
+            if (count <= 5) assert(Math.abs(m.panel.height - 32 * m.scale) < .1, context);
+          } else assert(m.panel.bottom >= m.clock.bottom - .1, context);
           // EFL은 사용자가 지정한 타이머 색상과의 일치를 아래에서 검증한다.
           if (!theme.startsWith('efl')) assert(m.contrast >= 3, context);
           assert(m.labelVisible, context);
