@@ -657,6 +657,7 @@
     .md-body h4 { font-size: 14px; font-weight: 700; margin: 16px 0 6px; color: var(--text); }
     .md-body h5 { font-size: 13px; font-weight: 700; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
     .md-body h6 { font-size: 12px; font-weight: 700; margin: 12px 0 4px; color: var(--muted); }
+    #about-rendered :is(h2, h3, h4, h5, h6) { color: var(--control-accent); }
     .md-body p  { margin: 0 0 12px; }
     .md-body ul, .md-body ol { margin: 0 0 12px 20px; }
     .md-body li { margin-bottom: 4px; }
