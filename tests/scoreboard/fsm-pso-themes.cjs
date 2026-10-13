@@ -60,7 +60,8 @@ const { openPage, settle } = require('../tactics/helpers');
             assert(circle.widthBeforeScale >= 18, context);
             assert.equal(circle.border, m.ink, context);
           }
-          if (theme.startsWith('efl') || theme === 'fnl2a') assert.deepEqual({ bg: m.bg, ink: m.ink }, m.timer);
+          if (theme === 'eflleaguetwo') assert.deepEqual({ bg: m.bg, ink: m.ink }, { bg: m.timer.ink, ink: m.timer.bg });
+          else if (theme.startsWith('efl') || theme === 'fnl2a') assert.deepEqual({ bg: m.bg, ink: m.ink }, m.timer);
         }
       }
       await page.evaluate(() => { state.half = '2'; render(); fsmBoardRender(); });

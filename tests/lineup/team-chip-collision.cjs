@@ -34,16 +34,24 @@ const root = path.resolve(__dirname, '../..');
       label.style.left='69.5px';label.style.top='112px';label.style.width='30px';label.style.height='10px';
       const close=teamChipOverlapsAny(label,[node]);
       label.style.left='68px';const clear=teamChipOverlapsAny(label,[node]);
+      label.style.left='83px';const outerHalf=teamChipOverlapsAny(label,[node]);
+      label.style.left='84.5px';const innerHalf=teamChipOverlapsAny(label,[node]);
       label.style.left='75px';label.style.top='75px';label.style.width='30px';label.style.height='30px';
       const badge=document.createElement('span');badge.className='dp-node-badge dp-node-sub-in';
       badge.style.cssText='position:absolute;left:0;top:0;transform:none;width:20px;height:12px;';node.append(badge);
       const badgeOnly={node:teamChipOverlapsAny(label,[node]),badge:teamChipOverlapsAny(label,[badge])};
+      const boundaryBadge=document.createElement('span');boundaryBadge.className='dp-node-badge';
+      boundaryBadge.style.cssText='position:absolute;left:105px;top:75px;width:20px;height:12px;transform:none;';host.append(boundaryBadge);
+      const badgeTouch=teamChipOverlapsAny(label,[boundaryBadge]);
+      boundaryBadge.style.left='104.5px';const badgeIntrusion=teamChipOverlapsAny(label,[boundaryBadge]);
       const fallback=document.createElement('div');fallback.className='dp-lineup-node';fallback.style.cssText='position:absolute;left:90px;top:90px;transform:none;width:20px;height:20px;';host.append(fallback);
       const missingBody=teamChipOverlapsAny(label,[fallback]);
-      host.remove();return {corner,trueOverlap,close,clear,badgeOnly,missingBody};
+      host.remove();return {corner,trueOverlap,close,clear,outerHalf,innerHalf,badgeOnly,badgeTouch,badgeIntrusion,missingBody};
     });
     assert(geometry.corner.square && !geometry.corner.round, JSON.stringify(geometry));
-    assert(geometry.trueOverlap && geometry.close && !geometry.clear, JSON.stringify(geometry));
+    assert(geometry.trueOverlap && !geometry.close && !geometry.clear, JSON.stringify(geometry));
+    assert(!geometry.outerHalf && geometry.innerHalf, JSON.stringify(geometry));
+    assert(!geometry.badgeTouch && geometry.badgeIntrusion, JSON.stringify(geometry));
     assert(!geometry.badgeOnly.node && geometry.badgeOnly.badge && geometry.missingBody, JSON.stringify(geometry));
     await page.evaluate(async () => {
       activatePage('main-big');setSetting('lineupNode','photo');setSetting('splitLineup','on');
@@ -92,6 +100,39 @@ const root = path.resolve(__dirname, '../..');
     });
     fs.mkdirSync(path.join(root,'screenshots'),{recursive:true});
     await page.locator('.layout-big .lp-lineup').screenshot({path:path.join(root,'screenshots/team-chip-collision.png')});
+    const homeName = await page.evaluate(() => {
+      const panel = document.querySelector('.layout-big .lp-lineup');
+      const pitch = panel.querySelector('.dp-lineup-vertical-pitch');
+      pitch.style.height = '397px';
+      const name = pitch.querySelector('.dp-lineup-team-name-tag .dp-lineup-team-name');
+      name.textContent = '로코모티프 모스크바';
+      name.dataset.teamNameLong = name.textContent;
+      name.dataset.teamNameShort = name.textContent;
+      fitBigLineupTeamChips(panel);
+      fitBigLineupTeamChips(panel);
+      const main = name.closest('.dp-lineup-team-main');
+      const targets = [...pitch.querySelectorAll('.dp-lineup-node,.dp-lineup-name-wrap,.dp-node-badge,.dp-node-rating')];
+      return { text: name.textContent, font: getComputedStyle(name).fontSize,
+        safe: !teamChipOverlapsAny(main, targets) };
+    });
+    assert(homeName.safe, JSON.stringify(homeName));
+    const narrow = await page.evaluate(() => {
+      const panel=document.querySelector('.layout-big .lp-lineup');
+      panel.style.width='270px';
+      const pitch=panel.querySelector('.dp-lineup-vertical-pitch');pitch.style.height='300px';
+      fitBigLineupTeamChips(panel);
+      const name=pitch.querySelector('.dp-lineup-team-name-tag .dp-lineup-team-name');
+      const initial={font:getComputedStyle(name).fontSize,broken:name.classList.contains('has-team-name-break')};
+      const main=pitch.querySelector('.dp-lineup-team-name-tag .dp-lineup-team-main');
+      const badges=[...pitch.querySelectorAll('.dp-node-badge')];
+      const badge=badges[0],r=getDisplayLayoutRect(main),nodeRect=getDisplayLayoutRect(badge.parentElement);
+      badge.style.cssText=`position:absolute;left:${r.left-nodeRect.left}px;top:${r.bottom-nodeRect.top-1}px;transform:none;width:40px;height:12px;`;
+      fitBigLineupTeamChips(panel);
+      return {initial,safe:!teamChipOverlapsAny(main,badges),text:main.textContent,
+        font:getComputedStyle(main.querySelector('.dp-lineup-team-name')).fontSize};
+    });
+    assert(narrow.safe,JSON.stringify(narrow));
+    assert(parseFloat(narrow.initial.font)>=10 && !narrow.initial.broken,JSON.stringify(narrow));
     await page.evaluate(()=>activatePage('main-small'));
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const small=await page.evaluate(()=>{
@@ -107,6 +148,6 @@ const root = path.resolve(__dirname, '../..');
     });
     assert.equal(small.length,2);
     for(const chip of small){assert(chip.text&&chip.formation==='4-3-3'&&chip.fits,JSON.stringify(chip));assert.deepEqual(chip.before,chip.after);}
-    console.log('PASS: 원 모서리 오탐 제거, 실제 겹침·1px 간격·배지 보호, 노르웨이 폰트 회복, 리사이즈·반복 피팅.');
+    console.log('PASS: 원 모서리 오탐 제거, 실제 겹침·0px 간격·배지 보호, 노르웨이 폰트 회복, 리사이즈·반복 피팅.');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

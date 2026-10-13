@@ -304,6 +304,7 @@
       el.awayNote.title = (state.manualMode && state.noteEnabled) ? '더블클릭해서 원정 득점자 편집' : '';
     }
     if(el.noteOn) el.noteOn.checked = !!state.noteEnabled;
+    if ($('boardPosition')) $('boardPosition').value = state.boardPosition || 'center';
     if(el.inNoteStroke) el.inNoteStroke.value = state.colors.noteStroke;
     if(el.inNoteText) el.inNoteText.value = state.colors.noteText;
 
@@ -443,8 +444,17 @@
     target.addEventListener('animationend', () => target.classList.remove('flash-update'), { once: true });
   }
   // 외부(fixture.js)에서 호출용. side: 'home'|'away'
-  window.flashScore = side => flashElement(side === 'away' ? el.awayScore : el.homeScore);
-  window.flashNote  = side => flashElement(side === 'home' ? el.homeNoteSide : el.awayNoteSide);
+  let pendingPositionFlash = false;
+  function flashBoardUpdate(target) {
+    const stage = $('boardStageInner');
+    if (pendingPositionFlash || stage?.classList.contains('flash-update')) {
+      stage.querySelectorAll('.flash-update').forEach(node => node.classList.remove('flash-update'));
+      flashElement(stage);
+      pendingPositionFlash = false;
+    } else flashElement(target);
+  }
+  window.flashScore = side => flashBoardUpdate(side === 'away' ? el.awayScore : el.homeScore);
+  window.flashNote  = side => flashBoardUpdate(side === 'home' ? el.homeNoteSide : el.awayNoteSide);
 
   /** state.pk 시퀀스를 양 팀 모두 빈 배열로 리셋. PK 종료 후 retention 만료 등에서 호출. */
   function clearPkState() {
@@ -591,7 +601,7 @@
    * boardH(보드 높이)를 초과하지 않도록 단계적으로 레이아웃을 최적화하고
    * 최종 적용된 폰트 크기를 반환한다.
    */
-  function autoLayoutNote(noteEl, noteSideEl, lines, boardH, cssVar) {
+  function autoLayoutNote(noteEl, noteSideEl, lines, boardH, cssVar, maxWidth = Infinity) {
     if (!noteEl) return 0;
 
     const baseSize = state.noteFontSize ?? 18;
@@ -608,7 +618,7 @@
     }
 
     // 3단계: 그래도 넘치면 폰트 크기를 1px씩 줄여 MIN_SIZE까지 축소
-    while (noteEl.scrollHeight > boardH && effectiveSize > MIN_SIZE) {
+    while ((noteEl.scrollHeight > boardH || noteEl.scrollWidth > maxWidth) && effectiveSize > MIN_SIZE) {
       effectiveSize -= 1;
       setCSS(cssVar, effectiveSize + 'px');
     }
@@ -651,9 +661,25 @@
     if (homeNoteSide) homeNoteSide.style.width = 'max-content';
     if (awayNoteSide) awayNoteSide.style.width = 'max-content';
 
-    // 3. 홈/원정 각각 독립적으로 폰트 크기 최적화
-    const homeSize = autoLayoutNote(el.homeNote, homeNoteSide, homeLines, boardH, '--note-font-size-home');
-    const awaySize = autoLayoutNote(el.awayNote, awayNoteSide, awayLines, boardH, '--note-font-size-away');
+    const scale = boardScaleFactor(state.boardScale ?? 75);
+    const viewportWidth = $('boardStageWrap').clientWidth;
+    const available = Math.max(0, (viewportWidth - 16) / scale - boardEl.offsetWidth - 10);
+    const position = state.boardPosition || 'center';
+    // 먼저 기존 세로 배치로 측정하고, 묶음의 중심이 과도하게 밀릴 때만 가로 폭을 줄입니다.
+    let homeSize = autoLayoutNote(el.homeNote, homeNoteSide, homeLines, boardH, '--note-font-size-home');
+    let awaySize = autoLayoutNote(el.awayNote, awayNoteSide, awayLines, boardH, '--note-font-size-away');
+    const homeNatural = homeLines.length ? el.homeNote.scrollWidth + 20 : 0;
+    const awayNatural = awayLines.length ? el.awayNote.scrollWidth + 20 : 0;
+    const totalNatural = homeNatural + awayNatural;
+    // 좌우 배치에서는 기본 중심과 화면 중앙 사이의 중간선을 넘을 때 축소합니다.
+    const horizontalLimit = position === 'center' ? available : available / 2;
+    if (state.noteEnabled && totalNatural > horizontalLimit) {
+      const ratio = horizontalLimit / totalNatural;
+      if (homeNatural) homeSize = autoLayoutNote(el.homeNote, homeNoteSide, homeLines, boardH,
+        '--note-font-size-home', Math.max(0, homeNatural * ratio - 20));
+      if (awayNatural) awaySize = autoLayoutNote(el.awayNote, awayNoteSide, awayLines, boardH,
+        '--note-font-size-away', Math.max(0, awayNatural * ratio - 20));
+    }
 
     // 4. 테마 탭 폰트 크기 입력란에 둘 중 작은 값 표시
     if (el.noteFontSize) el.noteFontSize.value = Math.min(homeSize, awaySize);
@@ -694,6 +720,7 @@
       const noteTop = main ? boardEl.offsetTop + main.offsetTop + main.offsetHeight / 2 + 'px' : '50%';
       if (homeNoteSide) homeNoteSide.style.top = noteTop;
       if (awayNoteSide) awayNoteSide.style.top = noteTop;
+      syncBoardPosition();
     }
   }
 
@@ -709,7 +736,7 @@
   // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
   const TOUCH_BOARD_SHRINK = 0.7;
   /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
-  function applyBoardScale(pct){
+  function boardScaleFactor(pct){
     let s = pct / 100;
     if (document.body.classList.contains('tactics-active') && document.body.classList.contains('td-touch-board')) {
       const boardEl = boardStageInner.querySelector('.board');
@@ -717,15 +744,64 @@
       const avail = document.body.clientWidth - 24;
       s = Math.min(s * TOUCH_BOARD_SHRINK, boardW > 0 ? avail / boardW : s);
     }
+    return s;
+  }
+  function applyBoardScale(pct){
+    const s = boardScaleFactor(pct);
+    boardStageInner.style.transition = 'none';
     boardStageInner.style.transform = `scale(${s})`;
     // wrap 높이를 실제 축소 높이에 맞게 조정
     const naturalH = boardStageInner.scrollHeight;
     boardStageWrap.style.height = (naturalH * s) + 'px';
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
+    syncBoardPosition();
     window.syncBelarusBoundaryPixelGrid?.();
     window.syncEkstraklasaBoundaryPixelGrid?.();
   }
+
+  // 득점자 박스와 배율을 포함한 실제 표시 영역을 기준으로 배치합니다.
+  function syncBoardPosition() {
+    const stage = $('boardStageInner'), wrap = $('boardStageWrap'), board = $('board');
+    if (!stage || !wrap || !board || !board.offsetWidth) return;
+    const position = ['left', 'right'].includes(state.boardPosition) ? state.boardPosition : 'center';
+    document.body.dataset.boardPosition = position;
+    const bounds = wrap.getBoundingClientRect();
+    const surfaceScale = bounds.width / wrap.offsetWidth || 1;
+    const previous = Number(stage.dataset.positionShift || 0) * surfaceScale;
+    const notes = ['homeNoteSide', 'awayNoteSide'].map($).filter(node =>
+      state.noteEnabled && node && node.offsetWidth && getComputedStyle(node).display !== 'none');
+    const nodes = [board, ...notes];
+    const rect = board.getBoundingClientRect();
+    const left = rect.left - previous, right = rect.right - previous;
+    let shift = position === 'left' ? bounds.left + 16 - left
+      : position === 'right' ? bounds.right - 16 - right : 0;
+    const boxes = nodes.map(node => node.getBoundingClientRect());
+    const min = Math.min(...boxes.map(box => box.left - previous));
+    const max = Math.max(...boxes.map(box => box.right - previous));
+    const lower = bounds.left + 8 - min, upper = bounds.right - 8 - max;
+    shift = lower <= upper ? Math.max(lower, Math.min(upper, shift)) : (lower + upper) / 2;
+    // 이동으로 로고 경계의 픽셀 정렬이 달라지지 않도록 화면 픽셀 단위로 옮깁니다.
+    const dpr = window.devicePixelRatio || 1;
+    shift = Math.round(shift * dpr) / dpr;
+    const positionChanged = Math.abs(shift - previous) > .5;
+    if (positionChanged) {
+      pendingPositionFlash = true;
+      requestAnimationFrame(() => { pendingPositionFlash = false; });
+    }
+    if (positionChanged && stage.querySelector('.flash-update')) {
+      stage.querySelectorAll('.flash-update').forEach(node => node.classList.remove('flash-update'));
+      flashElement(stage);
+    }
+    stage.dataset.positionShift = shift / surfaceScale;
+    stage.style.translate = `${shift / surfaceScale}px 0`;
+  }
+  $('boardPosition')?.addEventListener('change', event => {
+    state.boardPosition = event.target.value;
+    syncBoardPosition();
+    persist();
+  });
+  window.addEventListener('resize', () => requestAnimationFrame(() => { autoLayoutNotes(); syncBoardPosition(); }));
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
   function initBoardScale(){
