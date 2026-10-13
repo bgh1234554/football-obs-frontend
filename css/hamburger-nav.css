@@ -238,3 +238,5 @@ body.sidebar-open .sidebar-nav {
   color: #eaf6ff;
 }
 .panel-fixture-btn-primary:hover:not(:disabled) { background: rgba(70,170,255,.3); }
+
+body[data-board-position="left"] .float-hamburger { left: auto; right: 8px; }

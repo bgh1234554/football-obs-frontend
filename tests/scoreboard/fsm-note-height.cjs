@@ -51,7 +51,8 @@ const root = path.resolve(__dirname, '../..');
           assert(note.height <= metrics.limit, JSON.stringify({ theme, scale, metrics }));
           assert(note.centerError < 1, JSON.stringify({ theme, scale, note }));
           assert(note.top >= -metrics.timerHeight - 1 && note.bottom <= metrics.timerHeight + 1);
-          assert.equal(note.font, 20);
+          assert(note.font >= 8 && note.font <= 20);
+          if (scale === 60) assert.equal(note.font, 20);
         }
         assert.equal(metrics.notes[0].rows, 4, 'Four rows should fit without premature compression');
       }

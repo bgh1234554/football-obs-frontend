@@ -1406,13 +1406,19 @@ function elementOverlapsAny(subjectEl, targets) {
   return targets.some(target => canMeasureTextElement(target) && wrapsOverlap(subjectEl, target));
 }
 
-/** 팀 라벨과 바둑알은 실제 원에 1px 간격을 두고 검사한다. 배지·이름표는 사각형을 유지한다. */
+/** 선수 원은 바깥 절반의 겹침을 허용하고, 배지·이름표는 배경 경계가 닿는 것만 허용한다. */
 function teamChipOverlapsAny(subjectEl, targets) {
   if (!canMeasureTextElement(subjectEl) || !Array.isArray(targets)) return false;
-  const label = getDisplayLayoutRect(subjectEl);
+  const labelEl = subjectEl.matches('.dp-lineup-team-name-tag')
+    ? subjectEl.querySelector('.dp-lineup-team-main') || subjectEl : subjectEl;
+  const label = getDisplayLayoutRect(labelEl);
   return targets.some(target => {
     if (!canMeasureTextElement(target)) return false;
-    if (!target.matches('.dp-lineup-node')) return wrapsOverlap(subjectEl, target);
+    if (!target.matches('.dp-lineup-node')) {
+      const other = getDisplayLayoutRect(target);
+      return label.left < other.right && label.right > other.left
+        && label.top < other.bottom && label.bottom > other.top;
+    }
     const body = target.querySelector('.dp-lineup-avatar, .dp-lineup-circle');
     if (!canMeasureTextElement(body)) return wrapsOverlap(subjectEl, target);
     const circle = getDisplayLayoutRect(body);
@@ -1420,7 +1426,8 @@ function teamChipOverlapsAny(subjectEl, targets) {
     const nearestX = Math.max(label.left, Math.min(cx, label.right));
     const nearestY = Math.max(label.top, Math.min(cy, label.bottom));
     // 가로/세로 반지름을 따로 사용해 배율이 적용된 타원에서도 같은 기준을 유지한다.
-    const rx = circle.width / 2 + 1, ry = circle.height / 2 + 1;
+    // 반지름 절반 부근의 작은 침범으로 급격히 축소되지 않도록 3px 오차를 허용한다.
+    const rx = Math.max(1, circle.width / 4 - 3), ry = Math.max(1, circle.height / 4 - 3);
     return ((nearestX - cx) / rx) ** 2 + ((nearestY - cy) / ry) ** 2 < 1;
   });
 }
@@ -1615,7 +1622,7 @@ function nudgeTeamChipTowardEdge(chipEl, collisionEls, options = {}) {
       || (chipEl.classList.contains('is-home') && !!chipEl.closest('.dp-lineup-vertical-pitch.is-split')));
   const prop = isBottomAnchored ? 'bottom' : 'top';
   const currentOffset = parseFloat(getComputedStyle(chipEl)[prop]);
-  const minOffset = 2;
+  const minOffset = options.minOffset ?? 2;
   if (!Number.isFinite(currentOffset) || currentOffset <= minOffset + 0.5) return false;
 
   let changed = false;
@@ -1957,6 +1964,14 @@ function fitBigLineupTeamChips(root) {
           forceBottomAnchored: isNameTag ? false : undefined,
         });
         tightenTeamChipNameToRenderedLines(chip.querySelector('.dp-lineup-team-name'));
+        // 최소 폰트/폭에 도달해도 배지와 겹치면 마지막으로 상단 여백을 사용한다.
+        // 이름 후보 선택과 최종 폭 조정 이후의 실제 배경을 다시 검사한다.
+        if (isNameTag) {
+          const labels = collisionEls.filter(target => !target.matches('.dp-lineup-node'));
+          if (teamChipOverlapsAny(chip, labels)) {
+            nudgeTeamChipTowardEdge(chip, labels, { forceBottomAnchored: false, minOffset: 0 });
+          }
+        }
       });
 
       // 팀 이름 라벨(top 앵커)과 포메이션 chip(split 모드에서는 항상 bottom 앵커)은 기본값이

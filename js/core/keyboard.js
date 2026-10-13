@@ -14,6 +14,8 @@ const shortcutActions = [
   ['undo','전술판','되돌리기','Ctrl+KeyZ',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdUndo();}],
   ['redo','전술판','다시 실행',window.obsstudio ? 'Ctrl+KeyG' : 'Ctrl+KeyY',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tdRedo();}],
   ['fullscreen','전술판','전체화면 전환','Backslash',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tacticsToggleFullscreen();}],
+  ['themePrevious','점수판','이전 점수판','Shift+BracketLeft',()=>cycleFsmTheme(-1)],
+  ['themeNext','점수판','다음 점수판','Shift+BracketRight',()=>cycleFsmTheme(1)],
   ['tabs','화면 이동','탭바 표시 / 숨기기','KeyH',()=>toggleTabsAndPages()],
   ...['main-big','main-small','theme','schedule','tactics','about'].map((page,i)=>['page'+i,'화면 이동',['캠 큼','캠 작음','테마','일정','전술판','소개'][i]+' 화면','Digit'+(i+1),()=>activatePage(page)]),
   ['fixture','화면 이동','경기 ID 입력','Digit7',()=>document.getElementById('open-fixture-overlay')?.click()],
@@ -42,7 +44,19 @@ function shortcutCode(event){
 }
 function shortcutKey(event){const code=shortcutCode(event);return code?[event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,code].filter(Boolean).join('+'):'';}
 function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').replace('Equal','=').replace('Minus','−').replace('BracketLeft','[').replace('BracketRight',']').split('+').join(' + ') : '미지정';}
+function updateThemeCycleShortcutHint(){
+  const hint=document.getElementById('themeCycleShortcutHint');
+  if(!hint)return;
+  hint.replaceChildren();
+  for(const [id,label] of [['themePrevious','이전'],['themeNext','다음']]){
+    const action=shortcutActions.find(action=>action[0]===id);
+    const row=document.createElement('span');
+    const key=document.createElement('span');key.className='kbd';key.textContent=shortcutLabel(shortcutBinding(action));
+    row.append(key,' '+label);hint.append(row);
+  }
+}
 function updateTacticsShortcutHints(){
+  updateThemeCycleShortcutHint();
   for(const [id,buttonId] of [['undo','td-undo-btn'],['redo','td-redo-btn']]){
     const action=shortcutActions.find(action=>action[0]===id);
     const button=document.getElementById(buttonId);
