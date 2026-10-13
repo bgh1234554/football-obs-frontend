@@ -1,492 +1,3 @@
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // [템플릿 관리] 색상·폰트·레이아웃 설정을 템플릿으로 저장·불러오기·내보내기·가져오기
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  /** 현재 state에서 템플릿 객체를 생성 (이름 포함, 색상·폰트·레이아웃 설정 포함) */
-  function buildCurrentTemplate(name){
-    // 배경색(bgColor)은 설정 팝업 전용 상태다.
-    // 템플릿 저장/로딩으로 바뀌지 않게 템플릿 payload에는 포함하지 않는다.
-    return { name, colors:{...state.colors}, fontFamily:state.fontFamily, logoAlign:state.logoAlign, radiusMode:state.radiusMode, boardWidth:state.boardWidth, homeLogoScale:state.homeLogoScale, awayLogoScale:state.awayLogoScale, homeOutlineEnabled:state.homeOutlineEnabled, awayOutlineEnabled:state.awayOutlineEnabled, homeOutlineWidth:state.homeOutlineWidth, awayOutlineWidth:state.awayOutlineWidth, boardOutlineEnabled:state.boardOutlineEnabled, scoreOutlineEnabled:state.scoreOutlineEnabled, boardOutlineWidth:state.boardOutlineWidth, scoreOutlineWidth:state.scoreOutlineWidth, noteEnabled:state.noteEnabled, noteFontSize:state.noteFontSize };
-  }
-
-  function resolveTemplateFontFamily(t){
-    const font = sanitizeFontFamily(t?.fontFamily);
-    return font || DEFAULT_FONT_FAMILY;
-  }
-
-  function resolveTemplateSaveName(nameMaybe){
-    const typed = (nameMaybe||'').trim();
-    if(typed) return typed;
-    return (el.templateSelect?.value||'').trim();
-  }
-
-  /** LocalStorage에서 템플릿 목록을 읽어 select 요소에 option으로 채움 (selectedName 있으면 선택 유지) */
-  function loadTemplates(selectedName){
-    const list = JSON.parse(localStorage.getItem(TKEY)||'[]');
-    const prevValue = (selectedName!==undefined) ? selectedName : (el.templateSelect?.value||'');
-    el.templateSelect.innerHTML = '';
-    const o=document.createElement('option'); o.value=''; o.textContent='로드된 템플릿'; el.templateSelect.appendChild(o);
-    list.forEach(t=>{ if(!t||!t.name) return; const x=document.createElement('option'); x.value=t.name; x.textContent=t.name; el.templateSelect.appendChild(x); });
-    const stillExists=list.some(t=>t&&t.name===prevValue);
-    el.templateSelect.value = stillExists ? prevValue : '';
-    return list;
-  }
-
-  /** 현재 설정을 주어진 이름으로 LocalStorage에 저장 (동명 템플릿 존재 시 덮어쓰기 확인) */
-  function saveTemplate(name){
-    name = resolveTemplateSaveName(name);
-    if(!name) return alert('템플릿 이름을 입력해주세요.');
-    const list=JSON.parse(localStorage.getItem(TKEY)||'[]');
-    const exists=list.some(t=>t&&t.name===name);
-    if(exists&&!confirm(`"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`)) return;
-    const next=list.filter(t=>t&&t.name!==name);
-    next.push(buildCurrentTemplate(name));
-    try{ localStorage.setItem(TKEY, JSON.stringify(next)); }
-    catch(e){ return alert('저장 공간이 부족합니다.'); }
-    loadTemplates(); el.templateSelect.value=name; alert('저장되었습니다.');
-  }
-
-  /** 이름 입력란 > 선택된 option 순서로 템플릿을 찾아 LocalStorage에서 삭제 */
-  function deleteTemplate(nameMaybe){
-    const typed=(el.templateName?.value||'').trim();
-    const selected=el.templateSelect?.value||'';
-    const name=(typed||nameMaybe||selected||'').trim();
-    if(!name){ alert('삭제할 템플릿을 선택하거나 이름을 입력해 주세요.'); return; }
-    const list=JSON.parse(localStorage.getItem(TKEY)||'[]');
-    if(!list.some(t=>t&&t.name===name)){ alert(`"${name}" 템플릿을 찾을 수 없습니다.`); return; }
-    localStorage.setItem(TKEY, JSON.stringify(list.filter(t=>t&&t.name!==name)));
-    loadTemplates(); if(el.templateName) el.templateName.value=''; alert(`"${name}" 삭제 완료.`);
-  }
-
-  /** 외부 데이터(t)를 LocalStorage 템플릿 목록에 삽입하거나 기존 항목을 덮어씀 */
-  function upsertTemplateToLocal(t, askOnDuplicate=true){
-    const list=JSON.parse(localStorage.getItem(TKEY)||'[]'); const name=(t?.name||'Imported').toString();
-    const idx=list.findIndex(x=>x&&x.name===name);
-    if(idx!==-1&&askOnDuplicate){ const ok=confirm(`"${name}" 이미 있음. 덮어쓸까요?`); if(!ok) return{saved:false,replaced:false,name}; }
-    const toSave=buildCurrentTemplate(name); Object.assign(toSave, t);
-    toSave.fontFamily = resolveTemplateFontFamily(t);
-    const normalized = cloneTemplateRecord(toSave);
-    if(idx!==-1) list[idx]=normalized; else list.push(normalized);
-    localStorage.setItem(TKEY, JSON.stringify(list));
-    return{saved:true,replaced:(idx!==-1),name};
-  }
-
-  /** 이름 입력란이 있으면 해당 템플릿 단건, 없으면 전체 목록을 JSON 파일로 다운로드 */
-  async function exportTemplatesFileImpl(){
-    const nameInput=(el.templateName?.value||'').trim();
-    let dataStr,filename;
-    if(nameInput){ dataStr=JSON.stringify(buildCurrentTemplate(nameInput),null,2); filename=`${slugify(nameInput)}.json`; }
-    else{ const list=JSON.parse(localStorage.getItem(TKEY)||'[]'); dataStr=JSON.stringify(list,null,2); filename='scoreboard-templates.json'; }
-    downloadBlob(filename, new Blob([dataStr],{type:'application/json'}));
-  }
-  window.exportTemplatesFileImpl = exportTemplatesFileImpl;
-
-  // ━━━ [기본 + 로컬 템플릿 머지 시스템] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // defaultTemplateCache: Theme Templates/Lists.json fetch 결과 캐시 (한 번만 로드).
-  // defaultTemplateLoadPromise: in-flight fetch 공유용 — 동시 호출 시 중복 fetch 방지.
-  // mergedTemplateCache: default 위에 local override 적용한 최종 목록 (UI 조회 캐시).
-  let defaultTemplateCache = null;
-  let defaultTemplateLoadPromise = null;
-  let mergedTemplateCache = [];
-  const TEMPLATE_FALLBACK_LEAGUE_ID = 1;
-
-  /** 템플릿 객체에서 폰트 패밀리를 정규화 후 반환. legacy 키(_fontFamily)도 fallback으로 인식. */
-  function resolveTemplateFontFamily(t){
-    const font = sanitizeFontFamily(t?.fontFamily ?? t?._fontFamily);
-    return font || DEFAULT_FONT_FAMILY;
-  }
-
-  /**
-   * 템플릿 객체를 깊은 복사(colors는 1-depth, 나머지는 spread).
-   * - name이 비었거나 잘못된 객체면 null 반환.
-   * - fontFamily 정규화 + legacy _fontFamily 키는 정리.
-   * 외부 입력(import JSON, 메모리 캐시 분리)을 안전히 다루기 위한 단일 진입점.
-   */
-  function cloneTemplateRecord(templateMaybe){
-    if(!templateMaybe || typeof templateMaybe !== 'object') return null;
-    const name = String(templateMaybe.name || '').trim();
-    if(!name) return null;
-    const next = { ...templateMaybe, name };
-    next.colors = (templateMaybe.colors && typeof templateMaybe.colors === 'object') ? { ...templateMaybe.colors } : {};
-    // 배경색은 더 이상 템플릿 스코프가 아니다.
-    // 예전 템플릿의 top-level bgColor / legacy colors.bg, colors.uiBg도 여기서 제거한다.
-    delete next.bgColor;
-    delete next.colors.bg;
-    delete next.colors.uiBg;
-    next.fontFamily = resolveTemplateFontFamily(templateMaybe);
-    delete next._fontFamily;
-    return next;
-  }
-
-  /** localStorage(TKEY)의 사용자 로컬 템플릿 목록을 깊은 복사된 배열로 반환. 손상 시 빈 배열. */
-  function readLocalTemplates(){
-    try{
-      const list = JSON.parse(localStorage.getItem(TKEY) || '[]');
-      return Array.isArray(list) ? list.map(cloneTemplateRecord).filter(Boolean) : [];
-    }catch{
-      return [];
-    }
-  }
-
-  /** 로컬 템플릿 목록을 TKEY에 직렬화 저장. quota 초과 시 호출자가 catch. */
-  function writeLocalTemplates(list){
-    localStorage.setItem(TKEY, JSON.stringify(list));
-  }
-
-  /** 사용자가 마지막으로 선택한 템플릿 이름을 TLASTKEY에 저장. 빈 값이면 키 제거. */
-  function setLastSelectedTemplateName(nameMaybe){
-    const name = String(nameMaybe || '').trim();
-    try{
-      if(name) localStorage.setItem(TLASTKEY, name);
-      else localStorage.removeItem(TLASTKEY);
-    }catch{}
-  }
-
-  /** TLASTKEY에서 마지막 선택 템플릿 이름 조회. 없거나 손상되면 빈 문자열. */
-  function getLastSelectedTemplateName(){
-    try{
-      return String(localStorage.getItem(TLASTKEY) || '').trim();
-    }catch{
-      return '';
-    }
-  }
-
-  /**
-   * Theme Templates/Lists.json을 fetch해 defaultTemplateCache에 채움.
-   * 1) 이미 캐시에 배열 있으면 즉시 반환.
-   * 2) in-flight Promise 있으면 그것 반환 — 동시 호출이 중복 fetch 방지.
-   * 3) 처음 호출이면 fetch 시작 → 응답을 cloneTemplateRecord로 sanitize.
-   * 4) 실패 시 빈 배열 캐시(이후 재시도 안 함, 사용자 로컬 템플릿만 사용).
-   */
-  async function loadDefaultTemplates(){
-    if(Array.isArray(defaultTemplateCache)) return defaultTemplateCache;
-    if(!defaultTemplateLoadPromise){
-      defaultTemplateLoadPromise = fetch(encodeURI(appAssetPath('Theme Templates/Lists.json')))
-        .then(res => {
-          if(!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json();
-        })
-        .then(list => {
-          defaultTemplateCache = Array.isArray(list) ? list.map(cloneTemplateRecord).filter(Boolean) : [];
-          return defaultTemplateCache;
-        })
-        .catch(err => {
-          console.warn('Failed to load default templates from Theme Templates/Lists.json:', err);
-          defaultTemplateCache = [];
-          return defaultTemplateCache;
-        });
-    }
-    return defaultTemplateLoadPromise;
-  }
-
-  /**
-   * default 템플릿 위에 local 템플릿을 override 한 최종 목록 반환.
-   * Map으로 name 중복 제거 — 같은 이름의 local이 있으면 default를 덮어씀.
-   * mergedTemplateCache에도 저장 — getTemplateByName이 동기 조회 가능하게.
-   */
-  async function getMergedTemplates(){
-    const defaults = await loadDefaultTemplates();
-    const locals = readLocalTemplates();
-    const merged = new Map(defaults.map(t => [t.name, cloneTemplateRecord(t)]));
-    locals.forEach(t => merged.set(t.name, t));
-    mergedTemplateCache = Array.from(merged.values()).map(cloneTemplateRecord).filter(Boolean);
-    return mergedTemplateCache;
-  }
-
-  /** mergedTemplateCache에서 이름으로 템플릿 동기 조회. 캐시 비었으면 null. */
-  function getTemplateByName(nameMaybe){
-    const name = String(nameMaybe || '').trim();
-    if(!name) return null;
-    return mergedTemplateCache.find(t => t && t.name === name) || null;
-  }
-
-  /** 입력값을 finite leagueId로 정규화. NaN/undefined는 null. */
-  function normalizeTemplateLeagueId(value){
-    const leagueId = Number(value);
-    return Number.isFinite(leagueId) ? leagueId : null;
-  }
-
-  /**
-   * 템플릿이 주어진 leagueId와 매칭되는지 판정.
-   * 템플릿의 leagueId는 단일값 또는 배열(여러 리그 공유 시) 모두 허용.
-   */
-  function templateMatchesLeagueId(templateMaybe, leagueIdMaybe){
-    if(!templateMaybe || typeof templateMaybe !== 'object') return false;
-    const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
-    if(targetLeagueId == null) return false;
-    const rawLeagueIds = Array.isArray(templateMaybe.leagueId)
-      ? templateMaybe.leagueId
-      : [templateMaybe.leagueId];
-    return rawLeagueIds.some(id => normalizeTemplateLeagueId(id) === targetLeagueId);
-  }
-
-  /**
-   * leagueId로 매칭되는 템플릿 1개 반환.
-   * 1) default 캐시에서 leagueId 매칭 시도(기준).
-   * 2) 매칭 시 같은 이름의 local override가 있으면 그쪽 우선 반환.
-   * 3) 매칭 없거나 캐시 비면 null.
-   */
-  async function getTemplateByLeagueId(leagueIdMaybe){
-    const targetLeagueId = normalizeTemplateLeagueId(leagueIdMaybe);
-    if(targetLeagueId == null) return null;
-
-    const mergedList = await getMergedTemplates();
-    const mergedMatch = mergedList.find(t => templateMatchesLeagueId(t, targetLeagueId));
-    if(mergedMatch) return mergedMatch;
-
-    await loadDefaultTemplates();
-    const defaultMatch = defaultTemplateCache.find(t => templateMatchesLeagueId(t, targetLeagueId));
-    if(!defaultMatch){
-      const fallbackMatch = mergedList.find(t => templateMatchesLeagueId(t, TEMPLATE_FALLBACK_LEAGUE_ID))
-        || defaultTemplateCache.find(t => templateMatchesLeagueId(t, TEMPLATE_FALLBACK_LEAGUE_ID))
-        || null;
-      if(!fallbackMatch) return null;
-      const fallbackName = String(fallbackMatch?.name || '').trim();
-      if(!fallbackName) return fallbackMatch;
-      return mergedList.find(t => t && String(t.name || '').trim() === fallbackName) || fallbackMatch;
-    }
-
-    const matchedName = String(defaultMatch?.name || '').trim();
-    if(!matchedName) return null;
-    return mergedList.find(t => t && String(t.name || '').trim() === matchedName) || defaultMatch;
-  }
-
-  /**
-   * leagueId 기반 템플릿 자동 적용 (Iter 5-5).
-   *
-   * 1) leagueId 매칭 템플릿 검색. 없으면 null.
-   * 2) 이미 동일 템플릿이 활성이면 force가 아닌 한 no-op (불필요 깜빡임 방지).
-   * 3) loadTemplates로 select 옵션 갱신 + 새 템플릿을 선택값으로 set.
-   * 4) TLASTKEY에 영속화 + applyTemplate으로 색상/폰트/레이아웃 적용 + render+persist.
-   *
-   * fixture.js가 silent=false인 fetch 성공 시에만 호출 — 자동 폴링 중에는
-   * 사용자가 직접 변경한 컬러를 보호하기 위해 호출하지 않는다.
-   */
-  async function autoApplyTemplateByLeagueId(leagueIdMaybe, options = {}){
-    const template = await getTemplateByLeagueId(leagueIdMaybe);
-    if(!template) return null;
-
-    const currentName = String(el.templateSelect?.value || '').trim();
-    if(!options.force && currentName === template.name) return template;
-
-    await loadTemplates(template.name);
-    if(el.templateSelect) el.templateSelect.value = template.name;
-    setLastSelectedTemplateName(template.name);
-    applyTemplate(template);
-    render();
-    persist();
-    return template;
-  }
-
-  window.getTemplateByLeagueId = getTemplateByLeagueId;
-  window.autoApplyTemplateByLeagueId = autoApplyTemplateByLeagueId;
-
-  function resolveTemplateSaveName(nameMaybe){
-    const typed = (nameMaybe||'').trim();
-    if(typed) return typed;
-    return (el.templateSelect?.value||'').trim();
-  }
-
-  /**
-   * 템플릿 select 요소를 merged 목록으로 다시 채움.
-   *
-   * 1) getMergedTemplates로 default + local 병합 목록 확보.
-   * 2) 기존 선택값 보존(stillExists면 유지, 없어졌으면 빈 값으로).
-   * 3) "로드된 템플릿" 플레이스홀더 + 각 템플릿 option 추가.
-   * 4) TLASTKEY 동기화 — 선택 살아있으면 그 이름으로, 사라졌으면 비움.
-   *
-   * @param {string=} selectedName - 명시적으로 선택할 템플릿 이름. undefined면 현재 select 값 유지.
-   */
-  async function loadTemplates(selectedName){
-    const list = await getMergedTemplates();
-    const prevValue = (selectedName!==undefined) ? selectedName : (el.templateSelect?.value||'');
-    if(el.templateSelect){
-      el.templateSelect.innerHTML = '';
-      const o=document.createElement('option');
-      o.value='';
-      o.textContent='로드된 템플릿';
-      el.templateSelect.appendChild(o);
-      list.forEach(t=>{
-        if(!t||!t.name) return;
-        const x=document.createElement('option');
-        x.value=t.name;
-        x.textContent=t.name;
-        el.templateSelect.appendChild(x);
-      });
-      const stillExists=list.some(t=>t&&t.name===prevValue);
-      el.templateSelect.value = stillExists ? prevValue : '';
-      if(stillExists) setLastSelectedTemplateName(prevValue);
-      else if(prevValue) setLastSelectedTemplateName('');
-    }
-    return list;
-  }
-
-  /**
-   * 현재 state를 이름 붙여 로컬 템플릿으로 저장.
-   *
-   * 1) default 캐시 미리 로드 후 이름 결정(입력값 > select 선택값).
-   * 2) merged 목록에 같은 이름이 있는지 확인 — 있으면 confirm 창으로 덮어쓰기 의사 묻기.
-   *    default와 동명인데 local에 없으면 "기본 템플릿을 로컬 override로 저장" 메시지 분기.
-   * 3) 기존 동명 항목 제거 후 새 템플릿 push → writeLocalTemplates로 영속화.
-   * 4) loadTemplates로 select 갱신 + 새 이름 선택 + TLASTKEY 영속화.
-   */
-  async function saveTemplate(name){
-    await loadDefaultTemplates();
-    name = resolveTemplateSaveName(name);
-    if(!name) return alert('템플릿 이름을 입력해 주세요.');
-    const localList = readLocalTemplates();
-    const mergedList = await getMergedTemplates();
-    const localExists = localList.some(t=>t&&t.name===name);
-    const defaultExists = defaultTemplateCache.some(t=>t&&t.name===name);
-    const mergedExists = mergedList.some(t=>t&&t.name===name);
-    if(mergedExists){
-      const message = (defaultExists && !localExists)
-        ? `"${name}" 기본 템플릿을 현재 설정으로 덮어쓸까요? (로컬 override로 저장됩니다.)`
-        : `"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`;
-      if(!confirm(message)) return;
-    }
-    const next = localList.filter(t=>t&&t.name!==name);
-    next.push(buildCurrentTemplate(name));
-    try{
-      writeLocalTemplates(next);
-    }catch(e){
-      return alert('저장 공간이 부족합니다.');
-    }
-    await loadTemplates(name);
-    if(el.templateSelect) el.templateSelect.value=name;
-    setLastSelectedTemplateName(name);
-    alert('저장되었습니다.');
-  }
-
-  /**
-   * 템플릿 삭제. 이름 입력란 > 인자 > select 선택값 순으로 대상 결정.
-   *
-   * 1) 이름이 없으면 alert 후 종료.
-   * 2) local에도 default에도 없으면 "찾을 수 없음" alert 후 종료.
-   * 3) default에만 있으면 — 기본 템플릿 자체는 삭제 불가 (alert).
-   * 4) local에서만 제거. default와 동명이고 현재 선택돼 있으면 → default fallback으로 자동 적용.
-   * 5) loadTemplates 후 TLASTKEY 갱신.
-   */
-  async function deleteTemplate(nameMaybe){
-    await loadDefaultTemplates();
-    const typed=(el.templateName?.value||'').trim();
-    const selected=(el.templateSelect?.value||'').trim();
-    const name=(typed||nameMaybe||selected||'').trim();
-    if(!name){ alert('삭제할 템플릿을 선택하거나 이름을 입력해 주세요.'); return; }
-    const localList = readLocalTemplates();
-    const localExists = localList.some(t=>t&&t.name===name);
-    const defaultExists = defaultTemplateCache.some(t=>t&&t.name===name);
-    if(!localExists && !defaultExists){ alert(`"${name}" 템플릿을 찾을 수 없습니다.`); return; }
-    if(defaultExists && !localExists){ alert('기본 템플릿은 삭제할 수 없습니다.'); return; }
-    writeLocalTemplates(localList.filter(t=>t&&t.name!==name));
-    const selectedName = selected === name ? (defaultExists ? name : '') : selected;
-    const list = await loadTemplates(selectedName);
-    if(defaultExists && selected === name){
-      const fallback = list.find(t=>t&&t.name===name);
-      if(fallback){
-        applyTemplate(fallback);
-        render();
-        persist();
-        setLastSelectedTemplateName(name);
-      }
-    }else if(selected === name){
-      setLastSelectedTemplateName('');
-    }
-    if(el.templateName) el.templateName.value='';
-    alert(defaultExists ? `"${name}" 로컬 저장본을 지우고 기본 템플릿으로 되돌렸습니다.` : `"${name}" 삭제 완료.`);
-  }
-
-  /**
-   * 로컬 템플릿 일괄 초기화. "리셋" 버튼 핸들러.
-   *
-   * 1) 로컬이 비어있으면 alert 후 종료.
-   * 2) confirm으로 사용자 의사 확인.
-   * 3) TKEY 제거 → loadTemplates로 default만 남은 select 재구성.
-   * 4) 현재 선택값이 default에도 있으면 그쪽으로 자동 적용, 없으면 빈 선택.
-   */
-  async function resetTemplates(){
-    await loadDefaultTemplates();
-    const localList = readLocalTemplates();
-    if(localList.length === 0){ alert('초기화할 로컬 템플릿이 없습니다.'); return; }
-    if(!confirm('로컬에 저장된 템플릿과 기본 템플릿 변경 사항을 모두 지울까요?')) return;
-    try{
-      localStorage.removeItem(TKEY);
-    }catch(e){
-      console.warn('Failed to reset local templates:', e);
-    }
-    const selected = (el.templateSelect?.value || '').trim();
-    const selectedDefaultExists = defaultTemplateCache.some(t=>t&&t.name===selected);
-    const list = await loadTemplates(selectedDefaultExists ? selected : '');
-    if(selectedDefaultExists){
-      const fallback = list.find(t=>t&&t.name===selected);
-      if(fallback){
-        applyTemplate(fallback);
-        render();
-        persist();
-        setLastSelectedTemplateName(selected);
-      }
-    }else{
-      setLastSelectedTemplateName('');
-    }
-    if(el.templateName) el.templateName.value = '';
-    alert('기본 템플릿만 남기고 로컬 템플릿을 초기화했습니다.');
-  }
-
-  /**
-   * 외부 템플릿 객체 t를 로컬에 upsert (import JSON에서 호출).
-   *
-   * 1) 이름 정규화(없으면 'Imported').
-   * 2) merged 목록에 같은 이름 있으면 askOnDuplicate=true일 때 confirm. 거절하면 saved:false 반환.
-   * 3) 현재 state 기반 base 템플릿에 t 키들 덮어쓰기 → 누락된 필드는 현재 state로 보강.
-   * 4) 동명 항목 제거 후 cloneTemplateRecord로 sanitize 한 객체 push.
-   * 5) 결과 객체 { saved, replaced, name } 반환.
-   */
-  async function upsertTemplateToLocal(t, askOnDuplicate=true){
-    await loadDefaultTemplates();
-    const list = readLocalTemplates();
-    const mergedList = await getMergedTemplates();
-    const name = String(t?.name || 'Imported').trim() || 'Imported';
-    const exists = mergedList.some(x=>x&&x.name===name);
-    if(exists && askOnDuplicate){
-      const ok = confirm(`"${name}" 템플릿이 이미 있습니다. 덮어쓸까요?`);
-      if(!ok) return{saved:false,replaced:false,name};
-    }
-    const toSave = buildCurrentTemplate(name);
-    Object.assign(toSave, t);
-    toSave.name = name;
-    toSave.fontFamily = resolveTemplateFontFamily(t);
-    const next = list.filter(x=>x&&x.name!==name);
-    next.push(cloneTemplateRecord(toSave));
-    writeLocalTemplates(next);
-    return{saved:true,replaced:exists,name};
-  }
-
-  /**
-   * 템플릿 JSON 파일 다운로드. 이름 입력란이 있으면 현재 state 기반 단일 템플릿,
-   * 없으면 merged 전체 목록을 한 파일로 묶어 내보낸다.
-   */
-  async function exportTemplatesFileImpl(){
-    const nameInput=(el.templateName?.value||'').trim();
-    let dataStr,filename;
-    if(nameInput){
-      dataStr=JSON.stringify(buildCurrentTemplate(nameInput),null,2);
-      filename=`${slugify(nameInput)}.json`;
-    }else{
-      const list=await getMergedTemplates();
-      dataStr=JSON.stringify(list,null,2);
-      filename='scoreboard-templates.json';
-    }
-    downloadBlob(filename, new Blob([dataStr],{type:'application/json'}));
-  }
-  window.exportTemplatesFileImpl = exportTemplatesFileImpl;
-  loadDefaultTemplates();
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // [색상/폰트 바인딩] 색상 피커와 HEX 텍스트 입력을 양방향으로 연결하고 폰트 변경 처리
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  // [색상 id, state.colors 키, CSS 변수명] 매핑 테이블.
-  // 'uiBg'는 Iter 5-7에서 설정 팝업으로 이전 — colorMap에서 제거됨.
   window.colorMap = [
     ['inBoardA','boardA','--board-a'],
     ['inBoardB','boardB','--board-b'],
@@ -502,6 +13,8 @@
     ['inAwayText','awayText','--away-text'],
     ['inOutline','outline','--card-outline'],
     ['pkBaseColor','pkBase','--pk-base'],
+    ['inPkGoal','pkGoal','--pk-goal'],
+    ['inPkMiss','pkMiss','--pk-miss'],
     ['inHomeOutline','homeOutline','--home-outline'],
     ['inAwayOutline','awayOutline','--away-outline'],
     ['inNoteText','noteText','--note-text'],
@@ -519,6 +32,27 @@
   // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
   const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
+  function commitThemeColors(updates, syncColorInput = true) {
+    const keys = Object.keys(updates);
+    const changed = keys.some(key => state.colors[key] !== updates[key]);
+    const teamColorChanged = keys.some(key => TEAM_COLOR_KEYS.has(key));
+    if (teamColorChanged) {
+      state.teamColorOverride = true;
+      state.teamColorOverrideFixtureId = typeof getLastFixtureId === 'function' ? getLastFixtureId() : null;
+    }
+    window.colorMap.filter(([, key]) => keys.includes(key)).forEach(([id, key, cssVar]) => {
+      state.colors[key] = updates[key];
+      setCSS(cssVar, updates[key]);
+      if (syncColorInput && $(id)) $(id).value = updates[key];
+      if ($(id + 'Hex')) $(id + 'Hex').value = updates[key];
+    });
+    if (!changed) return;
+    if (teamColorChanged && typeof applyTeamColors === 'function') applyTeamColors();
+    persist();
+    render();
+    document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: keys[0] } }));
+  }
+
   /**
    * 색상 피커와 HEX 텍스트 입력 필드를 양방향으로 연결.
    *
@@ -533,13 +67,6 @@
     // bootstrap 스타일 적용
     hexInput.style.background='#0b1220'; hexInput.style.color='#e5e7eb'; hexInput.style.border='1px solid #ffffff20'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
     colorInput.insertAdjacentElement('afterend', hexInput);
-    // 'theme:colors-changed' 이벤트 — 라인업/스탯 패널이 받아 재렌더(commit 시점에만 호출).
-    const dispatchThemeChange = () => document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key } }));
-    const markOverride = () => {
-      if (!TEAM_COLOR_KEYS.has(key)) return;
-      state.teamColorOverride = true;
-      state.teamColorOverrideFixtureId = (typeof getLastFixtureId === 'function') ? getLastFixtureId() : null;
-    };
 
     /** 드래그 중 가벼운 라이브 프리뷰 — CSS 변수와 hex 표시만 갱신. state/persist/render/dispatch 안 함. */
     const previewThemeColor = value => {
@@ -549,17 +76,7 @@
 
     /** 피커 닫힘/HEX 입력 확정 시 한 번만 실행되는 무거운 commit. */
     const commitThemeColor = (value, syncColorInput = false) => {
-      // 동일 값이면 dispatch/render 생략 — 사용자가 피커 열었다 그냥 닫은 경우 효율화.
-      const same = state.colors[key] === value;
-      state.colors[key] = value;
-      setCSS(cssVar, value);
-      hexInput.value = value;
-      if (syncColorInput) colorInput.value = value;
-      markOverride();
-      if (same) return;
-      persist();
-      render();
-      dispatchThemeChange();
+      commitThemeColors({ [key]: value }, syncColorInput);
     };
 
     // input(드래그): 라이브 프리뷰만. change(피커 닫힘): 최종 commit.
@@ -578,6 +95,17 @@
     });
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
+
+  // 선택한 팀의 배경색과 글자색을 서로 바꾸고 사용자 지정 색상으로 저장한다.
+  function swapTeamColors(side){
+    if (side !== 'home' && side !== 'away') return;
+    const bgKey = side + 'Bg';
+    const textKey = side + 'Text';
+    commitThemeColors({ [bgKey]: state.colors[textKey], [textKey]: state.colors[bgKey] });
+  }
+  $('swapHomeTeamColors')?.addEventListener('click', () => swapTeamColors('home'));
+  $('swapAwayTeamColors')?.addEventListener('click', () => swapTeamColors('away'));
+
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [이벤트 바인딩] 각종 UI 컨트롤에 이벤트 리스너를 연결
@@ -660,8 +188,15 @@
   }
 
   // [이벤트 등록] 수동 모드 — 팀 이름·득점자 텍스트 입력
-  el.manualHomeName?.addEventListener('input', e=>{ state.homeName=e.target.value; render(); persist(); });
-  el.manualAwayName?.addEventListener('input', e=>{ state.awayName=e.target.value; render(); persist(); });
+  el.manualHomeName?.addEventListener('input', e=>{
+    // 수동으로 다른 팀 이름을 입력하면 이전 API 팀 ID와 분리한다.
+    if (state.teamNicknameTeams) state.teamNicknameTeams.home = null;
+    state.homeName=e.target.value; render(); persist();
+  });
+  el.manualAwayName?.addEventListener('input', e=>{
+    if (state.teamNicknameTeams) state.teamNicknameTeams.away = null;
+    state.awayName=e.target.value; render(); persist();
+  });
   el.manualHomeNote?.addEventListener('input', e=>{ state.notes.home=e.target.value; render(); persist(); });
   el.manualAwayNote?.addEventListener('input', e=>{ state.notes.away=e.target.value; render(); persist(); });
 
@@ -679,6 +214,21 @@
     persist();
   }
   el.manualResetScore?.addEventListener('click', resetManualScore);
+  // [이벤트 등록] 수동 모드 — 퇴장 수 +/- 버튼
+  /**
+   * 수동 모드 퇴장 수(점수판 레드카드 수)를 delta만큼 바꾼다. 0~5장으로 제한, 버튼과 단축키가 공용으로 사용.
+   * @param {'home'|'away'} team
+   * @param {number} delta  +1 또는 -1
+   */
+  function changeManualRedCards(team, delta){
+    const key = team === 'home' ? 'redHome' : 'redAway';
+    state[key] = clampNum((state[key] || 0) + delta, 0, 5, 0);
+    render();
+    persist();
+  }
+  window.changeManualRedCards = changeManualRedCards;
+  [['manualHomeRedPlus','home',1],['manualHomeRedMinus','home',-1],['manualAwayRedPlus','away',1],['manualAwayRedMinus','away',-1]]
+    .forEach(([id, team, delta]) => $(id)?.addEventListener('click', () => changeManualRedCards(team, delta)));
 
   /**
    * 이미지 파일을 읽어 URL 문자열을 콜백으로 전달.
@@ -808,3 +358,5 @@
   if(el.fontFile) el.fontFile.addEventListener('change', e=>{ const f=e.target.files?.[0]; if(!f) return; if(dynamicFontLink){ dynamicFontLink.remove(); dynamicFontLink = null; } const url=URL.createObjectURL(f); const fam=(f.name.replace(/\.[^.]+$/,'')||'Uploaded').replace(/[^A-Za-z0-9 _-]/g,''); const css=`@font-face{font-family:"${fam}";src:url('${url}');font-weight:100 900;font-style:normal;font-display:swap}`; if(uploadedFontStyle) uploadedFontStyle.remove(); uploadedFontStyle=document.createElement('style'); uploadedFontStyle.textContent=css; document.head.appendChild(uploadedFontStyle); if(el.fontCssUrl) el.fontCssUrl.value = ''; if(el.systemFonts) el.systemFonts.value = ''; state.fontFamily=sanitizeFontFamily(`'${fam}', ${DEFAULT_FONT_FAMILY}`) || `'${fam}', ${DEFAULT_FONT_FAMILY}`; render(); persist(); });
   el.applyFont?.addEventListener('click', applyFontFromInputs);
   el.resetFont?.addEventListener('click', resetFontToDefault);
+
+  document.getElementById('resetApiTeamColors')?.addEventListener('click', () => window.resetFixtureTeamColors?.());

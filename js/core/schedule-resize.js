@@ -16,9 +16,9 @@ const SCHED_GRID_STORAGE_KEY = 'obs.scheduleGrid.colRatios.v1';
 const SCHED_GRID_MIN_PX = [140, 160, 280, 220]; // 리그, 경기, 상세 정보, 순위표
 // 사용자가 지정한 기본 칼럼 폭 — Leagues는 고정 px, 나머지 3개는 그 나머지 폭을 fr 비율로
 // 분배(고정 비율표로 근사하면 화면 폭이 달라질 때마다 어긋나므로 반드시 이 형태를 유지).
-// 콘솔에서 getDisplayLayoutRect() 기준 실측(widths(px): [247, 292, 691, 650], gapPx: 8)해 반영.
+// 1920px 화면 기준 칼럼 너비 [247, 316, 667, 650], gapPx: 8을 반영.
 const SCHED_GRID_DEFAULT_COL1_PX = 247;
-const SCHED_GRID_DEFAULT_FR = [1, 2.366, 2.226]; // Games, Details, Standings
+const SCHED_GRID_DEFAULT_FR = [316, 667, 650]; // Games, Details, Standings
 const SCHED_HANDLE_WIDTH = 12;
 
 let schedGridResizeObserver = null;
@@ -56,8 +56,8 @@ function scheduleGridSaveRatios(ratios) {
 }
 
 /**
- * 현재 availableWidth 기준으로 "진짜" 기본 비율을 계산 — Leagues는 항상 190px 고정,
- * 나머지 3개(Games/Details/Standings)만 그 나머지 폭을 1:2.2:2로 나눈다. 화면 폭이
+ * 현재 availableWidth 기준으로 "진짜" 기본 비율을 계산 — Leagues는 항상 247px 고정,
+ * 나머지 3개(Games/Details/Standings)만 그 나머지 폭을 316:667:650으로 나눈다. 화면 폭이
  * 달라질 때마다 다시 계산해야 원본 CSS 기본값과 정확히 일치한다(고정 비율표로는 불가능).
  */
 function scheduleGridDefaultRatios(availableWidth) {

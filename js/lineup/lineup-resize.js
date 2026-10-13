@@ -11,9 +11,9 @@
 //
 // (2) 캠 작음 페이지 좌측 문자중계/스탯 칼럼 (.layout-small .lp-col-events-stat)
 //   - 우측 경계 핸들(.lp-small-col-resize)을 좌/우로 드래그.
-//   - 좌(events-stat)와 우(cam-chat) 폭 비율을 동시에 조정. 라인업/벤치는 영향 없음.
+//   - Left boundary: events/bench; right boundary: bench/chat. Lineup width stays fixed.
 //   - 더블클릭 시 기본 비율로 복원.
-//   - 비율은 별도 키(obs.smallLayout.eventsStatRatio.v1)에 영속화.
+//   - Stored in obs.smallLayout.columnWidths.v2; existing v1 settings remain readable.
 //
 // (3) 캠 큼 페이지 우측 칼럼(lp-col) — 너비 + 내부 패널 세로 분할
 //   (a) 왼쪽 경계 핸들(.lp-big-col-resize): 드래그로 칼럼 폭 자유 조정.
@@ -27,6 +27,8 @@
 const LINEUP_RESIZE_MIN = 50;
 const LINEUP_RESIZE_MAX = 100;
 const SMALL_LAYOUT_RESIZE_STORAGE_KEY = 'obs.smallLayout.eventsStatRatio.v1';
+const SMALL_LAYOUT_COLUMNS_KEY = 'obs.smallLayout.columnWidths.v2';
+const SMALL_LAYOUT_BENCH_MIN_PX = 160;
 const SMALL_LAYOUT_RATIO_MIN = 0.2;
 const SMALL_LAYOUT_RATIO_MAX = 0.8;
 const SMALL_LAYOUT_LEFT_MIN_PX = 220;
@@ -208,6 +210,9 @@ function getSmallStatsHeightMetrics() {
 function applySmallStatsHeight() {
   const metrics = getSmallStatsHeightMetrics();
   if (!metrics) return;
+  // 가로 경계를 움직이는 동안에는 폭 변화마다 스탯 DOM을 다시 만들지 않는다.
+  // 드래그가 끝나면 최종 폭을 기준으로 높이와 표시 행을 한 번 갱신한다.
+  if (smallLayoutActiveResizePointers.has(metrics.column.closest('.layout-small'))) return;
   const { column, eventsPanel, statPanel, available, minimum, gap } = metrics;
   const requested = smallStatsHeightRatio == null ? stDefaultPanelHeight(statPanel) : available * smallStatsHeightRatio;
   const statHeight = Math.max(minimum, Math.min(available - minimum, requested));
@@ -355,29 +360,15 @@ function loadSmallLayoutResizeRatio() {
   }
 }
 
-/** 사용자가 드래그를 끝낸 시점의 최종 비율을 localStorage에 저장. */
-function saveSmallLayoutResizeRatio(ratio) {
-  try {
-    localStorage.setItem(SMALL_LAYOUT_RESIZE_STORAGE_KEY, String(ratio));
-  } catch {}
-}
-
 /** 더블클릭으로 기본 비율 복원 시 storage 키를 제거 → 다음 로드에서 default 비율 사용. */
 function clearSmallLayoutResizeRatio() {
   try {
     localStorage.removeItem(SMALL_LAYOUT_RESIZE_STORAGE_KEY);
+    localStorage.removeItem(SMALL_LAYOUT_COLUMNS_KEY);
   } catch {}
 }
 
-/**
- * 작은 캠 layout의 리사이즈 메트릭 계산.
- * 1) 4개 자식 컬럼(events-stat / lineup / bench / cam-chat) DOM 확보.
- * 2) layout 폭에서 padding/gap/lineup/bench 빼서 좌(events) + 우(chat) 합산 폭(sideWidth) 산출.
- * 3) 좌/우 각각의 최소 폭(SMALL_LAYOUT_LEFT_MIN_PX/RIGHT_MIN_PX)을 sideWidth에 맞게 보정.
- * 4) sideWidth가 left+right 최소 폭보다 작으면 리사이즈 불가능 → null.
- *
- * 반환 객체는 startSmallLayoutResize / clamp / apply에서 공통 사용.
- */
+// The lineup keeps its width; the other three columns share the remaining space.
 function getSmallLayoutResizeMetrics(layout) {
   if (!layout) return null;
   const eventsCol = layout.querySelector('.lp-col-events-stat');
@@ -385,104 +376,101 @@ function getSmallLayoutResizeMetrics(layout) {
   const bench = layout.querySelector('.lp-col-bench');
   const chat = layout.querySelector('.lp-cam-chat');
   if (!eventsCol || !lineup || !bench || !chat) return null;
-
-  const style = window.getComputedStyle(layout);
-  const gapPx = parseFloat(style.columnGap || style.gap || '0') || 0;
-  const paddingLeft = parseFloat(style.paddingLeft || '0') || 0;
-  const paddingRight = parseFloat(style.paddingRight || '0') || 0;
-  const innerWidth = layout.clientWidth - paddingLeft - paddingRight;
-  if (innerWidth <= 0) return null;
-
+  const style = getComputedStyle(layout);
+  const gapPx = parseFloat(style.columnGap || style.gap) || 0;
+  const innerWidth = layout.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
   const lineupWidth = getDisplayLayoutRect(lineup).width;
-  const benchWidth = getDisplayLayoutRect(bench).width;
-  const sideWidth = innerWidth - lineupWidth - benchWidth - (gapPx * 3);
-  if (sideWidth <= 0) return null;
-
-  const leftMin = Math.min(SMALL_LAYOUT_LEFT_MIN_PX, Math.max(140, sideWidth - SMALL_LAYOUT_RIGHT_MIN_PX));
-  const rightMin = Math.min(SMALL_LAYOUT_RIGHT_MIN_PX, Math.max(140, sideWidth - leftMin));
-  if (sideWidth <= leftMin + rightMin) return null;
-
-  return {
-    chat,
-    eventsCol,
-    gapPx,
-    layout,
-    leftMin,
-    rightMin,
-    sideWidth
-  };
+  const freeWidth = innerWidth - lineupWidth - gapPx * 3;
+  if (freeWidth <= 0) return null;
+  const scale = Math.min(1, freeWidth / (SMALL_LAYOUT_LEFT_MIN_PX + SMALL_LAYOUT_BENCH_MIN_PX + SMALL_LAYOUT_RIGHT_MIN_PX));
+  return { layout, eventsCol, bench, chat, gapPx, innerWidth, lineupWidth, freeWidth,
+    leftMin: SMALL_LAYOUT_LEFT_MIN_PX * scale,
+    benchMin: SMALL_LAYOUT_BENCH_MIN_PX * scale,
+    rightMin: SMALL_LAYOUT_RIGHT_MIN_PX * scale };
 }
 
-/**
- * 좌측(events) 비율을 [minRatio, maxRatio] 범위로 클램프.
- * 메트릭의 left/right 최소 픽셀과 사용자 설정 최소/최대 비율 중 더 보수적인 쪽 채택.
- */
-function clampSmallLayoutResizeRatio(metrics, ratio) {
-  if (!metrics) return null;
-  const minRatio = Math.max(SMALL_LAYOUT_RATIO_MIN, metrics.leftMin / metrics.sideWidth);
-  const maxRatio = Math.min(SMALL_LAYOUT_RATIO_MAX, (metrics.sideWidth - metrics.rightMin) / metrics.sideWidth);
-  return Math.max(minRatio, Math.min(maxRatio, ratio));
-}
-
-/**
- * 좌(events) 비율을 받아 layout에 좌/우 폭 CSS 변수로 적용.
- * 1) 메트릭 산출 → 비율 클램프.
- * 2) sideWidth × ratio = 좌측 폭, 나머지 = 우측 폭.
- * 3) --lp-small-events-width / --lp-small-chat-width 변수 설정 + .lp-small-columns-custom 토글로
- *    CSS가 grid template column을 fr 대신 인라인 px로 인식하도록 함.
- * 4) 적용에 성공한 실제 비율(safeRatio) 반환 — 호출자가 onMove 마지막 값 보존용으로 사용.
- */
-function applySmallLayoutResizeRatio(layout, ratio) {
-  const metrics = getSmallLayoutResizeMetrics(layout);
-  if (!metrics) return null;
-  const safeRatio = clampSmallLayoutResizeRatio(metrics, ratio);
-  if (safeRatio == null) return null;
-  const leftWidth = Math.round(metrics.sideWidth * safeRatio);
-  const rightWidth = Math.round(metrics.sideWidth - leftWidth);
-  layout.style.setProperty('--lp-small-events-width', `${leftWidth}px`);
-  layout.style.setProperty('--lp-small-chat-width', `${rightWidth}px`);
+function applySmallLayoutWidths(layout, left, right) {
+  const m = getSmallLayoutResizeMetrics(layout);
+  if (!m) return null;
+  left = Math.max(m.leftMin, Math.min(m.freeWidth - m.benchMin - m.rightMin, left));
+  right = Math.max(m.rightMin, Math.min(m.freeWidth - m.benchMin - left, right));
+  layout.style.setProperty('--lp-small-events-width', `${left}px`);
+  layout.style.setProperty('--lp-small-chat-width', `${right}px`);
+  layout.style.setProperty('--lp-small-bench-width', `${Math.max(0, m.freeWidth - left - right)}px`);
   layout.classList.add('lp-small-columns-custom');
-  return safeRatio;
+  return { left: left / m.freeWidth, right: right / m.freeWidth,
+    benchFraction: Math.max(0, m.freeWidth - left - right) / m.innerWidth,
+    chatFraction: right / m.innerWidth };
 }
 
-/** 페이지 로드/리사이즈 시점에 저장된 비율을 모든 layout-small에 적용. 비율이 없으면 default로 reset. */
+// 기존 v1 설정의 좌우 분할을 유지하되 벤치 폭은 화면 너비를 기준으로 계산한다.
+function applySmallLayoutResizeRatio(layout, ratio) {
+  const m = getSmallLayoutResizeMetrics(layout);
+  if (!m) return null;
+  const benchWidth = Math.min(m.freeWidth - m.leftMin - m.rightMin, m.innerWidth * 0.25);
+  const sideWidth = m.freeWidth - benchWidth;
+  const widths = applySmallLayoutWidths(layout, sideWidth * ratio, sideWidth * (1 - ratio));
+  return widths ? widths.left * m.freeWidth / sideWidth : null;
+}
+
+function loadSmallLayoutWidths() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SMALL_LAYOUT_COLUMNS_KEY));
+    if (value && Number.isFinite(value.left) && Number.isFinite(value.right) &&
+        value.left > 0 && value.right > 0 && value.left + value.right <= 1) return value;
+  } catch {}
+  return null;
+}
+
 function applyStoredSmallLayoutResize() {
-  const ratio = loadSmallLayoutResizeRatio();
+  const widths = loadSmallLayoutWidths();
+  const legacyRatio = loadSmallLayoutResizeRatio();
   document.querySelectorAll('.layout-small').forEach(layout => {
-    if (ratio == null) {
-      resetSmallLayoutResize(layout);
-      return;
+    const m = getSmallLayoutResizeMetrics(layout);
+    if (!m || smallLayoutActiveResizePointers.has(layout)) return;
+    if (widths) {
+      // 높이가 달라져도 벤치와 팬 반응 폭은 화면 너비를 기준으로 유지한다.
+      const anchored = Number.isFinite(widths.benchFraction) && widths.benchFraction > 0 &&
+        Number.isFinite(widths.chatFraction) && widths.chatFraction > 0 &&
+        widths.benchFraction + widths.chatFraction < 1;
+      const right = anchored ? m.innerWidth * widths.chatFraction : m.freeWidth * widths.right;
+      const left = anchored ? m.freeWidth - m.innerWidth * widths.benchFraction - right : m.freeWidth * widths.left;
+      const applied = applySmallLayoutWidths(layout, left, right);
+      // 기존 저장값에 현재 폭을 보존하는 너비 기준 비율을 한 번 추가한다.
+      if (!anchored && applied) {
+        try { localStorage.setItem(SMALL_LAYOUT_COLUMNS_KEY, JSON.stringify(applied)); } catch {}
+      }
     }
-    applySmallLayoutResizeRatio(layout, ratio);
+    else if (legacyRatio != null) applySmallLayoutResizeRatio(layout, legacyRatio);
+    else resetSmallLayoutResize(layout);
   });
 }
 
-/**
- * 사용자 정의 비율을 떼어내 default(CSS의 fr)로 복원.
- * 인자 없으면 모든 layout-small 대상, 인자 있으면 해당 layout만 처리.
- */
+// Keep the middle boundary centered on reset.
 function resetSmallLayoutResize(layout = null) {
   const targets = layout ? [layout] : Array.from(document.querySelectorAll('.layout-small'));
   targets.forEach(node => {
-    if (!node) return;
-    node.classList.remove('lp-small-columns-custom');
-    node.style.removeProperty('--lp-small-events-width');
-    node.style.removeProperty('--lp-small-chat-width');
+    const m = getSmallLayoutResizeMetrics(node);
+    if (!m) return;
+    const benchWidth = Math.min(m.freeWidth - m.leftMin - m.rightMin, m.innerWidth * 0.25);
+    const left = m.innerWidth / 2 - m.lineupWidth - m.gapPx * 1.5;
+    applySmallLayoutWidths(node, left, m.freeWidth - benchWidth - left);
   });
 }
 
 /**
- * 작은 캠 layout의 events-stat 칼럼 우측 경계 + cam-chat 칼럼 좌측 경계에 리사이즈 핸들 생성.
- * 가운데 두 패널(라인업/벤치)은 고정 폭이라, 어느 쪽 핸들을 드래그해도 좌(events)/우(chat)
- * 비율이 완전히 같은 방식으로 조정된다(합이 일정하므로 handle 위치와 무관하게 동일한 로직).
+ * 작은 캠의 events-stat/라인업 우측과 cam-chat 좌측 경계에 핸들을 생성한다.
+ * events-stat/라인업 우측 핸들은 같은 동작으로 events-stat과 벤치 폭을 조정한다.
+ * 라인업 폭은 유지하며, cam-chat 좌측 핸들은 벤치와 cam-chat 폭을 조정한다.
  * - pointerdown → 드래그 세션 시작.
  * - dblclick → 기본 비율 복원.
  */
 function ensureSmallLayoutResizeHandles() {
-  document.querySelectorAll('.layout-small .lp-col-events-stat').forEach(panel => {
-    if (panel.querySelector(':scope > .lp-small-col-resize')) return;
+  document.querySelectorAll('.layout-small .lp-col-events-stat, .layout-small .lp-lineup-s').forEach(panel => {
+    const className = panel.classList.contains('lp-lineup-s') ? 'lp-small-col-resize-middle' : 'lp-small-col-resize';
+    if (panel.querySelector(':scope > .' + className)) return;
     const handle = document.createElement('div');
-    handle.className = 'lp-small-col-resize';
+    handle.className = className;
     handle.setAttribute('aria-hidden', 'true');
     handle.title = '칼럼 크기 조정 · 더블클릭으로 초기화';
     handle.addEventListener('pointerdown', startSmallLayoutResize);
@@ -511,68 +499,49 @@ function resetSmallLayoutResizeFromHandle(event) {
   resetSmallLayoutResize(layout);
 }
 
-/**
- * 작은 캠 칼럼 리사이즈 드래그 세션. events-stat 우측 핸들 / cam-chat 좌측 핸들 공용.
- * 1) 좌클릭이 아니면 무시. 메트릭 못 구하면 무시.
- * 2) 시작 시점의 events 폭 + clientX를 기록해 dragX 기준점으로 사용.
- *    (두 핸들 모두 "핸들을 오른쪽으로 끌면 좌측 폭이 늘어난다"는 방향이 동일 — 가운데
- *    라인업/벤치가 고정폭이라 좌우 합이 일정하기 때문에 별도 부호 반전 없이 그대로 재사용)
- * 3) onMove: 새 메트릭으로 매번 sideWidth 재산출 후 좌측 폭을 [leftMin, sideWidth-rightMin]로 클램프.
- * 4) onUp: 핸들러 정리 + 마지막으로 적용된 비율(lastRatio)을 storage에 저장.
- *
- * pointer capture로 드래그 도중 마우스가 핸들 밖으로 나가도 이벤트 끊기지 않게 한다.
- */
+// Each existing handle changes the bench and its corresponding outer column.
 function startSmallLayoutResize(event) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
-
   const handle = event.currentTarget;
   const layout = handle.closest('.layout-small');
-  const eventsCol = layout?.querySelector('.lp-col-events-stat');
-  const metrics = getSmallLayoutResizeMetrics(layout);
-  if (!handle || !eventsCol || !layout || !metrics) return;
-  // 같은 layout에 이미 진행 중인 드래그 세션이 있으면(다른 핸들 동시 클릭, 멀티터치 등)
-  // 새 세션을 시작하지 않는다 — 두 세션이 겹치면 서로 다른 startX 기준으로 같은
-  // CSS 변수를 동시에 덮어써 값이 튀는 문제가 생긴다.
-  if (smallLayoutActiveResizePointers.has(layout)) return;
-
-  const startLeft = getDisplayLayoutRect(eventsCol).width;
+  const m = getSmallLayoutResizeMetrics(layout);
+  if (!m || smallLayoutActiveResizePointers.has(layout)) return;
+  const rightHandle = handle.classList.contains('lp-small-col-resize-end');
+  const startLeft = getDisplayLayoutRect(m.eventsCol).width;
+  const startRight = getDisplayLayoutRect(m.chat).width;
   const startX = toDisplayLayoutPixels(event.clientX);
   const pointerId = event.pointerId;
-  let lastRatio = clampSmallLayoutResizeRatio(metrics, startLeft / metrics.sideWidth);
-  if (lastRatio == null) return;
-
+  let lastWidths = null;
   smallLayoutActiveResizePointers.set(layout, pointerId);
   document.body.classList.add('lp-small-resizing');
   layout.classList.add('is-resizing');
   handle.setPointerCapture?.(pointerId);
-
-  const onMove = (e) => {
+  const onMove = e => {
     if (e.pointerId !== pointerId) return;
-    const nextMetrics = getSmallLayoutResizeMetrics(layout);
-    if (!nextMetrics) return;
-    const deltaX = toDisplayLayoutPixels(e.clientX) - startX;
-    const nextLeft = Math.max(
-      nextMetrics.leftMin,
-      Math.min(nextMetrics.sideWidth - nextMetrics.rightMin, startLeft + deltaX)
-    );
-    const nextRatio = applySmallLayoutResizeRatio(layout, nextLeft / nextMetrics.sideWidth);
-    if (nextRatio != null) lastRatio = nextRatio;
+    const current = getSmallLayoutResizeMetrics(layout);
+    if (!current) return;
+    const delta = toDisplayLayoutPixels(e.clientX) - startX;
+    const left = rightHandle ? startLeft : Math.max(current.leftMin, Math.min(current.freeWidth - current.benchMin - startRight, startLeft + delta));
+    const right = rightHandle ? Math.max(current.rightMin, Math.min(current.freeWidth - current.benchMin - startLeft, startRight - delta)) : startRight;
+    lastWidths = applySmallLayoutWidths(layout, left, right);
   };
-
-  const onUp = (e) => {
+  const onUp = e => {
     if (e && e.pointerId !== pointerId) return;
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onUp);
+    smallLayoutActiveResizePointers.delete(layout);
     document.body.classList.remove('lp-small-resizing');
     layout.classList.remove('is-resizing');
-    handle.releasePointerCapture?.(pointerId);
-    smallLayoutActiveResizePointers.delete(layout);
-    saveSmallLayoutResizeRatio(lastRatio);
+    if (handle.hasPointerCapture?.(pointerId)) handle.releasePointerCapture(pointerId);
+    if (e?.type === 'pointercancel') applySmallLayoutWidths(layout, startLeft, startRight);
+    else if (lastWidths) {
+      try { localStorage.setItem(SMALL_LAYOUT_COLUMNS_KEY, JSON.stringify(lastWidths)); } catch {}
+    }
+    if (!rightHandle && (lastWidths || e?.type === 'pointercancel')) applySmallStatsHeight();
   };
-
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
   document.addEventListener('pointercancel', onUp);
@@ -586,7 +555,7 @@ function observeSmallLayoutResize() {
   if (typeof ResizeObserver === 'function') {
     if (!smallLayoutResizeObserver) {
       smallLayoutResizeObserver = new ResizeObserver(() => {
-        if (loadSmallLayoutResizeRatio() != null) applyStoredSmallLayoutResize();
+        applyStoredSmallLayoutResize();
       });
     } else {
       // 이미 옵저버 있으면 재구독을 위해 disconnect → 아래 forEach에서 다시 observe.
@@ -600,7 +569,7 @@ function observeSmallLayoutResize() {
   if (!smallLayoutResizeFallbackBound) {
     smallLayoutResizeFallbackBound = true;
     window.addEventListener('resize', () => {
-      if (loadSmallLayoutResizeRatio() != null) applyStoredSmallLayoutResize();
+      applyStoredSmallLayoutResize();
     });
   }
 }
@@ -625,6 +594,7 @@ function startLineupResize(event) {
   const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
   const hasEdgeOverride = panel.classList.contains('has-w-override')
     || panel.classList.contains('has-h-override');
+  const hasFixedSize = hasEdgeOverride || panel.classList.contains('lp-width-locked');
   const currentHeightPct = Math.round((getDisplayLayoutRect(panel).height / layoutHeight) * 100);
   const startScalePct = hasEdgeOverride
     ? Math.max(
@@ -651,9 +621,9 @@ function startLineupResize(event) {
     next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
     if (next === lastPct) return;
 
-    // 엣지 리사이즈 뒤 남은 개별 width/height override가 있으면
-    // 첫 대각선 드래그 순간에 해제해 비율 스케일이 다시 주도권을 갖게 한다.
-    if (!releasedEdgeOverrides && hasEdgeOverride) {
+    // 개별 크기 지정뿐 아니라 전체화면용 폭 잠금도 첫 이동에서 해제한다.
+    // 폭 잠금이 남아 있으면 배율을 줄여도 높이만 줄어든다.
+    if (!releasedEdgeOverrides && hasFixedSize) {
       _lineupEdgeClear(LINEUP_EDGE_W_KEY);
       _lineupEdgeClear(LINEUP_EDGE_H_KEY);
       _lineupClearWidthOverride(panel);
@@ -761,6 +731,7 @@ function _bigMigrateOnce() {
       [
         BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY, BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY,
         SMALL_LAYOUT_RESIZE_STORAGE_KEY,
+        SMALL_LAYOUT_COLUMNS_KEY,
         LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
       ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
     }
@@ -1228,6 +1199,29 @@ function ensureBigPanelHandles() {
         });
       });
     };
+
+    // 연동 모드는 패널 내부 엣지 대신 두 패널 사이 간격 전체를 경계로 사용한다.
+    if (!col.querySelector(':scope > .lp-big-height-resize')) {
+      const handle = document.createElement('div');
+      handle.className = 'lp-big-height-resize';
+      handle.setAttribute('aria-hidden', 'true');
+      handle.title = '드래그로 높이 조절 · 더블클릭으로 초기화';
+      handle.addEventListener('pointerdown', e => startBigPanelHeightDrag(e, col, 'chatBottom'));
+      handle.addEventListener('dblclick', resetAll);
+      col.appendChild(handle);
+      const updatePosition = () => {
+        const rect = getDisplayLayoutRect(col);
+        const chat = getDisplayLayoutRect(chatPanel);
+        const stat = getDisplayLayoutRect(statPanel);
+        handle.style.top = `${(chat.bottom + stat.top) / 2 - rect.top}px`;
+      };
+      if (typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(updatePosition);
+        [col, chatPanel, statPanel].forEach(panel => observer.observe(panel));
+      } else window.addEventListener('resize', updatePosition);
+      document.addEventListener('page:activated', () => requestAnimationFrame(updatePosition));
+      requestAnimationFrame(updatePosition);
+    }
 
     // ON 모드 전용: lp-col 왼쪽 엣지 (공유 너비)
     if (!col.querySelector(':scope > .lp-big-col-left-handle')) {
@@ -1709,11 +1703,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof ResizeObserver === 'function') {
     const _onLineupPanelResize = (() => {
       let timer = null;
+      const isDragging = () => document.body.matches(
+        '.lp-lineup-resizing, .lp-lineup-w-resizing, .lp-lineup-h-resizing'
+      );
       return () => {
-        if (document.body.classList.contains('lp-lineup-w-resizing') ||
-            document.body.classList.contains('lp-lineup-h-resizing')) return;
+        // 드래그 전 예약된 작업까지 취소하고, 드래그 종료 경로에서 최종 이름을 재배치한다.
         clearTimeout(timer);
+        if (isDragging()) return;
         timer = setTimeout(() => {
+          // 크기가 아직 변하지 않은 드래그 시작 직후에도 예약 작업이 실행되지 않게 한다.
+          if (isDragging()) return;
           applyStoredLineupEdgeOverrides();
           window.fitLineupNamePills?.();
         }, 150);
@@ -1769,6 +1768,7 @@ window.resetAllLayoutSizes = function resetAllLayoutSizes() {
     BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY,
     BIG_LAYOUT_MIGRATED_KEY,
     SMALL_LAYOUT_RESIZE_STORAGE_KEY,
+    SMALL_LAYOUT_COLUMNS_KEY,
     SMALL_BENCH_HEIGHT_KEY,
     LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
   ].forEach(k => { try { localStorage.removeItem(k); } catch {} });

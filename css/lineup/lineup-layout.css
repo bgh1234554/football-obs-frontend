@@ -27,7 +27,15 @@
    1.45 → 1.55 (벤치 +)/ 1 → 0.95 (부상 -). 부상은 보통 3-5명이라 줄어들어도 영향 적음. */
 .layout-small .lp-col-bench .lp-bench  { flex: 1.62; }
 .layout-small .lp-col-bench .lp-injury { flex: 0.88; }
-.layout-small .lp-col-bench { position: relative; }
+.layout-small .lp-col-bench {
+  position: relative;
+  aspect-ratio: auto;
+  min-width: 0;
+  flex: 1 1 0;
+}
+.layout-small.lp-small-columns-custom .lp-col-bench {
+  flex: 0 0 var(--lp-small-bench-width);
+}
 .lp-small-bench-height-resize,
 .lp-small-stats-height-resize {
   position: absolute;
@@ -70,6 +78,7 @@ body.lp-small-stats-height-resizing * {
 /* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
    컬럼 = 피치 가득 채움 → 옆에 빈 공간 안 생김. */
 .layout-small .lp-lineup-s {
+  position: relative;
   flex: 0 0 auto;
   height: 100%;
   aspect-ratio: 62 / 105;
@@ -87,7 +96,8 @@ body.lp-small-stats-height-resizing * {
   flex: 0 0 var(--lp-small-chat-width);
 }
 
-.layout-small .lp-small-col-resize {
+.layout-small .lp-small-col-resize,
+.layout-small .lp-small-col-resize-middle {
   position: absolute;
   top: 0;
   right: -6px;
@@ -98,8 +108,7 @@ body.lp-small-stats-height-resizing * {
   touch-action: none;
   background: transparent;
 }
-/* 맨 오른쪽(팬 반응) 칼럼 좌측 경계 핸들 — events-stat 쪽과 동일한 좌/우 비율을
-   공유하므로(가운데 라인업/벤치는 고정) 위치만 반대쪽(left)이고 로직은 완전히 동일. */
+/* Right boundary adjusts bench/chat widths independently. */
 .layout-small .lp-small-col-resize-end {
   position: absolute;
   top: 0;
@@ -159,6 +168,8 @@ body.lp-small-resizing * {
    display:none 대신 opacity:0을 사용 — 레이아웃 흐름에서 빠지지 않아 스탯 패널이 그
    자리를 차지하러 늘어나지 않는다. */
 body.no-fan-reaction .layout-big .lp-chat-big,
+body.no-big-lineup .layout-big .lp-lineup,
+body.no-big-info .layout-big .lp-stat,
 body.no-fan-reaction .layout-small .lp-cam-chat {
   opacity: 0;
   pointer-events: none;
@@ -184,13 +195,15 @@ body.no-fan-reaction .layout-small .lp-cam-chat {
 /* 라인업 우상단 resize 핸들 — 마우스 드래그로 라인업 크기 조정.
    .layout-big .lp-lineup 내부에만 출현 (작은 캠 페이지/모바일에서는 미생성). */
 .lp-lineup-resize {
+  --lp-lineup-corner-size: 32px;
   position: absolute;
   top: 0;
   right: 0;
-  width: 22px;
-  height: 22px;
+  width: var(--lp-lineup-corner-size);
+  height: var(--lp-lineup-corner-size);
   cursor: nesw-resize;
-  z-index: 10;
+  z-index: 11;
+  touch-action: none;
   border-radius: 0 14px 0 6px;
   background: linear-gradient(225deg,
     rgba(255,255,255,.55) 0%, rgba(255,255,255,.55) 18%,
@@ -343,6 +356,8 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 .layout-big .lp-lineup .dp-lineup-team-name {
   font-size: calc(11px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
+  /* 축소된 한글과 대체 글꼴의 상단 획이 overflow:hidden에 잘리지 않도록 합니다. */
+  line-height: 1.4;
   max-width: calc(150px * var(--lp-node-scale, 1) * var(--lp-team-label-scale, 1));
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -410,7 +425,10 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 /* Iter 11-A후속: .dp-lineup-team-main과 같은 pill 스타일(팀 primary 배경 + number color 글자)로
    통일 — 기존 반투명 검정 + 얇은 accent 테두리는 캠 작음에서 특히 주목도가 떨어진다는 피드백. */
-#benchPanel .dp-side-name {
+#benchPanel .dp-side-name,
+#injuryPanel .dp-side-name,
+[data-injury-cycle-panel] .dp-side-name,
+[data-team-fixtures-panel] .dp-side-name {
   padding: 5px 10px;
   border-radius: 12px;
   background: var(--dp-team-accent, #1d4ed8);
@@ -451,7 +469,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   box-sizing: border-box;
   padding: 2px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(76,217,100,.55);
+  border: 1px solid rgba(var(--control-accent-rgb),.55);
   background: rgba(15,17,22,.96);
   color: #f0f0f0;
   font-size: 11px;
@@ -463,7 +481,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 }
 .dp-coach-inline-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+  box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18);
 }
 
 /* ===== 라인업 패널 ===== */
@@ -533,9 +551,22 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   cursor: ns-resize;
 }
 .lp-big-col-left-handle:hover,
-.lp-big-edge-left:hover,
-.lp-big-chat-edge-bottom:hover,
-.lp-big-stat-edge-top:hover { background: rgba(255,255,255,.18); }
+.lp-big-edge-left:hover { background: rgba(255,255,255,.18); }
+
+/* 캠 작은 메뉴처럼 간격 중앙의 투명한 전체 폭 영역에서 높이를 조절한다. */
+.lp-big-height-resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  transform: translateY(-50%);
+  z-index: 20;
+  cursor: row-resize;
+  touch-action: none;
+}
+.layout-big .lp-col:not(.is-big-linked) > .lp-big-height-resize,
+.layout-big .lp-col.is-big-linked .lp-big-chat-edge-bottom,
+.layout-big .lp-col.is-big-linked .lp-big-stat-edge-top { display: none; }
 
 /* ON 모드: lp-col에 .is-big-linked → col-left 보임, panel-left 숨김 */
 .layout-big .lp-col.is-big-linked > .lp-big-col-left-handle { display: block; }
@@ -591,11 +622,11 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
   aspect-ratio: auto;
 }
 
-/* 오른쪽 엣지 — 너비 독립 조절 (기존 우상단 핸들 22px 아래에서 시작) */
+/* 오른쪽 엣지 — 우상단 대각선 핸들의 조작 영역 아래에서 시작한다. */
 .lp-lineup-right-edge {
   position: absolute;
   right: 0;
-  top: 22px;
+  top: 32px;
   bottom: 0;
   width: 6px;
   cursor: ew-resize;
@@ -606,12 +637,12 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
 }
 .lp-lineup-right-edge:hover { background: rgba(255,255,255,.18); }
 
-/* 위쪽 엣지 — 높이 독립 조절 (기존 우상단 핸들 22px 왼쪽까지) */
+/* 위쪽 엣지 — 우상단 대각선 핸들의 조작 영역을 비워 둔다. */
 .lp-lineup-top-edge {
   position: absolute;
   top: 0;
   left: 0;
-  right: 22px;
+  right: 32px;
   height: 6px;
   cursor: ns-resize;
   z-index: 10;

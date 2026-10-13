@@ -395,14 +395,12 @@ const LP_RATING_COLOR_DEFAULTS = {
 
 /**
  * 사용자 설정값 우선, 없으면 기본 팔레트로 폴백.
- * greenscreen 모드 ON일 때 초록 계열 평점(7.0~7.9 default)은 항상 마젠타로 고정 치환 —
- * 'strong' 강제 (사용자가 강도를 파랑/청록으로 설정했더라도 평점만은 다른 구간(8.0~8.9 시안,
- * 9.0~9.4 파랑)과 충돌하지 않도록 마젠타 영역에 가둠).
+ * greenscreen 모드 ON일 때 초록 계열 평점은 사용자 크로마키 안전도에 따라 치환한다.
  */
 function lpGetRatingColor(key) {
   const fromSetting = (typeof getSetting === 'function') ? getSetting(key) : null;
   const raw = fromSetting || LP_RATING_COLOR_DEFAULTS[key] || '#666';
-  return (typeof chromaSafe === 'function') ? chromaSafe(raw, 'strong') : raw;
+  return (typeof chromaSafe === 'function') ? chromaSafe(raw) : raw;
 }
 
 /**

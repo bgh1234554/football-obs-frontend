@@ -8,6 +8,22 @@
 const SETTINGS_STORAGE_KEY = 'obs.settings.v3';
 const SETTINGS_LEGACY_STORAGE_KEYS = ['obs.settings.v2'];
 
+// 원래 오버레이 색을 보관하고 그린스크린 안전도 변경 시 함께 변환한다.
+const OVERLAY_CHROMA_COLORS = {
+  '--overlay-green': '#22c55e',
+  '--overlay-label-bg': 'rgba(34,197,94,.30)',
+  '--overlay-label-text': '#bbf7d0',
+  '--overlay-in-text': '#7cfc8e',
+  '--overlay-in-bg': 'rgba(124,252,142,.18)',
+  '--overlay-node-in-bg': 'rgba(21,83,52,.95)',
+  '--overlay-node-in-text': '#33c771',
+  '--overlay-timeline-bg': 'rgba(34,197,94,.12)',
+  '--overlay-timeline-border': 'rgba(34,197,94,.32)',
+  '--overlay-timeline-hover-bg': 'rgba(34,197,94,.22)',
+  '--overlay-timeline-hover-border': 'rgba(34,197,94,.55)',
+  '--overlay-timeline-glyph': '#4ade80',
+};
+
 const SETTINGS_DEFAULTS = {
   teamName: 'long',   // 라인업 chip + 벤치/부상 컬럼 헤더의 팀명 표시 (default 풀네임)
   lineup: 'short',
@@ -34,6 +50,8 @@ const SETTINGS_DEFAULTS = {
   // '메인에 표시' 버튼 클릭 시 자동 이동할 페이지: 'big'(캠 큼) / 'small'(캠 작음 = /detail).
   mainPage: 'big',
   fanReaction: 'on',
+  bigLineupVisible: 'on',
+  bigInfoVisible: 'on',
   // 캠 큰 패널 자동 전환 (stat-cycle.js). off='off', on='on' 토글.
   statCycleAuto: 'on',
   // 자동 전환(statCycleAuto) 순서에 각 패널을 포함시킬지 per-panel 토글 (stat-cycle.js).
@@ -42,9 +60,11 @@ const SETTINGS_DEFAULTS = {
   statCycleModeStats: 'on',
   statCycleModeEvents: 'on',
   statCycleModeHth: 'on',
+  statCycleModeTeamFixtures: 'on',
   statCycleModeBenchHome: 'on',
   statCycleModeBenchAway: 'on',
   statCycleModeMatchInfo: 'on',
+  statCycleModeInjuries: 'on',
   // 경기 스탯 패널 자동 페이지 전환 (Iter 5-2). off='off', on='on' 토글 + 간격 (초 단위, 0.5 단위).
   statsAutoSwipe: 'on',
   statsAutoSwipeSec: 10,
@@ -92,6 +112,11 @@ const SETTINGS_DEFAULTS = {
   ratingColor95:        '#7f1d6d',  // ≥ 9.5
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
+  bgTeamDirection: 'off',
+  bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
+  matchInfoLabelColor: '#60A5FA', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
+  matchInfoLabelColorRev: 1, // 이전 주황 기본값을 1회만 새 기본색으로 이전.
+  panelColor: '#0b1220',
   bgImageUrl:     '',        // 외부 URL — localStorage에 영구 저장
   bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
   // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
@@ -113,12 +138,9 @@ const SETTINGS_DEFAULTS = {
   alphaTransparencyMode: 'transparency',
   // 그리기 도구 크기 기본값 100% -> 150% 변경 마이그레이션 완료 표시. 이전 기본값(100)이 저장된 브라우저를 1회만 150으로 올린다.
   tacticsDrawtoolsScaleRev: 'v150',
-  // 그린스크린 모드 (Iter 5-7). ON시 모든 초록 계열(60~170° hue)을 자동 치환.
+  // 그린스크린 모드. ON시 초록 계열 중 OBS 기본 유사성의 CbCr 거리 기준에 해당하는 색만 치환.
   // OBS 크로마키와 충돌 방지용.
-  // 카테고리별 분리 정책:
-  //   - 이벤트 라벨/막대 (.ev-label-green/.ev-bar-green): 항상 마젠타 (가장 안전 + 평점/팀컬러와 충돌 X)
-  //   - 라인업 교체 IN 마커 (.dp-sub-marker.is-in): 항상 파랑 (자연스럽고 OUT의 빨강과 보색 대비)
-  //   - 팀 컬러 / PK 색 / 평점 / 피치 / 보드 등: greenscreenIntensity 설정으로 사용자가 강도 선택
+  // 팀 컬러·평점·교체 표시·이벤트·전술판은 같은 greenscreenIntensity를 따른다.
   greenscreen:    'off',
   // 그린스크린 치환 강도 (Iter 5-7).
   // 안전 순서 (가장 안전 → 가장 위험): strong > moderate > mild > natural
@@ -126,10 +148,8 @@ const SETTINGS_DEFAULTS = {
   //   moderate → 파랑 (중립적, 차분)
   //   mild     → 어두운 청록 (그린 느낌 유지, 자연스러움 — 기본값)
   //   natural  → 어두운 초록 (가장 자연스러움. chromakey 위험 — strict 키 설정엔 키잉될 수 있음)
-  // 적용 범위: 팀 컬러 / PK 색 / 피치 / 보드 등.
-  // 평점은 항상 마젠타 고정(lineup-events.js), 이벤트 라벨/막대는 항상 마젠타 고정(CSS),
-  // 교체 IN 마커는 항상 파랑 고정(CSS).
-  greenscreenIntensity: 'mild',
+  // 적용 범위: 팀 컬러 / PK / 평점 / 이벤트 / 교체 표시 / 피치 / 경기 정보 항목명.
+  greenscreenIntensity: 'purple',
   // 캠 큰 우측 패널 연결. on=두 패널 합계가 칼럼 높이를 꽉 채움, off=각 패널 독립 리사이즈.
   bigPanelLinked: 'on',
 };
@@ -364,17 +384,19 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 // 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
+  'bigLineupVisible', 'bigInfoVisible',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
   'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
-  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth',
-  'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo',
+  'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth', 'statCycleModeTeamFixtures',
+  'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo', 'statCycleModeInjuries',
   'popoutModals',
 ]);
 
 function isValidSetting(category, value) {
+  if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical'].includes(value);
   if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
-  if (category === 'bgColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
+  if (category === 'bgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgImageUrl') return typeof value === 'string';     // 빈 문자열 허용 (= 배경 없음)
   if (category === 'bgImageData') return typeof value === 'string';    // 빈 문자열 또는 data URL
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
@@ -384,9 +406,10 @@ function isValidSetting(category, value) {
   if (category === 'lineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
   if (category === 'statCycleAuto') return value === 'on' || value === 'off';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
-  if (category === 'greenscreenIntensity') return ['strong','moderate','mild','natural'].includes(value);
+  if (category === 'greenscreenIntensity') return ['strong','purple','moderate','mild','natural'].includes(value);
   if (category === 'alphaTransparencyMode') return value === 'transparency';
   if (category === 'tacticsDrawtoolsScaleRev') return value === 'v150';
+  if (category === 'matchInfoLabelColorRev') return value === SETTINGS_DEFAULTS.matchInfoLabelColorRev;
   if (category === 'tacticsFullscreenAlign') return ['left', 'center', 'right'].includes(value);
   if (category === 'tacticsTouchLayout') return ['auto', 'on', 'off'].includes(value);
   if (ON_OFF_TOGGLE_CATEGORIES.has(category)) {
@@ -422,7 +445,7 @@ function isValidSetting(category, value) {
   if (category === 'tacticsDrawtoolsScale') {
     return Number.isFinite(value) && value >= TACTICS_DRAWTOOLS_SCALE_MIN && value <= TACTICS_DRAWTOOLS_SCALE_MAX;
   }
-  if (category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
+  if (category === 'bgAlpha' || category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
     return Number.isFinite(value) && value >= 0 && value <= 100;
   }
   return value === 'short' || value === 'long';
@@ -462,6 +485,12 @@ function loadSettings() {
     const shouldMigrateAlphaTransparency =
       parsed.alphaTransparencyMode !== SETTINGS_DEFAULTS.alphaTransparencyMode;
     let normalizedSettings = false;
+    // 이전 ON/OFF와 방향 설정을 하나의 선택값으로 합친다.
+    if (parsed.bgTeamColors === 'on' || parsed.bgTeamColors === 'off') {
+      parsed.bgTeamDirection = parsed.bgTeamColors === 'on'
+        ? (parsed.bgTeamDirection === 'vertical' ? 'vertical' : 'horizontal') : 'off';
+      normalizedSettings = true;
+    }
 
     // 2) 카테고리별 적용 + legacy 마이그레이션 보정.
     Object.keys(SETTINGS_DEFAULTS).forEach(category => {
@@ -494,6 +523,15 @@ function loadSettings() {
         settingsState.tacticsDrawtoolsScale = SETTINGS_DEFAULTS.tacticsDrawtoolsScale;
       }
       settingsState.tacticsDrawtoolsScaleRev = SETTINGS_DEFAULTS.tacticsDrawtoolsScaleRev;
+      normalizedSettings = true;
+    }
+
+    // 이전 기본색만 1회 이전한다. 이후 사용자가 주황색을 선택해도 다시 바꾸지 않는다.
+    if (parsed.matchInfoLabelColorRev !== SETTINGS_DEFAULTS.matchInfoLabelColorRev) {
+      if (String(parsed.matchInfoLabelColor || '').toLowerCase() === '#ff9900') {
+        settingsState.matchInfoLabelColor = SETTINGS_DEFAULTS.matchInfoLabelColor;
+      }
+      settingsState.matchInfoLabelColorRev = SETTINGS_DEFAULTS.matchInfoLabelColorRev;
       normalizedSettings = true;
     }
 
@@ -620,9 +658,11 @@ function setSetting(category, value) {
  * 자체는 메인 창에 동기화돼도 실제 화면(CSS 변수·재렌더)엔 반영되지 않는 문제가 있었다.
  */
 function applySettingSideEffects(category) {
+  if (category === 'matchInfoLabelColor') applyLayoutSettings();
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
+    || category === 'bigLineupVisible' || category === 'bigInfoVisible'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
     || category === 'lineupShowRating' || category === 'lineupShowSubTime'
     || category === 'lineupShowNumber') {
@@ -630,6 +670,9 @@ function applySettingSideEffects(category) {
   }
   // Iter 5-7: 배경 색/이미지 변경 → 즉시 :root CSS 변수 갱신.
   if (category === 'bgColor'
+    || category === 'bgTeamDirection'
+    || category === 'panelColor'
+    || category === 'bgAlpha'
     || category === 'bgImageUrl'
     || category === 'bgImageData'
     || category === 'panelAlpha'
@@ -643,6 +686,7 @@ function applySettingSideEffects(category) {
   // Iter 5-7: 그린스크린 토글 또는 강도 변경 → 모든 색상(피치 톤/배경/팀컬러/평점) 일괄 재적용.
   if (category === 'greenscreen' || category === 'greenscreenIntensity') {
     applyLayoutSettings();
+    ['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].forEach(syncSliderUi);
     if (typeof render === 'function') render();
     // theme:colors-changed로 라인업/스탯 패널이 인라인 컬러를 다시 그리도록 신호.
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
@@ -756,6 +800,17 @@ function applyLayoutSettings() {
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
     || LINEUP_PITCH_TONE_STYLES[SETTINGS_DEFAULTS.lineupPitchTone];
   const root = document.documentElement;
+  Object.entries(OVERLAY_CHROMA_COLORS).forEach(([variable, color]) => {
+    const isText = variable.endsWith('-text') || variable.endsWith('-glyph');
+    const safeColor = variable === '--overlay-in-text' && isGreenscreenOn() && getGreenscreenIntensity() === 'natural'
+      ? '#7dd3fc'
+      : (isText ? chromaSafeText(color) : chromaSafe(color));
+    root.style.setProperty(variable, safeColor);
+  });
+  if (isGreenscreenOn() && getGreenscreenIntensity() === 'purple') {
+    root.style.setProperty('--overlay-node-in-text', '#d8b4fe');
+  }
+  root.style.setProperty('--mi-label-color', chromaSafeText(getSetting('matchInfoLabelColor')));
   root.style.setProperty('--lp-lineup-scale', String(scale));
   root.style.setProperty('--lp-name-base-size', `${nameSize}px`);
   root.style.setProperty('--ev-name-base-size', `${eventSize}px`);
@@ -805,7 +860,33 @@ function applyLayoutSettings() {
   // Iter 5-3: per-feature 토글 → body 클래스. CSS에서 .layout-big에서만 적용해 큰 캠 숨김.
   const body = document.body;
   if (body) {
+    const panels = [
+      ['bigLineupVisible', '.layout-big .lp-lineup'],
+      ['bigInfoVisible', '.layout-big .lp-stat'],
+    ].map(([category, selector]) => ({ category, panel: document.querySelector(selector), disabled: getSetting(category) !== 'on' }));
+    panels.forEach(({ category, panel, disabled }) => {
+      if (!panel) return;
+      if (disabled && panel.contains(document.activeElement)) {
+        const candidates = isSettingsOpen()
+          ? document.querySelectorAll(`[data-settings-cat="${category}"], #settingsBackdrop button`)
+          : document.querySelectorAll('#tabsBar');
+        const target = Array.from(candidates).find(el => !el.disabled && !el.closest('[inert]')
+          && !panels.some(item => item.disabled && item.panel?.contains(el))
+          && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+        if (target) target.focus({ preventScroll: true });
+        else {
+          const tabindex = body.getAttribute('tabindex');
+          body.tabIndex = -1;
+          body.focus({ preventScroll: true });
+          if (tabindex === null) body.removeAttribute('tabindex');
+          else body.setAttribute('tabindex', tabindex);
+        }
+      }
+      panel.inert = disabled;
+    });
     body.classList.toggle('no-fan-reaction', getSetting('fanReaction') !== 'on');
+    body.classList.toggle('no-big-lineup', getSetting('bigLineupVisible') !== 'on');
+    body.classList.toggle('no-big-info', getSetting('bigInfoVisible') !== 'on');
     body.classList.toggle('no-lineup-goals',   getSetting('lineupShowGoals')   !== 'on');
     body.classList.toggle('no-lineup-cards',   getSetting('lineupShowCards')   !== 'on');
     body.classList.toggle('no-lineup-rating',  getSetting('lineupShowRating')  !== 'on');
@@ -823,13 +904,29 @@ function applyLayoutSettings() {
   }
 }
 
+/** 사용자가 초록색 단색 배경을 확정했을 때만 그린스크린 모드 사용을 권장한다. */
+function commitBackgroundColor(value, recommendGreenscreen = true) {
+  if (!setSetting('bgColor', value)) return false;
+  if (!recommendGreenscreen || getSetting('greenscreen') === 'on' || getSetting('bgTeamDirection') !== 'off'
+    || String(getSetting('bgImageUrl') || '').trim()
+    || String(getSetting('bgImageData') || '').trim()
+    || Number(getSetting('bgAlpha')) >= 100) return true;
+  const [r, g, b] = [1, 3, 5].map(start => parseInt(value.slice(start, start + 2), 16));
+  // #00ff00 근처의 밝고 선명한 초록색만 감지하며, 어두운 초록색과 다른 색상은 제외한다.
+  if (r > 64 || g < 200 || b > 64) return true;
+  if (confirm('단색 초록색 배경에 크로마키를 사용할 때는 그린스크린 모드 ON을 권장합니다.\n\n'
+    + '그린스크린 모드를 켜면 초록 계열의 팀컬러·평점·교체 표시·이벤트·전술판 색상을 크로마키 제거에 적합한 색상으로 치환합니다.\n'
+    + '패널·피치·전술판 투명도는 0%로 고정되며, 직접 선택한 배경색은 유지됩니다.\n\n'
+    + '그린스크린 모드를 켤까요?')) setSetting('greenscreen', 'on');
+  return true;
+}
+
 /**
  * 배경 색 + 배경 이미지를 :root에 CSS 변수로 반영.
  * - bgColor: greenscreen ON이어도 그대로 유지 (크로마키용 단색 배경 보호)
- * - bgImageUrl 우선, 없으면 bgImageData (file 첨부 base64)
- * - 둘 다 비어있으면 이미지 없이 색만 적용
+ * - 설정 표시 순서대로 URL → 파일 첨부 → 팀 컬러 → 배경 색 우선 적용
  */
-function applyBackgroundSettings() {
+function applyPageBackground() {
   const root = document.documentElement;
   const bgColor = getSetting('bgColor') || '#111827';
   const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl') || '');
@@ -837,16 +934,36 @@ function applyBackgroundSettings() {
   const imgSrc = url || data;
 
   root.style.setProperty('--bg-ui', bgColor);
-  if (imgSrc) {
+  const bgOpacity = (100 - clampPercent(getSetting('bgAlpha'), SETTINGS_DEFAULTS.bgAlpha)) / 100;
+  const bgRgb = [1, 3, 5].map(start => parseInt(bgColor.slice(start, start + 2), 16));
+  root.style.setProperty('--page-bg', `rgba(${bgRgb.join(', ')}, ${bgOpacity})`);
+  if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
+    const color = value => {
+      const rgb = parseAnyColor(chromaSafe(value));
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${bgOpacity})`;
+    };
+    const direction = getSetting('bgTeamDirection') === 'vertical' ? 'to bottom' : 'to right';
+    root.style.setProperty('--page-bg', 'transparent');
+    root.style.setProperty('--bg-image', `linear-gradient(${direction}, ${color(state.colors.homeBg)}, ${color(state.colors.awayBg)})`);
+  } else if (imgSrc) {
     // CSS url() 안에 큰따옴표가 들어가면 깨질 수 있어 escape.
     const safeSrc = imgSrc.replace(/"/g, '\\"');
     root.style.setProperty('--bg-image', `url("${safeSrc}")`);
   } else {
     root.style.setProperty('--bg-image', 'none');
   }
+}
+
+function applyBackgroundSettings() {
+  applyPageBackground();
+  const root = document.documentElement;
+  const panelRgb = parseAnyColor(chromaSafe(getSetting('panelColor')));
+  root.style.setProperty('--info-panel-rgb', `${panelRgb.r}, ${panelRgb.g}, ${panelRgb.b}`);
+  const forceOpaquePanels = getSetting('greenscreen') === 'on';
 
   // 패널 투명도 — UI는 0=불투명, 100=완전 투명. CSS alpha에는 반전된 opacity를 넣는다.
-  const panelTransparencyPct = clampPercent(getSetting('panelAlpha'), SETTINGS_DEFAULTS.panelAlpha);
+  const panelTransparencyPct = forceOpaquePanels
+    ? 0 : clampPercent(getSetting('panelAlpha'), SETTINGS_DEFAULTS.panelAlpha);
   const alpha = (100 - panelTransparencyPct) / 100;
   root.style.setProperty('--panel-alpha', String(alpha));
   root.style.setProperty('--api-widget-hover-alpha', String(0.22 * alpha));
@@ -856,12 +973,12 @@ function applyBackgroundSettings() {
   }
 
   // 라인업 투명도 — 라인업 칼럼 배경과 피치 배경/라인 레이어가 이 값을 공유한다.
-  const pitchTransparencyPct = clampPercent(getSetting('pitchAlpha'), SETTINGS_DEFAULTS.pitchAlpha);
+  const pitchTransparencyPct = forceOpaquePanels ? 0 : clampPercent(getSetting('pitchAlpha'), SETTINGS_DEFAULTS.pitchAlpha);
   const pitchAlpha = (100 - pitchTransparencyPct) / 100;
   root.style.setProperty('--lp-pitch-alpha', String(pitchAlpha));
 
   // 전술판 투명도 — 피치 + 우측 타임라인/이벤트 패널 배경을 별도 조절.
-  const tacticsTransparencyPct = clampPercent(getSetting('tacticsAlpha'), SETTINGS_DEFAULTS.tacticsAlpha);
+  const tacticsTransparencyPct = forceOpaquePanels ? 0 : clampPercent(getSetting('tacticsAlpha'), SETTINGS_DEFAULTS.tacticsAlpha);
   const tacticsAlpha = (100 - tacticsTransparencyPct) / 100;
   root.style.setProperty('--td-pitch-alpha', String(tacticsAlpha));
   if (body) {
@@ -876,7 +993,10 @@ function applyBackgroundSettings() {
 function syncSliderUi(category) {
   const input = document.querySelector(`input[data-settings-slider="${category}"]`);
   if (!input) return;
-  const value = Number(getSetting(category));
+  const isPanelTransparency = ['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].includes(category);
+  const forceOpaquePanel = isPanelTransparency && getSetting('greenscreen') === 'on';
+  const value = forceOpaquePanel ? 0 : Number(getSetting(category));
+  if (isPanelTransparency) input.disabled = forceOpaquePanel;
   if (input.value !== String(value)) input.value = String(value);
   const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
     || document.querySelector(`[data-settings-slider-value="${category}"]`);
@@ -898,7 +1018,88 @@ function syncColorUi(category) {
   const input = document.querySelector(`input[data-settings-color="${category}"]`);
   if (!input) return;
   const value = String(getSetting(category) || '').toLowerCase();
+  if (category === 'panelColor') {
+    const preset = document.getElementById('panelColorPreset');
+    if (preset) preset.value = [...preset.options].some(option => option.value === value) ? value : 'custom';
+  }
   if (HEX_COLOR_RE.test(value) && input.value.toLowerCase() !== value) input.value = value;
+  const editor = document.querySelector(`[data-color-editor="${category}"]`);
+  if (editor && HEX_COLOR_RE.test(value)) {
+    editor.querySelector('[data-color-hex]').value = value;
+    editor.querySelectorAll('[data-color-channel]').forEach(channel => {
+      const start = 1 + Number(channel.dataset.colorChannel) * 2;
+      channel.value = parseInt(value.slice(start, start + 2), 16);
+    });
+  }
+}
+
+function initSettingsColorEditors() {
+  document.querySelectorAll('input[data-settings-color]').forEach(swatch => {
+    const category = swatch.dataset.settingsColor;
+    if (category === 'bgColor' || swatch.closest('[data-color-editor]')) return;
+    const label = swatch.closest('label');
+    const title = swatch.getAttribute('aria-label') || label.textContent.trim();
+    swatch.setAttribute('aria-label', title);
+    const editor = document.createElement('div');
+    editor.className = 'sp-color-editor';
+    editor.dataset.colorEditor = category;
+    label.replaceWith(editor);
+    editor.append(label);
+    const hex = document.createElement('input');
+    hex.type = 'text';
+    hex.className = 'sp-text-input sp-color-code';
+    hex.dataset.colorHex = '';
+    hex.maxLength = 7;
+    hex.spellcheck = false;
+    hex.setAttribute('aria-label', `${title} HEX`);
+    const rgb = document.createElement('div');
+    rgb.className = 'sp-color-rgb';
+    rgb.hidden = true;
+    ['R', 'G', 'B'].forEach((name, index) => {
+      const channelLabel = document.createElement('label');
+      channelLabel.append(name);
+      const channel = document.createElement('input');
+      Object.assign(channel, { type: 'number', min: '0', max: '255', step: '1', inputMode: 'numeric' });
+      channel.dataset.colorChannel = index;
+      channel.setAttribute('aria-label', `${title} ${name}`);
+      channelLabel.append(channel);
+      rgb.append(channelLabel);
+    });
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'sp-color-format-btn';
+    toggle.innerHTML = document.getElementById('settingsBgColorFormat').innerHTML;
+    const updateToggle = () => {
+      toggle.title = rgb.hidden ? 'RGB 입력으로 전환' : 'HEX 입력으로 전환';
+      toggle.setAttribute('aria-label', `${title} ${toggle.title}`);
+    };
+    editor.append(hex, rgb, toggle);
+    updateToggle();
+    toggle.addEventListener('click', () => {
+      rgb.hidden = !rgb.hidden;
+      hex.hidden = !rgb.hidden;
+      editor.classList.toggle('is-rgb', !rgb.hidden);
+      syncColorUi(category);
+      updateToggle();
+      (rgb.hidden ? hex : rgb.querySelector('input')).focus();
+    });
+    hex.addEventListener('change', () => {
+      const value = hex.value.trim().toLowerCase();
+      if (HEX_COLOR_RE.test(value)) setSetting(category, value);
+      syncColorUi(category);
+    });
+    const commitRgb = () => {
+      const channels = [...rgb.querySelectorAll('input')];
+      if (channels.some(channel => !channel.value || !channel.validity.valid)) return false;
+      setSetting(category, '#' + channels.map(channel => Number(channel.value).toString(16).padStart(2, '0')).join(''));
+      return true;
+    };
+    rgb.querySelectorAll('input').forEach(channel => {
+      channel.addEventListener('input', commitRgb);
+      channel.addEventListener('change', () => { if (!commitRgb()) syncColorUi(category); });
+    });
+    syncColorUi(category);
+  });
 }
 
 /** 텍스트 input(<input type="text">) UI 동기화. bgImageUrl 등에 사용. */
@@ -906,6 +1107,12 @@ function syncTextUi(category) {
   const input = document.querySelector(`input[data-settings-text="${category}"]`);
   if (!input) return;
   const value = String(getSetting(category) || '');
+  if (category === 'bgColor' && HEX_COLOR_RE.test(value)) {
+    document.querySelectorAll('input[data-bg-rgb]').forEach(channelInput => {
+      const start = 1 + Number(channelInput.dataset.bgRgb) * 2;
+      channelInput.value = parseInt(value.slice(start, start + 2), 16);
+    });
+  }
   if (input.value !== value) input.value = value;
 }
 
@@ -1372,6 +1579,15 @@ function initSettingsTabs() {
  * loadSettings는 모듈 로드 시 즉시 한 번 실행되고, 여기서는 UI만 와이어업한다.
  */
 function initSettingsPopup() {
+  initSettingsColorEditors();
+  document.getElementById('panelColorPreset')?.addEventListener('change', event => {
+    const value = event.currentTarget.value;
+    if (value === 'custom') {
+      const editor = document.querySelector('[data-color-editor="panelColor"]');
+      const input = editor.querySelector('[data-color-hex]');
+      (input.hidden ? editor.querySelector('[data-color-channel]') : input).focus();
+    } else setSetting('panelColor', value);
+  });
   // loadSettings는 모듈 로드 시 이미 한 번 실행됨 (아래 즉시 호출). 여기서는 UI 와이어업만.
   const gearBtn = document.getElementById('settingsGearBtn');
   const closeBtn = document.getElementById('settingsCloseBtn');
@@ -1493,7 +1709,10 @@ function initSettingsPopup() {
     // input 이벤트는 무시 — 드래그마다 commit하면 patch 재계산 + render 트리거로 lag 발생.
     input.addEventListener('change', () => {
       const v = String(input.value || '').toLowerCase();
-      if (HEX_COLOR_RE.test(v)) setSetting(category, v);
+      if (HEX_COLOR_RE.test(v)) {
+        if (category === 'bgColor') commitBackgroundColor(v);
+        else setSetting(category, v);
+      }
     });
   });
 
@@ -1503,6 +1722,11 @@ function initSettingsPopup() {
     syncTextUi(category);
     input.addEventListener('change', () => {
       const rawValue = String(input.value || '').trim();
+      if (category === 'bgColor') {
+        if (HEX_COLOR_RE.test(rawValue)) commitBackgroundColor(rawValue.toLowerCase());
+        syncTextUi(category);
+        return;
+      }
       if (category === 'bgImageUrl'
         && rawValue
         && isLikelyLocalFilePath(rawValue)
@@ -1515,6 +1739,31 @@ function initSettingsPopup() {
         : rawValue;
       setSetting(category, nextValue);
     });
+  });
+
+  document.getElementById('settingsBgColorFormat')?.addEventListener('click', event => {
+    const input = document.querySelector('input[data-settings-text="bgColor"]');
+    if (!input) return;
+    const useRgb = input.dataset.colorFormat !== 'rgb';
+    input.dataset.colorFormat = useRgb ? 'rgb' : 'hex';
+    input.hidden = useRgb;
+    document.getElementById('settingsBgRgb').hidden = !useRgb;
+    const label = useRgb ? 'HEX 입력으로 전환' : 'RGB 입력으로 전환';
+    event.currentTarget.setAttribute('aria-label', label);
+    event.currentTarget.title = label;
+    syncTextUi('bgColor');
+    (useRgb ? document.querySelector('input[data-bg-rgb="0"]') : input).focus();
+  });
+
+  document.querySelectorAll('input[data-bg-rgb]').forEach(input => {
+    const commit = (recommendGreenscreen = false) => {
+      const inputs = [...document.querySelectorAll('input[data-bg-rgb]')];
+      if (inputs.some(channel => channel.value === '' || !channel.validity.valid)) return false;
+      const channels = inputs.map(channel => Number(channel.value));
+      return commitBackgroundColor('#' + channels.map(channel => channel.toString(16).padStart(2, '0')).join(''), recommendGreenscreen);
+    };
+    input.addEventListener('input', () => commit(false));
+    input.addEventListener('change', () => { if (!commit(true)) syncTextUi('bgColor'); });
   });
 
   // select 드롭다운 (greenscreenIntensity 등). change에 즉시 commit.
@@ -1573,6 +1822,12 @@ function initSettingsPopup() {
   if (ratingColorsResetBtn) {
     ratingColorsResetBtn.addEventListener('click', resetRatingColorsToDefaults);
   }
+  document.getElementById('matchInfoLabelColorResetBtn')?.addEventListener('click', () => {
+    setSetting('matchInfoLabelColor', SETTINGS_DEFAULTS.matchInfoLabelColor);
+  });
+  document.getElementById('panelColorResetBtn')?.addEventListener('click', () => {
+    setSetting('panelColor', SETTINGS_DEFAULTS.panelColor);
+  });
 
   if (settingsResetBtn) {
     settingsResetBtn.addEventListener('click', () => {

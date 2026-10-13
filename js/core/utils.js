@@ -460,22 +460,32 @@
   }
 
   /**
-   * 색상이 "초록 계열"인지 판정.
-   * - HSL hue가 60~170° 범위 (노란-초록부터 청록 직전까지)
+   * 기존 초록 계열 중 OBS 기본 유사성(400)에서 제거되는 색상인지 판정.
+   * - HSL hue가 60~170° 범위이며 #00ff00과의 CbCr 거리가 0.4 이하
    * - 채도 ≥ 18% (회색·검정·흰색은 제외)
    * - 명도 5%~95% (순수 흑/백 제외)
    */
   function isGreenLike(input) {
     const rgb = parseAnyColor(input);
     if (!rgb) return false;
+    return isChromaKeyGreen(rgb);
+  }
+
+  function isChromaKeyGreen(rgb) {
     const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    return h >= 60 && h <= 170 && s >= 0.18 && l > 0.05 && l < 0.95;
+    if (!(h >= 60 && h <= 170 && s >= 0.18 && l > 0.05 && l < 0.95)) return false;
+    // OBS의 CbCr 계수로 순수 초록과의 거리를 구한다. 공통 오프셋은 상쇄된다.
+    // 부드러움·스필에 의한 부분 영향까지 포함하면 노란색도 과도하게 치환될 수 있다.
+    const r = rgb.r / 255, g = rgb.g / 255 - 1, b = rgb.b / 255;
+    const cb = -0.100644 * r - 0.338572 * g + 0.439216 * b;
+    const cr = 0.439216 * r - 0.398942 * g - 0.040274 * b;
+    return Math.hypot(cb, cr) <= 0.4;
   }
 
   /**
    * 강도 프리셋별 hue/S/L 매핑 정의 (Iter 5-7).
    * 안전 순서 (가장 안전 → 가장 위험): strong → moderate → mild → natural.
-   * 모든 프리셋은 60~170° 초록을 그대로 두지 않고 다른 영역으로 이동시킨다.
+   * 치환 대상으로 판정된 초록만 다른 영역으로 이동시킨다.
    *
    *   start, end : 입력 hue 60° / 170°에 매핑되는 출력 hue
    *   sScale     : 채도 배율 (1 = 그대로)
@@ -484,6 +494,7 @@
    */
   const CHROMA_SAFE_PRESETS = {
     strong:   { start: 290, end: 330, sScale: 1.00, lDelta:  0.00 },                    // 마젠타/핑크 (default 안전)
+    purple:   { start: 260, end: 285, sScale: 0.95, lDelta:  0.00 },                    // 보라
     moderate: { start: 215, end: 245, sScale: 0.95, lDelta:  0.00 },                    // 파랑/네이비
     mild:     { start: 175, end: 200, sScale: 0.85, lDelta: -0.08 },                    // 어두운 청록
     // 어두운 포레스트 그린.
@@ -495,11 +506,11 @@
     natural:  { start: 140, end: 155, sScale: 0.45, lDelta:  0.00, lCap: 0.22 },
   };
 
-  /** 현재 사용자 설정의 그린스크린 강도. 미설정 시 기본 'moderate'. */
+  /** 현재 사용자 설정의 그린스크린 강도. 미설정 시 기본 'purple'. */
   function getGreenscreenIntensity() {
-    if (typeof getSetting !== 'function') return 'moderate';
+    if (typeof getSetting !== 'function') return 'purple';
     const v = getSetting('greenscreenIntensity');
-    return CHROMA_SAFE_PRESETS[v] ? v : 'moderate';
+    return CHROMA_SAFE_PRESETS[v] ? v : 'purple';
   }
 
   /**
@@ -516,12 +527,12 @@
     const rgb = parseAnyColor(input);
     if (!rgb) return input;
     const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    if (!(h >= 60 && h <= 170 && s >= 0.18 && l > 0.05 && l < 0.95)) return input;
+    if (!isChromaKeyGreen(rgb)) return input;
 
     const intensity = forcedIntensity && CHROMA_SAFE_PRESETS[forcedIntensity]
       ? forcedIntensity
       : getGreenscreenIntensity();
-    const preset = CHROMA_SAFE_PRESETS[intensity] || CHROMA_SAFE_PRESETS.moderate;
+    const preset = CHROMA_SAFE_PRESETS[intensity] || CHROMA_SAFE_PRESETS.purple;
 
     // 60~170° → preset.start~end로 선형 매핑.
     const t = (h - 60) / (170 - 60);   // 0~1
@@ -559,8 +570,79 @@
     return isGreenscreenOn() ? toChromaSafeColor(input, forcedIntensity) : input;
   }
 
+  /** 어두운 초록 프리셋의 글자는 흰색으로 분리해 라벨 안에서도 읽히게 한다. */
+  function chromaSafeText(input) {
+    const color = chromaSafe(input);
+    if (!isGreenscreenOn() || getGreenscreenIntensity() !== 'natural' || !isGreenLike(input)) return color;
+    const rgb = parseAnyColor(color);
+    if (!rgb) return color;
+    return rgb.a < 1 ? `rgba(255, 255, 255, ${rgb.a})` : '#ffffff';
+  }
+
   /** greenscreen ON일 때만 toChromaSafeGradient 적용. 그라디언트 문자열용. */
   function chromaSafeGradient(input, forcedIntensity) {
     return isGreenscreenOn() ? toChromaSafeGradient(input, forcedIntensity) : input;
   }
+
+
+// 배경에 묻히는 색의 제품 기준. WCAG 적합성 기준이 아니라 장식 테두리 표시 조건이다.
+// 낮은 명도 대비 AND 작은 지각 색차일 때만 표시해 선명한 파랑 등의 과잉 테두리를 피한다.
+const TEAM_PANEL_OUTLINE_MAX_CONTRAST = 1.8;
+const TEAM_PANEL_OUTLINE_MAX_DELTA_OK = 0.22;
+
+/** sRGB → Oklab. CSS Color 4의 ΔEOK(유클리드 거리) 계산에 사용한다. */
+function teamPanelOklab(rgb) {
+  const linear = n => { const v = n / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const r = linear(rgb.r), g = linear(rgb.g), b = linear(rgb.b);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+}
+
+function teamPanelColorMetrics(color, background) {
+  const rgb = parseAnyColor(color), bg = parseAnyColor(background);
+  if (!rgb || !bg) return null;
+  // 반투명 팀 색도 배경과 합성한 실제 표시색으로 비교한다.
+  const shown = Object.fromEntries(['r', 'g', 'b'].map(k => [k, rgb[k] * rgb.a + bg[k] * (1 - rgb.a)]));
+  const lab = teamPanelOklab(shown), panelLab = teamPanelOklab(bg);
+  return {
+    contrast: teamColorContrastRatio(`rgb(${Math.round(shown.r)}, ${Math.round(shown.g)}, ${Math.round(shown.b)})`, background),
+    deltaOK: Math.hypot(...lab.map((value, i) => value - panelLab[i])),
+  };
+}
+
+function teamColorBlendsIntoPanel(color, background) {
+  const metrics = teamPanelColorMetrics(color, background);
+  return !!metrics && metrics.contrast < TEAM_PANEL_OUTLINE_MAX_CONTRAST
+    && metrics.deltaOK < TEAM_PANEL_OUTLINE_MAX_DELTA_OK;
+}
+
+/** 투명 패널은 부모 배경과 합성한 실제 표시색을 기준으로 비교한다. */
+function teamPanelBackground(panel) {
+  const layers = [];
+  for (let el = panel; el; el = el.parentElement) {
+    layers.push(getComputedStyle(el).backgroundColor);
+  }
+  let bg = { r: 17, g: 24, b: 39 };
+  for (const color of layers.reverse()) {
+    const rgb = parseAnyColor(color);
+    if (!rgb) continue;
+    const parts = color.match(/[\d.]+/g);
+    const alpha = color.startsWith('rgba') ? Number(parts?.[3] ?? 1) : 1;
+    bg = Object.fromEntries(['r', 'g', 'b'].map(k => [k, Math.round(rgb[k] * alpha + bg[k] * (1 - alpha))]));
+  }
+  return `rgb(${bg.r}, ${bg.g}, ${bg.b})`;
+}
+
+/** 크기와 팀 색을 유지하면서 number color로 내부 테두리만 표시한다. */
+function teamOutlineLowContrast(el, color, numberColor, panelBackground) {
+  el.style.removeProperty('box-shadow');
+  if (!panelBackground || !teamColorBlendsIntoPanel(color, panelBackground)) return;
+  el.style.boxShadow = `inset 0 0 0 0.5px ${numberColor}`;
+}
 

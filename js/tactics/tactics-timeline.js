@@ -206,6 +206,8 @@ function ttRenderMarkers() {
   if (!homeHost || !awayHost) return;
   homeHost.innerHTML = '';
   awayHost.innerHTML = '';
+  // 경기 데이터 전에는 events가 초기값 빈 배열([])이라 홈/원정 목록이 없어 그릴 칩도 없다.
+  if (!tacticsTimelineState.events.home || !tacticsTimelineState.events.away) return;
 
   const slider = document.getElementById('tactics-time-slider');
   const max = tacticsTimelineState.maxElapsed || 90;
@@ -297,7 +299,10 @@ function ttRenderMarkers() {
     else wrap.style.top = '0';
     wrap.title = titleText;
 
-    const glyph = groupKind === 'subst' ? '⇅' : '▮';
+    const redEvent = group.items.find(ev => ev._kind === 'red');
+    const redIcon = String(redEvent?.detail || '').trim().toLowerCase() === 'second yellow card'
+      ? 'cumulative-red' : 'red-card';
+    const glyph = footballIconHtml(groupKind === 'subst' ? 'subst' : redIcon);
     const countBadge = group.items.length > 1 ? `<span class="td-tl-count">×${group.items.length}</span>` : '';
     wrap.innerHTML = `<span class="td-tl-glyph">${glyph}</span>${countBadge}<span class="td-tl-time">${positionLabel}</span>`;
 
@@ -420,9 +425,21 @@ function ttBindFullscreenToggle() {
   const panel = document.getElementById('tactics-timeline-panel');
   if (!panel) return;
 
+  let refitFrame = 0;
+  const refit = () => {
+    cancelAnimationFrame(refitFrame);
+    refitFrame = requestAnimationFrame(() => {
+      const events = panel.querySelector('[data-events-panel]');
+      if (events && typeof window.evRefitPanelRows === 'function') window.evRefitPanelRows(events);
+    });
+  };
+  new ResizeObserver(refit).observe(panel);
+  document.addEventListener('fullscreenchange', refit);
+
   const setOpen = (next) => {
     tacticsTimelineState.isFullscreenPanelOpen = next;
     panel.classList.toggle('is-open', next);
+    if (next) refit();
     if (openBtn) {
       // 화살표/라벨 span 분리 — 세로 화면 전체화면에선 화살표를 숨기고 열림 상태(aria-expanded)를 세그먼트 버튼 색으로 표시
       const arrow = openBtn.querySelector('.td-toggle-arrow');

@@ -1,7 +1,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [상대 전적 패널 — Iter 7]
 // fixtureId 로드 시 /api/hth를 호출해 [data-hth-panel]에 렌더링.
-// 이벤트가 없을 때 자동으로 HTH 패널 표시, 이벤트 발생 시 자동 복귀.
+// 이벤트가 없는 새 경기에서는 HTH를 표시하고 첫 이벤트에 복귀하되, 수동 선택은 유지한다.
 // ev-title-bar 내 토글 버튼으로 수동 전환 가능.
 //
 // 조회 순서: 홈/원정 팀 ID 정규화 → 6시간 캐시 확인 → 진행 중인 요청 재사용 → API 조회.
@@ -13,7 +13,8 @@ const HTH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const HTH_CACHE_STORAGE_KEY = 'obs.hth.cache.v1';
 const _hthCache = new Map();
 const _hthState = {
-  mode: 'events',      // 'events' | 'hth'
+  mode: 'events',      // 'events' | 'hth' | 'fixtures'
+  manualSelection: false, // 직접 선택한 화면은 이벤트 갱신으로 전환하지 않는다.
   hthData: null,       // HthResponseDto { matches: HthMatchDto[] }
   fixtureData: null,   // 마지막 fixture 데이터 — 팀 ID 비교용
   cacheKey: '',
@@ -216,7 +217,7 @@ function hthResolveLogoUrl(teamId, fallbackLogo, fixtureData) {
 }
 
 /** HTH 경기 한 줄 row DOM 생성 */
-function hthCreateRow(match, fixtureData) {
+function hthCreateRow(match, fixtureData, panelBackground) {
   const winner = hthGetWinner(match);
   const colorSide = hthGetColorSide(match, fixtureData);
 
@@ -225,6 +226,13 @@ function hthCreateRow(match, fixtureData) {
 
   const bar = document.createElement('div');
   bar.className = 'hth-bar';
+  if (colorSide === 'home' || colorSide === 'away') {
+    const cs = typeof chromaSafe === 'function' ? chromaSafe : (v => v);
+    const colors = typeof state !== 'undefined' ? state?.colors : {};
+    const bg = cs(colors?.[`${colorSide}Bg`] || getCSS(`--${colorSide}-bg`));
+    const text = cs(colors?.[`${colorSide}Text`] || getCSS(`--${colorSide}-text`) || '#ffffff');
+    teamOutlineLowContrast(bar, bg, text, panelBackground);
+  }
   row.appendChild(bar);
 
   const content = document.createElement('div');
@@ -251,7 +259,8 @@ function hthCreateRow(match, fixtureData) {
   }
   const homeNameEl = document.createElement('span');
   homeNameEl.className = 'hth-team-name';
-  homeNameEl.textContent = match.homeTeamName || '';
+  homeNameEl.textContent = teamNicknameDisplay(match, 'home', match.homeTeamName || '');
+  bindTeamNicknameLabel(homeNameEl, match, 'home');
   homeSide.appendChild(homeNameEl);
 
   // 점수 중앙
@@ -302,7 +311,8 @@ function hthCreateRow(match, fixtureData) {
   awaySide.className = 'hth-team-side hth-team-away';
   const awayNameEl = document.createElement('span');
   awayNameEl.className = 'hth-team-name';
-  awayNameEl.textContent = match.awayTeamName || '';
+  awayNameEl.textContent = teamNicknameDisplay(match, 'away', match.awayTeamName || '');
+  bindTeamNicknameLabel(awayNameEl, match, 'away');
   awaySide.appendChild(awayNameEl);
   const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
   if (awayLogoUrl) {
@@ -404,7 +414,8 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
     }
     const list = document.createElement('div');
     list.className = 'hth-list ev-list';
-    matches.forEach(m => list.appendChild(hthCreateRow(m, fixtureData)));
+    const panelBackground = teamPanelBackground(container);
+    matches.forEach(m => list.appendChild(hthCreateRow(m, fixtureData, panelBackground)));
     if (titleBar) container.replaceChildren(titleBar, list);
     else container.replaceChildren(list);
   });
@@ -486,8 +497,8 @@ function hthEnsureLoadedForFixture(fixtureData = null, options = {}) {
 }
 
 /** 상대 전적 화면으로 전환하고 데이터를 보장한다. 현재 데이터가 만료됐을 때만 로딩 안내를 요청한다. */
-function hthShowForFixture(fixtureData = null) {
-  hthSetMode('hth');
+function hthShowForFixture(fixtureData = null, options = {}) {
+  hthSetMode('hth', options);
   return hthEnsureLoadedForFixture(fixtureData, { renderLoading: !hthCurrentDataIsFresh(fixtureData) });
 }
 
@@ -495,9 +506,10 @@ function hthShowForFixture(fixtureData = null) {
  * 이벤트/HTH 패널 표시 전환.
  * 'events'로 전환 시 이벤트 패널 제목 바 재렌더 (토글 버튼 표시 갱신).
  */
-function hthSetMode(mode) {
-  if (mode === 'hth') window.scoreaxisStandingsHideSmall?.({ skipHthUpdate: true });
-  _hthState.mode = mode === 'hth' ? 'hth' : 'events';
+function hthSetMode(mode, { automatic = false } = {}) {
+  if (mode === 'hth' || mode === 'fixtures') window.scoreaxisStandingsHideSmall?.({ skipHthUpdate: true });
+  _hthState.mode = ['hth', 'fixtures'].includes(mode) ? mode : 'events';
+  _hthState.manualSelection = !automatic;
   hthUpdateVisibility();
   if (_hthState.mode === 'hth') {
     requestAnimationFrame(hthCheckMetaWrap);
@@ -509,6 +521,14 @@ function hthSetMode(mode) {
 /** lp-events-s 안의 [data-hth-panel]과 [data-events-panel] 가시성 갱신.
  *  .lp-stat [data-hth-panel]은 stat-cycle.js가 독립 관리하므로 건드리지 않음. */
 function hthUpdateVisibility() {
+  const isFixtures = _hthState.mode === 'fixtures' && !window.scoreaxisStandingsIsSmallMode?.();
+  document.querySelectorAll('.lp-events-s [data-team-fixtures-panel]').forEach(el => {
+    el.style.display = isFixtures ? '' : 'none';
+  });
+  if (isFixtures) {
+    document.querySelectorAll('.lp-events-s [data-events-panel], .lp-events-s [data-hth-panel], .lp-events-s [data-scoreaxis-standings-panel]').forEach(el => { el.style.display = 'none'; });
+    return;
+  }
   if (window.scoreaxisStandingsIsSmallMode?.()) {
     document.querySelectorAll('.lp-events-s [data-hth-panel]').forEach(el => {
       el.style.display = 'none';
@@ -534,19 +554,17 @@ function hthUpdateVisibility() {
   });
 }
 
-/**
- * 이벤트 배열이 비어있다가 채워질 때 HTH -> 이벤트 자동 전환.
- * fixture.js에서 applyEventsPanel 직후 호출.
- */
+/** 자동 표시된 상대전적만 첫 이벤트가 들어왔을 때 이벤트 화면으로 전환한다. */
 function hthAutoSwitch(events) {
-  const hasEvents = Array.isArray(events) && events.length > 0;
-  if (hasEvents && _hthState.mode === 'hth') {
-    hthSetMode('events');
+  if (Array.isArray(events) && events.length > 0
+    && _hthState.mode === 'hth' && !_hthState.manualSelection) {
+    hthSetMode('events', { automatic: true });
   }
 }
 
 /** fixture 전환 시 HTH 상태 초기화 */
 function hthReset() {
+  window.teamFixturesReset?.();
   _hthState.hthData = null;
   _hthState.displayMatches = [];
   _hthState.fixtureData = null;
@@ -556,13 +574,13 @@ function hthReset() {
   _hthState.fetchPromise = null;
   _hthState.requestSeq++;
   _hthState.mode = 'events';
+  _hthState.manualSelection = false;
   hthUpdateVisibility();
   document.querySelectorAll('[data-hth-panel]').forEach(el => { el.replaceChildren(); });
 }
 
-// teamLogo 설정 변경 시 HTH 패널 재렌더
-document.addEventListener('settings:change', e => {
-  if (e.detail?.category !== 'teamLogo') return;
+// 색상/배경 설정 변경 시 저장된 상대 전적을 재렌더한다. API 재조회는 하지 않는다.
+function hthRerenderColors() {
   if (_hthState.hthData && _hthState.fixtureData) {
     applyHthPanel(_hthState.hthData, _hthState.fixtureData, {
       cacheKey: _hthState.cacheKey,
@@ -570,16 +588,22 @@ document.addEventListener('settings:change', e => {
       expiresAt: _hthState.expiresAt,
     });
   }
+}
+document.addEventListener('team-nicknames:change', hthRerenderColors);
+document.addEventListener('settings:change', e => {
+  if (!['teamLogo', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha'].includes(e.detail?.category)) return;
+  hthRerenderColors();
 });
+document.addEventListener('theme:colors-changed', hthRerenderColors);
 
 window.applyHthPanel = applyHthPanel;
 window.hthCanLoadForFixture = hthCanLoadForFixture;
 window.hthCurrentDataIsFresh = hthCurrentDataIsFresh;
 window.hthEnsureLoadedForFixture = hthEnsureLoadedForFixture;
 window.hthShowForFixture = hthShowForFixture;
+window.hthAutoSwitch = hthAutoSwitch;
 window.hthSetMode = hthSetMode;
 window.hthUpdateVisibility = hthUpdateVisibility;
-window.hthAutoSwitch = hthAutoSwitch;
 window.hthReset = hthReset;
 window.hthCheckMetaWrap = hthCheckMetaWrap;
 /** 메모리와 sessionStorage의 상대 전적 캐시를 비운다. 현재 표시 중인 패널 상태는 별도로 유지된다. */

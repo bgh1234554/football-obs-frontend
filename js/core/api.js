@@ -67,9 +67,10 @@
    *   - 그래서 fallback 경로를 반드시 둔다.
    */
   function readRetryAfterMs(res) {
-    const retryAfterMsHeader = Number(res.headers.get('X-Retry-After-Millis'));
-    if (Number.isFinite(retryAfterMsHeader) && retryAfterMsHeader >= 0) {
-      return retryAfterMsHeader;
+    const retryAfterMsHeader = res.headers.get('X-Retry-After-Millis');
+    const retryAfterMs = Number(retryAfterMsHeader);
+    if (retryAfterMsHeader != null && retryAfterMsHeader.trim() !== '' && Number.isFinite(retryAfterMs) && retryAfterMs >= 0) {
+      return retryAfterMs;
     }
 
     const retryAfter = String(res.headers.get('Retry-After') || '').trim();
@@ -146,6 +147,7 @@
       const controller = new AbortController();
       let timeoutId = null;
       let res;
+      let text;
 
       try {
         // 타임아웃 타이머 시작
@@ -155,7 +157,8 @@
         // (강제 새로고침 전용 — 일반 폴링/수동 로드는 옵션 없이 기본 캐시 동작 유지)
         res = await fetch(`${API_BASE}${path}`, { signal: controller.signal, cache: options.cache });
 
-        // fetch 성공 시 타이머 즉시 정리
+        // 응답 헤더와 본문을 모두 받은 뒤에만 타임아웃을 해제한다.
+        text = await res.text();
         clearTimeout(timeoutId);
       } catch (e) {
         clearTimeout(timeoutId);
@@ -169,7 +172,6 @@
       }
 
       let body = null;
-      const text = await res.text();
       if (text) {
         try { body = JSON.parse(text); } catch { /* 본문이 JSON이 아니면 null 유지 */ }
       }
@@ -260,3 +262,8 @@
     const qs = `teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`;
     return await apiFetch(`/api/hth?${qs}`, options);
   }
+
+// 최근·예정 경기에도 공통 오류 및 재시도 처리를 적용한다.
+async function fetchTeamFixtures(teamId, period, options = {}) {
+  return await apiFetch(`/api/fixtures/${period === 'next' ? 'next' : 'last'}?teamId=${encodeURIComponent(teamId)}`, options);
+}

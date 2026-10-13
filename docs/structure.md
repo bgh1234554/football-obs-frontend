@@ -75,6 +75,7 @@
 | `display-scale.js` | 1920px 기준 전체 UI 배율, DPI/뷰포트 변경 감지, 빈 배경 터치 스크롤 방지 | `toDisplayLayoutPixels/Point/Rect()`, `getDisplayLayoutRect()`, `--display-*` CSS 변수 |
 | `utils.js` | 공통 유틸 | `$()`, `setCSS()`, `getCSS()`, `fmtClock()`, `clampNum()`, `downloadBlob()` |
 | `state.js` | 전역 상태 | `state` (점수·로고·색상·half·timer 등), `el` (DOM 참조), `persist()`, `restore()` |
+| `team-nicknames.js` | 팀 닉네임 저장·편집·목록·초기화. 팀 ID 기준으로 점수판과 패널에 적용, ID가 없으면 원래 이름으로 저장 | `TEAM_NICKNAME_KEY`, `teamNicknameDisplay()`, `scoreboardTeamDisplayName()`, `refreshTeamNicknames()` |
 | `render.js` | 점수판 렌더링 | `render()`, `formatScorers()`, `applyBoardScale()`, `pkPush/Undo/Reset()`, `setMatchHalf()`, `flashElement()` |
 | `timer.js` | 경기 시간 타이머 | `startClockTimer()`, `pauseClockTimer()`, `setClockSeconds()`, `syncRunningClockToNow()`, 인라인 시간 편집기 |
 | `fixture.js` | 경기 ID 연동 + 폴링 | `fetchAndApplyFixtureData()`, `buildScorers()`, `schedulePoll()`, `forceRefreshCurrentFixture()`. 진행 중 15초 / FT 감지 후 3분간 1분 간격 / INT 5분 간격(30분 후 중단) |

@@ -16,6 +16,8 @@ const LINEUP_FORMATION_FAMILIES = [
 // 목적 슬롯 → 출발 슬롯. 검증한 한 단계의 선수 이동만 여기에 등록한다.
 // 유사군의 동일 역할 이동과 연결하면 다른 포메이션에도 같은 선수 흐름을 적용할 수 있다.
 const LINEUP_FORMATION_MOVES = [
+  // 중앙 선수와 좌우를 보존하고 양쪽 윙백만 전진시킨다.
+  { from: '3-4-2-1', to: '3-2-4-1', slots: [0, 1, 2, 3, 5, 6, 4, 8, 9, 7, 10] },
   { from: '4-3-3', to: '3-4-3', slots: [0, 2, 6, 3, 1, 5, 7, 4, 8, 9, 10] },
   { from: '4-1-2-3', to: '3-4-3', slots: [0, 2, 5, 3, 1, 6, 7, 4, 8, 9, 10] },
   { from: '4-2-1-3', to: '3-3-1-3', slots: [0, 2, 5, 3, 1, 6, 4, 7, 8, 9, 10] },
@@ -180,7 +182,7 @@ function getLineupFormationTransitionPath(fromFormation, toFormation) {
       if (order < 0 || (order === 0 && signature < best.signature)) best = candidate;
       return;
     }
-    if (path.length >= 5 || (best && path.length >= best.path.length)) return;
+    if (path.length >= (fromFormation === '3-2-4-1' || toFormation === '3-2-4-1' ? 6 : 5) || (best && path.length >= best.path.length)) return;
     for (const edge of graph.get(formation) || []) {
       if (path.includes(edge.to)) continue;
       visit(edge.to, [...path, edge.to], edge.slots.map(index => slots[index]), cost + edge.cost);

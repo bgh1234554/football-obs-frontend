@@ -14,7 +14,7 @@
 
   /** 레드카드 수만큼 .rc-card div를 생성해 홈/어웨이 컨테이너에 삽입 */
   function renderRedCards(){
-    const make = n => { const nodes=[]; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='rc-card'; nodes.push(d);} return nodes; };
+    const make = n => { const nodes=[]; for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='rc-card has-event-icon'; d.innerHTML=footballIconHtml('red-card'); nodes.push(d);} return nodes; };
     if(el.rcHome){ el.rcHome.replaceChildren(...make(state.redHome)); el.rcHome.classList.toggle('hidden', state.redHome===0); }
     if(el.rcAway){ el.rcAway.replaceChildren(...make(state.redAway)); el.rcAway.classList.toggle('hidden', state.redAway===0); }
   }
@@ -206,8 +206,14 @@
     // 1. 팀명 / 점수 텍스트 갱신
     const homeNameText = el.homeName.querySelector('.text') || el.homeName;
     const awayNameText = el.awayName.querySelector('.text') || el.awayName;
-    homeNameText.textContent = state.homeName || 'HOME';
-    awayNameText.textContent = state.awayName || 'AWAY';
+    homeNameText.textContent = scoreboardTeamDisplayName('home');
+    el.homeName.setAttribute('role', 'button');
+    el.homeName.tabIndex = 0;
+    el.homeName.setAttribute('aria-label', '홈 팀 닉네임 편집');
+    awayNameText.textContent = scoreboardTeamDisplayName('away');
+    el.awayName.setAttribute('role', 'button');
+    el.awayName.tabIndex = 0;
+    el.awayName.setAttribute('aria-label', '원정 팀 닉네임 편집');
     el.homeScore.textContent = state.homeScore;
     el.awayScore.textContent = state.awayScore;
 
@@ -246,6 +252,8 @@
     setCSS('--away-text',   chromaSafe(state.colors.awayText));
     setCSS('--card-outline',chromaSafe(state.colors.outline));
     setCSS('--pk-base',     chromaSafe(state.colors.pkBase));
+    setCSS('--pk-goal', chromaSafe(state.colors.pkGoal));
+    setCSS('--pk-miss', chromaSafe(state.colors.pkMiss));
     setCSS('--home-outline',chromaSafe(state.colors.homeOutline));
     setCSS('--away-outline',chromaSafe(state.colors.awayOutline));
     setCSS('--home-outline-w', (state.homeOutlineWidth??1)+'px');
@@ -255,7 +263,15 @@
     setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
     setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
     setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
+    const noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
+    const noteKeyGuardWidth = isGreenscreenOn() && noteStrokeWidth > 0 ? 0.75 : 0;
+    setCSS('--note-key-guard-w', noteKeyGuardWidth + 'px');
+    setCSS('--note-key-guard-visibility', noteKeyGuardWidth > 0 ? 'visible' : 'hidden');
+    setCSS('--note-stroke-w', noteStrokeWidth + 'px');
+    setCSS('--note-stroke-w-neg', -noteStrokeWidth + 'px');
+    if (el.noteStrokeWidth) el.noteStrokeWidth.value = noteStrokeWidth;
     setCSS('--note-text', chromaSafe(state.colors.noteText));
+    if (typeof applyPageBackground === 'function') applyPageBackground();
     setCSS('--home-logo-x', (state.homeLogoX??0)+'px');
     setCSS('--home-logo-y', (state.homeLogoY??0)+'px');
     setCSS('--away-logo-x', (state.awayLogoX??0)+'px');
@@ -339,10 +355,30 @@
     el.half.textContent = map[state.half]||'1H';
     el.extra.textContent = `+${state.extra}`;
     el.extra.classList.toggle('hidden', !state.extraShown||state.extra<=0);
-    el.halfSelect.value = state.half;
+    const manualPsoMode = document.getElementById('manualPsoMode');
+    const psoControls = document.getElementById('psoControls');
+    const psoHost = document.querySelector(state.manualMode ? '#manual-section .manual-controls-row' : '.theme-timer-card');
+    if (psoControls && psoHost && psoControls.parentElement !== psoHost) psoHost.appendChild(psoControls);
+    // 수동 모드 퇴장 입력은 항상 승부차기 컨트롤 오른쪽에 둔다.
+    const manualRedCards = document.getElementById('manualRedCards');
+    if (state.manualMode && psoControls && manualRedCards && psoControls.nextElementSibling !== manualRedCards) psoControls.after(manualRedCards);
+    if ($('manualHomeRedVal')) $('manualHomeRedVal').textContent = state.redHome ?? 0;
+    if ($('manualAwayRedVal')) $('manualAwayRedVal').textContent = state.redAway ?? 0;
+    if (manualPsoMode) {
+      manualPsoMode.checked = state.half === 'PK';
+      manualPsoMode.disabled = false;
+    }
+    if (typeof window.updateScoreShortcutHint === 'function') window.updateScoreShortcutHint();
+    ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss','pkUndo','pkReset'].forEach(id => {
+      const button = document.getElementById(id);
+      if (button) button.disabled = state.half !== 'PK';
+    });
     el.extraInput.value = state.extra;
     el.secPerTick.value = state.secPerTick;
     el.startPause.textContent = state.running ? '일시정지 (Space)' : '시작 (Space)';
+
+    const resetApiColors = document.getElementById('resetApiTeamColors');
+    if (resetApiColors) resetApiColors.disabled = !window.canResetFixtureTeamColors?.();
 
     // 12. 색상 피커 input 값을 state와 동기화
     // uiBg는 설정 팝업으로 이전됨 (Iter 5-7) — el.inUiBg/state.colors.uiBg 동기화 라인 제거.
@@ -360,6 +396,8 @@
     if(el.inAwayText) el.inAwayText.value = state.colors.awayText;
     if(el.inOutline) el.inOutline.value = state.colors.outline;
     if(el.pkBaseColor) el.pkBaseColor.value = state.colors.pkBase;
+    if($('inPkGoal')) $('inPkGoal').value = state.colors.pkGoal;
+    if($('inPkMiss')) $('inPkMiss').value = state.colors.pkMiss;
 
     if(window.colorMap){
       window.colorMap.forEach(([id, key]) => {
@@ -518,7 +556,20 @@
   }
 
   function renderNoteLine(line) {
-    return `<span class="${getNoteLineClass(line)}">${escapeNoteHtml(line)}</span>`;
+    const text = escapeNoteHtml(line);
+    return `<span class="${getNoteLineClass(line)}" role="img" aria-label="${text}"><span class="note-line-measure" aria-hidden="true">${text}</span><svg class="note-line-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><text class="note-line-svg-text">${text}</text></svg></span>`;
+  }
+
+  function alignNoteSvg(noteEl) {
+    if (!noteEl.getClientRects().length) return;
+    // HTML의 자동 줄 배치와 폭 측정은 유지하고 SVG 글자만 같은 영역에 맞춘다.
+    const measurements = [...noteEl.querySelectorAll('.note-line')].map(line => {
+      const text = line.querySelector('.note-line-svg-text');
+      return { text, box: text.getBBox(), height: line.offsetHeight };
+    });
+    measurements.forEach(({ text, box, height }) => {
+      text.setAttribute('transform', `translate(${-box.x} ${(height - box.height) / 2 - box.y})`);
+    });
   }
 
   /** 득점자 줄 배열을 perRow 명씩 한 줄로 합쳐 HTML 반환 (perRow=1이면 줄마다 표시) */
@@ -562,6 +613,7 @@
       setCSS(cssVar, effectiveSize + 'px');
     }
 
+    alignNoteSvg(noteEl);
     return effectiveSize;
   }
 
@@ -653,10 +705,10 @@
   const boardScaleRange = $('boardScaleRange');
   const boardScaleLabel = $('boardScaleLabel');
 
-  /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
   // 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout)에서 점수판을 작게 줄이는 비율.
   // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
   const TOUCH_BOARD_SHRINK = 0.7;
+  /** 보드 미리보기를 pct% 배율로 scale 변환하고, 래퍼 높이도 실제 렌더 크기에 맞게 조정 */
   function applyBoardScale(pct){
     let s = pct / 100;
     if (document.body.classList.contains('tactics-active') && document.body.classList.contains('td-touch-board')) {
@@ -671,6 +723,8 @@
     boardStageWrap.style.height = (naturalH * s) + 'px';
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
+    window.syncBelarusBoundaryPixelGrid?.();
+    window.syncEkstraklasaBoundaryPixelGrid?.();
   }
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
@@ -705,9 +759,14 @@
   el.awayOffsetReset?.addEventListener('click', ()=>{ state.awayLogoX=0; state.awayLogoY=0; render(); persist(); });
 
   // [이벤트 등록] 전/후반 선택, 타이머 시작/정지/리셋 및 시작 시각 설정
-  el.halfSelect?.addEventListener('change', e=>{ setMatchHalf(e.target.value); render(); persist(); });
-  el.prevHalf?.addEventListener('click', ()=>{ const i=Math.max(0,halfOrder.indexOf(state.half)-1); setMatchHalf(halfOrder[i]); render(); persist(); });
-  el.nextHalf?.addEventListener('click', ()=>{ const i=Math.min(halfOrder.length-1,halfOrder.indexOf(state.half)+1); setMatchHalf(halfOrder[i]); render(); persist(); });
+  document.getElementById('manualPsoMode')?.addEventListener('change', e => {
+    state.psoModeForced = e.target.checked;
+    state.psoModeFixtureId = e.target.checked ? String(_lastFixtureData?.matchInfo?.fixtureId ?? '') : null;
+    if (e.target.checked) state.manualPsoPreviousHalf = state.half === 'PK' ? '2' : state.half;
+    setMatchHalf(e.target.checked ? 'PK' : (state.manualPsoPreviousHalf || '2'));
+    render();
+    persist();
+  });
   el.startPause?.addEventListener('click', ()=>{
     if (typeof window.toggleClockRunning === 'function') window.toggleClockRunning();
     else state.running = !state.running;
@@ -776,6 +835,14 @@
   // [이벤트 등록] 득점자 표시 여부 및 폰트 크기
   el.noteOn?.addEventListener('change', e=>{ state.noteEnabled=!!e.target.checked; render(); persist(); });
   el.noteFontSize?.addEventListener('input', e=>{ state.noteFontSize=Math.max(10,Number(e.target.value)||18); render(); persist(); });
+  el.noteStrokeWidth?.addEventListener('input', e=>{ state.noteStrokeWidth=clampNum(e.target.value,0,10,1); render(); persist(); });
+  // 각 초기화 버튼은 해당 항목만 기본값으로 복원한다.
+  [
+    ['resetNoteSize', () => { state.noteFontSize = 18; }],
+    ['resetNoteText', () => { commitThemeColors({ noteText: '#e5e7eb' }); }],
+    ['resetNoteStroke', () => { commitThemeColors({ noteStroke: '#000000' }); }],
+    ['resetNoteStrokeWidth', () => { state.noteStrokeWidth = 1; }],
+  ].forEach(([id, reset]) => $(id)?.addEventListener('click', () => { reset(); render(); persist(); }));
 
   // [이벤트 등록] 보드/점수/팀카드 테두리 ON/OFF 및 두께 조정
   el.boardOutlineOn?.addEventListener('change', e=>{ state.boardOutlineEnabled=!!e.target.checked; render(); persist(); });
@@ -799,11 +866,30 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /** 해당 팀(home/away)의 PK 결과 배열에 'G'(골) 또는 'M'(실패)을 추가 */
-  function pkPush(team,res){ if(team==='home') state.pk.home.push(res); else state.pk.away.push(res); render(); persist(); }
+  function pkPush(team,res){
+    const score = getPkDisplayScore(team);
+    state.pk[team].push(res);
+    if (!state.manualMode) {
+      state.pkScore ??= {};
+      state.pkScore[team] = score + (res === 'G' ? 1 : 0);
+    }
+    render(); persist();
+  }
   /** 마지막으로 추가된 PK 결과를 제거 (홈/어웨이 중 더 많은 쪽에서 pop) */
-  function pkUndo(){ const h=state.pk.home.length,a=state.pk.away.length; if(h===0&&a===0) return; if(h>=a) state.pk.home.pop(); else state.pk.away.pop(); render(); persist(); }
+  function pkUndo(){
+    const h=state.pk.home.length,a=state.pk.away.length;
+    if(h===0&&a===0) return;
+    const team = h >= a ? 'home' : 'away';
+    const score = getPkDisplayScore(team);
+    const result = state.pk[team].pop();
+    if (!state.manualMode) {
+      state.pkScore ??= {};
+      state.pkScore[team] = Math.max(0, score - (result === 'G' ? 1 : 0));
+    }
+    render(); persist();
+  }
   /** PK 결과 전체 초기화 */
-  function pkReset(){ clearPkState(); render(); persist(); }
+  function pkReset(){ clearPkState(); if (!state.manualMode) state.pkScore = { home: 0, away: 0 }; render(); persist(); }
   // [이벤트 등록] PK 버튼 (홈/어웨이 골/미스, 되돌리기, 초기화)
   el.pkHomeGoal?.addEventListener('click', ()=>pkPush('home','G'));
   el.pkHomeMiss?.addEventListener('click', ()=>pkPush('home','M'));
@@ -811,114 +897,3 @@
   el.pkAwayMiss?.addEventListener('click', ()=>pkPush('away','M'));
   el.pkUndo?.addEventListener('click', pkUndo);
   el.pkReset?.addEventListener('click', pkReset);
-
-  // [이벤트 등록] 템플릿 저장/삭제/내보내기/가져오기/불러오기
-
-  /** templateSelect와 단일 템플릿 import가 공통으로 사용하는 state 반영 로직 */
-  function applyTemplate(t){
-    // 경기 ID가 로딩된 상태(자동 폴링 중 또는 fixture 응답 캐시 있음)에서는
-    // 템플릿이 home/away 팀 컬러를 덮어쓰지 않게 보호.
-    //   - API에서 받은 컬러 그대로 유지
-    //   - 사용자가 테마 탭에서 수정한 컬러도 그대로 유지
-    // (보드 배경/스코어/디지트/메타 등 비-팀 컬러는 템플릿대로 적용)
-    const incoming = (t.colors || {});
-    const fixtureLoaded = (typeof currentFixtureId !== 'undefined') && !!currentFixtureId;
-    const TEAM_COLOR_KEYS = ['homeBg','homeText','awayBg','awayText'];
-    const TEMPLATE_IGNORED_COLOR_KEYS = ['bg', 'uiBg'];
-    const normalizedEntries = Object.entries(incoming).filter(([k]) => !TEMPLATE_IGNORED_COLOR_KEYS.includes(k));
-    const colorsToApply = fixtureLoaded
-      ? Object.fromEntries(normalizedEntries.filter(([k]) => !TEAM_COLOR_KEYS.includes(k)))
-      : Object.fromEntries(normalizedEntries);
-    state.colors={...state.colors,...colorsToApply};
-    // 배경색(bgColor / legacy bg, uiBg)은 설정 팝업 소유 값이라 템플릿 로딩 시 무시한다.
-    state.fontFamily=resolveTemplateFontFamily(t);
-    if(t.logoAlign) state.logoAlign=t.logoAlign;
-    if(t.radiusMode) state.radiusMode=t.radiusMode;
-    if(t.boardWidth) state.boardWidth=t.boardWidth;
-    if(t.homeLogoScale) state.homeLogoScale=t.homeLogoScale;
-    if(t.awayLogoScale) state.awayLogoScale=t.awayLogoScale;
-    if('homeOutlineEnabled' in t) state.homeOutlineEnabled=!!t.homeOutlineEnabled;
-    if('awayOutlineEnabled' in t) state.awayOutlineEnabled=!!t.awayOutlineEnabled;
-    if('homeOutlineWidth' in t) state.homeOutlineWidth=Number(t.homeOutlineWidth)||0;
-    if('awayOutlineWidth' in t) state.awayOutlineWidth=Number(t.awayOutlineWidth)||0;
-    if('boardOutlineEnabled' in t) state.boardOutlineEnabled=!!t.boardOutlineEnabled;
-    if('scoreOutlineEnabled' in t) state.scoreOutlineEnabled=!!t.scoreOutlineEnabled;
-    if('boardOutlineWidth' in t) state.boardOutlineWidth=Number(t.boardOutlineWidth)||0;
-    if('scoreOutlineWidth' in t) state.scoreOutlineWidth=Number(t.scoreOutlineWidth)||0;
-    if('noteEnabled' in t) state.noteEnabled=!!t.noteEnabled;
-    if('noteFontSize' in t) state.noteFontSize=Number(t.noteFontSize)||18;
-  }
-
-  // theme.js가 나중에 로드되므로, export 버튼은 구현체를 지연 조회한다.
-  function exportTemplatesFile(){
-    return window.exportTemplatesFileImpl?.();
-  }
-
-  el.saveTemplate?.addEventListener('click', async ()=>{ await saveTemplate(el.templateName.value.trim()); });
-  el.deleteTemplate?.addEventListener('click', async ()=>{ const typed=(el.templateName?.value||'').trim(); const selected=el.templateSelect?.value||''; await deleteTemplate(typed||selected); });
-  el.resetTemplates?.addEventListener('click', async ()=>{ await resetTemplates(); });
-  el.exportTemplates?.addEventListener('click', exportTemplatesFile);
-  el.templateSelect?.addEventListener('change', ()=>{
-    const name=(el.templateSelect.value||'').trim(); if(!name){ setLastSelectedTemplateName(''); return; }
-    const t=getTemplateByName(name); if(!t) return;
-    applyTemplate(t);
-    setLastSelectedTemplateName(name);
-    render(); persist();
-  });
-  el.importTemplates?.addEventListener('change', async e=>{
-    const f=e.target.files?.[0]; if(!f) return;
-    const fallbackName=f.name.replace(/\.json$/i,'');
-    try{
-      const text=await f.text(); const parsed=JSON.parse(text);
-      if(Array.isArray(parsed)){ let added=0,replaced=0,skipped=0; for(let i=0;i<parsed.length;i++){ const raw=parsed[i]; if(!raw||typeof raw!=='object'){ skipped++; continue; } if(!raw.name) raw.name=`${fallbackName||'Imported'}-${i+1}`; const res=upsertTemplateToLocal(raw,true); if(!res.saved){ skipped++; continue; } if(res.replaced) replaced++; else added++; } loadTemplates(); alert(`추가 ${added}, 덮어쓰기 ${replaced}, 건너뜀 ${skipped}`); }
-      else if(parsed&&typeof parsed==='object'){ const t={...parsed}; if(!t.name) t.name=fallbackName||'Imported'; applyTemplate(t); render(); persist(); const{saved,name}=upsertTemplateToLocal(t,true); loadTemplates(); if(saved) el.templateSelect.value=name; alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':'')); }
-      else alert('알 수 없는 템플릿 형식.');
-    }catch{ alert('JSON 형식이 아닙니다.'); }
-    finally{ e.target.value=''; }
-  });
-  if(el.importTemplates){
-    const replacement = el.importTemplates.cloneNode(true);
-    el.importTemplates.replaceWith(replacement);
-    el.importTemplates = replacement;
-    el.importTemplates.addEventListener('change', async e=>{
-      const f=e.target.files?.[0]; if(!f) return;
-      const fallbackName=f.name.replace(/\.json$/i,'');
-      try{
-        const text=await f.text();
-        const parsed=JSON.parse(text);
-        if(Array.isArray(parsed)){
-          let added=0,replaced=0,skipped=0;
-          for(let i=0;i<parsed.length;i++){
-            const raw=parsed[i];
-            if(!raw||typeof raw!=='object'){ skipped++; continue; }
-            if(!raw.name) raw.name=`${fallbackName||'Imported'}-${i+1}`;
-            const res=await upsertTemplateToLocal(raw,true);
-            if(!res.saved){ skipped++; continue; }
-            if(res.replaced) replaced++;
-            else added++;
-          }
-          await loadTemplates();
-          alert(`추가 ${added}, 덮어쓰기 ${replaced}, 건너뜀 ${skipped}`);
-        }else if(parsed&&typeof parsed==='object'){
-          const t={...parsed};
-          if(!t.name) t.name=fallbackName||'Imported';
-          applyTemplate(t);
-          render();
-          persist();
-          const{saved,name}=await upsertTemplateToLocal(t,true);
-          await loadTemplates(name);
-          if(saved){
-            el.templateSelect.value=name;
-            setLastSelectedTemplateName(name);
-          }
-          alert('템플릿 적용됨.'+(saved?' (목록에 저장됨)':''));
-        }else{
-          alert('지원되지 않는 템플릿 형식입니다.');
-        }
-      }catch{
-        alert('JSON 형식이 올바르지 않습니다.');
-      }finally{
-        e.target.value='';
-      }
-    });
-  }

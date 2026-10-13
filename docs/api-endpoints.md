@@ -605,6 +605,91 @@ API-Football 문서상 `h2h` 값은 `ID-ID` 형식이다. 같은 엔드포인트
 
 ---
 
+## GET `/api/fixtures/last?teamId={teamId}` · `/api/fixtures/next?teamId={teamId}`
+
+특정 팀의 최근 경기 결과와 앞으로의 5경기 일정을 각각 조회한다. 대회·시즌 제한 없이 API-Football `/fixtures?team={teamId}&last=6` 또는 `/fixtures?team={teamId}&next=5`를 호출한다. 최근 경기는 최신순으로 최대 6개, 예정 경기는 가까운 경기순으로 최대 5개를 반환한다. 프런트는 최근 경기에서 한국 시간(Asia/Seoul) 기준 오늘 경기를 제외한 뒤 앞의 5개를 표시한다. 제공되는 경기 수 또는 제외된 경기 수에 따라 표시 목록은 5개 미만일 수 있다.
+
+### Request
+
+| key | 설명 | value 타입 | 옵션 | Nullable | 예시 |
+| --- | --- | --- | --- | --- | --- |
+| teamId | API-Football 팀 ID | Long | 필수 Query parameter, 양의 정수 | X | `85` |
+
+### Response
+
+두 API 모두 `TeamFixturesResponseDto`를 반환한다.
+
+| key | 설명 | value 타입 | Nullable | 예시 |
+| --- | --- | --- | --- | --- |
+| teamId | 조회 대상 팀 ID | Long | X | `85` |
+| matches | 정렬된 경기 요약 목록 | `TeamFixtureDto[]` | X | `[]` |
+
+`matches[]` (`TeamFixtureDto`)
+
+| key | 설명 | value 타입 | Nullable | 예시 |
+| --- | --- | --- | --- | --- |
+| fixtureId | 경기 상세 조회에 사용할 경기 ID | Long | X | `1552780` |
+| date | 경기 일시, 원본 시간대 오프셋 유지 (ISO-8601) | String | O | `2026-10-10T18:45:00+00:00` |
+| status | 원본 `fixture.status.short` 코드 | String | O | `FT`, `NS`, `PST`, `PEN` |
+| homeTeamId | 홈팀 ID | Long | X | `85` |
+| homeTeamName | 홈팀 long 이름, 기존 한글 풀네임 우선 규칙 적용 | String | X | `파리 생제르맹` |
+| homeTeamNameShort | 홈팀 short 이름, 한글 단축명 우선 | String | X | `PSG` |
+| homeTeamLogo | 홈팀 로고, 기존 커스텀 로고/Media CDN 규칙 적용 | String | O | `https://.../teams/85.png` |
+| homeScore | 홈 득점 (`goals.home`, 연장 포함) | Integer | O | `3` |
+| homePenaltyScore | 홈 승부차기 득점 (`score.penalty.home`) | Integer | O | `null` |
+| awayTeamId | 원정팀 ID | Long | X | `1298` |
+| awayTeamName | 원정팀 long 이름, 기존 한글 풀네임 우선 규칙 적용 | String | X | `르망` |
+| awayTeamNameShort | 원정팀 short 이름, 한글 단축명 우선 | String | X | `르망` |
+| awayTeamLogo | 원정팀 로고, 기존 커스텀 로고/Media CDN 규칙 적용 | String | O | `https://.../teams/1298.png` |
+| awayScore | 원정 득점 (`goals.away`, 연장 포함) | Integer | O | `1` |
+| awayPenaltyScore | 원정 승부차기 득점 (`score.penalty.away`) | Integer | O | `null` |
+
+팀 long 이름은 기존 homeTeamName/awayTeamName 필드를 사용한다. short 이름은 한글 단축명 → 한글 풀네임 → 연령대·여자부 기준 팀의 단축명/풀네임 → API 원문 이름 순으로 선택한다.
+
+예정/미제공 점수는 `null`을 유지한다. `0`과 구분하고, 프런트에서는 `null`을 `-` 등으로 표시한다. 승부차기 점수는 일반 득점과 별도로 표시한다. `status`를 사용해 경기 전·종료·연기·취소 등을 구분하고, 일시는 프런트에서 원하는 시간대로 변환한다.
+
+### Example
+
+`GET /api/fixtures/next?teamId=85` 응답 형태 (로고 URL은 예시):
+
+```json
+{
+  "teamId": 85,
+  "matches": [
+    {
+      "fixtureId": 1635690,
+      "date": "2026-10-14T19:00:00+00:00",
+      "status": "NS",
+      "homeTeamId": 50,
+      "homeTeamName": "맨체스터 시티",
+      "homeTeamNameShort": "맨 시티",
+      "homeTeamLogo": "https://example.com/teams/50.png",
+      "homeScore": null,
+      "homePenaltyScore": null,
+      "awayTeamId": 85,
+      "awayTeamName": "파리 생제르맹",
+      "awayTeamNameShort": "PSG",
+      "awayTeamLogo": "https://example.com/teams/85.png",
+      "awayScore": null,
+      "awayPenaltyScore": null
+    }
+  ]
+}
+```
+
+### Status / Cache
+
+| status | response content |
+| --- | --- |
+| 200 | 조회 성공. 경기 없음은 `{ "teamId": 85, "matches": [] }` |
+| 400 | `INVALID_TEAM_ID`: teamId 누락, 양수가 아님, 숫자 형식 오류 또는 Long 범위 초과 |
+| 429 | `RATE_LIMIT_EXCEEDED` |
+| 502 | `UPSTREAM_API_ERROR`: 원본 API 오류 또는 비정상 응답 |
+
+두 응답 모두 `Cache-Control: max-age=43200` (12시간)을 사용한다.
+
+---
+
 ## 프런트 구현 체크리스트
 
 | 항목 | 확인 내용 |

@@ -9,6 +9,9 @@ vm.runInContext(read('js/lineup/lineup-data.js'),context);
 vm.runInContext(read('js/lineup/lineup-formation-match.js'),context);
 const run=code=>vm.runInContext(code,context);
 const formations=run('Object.keys(TACTICS_FM)');
+// API 라인 순서와 좌우를 보존하고 실제 포메이션으로 인식해야 한다.
+assert(context.hasValidFormation({formation:'3-2-4-1'}));
+assert.deepEqual(Array.from(context.buildManualGridValues('3-2-4-1')),['1:1','2:3','2:2','2:1','3:2','3:1','4:4','4:3','4:2','4:1','5:1']);
 const source=Array.from({length:11},(_,i)=>`p${i}`);
 let cases=0;
 for(const from of formations)for(const to of formations){
@@ -45,6 +48,7 @@ for(const from of formations)for(const to of formations){
 for(const [from,to,expected] of [
  ['4-3-1-2','4-1-2-1-2',[0,1,2,3,4,6,5,7,8,9,10]],
  ['3-5-2','5-3-2',[0,4,1,2,3,8,5,6,7,9,10]],
+ ['3-4-2-1','3-2-4-1',[0,1,2,3,5,6,4,8,9,7,10]],
  ['3-4-3','3-4-2-1',[0,1,2,3,4,5,6,7,8,10,9]],
  ['3-4-3','5-4-1',[0,4,1,2,3,7,8,5,6,10,9]],
  ['4-3-3','4-1-4-1',[0,1,2,3,4,6,8,5,7,10,9]],

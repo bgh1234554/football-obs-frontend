@@ -303,5 +303,63 @@
 
   // [이벤트 등록] 시계 더블클릭 → 인라인 편집기 열기
   clockEl?.addEventListener('dblclick', openClockEditor);
+  clockEl?.setAttribute('title', '더블클릭하여 경기 시간 수정');
+
+  // 추가시간 편집은 시계를 정지하지 않고 기존 수동 추가시간 적용 경로를 사용한다.
+  const extraEl = $('extra');
+  extraEl?.setAttribute('title', '더블클릭하여 추가시간 수정');
+  /**
+   * 추가시간 배지 위에 분 입력 편집기를 연다(이미 열려 있으면 무시).
+   * ✓/Enter는 적용, Esc나 바깥 클릭은 닫기. 배지 색상을 그대로 따라 그린다.
+   */
+  function openExtraEditor() {
+    if (document.getElementById('extraEditor')) return;
+    // 숨김 해제 직후에도 전환 중인 투명색 대신 최종 테마 색상을 읽는다.
+    extraEl.classList.add('has-extra-editor');
+    const editor = document.createElement('div');
+    editor.id = 'extraEditor';
+    editor.className = 'extra-editor';
+    const style = getComputedStyle(extraEl);
+    editor.style.background = style.backgroundColor;
+    editor.style.color = style.color;
+    editor.style.left = `${extraEl.offsetLeft + extraEl.offsetWidth / 2}px`;
+    editor.style.top = `${extraEl.offsetTop + extraEl.offsetHeight / 2}px`;
+    const input = document.createElement('input');
+    input.type = 'number'; input.min = '0'; input.step = '1';
+    input.value = state.extra;
+    input.setAttribute('aria-label', '추가시간 (분)');
+    const confirm = document.createElement('button');
+    confirm.type = 'button'; confirm.textContent = '✓'; confirm.title = '추가시간 적용';
+    editor.append('+', input, confirm);
+    extraEl.parentElement.append(editor);
+    extraEl.classList.add('is-editing-extra');
+    /** 편집기를 제거하고 배지 상태와 전역 리스너를 원래대로 되돌린다. */
+    function close() {
+      editor.remove();
+      extraEl.classList.remove('is-editing-extra');
+      extraEl.classList.remove('has-extra-editor');
+      document.removeEventListener('mousedown', outside);
+      document.removeEventListener('keydown', keydown);
+    }
+    function apply() {
+      setManualExtra(Math.max(0, Math.floor(Number(input.value) || 0)));
+      close();
+    }
+    function outside(event) { if (!editor.contains(event.target)) close(); }
+    function keydown(event) {
+      if (event.key === 'Enter') { event.preventDefault(); apply(); }
+      else if (event.key === 'Escape') { event.preventDefault(); close(); }
+    }
+    confirm.addEventListener('click', apply);
+    document.addEventListener('mousedown', outside);
+    document.addEventListener('keydown', keydown);
+    input.focus(); input.select();
+  }
+  extraEl?.addEventListener('dblclick', openExtraEditor);
+  extraEl?.addEventListener('click', () => {
+    if (state.extraShown && state.extra > 0) return;
+    setManualExtra(1);
+    openExtraEditor();
+  });
 
 

@@ -5,6 +5,10 @@
       /* 오버레이 화면 */
       --bg-ui: #111827;
       --panel-ui: #0b1220;
+      --control-accent: #60a5fa;
+      --control-accent-rgb: 96, 165, 250;
+      --control-accent-text: #dbeafe;
+      --control-accent-on: #0b1220;
       /* Iter 5-7: 패널 배경을 rgba로 분해해 알파 조절 가능하게 함.
          --panel-alpha를 0~1 사이로 바꾸면 모든 패널 배경이 반투명해져서
          body의 background-image가 비쳐 보임. settings-popup.js가 슬라이더로 제어. */

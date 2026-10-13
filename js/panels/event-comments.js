@@ -49,6 +49,7 @@ window.EVENT_COMMENT_KO = {
   'Offside':                    '오프사이드',
   'Dissent':                    '판정 항의',
   'Not Retreating':             '세트피스 거리 미준수',
+  'video review':               '온필드 리뷰',
   
   // 페널티 슛아웃
   'Penalty Shootout':             '승부차기',

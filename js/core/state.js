@@ -4,8 +4,7 @@
 
   // 전/후반 진행 순서 정의 ([ 버튼과 ] 버튼으로 순환)
   const halfOrder = ['1','2','ET1','ET2','PK'];
-  const TKEY = 'obs-scoreboard-templates-v1';
-  const TLASTKEY = 'obs-scoreboard-selected-template-v1';
+  // (2026-10-08) 레거시 점수판 템플릿(Theme Templates/Lists.json) 저장 키 TKEY/TLASTKEY 제거 — FSM 점수판으로 대체됨
   const SKEY = 'obs-scoreboard-state-v2';
   /** 폰트 패밀리 문자열을 정규화 — 콤마로 split, 각 부분 trim, 빈 항목 제거 후 ", "로 join. */
   function normalizeFontFamilySpec(fontMaybe){
@@ -57,6 +56,7 @@
   const state = {
     logoAlign: 'hybrid',
     homeName: 'HOME', awayName: 'AWAY',
+    teamNicknameTeams: null,
     homeScore: 0, awayScore: 0,
     aggEnabled: false, aggHomeBase: 0, aggAwayBase: 0,
     homeLogo: '', awayLogo: '',
@@ -74,7 +74,7 @@
       extra: '#22c55e', halfBg: '#a70e80', halfText: '#f6fd8e',
       homeBg: '#1d4ed8', homeText: '#ffffff',
       awayBg: '#ef4444', awayText: '#ffffff',
-      outline: '#ffffff15', pkBase: '#334155',
+      outline: '#ffffff15', pkBase: '#334155', pkGoal: '#32cd32', pkMiss: '#ff0000',
       homeOutline: '#ffffff40', awayOutline: '#ffffff40',
       noteText: '#e5e7eb', noteStroke: '#000000',
     },
@@ -90,6 +90,9 @@
     pk: { home: [], away: [] },
     pkScore: { home: null, away: null },
     pkLastExitedAt: 0,
+    // Direct PSO selection survives polling for this fixture, including missing API PSO status.
+    psoModeForced: false,
+    psoModeFixtureId: null,
     // 사용자가 테마 탭에서 home/away 컬러를 직접 수정한 적이 있으면 true.
     // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드용. localStorage로 영속화돼서 새로고침 후에도 보존.
     teamColorOverride: false,
@@ -97,11 +100,14 @@
     noteEnabled: true,
     notes: { home: '', away: '' },
     noteFontSize: 18,
+    noteStrokeWidth: 1,
     noteBorderWidth: 1,
     noteMinHeight: 56,
     manualMode: false,
     leagueId: null,
-    leagueLogoUrl: null
+    leagueLogoUrl: null,
+    leagueThemeUpdateSilent: false,
+    leagueThemeApplyVersion: 0
   };
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,8 +145,6 @@
     rcHome: $('rcHome'), rcAway: $('rcAway'),
     rcSize: $('rcSize'), rcGap: $('rcGap'),
     rcTop: $('rcTop'), rcHomeInset: $('rcHomeInset'), rcAwayInset: $('rcAwayInset'),
-    templateSelect: $('templateSelect'), templateName: $('templateName'), saveTemplate: $('saveTemplate'), deleteTemplate: $('deleteTemplate'), resetTemplates: $('resetTemplates'),
-    exportTemplates: $('exportTemplates'), importTemplates: $('importTemplates'),
     fontPreset: $('fontPreset'), fontCssUrl: $('fontCssUrl'), fontFamily: $('fontFamily'), applyFont: $('applyFont'), resetFont: $('resetFont'),
     askLocalFonts: $('askLocalFonts'), systemFonts: $('systemFonts'), fontFile: $('fontFile'),
     logoAlign: $('logoAlign'),
@@ -161,6 +165,7 @@
     homeNote: $('homeNote'), awayNote: $('awayNote'),
     homeNoteSide: $('homeNoteSide'), awayNoteSide: $('awayNoteSide'),
     noteOn: $('noteOn'), noteFontSize: $('noteFontSize'),
+    noteStrokeWidth: $('noteStrokeWidth'),
     inNoteStroke: $('inNoteStroke'), inNoteText: $('inNoteText'),
   };
 
@@ -247,6 +252,8 @@
       state.pkScore.home = normalizePenaltyScore(state.pkScore.home);
       state.pkScore.away = normalizePenaltyScore(state.pkScore.away);
       state.pkLastExitedAt = Math.max(0, Number(state.pkLastExitedAt) || 0);
+      state.psoModeForced = state.psoModeForced === true;
+      state.psoModeFixtureId = state.psoModeForced ? String(state.psoModeFixtureId ?? '') : null;
       expireStalePkState();
       const legacyHomeManual = !!state.homeLogoManualOverride;
       const legacyAwayManual = !!state.awayLogoManualOverride;
@@ -265,9 +272,10 @@
       delete state.awayLogoManualOverride;
       state.fontFamily = sanitizeFontFamily(state.fontFamily) || DEFAULT_FONT_FAMILY;
       state.noteFontSize = clampNum(state.noteFontSize, 10, 60, 18);
+      state.noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
-      state.leagueId = saved.leagueId;
-      state.leagueLogoUrl = saved.leagueLogoUrl;
+      state.leagueId = saved?.leagueId ?? null;
+      state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;
     }catch(e){ console.warn('복원 실패:', e); }
   }

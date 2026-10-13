@@ -3,7 +3,17 @@
 > 작성일: 2026-08-29
 > 대상: obs-frontend 협업 프론트 개발자 (indvel)
 > 관련 문서: [fsm-integration-guide.md](fsm-integration-guide.md)
-> 상태: 원인 분석 완료, 코드 수정은 아직 적용 안 함 (검토/합의 후 적용 예정)
+> 상태: 아래 원인 분석은 2026-08-29 당시 기록. 현재 테마 저장/복원 및 초기 표시 처리는 구현 완료(아래 현황 참조).
+
+## 현재 구현 현황 (2026-10-08 코드 확인)
+
+- [x] `state.js`에 `leagueId`/`leagueLogoUrl` 저장 필드 구현.
+- [x] `fixture.js`에서 silent 여부와 무관하게 두 필드를 기록하고 `persist()` 호출.
+- [x] `init.js`에서 `restore()` 후 저장된 리그/로고로 테마 적용.
+- [x] `fsm-board.js`의 사용되지 않는 `obs-last-league-id` 복원 제거.
+- [x] 초기 `fsm-starting` 상태에서 저장 상태·CSS·폰트·크기를 준비한 뒤 공통 진입 애니메이션 실행. 정적 퇴장카드 컨테이너도 빈 상태로 시작.
+
+현재 남은 검증은 실제 OBS/배포 환경에서 반복 새로고침 및 자동 폴링 시 표시 확인이다. 아래 원인과 수정안은 과거 진단 기록이며, 이미 완료된 구현을 미적용 작업으로 해석하지 않는다.
 
 ---
 
@@ -166,7 +176,7 @@ if(el.rcAway){ el.rcAway.replaceChildren(...make(state.redAway)); el.rcAway.clas
 
 ## 적용 방법
 
-이 문서는 진단 + 수정안 정리용이며 아직 코드에는 반영하지 않았음. 합의되면 아래 파일들을 수정:
+아래 목록은 당시 제안한 변경 파일이다. 현재 적용 상태는 문서 상단의 체크리스트를 기준으로 하며, 애니메이션은 테마 전환 시간 일괄 상향 대신 공통 진입 효과로 구현했다.
 
 - `js/core/state.js` — `leagueId`/`leagueLogoUrl` 필드 추가
 - `js/core/fixture.js` — leagueId를 state에 기록 + persist

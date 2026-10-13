@@ -29,6 +29,17 @@ const root = path.resolve(__dirname, '../..');
       openManualPanel('lineup', 'away');
     });
     const field = (name, index) => page.locator(`[name="lineup-${name}-${index}"]`);
+    const assertCardAlignment = async () => {
+      const cards = await page.locator('.dp-manual-card-swatch > .football-icon').evaluateAll(icons => icons.map(icon => {
+        const row = icon.closest('.dp-manual-row');
+        const image = icon.getBoundingClientRect();
+        const input = row.querySelector('.dp-input-mini').getBoundingClientRect();
+        return Math.abs(image.y + image.height / 2 - input.y - input.height / 2);
+      }));
+      assert.equal(cards.length, 22);
+      cards.forEach(delta => assert(delta < .5, `Manual card vertical offset: ${delta}px`));
+    };
+    await assertCardAlignment();
     for (const [name, label] of [['yellow', '경고(옐로카드)'], ['red', '퇴장(레드카드)']]) {
       assert.equal(await field(name, 1).getAttribute('aria-label'), label);
       assert.equal(await field(name, 1).locator('..').locator('.dp-manual-card-swatch').getAttribute('aria-hidden'), 'true');
@@ -44,6 +55,9 @@ const root = path.resolve(__dirname, '../..');
     await field('assists', 1).fill('3');
     await field('yellow', 1).check();
     await field('red', 1).check();
+    await assertCardAlignment();
+    fs.mkdirSync(path.join(root, 'screenshots/event-icons/review'), { recursive: true });
+    await page.locator('#manualPanelBackdrop .dp-manual-modal').screenshot({ path: path.join(root, 'screenshots/event-icons/review/manual-card-alignment.png') });
     await field('captain', 2).check();
     await field('captain', 1).check();
     assert.equal(await page.locator('[name^="lineup-captain-"]:checked').count(), 1);

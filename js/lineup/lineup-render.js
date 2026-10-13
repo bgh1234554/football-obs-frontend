@@ -56,10 +56,8 @@ function lpIsCaptain(playerId, player) {
 /** 카드 마커 HTML — yellow / red / 누적(yellow+red) / null */
 function lpBuildCardMarkersHtml(events) {
   const kind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
-  if (kind === 'yellow') return '<span class="dp-card is-yellow"></span>';
-  if (kind === 'red') return '<span class="dp-card is-red"></span>';
-  if (kind === 'cumulative') return '<span class="dp-card is-yellow"></span><span class="dp-card is-red"></span>';
-  return '';
+  const icon = { yellow: 'yellow-card', red: 'red-card', cumulative: 'cumulative-red' }[kind];
+  return icon ? `<span class="dp-card is-${kind}">${footballIconHtml(icon)}</span>` : '';
 }
 
 /** subOut/subIn 마커 HTML — kind('bench'|'starter') 기반으로 화살표 색상/방향 결정.
@@ -92,7 +90,7 @@ function lpBuildSubMarkerHtml(events, kind) {
   return '';
 }
 
-/** 골/어시 이모티콘 — 정규 득점·도움은 반복, 자책골은 피치와 같은 빨간 횟수 배지. */
+/** 골/도움 이미지 — 정규 득점·도움은 반복, 자책골은 2회 이상만 횟수 배지. */
 function lpBuildGoalsAssistsHtml(events) {
   if (!events) return '';
   const goalCount = events.goals?.length || 0;
@@ -100,9 +98,9 @@ function lpBuildGoalsAssistsHtml(events) {
   const assistCount = events.assists?.length || 0;
   if (!goalCount && !ownGoalCount && !assistCount) return '';
   let html = '';
-  for (let i = 0; i < goalCount; i++) html += '<span class="dp-event-icon dp-event-goal" title="득점">⚽</span>';
-  if (ownGoalCount) html += `<span class="dp-event-icon dp-event-goal dp-event-own-goal" title="자책골 ${ownGoalCount}회">⚽<span class="dp-event-own-goal-count">${ownGoalCount}</span></span>`;
-  for (let i = 0; i < assistCount; i++) html += '<span class="dp-event-icon dp-event-assist" title="도움">👟</span>';
+  for (let i = 0; i < goalCount; i++) html += `<span class="dp-event-icon dp-event-goal" title="득점">${footballIconHtml('goal')}</span>`;
+  if (ownGoalCount) html += `<span class="dp-event-icon dp-event-goal dp-event-own-goal${ownGoalCount > 1 ? ' has-count' : ''}" title="자책골 ${ownGoalCount}회">${footballIconHtml('own-goal')}${ownGoalCount > 1 ? `<span class="dp-event-own-goal-count">${ownGoalCount}</span>` : ''}</span>`;
+  for (let i = 0; i < assistCount; i++) html += `<span class="dp-event-icon dp-event-assist" title="도움">${footballIconHtml('assist')}</span>`;
   return html;
 }
 
@@ -174,32 +172,21 @@ function lpBuildNodeBadgesHtml(events) {
   // top-right: 어시스트
   if (events.assists?.length) {
     const n = events.assists.length;
-    html += `<span class="dp-node-badge dp-node-assist" title="도움 ${n}회">👟${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
+    html += `<span class="dp-node-badge dp-node-assist" title="도움 ${n}회">${footballIconHtml('assist')}${n > 1 ? `<span class="dp-node-count">${n}</span>` : ''}</span>`;
   }
-  // bottom-right: 골(자책골 포함). 공 이모티콘 자체는 색을 바꿀 수 없으므로, 자책골은 카운트
-  // 배지(원형 숫자)만 빨간 배경으로 구분한다. 자책골이 같이 있으면 정규 골이 1개뿐이어도
-  // "1 1"처럼 나란히 보이도록 정규 골 카운트도 함께 표시한다(기존엔 2개 이상일 때만 숫자 표시).
+  // bottom-right: 정규 골과 자책골은 별도 공으로 구분하고 2회 이상만 숫자 표시.
   {
     const goalCount = events.goals?.length || 0;
     const ownGoalCount = events.ownGoals?.length || 0;
     if (goalCount || ownGoalCount) {
       const paired = goalCount > 0 && ownGoalCount > 0;
-      const titleParts = [];
-      if (goalCount) titleParts.push(`득점 ${goalCount}회`);
-      if (ownGoalCount) titleParts.push(`자책골 ${ownGoalCount}회`);
-      const goalCountHtml = goalCount && (goalCount > 1 || paired)
-        ? `<span class="dp-node-count">${goalCount}</span>` : '';
-      const ownGoalCountHtml = ownGoalCount
-        ? `<span class="dp-node-count dp-node-count-og${paired ? ' dp-node-count-paired' : ''}">${ownGoalCount}</span>`
-        : '';
-      html += `<span class="dp-node-badge dp-node-goal" title="${titleParts.join(', ')}">⚽${goalCountHtml}${ownGoalCountHtml}</span>`;
+      const entry = (key, n, label) => `<span class="dp-node-goal-entry" title="${label} ${n}회">${footballIconHtml(key)}${n > 1 ? `<span class="dp-node-count${key === 'own-goal' ? ' dp-node-count-og' : ''}">${n}</span>` : ''}</span>`;
+      html += `<span class="dp-node-badge dp-node-goal${paired ? ' has-both' : ''}">${goalCount ? entry('goal', goalCount, '득점') : ''}${ownGoalCount ? entry('own-goal', ownGoalCount, '자책골') : ''}</span>`;
     }
   }
   // left side: 카드
-  const cardKind = typeof lpCardKind === 'function' ? lpCardKind(events) : null;
-  if (cardKind === 'yellow') html += '<span class="dp-node-badge dp-node-card"><span class="dp-card is-yellow"></span></span>';
-  else if (cardKind === 'red') html += '<span class="dp-node-badge dp-node-card"><span class="dp-card is-red"></span></span>';
-  else if (cardKind === 'cumulative') html += '<span class="dp-node-badge dp-node-card"><span class="dp-card is-yellow"></span><span class="dp-card is-red"></span></span>';
+  const cards = lpBuildCardMarkersHtml(events);
+  if (cards) html += `<span class="dp-node-badge dp-node-card">${cards}</span>`;
   return html;
 }
 
@@ -276,7 +263,7 @@ function shouldShowLineupManualButton(/* rawFixture, side */) {
 /** 라인업 패널 한쪽(홈/원정) 헤더 HTML — 팀명 + 포메이션 + (있으면) 입력 버튼. */
 function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
   return `<div class="dp-side-header">
-    <span class="dp-side-name" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
+    <span class="dp-side-name"${teamNicknameLabelAttrs(side)} title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
     ${formationText ? `<span class="dp-side-formation">${dpEscape(formationText)}</span>` : ''}
     ${showManual ? buildTitleActionButton('lineup', side) : ''}
   </div>`;
@@ -286,14 +273,22 @@ function buildLineupSideHeaderHtml(side, teamName, formationText, showManual) {
 function setSideName(panel, dataAttrPrefix, side, teamName, accentColor, accentTextColor) {
   const nameEl = panel?.querySelector(`[data-${dataAttrPrefix}-side="${side}"] .dp-side-name`);
   if (!nameEl) return;
+  nameEl.dataset.teamNicknameSide = side;
+  nameEl.setAttribute('role', 'button');
+  nameEl.tabIndex = 0;
+  nameEl.setAttribute('aria-label', `${side === 'home' ? '홈' : '원정'} 팀 닉네임 편집`);
   nameEl.textContent = teamName;
   nameEl.title = teamName;
   if (accentColor) {
     nameEl.style.setProperty('--dp-team-accent', accentColor);
     nameEl.style.setProperty('--dp-team-text', accentTextColor || '#fff');
+    if (dataAttrPrefix === 'bench' || dataAttrPrefix === 'injury') {
+      teamOutlineLowContrast(nameEl, accentColor, accentTextColor || '#fff', teamPanelBackground(panel));
+    }
   } else {
     nameEl.style.removeProperty('--dp-team-accent');
     nameEl.style.removeProperty('--dp-team-text');
+    nameEl.style.removeProperty('box-shadow');
   }
 }
 
@@ -449,7 +444,7 @@ function getInjuryCategoryRank(injury) {
 }
 
 /** 미출전 선수 명단 목록 HTML — 사유별 아이콘(부상/의심/출장정지/미등록) + 한글 사유 툴팁. 아이콘 표시 순서(부상→의심→출장정지→미등록)대로 정렬. */
-function buildInjuryListHtml(injuries, provided) {
+function buildInjuryListHtml(injuries, provided, options = {}) {
   if (!injuries || injuries.length === 0) {
     return buildEmptyHtml(provided ? '결장자 없음' : '부상 정보 미제공');
   }
@@ -467,6 +462,10 @@ function buildInjuryListHtml(injuries, provided) {
   return sortedInjuries.map(injury => {
     const reasonKo = getInjuryReasonDisplayText(injury.reason, injury.type);
     const tooltip = reasonKo ? ` title="${dpEscape(reasonKo)}"` : '';
+    // 의심 여부는 ? 아이콘으로 나타내고, 본문에는 접두어 뒤의 실제 사유를 표시한다.
+    const visibleReason = (reasonKo || '정보 없음').replace(/^출전 여부 미정\s*-\s*/, '').trim() || '출전 여부 미정';
+    const inlineReason = options.inlineReason
+      ? ` <span class="ic-reason${isQuestionableInjuryReason(injury.reason, injury.type) ? ' is-questionable' : ''}">${dpEscape(visibleReason)}</span>` : '';
 
     let iconHtml = '<span class="dp-icon dp-icon-injury" aria-label="부상"></span>';
     if (typeof isOffRoster === 'function' && isOffRoster(injury.reason)) {
@@ -476,13 +475,13 @@ function buildInjuryListHtml(injuries, provided) {
     } else if (isQuestionableInjuryReason(injury.reason, injury.type)) {
       iconHtml = '<span class="dp-icon dp-icon-questionable" aria-label="의심"></span>';
     } else if (typeof isSuspension === 'function' && isSuspension(injury.reason)) {
-      iconHtml = '<span class="dp-icon dp-icon-redcard" aria-label="출장 정지"></span>';
+      iconHtml = `<span class="dp-icon dp-icon-redcard" aria-label="출장 정지">${footballIconHtml('red-card')}</span>`;
     }
 
-    return `<div class="dp-item" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || injury.playerName || '')}"` : ''}>
+    return `<div class="dp-item${options.inlineReason ? ' has-inline-reason' : ''}" data-player-id="${dpEscape(injury.playerId)}"${Number(injury.playerId) === 0 ? ` data-player-orig-name="${dpEscape(injury.name || injury.playerName || '')}"` : ''}>
       ${iconHtml}
       <span class="dp-item-num">${dpEscape(injury.number ?? '')}</span>
-      <span class="dp-item-name dp-injury-name"${tooltip}>${dpEscape(pickName(injury, 'roster') || '-')}</span>
+      <span class="dp-item-name dp-injury-name"${tooltip}>${dpEscape(pickName(injury, 'roster') || '-')}${inlineReason}</span>
     </div>`;
   }).join('');
 }
@@ -780,7 +779,7 @@ function buildLineupPitchTeamChipHtml(side, effectiveData, rawData, options = {}
     : getTeamName(effectiveData, side);
   const primaryTitle = formationOnly ? primaryLabel : getTeamName(effectiveData, side);
   const teamNameAttrs = formationOnly ? ''
-    : ` data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}"`;
+    : `${teamNicknameLabelAttrs(side)} data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}"`;
   return `<div class="dp-lineup-team-chip is-${side}">
     <div class="dp-lineup-team-main${formationOnly ? ' is-formation-only' : ''}" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
       <span class="dp-lineup-team-name"${teamNameAttrs} title="${dpEscape(primaryTitle)}">${dpEscape(primaryLabel)}</span>
@@ -803,7 +802,7 @@ function buildLineupPitchTeamNameTagHtml(side, effectiveData) {
     : (matchInfo.awayTeamName || '')).trim();
   return `<div class="dp-lineup-team-name-tag is-${side}">
     <div class="dp-lineup-team-main" style="--dp-team-accent:${colors.bg};--dp-team-text:${colors.text};">
-      <span class="dp-lineup-team-name" data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
+      <span class="dp-lineup-team-name"${teamNicknameLabelAttrs(side)} data-team-name-short="${dpEscape(shortTeamName)}" data-team-name-long="${dpEscape(longTeamName)}" title="${dpEscape(teamName)}">${dpEscape(teamName)}</span>
     </div>
   </div>`;
 }
@@ -1129,10 +1128,103 @@ function lpFitBenchCycleTitle(titleEl) {
   titleEl.style.fontSize = size + 'px';
 }
 
+const injuryReasonFitObserved = new WeakSet();
+const injuryReasonFitQueued = new WeakSet();
+let injuryReasonFitObserver = null;
+
+/** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
+function fitInjuryReasons(panel) {
+  panel?.querySelectorAll('.has-inline-reason .dp-item-name').forEach(label => {
+    const reason = label.querySelector('.ic-reason');
+    if (!reason || !label.clientWidth) return;
+    label.classList.remove('ic-reason-wrap', 'ic-reason-newline');
+    reason.style.removeProperty('font-size');
+    const base = parseFloat(getComputedStyle(reason).fontSize);
+    const minimum = Math.min(8, base);
+    // 선수 이름 때문에 이미 필요한 줄 수는 그대로 유지한다.
+    label.classList.add('ic-reason-wrap');
+    const previousDisplay = reason.style.display;
+    reason.style.display = 'none';
+    const nameHeight = label.clientHeight;
+    const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
+    reason.style.display = previousDisplay;
+    const nameWraps = nameHeight > lineHeight + 1;
+    if (!nameWraps) label.classList.remove('ic-reason-wrap');
+    const fits = () => label.scrollWidth <= label.clientWidth &&
+      (!nameWraps || label.clientHeight <= nameHeight + 1);
+    if (fits()) return;
+    reason.style.fontSize = `${minimum}px`;
+    if (!fits()) {
+      label.classList.add('ic-reason-wrap', 'ic-reason-newline');
+      // 축소해도 줄 수가 늘어난다면 작은 글씨를 유지할 이유가 없다.
+      reason.style.removeProperty('font-size');
+      return;
+    }
+    let low = minimum, high = base;
+    for (let i = 0; i < 8; i++) {
+      const mid = (low + high) / 2;
+      reason.style.fontSize = `${mid}px`;
+      if (fits()) low = mid;
+      else high = mid;
+    }
+    reason.style.fontSize = `${low}px`;
+  });
+}
+
+function queueFitInjuryReasons(panel) {
+  if (!panel) return;
+  if (typeof ResizeObserver !== 'undefined' && !injuryReasonFitObserved.has(panel)) {
+    injuryReasonFitObserver ||= new ResizeObserver(entries => entries.forEach(entry => queueFitInjuryReasons(entry.target)));
+    injuryReasonFitObserved.add(panel);
+    injuryReasonFitObserver.observe(panel);
+  }
+  if (injuryReasonFitQueued.has(panel)) return;
+  injuryReasonFitQueued.add(panel);
+  requestAnimationFrame(() => { injuryReasonFitQueued.delete(panel); fitInjuryReasons(panel); });
+}
+
+function fitAllInjuryReasons() {
+  document.querySelectorAll('#injuryPanel, [data-injury-cycle-panel]').forEach(queueFitInjuryReasons);
+}
+document.addEventListener('page:activated', fitAllInjuryReasons);
+document.addEventListener('settings:change', fitAllInjuryReasons);
+window.addEventListener('resize', fitAllInjuryReasons);
+document.fonts?.ready.then(fitAllInjuryReasons);
+
+/** 캠 큰 미출전 명단: 두 팀을 세로로 배치하고 사유를 항상 노출한다. */
+function renderInjuryCyclePanel(effectiveData, rawData) {
+  const home = Array.isArray(effectiveData?.homeInjuries) ? effectiveData.homeInjuries : [];
+  const away = Array.isArray(effectiveData?.awayInjuries) ? effectiveData.awayInjuries : [];
+  window._lpStatInjuryCount = home.length + away.length;
+  let changed = false;
+  document.querySelectorAll('.lp-stat [data-injury-cycle-panel]').forEach(panel => {
+    const html = `<div class="st-title-bar">미출전 선수 명단</div><div class="ic-body">${['home', 'away'].map(side => {
+      const list = side === 'home' ? home : away;
+      const provided = Array.isArray(rawData?.[`${side}Injuries`]) || Array.isArray(effectiveData?.[`${side}Injuries`]);
+      return `<section class="ic-team" data-injury-side="${side}"><div class="dp-side-header"><span class="dp-side-name"></span></div><div class="ic-list">${buildInjuryListHtml(list, provided, { inlineReason: true })}</div></section>`;
+    }).join('')}</div>`;
+    // 동일 데이터 폴링은 진행 중인 스크롤의 DOM을 교체하지 않는다.
+    if (panel._injuryCycleHtml !== html) {
+      panel.innerHTML = html;
+      panel._injuryCycleHtml = html;
+      changed = true;
+    }
+    const cs = typeof chromaSafe === 'function' ? chromaSafe : (v => v);
+    for (const side of ['home', 'away']) {
+      setSideName(panel, 'injury', side, getTeamName(effectiveData, side),
+        cs(normalizeHexColor(state?.colors?.[`${side}Bg`], side === 'home' ? '#2563eb' : '#dc2626')),
+        cs(normalizeHexColor(state?.colors?.[`${side}Text`], '#ffffff')));
+    }
+    queueFitInjuryReasons(panel);
+  });
+  if (changed) window.lpStatInjuryContentChanged?.();
+  else window.lpStatUpdateVisibility?.();
+}
+
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor, side) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
-  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}>${dpEscape(teamName)} 교체명단</div>`;
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span> 교체명단</div>`;
   if (!players || !players.length) {
     return `${title}<div class="st-empty">교체 선수 없음</div>`;
   }
@@ -1244,7 +1336,7 @@ function renderBenchCyclePanels(effectiveData) {
  * (그린스크린 모드 등으로 `--bg-ui`가 진한 초록이고 패널이 반투명하면 그 색이 비쳐 보임).
  */
 function miResolveEffectiveBgHex() {
-  const panelRgb = (typeof parseAnyColor === 'function') ? parseAnyColor(`rgb(${getCSS('--panel-ui-rgb') || '11, 18, 32'})`) : null;
+  const panelRgb = (typeof parseAnyColor === 'function') ? parseAnyColor(`rgb(${getCSS('--info-panel-rgb') || '11, 18, 32'})`) : null;
   const base = (typeof parseAnyColor === 'function') ? parseAnyColor(normalizeTeamColorHex(getCSS('--bg-ui')) || '#111827') : null;
   if (!panelRgb || !base || typeof rgbToHex !== 'function') return '#0b1220';
   const alpha = clampNum(parseFloat(getCSS('--panel-alpha')), 0, 1, 1);
@@ -1351,9 +1443,12 @@ function renderInjuryPanel(effectiveData, rawData) {
     shouldShowInjuryManualButton(rawData, 'away') ? buildTitleActionButton('injury', 'away') : '',
   ].filter(Boolean).join(''));
 
-  // 2) 좌우 팀명을 갱신한다.
-  setSideName(panel, 'injury', 'home', getTeamName(effectiveData, 'home'));
-  setSideName(panel, 'injury', 'away', getTeamName(effectiveData, 'away'));
+  // 2) 교체명단과 동일한 팀 색 라벨로 좌우 팀명을 갱신한다.
+  const cs = (typeof chromaSafe === 'function') ? chromaSafe : (v => v);
+  setSideName(panel, 'injury', 'home', getTeamName(effectiveData, 'home'),
+    cs(normalizeHexColor(state?.colors?.homeBg, '#2563eb')), cs(normalizeHexColor(state?.colors?.homeText, '#ffffff')));
+  setSideName(panel, 'injury', 'away', getTeamName(effectiveData, 'away'),
+    cs(normalizeHexColor(state?.colors?.awayBg, '#dc2626')), cs(normalizeHexColor(state?.colors?.awayText, '#ffffff')));
 
   // 3) raw/effective 어느 쪽이든 데이터가 있는지 판단해 empty 문구를 제어한다.
   const hasHomeInjuryData = Array.isArray(rawData?.homeInjuries) || Array.isArray(effectiveData?.homeInjuries);
@@ -1362,8 +1457,9 @@ function renderInjuryPanel(effectiveData, rawData) {
   // 4) 최종 리스트 HTML을 좌우 컬럼에 삽입한다.
   const homeList = panel.querySelector('[data-injury-side="home"] .dp-list');
   const awayList = panel.querySelector('[data-injury-side="away"] .dp-list');
-  if (homeList) homeList.innerHTML = buildInjuryListHtml(effectiveData?.homeInjuries, hasHomeInjuryData);
-  if (awayList) awayList.innerHTML = buildInjuryListHtml(effectiveData?.awayInjuries, hasAwayInjuryData);
+  if (homeList) homeList.innerHTML = buildInjuryListHtml(effectiveData?.homeInjuries, hasHomeInjuryData, { inlineReason: true });
+  if (awayList) awayList.innerHTML = buildInjuryListHtml(effectiveData?.awayInjuries, hasAwayInjuryData, { inlineReason: true });
+  queueFitInjuryReasons(panel);
 }
 
 /**
@@ -1556,6 +1652,7 @@ function rerenderLineupPanels() {
   syncTacticsBoard(effectiveData);
   renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
+  renderInjuryCyclePanel(effectiveData, lineupPanelState.lastFixture);
 
   // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
   // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).
@@ -1653,6 +1750,11 @@ function clearLineupPanels() {
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
 
   window._lpStatBenchData = null;
+  window._lpStatInjuryCount = 0;
+  document.querySelectorAll('.lp-stat [data-injury-cycle-panel]').forEach(panel => {
+    panel.replaceChildren();
+    delete panel._injuryCycleHtml;
+  });
   window._lpStatMatchInfoAvailable = false;
   document.querySelectorAll('.lp-stat [data-match-info-panel]').forEach(el => { el.innerHTML = ''; });
   window.lpStatUpdateVisibility?.();
@@ -1671,7 +1773,7 @@ document.addEventListener('settings:change', event => {
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
   // 평점 색상 7구간(ratingColor*)도 변경 시 노드 평점 박스 즉시 갱신.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
-    'lineupHideInitial', 'lineupShowNumber',
+    'lineupHideInitial', 'lineupShowNumber', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha', 'bgMode',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
     'lineupShowOutScorers', 'splitLineup', 'leagueLogoPos',
     'ratingColorBelow6', 'ratingColor6', 'ratingColor65',

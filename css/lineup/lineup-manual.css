@@ -90,9 +90,9 @@
   gap: 8px;
 }
 .dp-manual-secondary[aria-pressed="true"] {
-  border-color: rgba(76,217,100,.65);
-  background: rgba(76,217,100,.16);
-  color: #7bea8e;
+  border-color: rgba(var(--control-accent-rgb),.65);
+  background: rgba(var(--control-accent-rgb),.16);
+  color: var(--control-accent-text);
 }
 .dp-manual-primary,
 .dp-manual-secondary {
@@ -103,9 +103,9 @@
   cursor: pointer;
 }
 .dp-manual-primary {
-  border: 1px solid #4cd964;
-  background: #4cd964;
-  color: #0a1f10;
+  border: 1px solid var(--control-accent);
+  background: var(--control-accent);
+  color: var(--control-accent-on);
 }
 .dp-manual-secondary {
   border: 1px solid rgba(255,255,255,.16);
@@ -150,8 +150,8 @@
 .dp-input:focus,
 .dp-select:focus {
   outline: none;
-  border-color: rgba(76,217,100,.65);
-  box-shadow: 0 0 0 2px rgba(76,217,100,.18);
+  border-color: rgba(var(--control-accent-rgb),.65);
+  box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18);
 }
 .dp-manual-grid {
   display: grid;
@@ -256,7 +256,7 @@
   color: #111;
 }
 .dp-manual-stat-check input[type="checkbox"]:focus-visible + .dp-manual-card-swatch {
-  outline: 2px solid rgba(76,217,100,.65);
+  outline: 2px solid rgba(var(--control-accent-rgb),.65);
   outline-offset: 1px;
 }
 
@@ -293,8 +293,8 @@
   cursor: pointer;
 }
 .tn-tab.active {
-  background: rgba(76,217,100,.16);
-  border-color: rgba(76,217,100,.55);
+  background: rgba(var(--control-accent-rgb),.16);
+  border-color: rgba(var(--control-accent-rgb),.55);
   color: #fff;
 }
 .tn-team-row {
@@ -338,7 +338,7 @@
   transition: border-color .15s ease, transform .1s ease;
 }
 .tn-swatch-group:hover .tn-swatch {
-  border-color: rgba(76,217,100,.65);
+  border-color: rgba(var(--control-accent-rgb),.65);
   transform: scale(1.08);
 }
 .tn-swatch input[type="color"] {
@@ -379,8 +379,8 @@
 .dp-grid-row:hover { background: rgba(255,255,255,.08); }
 .dp-grid-row.is-dragging { opacity: .35; cursor: grabbing; }
 .dp-grid-row.is-drop-target {
-  background: rgba(76,217,100,.18);
-  border-color: rgba(76,217,100,.55);
+  background: rgba(var(--control-accent-rgb),.18);
+  border-color: rgba(var(--control-accent-rgb),.55);
   transform: translateY(-1px);
 }
 .dp-grid-handle {

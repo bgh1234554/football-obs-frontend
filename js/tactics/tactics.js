@@ -28,6 +28,7 @@
     "3-5-1-1": [{x:5,y:50},{x:11.5,y:25},{x:11.5,y:50},{x:11.5,y:75},{x:18,y:10},{x:25,y:25},{x:25,y:50},{x:25,y:75},{x:18,y:90},{x:32.5,y:50},{x:42.5,y:50}],
     "3-4-3":   [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:25,y:10},{x:25,y:35},{x:25,y:65},{x:25,y:90},{x:41,y:20},{x:41,y:50},{x:41,y:80}],
     "3-4-2-1": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:23,y:10},{x:23,y:35},{x:23,y:65},{x:23,y:90},{x:33,y:30},{x:33,y:70},{x:43,y:50}],
+    "3-2-4-1": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:23,y:35},{x:23,y:65},{x:33,y:10},{x:33,y:35},{x:33,y:65},{x:33,y:90},{x:43,y:50}],
     "3-3-1-3": [{x:5,y:50},{x:12,y:25},{x:12,y:50},{x:12,y:75},{x:22,y:25},{x:22,y:50},{x:22,y:75},{x:30,y:50},{x:42,y:25},{x:42,y:50},{x:42,y:75}],
     "3-4-1-2": [{x:5,y:50},{x:13,y:25},{x:13,y:50},{x:13,y:75},{x:22,y:10},{x:22,y:35},{x:22,y:65},{x:22,y:90},{x:31,y:50},{x:42,y:35},{x:42,y:65}],
 
@@ -57,6 +58,7 @@
     "3-5-1-1": ['GK','CB','CB','CB','RM','CM','CM','CM','LM','AM','ST'],
     "3-4-3":   ['GK','CB','CB','CB','RM','CM','CM','LM','RW','ST','LW'],
     "3-4-2-1": ['GK','CB','CB','CB','RM','CM','CM','LM','AM','AM','ST'],
+    "3-2-4-1": ['GK','CB','CB','CB','CM','CM','RM','AM','AM','LM','ST'],
     "3-3-1-3": ['GK','CB','CB','CB','CM','CM','CM','AM','RW','ST','LW'],
     "3-4-1-2": ['GK','CB','CB','CB','RM','CM','CM','LM','AM','ST','ST'],
 
@@ -145,6 +147,7 @@
   // --td-scale 기준 폭 — 가로 모드일 때의 피치 폭. 세로 모드로 먼저 로드돼도 가로 기준으로 잡아
   // 선수 크기가 로드 시점 방향에 따라 달라지지 않게 한다(tacticsSyncPitchLayout에서 최초 1회 설정).
   var tdPitchBaseWidth = 0;
+  var tdHorizontalPitchRatio = 1;
   // 세로 모드 피치 폭 배율(화면상 가로 폭 / 기본 폭) — 일반 화면/전체화면 별도 저장.
   var TD_PITCH_STRETCH_STORAGE_KEY = 'obs.tactics.verticalPitchStretch.v1';
   var TD_PITCH_STRETCH_MIN = 0.6;  // 너무 가늘어지지 않게 하는 하한
@@ -410,7 +413,8 @@
     const reservedPanelWidth = overlayPanels ? 0 : 240;
     const maxPitchWidth = Math.max(0, main.clientWidth - toolbarWidth - reservedPanelWidth - padLeft - padRight);
     const pitchWidthByHeight = availableHeight * (105 / 68);
-    const horizontalPitchWidth = maxPitchWidth > 0 ? Math.min(pitchWidthByHeight, maxPitchWidth) : pitchWidthByHeight;
+    const naturalHorizontalWidth = maxPitchWidth > 0 ? Math.min(pitchWidthByHeight, maxPitchWidth) : pitchWidthByHeight;
+    const horizontalPitchWidth = naturalHorizontalWidth * ((!tdPitchVertical && !overlayPanels) ? tdHorizontalPitchRatio : 1);
     if (!tdPitchBaseWidth && horizontalPitchWidth > 0) tdPitchBaseWidth = horizontalPitchWidth;
 
     // 세로 모드: 회전 후 화면상 폭 = 피치 높이(68), 화면상 높이 = 피치 길이(105).
@@ -518,13 +522,14 @@
 
     const naturalWidth = () => pitch.offsetWidth * (68 / 105);
     const reset = () => {
+      if (!tdPitchVertical) tdHorizontalPitchRatio = 1;
       tdPitchStretch[tdPitchStretchMode()] = 1;
       tdSavePitchStretch();
       tacticsSyncPitchLayout();
     };
 
     handle.addEventListener('pointerdown', (e) => {
-      if (!tdPitchVertical) return;
+      if (!tdPitchVertical && tdIsOverlayPanelMode()) return;
       e.preventDefault();
       e.stopPropagation();
       // 1. 더블탭/더블클릭 — 350ms 안에 가까운 위치를 다시 누르면 초기화
@@ -541,16 +546,28 @@
       const screenW = wrap.getBoundingClientRect().width;
       drag = {
         startX: e.clientX,
+        horizontal: !tdPitchVertical,
+        naturalHorizontalWidth: pitch.offsetWidth / tdHorizontalPitchRatio,
         startWidth: pitch.offsetHeight, // 세로 모드: 피치 layout 높이 = 화면상 폭
         ratio: screenW > 0 ? wrap.offsetWidth / screenW : 1,
         mult: getComputedStyle(wrap).justifyContent === 'center' ? 2 : 1,
         sign: getComputedStyle(handle).order === '-1' ? -1 : 1,
       };
+      if (drag.horizontal) {
+        drag.startWidth = pitch.offsetWidth;
+        drag.mult = 1;
+        drag.sign = 1;
+      }
       handle.classList.add('is-dragging');
     });
     handle.addEventListener('pointermove', (e) => {
       if (!drag) return;
       const dx = (e.clientX - drag.startX) * drag.ratio * drag.mult * drag.sign;
+      if (drag.horizontal) {
+        tdHorizontalPitchRatio = Math.max(0.35, Math.min(1, (drag.startWidth + dx) / drag.naturalHorizontalWidth));
+        tacticsSyncPitchLayout();
+        return;
+      }
       const natural = naturalWidth();
       if (!(natural > 0)) return;
       tdPitchStretch[tdPitchStretchMode()] = Math.max(TD_PITCH_STRETCH_MIN, (drag.startWidth + dx) / natural);
@@ -558,8 +575,10 @@
     });
     const end = () => {
       if (!drag) return;
+      const horizontal = drag.horizontal;
       drag = null;
       handle.classList.remove('is-dragging');
+      if (horizontal) return;
       // 남는 공간에 막혀 실제로 적용된 폭 기준으로 저장(보이는 크기와 저장값을 일치시킴)
       const natural = naturalWidth();
       if (natural > 0) tdPitchStretch[tdPitchStretchMode()] = Math.max(TD_PITCH_STRETCH_MIN, pitch.offsetHeight / natural);
@@ -749,7 +768,7 @@
     return wrap;
   }
 
-  /** 공 토큰 div를 생성하여 반환 (⚽ 이모지, 드래그 가능) */
+  /** 공 토큰 div를 생성하여 반환 (shared goal image, draggable) */
   function tacticsCreateBallToken(x, y) {
     const wrap = document.createElement('div');
     wrap.className = 'tactics-ball-token';
@@ -764,7 +783,7 @@
       filter: drop-shadow(0 2px 5px rgba(0,0,0,.4));
       transition:left .15s ease, top .15s ease;
     `;
-    wrap.textContent = '⚽';
+    wrap.innerHTML = footballIconHtml('goal');
     wrap.title = '드래그해서 공 위치 이동';
     return wrap;
   }

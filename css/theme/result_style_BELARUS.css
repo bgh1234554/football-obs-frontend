@@ -1,0 +1,401 @@
+@font-face {
+    font-family: 'SsangmunDongB';
+    src: url('/resources/fonts/Typo_SsangmunDongB.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Koverwatch';
+    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Pretendard-Medium';
+    src: url('/resources/fonts/Pretendard-Medium.woff') format('woff');
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('/resources/fonts/NanumGothic.ttf') format('woff');
+}
+@font-face {
+    font-family: 'GmarketSansMedium';
+    src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
+}
+
+.fsm-board { margin:0; padding:0; overflow:hidden; }
+
+.fsm-board .scoreboard-main {
+    width: 984px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 auto;
+    margin-top: 30px;
+}
+
+.fsm-board .div-background {
+    width: 984px;
+    height: 48px;
+    position: absolute;
+    display: flex;
+}
+
+.fsm-board .teams-left, .fsm-board .teams-right {
+    width: 360px;
+    height: 48px;
+    background: rgb(31, 31, 31);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .team-name {
+    width: 100%;
+    height: 100%;
+    color: white;
+    font-family: 'GmarketSansMedium';
+    font-size: 33px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .teams-left > .team-name {
+    display: flex;
+    justify-content: flex-start;
+    margin-left: 20px;
+}
+
+.fsm-board .teams-right > .team-name {
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 20px;
+}
+
+.fsm-board .text {
+    text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
+}
+
+.fsm-board .team-score {
+    width: 50px;
+    font-family: 'Pretendard-Medium';
+    font-size: 32px;
+    font-weight: bold;
+    background: white;
+    color: black;
+    text-align: center;
+    transition: 0.9s ease-in-out;
+    position: absolute;
+    z-index: 1;
+}
+
+.fsm-board #team-score-left {
+    margin-right: 110px;
+    background: white;
+}
+
+.fsm-board #team-score-right {
+    margin-left: 110px;
+    background: white;
+}
+
+.fsm-board .score {
+    text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
+}
+
+.fsm-board .score-div {
+    width: 70px;
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 26px;
+    font-weight: bold;
+    background: #00c7b2;
+    color: white;
+    text-align: center;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .hipen {
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .divider {
+    display: none;
+}
+
+.fsm-board .team-logo {
+    width: 80px;
+    height: 48px;
+    background: whitesmoke;
+    border: 2px solid whitesmoke;
+    position: relative;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .team-logo > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.fsm-board .epl-lion {
+    width: 100%;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    padding: 4px;
+}
+
+.fsm-board .team-color {
+    display: none;
+}
+
+.fsm-board .scoreboard-timer {
+    width: 180px;
+    height: 32px;
+    margin: 0 auto;
+    text-align: center;
+    vertical-align: middle;
+    color: black;
+    font-family: 'NanumGothic';
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.9s ease-in-out;
+    margin-top: -10px;
+    margin-left: none;
+}
+
+.fsm-board .time {
+    width: 114px;
+    height: 100%;
+    background: white;
+    position: relative;
+    z-index: 1;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .extra-time {
+    width: 80px;
+    height: 32px;
+    color: black;
+    background: #00c7b2;
+    position: absolute;
+    margin-left: 0px;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-status {
+    width: 360px;
+    height: 32px;
+    top: 78px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    align-items: flex-start;
+    position: absolute;
+    z-index: 1;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-main {
+    width: 100%;
+    height: 0px;
+    transition: 0.9s ease-in-out;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    background: white;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.fsm-board .pso-circle {
+    width: 25px;
+    height: 25px;
+    border-radius: 20px;
+    border: 1px solid black;
+    margin: 2px;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-status > .pso-main ul {
+    width: 100%;
+    height: 32px;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fsm-board .pso-middle {
+    display: flex;
+    font-family: 'NanumGothic';
+    font-weight: bold;
+    font-size: 20px;
+    margin: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.clock-editor {
+    margin-top: 100px;
+}
+
+.pk-wrap.show, .pk-score-row {
+    display: none;
+}
+
+.fsm-board .div-rc {
+    position: absolute;
+    top: 16px;
+    gap: 6px;
+    z-index: -1;
+}
+
+.fsm-board #rcHome {
+    display: flex;
+    left: 40px;
+    justify-content: flex-end; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board #rcAway {
+    display: flex;
+    right: 40px;
+    justify-content: flex-start; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board .div-rc .rc-card {
+    width: 14px;
+    height: 22px;
+    background: #ef4444;
+    border-radius: 3px;
+}
+
+.fsm-board #rcHome .rc-card {
+    transform: skewX(3deg);
+}
+
+.fsm-board #rcAway .rc-card {
+    transform: skewX(-3deg);
+}
+
+.fsm-board .div-rc.hidden {
+    display: none; 
+}
+
+.fsm-board .total-score {
+    display: none;
+}
+
+/* FNL: Ligue 1 geometry with team-colored name areas. */
+.fsm-board .teams-left { background: var(--fsm-home-primary-color); }
+.fsm-board .teams-right { background: var(--fsm-away-primary-color); }
+.fsm-board .teams-left .team-name { color: var(--fsm-home-number-color); }
+.fsm-board .teams-right .team-name { color: var(--fsm-away-number-color); }
+.fsm-board .team-logo { background: #ffffff; border-color: #ffffff; }
+.fsm-board .score-div, .fsm-board .epl-lion { background: #000000; color: #000000; }
+.fsm-board .team-score, .fsm-board #team-score-left, .fsm-board #team-score-right { background: #00c7b2; color: #000000; }
+.fsm-board .scoreboard-timer { color: #00c7b2; }
+.fsm-board .time { background: #000000; color: #00c7b2; }
+.fsm-board .extra-time { background: #00c7b2; color: #000000; }
+
+/* 벨라루스: FNL 팀 색상 배치 위에 꺾인 점수 경계와 큰 숫자를 적용한다. */
+.board.fsm-board[data-fsm-theme="belarus"] .div-background { display: none; }
+.board.fsm-board[data-fsm-theme="belarus"] .teams-left,
+.board.fsm-board[data-fsm-theme="belarus"] .teams-right { position: relative; isolation: isolate; background: transparent; }
+/* 점수 배경 아래에 팀 색상을 중복 도장하지 않아 끝 행에 색이 비치는 것을 막는다. */
+.board.fsm-board[data-fsm-theme="belarus"] :is(.teams-left, .teams-right)::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+}
+.board.fsm-board[data-fsm-theme="belarus"] .teams-left::before {
+  background: var(--fsm-home-primary-color);
+  clip-path: polygon(0 0, calc(100% - 10px + 1.36px) 0,
+    calc(100% - 10px + var(--fsm-belarus-upper-outer, 2.178px)) var(--fsm-belarus-upper-y, 20.45%),
+    calc(100% - 10px + var(--fsm-belarus-upper-inner, 7.638px)) var(--fsm-belarus-upper-y, 20.45%),
+    calc(100% - 10px + var(--fsm-belarus-lower-inner, 9.82px)) var(--fsm-belarus-lower-y, 75%),
+    calc(100% - 10px + var(--fsm-belarus-lower-outer, 4.36px)) var(--fsm-belarus-lower-y, 75%),
+    calc(100% - 10px + 5.36px) 100%, 0 100%);
+}
+.board.fsm-board[data-fsm-theme="belarus"] .teams-right::before {
+  background: var(--fsm-away-primary-color);
+  clip-path: polygon(100% 0, calc(10px - 1.36px) 0,
+    calc(10px - var(--fsm-belarus-upper-outer, 2.178px)) var(--fsm-belarus-upper-y, 20.45%),
+    calc(10px - var(--fsm-belarus-upper-inner, 7.638px)) var(--fsm-belarus-upper-y, 20.45%),
+    calc(10px - var(--fsm-belarus-lower-inner, 9.82px)) var(--fsm-belarus-lower-y, 75%),
+    calc(10px - var(--fsm-belarus-lower-outer, 4.36px)) var(--fsm-belarus-lower-y, 75%),
+    calc(10px - 5.36px) 100%, 100% 100%);
+}
+.board.fsm-board[data-fsm-theme="belarus"] .team-name {
+  width: 100%; margin-inline: 0; padding-inline: 24px; justify-content: center;
+}
+.board.fsm-board[data-fsm-theme="belarus"] .team-logo {
+  border: 0; background: #ffffff;
+}
+.board.fsm-board[data-fsm-theme="belarus"] #team-logo-left { border-top-left-radius: 12px; }
+.board.fsm-board[data-fsm-theme="belarus"] #team-logo-right { border-top-right-radius: 12px; }
+.board.fsm-board[data-fsm-theme="belarus"] .score-div,
+.board.fsm-board[data-fsm-theme="belarus"] .epl-lion { background: #233434; }
+.board.fsm-board[data-fsm-theme="belarus"] .score-div { width: 48px; }
+.board.fsm-board[data-fsm-theme="belarus"] .epl-lion { box-sizing: border-box; object-fit: contain; }
+.board.fsm-board[data-fsm-theme="belarus"] .team-score {
+  position: relative; width: 44px; font-size: 64px; color: #ffffff;
+  overflow: visible; z-index: 2;
+}
+.board.fsm-board[data-fsm-theme="belarus"] #team-score-left {
+  margin: 0; color: #ffffff; background: transparent;
+}
+.board.fsm-board[data-fsm-theme="belarus"] #team-score-right {
+  margin: 0; color: #ffffff; background: transparent;
+}
+/* 위아래로 꺾인 경계를 좌우 대칭으로 겹친다. */
+.board.fsm-board[data-fsm-theme="belarus"] .team-score::before {
+  content: ''; position: absolute;
+  top: var(--fsm-belarus-edge-top, 0px); bottom: var(--fsm-belarus-edge-bottom, 0px);
+  width: calc(100% + 10px);
+  z-index: -1; pointer-events: none;
+  background: linear-gradient(to right, #000000 0%, #233434 100%);
+  /* 원정 경계를 공통으로 사용하고 원정 쪽만 반전해 정확한 선대칭을 유지한다. */
+  /* 모든 사선은 세로 12px당 가로 1px 이동하며, 돌출부만 수평으로 연결한다. */
+  clip-path: polygon(var(--fsm-belarus-edge-top-x, 1.36px) 0, 100% 0, 100% 100%, var(--fsm-belarus-edge-bottom-x, 5.36px) 100%,
+    var(--fsm-belarus-lower-outer, 4.36px) var(--fsm-belarus-lower-paint-y, 75%),
+    var(--fsm-belarus-lower-inner, 9.82px) var(--fsm-belarus-lower-paint-y, 75%),
+    var(--fsm-belarus-upper-inner, 7.638px) var(--fsm-belarus-upper-paint-y, 20.45%),
+    var(--fsm-belarus-upper-outer, 2.178px) var(--fsm-belarus-upper-paint-y, 20.45%));
+}
+/* JPG 경계의 번짐과 한 픽셀 요철을 제외하고 긴 사선과 수평 연결부만 재현한다.
+   원본 44px 높이에서 첫 연결부는 약 9px, 다음 연결부는 약 33px 지점이다. */
+.board.fsm-board[data-fsm-theme="belarus"] #team-score-left::before {
+  left: -10px;
+}
+.board.fsm-board[data-fsm-theme="belarus"] #team-score-right::before {
+  right: -10px; transform: scaleX(-1);
+}
+.board.fsm-board[data-fsm-theme="belarus"] :is(.score-left, .score-right) {
+  display: block; line-height: 48px;
+}
+.board.fsm-board[data-fsm-theme="belarus"] .score-left { font-size: var(--fsm-belarus-home-size, 64px); transform: translateY(var(--fsm-belarus-home-shift, 0px)); }
+.board.fsm-board[data-fsm-theme="belarus"] .score-right { font-size: var(--fsm-belarus-away-size, 64px); transform: translateY(var(--fsm-belarus-away-shift, 0px)); }
+.board.fsm-board[data-fsm-theme="belarus"] .time { background: #10E94F; color: #000000; }
+.board.fsm-board[data-fsm-theme="belarus"] .extra-time { background: #233434; color: #14EB4B; }
+.board.fsm-board[data-fsm-theme="belarus"] .div-rc { top: -15px; z-index: -2; }
+.board.fsm-board[data-fsm-theme="belarus"] #rcHome { left: 20px; }
+.board.fsm-board[data-fsm-theme="belarus"] #rcAway { right: 20px; }
+.fsm-board .text, .fsm-board .score { text-shadow: none; }

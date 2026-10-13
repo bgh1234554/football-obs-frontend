@@ -40,7 +40,7 @@ const { chromium } = require('playwright');
         if (!applied) throw new Error('Fixture response was not applied');
       };
       try {
-        for (const status of ['1H', '2H', 'ET1', 'ET2', 'PSO', 'NS']) {
+        for (const status of ['1H', '2H', 'ET1', 'ET2', 'NS']) {
           await poll(fixture('FT', 90), {});
           await poll(fixture(status, 30, 987655), {});
           results.push({ name: `FT to another ${status} fixture`, expected: 0, ...read() });
@@ -76,7 +76,14 @@ const { chromium } = require('playwright');
         for (const status of ['AET', 'PEN']) {
           running(122 * 60);
           await poll(fixture(status, 120));
-          results.push({ name: `FT alias ${status}`, expected: 5400, ...read() });
+          results.push({ name: `FT alias ${status}`, expected: 7200, ...read() });
+        }
+        for (const status of ['PSO', 'P', 'FT', 'AET', 'PEN']) {
+          for (const elapsed of [90, 120, 0, null, undefined]) {
+            running(123 * 60);
+            await poll(fixture(status, elapsed, 200000 + results.length), {});
+            results.push({ name: `cold ${status} load elapsed ${elapsed}`, expected: elapsed > 90 ? 7200 : 5400, ...read() });
+          }
         }
         running(94 * 60);
         await poll(fixture('BT', 90));
@@ -107,11 +114,18 @@ const { chromium } = require('playwright');
         document.dispatchEvent(new CustomEvent('settings:change', { detail: { category: 'teamName' } }));
         const settingsPreserved = state.running && state.seconds === 2770;
         const livePreserved = [];
-        for (const status of ['1H', '2H', 'ET1', 'ET2', 'PSO']) {
+        for (const status of ['1H', '2H', 'ET1', 'ET2']) {
           _lastFixtureData = fixture(status, 55);
           running(3333);
           await poll(fixture(status, 55));
           livePreserved.push(state.running && state.seconds === 3333);
+        }
+        for (const elapsed of [90, 120]) {
+          const pso = fixture('PSO', elapsed);
+          _lastFixtureData = pso;
+          running((elapsed + 3) * 60);
+          await poll(pso, { silent: false });
+          results.push({ name: `same-fixture PSO refresh elapsed ${elapsed}`, expected: elapsed * 60, ...read() });
         }
         state.manualMode = true;
         running(1234);

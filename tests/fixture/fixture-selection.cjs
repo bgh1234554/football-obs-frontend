@@ -33,6 +33,9 @@ const root = path.resolve(__dirname, '../..');
       await new Promise(resolve => setTimeout(resolve, 0));
       await fetchAndApplyFixtureData('100', { silent: true });
       clearPolling();
+      // 일정에서 다른 경기를 미리보기해도 실제 송출 경기의 폴링 시각은 계속 보여야 한다.
+      const pollTime = document.getElementById('fixture-last-polled').textContent;
+      if (!pollTime.includes('성공')) throw new Error(`폴링 성공 시각 누락: ${pollTime}`);
       const afterPoll = { selected: currentFixtureId, recent: lastSeenFixtureId, active: activeFixtureId, saved: localStorage.getItem('last_fixture_id') };
       document.getElementById('main-use-last-btn').click();
       const recentInput = mainInput.value;

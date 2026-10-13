@@ -79,9 +79,9 @@ function popoutOpen(key, params) {
 }
 window.Popout = { open: popoutOpen };
 
-/** "새 창에 열기" 설정이 ON이고, 지금 이 창 자체가 팝업이 아닐 때만 true. */
+/** OBS에서는 새 창이 차단되므로 기존 페이지 내부 모달을 사용한다. */
 function popoutModeEnabled() {
-  return typeof getSetting === 'function' && getSetting('popoutModals') === 'on' && !window.__POPOUT_MODE__;
+  return !window.obsstudio && typeof getSetting === 'function' && getSetting('popoutModals') === 'on' && !window.__POPOUT_MODE__;
 }
 window.popoutModeEnabled = popoutModeEnabled;
 
@@ -125,6 +125,10 @@ function syncScoreboardStateFromStorage(newValue) {
     const saved = JSON.parse(newValue || 'null');
     if (!saved) return;
     let changed = false;
+    const previousFsmTheme = state.fsmTheme;
+    const previousLeagueId = state.leagueId;
+    const previousLeagueLogoUrl = state.leagueLogoUrl;
+    const previousLeagueThemeApplyVersion = state.leagueThemeApplyVersion;
     const apply = (key, value) => { if (state[key] !== value) { state[key] = value; changed = true; } };
     const applyIfPresent = keys => keys.forEach(key => { if (key in saved) apply(key, saved[key]); });
 
@@ -152,7 +156,8 @@ function syncScoreboardStateFromStorage(newValue) {
       'logoAlign', 'radiusMode', 'boardWidth',
       'homeOutlineEnabled', 'awayOutlineEnabled', 'boardOutlineEnabled', 'scoreOutlineEnabled',
       'homeOutlineWidth', 'awayOutlineWidth', 'boardOutlineWidth', 'scoreOutlineWidth',
-      'noteEnabled', 'noteFontSize', 'fontFamily',
+      'noteEnabled', 'noteFontSize', 'noteStrokeWidth', 'fontFamily', 'fsmTheme', 'leagueId', 'leagueLogoUrl',
+      'leagueThemeUpdateSilent', 'leagueThemeApplyVersion',
       'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
       'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
       'teamColorOverride', 'teamColorOverrideFixtureId',
@@ -167,7 +172,7 @@ function syncScoreboardStateFromStorage(newValue) {
     // 있으면 이 값들(이름/전후반/점수/로고)은 API 폴링이 대신 채우므로, 팝업이 부팅
     // 시점에 들고 있던 오래된 스냅샷으로 덮어쓰면 안 된다.
     if (state.manualMode) {
-      applyIfPresent(['homeName', 'awayName', 'half', 'homeScore', 'awayScore',
+      applyIfPresent(['homeName', 'awayName', 'teamNicknameTeams', 'half', 'homeScore', 'awayScore', 'redHome', 'redAway',
         'homeLogoManual', 'awayLogoManual', 'homeLogo', 'awayLogo']);
       if (saved.notes) {
         ['home', 'away'].forEach(side => {
@@ -185,6 +190,13 @@ function syncScoreboardStateFromStorage(newValue) {
     // 진행 중인 이벤트 시퀀스라 오래된 값으로 되돌리면 진행 상황이 깨진다).
 
     if (changed) {
+      if (state.fsmTheme !== previousFsmTheme || (!state.leagueThemeUpdateSilent && (
+        state.leagueId !== previousLeagueId || state.leagueLogoUrl !== previousLeagueLogoUrl
+        || state.leagueThemeApplyVersion !== previousLeagueThemeApplyVersion))) {
+        const themeSelect = document.getElementById('fsmThemeSelect');
+        if (themeSelect) themeSelect.value = state.fsmTheme;
+        window.autoApplyTemplateByLeagueId?.(state.leagueId, state.leagueLogoUrl);
+      }
       if (state.manualMode && typeof syncManualInputs === 'function') syncManualInputs();
       if (typeof render === 'function') render();
     }
