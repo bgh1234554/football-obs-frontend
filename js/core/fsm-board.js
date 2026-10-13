@@ -91,6 +91,26 @@ function initFsmThemeSelect() {
     persist();
   });
 }
+function cycleFsmTheme(direction) {
+  const select = document.getElementById('fsmThemeSelect');
+  const options = Array.from(select?.options || []).filter(option => !option.disabled);
+  if (!options.length) return;
+  const index = options.findIndex(option => option.value === state.fsmTheme);
+  const next = options[((index < 0 ? 0 : index) + direction + options.length) % options.length];
+  select.value = next.value;
+  select.dispatchEvent(new Event('change'));
+  const notify = () => {
+    if (state.fsmTheme === next.value) showToast(`점수판 변경: ${next.textContent}`);
+  };
+  const link = pendingThemeLink;
+  if (link) {
+    link.addEventListener('load', () => {
+      if (oldlink === link) notify();
+    }, { once: true });
+  } else {
+    notify();
+  }
+}
 const CSS_LINK_INDEX = 17;
 var _currentTheme = 'default';
 var _currentType = 'club';

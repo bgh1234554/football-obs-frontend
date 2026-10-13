@@ -325,7 +325,7 @@
     /* 토스트 알림 */
     .copy-toast {
       position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(12px);
-      background: #07BC0C; color: #fff; font-size: 13px; font-weight: 700;
+      background: var(--control-accent); color: var(--control-accent-on); font-size: 13px; font-weight: 700;
       padding: 8px 20px; border-radius: 999px; box-shadow: 0 4px 16px #00000044;
       opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
       z-index: 9999;
@@ -481,6 +481,11 @@
     #themePanel .prow { gap: 10px; }
     #themePanel .pgroup { gap: 5px; min-width: 0; }
     #themePanel .theme-timer-card > .prow { gap: 14px 20px; }
+    #themePanel .theme-selector-heading { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+    #themePanel .theme-cycle-shortcut-hint { display: flex; gap: 6px; color: var(--muted); font-size: 10px; line-height: 1.4; white-space: nowrap; }
+    #themePanel .theme-cycle-shortcut-hint > span { white-space: nowrap; }
+    #themePanel .theme-selector-heading > label { margin: 0; white-space: nowrap; }
+    #themePanel .theme-cycle-shortcut-hint .kbd { font-size: inherit; }
     #themePanel .theme-selector-card select { width: 100%; min-width: 0 !important; }
     #themePanel .theme-selector-card .pgroup { width: 100%; }
     #themePanel small { color: #a8b6cc; font-size: 11px; line-height: 1.5; }

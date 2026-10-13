@@ -735,6 +735,17 @@
   // 터치 기기 전술판 배치 전환/탭 이동/화면 회전 시 점수판 배율을 다시 계산하도록 노출
   window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 75);
 
+  if (window.ResizeObserver && boardStageInner) {
+    let scaleFrame = null;
+    new ResizeObserver(() => {
+      if (scaleFrame !== null) return;
+      scaleFrame = requestAnimationFrame(() => {
+        scaleFrame = null;
+        if (boardStageInner.offsetHeight > 0) initBoardScale();
+      });
+    }).observe(boardStageInner);
+  }
+
   // [이벤트 등록] 배율 슬라이더 및 리셋 버튼
   boardScaleRange?.addEventListener('input', e=>{
     state.boardScale = Number(e.target.value);
