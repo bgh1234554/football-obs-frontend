@@ -64,6 +64,7 @@
     radiusMode: 'round',
     boardWidth: 1080,
     boardScale: 75,
+    boardPosition: 'center',
     homeLogoScale: 1, awayLogoScale: 1,
     homeLogoX: 0, homeLogoY: 0,
     awayLogoX: 0, awayLogoY: 0,
