@@ -1649,7 +1649,8 @@ function rerenderLineupPanels() {
   renderBenchPanel(effectiveData, lineupPanelState.lastFixture);
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
-  syncTacticsBoard(effectiveData);
+  // 같은 경기의 갱신에서는 드래그한 좌표를 유지한다. 경기 전환 시에는 앞서 좌표를 비운다.
+  syncTacticsBoard(effectiveData, { preservePositions: true });
   renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
   renderInjuryCyclePanel(effectiveData, lineupPanelState.lastFixture);
