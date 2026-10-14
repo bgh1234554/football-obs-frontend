@@ -108,10 +108,11 @@
 }
 
 .fsm-board .team-logo {
+    isolation: isolate;
     width: 72px;
     height: 68px;
     background: whitesmoke;
-    border: 1px solid whitesmoke;
+    border: none;
     position: relative;
     transition: 0.9s ease-in-out;
     clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
@@ -126,10 +127,18 @@
     right: 25px;
 }
 
-.fsm-board .team-logo > img {
+.board.fsm-board .team-logo > img {
+    /* 팀 로고가 없는 국가도 UNL 장식 이미지는 표시합니다. */
+    display: block !important;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    /* 정사각형 원본의 사선을 72×68 마름모와 같은 비율로 맞춥니다. */
+    object-fit: fill;
+}
+
+/* 양쪽 모두 원 안팎의 위아래 명암 배치를 반대로 표시합니다. */
+.board.fsm-board .team-logo > img {
+    --fsm-logo-angle: 180deg;
 }
 
 .fsm-board .epl-lion {

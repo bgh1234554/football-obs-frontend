@@ -818,7 +818,7 @@ function adjustScoreboardWidth() {
     // UNL 전용 이미지·필터가 다른 테마의 팀 로고에 남지 않도록 복원합니다.
     setFsmAttr('.fsm-board #team-logo-left > img', 'src', state.homeLogo);
     setFsmAttr('.fsm-board #team-logo-right > img', 'src', state.awayLogo);
-    setFsmStyle('.fsm-board .team-logo > img', {width: '', height: '', filter: ''});
+    setFsmStyle('.fsm-board .team-logo > img', {width: '', height: '', filter: '', mixBlendMode: ''});
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
@@ -858,9 +858,15 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board #team-logo-right', {background: teamColors.awayBg});
       setFsmAttr('.fsm-board .team-logo > img', 'src', 'resources/imgs/UNL_shape.png');
       ['home', 'away'].forEach(side => {
+        // 검정에 가까운 색만 밝게 합성하고, 나머지는 원래 팀색을 유지하며 어둡게 합성합니다.
+        const rgb = parseAnyColor(teamColors[`${side}Bg`]);
+        const nearBlack = rgb && Math.max(rgb.r, rgb.g, rgb.b) <= 60;
         setFsmStyle(`.fsm-board #team-logo-${side === 'home' ? 'left' : 'right'} > img`, {
           width: '100%', height: '100%',
-          filter: getColorContract(teamColors[`${side}Bg`]) === '#ffffff' ? 'brightness(0.2) invert(1)' : 'none'
+          // 투명 영역은 원래 팀색으로 남고, 회색 영역만 명암이 바뀝니다.
+          // 원본의 약 75% 알파를 반영해 어두운 면은 65%, 밝은 면은 흰색 20% 혼합으로 맞춥니다.
+          filter: nearBlack ? 'brightness(0.53)' : 'brightness(1.045)',
+          mixBlendMode: nearBlack ? 'screen' : 'multiply'
         });
       });
     } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
