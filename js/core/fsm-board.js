@@ -23,6 +23,7 @@ const LEAGUE_THEME_MAP = {
   51: { theme: 'nationalleague', logoUrl: null, type: 'club' },
   984: { theme: 'nationalleague', logoUrl: null, type: 'club' },
   985: { theme: 'nationalleague', logoUrl: null, type: 'club' },
+  45:  { theme: 'facup', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/emirates-fa-cup-logo-trophy.svg", type: 'club' }, // FA컵
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   140: { theme: 'laliga', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
   141: { theme: 'laliga2', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가 2
@@ -60,7 +61,6 @@ const LEAGUE_THEME_MAP = {
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
   294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵
   295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
-  45:  { theme: 'facup', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/emirates-fa-cup-logo-trophy.svg", type: 'club' }, // FA컵
   100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
@@ -72,7 +72,7 @@ const LEAGUE_THEME_MAP = {
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
-  default: '기본', pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투', nationalleague: '내셔널리그',
+  default: '기본', pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투', nationalleague: '내셔널리그', facup: 'FA 컵',
   seriea: '세리에 A', laliga: '라리가', laliga2: '세군다 디비시온', bundes: '분데스리가', bundes2: '2. 분데스리가', ligue1: '리그 1', ligue2: '리그 2',
   ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그',
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B', russiancup: '러시아 컵',
@@ -540,6 +540,7 @@ function applyTheme(theme, logoUrl) {
     board.dataset.fsmAggregate = String(supportsAggregate && !!state.aggEnabled);
     // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않습니다.
     const fixedAggregatePalette = {
+      facup: ['#ED1C24', '#ffffff'],
       eflchampionship: ['#b69b42', '#ffffff'],
       eflleagueone: ['#7f8384', '#ffffff'],
       eflleaguetwo: ['#cc0935', '#ffffff'],
@@ -1087,6 +1088,7 @@ function adjustScoreboardWidth() {
 
   // 점수 또는 시계에 이미 쓰이는 고정 색상만 사용한다. 전환 중 보간색은 읽지 않는다.
   const FSM_PSO_PALETTES = Object.freeze({
+    facup: ['#ED1C24', '#ffffff'],
     belarus: ['#233434', '#14EB4B'],
     jleague: ['#0D0D0D', '#ffffff'],
     default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
