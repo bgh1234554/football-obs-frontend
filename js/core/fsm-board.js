@@ -759,7 +759,11 @@ function adjustScoreboardWidth() {
     return width + Math.max(_currentTheme === 'jleague' ? 32 : limits.teamPadding, padding + margin) + reservedWidth;
   }));
   const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
-  const boardWidth = Math.min(limits.maxBoard, requestedBoard, fixedWidth + 2 * limits.maxTeam);
+  // 합계 칸이 추가되어도 기존 팀명 공간을 유지하도록 최대 너비에 표시 폭을 더합니다.
+  const aggregateWidth = board.dataset.fsmAggregate === 'true'
+    ? Array.from(board.querySelectorAll('.total-score')).reduce((sum, node) => sum + node.offsetWidth, 0)
+    : 0;
+  const boardWidth = Math.min(limits.maxBoard + aggregateWidth, requestedBoard, fixedWidth + 2 * limits.maxTeam);
   const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
   cards.forEach(card => { card.style.width = teamWidth + 'px'; });
   scoreboard.style.width = boardWidth + 'px';
