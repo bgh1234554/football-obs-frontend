@@ -48,6 +48,7 @@
 | 파일 | 설명 |
 |---|---|
 | `player-menu.css` | 선수 컨텍스트 메뉴 (Iter 6). `.pm-*`(pmContainer, pm-popup, pm-close, pm-info, pm-avatar, pm-btns, pm-nick-*, pm-stat-table, pm-szn-*), `pirPopup`. |
+| `player-search.css` | ID/이름 검색의 오른쪽 후보 패널, 스크롤 목록과 원본 페이지 버튼. 팝업 높이 조절 및 패널 스크롤바 스타일. |
 
 ### css/ (루트)
 
@@ -79,7 +80,7 @@
 | `render.js` | 점수판 렌더링 | `render()`, `formatScorers()`, `applyBoardScale()`, `pkPush/Undo/Reset()`, `setMatchHalf()`, `flashElement()` |
 | `timer.js` | 경기 시간 타이머 | `startClockTimer()`, `pauseClockTimer()`, `setClockSeconds()`, `syncRunningClockToNow()`, 인라인 시간 편집기 |
 | `fixture.js` | 경기 ID 연동 + 폴링 | `fetchAndApplyFixtureData()`, `buildScorers()`, `schedulePoll()`, `forceRefreshCurrentFixture()`. 진행 중 15초 / FT 감지 후 3분간 1분 간격 / INT 5분 간격(30분 후 중단) |
-| `api.js` | 백엔드 fetch | `fetchFixture()`, `fetchPlayerStats()`, `fetchHeadToHead()`, `ApiError` |
+| `api.js` | 백엔드 fetch | `fetchFixture()`, `fetchPlayerStats()`, `fetchPlayerSearch()`, `fetchHeadToHead()`, `ApiError`. 로컬 화면에서 loopback `apiBase` 지정 지원 |
 | `router.js` | 탭/URL 동기화 | `activatePage()`. 배포 환경에서는 `/detail`, `/theme`, `/schedule` 등의 경로, localhost·명시적 HTML 진입점에서는 `#/detail` 등의 hash를 사용. LAN Live Server의 HTML 경로를 보존. 일정 위젯 lazy mount와 API 폴링 제어 |
 | `schedule-resize.js` | 일정 확인 탭 칼럼 리사이즈 | `ensureScheduleGridResizeHandles()`, `startScheduleGridResize()`, `resetScheduleGridPair()`. Leagues/Games/Details/Standings 4칼럼 경계 3곳에 드래그 핸들 — 각 핸들은 인접한 두 칼럼의 비율 합만 유지한 채 재분배(나머지 두 칼럼 불변), 더블클릭 시 그 두 칼럼만 기본 비율로 복원. 비율(합=1)로 저장해 ResizeObserver로 화면 폭 변화에도 재적용 |
 | `keyboard.js` | 전역 단축키 | `window keydown` 핸들러 — Space/R/E/[/]/H/T/1~8/Q/W/A/S/F/Z/X/Ctrl+Z·Y 등 |
@@ -121,11 +122,11 @@
 | 파일 | 역할 |
 |---|---|
 | `lineup-events.js` | 라인업 노드/벤치 행에 골·어시·카드·교체 IN/OUT·평점 표시용 헬퍼 |
-| `lineup-manual-store.js` | 공통 유틸(`dpEscape/clonePlayers`) + `lineupPanelState` + fixture 단위 수동 override localStorage CRUD |
+| `lineup-manual-store.js` | 공통 유틸(`dpEscape/clonePlayers`) + `lineupPanelState` + fixture 단위 수동 override localStorage CRUD. 교체 선수 전체 삭제는 API 기준 키와 빈 배열을 함께 보존 |
 | `lineup-data.js` | `buildEffectiveFixtureData()` — API 응답 + 수동 override 합성, 그리드/포메이션/색상 변환 |
 | `lineup-render.js` | 벤치/부상/라인업 패널 HTML 빌더 + 렌더 + 교체명단 사이클 패널 + 전술판 동기화. 진입점: `applyLineupPanels()` |
 | `lineup-name-fit.js` | 이름 pill·팀칩·벤치 텍스트 충돌 보정(`fitLineupNamePills`), 교체/미출전 자동 높이 배분(`balanceBenchInjuryPanelHeights`), 칼럼 ResizeObserver. 화면 사각형을 논리 좌표로 변환해 측정 |
-| `lineup-manual-modal.js` | 수동 입력 모달(그리드 모드 + 라인업/벤치/부상자 풀폼) + 감독/주심 인라인 편집 |
+| `lineup-manual-modal.js` | 수동 입력 모달(그리드 모드 + 라인업/부상자 풀폼 + 교체 명단 고정 행/슬롯 편집). 선발·교체 공통 번호/이름/선수 검색·입력 완료·행 삭제 UI 및 감독/주심 인라인 편집 |
 | `lineup-resize.js` | 캠 큰 라인업 크기·축별 조절, 우측 패널 연결/독립 너비·높이, 캠 작은 좌우 너비·교체/미출전 높이 비율. 포인터 좌표 변환, localStorage 저장, 더블클릭 초기화와 `resetAllLayoutSizes()` |
 
 ### js/panels/
@@ -147,6 +148,7 @@
 | `player-menu-szn-labels.js` | 시즌별 스탯 한글 레이블 매핑 (사용자 편집용) |
 | `player-menu.js` | 선수 컨텍스트 메뉴. 등번호·이름·포지션·닉네임·ID 연결 진입·경기/시즌 스탯. 전체 UI 배율을 고려한 팝업 위치와 화면 안 배치 |
 | `player-id-resolve.js` | id=0 선수 ID 연결 (Iter 10). alt ID 수동/자동 연결, 유사도 매칭(Jaro-Winkler) |
+| `player-search.js` | ID/영문 이름 공통 후보 검색. 원본 페이지 보관, 높이별 화면 페이지 용량 계산, 팝업 높이 조절, 후보 선택, 이전 응답 무시, 오른쪽 결과 패널. ID 없는 선수·기존 ID 수정·빈 슬롯에서 공유 |
 
 ### js/sidebar/
 

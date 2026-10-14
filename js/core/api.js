@@ -12,7 +12,11 @@
   //     Access-Control-Expose-Headers 에 해당 헤더명이 포함되어 있어야 함.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  const API_BASE = 'https://football-obs-backend.onrender.com';
+  // 로컬 통합 테스트에서만 API 주소를 지정할 수 있다. 배포 화면은 기존 Render 주소를 사용한다.
+  const localApiBase = new URLSearchParams(window.location.search).get('apiBase') || '';
+  const API_BASE = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
+    && /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(localApiBase)
+      ? localApiBase : 'https://football-obs-backend.onrender.com';
 
   // 429 fallback 재시도 정책.
   // 백엔드가 대기시간 헤더를 안 내려주거나, 브라우저가 CORS 때문에 헤더를 읽지 못하는 경우 사용.
@@ -249,6 +253,11 @@
   // ---------------------------------------------------------------------------
   async function fetchPlayerStats(playerId, options = {}) {
     return await apiFetch(`/api/playerStats/${encodeURIComponent(playerId)}`, options);
+  }
+
+  /** 원본 선수 검색 한 페이지를 가져온다. 화면 페이지는 공통 검색 UI에서 나눈다. */
+  async function fetchPlayerSearch(query, page = 1, options = {}) {
+    return await apiFetch(`/api/players/search?query=${encodeURIComponent(query)}&page=${page}`, options);
   }
 
   // ---------------------------------------------------------------------------

@@ -16,5 +16,12 @@ await held.abort();await page.waitForFunction(()=>!pendingThemeLink);assert.equa
 requested=new Promise(resolve=>resolveRequest=resolve);await page.evaluate(()=>applyTheme('rpl',null));held=await requested;await page.evaluate(()=>applyTheme('pl',null));assert.equal(await page.evaluate(()=>_currentTheme),'pl');await held.abort();await page.unroute('**/result_style_RPL.css');
 await page.evaluate(()=>{state.leagueId=39;state.leagueLogoUrl=null;syncScoreboardStateFromStorage(JSON.stringify({...state,leagueId:235,leagueLogoUrl:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>'}));});await page.waitForFunction(()=>!pendingThemeLink&&_currentTheme==='rpl');assert.equal(await page.evaluate(()=>state.leagueId),235);
 const newLogo='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50"/>';
-await page.evaluate(logo=>syncScoreboardStateFromStorage(JSON.stringify({...state,leagueLogoUrl:logo})),newLogo);assert.equal(await page.locator('.epl-lion').getAttribute('src'),newLogo);assert.equal(await page.evaluate(()=>_currentTheme),'rpl');assert.deepEqual(errors,[]);console.log('PASS committed theme survives loading/failure/cancel; storage league and logo changes reapply theme');
+await page.evaluate(logo=>syncScoreboardStateFromStorage(JSON.stringify({...state,leagueLogoUrl:logo})),newLogo);
+assert.equal(await page.locator('.epl-lion').getAttribute('src'),'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg');assert.equal(await page.evaluate(()=>_currentTheme),'rpl');
+// 직접 로고를 바꾼 뒤 저장소 갱신이 지정 로고 우선순위를 다시 적용하는지 확인한다.
+await page.evaluate(logo=>applyTheme('rpl',logo),newLogo);
+assert.equal(await page.locator('.epl-lion').getAttribute('src'),newLogo);
+const changedLogo='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="70"/>';
+await page.evaluate(logo=>syncScoreboardStateFromStorage(JSON.stringify({...state,leagueLogoUrl:logo})),changedLogo);
+assert.equal(await page.locator('.epl-lion').getAttribute('src'),'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg');assert.equal(await page.evaluate(()=>_currentTheme),'rpl');assert.deepEqual(errors,[]);console.log('PASS committed theme survives loading/failure/cancel; storage changes reapply registered logo priority');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

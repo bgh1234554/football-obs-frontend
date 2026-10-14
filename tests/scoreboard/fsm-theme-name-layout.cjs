@@ -15,7 +15,7 @@ for(const theme of ['pl','seriea','wc26','ligue1','ligue2']){
    assert((await page.locator('#fsm-theme-link').getAttribute('href')).endsWith('result_style_LIGUE2.css'));
    assert.equal(await page.locator('.score-div').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(0, 252, 208)');
    assert.equal(await page.locator('.extra-time').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(147, 82, 253)');
-   assert((await page.locator('.epl-lion').getAttribute('src')).startsWith('data:image/svg+xml'));
+   assert.equal(await page.locator('.epl-lion').getAttribute('src'),'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg');
  }
  for(const scale of (theme==='ligue1'?[60,100,150]:[100])){
  await page.evaluate(scale=>{state.boardScale=scale;render();},scale);

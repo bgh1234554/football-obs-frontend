@@ -147,7 +147,7 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
     : LEAGUE_THEME_MAP[leagueId];
   const theme = selectedTheme || (entry ? entry.theme : FSM_FALLBACK_THEME);
   const type = entry ? entry.type : FSM_FALLBACK_TYPE;
-  // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
+  // 지정 대회 로고를 우선하고, 등록된 로고가 없으면 API 응답 URL을 사용한다.
   const logoUrl = entry?.logoUrl || apiLeagueLogoUrl || null;
 
   _currentType = type;
@@ -764,7 +764,11 @@ function adjustScoreboardWidth() {
     return width + Math.max(_currentTheme === 'jleague' ? 32 : limits.teamPadding, padding + margin) + reservedWidth;
   }));
   const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
-  const boardWidth = Math.min(limits.maxBoard, requestedBoard, fixedWidth + 2 * limits.maxTeam);
+  // 합계 칸이 추가되어도 기존 팀명 공간을 유지하도록 최대 너비에 표시 폭을 더합니다.
+  const aggregateWidth = board.dataset.fsmAggregate === 'true'
+    ? Array.from(board.querySelectorAll('.total-score')).reduce((sum, node) => sum + node.offsetWidth, 0)
+    : 0;
+  const boardWidth = Math.min(limits.maxBoard + aggregateWidth, requestedBoard, fixedWidth + 2 * limits.maxTeam);
   const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
   cards.forEach(card => { card.style.width = teamWidth + 'px'; });
   scoreboard.style.width = boardWidth + 'px';
@@ -1088,7 +1092,7 @@ function adjustScoreboardWidth() {
     default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
     seriea: ['#0456e5', '#f5f5f5'], superlig: ['#ff0203', '#ffffff'],
     // 라리가·라리가 2·분데스리가는 추가시간 칸과 같은 배경/글자색
-    laliga: ['#FF4B44', '#ffffff'], laliga2: ['#00D4D6', '#ffffff'], bundes: ['#D20515', '#ffffff'], bundes2: ['#D20515', '#ffffff'],
+    laliga: ['#FF4B44', '#ffffff'], laliga2: ['#00D4D6', '#ffffff'], bundes: ['#D20515', '#ffffff'], bundes2: ['#8F9191', '#000000'],
     ekstraklasa: ['#003BEF', '#ffffff'],
     czech: ['#3041C3', '#ffffff'],
     armenian: ['#000000', '#ffffff'],
