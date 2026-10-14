@@ -1237,3 +1237,35 @@
       width: 15px;
       height: 15px;
     }
+/* 포메이션 메뉴: 기본 OS 팝업 대신 전술판 색상과 스크롤을 공유한다. */
+#page-tactics #tactics-topbar .td-fm-pair,
+#page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair { position: relative; overflow: visible; }
+#page-tactics #tactics-topbar .td-fm-pair select[hidden] { display: none; }
+#page-tactics .td-fm-trigger {
+  background: #1e293b; color: #e5e7eb; border: 1px solid #ffffff20;
+  border-radius: 7px; padding: 4px 7px; font-size: 12px; cursor: pointer;
+  white-space: nowrap;
+}
+#page-tactics .td-fm-trigger::after { content: '⌄'; margin-left: 8px; color: #94a3b8; }
+#page-tactics .td-fm-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
+  min-width: 140px; max-height: min(320px, 50vh); overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #64748b #151e2d;
+  padding: 4px; border: 1px solid #ffffff20; border-radius: 9px;
+  background: #151e2d; box-shadow: 0 8px 24px #0008;
+}
+#page-tactics .td-fm-menu[hidden] { display: none; }
+#page-tactics .td-fm-menu::-webkit-scrollbar { width: 6px; }
+#page-tactics .td-fm-menu::-webkit-scrollbar-track { background: #151e2d; }
+#page-tactics .td-fm-menu::-webkit-scrollbar-thumb { background: #64748b; border-radius: 6px; }
+#page-tactics .td-fm-menu button {
+  display: block; width: 100%; border: 0; border-radius: 5px;
+  padding: 7px 10px; background: transparent; color: #e2e8f0;
+  font-size: 12px; text-align: left; cursor: pointer;
+}
+#page-tactics .td-fm-menu button:is(:hover, :focus-visible) { background: #334155; outline: none; }
+#page-tactics .td-fm-menu button[aria-selected="true"] { background: #334155; color: #fff; }
+#page-tactics.td-touch-topbar #tactics-topbar .td-fm-trigger {
+  width: 100%; padding: 0; border: none; background: transparent;
+  color: #f8fafc; font-size: 15px; font-weight: 800; text-align: left;
+}

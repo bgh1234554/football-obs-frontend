@@ -1576,6 +1576,11 @@ function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
 
   if (typeof tacticsState !== 'undefined' && tacticsState) {
     tacticsState.lineup = null;
+    tacticsState.sourceLineup = null;
+    ['home', 'away'].forEach(side => {
+      const select = document.getElementById(`tactics-${side}-fm`);
+      if (select) select.value = 'auto';
+    });
     tacticsState.homePositions = [];
     tacticsState.awayPositions = [];
   }
