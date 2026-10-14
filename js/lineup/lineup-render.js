@@ -1576,6 +1576,11 @@ function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
 
   if (typeof tacticsState !== 'undefined' && tacticsState) {
     tacticsState.lineup = null;
+    tacticsState.sourceLineup = null;
+    ['home', 'away'].forEach(side => {
+      const select = document.getElementById(`tactics-${side}-fm`);
+      if (select) select.value = 'auto';
+    });
     tacticsState.homePositions = [];
     tacticsState.awayPositions = [];
   }
@@ -1649,7 +1654,8 @@ function rerenderLineupPanels() {
   renderBenchPanel(effectiveData, lineupPanelState.lastFixture);
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
-  syncTacticsBoard(effectiveData);
+  // 같은 경기의 갱신에서는 드래그한 좌표를 유지한다. 경기 전환 시에는 앞서 좌표를 비운다.
+  syncTacticsBoard(effectiveData, { preservePositions: true });
   renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
   renderInjuryCyclePanel(effectiveData, lineupPanelState.lastFixture);
