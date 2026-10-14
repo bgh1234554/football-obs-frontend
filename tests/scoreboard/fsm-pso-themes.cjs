@@ -53,8 +53,10 @@ const { openPage, settle } = require('../tactics/helpers');
             assert(m.panel.height >= 32 * m.scale - .1, context);
             if (count <= 5) assert(Math.abs(m.panel.height - 32 * m.scale) < .1, context);
           } else assert(m.panel.bottom >= m.clock.bottom - .1, context);
-          // EFL은 사용자가 지정한 타이머 색상과의 일치를 아래에서 검증한다.
-          if (!theme.startsWith('efl')) assert(m.contrast >= 3, context);
+          // EFL과 라리가 2는 지정된 고정 색상 계약을 별도로 검증한다.
+          // 라리가 2의 청록/흰색은 추가시간과 같은 의도된 팔레트다.
+          if (!theme.startsWith('efl') && theme !== 'laliga2') assert(m.contrast >= 3, context);
+          if (theme === 'laliga2') assert.deepEqual({ bg: m.bg, ink: m.ink }, { bg: 'rgb(0, 212, 214)', ink: 'rgb(255, 255, 255)' });
           assert(m.labelVisible, context);
           assert.deepEqual(m.counts, [Math.max(5, count), Math.max(5, count - 1)]);
           for (const circle of m.circles) {

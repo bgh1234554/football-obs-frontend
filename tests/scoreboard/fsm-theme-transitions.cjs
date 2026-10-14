@@ -49,9 +49,12 @@ const themes = { default: 'default', pl: 'EPL', cl: 'CL', uel: 'UEL', acle: 'ACL
         if (source === 'default') await page.screenshot({ path: `screenshots/tests/transition-${theme}-middle.png` });
         await page.waitForTimeout(theme === 'pl' ? 450 : 950);
         const final = await page.evaluate(() => ({ width: document.querySelector('.scoreboard-main').offsetWidth, names:[...document.querySelectorAll('.team-name .text')].map(n=>({text:n.textContent,width:n.scrollWidth,font:getComputedStyle(n).font,animations:n.parentElement.getAnimations().map(a=>a.transitionProperty)})),
-          backgrounds: [...document.querySelectorAll('.team-score, .score-div, .team-logo, .time, .extra-time')].map(node => getComputedStyle(node).backgroundColor) }));
+          backgrounds: [...document.querySelectorAll('.team-score, .score-div, .team-logo, .time, .extra-time')].map(node => getComputedStyle(node).backgroundColor), backgroundImages: [...document.querySelectorAll('.team-score, .score-div, .team-logo, .time, .extra-time')].map(node => getComputedStyle(node).backgroundImage) }));
         metrics.nodes.forEach((node, index) => {
-          if (final.backgrounds[index] === 'rgba(0, 0, 0, 0)' && node.background !== final.backgrounds[index]) failures.push(`${source}->${theme}: stale ${node.selector} background ${node.background}`);
+          // 불투명 그라데이션은 투명한 바탕색을 완전히 덮는다. 투명 이미지·그라데이션은 계속 검사한다.
+          const image = final.backgroundImages[index];
+          const opaqueGradient = /^(?:linear|radial)-gradient\(/.test(image) && !/rgba\(|hsla\(|transparent/.test(image);
+          if (!opaqueGradient && final.backgrounds[index] === 'rgba(0, 0, 0, 0)' && node.background !== final.backgrounds[index]) failures.push(`${source}->${theme}: stale ${node.selector} background ${node.background}`);
           if (!node.transition.includes('border-radius')) failures.push(`${source}->${theme}: missing ${node.selector} border-radius transition`);
         });
         if(metrics.width !== final.width) failures.push(`${source}->${theme}: width moved ${metrics.width}->${final.width} ${JSON.stringify({before:metrics.names,after:final.names})}`);
