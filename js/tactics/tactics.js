@@ -131,6 +131,7 @@
     awayPositions: [],
     ballPosition: { x: 50, y: 50 },
     lineup: null,       // tacticsApplyLineup 후 저장
+    sourceLineup: null,
   };
 
   // ━━━ [전술판 - 가로/세로 전환] 피치 방향 상태 + 화면 좌표 ↔ 피치 좌표 변환 ━━━
@@ -597,13 +598,19 @@
     const preservePositions = !!options.preservePositions;
     const previousLineup = tacticsState.lineup;
     // 1. 포메이션 select UI 동기화
-    const homeFm = data.home.formation || '4-3-3';
-    const awayFm = data.away.formation || '4-3-3';
+    tacticsState.sourceLineup = data;
+    const resolveFormation = side => {
+      const selected = document.getElementById(`tactics-${side}-fm`)?.value;
+      const formation = selected && selected !== 'auto' ? selected : data[side].formation;
+      return TACTICS_FM[formation] ? formation : '4-3-3';
+    };
+    const homeFm = resolveFormation('home');
+    const awayFm = resolveFormation('away');
 
     const homeFmSel = document.getElementById('tactics-home-fm');
     const awayFmSel = document.getElementById('tactics-away-fm');
-    if (homeFmSel && TACTICS_FM[homeFm]) homeFmSel.value = homeFm;
-    if (awayFmSel && TACTICS_FM[awayFm]) awayFmSel.value = awayFm;
+    tacticsSyncFormationMenu(homeFmSel, homeFm);
+    tacticsSyncFormationMenu(awayFmSel, awayFm);
 
     // 2. 포메이션 좌표 계산 (어웨이는 미러링)
     const homeCoords = TACTICS_FM[homeFm] || TACTICS_FM['4-3-3'];
@@ -624,7 +631,11 @@
     tacticsState.awayPositions = shouldResetAwayPositions
       ? nextAwayPositions
       : nextAwayPositions.map((fallback, index) => tacticsNormalizePosition(tacticsState.awayPositions[index], fallback));
-    tacticsState.lineup = data;
+    tacticsState.lineup = {
+      ...data,
+      home: { ...data.home, formation: homeFm },
+      away: { ...data.away, formation: awayFm },
+    };
 
     // 3. 팀 레이블 — 점수판 팀명과 연동
     const homeLabel = document.getElementById('tactics-home-label');
@@ -652,8 +663,8 @@
     const lineup = tacticsState.lineup || TACTICS_MOCK_LINEUP;
 
     // 3. 현재 선택된 포메이션 기준으로 포지션 레이블 결정
-    const homeFm  = document.getElementById('tactics-home-fm')?.value || lineup.home.formation || '4-3-3';
-    const awayFm  = document.getElementById('tactics-away-fm')?.value || lineup.away.formation || '4-3-3';
+    const homeFm = lineup.home.formation || '4-3-3';
+    const awayFm = lineup.away.formation || '4-3-3';
     const homeLabels = TACTICS_LABELS[homeFm] || TACTICS_LABELS['4-3-3'];
     const awayLabels = TACTICS_LABELS[awayFm] || TACTICS_LABELS['4-3-3'];
 
@@ -1045,11 +1056,82 @@
   /** 전술판 포메이션 select를 수동 라인업 창과 같은 숫자 기준으로 정렬한다. */
   function tacticsSortFormationSelect(select) {
     if (!select) return;
-    const selected = select.value;
-    [...select.options]
-      .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }))
-      .forEach(option => select.appendChild(option));
-    select.value = selected;
+    select.replaceChildren(new Option('자동', 'auto'), ...Object.keys(TACTICS_FM)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map(formation => new Option(formation, formation)));
+    select.value = 'auto';
+    tacticsCreateFormationMenu(select);
+  }
+
+  // 기본 select의 OS 스크롤 대신 전술판과 같은 색상의 스크롤 메뉴를 사용한다.
+  function tacticsCreateFormationMenu(select) {
+    if (select.parentElement.querySelector('.td-fm-menu')) return;
+    select.hidden = true;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'td-fm-trigger';
+    button.setAttribute('aria-label', select.id.includes('home') ? '홈 포메이션' : '어웨이 포메이션');
+    button.setAttribute('aria-haspopup', 'listbox');
+    button.setAttribute('aria-expanded', 'false');
+    const menu = document.createElement('div');
+    menu.id = `${select.id}-menu`;
+    menu.className = 'td-fm-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', button.getAttribute('aria-label'));
+    menu.hidden = true;
+    button.setAttribute('aria-controls', menu.id);
+    const close = () => { menu.hidden = true; button.setAttribute('aria-expanded', 'false'); };
+    [...select.options].forEach(option => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.textContent = option.text;
+      item.dataset.value = option.value;
+      item.setAttribute('role', 'option');
+      item.addEventListener('click', () => {
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+        button.focus();
+      });
+      menu.appendChild(item);
+    });
+    button.addEventListener('click', () => {
+      const opening = menu.hidden;
+      document.querySelectorAll('.td-fm-menu').forEach(other => {
+        other.hidden = true;
+        other.previousElementSibling?.setAttribute('aria-expanded', 'false');
+      });
+      menu.hidden = !opening;
+      button.setAttribute('aria-expanded', String(opening));
+      if (opening) menu.querySelector('[aria-selected="true"]')?.focus();
+    });
+    menu.addEventListener('keydown', event => {
+      const items = [...menu.children];
+      const index = items.indexOf(document.activeElement);
+      let next;
+      if (event.key === 'ArrowDown') next = Math.min(index + 1, items.length - 1);
+      if (event.key === 'ArrowUp') next = Math.max(index - 1, 0);
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = items.length - 1;
+      if (next !== undefined) { event.preventDefault(); items[next].focus(); }
+      if (event.key === 'Escape') { event.preventDefault(); close(); button.focus(); }
+    });
+    document.addEventListener('pointerdown', event => {
+      if (!select.parentElement.contains(event.target)) close();
+    });
+    select.parentElement.addEventListener('focusout', event => {
+      if (!select.parentElement.contains(event.relatedTarget)) close();
+    });
+    select.after(button, menu);
+  }
+
+  function tacticsSyncFormationMenu(select, formation) {
+    if (!select) return;
+    const button = select.parentElement.querySelector('.td-fm-trigger');
+    if (button) button.textContent = select.value === 'auto' ? `자동 (${formation})` : formation;
+    select.parentElement.querySelectorAll('[role="option"]').forEach(item => {
+      item.setAttribute('aria-selected', String(item.dataset.value === select.value));
+    });
   }
 
   function tacticsSortFormationSelects() {
@@ -1059,12 +1141,7 @@
 
   /** 홈/어웨이 포메이션 select 변경 시 호출 — lineup 포메이션을 업데이트하고 전술판 재렌더 */
   function tacticsApplyFm() {
-    const homeFm = document.getElementById('tactics-home-fm')?.value || '4-3-3';
-    const awayFm = document.getElementById('tactics-away-fm')?.value || '4-3-3';
-    const lineup = tacticsState.lineup || TACTICS_MOCK_LINEUP;
-    lineup.home.formation = homeFm;
-    lineup.away.formation = awayFm;
-    tacticsApplyLineup(lineup);
+    tacticsApplyLineup(tacticsState.sourceLineup || TACTICS_MOCK_LINEUP, { preservePositions: true });
   }
 
   /** 전술판 전체화면 토글 — requestFullscreen API 사용 */
@@ -1189,7 +1266,7 @@
     tdFuture = [];
     tdDrawings = []; // 캔버스 드로잉도 함께 초기화
     tdRenderAll();
-    tacticsApplyLineup(tacticsState.lineup || TACTICS_MOCK_LINEUP);
+    tacticsApplyLineup(tacticsState.sourceLineup || TACTICS_MOCK_LINEUP);
   }
 
   // [이벤트 등록] 이름 표시/공 표시 체크박스 토글
