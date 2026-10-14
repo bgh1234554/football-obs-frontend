@@ -7,6 +7,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const _lpStatCycle = { mode: 'stats', paused: false, fixturesPage: 0 };
+let _lpNewEventReturn = null;
 window._lpStatCycle = _lpStatCycle;
 
 // 자동 사이클 내부 상태
@@ -15,6 +16,7 @@ const _lpAuto = {
   timer: null,          // setTimeout ID (비-stats 모드 또는 stats 단일페이지 fallback)
   fallback: null,       // stats 다중페이지 fallback timeout
   listening: false,     // statspanel:cycle-done 대기 중 여부
+  scrollEl: null,
   scrollRaf: null,      // 이벤트 패널 스크롤 rAF
   scrollTimer: null,    // 이벤트 패널 스크롤 end timer
   scrollProgrammatic: false,
@@ -170,6 +172,7 @@ function _lpStopEventsScroll() {
     clearTimeout(_lpAuto.scrollProgrammaticTimer);
     _lpAuto.scrollProgrammaticTimer = null;
   }
+  _lpAuto.scrollEl = null;
   _lpAuto.scrollProgrammatic = false;
   _lpAuto.scrollExpectedTop = null;
   _lpClearEventsScrollListeners();
@@ -223,12 +226,14 @@ function _lpBindEventsScrollInterruption(el) {
 function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, options = {}) {
   // 1) 이전 스크롤을 정리하고 대상 요소·이동 방향을 결정한 뒤 사용자 조작 시 중단 처리를 연결한다.
   _lpStopEventsScroll();
-  const el = _lpEventsScrollEl(mode);
+  let el = _lpEventsScrollEl(mode);
+  const syncElement = () => { el = _lpAuto.scrollEl || el; };
   const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info' || mode === 'injuries';
   if (!el) {
     _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
     return;
   }
+  _lpAuto.scrollEl = el;
   _lpBindEventsScrollInterruption(el);
 
   // 2) 시작 대기·이동·끝 대기 시간을 정한다. 새 이벤트의 고정 대기나 HTH의 긴 이동 시간은 옵션으로 반영한다.
@@ -253,9 +258,18 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
 
   // 3) 렌더 후 실제 스크롤 길이를 측정한다. 아직 길이가 없으면 한 번 더 기다린 후 대기만 할지 결정한다.
   const startAfterLayout = () => {
+    syncElement();
     const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
     const startTop = scrollDown ? 0 : maxScroll;
     const endTop = scrollDown ? maxScroll : 0;
+    // 맨 위에서 새 이벤트를 보여준 뒤 아래부터 전체 목록을 훑는다.
+    if (options.showNewestFirstMs > 0) {
+      _lpSetEventsScrollTop(el, 0);
+      _lpAuto.scrollTimer = setTimeout(() => {
+        _lpStartEventsScroll(intervalMs, mode, _retryCount, { ...options, showNewestFirstMs: 0 });
+      }, options.showNewestFirstMs);
+      return;
+    }
     _lpSetEventsScrollTop(el, startTop);
 
     if (maxScroll <= 0 || scrollDuration <= 0) {
@@ -279,6 +293,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
     }
 
     const finishAtEnd = () => {
+      syncElement();
       _lpSetEventsScrollTop(el, endTop);
       _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
     };
@@ -288,6 +303,7 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
       _lpAuto.scrollTimer = null;
       const startTime = performance.now();
       const tick = now => {
+        syncElement();
         const progress = Math.min((now - startTime) / scrollDuration, 1);
         _lpSetEventsScrollTop(el, scrollDown ? maxScroll * progress : maxScroll * (1 - progress));
 
@@ -448,7 +464,9 @@ function _lpAutoStart() {
     const fixedHoldBottomMs = _lpAuto.pendingNewEventHoldMs;
     _lpAuto.pendingNewEventHoldMs = null;
     const options = _lpEventScrollOptions(intervalMs);
-    if (fixedHoldBottomMs != null) options.fixedHoldBottomMs = fixedHoldBottomMs;
+    if (fixedHoldBottomMs != null) {
+      options.showNewestFirstMs = fixedHoldBottomMs;
+    }
     _lpStartEventsScroll(intervalMs, mode, 0, options);
   } else if (mode === 'hth') {
     _lpStartHthScrollWhenReady(intervalMs);
@@ -478,7 +496,18 @@ function _lpAutoStart() {
 
 /** 다음 모드로 전환하고 자동 사이클 재시작 */
 function lpStatAutoAdvance() {
+  window.evClearBigHeldGlow?.();
   _lpAutoClear();
+  // 새 이벤트 표시가 끝나면 중단했던 패널로 복귀한다.
+  const previous = _lpNewEventReturn;
+  _lpNewEventReturn = null;
+  if (previous && _lpAutoCycleModes().includes(previous.mode)) {
+    _lpStatCycle.mode = previous.mode;
+    _lpStatCycle.fixturesPage = previous.fixturesPage;
+    lpStatUpdateVisibility();
+    _lpEnsureModeReadyUnlessAutoHandled(previous.mode);
+    return;
+  }
   const modes = _lpAutoCycleModes();
   if (modes.length < 2) return;
   const idx = modes.indexOf(_lpStatCycle.mode);
@@ -702,6 +731,9 @@ function lpStatOpenBenchEdit(event) {
 
 /** 일시정지 버튼 클릭 — paused 토글 후 타이머 정리/재시작. */
 function lpStatTogglePause() {
+  window.evClearBigHeldGlow?.();
+  _lpNewEventReturn = null;
+  _lpAuto.pendingNewEventHoldMs = null;
   _lpStatCycle.paused = !_lpStatCycle.paused;
   if (_lpStatCycle.paused) _lpAutoClear();
   else _lpAutoStart();
@@ -712,6 +744,9 @@ function lpStatTogglePause() {
 
 /** 수동으로 다음 가용 패널로 전환한다. 기존 자동 작업을 정리하고 새 모드의 데이터와 순환을 준비한다. */
 function lpStatCycleNext() {
+  window.evClearBigHeldGlow?.();
+  _lpNewEventReturn = null;
+  _lpAuto.pendingNewEventHoldMs = null;
   _lpStatCycle.fixturesPage = 0;
   // 수동 클릭 시 자동 타이머 초기화 후 수동 전환
   _lpAutoClear();
@@ -726,6 +761,9 @@ function lpStatCycleNext() {
 
 /** 경기 전환 시 자동 작업·일시정지·벤치 데이터를 초기화하고 스탯을 우선으로 가용 패널을 표시한다. */
 function lpStatReset() {
+  window.evClearBigHeldGlow?.();
+  _lpNewEventReturn = null;
+  _lpAuto.pendingNewEventHoldMs = null;
   _lpStatCycle.fixturesPage = 0;
   _lpAutoClear();
   _lpStatCycle.mode = 'stats';
@@ -748,18 +786,14 @@ function lpStatPrepareForNewEvent() {
   if (_lpStatCycle.mode === 'events') return false; // 이미 보고 있으면 진행 중인 스크롤 그대로 둠
   const modes = lpStatAvailableModes();
   if (!modes.includes('events')) return false;
+  _lpNewEventReturn = { mode: _lpStatCycle.mode, fixturesPage: _lpStatCycle.fixturesPage };
   _lpAutoClear();
   _lpStatCycle.mode = 'events';
   lpStatUpdateVisibility();
   return true;
 }
 
-/**
- * Phase 2 — applyEventsPanel로 새 이벤트가 실제 렌더된 *직후* 호출.
- * 삽입 애니메이션이 다 보일 시간(항상 고정 5초)을 맨 아래에서 확보한 뒤, 슬라이드 시간은
- * 스크롤(+마지막 유지)에만 그대로 적용한다. 이후 자동 전환은 lpStatAvailableModes()의 고정
- * 순서를 그대로 타므로, 이벤트를 보여준 다음부터는 원래 로테이션 순서대로 계속 이어진다.
- */
+/** 새 행을 맨 위에서 5초간 보여준 뒤 전체 스크롤과 패널 순환을 재개한다. */
 function lpStatResumeAfterNewEventRendered() {
   if (!_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
   if (_lpStatCycle.mode !== 'events') return;
@@ -769,6 +803,19 @@ function lpStatResumeAfterNewEventRendered() {
 }
 
 // ─── 이벤트 리스너 ────────────────────────────────────────────────────────────
+
+// 폴링으로 목록이 교체돼도 현재 위치와 스크롤 대상을 이어받는다.
+document.addEventListener('events-panel:rendered', event => {
+  if (_lpStatCycle.mode !== 'events' || !_lpAuto.scrollEl
+    || !event.target?.closest?.('.lp-stat')) return;
+  const next = _lpEventsScrollEl('events');
+  if (!next || next === _lpAuto.scrollEl) return;
+  const top = _lpAuto.scrollEl.scrollTop;
+  _lpClearEventsScrollListeners();
+  _lpAuto.scrollEl = next;
+  _lpSetEventsScrollTop(next, top);
+  _lpBindEventsScrollInterruption(next);
+});
 
 // stats 패널이 마지막 페이지 자동 스와이프 후 발생시키는 이벤트
 document.addEventListener('statspanel:cycle-done', event => {
@@ -785,6 +832,9 @@ document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
   const isModeToggle = !!cat && Object.values(_STAT_CYCLE_AUTO_SETTING_KEY).includes(cat);
   if (cat === 'statCycleAuto' || cat === 'statsAutoSwipe' || cat === 'statsAutoSwipeSec' || isModeToggle) {
+    window.evClearBigHeldGlow?.();
+    _lpNewEventReturn = null;
+    _lpAuto.pendingNewEventHoldMs = null;
     if (cat === 'statCycleAuto') _lpStatCycle.paused = false;
     _lpAutoClear();
     lpStatUpdateVisibility();
