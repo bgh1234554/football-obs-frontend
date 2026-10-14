@@ -14,14 +14,6 @@ function setFsmAttr(selector, name, value) {
   });
 }
 const LEAGUE_THEME_MAP = {
-  100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
-  99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
-  98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
-  237: { theme: 'russiancup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/KubokRossii.png', type: 'club' },
-  79: { theme: 'bundes2', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga2.svg', type: 'club' }, // 분데스리가 2
-  78: { theme: 'bundes', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga.svg', type: 'club' }, // 분데스리가
-  141: { theme: 'laliga2', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가 2
-  140: { theme: 'laliga', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
   40: { theme: 'eflchampionship', logoUrl: null, type: 'club' },
   41: { theme: 'eflleagueone', logoUrl: null, type: 'club' },
@@ -31,28 +23,18 @@ const LEAGUE_THEME_MAP = {
   51: { theme: 'nationalleague', logoUrl: null, type: 'club' },
   984: { theme: 'nationalleague', logoUrl: null, type: 'club' },
   985: { theme: 'nationalleague', logoUrl: null, type: 'club' },
-  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
-  3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
-  848: { theme: 'uecl',    logoUrl: null, type: 'club' },  // UEFA 컨퍼런스 리그
-  17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC 챔피언스리그 엘리트
-  536: { theme: 'cnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ConcacafNationsLeagueCup.svg', type: 'national' },
-  5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA 네이션스리그
-  4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
+  135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
+  140: { theme: 'laliga', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
+  141: { theme: 'laliga2', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가 2
+  78: { theme: 'bundes', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga.svg', type: 'club' }, // 분데스리가
+  79: { theme: 'bundes2', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga2.svg', type: 'club' }, // 분데스리가 2
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
-  135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   94: { theme: 'ligaportugal', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/PrimeiraLiga.png', type: 'club' },
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
-  253: { theme: 'mls', logoUrl: null, type: 'club' },
-  283: { theme: 'romanian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg', type: 'club' },
-  119: { theme: 'danish', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishSuperliga.svg', type: 'club' },
-  106: { theme: 'ekstraklasa', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ekstraklasa.svg', type: 'club' },
-  345: { theme: 'czech', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CzechFirstLeagueTransparent.svg', type: 'club' },
-  342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
   144: { theme: 'belgian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelgianProLeague.svg', type: 'club' },
   203: { theme: 'superlig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishSuperLig.svg', type: 'club' },
   235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
-  116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
   236: { theme: 'fnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianFirstLeague.svg', type: 'club' },
   1025: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
   1026: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
@@ -60,10 +42,28 @@ const LEAGUE_THEME_MAP = {
   652: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   650: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   653: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
+  237: { theme: 'russiancup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/KubokRossii.png', type: 'club' },
+  345: { theme: 'czech', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CzechFirstLeagueTransparent.svg', type: 'club' },
+  106: { theme: 'ekstraklasa', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ekstraklasa.svg', type: 'club' },
+  119: { theme: 'danish', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishSuperliga.svg', type: 'club' },
+  283: { theme: 'romanian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg', type: 'club' },
+  342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
+  116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
+  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
+  3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
+  848: { theme: 'uecl',    logoUrl: null, type: 'club' },  // UEFA 컨퍼런스 리그
+  17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC 챔피언스리그 엘리트
+  536: { theme: 'cnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ConcacafNationsLeagueCup.svg', type: 'national' },
+  5:   { theme: 'unl',     logoUrl: null, type: 'national' },  // UEFA 네이션스리그
+  4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
   294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵
   295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
+  100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  253: { theme: 'mls', logoUrl: null, type: 'club' },
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
   1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
   // 리그 추가 시 여기에만 한 줄 추가
@@ -90,6 +90,7 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl'
 ]);
 
+/** 테마 선택 목록을 초기화하고 선택 변경을 저장 상태와 점수판에 반영합니다. */
 function initFsmThemeSelect() {
   const select = document.getElementById('fsmThemeSelect');
   if (!select) return;
@@ -104,6 +105,10 @@ function initFsmThemeSelect() {
     persist();
   });
 }
+/**
+ * 사용 가능한 테마를 순환 선택하고 전환 완료 후 선택한 테마를 안내합니다.
+ * @param {number} direction 이전 테마는 -1, 다음 테마는 1입니다.
+ */
 function cycleFsmTheme(direction) {
   const select = document.getElementById('fsmThemeSelect');
   const options = Array.from(select?.options || []).filter(option => !option.disabled);
@@ -129,6 +134,11 @@ var _currentTheme = 'default';
 var _currentType = 'club';
 var _timerMargin = 'none';
 
+/**
+ * 수동 테마 선택을 우선하고, 자동 모드에서는 리그 매핑에 따라 테마와 로고를 적용합니다.
+ * @param {number|null} leagueId 경기의 리그 ID입니다.
+ * @param {string|null} apiLeagueLogoUrl 매핑에 로고가 없을 때 사용할 API 로고 URL입니다.
+ */
 window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   const selectedTheme = Object.hasOwn(FSM_THEMES, state.fsmTheme) ? state.fsmTheme : null;
   const entry = selectedTheme
@@ -149,6 +159,7 @@ var pendingThemeLink = null;
 var fsmEntranceEndListener = null;
 var fsmInitialStateReady = false;
 
+/** 초기 상태 준비와 테마 로딩이 완료된 점수판의 등장 효과를 다시 시작합니다. */
 window.replayFsmBoardEntrance = function() {
   const board = document.querySelector('.fsm-board');
   // 다른 테마로 바뀌는 경우에는 기존 테마 전환을 유지합니다.
@@ -162,6 +173,7 @@ window.replayFsmBoardEntrance = function() {
   window.fsmBoardRender();
 };
 
+/** 테마와 글꼴 로딩 후 배치를 확정하고 준비 중인 점수판의 등장 효과를 실행합니다. */
 function revealFsmBoard() {
   const board = document.querySelector('.fsm-board.fsm-starting');
   if (!board || pendingThemeLink || !fsmInitialStateReady) return;
@@ -199,6 +211,11 @@ function revealFsmBoard() {
   });
 }
 
+/**
+ * 테마 스타일시트를 교체하고 로딩이 끝난 최신 요청의 점수판 배치를 갱신합니다.
+ * @param {string} cssFile 적용할 테마 CSS 경로입니다.
+ * @param {string} requestedTheme 요청한 테마 키입니다.
+ */
 function changeCSS(cssFile, requestedTheme = _currentTheme) {
   const href = new URL(cssFile, document.baseURI).href;
   if (pendingThemeLink?.href === href) return;
@@ -270,6 +287,7 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
 
 let fsmChromaSheet = null;
 let fsmChromaMode = '';
+/** 현재 테마의 색상 선언을 크로마키 안전색으로 보정하는 추가 스타일을 갱신합니다. */
 function applyFsmChromaTheme() {
   const sheet = oldlink?.sheet;
   const mode = isGreenscreenOn() ? getGreenscreenIntensity() : 'off';
@@ -965,6 +983,7 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /** 러시아 컵 팀컬러 칸에 좌우 방향에 맞는 삼각형과 내부 경계선용 SVG를 생성합니다. */
   function ensureRussianCupTriangles() {
     const namespace = 'http://www.w3.org/2000/svg';
     document.querySelectorAll('.fsm-board .team-color').forEach(panel => {
@@ -990,6 +1009,10 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /**
+   * 경기 점수·합계 점수·로고의 전체 너비에 맞춰 CNL 원형 경계와 팀컬러 곡선을 갱신합니다.
+   * @param {HTMLElement} board 현재 FSM 점수판 요소입니다.
+   */
   function syncCnlGeometry(board) {
     // 합계 숫자도 경기 점수·로고와 같은 원 안에 포함합니다. 숨긴 합계 칸의 폭은 0입니다.
     const centerWidth = Array.from(board.querySelectorAll('#team-score-left, .score-div, #team-score-right, .total-score'))
@@ -1018,6 +1041,7 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /** J리그 팀컬러 칸의 양 끝에 채움과 경계선으로 구성된 SVG 원호를 생성합니다. */
   function ensureJleagueArcs() {
     const namespace = 'http://www.w3.org/2000/svg';
     document.querySelectorAll('.fsm-board .team-color').forEach(panel => {
@@ -1039,6 +1063,11 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /**
+   * 승부차기 기록을 최소 다섯 칸의 성공·실패·미실시 값으로 변환합니다.
+   * @param {string[]} pkArr 성공은 G, 실패는 M으로 저장한 승부차기 기록입니다.
+   * @returns {number[]} 성공 1, 실패 0, 미실시 -1로 구성된 배열입니다.
+   */
   function toPsoArr(pkArr) {
     const base = Math.max(5, (pkArr || []).length);
     return Array.from({ length: base }, (_, i) => {
@@ -1075,7 +1104,7 @@ function adjustScoreboardWidth() {
     mls: ['#e1e3e7', '#000000'], wc26: ['#A0FBDC', '#000000'],
   });
 
-  // applyPSO()도 state.pk 배열 읽도록 수정 (자세한 내용은 6-5 참조)
+  /** 경기 상태에 따라 승부차기 영역을 표시하고 테마 색상·위치와 양 팀 기록을 갱신합니다. */
   function applyPSO() {
     const isPso = state.half === 'PK';
     setFsmStyle('.fsm-board .pso-status', {height: isPso ? 'auto' : '0'});
@@ -1105,6 +1134,12 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /**
+   * 팀명 영역의 그라데이션 대비를 검사해 읽기 쉬운 검정 또는 흰 글자색을 선택합니다.
+   * @param {string} primary 그라데이션의 팀 배경색입니다.
+   * @param {string} number 그라데이션의 등번호 색상입니다.
+   * @returns {string} 대비 기준을 만족하면 black, 그렇지 않으면 white입니다.
+   */
   function getFsmGradientNameInk(primary, number) {
     const a = parseAnyColor(primary), b = parseAnyColor(number);
     if (!a || !b) return 'white';
@@ -1117,6 +1152,11 @@ function adjustScoreboardWidth() {
     return Math.min(...blackContrast) >= 4.5 ? 'black' : 'white';
   }
 
+  /**
+   * 배경색의 가중 밝기를 기준으로 검정 또는 흰 글자색을 선택합니다.
+   * @param {string} color 파싱할 배경 색상입니다.
+   * @returns {string} 밝은 배경에는 #000000, 어둡거나 유효하지 않은 배경에는 #ffffff입니다.
+   */
   function getColorContract(color) {
     const rgb = parseAnyColor(color);
     if (!rgb || ![rgb.r, rgb.g, rgb.b].every(Number.isFinite)) return '#ffffff';
@@ -1131,6 +1171,7 @@ function adjustScoreboardWidth() {
   }
 })();
 
+/** 점수판 내용·승부차기·메모 배치·배율을 갱신하고 준비된 점수판을 표시합니다. */
 window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); revealFsmBoard(); };
 
 if (document.fonts) {
