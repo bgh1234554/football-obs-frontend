@@ -147,11 +147,12 @@ const root = path.resolve(__dirname, '../..');
     await slotInput('number').fill('99');
     await slotInput('playerId').fill('9999');
     await page.evaluate(() => {
-      window.fetchPlayerStats = async pid => ({ player: { name: 'Missing Player', fullName: 'Missing Player', nationality: 'Test', age: 30, photoUrl: '/assets/test-player.png' } });
+      window.fetchPlayerSearch = async () => ({ players: [{ id: 9999, name: 'Missing Player', fullName: 'Missing Player', nationality: 'Test', age: 30, photoUrl: 'resources/imgs/manual-player.png' }], page: 1, totalPages: 1 });
     });
     await page.locator('.dp-grid-slot-search').click();
+    await page.locator('.ps-result').click();
     await page.locator('.dp-grid-slot-apply[data-photo="replace"]').waitFor();
-    assert((await page.locator('.dp-grid-slot-preview').innerText()).includes('30세'));
+    assert((await page.locator('.ps-side-panel').innerText()).includes('30세'));
     await page.locator('.dp-manual-modal').first().screenshot({ path: path.join(root, 'screenshots/manual-missing-slot-search.png') });
     await page.locator('.dp-grid-slot-apply[data-photo="replace"]').click();
     const alignment = await page.evaluate(() => {

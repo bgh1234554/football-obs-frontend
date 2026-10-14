@@ -238,12 +238,14 @@ function buildGridRowHtml(pidStr, slotIndex) {
   const nameHtml = !p
     ? `<span>(빈 슬롯)</span> <button type="button" class="dp-grid-slot-edit" data-slot-index="${slotIndex}" aria-label="빈 슬롯 선수 입력" title="선수 입력">&#9998;</button>`
     : p._manualSlot
-      ? `<span class="dp-grid-slot-fields"><input class="dp-input dp-grid-slot-input" data-field="number" aria-label="등번호" placeholder="번호" value="${dpEscape(p.number || '')}"><input class="dp-input dp-grid-slot-input" data-field="name" aria-label="선수 이름" placeholder="선수 이름" value="${dpEscape(p.name || '')}"><input type="number" min="0" step="1" class="dp-input dp-grid-slot-input" data-field="playerId" aria-label="선수 ID" placeholder="선수 ID" value="${p.playerId || ''}"><button type="button" class="dp-grid-slot-search">검색</button></span>${buildGridSlotSearchHtml(pidStr)}`
+      ? lineupPanelState.gridState.fixedSlots?.[pidStr]
+        ? `${dpEscape(resolvedName)} <button type="button" class="dp-grid-slot-reopen dp-grid-slot-edit" data-slot-index="${slotIndex}" aria-label="수동 선수 수정">&#9998;</button>`
+        : buildManualSlotFieldsHtml(p, lineupPanelState.gridState.slotQueries?.[pidStr])
     : isNamelessPlayer
       ? `<input type="text" class="dp-input dp-grid-name-input" data-player-id="${p.playerId}" placeholder="선수 이름 입력 (이벤트 자동 연계용)" value="" draggable="false">`
       : `${p.manualCaptain ? '<span class="dp-roster-captain" title="주장">C</span>' : ''}${dpEscape(resolvedName)}${subHtml ? ` ${subHtml}` : ''}`;
   const emptyCls = p ? '' : ' dp-grid-empty'; // "(빈 슬롯)" 텍스트 전용 — 입력창 렌더링일 땐 부여 안 함
-  return `<div class="dp-grid-row${p?._manualSlot ? ' has-slot-input' : ''}" data-slot-index="${slotIndex}" draggable="true">
+  return `<div class="dp-grid-row${p?._manualSlot && !lineupPanelState.gridState.fixedSlots?.[pidStr] ? ' has-slot-input' : ''}" data-slot-index="${slotIndex}" draggable="true">
     <span class="dp-grid-handle" aria-hidden="true">⠿</span>
     <span class="dp-grid-slot-label">${dpEscape(labels[slotIndex] || `${slotIndex + 1}`)}</span>
     <span class="dp-grid-photo${photoCls}"${photoStyle}></span>
@@ -296,7 +298,7 @@ function buildLineupGridFormHtml() {
   const rows = slotPlayerIds.map((pid, idx) => buildGridRowHtml(pid, idx)).join('');
   const help = lineupPanelState.gridState.fullFormRows
     ? '포메이션을 바꾸면 현재 위치와 역할을 최대한 유지해 배치합니다. 핸들(⠿)로 선수를 옮기면 번호와 득점·카드 정보도 함께 이동합니다. 포메이션 이동 버튼을 다시 누르면 입력 폼으로 돌아갑니다.'
-    : '포메이션을 바꾸면 현재 위치와 역할을 최대한 유지해 배치합니다. 핸들(⠿)을 드래그해서 선수 위치를 서로 바꿀 수 있습니다. 저장하면 라인업과 전술판에 같이 반영됩니다.';
+    : '포메이션을 바꾸면 현재 위치와 역할을 최대한 유지해 배치합니다. 핸들(⠿)을 드래그해서 선수 위치를 서로 바꿀 수 있습니다. 보충 선수는 ✓로 입력을 완료하고 빨간 ×로 삭제합니다. 저장하면 라인업과 전술판에 같이 반영됩니다.';
   return `<div class="dp-manual-help">${help}</div>
     <div class="dp-form-stack">
       <label class="dp-field">
@@ -486,21 +488,38 @@ function buildLineupManualFormHtml(lineup) {
     </div>`;
 }
 
-/** 교체 명단 풀폼 모달 본문 HTML — 맨 위 감독 이름 행 + 번호/이름 입력 행 DETAIL_BENCH_ROWS개. */
+/** 선발 빈 슬롯과 교체 명단에서 공통으로 사용하는 가로 입력 UI. */
+function buildManualSlotFieldsHtml(player, query, benchIndex) {
+  const fieldName = field => benchIndex == null ? '' : ` name="bench-${field}-${benchIndex}"`;
+  return `<span class="dp-grid-slot-fields"><input class="dp-input dp-grid-slot-input" data-field="number"${fieldName('number')} aria-label="등번호" placeholder="번호" value="${dpEscape(player.number || '')}"><input class="dp-input dp-grid-slot-input" data-field="name"${fieldName('name')} aria-label="선수 이름" placeholder="선수 이름" value="${dpEscape(player.name || '')}"><input type="text" autocomplete="off" class="dp-input dp-grid-slot-input" data-field="playerId" aria-label="선수 ID 또는 영문 이름" placeholder="ID / 영문 이름" value="${dpEscape(query ?? (player.playerId || ''))}"><button type="button" class="dp-grid-slot-search">검색</button><button type="button" class="${benchIndex == null ? 'dp-grid-slot-done' : 'dp-bench-slot-done'}" title="입력 완료" aria-label="선수 입력 완료">✓</button><button type="button" class="dp-slot-delete" title="선수 삭제" aria-label="이 슬롯의 선수 삭제">×</button></span>`;
+}
+
+/** 등록된 교체 선수는 라벨로 표시하고 편집 중인 행에만 입력창을 연다. */
+function buildBenchRowHtml(index) {
+  const state = lineupPanelState.manualModal.benchState;
+  const key = state.slotPlayerIds[index];
+  const player = state.players[key];
+  const editing = state.editing === key;
+  const name = player?.name || '';
+  const photo = player?.photoUrl;
+  return `<div class="dp-grid-row dp-bench-row${editing ? ' has-slot-input' : ''}" data-slot-index="${index}">
+    <span class="dp-grid-slot-label">${index + 1}</span>
+    <span class="dp-grid-photo${photo ? '' : ' dp-grid-photo-empty'}"${photo ? ` style="background-image:url('${dpEscape(photo)}')"` : ''}></span>
+    <span class="dp-grid-num">${dpEscape(player?.number || '')}</span>
+    <span class="dp-grid-name${!name && !editing ? ' dp-grid-empty' : ''}">${editing ? buildManualSlotFieldsHtml(player, state.slotQueries?.[key], index) : `<span class="dp-bench-player-name" title="${dpEscape(name)}">${dpEscape(name || '(빈 슬롯)')}</span><button type="button" class="dp-bench-slot-edit dp-grid-slot-edit" aria-label="${name ? '교체 선수 수정' : '빈 슬롯 선수 입력'}" title="선수 입력">&#9998;</button>`}</span>
+  </div>`;
+}
+
+/** 교체 명단 모달 본문 — 감독 입력 및 고정 선수/빈 슬롯 목록. */
 function buildBenchManualFormHtml(players, coachName) {
-  const list = clonePlayers(players || []);
-  return `<div class="dp-manual-help">교체 명단과 감독 이름을 입력하면 즉시 반영됩니다. 감독은 이후 API가 다른 감독 정보를 주면 그 값으로 자동 갱신됩니다.</div>
+  return `<div class="dp-manual-help">빈 슬롯의 연필을 눌러 번호와 이름을 입력하세요. ID는 선택 사항이며 ID 또는 영문 이름으로 검색할 수 있습니다. ✓로 입력을 완료하고 빨간 ×로 선수를 삭제합니다. 저장하면 명단에 반영되고 취소하면 되돌립니다. 감독은 이후 API가 다른 감독 정보를 주면 자동 갱신됩니다.</div>
     <div class="dp-form-stack">
       <div class="dp-manual-grid">
         <div class="dp-manual-row dp-manual-header-row">
           <div class="dp-slot-label">감독</div>
           <input class="dp-input dp-manual-coach-input" name="bench-coach" value="${dpEscape(coachName || '')}" placeholder="감독 이름" />
         </div>
-        ${Array.from({ length: DETAIL_BENCH_ROWS }, (_, index) => `<div class="dp-manual-row">
-          <div class="dp-slot-label">${index + 1}</div>
-          <input class="dp-input" name="bench-number-${index}" value="${dpEscape(list[index]?.number ?? '')}" placeholder="번호" />
-          <input class="dp-input" name="bench-name-${index}" value="${dpEscape(getPrefillName(list[index]))}" placeholder="선수 이름" />
-        </div>`).join('')}
+        <div id="manualBenchRows">${Array.from({ length: lineupPanelState.manualModal.benchState.slotPlayerIds.length }, (_, index) => buildBenchRowHtml(index)).join('')}</div>
       </div>
     </div>`;
 }
@@ -539,7 +558,7 @@ function hasManualOverrideForKind(fixtureId, side, kind) {
   const sideData = getManualSideData(fixtureId, side);
   if (!sideData) return false;
   if (kind === 'lineup') return !!sideData.lineup;
-  if (kind === 'bench') return !!((sideData.bench && sideData.bench.length) || sideData.coachName);
+  if (kind === 'bench') return Array.isArray(sideData.bench) || !!sideData.coachName;
   if (kind === 'injury') return !!(sideData.injuries && sideData.injuries.length);
   if (kind === 'coach') return !!sideData.coachName;
   return false;
@@ -582,6 +601,7 @@ function renderManualPanelForm(kind, side) {
       if (gridToggle) gridToggle.hidden = false;
     }
   } else if (kind === 'bench') {
+    lineupPanelState.gridState = null;
     // 2) 교체 명단은 번호/이름 full form.
     // 감독 칸은 지금 화면에 보이는 감독(수동값이 적용 중이면 수동값, 아니면 API 값)으로 채운다.
     // 선수 행과 같은 getPrefillName(pickName 'roster')을 써서 패널과 똑같이 풀네임/단축명 설정을 따른다.
@@ -591,6 +611,11 @@ function renderManualPanelForm(kind, side) {
     // 바꿔 저장해도 선수 ID 없는 수동 명단으로 덮여 이벤트 연동이 끊기는 문제가 있었다.
     const benchPrefill = clonePlayers(buildEffectiveFixtureData(lineupPanelState.lastFixture)?.[`${side}Lineup`]?.substitutes || []);
     if (lineupPanelState.manualModal) lineupPanelState.manualModal.benchPrefill = benchPrefill;
+    const slotPlayerIds = Array.from({ length: Math.max(DETAIL_BENCH_ROWS, benchPrefill.length + 1) }, (_, index) => `bench-slot-${index}`);
+    lineupPanelState.manualModal.benchState = {
+      slotPlayerIds,
+      players: Object.fromEntries(slotPlayerIds.map((key, index) => [key, benchPrefill[index] ? { ...benchPrefill[index], name: getPrefillName(benchPrefill[index]) } : null])),
+    };
     content.innerHTML = buildBenchManualFormHtml(benchPrefill, coachName);
   } else {
     // 3) 부상자 명단은 번호/이름/사유 full form.
@@ -623,6 +648,7 @@ function openManualPanel(kind, side) {
 
 /** 수동 입력 모달 닫기. 모달 상태 + 그리드 편집 상태 모두 비우고 백드롭의 .open 제거. */
 function closeManualPanel() {
+  closePlayerSearchSidePanel(document.querySelector('#manualPanelBackdrop .dp-manual-modal'));
   lineupPanelState.manualModal = null;
   lineupPanelState.gridState = null;
   const backdrop = document.getElementById('manualPanelBackdrop');
@@ -710,6 +736,11 @@ function extractLineupOverrideFromForm(form) {
 
 /** 교체 명단 풀폼 입력값 → 선수 배열. 이름 없는 행은 제외. */
 function extractBenchOverrideFromForm(form) {
+  const state = lineupPanelState.manualModal?.benchState;
+  if (state) return state.slotPlayerIds.map(key => state.players[key]).filter(player => getInputValue(player?.name)).map(player => {
+    const { _manualSlot, ...saved } = player;
+    return { ...saved, name: getInputValue(player.name), number: getInputValue(String(player.number ?? '')) };
+  });
   const bench = [];
   for (let index = 0; index < DETAIL_BENCH_ROWS; index += 1) {
     const name = getInputValue(form.elements[`bench-name-${index}`]?.value);
@@ -787,6 +818,7 @@ function saveManualPanel() {
       const prefill = modalState.benchPrefill || [];
       const sameRows = (players, rows) => players.length === rows.length && players.every((player, index) =>
         getPrefillName(player) === rows[index].name
+        && Number(player.playerId || 0) === Number(rows[index].playerId || 0)
         && String(player.number ?? '') === String(rows[index].number ?? ''));
       // 프리필된 이름과 같은 행은 원래 선수 객체(playerId/사진/포지션/원본 이름)를 이어받는다 —
       // 명단을 일부 고쳐 저장해도 기존 선수는 ID가 유지돼 교체/카드 이벤트 연동이 끊기지 않는다.
@@ -808,6 +840,7 @@ function saveManualPanel() {
         return null;
       };
       const bench = extracted.map((row, index) => {
+        if (modalState.benchState) return row;
         const source = findSource(row, index);
         if (!source || !Number(source.playerId)) return row;
         return { ...source, number: row.number || source.number || '' };
@@ -818,7 +851,7 @@ function saveManualPanel() {
       const sameAsApi = sameRows(rawBench, extracted);
       if (sameRows(prefill, extracted) && !sameAsApi) {
         // 명단은 손대지 않음(감독만 바꾼 경우 등) — 기존 수동 명단/API 명단 상태를 그대로 둔다.
-      } else if (bench.length && !sameAsApi) {
+      } else if (!sameAsApi) {
         sideData.bench = bench;
         sideData.benchApiBaseline = getBenchApiBaselineKey(rawBenchLineup);
       } else {
@@ -1152,11 +1185,70 @@ document.addEventListener('keydown', event => {
 });
 
 
+/** 선발/교체 명단의 공통 슬롯 편집 상태와 행 갱신. */
+function getManualSlotState(row) {
+  return row?.classList.contains('dp-bench-row') ? lineupPanelState.manualModal?.benchState : lineupPanelState.gridState;
+}
+
+function rerenderManualSlotRows(state) {
+  if (state === lineupPanelState.manualModal?.benchState) {
+    const rows = document.getElementById('manualBenchRows');
+    if (rows) rows.innerHTML = state.slotPlayerIds.map((_, index) => buildBenchRowHtml(index)).join('');
+  } else rerenderGridList();
+}
+
+// 선수 삭제도 초안에만 반영한다. 슬롯 위치는 남겨 다시 입력할 수 있게 한다.
+document.addEventListener('click', event => {
+  const button = event.target.closest('.dp-slot-delete, .dp-grid-slot-done, .dp-grid-slot-reopen');
+  if (!button) return;
+  const row = button.closest('.dp-grid-row');
+  const state = getManualSlotState(row);
+  if (!state) return;
+  const index = Number(row.dataset.slotIndex);
+  const key = state.slotPlayerIds[index];
+  const isBench = state === lineupPanelState.manualModal?.benchState;
+  if (!isBench && !state.players[key]?._manualSlot) return;
+  if (button.classList.contains('dp-slot-delete')) {
+    state.slotSearch?.[key]?.model.reset();
+    if (state.slotSearch) delete state.slotSearch[key];
+    if (state.slotQueries) delete state.slotQueries[key];
+    if (state.fixedSlots) delete state.fixedSlots[key];
+    if (isBench) { state.players[key] = null; state.editing = null; }
+    else { delete state.players[key]; state.slotPlayerIds[index] = null; }
+  } else {
+    state.fixedSlots ||= {};
+    state.fixedSlots[key] = button.classList.contains('dp-grid-slot-done');
+  }
+  if (state.activeSlotSearch === key) {
+    state.activeSlotSearch = null;
+    closePlayerSearchSidePanel(document.querySelector('#manualPanelBackdrop .dp-manual-modal'));
+  }
+  rerenderManualSlotRows(state);
+});
+
+document.addEventListener('click', event => {
+  const edit = event.target.closest('.dp-bench-slot-edit');
+  const done = event.target.closest('.dp-bench-slot-done');
+  if (!edit && !done) return;
+  const row = (edit || done).closest('.dp-bench-row');
+  const state = getManualSlotState(row);
+  if (!state) return;
+  const key = state.slotPlayerIds[Number(row.dataset.slotIndex)];
+  closePlayerSearchSidePanel(document.querySelector('#manualPanelBackdrop .dp-manual-modal'));
+  state.activeSlotSearch = null;
+  if (edit) {
+    state.players[key] ||= { playerId: 0, name: '', origName: '', number: '', photoUrl: getManualSlotPhotoUrl(), _manual: true };
+    state.editing = key;
+  } else state.editing = null;
+  rerenderManualSlotRows(state);
+  if (edit) document.querySelector(`.dp-bench-row[data-slot-index="${row.dataset.slotIndex}"] [data-field="name"]`)?.focus();
+});
+
 // 빈 슬롯 편집은 모달 상태에만 반영하여 취소할 때 저장하지 않는다.
 document.addEventListener('click', event => {
   const button = event.target.closest('.dp-grid-slot-edit');
   const state = lineupPanelState.gridState;
-  if (!button || !state || state.fullFormRows) return;
+  if (!button || button.classList.contains('dp-bench-slot-edit') || !state || state.fullFormRows) return;
   const index = Number(button.dataset.slotIndex);
   if (state.slotPlayerIds[index]) return;
   let suffix = index;
@@ -1169,83 +1261,83 @@ document.addEventListener('click', event => {
 });
 document.addEventListener('input', event => {
   const input = event.target.closest('.dp-grid-slot-input');
-  const state = lineupPanelState.gridState;
+  const row = input?.closest('.dp-grid-row');
+  const state = getManualSlotState(row);
   if (!input || !state) return;
   const index = Number(input.closest('.dp-grid-row').dataset.slotIndex);
   const player = state.players[state.slotPlayerIds[index]];
-  if (!player?._manualSlot) return;
+  if (!player || (!row.classList.contains('dp-bench-row') && !player._manualSlot)) return;
   player[input.dataset.field] = input.dataset.field === 'playerId'
-    ? (Number.isSafeInteger(Number(input.value)) && Number(input.value) > 0 ? Number(input.value) : 0)
+    ? playerSearchId(input.value)
     : input.value;
   if (input.dataset.field === 'name') { player.origName = player.name; player.nameKoLong = player.name; }
   if (input.dataset.field === 'playerId') {
-    if (state.slotSearch) delete state.slotSearch[player._manualSlot];
-    input.closest('.dp-grid-row').querySelector('.dp-grid-slot-preview')?.remove();
+    state.slotQueries ||= {};
+    const key = state.slotPlayerIds[index];
+    state.slotQueries[key] = input.value;
+    state.slotSearch?.[key]?.model.reset();
+    if (state.slotSearch) delete state.slotSearch[key];
+    if (state.activeSlotSearch === key) closePlayerSearchSidePanel(document.querySelector('#manualPanelBackdrop .dp-manual-modal'));
   }
 });
 
-/** 기존 ID 연결 메뉴와 같은 프로필 API를 사용하되 결과를 가로 행 안에 표시한다. */
-function buildGridSlotSearchHtml(key) {
-  const search = lineupPanelState.gridState?.slotSearch?.[key];
-  if (!search) return '';
-  if (!search.player) return `<span class="dp-grid-slot-preview" role="status">${dpEscape(search.message)}</span>`;
-  const p = search.player;
-  const details = [p.nationality, p.age ? `${p.age}세` : ''].filter(Boolean).join(' · ');
-  return `<span class="dp-grid-slot-preview">
-    ${p.photoUrl ? `<img src="${dpEscape(p.photoUrl)}" alt="" class="dp-grid-result-photo">` : ''}
-    <span class="dp-grid-result-info"><strong>${dpEscape(p.fullName || p.name || '')}</strong><small>${dpEscape(details)}</small></span>
-    <button type="button" class="dp-grid-slot-apply" data-photo="keep">사진 유지</button>
-    <button type="button" class="dp-grid-slot-apply is-primary" data-photo="replace">사진 변경</button>
-  </span>`;
-}
-
-async function searchGridSlotPlayer(row) {
-  const state = lineupPanelState.gridState;
+/** 빈 슬롯의 검색 결과도 모달 오른쪽 공통 패널에서 선택한다. */
+function searchGridSlotPlayer(row) {
+  const state = getManualSlotState(row);
   if (!state || !row) return;
   const key = state.slotPlayerIds[Number(row.dataset.slotIndex)];
   const player = state.players[key];
-  const pid = Number(player?.playerId);
+  const host = document.querySelector('#manualPanelBackdrop .dp-manual-modal');
   state.slotSearch ||= {};
-  const search = { pid, message: '검색 중…' };
+  state.slotSearch[key]?.model.reset();
+  const search = {};
   state.slotSearch[key] = search;
-  if (!Number.isSafeInteger(pid) || pid <= 0) {
-    search.message = '유효한 선수 ID를 입력하세요';
-    rerenderGridList();
-    return;
-  }
-  rerenderGridList();
-  try {
-    const data = await fetchPlayerStats(pid);
-    if (lineupPanelState.gridState !== state || state.slotSearch[key] !== search) return;
-    search.player = data?.player || null;
-    search.message = search.player ? '' : '선수 정보를 찾을 수 없습니다';
-  } catch (error) {
-    if (lineupPanelState.gridState !== state || state.slotSearch[key] !== search) return;
-    search.message = `검색 실패: ${error?.message || ''}`;
-  }
-  if (lineupPanelState.gridState === state && state.slotSearch[key] === search) rerenderGridList();
+  state.activeSlotSearch = key;
+  search.model = createPlayerSearch({
+    isActive: () => (lineupPanelState.gridState === state || lineupPanelState.manualModal?.benchState === state) && state.activeSlotSearch === key && state.slotSearch[key] === search,
+    onChange: () => {
+      const panel = playerSearchSidePanel(host);
+      panel.innerHTML = playerSearchResultsHtml(search.model) + (search.player ? `<div class="ps-photo-actions"><button type="button" class="dp-grid-slot-apply" data-photo="keep">사진 유지</button><button type="button" class="dp-grid-slot-apply is-primary" data-photo="replace">사진 변경</button></div>` : '');
+      bindPlayerSearchPanel(panel, search.model);
+    },
+    onSelect: profile => {
+      search.player = profile;
+      search.pid = Number(profile.id);
+      player.playerId = search.pid;
+      player.name = profile.name || profile.fullName || player.name;
+      player.nameKoLong = profile.fullName || player.name;
+      player.origName = profile.englishName || player.name;
+      if (!player.number && profile.number != null) player.number = String(profile.number);
+      state.slotQueries ||= {};
+      state.slotQueries[key] = String(search.pid);
+      rerenderManualSlotRows(state);
+    },
+  });
+  search.model.search(state.slotQueries?.[key] ?? String(player?.playerId || ''));
 }
 
 document.addEventListener('click', event => {
   const searchButton = event.target.closest('.dp-grid-slot-search');
   if (searchButton) { searchGridSlotPlayer(searchButton.closest('.dp-grid-row')); return; }
   const applyButton = event.target.closest('.dp-grid-slot-apply');
-  const state = lineupPanelState.gridState;
+  const state = lineupPanelState.manualModal?.kind === 'bench' ? lineupPanelState.manualModal.benchState : lineupPanelState.gridState;
   if (!applyButton || !state) return;
-  const key = state.slotPlayerIds[Number(applyButton.closest('.dp-grid-row').dataset.slotIndex)];
+  const key = state.activeSlotSearch;
   const search = state.slotSearch?.[key];
   const player = state.players[key];
   if (!search?.player || search.pid !== player.playerId) return;
   const profile = search.player;
   player.name = profile.name || profile.fullName || player.name;
   player.nameKoLong = profile.fullName || player.name;
-  player.origName = player.name;
+  player.origName = profile.englishName || player.name;
   if (applyButton.dataset.photo === 'replace') player.photoUrl = profile.photoUrl || null;
   delete state.slotSearch[key];
-  rerenderGridList();
+  closePlayerSearchSidePanel(document.querySelector('#manualPanelBackdrop .dp-manual-modal'));
+  if (state === lineupPanelState.manualModal?.benchState) state.editing = null;
+  rerenderManualSlotRows(state);
 });
 document.addEventListener('keydown', event => {
-  if (event.key !== 'Enter' || !event.target.matches('.dp-grid-slot-input')) return;
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229 || !event.target.matches('.dp-grid-slot-input')) return;
   event.preventDefault();
   if (event.target.dataset.field === 'playerId') searchGridSlotPlayer(event.target.closest('.dp-grid-row'));
   else if (event.target.dataset.field === 'number') event.target.closest('.dp-grid-row').querySelector('[data-field="name"]')?.focus();

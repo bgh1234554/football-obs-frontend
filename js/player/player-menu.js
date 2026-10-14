@@ -488,19 +488,20 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   popup.innerHTML = `
 <button class="pm-close" id="pmIdBack" aria-label="뒤로가기" style="left:10px;right:auto">&#8592;</button>
 <div class="pm-nick-wrap">
-  <div class="pm-nick-title">선수 ID 연결</div>
+  <div class="pm-nick-title">선수 검색 및 연결</div>
   <div style="font-size:11px;color:#8af;margin-bottom:6px">
-    현재 API ID: ${pmEsc(String(currentApiId))}${existing ? ` &nbsp;·&nbsp; 연결됨: ${pmEsc(String(existing.playerId))}` : ''}${autoLinkedAltId ? ` &nbsp;·&nbsp; 자동 연결됨: ${pmEsc(autoLinkedAltId)}` : ''}
+    원본 데이터의 선수 ID: ${pmEsc(String(currentApiId))}${existing ? ` &nbsp;·&nbsp; 연결한 ID: ${pmEsc(String(existing.playerId))}` : ''}${autoLinkedAltId ? ` &nbsp;·&nbsp; 자동 연결한 ID: ${pmEsc(autoLinkedAltId)}` : ''}
   </div>
+  <div class="ps-search-help">선수 ID 또는 영문 이름으로 검색하세요.<br>이름은 공백 포함 4글자 이상 입력하세요. 예: Saka</div>
   <div style="display:flex;gap:6px;align-items:center">
-    <input class="pm-nick-input" id="pmIdInput" type="number" min="1"
-      placeholder="새 선수 ID"
+    <input class="pm-nick-input" id="pmIdInput" type="text" autocomplete="off"
+      placeholder="예: 1460 / Saka" aria-label="선수 ID 또는 영문 이름"
       value="${existing ? pmEsc(String(existing.playerId)) : pmEsc(String(currentApiId))}"
       style="flex:1;min-width:0"/>
     <button class="pm-btn pm-btn-primary" id="pmIdFetch" style="white-space:nowrap;padding:4px 8px">검색</button>
   </div>
   <div id="pmIdPreview" style="margin-top:6px;min-height:20px;font-size:11px;color:#aaa">
-    ${existing ? `연결됨${existing.name ? ' - ' + pmEsc(existing.name) : ''} · 새 ID 입력 시 덮어쓰기` : 'ID를 입력하고 검색하세요'}
+    ${existing ? `연결됨${existing.name ? ' - ' + pmEsc(existing.name) : ''} · 다른 선수를 선택하고 저장하면 변경됩니다.` : '검색 결과에서 선수를 선택한 뒤 저장하세요.'}
   </div>
   <div class="pm-nick-btns">
     <button class="pm-btn pm-btn-primary" id="pmIdSave">저장</button>
@@ -544,72 +545,44 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       `</div>`;
   }
 
-  /** 입력한 선수 ID를 조회해 미리보기와 사진 선택 UI를 갱신하고, 저장에 쓸 조회 결과를 보관한다. */
-  async function doFetch() {
-    // 3-a) 양의 ID만 조회하고 검색 중에는 버튼을 잠근다.
-    const newPid = parseInt(input.value, 10);
-    if (!newPid || newPid <= 0) { preview.innerHTML = '<span style="color:#f88">유효한 ID를 입력하세요</span>'; return; }
-    preview.innerHTML = '<span style="color:#aaa">로딩 중...</span>';
-    document.getElementById('pmIdFetch').disabled = true;
-    try {
-      const data = await (typeof fetchPlayerStats === 'function'
-        ? fetchPlayerStats(newPid)
-        : Promise.reject(new Error('fetchPlayerStats 없음')));
-      const p = data?.player;
-      if (p) {
-        _fetched = data;
-        _fetchedPid = newPid;
-        const pname = p.fullName || p.name || '';
-        const photoHtml = p.photoUrl ? `<img src="${pmEsc(p.photoUrl)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
-        const nat = p.nationality ? ` · ${pmEsc(p.nationality)}` : '';
-        const age = p.age ? ` · ${p.age}세` : '';
-        const photoToggle = renderPhotoToggle(p.photoUrl);
-        preview.innerHTML = `<div>${photoHtml}<span style="color:#fff">${pmEsc(pname)}</span><span style="color:#888">${nat}${age}</span></div>${photoToggle}`;
-        // 사진 토글 버튼 이벤트
-        const keepBtn   = document.getElementById('pmPhotoKeep');
-        const changeBtn = document.getElementById('pmPhotoChange');
-        if (keepBtn) keepBtn.addEventListener('click', e => {
-          e.stopPropagation(); _useNewPhoto = false;
-          if (keepBtn)   keepBtn.className   = keepBtn.className.replace('pm-btn-primary', '').trim() + ' pm-btn-primary';
-          if (changeBtn) changeBtn.className = changeBtn.className.replace(' pm-btn-primary', '');
-        });
-        if (changeBtn) changeBtn.addEventListener('click', e => {
-          e.stopPropagation(); _useNewPhoto = true;
-          if (changeBtn) changeBtn.className = changeBtn.className.replace('pm-btn-primary', '').trim() + ' pm-btn-primary';
-          if (keepBtn)   keepBtn.className   = keepBtn.className.replace(' pm-btn-primary', '');
-        });
-      } else {
-        preview.innerHTML = '<span style="color:#f88">선수 정보를 찾을 수 없습니다</span>';
-        _fetched = null;
-        _fetchedPid = null;
-      }
-    } catch (err) {
-      preview.innerHTML = `<span style="color:#f88">로딩 실패: ${pmEsc(String(err?.message || ''))}</span>`;
-      _fetched = null;
-      _fetchedPid = null;
-    } finally {
-      const fb = document.getElementById('pmIdFetch');
-      if (fb) fb.disabled = false;
-      // preview.innerHTML 갱신(특히 사진 비교 토글 영역)으로 팝업이 더 커질 수 있어 재클램프.
-      pmClampPopupToViewport();
-    }
+  /** 선택한 후보의 프로필과 사진 선택 UI를 갱신하고 저장에 쓸 결과를 보관한다. */
+  function acceptSearchPlayer(p) {
+    _fetched = { player: p };
+    _fetchedPid = Number(p.id);
+    const pname = p.fullName || p.name || '';
+    const photoHtml = p.photoUrl ? `<img src="${pmEsc(p.photoUrl)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
+    const nat = p.nationality ? ` · ${pmEsc(p.nationality)}` : '';
+    const age = p.age ? ` · ${p.age}세` : '';
+    const photoToggle = renderPhotoToggle(p.photoUrl);
+    preview.innerHTML = `<div>${photoHtml}<span style="color:#fff">${pmEsc(pname)}</span><span style="color:#888">${nat}${age}</span></div>${photoToggle}`;
+    // 사진 토글 버튼 이벤트
+    const keepBtn   = document.getElementById('pmPhotoKeep');
+    const changeBtn = document.getElementById('pmPhotoChange');
+    if (keepBtn) keepBtn.addEventListener('click', e => {
+      e.stopPropagation(); _useNewPhoto = false;
+      if (keepBtn)   keepBtn.className   = keepBtn.className.replace('pm-btn-primary', '').trim() + ' pm-btn-primary';
+      if (changeBtn) changeBtn.className = changeBtn.className.replace(' pm-btn-primary', '');
+    });
+    if (changeBtn) changeBtn.addEventListener('click', e => {
+      e.stopPropagation(); _useNewPhoto = true;
+      if (changeBtn) changeBtn.className = changeBtn.className.replace('pm-btn-primary', '').trim() + ' pm-btn-primary';
+      if (keepBtn)   keepBtn.className   = keepBtn.className.replace(' pm-btn-primary', '');
+    });
+    pmClampPopupToViewport(popup);
   }
-
-  // 3) 검색 버튼과 Enter를 연결한다. 입력이 바뀌면 이전 검색 결과를 저장에 재사용하지 않는다.
-  document.getElementById('pmIdFetch').addEventListener('click', doFetch);
-  input.addEventListener('input', () => {
-    _fetched = null;
-    _fetchedPid = null;
+  bindPopupPlayerSearch({
+    input, button: document.getElementById('pmIdFetch'), popup,
+    onSelect: acceptSearchPlayer,
+    onInvalidate: () => { _fetched = null; _fetchedPid = null; preview.textContent = ''; },
   });
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); doFetch(); }
     if (e.key === 'Escape') { e.stopPropagation(); pmShowMenu(pid, clientX, clientY); }
   });
 
   // 4) 중복 연결을 검사한 뒤 현재 입력 ID와 일치하는 검색 결과만 이름·사진에 반영해 저장한다.
   document.getElementById('pmIdSave').addEventListener('click', () => {
-    const newPid = parseInt(input.value, 10);
-    if (!newPid || newPid <= 0 || !fixtureId) return;
+    const newPid = playerSearchId(input.value);
+    if (!Number.isSafeInteger(newPid) || newPid <= 0 || !fixtureId) return;
     if (typeof window.pirIsDuplicateAltId === 'function' && _pmStoreKey &&
         window.pirIsDuplicateAltId(fixtureId, _pmStoreKey, newPid)) {
       preview.innerHTML = '<span style="color:#f88">이미 다른 선수에 연결된 ID입니다</span>';

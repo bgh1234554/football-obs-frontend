@@ -1050,18 +1050,19 @@ function pirShowMenu(side, origName, clientX, clientY) {
     </div>
   </div>
   <div class="pm-nick-wrap">
-    <div class="pm-nick-title">선수 ID 입력 후 검색</div>
+    <div class="pm-nick-title">선수 검색 및 연결</div>
+    <div class="ps-search-help">선수 ID 또는 영문 이름으로 검색하세요.<br>이름은 공백 포함 4글자 이상 입력하세요. 예: Saka</div>
     <div style="display:flex;gap:6px;align-items:center">
-      <input class="pm-nick-input" id="pirIdInput" type="number" min="1"
-        placeholder="예) 154660"
+      <input class="pm-nick-input" id="pirIdInput" type="text" autocomplete="off"
+        placeholder="예: 1460 / Saka" aria-label="선수 ID 또는 영문 이름"
         value="${existing ? pirEsc(String(existing.playerId)) : ''}"
         style="flex:1;min-width:0"/>
       <button class="pm-btn pm-btn-primary" id="pirFetch" style="white-space:nowrap;padding:4px 10px">검색</button>
     </div>
     <div id="pirPreview" style="margin-top:8px;min-height:22px;font-size:11.5px;color:#aaa">
       ${existing
-        ? `연결됨${existing.name ? ' - ' + pirEsc(existing.name) : ''} · 새 ID 입력 시 덮어쓰기`
-        : '선수 ID를 입력하고 검색하세요'}
+        ? `연결됨${existing.name ? ' - ' + pirEsc(existing.name) : ''} · 다른 선수를 선택하고 저장하면 변경됩니다.`
+        : '검색 결과에서 선수를 선택한 뒤 저장하세요.'}
     </div>
     <div class="pm-nick-btns">
       <button class="pm-btn pm-btn-primary" id="pirSave">저장</button>
@@ -1083,52 +1084,23 @@ function pirShowMenu(side, origName, clientX, clientY) {
   const input = document.getElementById('pirIdInput');
   const preview = document.getElementById('pirPreview');
 
-  async function doFetch() {
-    const pid = parseInt(input.value, 10);
-    if (!pid || pid <= 0) {
-      preview.innerHTML = '<span style="color:#f88">유효한 ID를 입력하세요</span>';
-      return;
-    }
-    preview.innerHTML = '<span style="color:#aaa">로딩 중...</span>';
-    const fetchBtn = document.getElementById('pirFetch');
-    if (fetchBtn) fetchBtn.disabled = true;
-    try {
-      const data = await (typeof fetchPlayerStats === 'function'
-        ? fetchPlayerStats(pid)
-        : Promise.reject(new Error('fetchPlayerStats 없음')));
-      const p = data?.player;
-      if (p) {
-        _fetched = data;
-        _fetchedPid = pid;
-        const pname = p.fullName || p.name || '';
-        const photoHtml = p.photoUrl
-          ? `<img src="${pirEsc(p.photoUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px">`
-          : '';
-        const nat = p.nationality ? ` · ${pirEsc(p.nationality)}` : '';
-        const age = p.age ? ` · ${p.age}세` : '';
-        preview.innerHTML = `${photoHtml}<span style="color:#fff">${pirEsc(pname)}</span><span style="color:#888">${nat}${age}</span>`;
-      } else {
-        preview.innerHTML = '<span style="color:#f88">선수 정보를 찾을 수 없습니다</span>';
-        _fetched = null;
-        _fetchedPid = null;
-      }
-    } catch (err) {
-      preview.innerHTML = `<span style="color:#f88">로딩 실패: ${pirEsc(String(err?.message || ''))}</span>`;
-      _fetched = null;
-      _fetchedPid = null;
-    } finally {
-      const fb = document.getElementById('pirFetch');
-      if (fb) fb.disabled = false;
-    }
-  }
-
-  document.getElementById('pirFetch').addEventListener('click', doFetch);
-  input.addEventListener('input', () => {
-    _fetched = null;
-    _fetchedPid = null;
+  const popup = document.getElementById('pirPopup');
+  bindPopupPlayerSearch({
+    input, button: document.getElementById('pirFetch'), popup,
+    onSelect: p => {
+      _fetched = { player: p };
+      _fetchedPid = Number(p.id);
+      const pname = p.fullName || p.name || '';
+      const photoHtml = p.photoUrl
+        ? `<img src="${pirEsc(p.photoUrl)}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px">`
+        : '';
+      const nat = p.nationality ? ` · ${pirEsc(p.nationality)}` : '';
+      const age = p.age ? ` · ${p.age}세` : '';
+      preview.innerHTML = `${photoHtml}<span style="color:#fff">${pirEsc(pname)}</span><span style="color:#888">${nat}${age}</span>`;
+    },
+    onInvalidate: () => { _fetched = null; _fetchedPid = null; preview.textContent = ''; },
   });
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); doFetch(); }
     if (e.key === 'Escape') { e.stopPropagation(); pirHideAll(); }
   });
 
@@ -1143,8 +1115,8 @@ function pirShowMenu(side, origName, clientX, clientY) {
   }
 
   document.getElementById('pirSave').addEventListener('click', () => {
-    const pid = parseInt(input.value, 10);
-    if (!pid || pid <= 0 || !storeKey) return;
+    const pid = playerSearchId(input.value);
+    if (!Number.isSafeInteger(pid) || pid <= 0 || !storeKey) return;
     if (pirIsDuplicateAltId(fixtureId, storeKey, pid)) {
       preview.innerHTML = '<span style="color:#f88">이미 다른 선수에 연결된 ID입니다</span>';
       return;

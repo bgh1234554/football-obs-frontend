@@ -146,7 +146,7 @@ window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
     : LEAGUE_THEME_MAP[leagueId];
   const theme = selectedTheme || (entry ? entry.theme : FSM_FALLBACK_THEME);
   const type = entry ? entry.type : FSM_FALLBACK_TYPE;
-  // API 응답 URL 우선, 없으면 LEAGUE_THEME_MAP의 fallback URL 사용
+  // 지정 대회 로고를 우선하고, 등록된 로고가 없으면 API 응답 URL을 사용한다.
   const logoUrl = entry?.logoUrl || apiLeagueLogoUrl || null;
 
   _currentType = type;
