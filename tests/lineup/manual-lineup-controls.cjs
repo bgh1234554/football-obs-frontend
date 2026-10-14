@@ -132,6 +132,72 @@ const root = path.resolve(__dirname, '../..');
     await page.locator('.dp-grid-row[data-slot-index="1"]').dragTo(page.locator('.dp-grid-row[data-slot-index="2"]'));
     await page.locator('#manualPanelSave').click();
     assert(await page.evaluate(() => !!getManualEntry('manual-controls-test').away.lineup.gridByPlayerId));
+    // API 선발이 부족하면 빈 슬롯을 보충하고 이후 실제 명단으로 교체한다.
+    await page.evaluate(() => {
+      const fixture = structuredClone(lineupPanelState.lastFixture);
+      fixture.matchInfo.fixtureId = 'missing-starter-test';
+      fixture.awayLineup.startXi.pop();
+      fixture.events = [];
+      applyLineupPanels(fixture);
+      openManualPanel('lineup', 'away');
+    });
+    await page.locator('.dp-grid-slot-edit').click();
+    const slotInput = name => page.locator(`.dp-grid-slot-input[data-field="${name}"]`);
+    await slotInput('name').fill('Missing Player');
+    await slotInput('number').fill('99');
+    await slotInput('playerId').fill('9999');
+    await page.evaluate(() => {
+      window.fetchPlayerStats = async pid => ({ player: { name: 'Missing Player', fullName: 'Missing Player', nationality: 'Test', age: 30, photoUrl: '/assets/test-player.png' } });
+    });
+    await page.locator('.dp-grid-slot-search').click();
+    await page.locator('.dp-grid-slot-apply[data-photo="replace"]').waitFor();
+    assert((await page.locator('.dp-grid-slot-preview').innerText()).includes('30세'));
+    await page.locator('.dp-manual-modal').first().screenshot({ path: path.join(root, 'screenshots/manual-missing-slot-search.png') });
+    await page.locator('.dp-grid-slot-apply[data-photo="replace"]').click();
+    const alignment = await page.evaluate(() => {
+      const row = document.querySelector('.has-slot-input');
+      return { number: row.querySelector('[data-field="number"]').getBoundingClientRect().x, normal: document.querySelector('.dp-grid-num').getBoundingClientRect().x };
+    });
+    assert(Math.abs(alignment.number - alignment.normal) < 1);
+    await page.locator('.dp-manual-modal').first().screenshot({ path: path.join(root, 'screenshots/manual-missing-slot.png') });
+    await page.locator('#manualPanelSave').click();
+    assert.equal(await page.evaluate(() => buildEffectiveFixtureData(lineupPanelState.lastFixture).awayLineup.startXi.find(p => p._manualSlot).playerId), 9999);
+    await page.evaluate(() => openManualPanel('lineup', 'away'));
+    assert.equal(await slotInput('name').inputValue(), 'Missing Player');
+    assert.equal(await slotInput('playerId').inputValue(), '9999');
+    await slotInput('playerId').fill('');
+    await page.locator('#manualPanelSave').click();
+    const linked = await page.evaluate(() => {
+      const fixture = structuredClone(lineupPanelState.lastFixture);
+      fixture.events = [{ side: 'away', playerId: 9999, playerOrigName: 'M. Player', playerName: 'Missing Player', type: 'Goal' }];
+      return buildEffectiveFixtureData(fixture).awayLineup.startXi.find(p => p._manualSlot);
+    });
+    assert.equal(linked.playerId, 9999);
+    await page.evaluate(() => openManualPanel('lineup', 'away'));
+    await slotInput('name').fill('Cancelled');
+    await page.locator('#manualPanelCancel').click();
+    assert.equal(await page.evaluate(() => getManualEntry('missing-starter-test').away.lineup.manualSlots[0].name), 'Missing Player');
+    const complete = await page.evaluate(() => {
+      const fixture = structuredClone(lineupPanelState.lastFixture);
+      fixture.awayLineup.startXi.push({ playerId: 8888, name: 'API replacement', grid: buildManualGridValues('4-4-2')[10] });
+      return buildEffectiveFixtureData(fixture).awayLineup.startXi;
+    });
+    assert.equal(complete.length, 11);
+    assert.equal(complete.find(p => p.name === 'API replacement').playerId, 8888);
+    assert(!complete.some(p => p._manualSlot));
+    // 빈자리를 중간으로 옮겨도 피치·전술판이 저장한 grid를 그대로 유지한다.
+    await page.evaluate(() => openManualPanel('lineup', 'away'));
+    const source = await page.evaluate(() => lineupPanelState.gridState.slotPlayerIds.findIndex(key => !!lineupPanelState.gridState.players[key]?._manualSlot));
+    await slotInput('name').fill('');
+    await page.locator(`.dp-grid-row[data-slot-index="${source}"]`).dragTo(page.locator('.dp-grid-row[data-slot-index="7"]'));
+    await page.locator('#manualPanelSave').click();
+    const placement = await page.evaluate(() => {
+      const lineup = buildEffectiveFixtureData(lineupPanelState.lastFixture).awayLineup;
+      const grids = buildManualGridValues(lineup.formation);
+      return { matches: getFormationAssignments(lineup).every(({ slot, player }) => grids[slot.originalIndex] === player.grid), empty: buildTacticsPlayers(lineup)[7] };
+    });
+    assert(placement.matches);
+    assert.equal(placement.empty, null);
     assert.deepEqual(errors, []);
     console.log('PASS: full-form toggle, drag, formation changes, all stat fields, partial/duplicate names, save/cancel/reopen, captain badges and API grid compatibility.');
   } finally { await browser.close(); }

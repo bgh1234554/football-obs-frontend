@@ -13,6 +13,11 @@ const DETAIL_MANUAL_STORAGE_KEY = 'obs.detail.manual.v1';
 const DETAIL_MANUAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DETAIL_DEFAULT_FORMATION = '4-3-3';
 const DETAIL_BENCH_ROWS = 18;
+/** 빈 슬롯에 직접 입력한 선수의 기본 프로필 사진. */
+function getManualSlotPhotoUrl() {
+  const path = 'resources/imgs/manual-player.png';
+  return typeof appAssetPath === 'function' ? appAssetPath(path) : path;
+}
 const DETAIL_INJURY_ROWS = 12;
 const DETAIL_SIDE_TITLES = { home: '홈', away: '원정' };
 const DETAIL_PANEL_BALANCE_EPSILON_PX = 1;
@@ -220,7 +225,7 @@ function sanitizeManualSideData(sideData) {
     if (hasStartXiArr) {
       next.lineup = { formation, startXi: clonePlayers(sideData.lineup.startXi) };
     } else if (hasGrids && formation) {
-      next.lineup = { formation, gridByPlayerId: { ...gridByPlayerId } };
+      next.lineup = { formation, gridByPlayerId: { ...gridByPlayerId }, manualSlots: clonePlayers(sideData.lineup.manualSlots || []) };
     }
   }
 

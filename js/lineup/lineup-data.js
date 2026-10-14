@@ -86,6 +86,24 @@ function buildEffectiveFixtureData(data) {
           substitutes: clonePlayers(base.substitutes || []),
           coach: base.coach ? { ...base.coach } : null,
         };
+        // 실제 API 선수부터 배치한 후 남은 자리에만 수동 보충 선수를 넣는다.
+        // 11명이 도착하면 보충 선수는 적용되지 않아 API 명단으로 자동 교체된다.
+        const available = buildManualGridValues(lineup.formation);
+        const occupied = new Set(lineup.startXi.map(p => p.grid).filter(Boolean));
+        if (manualSide.lineup.manualSlots?.length) lineup.startXi.forEach(player => {
+          if (available.includes(player.grid)) return;
+          const grid = available.find(value => !occupied.has(value));
+          if (grid) { player.grid = grid; occupied.add(grid); }
+        });
+        clonePlayers(manualSide.lineup.manualSlots || []).forEach(player => {
+          if (lineup.startXi.length >= 11) return;
+          if (Number(player.playerId) > 0 && lineup.startXi.some(p => Number(p.playerId) === Number(player.playerId))) return;
+          const grid = available.includes(player.grid) && !occupied.has(player.grid)
+            ? player.grid : available.find(value => !occupied.has(value));
+          if (!grid) return;
+          occupied.add(grid);
+          lineup.startXi.push({ ...player, photoUrl: player.photoUrl || getManualSlotPhotoUrl(), grid });
+        });
       }
       next[lineupKey] = lineup;
     }
@@ -748,8 +766,20 @@ function getPreFwFormationDepth(formation) {
 function getFormationAssignments(lineup) {
   const slots = getFormationSlotsByGridOrder(lineup?.formation);
   const players = getOrderedLineupPlayers(lineup?.startXi || []);
+  const grids = buildManualGridValues(lineup?.formation);
+  const assigned = new Map();
+  const remaining = [];
+  // 배열을 압축해 순서대로 짝지으면 중간 빈자리가 사라지므로 실제 grid를 먼저 배정한다.
+  players.forEach(player => {
+    const index = grids.indexOf(player.grid);
+    if (index >= 0 && !assigned.has(index)) assigned.set(index, player);
+    else remaining.push(player);
+  });
+  slots.forEach(slot => {
+    if (!assigned.has(slot.originalIndex) && remaining.length) assigned.set(slot.originalIndex, remaining.shift());
+  });
   return slots
-    .map((slot, index) => ({ slot, player: players[index] || null }))
+    .map(slot => ({ slot, player: assigned.get(slot.originalIndex) || null }))
     .filter(entry => !!entry.player);
 }
 

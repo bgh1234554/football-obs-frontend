@@ -154,7 +154,10 @@ function initGridState(side) {
   const fixtureId = getActiveFixtureId();
   const apiLineup = getGridSourceLineup(side);
   const players = buildLineupDisplayOverlay(side);
-  const playersById = Object.fromEntries(players.map((p, idx) => [buildLineupRosterKey(p, idx), p]));
+  // API에 없는 빈자리 보충 선수만 표시용 데이터에서 복원한다.
+  const effective = buildEffectiveFixtureData(lineupPanelState.lastFixture);
+  players.push(...clonePlayers(effective?.[`${side}Lineup`]?.startXi || []).filter(p => p._manualSlot));
+  const playersById = Object.fromEntries(players.map((p, idx) => [p._manualSlot || buildLineupRosterKey(p, idx), p]));
 
   const stored = getManualSideData(fixtureId, side)?.lineup;
   // 포메이션 우선순위: 저장된 수동값 > API 응답 > default(4-3-3)
@@ -178,15 +181,20 @@ function initGridState(side) {
     players.forEach((p, i) => {
       if (!p.grid) return;
       const idx = gridValues.indexOf(p.grid);
-      const pidStr = buildLineupRosterKey(p, i);
+      const pidStr = p._manualSlot || buildLineupRosterKey(p, i);
       if (idx >= 0 && !slotPlayerIds[idx]) slotPlayerIds[idx] = pidStr;
     });
   }
 
+  players.filter(p => p._manualSlot).forEach(p => {
+    const index = gridValues.indexOf(p.grid);
+    if (index >= 0 && !slotPlayerIds[index]) slotPlayerIds[index] = p._manualSlot;
+  });
+
   // 3) 매핑 안 된 선수는 빈 슬롯에 API 순서대로 삽입
   let cursor = 0;
   players.forEach((p, i) => {
-    const pidStr = buildLineupRosterKey(p, i);
+    const pidStr = p._manualSlot || buildLineupRosterKey(p, i);
     if (slotPlayerIds.includes(pidStr)) return;
     while (cursor < slotsCount && slotPlayerIds[cursor]) cursor += 1;
     if (cursor < slotsCount) slotPlayerIds[cursor] = pidStr;
@@ -228,12 +236,14 @@ function buildGridRowHtml(pidStr, slotIndex) {
     ? lpBuildSubMarkerHtml(subEvents, 'starter')
     : '';
   const nameHtml = !p
-    ? '(빈 슬롯)'
+    ? `<span>(빈 슬롯)</span> <button type="button" class="dp-grid-slot-edit" data-slot-index="${slotIndex}" aria-label="빈 슬롯 선수 입력" title="선수 입력">&#9998;</button>`
+    : p._manualSlot
+      ? `<span class="dp-grid-slot-fields"><input class="dp-input dp-grid-slot-input" data-field="number" aria-label="등번호" placeholder="번호" value="${dpEscape(p.number || '')}"><input class="dp-input dp-grid-slot-input" data-field="name" aria-label="선수 이름" placeholder="선수 이름" value="${dpEscape(p.name || '')}"><input type="number" min="0" step="1" class="dp-input dp-grid-slot-input" data-field="playerId" aria-label="선수 ID" placeholder="선수 ID" value="${p.playerId || ''}"><button type="button" class="dp-grid-slot-search">검색</button></span>${buildGridSlotSearchHtml(pidStr)}`
     : isNamelessPlayer
       ? `<input type="text" class="dp-input dp-grid-name-input" data-player-id="${p.playerId}" placeholder="선수 이름 입력 (이벤트 자동 연계용)" value="" draggable="false">`
       : `${p.manualCaptain ? '<span class="dp-roster-captain" title="주장">C</span>' : ''}${dpEscape(resolvedName)}${subHtml ? ` ${subHtml}` : ''}`;
   const emptyCls = p ? '' : ' dp-grid-empty'; // "(빈 슬롯)" 텍스트 전용 — 입력창 렌더링일 땐 부여 안 함
-  return `<div class="dp-grid-row" data-slot-index="${slotIndex}" draggable="true">
+  return `<div class="dp-grid-row${p?._manualSlot ? ' has-slot-input' : ''}" data-slot-index="${slotIndex}" draggable="true">
     <span class="dp-grid-handle" aria-hidden="true">⠿</span>
     <span class="dp-grid-slot-label">${dpEscape(labels[slotIndex] || `${slotIndex + 1}`)}</span>
     <span class="dp-grid-photo${photoCls}"${photoStyle}></span>
@@ -368,7 +378,7 @@ function bindLineupGridDragDrop() {
   list.querySelectorAll('.dp-grid-row').forEach(row => {
     row.addEventListener('dragstart', event => {
       // 이름 입력 칸에서 텍스트를 드래그-선택하는 동작이 행 자체의 드래그로 오인되지 않도록.
-      if (event.target.closest('.dp-grid-name-input')) { event.preventDefault(); return; }
+      if (event.target.closest('input, button')) { event.preventDefault(); return; }
       event.dataTransfer.setData('text/plain', row.dataset.slotIndex);
       event.dataTransfer.effectAllowed = 'move';
       row.classList.add('is-dragging');
@@ -400,14 +410,18 @@ function bindLineupGridDragDrop() {
 /** 현재 gridState를 저장 형식({formation, gridByPlayerId})으로 변환. 빈 슬롯뿐이면 null. */
 function extractGridOverrideFromState() {
   if (!lineupPanelState.gridState) return null;
-  const { formation, slotPlayerIds } = lineupPanelState.gridState;
+  const { formation, slotPlayerIds, players } = lineupPanelState.gridState;
+  const manualSlots = [];
   const grids = buildManualGridValues(formation);
   const gridByPlayerId = {};
   slotPlayerIds.forEach((pid, idx) => {
     if (!pid || !grids[idx]) return;
-    gridByPlayerId[pid] = grids[idx];
+    const player = players[pid];
+    if (player?._manualSlot) {
+      if (player.name?.trim()) manualSlots.push({ ...player, grid: grids[idx], origName: player.origName || player.name.trim(), nameKoLong: player.nameKoLong || player.name.trim() });
+    } else gridByPlayerId[pid] = grids[idx];
   });
-  return Object.keys(gridByPlayerId).length ? { formation, gridByPlayerId } : null;
+  return (Object.keys(gridByPlayerId).length || manualSlots.length) ? { formation, gridByPlayerId, manualSlots } : null;
 }
 
 /**
@@ -1137,3 +1151,102 @@ document.addEventListener('keydown', event => {
   }
 });
 
+
+// 빈 슬롯 편집은 모달 상태에만 반영하여 취소할 때 저장하지 않는다.
+document.addEventListener('click', event => {
+  const button = event.target.closest('.dp-grid-slot-edit');
+  const state = lineupPanelState.gridState;
+  if (!button || !state || state.fullFormRows) return;
+  const index = Number(button.dataset.slotIndex);
+  if (state.slotPlayerIds[index]) return;
+  let suffix = index;
+  while (state.players[`manual-slot-${suffix}`]) suffix += 1;
+  const key = `manual-slot-${suffix}`;
+  state.players[key] = { playerId: 0, name: '', origName: '', photoUrl: getManualSlotPhotoUrl(), _manualSlot: key };
+  state.slotPlayerIds[index] = key;
+  rerenderGridList();
+  document.querySelector(`[data-slot-index="${index}"] [data-field="name"]`)?.focus();
+});
+document.addEventListener('input', event => {
+  const input = event.target.closest('.dp-grid-slot-input');
+  const state = lineupPanelState.gridState;
+  if (!input || !state) return;
+  const index = Number(input.closest('.dp-grid-row').dataset.slotIndex);
+  const player = state.players[state.slotPlayerIds[index]];
+  if (!player?._manualSlot) return;
+  player[input.dataset.field] = input.dataset.field === 'playerId'
+    ? (Number.isSafeInteger(Number(input.value)) && Number(input.value) > 0 ? Number(input.value) : 0)
+    : input.value;
+  if (input.dataset.field === 'name') { player.origName = player.name; player.nameKoLong = player.name; }
+  if (input.dataset.field === 'playerId') {
+    if (state.slotSearch) delete state.slotSearch[player._manualSlot];
+    input.closest('.dp-grid-row').querySelector('.dp-grid-slot-preview')?.remove();
+  }
+});
+
+/** 기존 ID 연결 메뉴와 같은 프로필 API를 사용하되 결과를 가로 행 안에 표시한다. */
+function buildGridSlotSearchHtml(key) {
+  const search = lineupPanelState.gridState?.slotSearch?.[key];
+  if (!search) return '';
+  if (!search.player) return `<span class="dp-grid-slot-preview" role="status">${dpEscape(search.message)}</span>`;
+  const p = search.player;
+  const details = [p.nationality, p.age ? `${p.age}세` : ''].filter(Boolean).join(' · ');
+  return `<span class="dp-grid-slot-preview">
+    ${p.photoUrl ? `<img src="${dpEscape(p.photoUrl)}" alt="" class="dp-grid-result-photo">` : ''}
+    <span class="dp-grid-result-info"><strong>${dpEscape(p.fullName || p.name || '')}</strong><small>${dpEscape(details)}</small></span>
+    <button type="button" class="dp-grid-slot-apply" data-photo="keep">사진 유지</button>
+    <button type="button" class="dp-grid-slot-apply is-primary" data-photo="replace">사진 변경</button>
+  </span>`;
+}
+
+async function searchGridSlotPlayer(row) {
+  const state = lineupPanelState.gridState;
+  if (!state || !row) return;
+  const key = state.slotPlayerIds[Number(row.dataset.slotIndex)];
+  const player = state.players[key];
+  const pid = Number(player?.playerId);
+  state.slotSearch ||= {};
+  const search = { pid, message: '검색 중…' };
+  state.slotSearch[key] = search;
+  if (!Number.isSafeInteger(pid) || pid <= 0) {
+    search.message = '유효한 선수 ID를 입력하세요';
+    rerenderGridList();
+    return;
+  }
+  rerenderGridList();
+  try {
+    const data = await fetchPlayerStats(pid);
+    if (lineupPanelState.gridState !== state || state.slotSearch[key] !== search) return;
+    search.player = data?.player || null;
+    search.message = search.player ? '' : '선수 정보를 찾을 수 없습니다';
+  } catch (error) {
+    if (lineupPanelState.gridState !== state || state.slotSearch[key] !== search) return;
+    search.message = `검색 실패: ${error?.message || ''}`;
+  }
+  if (lineupPanelState.gridState === state && state.slotSearch[key] === search) rerenderGridList();
+}
+
+document.addEventListener('click', event => {
+  const searchButton = event.target.closest('.dp-grid-slot-search');
+  if (searchButton) { searchGridSlotPlayer(searchButton.closest('.dp-grid-row')); return; }
+  const applyButton = event.target.closest('.dp-grid-slot-apply');
+  const state = lineupPanelState.gridState;
+  if (!applyButton || !state) return;
+  const key = state.slotPlayerIds[Number(applyButton.closest('.dp-grid-row').dataset.slotIndex)];
+  const search = state.slotSearch?.[key];
+  const player = state.players[key];
+  if (!search?.player || search.pid !== player.playerId) return;
+  const profile = search.player;
+  player.name = profile.name || profile.fullName || player.name;
+  player.nameKoLong = profile.fullName || player.name;
+  player.origName = player.name;
+  if (applyButton.dataset.photo === 'replace') player.photoUrl = profile.photoUrl || null;
+  delete state.slotSearch[key];
+  rerenderGridList();
+});
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || !event.target.matches('.dp-grid-slot-input')) return;
+  event.preventDefault();
+  if (event.target.dataset.field === 'playerId') searchGridSlotPlayer(event.target.closest('.dp-grid-row'));
+  else if (event.target.dataset.field === 'number') event.target.closest('.dp-grid-row').querySelector('[data-field="name"]')?.focus();
+});
