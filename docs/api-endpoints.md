@@ -1,6 +1,6 @@
 # 프런트 개발자용 백엔드 API 문서
 - 백엔드 Base URL: `https://football-obs-backend.onrender.com`
-- 프런트 호출 기준: `js/api.js`
+- 프런트 호출 기준: `js/core/api.js`
 - 백엔드 공개 컨트롤러: `../football-obs-backend/src/main/java/com/github/baek/footballobsbackend/web`
 - 백엔드 DTO 기준: `../football-obs-backend/src/main/java/com/github/baek/footballobsbackend/dto`
 - API-Football 참고 문서: `https://www.api-football.com/documentation-v3`
@@ -40,9 +40,11 @@
 | status | response content |
 | --- | --- |
 | 200 | 조회 성공 |
+| 400 | 선수 검색어 또는 페이지 값이 유효하지 않음 |
 | 404 | 조회 대상 없음 또는 원본 API-Football 데이터 없음 |
 | 429 | 백엔드 rate limit 초과 |
 | 500 | 서버 내부 오류 |
+| 502 | 원본 API 오류 또는 잘못된 응답 |
 
 > 구현 주의: `GET /api/fixtures/{fixtureId}`는 현재 서비스에서 원본 fixture가 없을 때 `null`을 반환할 수 있다. 코드 주석과 `FIXTURE_NOT_FOUND` 에러 코드는 404 의도로 보이지만, 컨트롤러 구현상 `200 null` 가능성이 있으므로 프런트에서는 `data === null`도 방어한다.
 
@@ -70,6 +72,7 @@
 | --- | --- | --- | --- |
 | GET | `/api/fixtures/{fixtureId}` | 경기 기본 정보, 이벤트, 팀 스탯, 라인업, 선수 경기 스탯, 부상/결장 목록 | 점수판, 라인업, 전술판, 선수 클릭 팝업 |
 | GET | `/api/playerStats/{playerId}` | 선수 기본 정보와 시즌별 대회 스탯 | 선수 상세 스탯 팝업 |
+| GET | `/api/players/search?query={query}&page=1` | ID/영문 이름 검색, 원본 한 페이지의 후보와 페이지 정보 | ID 연결 팝업, 빈 슬롯 선수 입력 |
 | GET | `/api/hth?teamA={teamA}&teamB={teamB}` | 두 팀 상대 전적 | 상대 전적 패널 |
 
 ---
@@ -366,6 +369,94 @@ API-Football 문서상 `grid`는 `X:Y` 형식이다. `X`는 골키퍼 라인에�
 | 200 | 구현상 fixture 원본 데이터가 없을 때 `null` 가능 |
 | 404 | 의도된 에러 코드: `FIXTURE_NOT_FOUND` |
 | 429 | `RATE_LIMIT_EXCEEDED` |
+
+---
+
+## GET `/api/players/search`
+
+숫자 ID 검색과 영문 이름 검색을 같은 후보 DTO로 반환한다. 통계 조회 없이 API-Football `/players/profiles` 한 페이지만 요청한다. 기존 `/api/playerStats/{playerId}`는 상세 스탯용으로 유지한다.
+
+### Request
+
+| key | 설명 | value 타입 | 옵션 | Nullable | 예시 |
+| --- | --- | --- | --- | --- | --- |
+| query | 선수 ID 또는 영문 이름. 공백만 있는 값은 거절 | String | 필수, 최대 128자 | X | `5075`, `German Iva`, ` Iva` |
+| page | **원본 API** 페이지 번호 | Integer | 기본값 1, 1 이상 | X | `2` |
+
+입력값의 앞뒤 공백을 제거했을 때 전체가 숫자이면 양의 Long ID로 해석한다. ID의 앞자리 0을 제거하고 원본 `player={id}&page=1`로 조회한다. 문자가 섞이면 이름 검색이며 입력한 내부·앞뒤 공백과 악센트를 보존해 `search={query}&page={page}`로 전달한다. 이름 검색은 공백 포함 최소 4글자이다. 검색어는 URI 변수로 인코딩하므로 `&` 같은 문자가 추가 매개변수로 해석되지 않는다.
+
+공식 문서는 `search`를 lastname으로 설명하지만 실제 제공자 응답에서 firstname(`German`)과 공백을 포함한 이름(`German Iva`) 검색도 확인됐다. 클라이언트에서 성을 추출하거나 공백으로 이름을 분리하지 않는다.
+
+```http
+GET /api/players/search?query=German%20Iva&page=1
+GET /api/players/search?query=%20Iva&page=2
+GET /api/players/search?query=5075
+```
+
+### Response — `PlayerSearchResponseDto`
+
+| key | 설명 | value 타입 | Nullable |
+| --- | --- | --- | --- |
+| players | 원본 한 페이지에서 변환한 후보. 최대 250명, 결과가 없으면 빈 배열 | `PlayerSearchItemDto[]` | X |
+| page | 원본 응답의 `paging.current`. ID 검색은 1 | Integer | X |
+| totalPages | 원본 응답의 `paging.total`. ID 검색은 1 | Integer | X |
+
+#### `players[]` — `PlayerSearchItemDto`
+
+| key | 설명 | value 타입 | Nullable |
+| --- | --- | --- | --- |
+| id | 선수 ID | Long | X |
+| name | 기존 선수 표시 규칙에 따른 한글 우선 단축명 | String | X |
+| fullName | 기존 CSV 한글·영문 풀네임 우선, 없으면 API firstname + lastname 또는 name | String | X |
+| englishName | API firstname + lastname, 없으면 API name. 영문 후보 식별용 | String | X |
+| photoUrl | 기존 Media CDN 변환을 적용한 사진 URL | String | O |
+| nationality | 기존 CSV·국가명 한글화 규칙을 적용한 국적 | String | O |
+| age | API 나이. 원본 null은 null 유지 | Integer | O |
+| number | API 등번호. 원본 null은 null 유지 | Integer | O |
+| position | API 포지션 | String | O |
+
+```json
+{
+  "players": [
+    {
+      "id": 5075,
+      "name": "Germán Canal Boga",
+      "fullName": "Germán Canal Boga",
+      "englishName": "Germán Canal Boga",
+      "photoUrl": "https://media-handle-obsoverlay.b-cdn.net/football/players/5075.png",
+      "nationality": "Andorra",
+      "age": 42,
+      "number": null,
+      "position": "Goalkeeper"
+    }
+  ],
+  "page": 1,
+  "totalPages": 1
+}
+```
+
+### 프런트 페이지 처리와 캐시
+
+`fetchPlayerSearch(query, page)`가 받은 원본 페이지는 `js/player/player-search.js`의 검색 상태에 보관한다. 결과 영역 높이와 후보 행 높이로 화면 페이지당 인원을 계산한다. 팝업 상단을 끌거나 창 크기가 바뀌면 인원을 다시 계산하며, 기존 첫 후보가 포함된 페이지를 유지한다. 이전/다음 버튼은 받은 목록 안에서 추가 조회 없이 이동하고, 원본 페이지의 마지막 후보를 넘길 때만 다음 API 페이지를 조회한다. 이전 원본 페이지는 캐시를 재사용한다. 화면 페이지 번호와 백엔드 `page`는 다르다.
+
+원본 전체 페이지 수는 **새 응답마다 갱신**한다. 마지막 원본 페이지의 후보 수를 아직 모르므로 정확한 전체 화면 페이지 수를 추측하지 않고 현재 화면 페이지와 이전/다음 버튼을 표시한다. 검색어 변경 시 후보·선택·페이지 상태를 초기화하고, 입력 변경이나 팝업 종료 후 도착한 이전 응답은 무시한다. ID 결과가 한 명이어도 직접 선택한 뒤 저장한다.
+
+응답은 `Cache-Control: max-age=3600`을 사용한다. 별도 백엔드 메모리 캐시는 추가하지 않았으며, 화면의 페이지 이동용 결과는 해당 프런트 검색 상태에 저장한다.
+
+### Status
+
+| status | response content |
+| --- | --- |
+| 200 | 공통 후보 DTO. 결과 없음도 `players: []`로 성공 반환 |
+| 400 | `INVALID_PLAYER_SEARCH`: 공백뿐인 검색어, 이름 4글자 미만, 128자 초과, 0/Long 범위 초과 ID, 잘못된 page |
+| 429 | `RATE_LIMIT_EXCEEDED` — 기존 API 재시도 정책 적용 |
+| 502 | `UPSTREAM_API_ERROR` — HTTP 오류, HTTP 200의 비어 있지 않은 errors, response/paging 형식 오류 |
+
+### 로컬 통합 테스트
+
+Spring 백엔드를 8080에서 실행하고 프런트 정적 서버의 `overlay_dashboard.html?apiBase=http://127.0.0.1:8080`으로 접속한다. `apiBase` 변경은 localhost/127.0.0.1/IPv6 loopback 화면에서만 허용하며 대상도 loopback 주소만 허용한다. 배포 화면은 기존 Render 주소를 사용한다. VS Code Live Server는 Java 백엔드를 실행하지 않는다.
+
+`node tests/manual/player-search-local.cjs`는 기본 프런트 5501 → Spring 8080 → 실제 API-Football 경로를 검증한다. 다른 프런트 포트는 `FRONTEND_URL`로 지정한다. 공급자 API를 호출하므로 자동 전체 테스트에서는 제외한다. 모의 API 기반 자동 브라우저 테스트는 `tests/lineup/player-search.cjs`에 있다.
 
 ---
 

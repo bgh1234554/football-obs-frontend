@@ -56,9 +56,10 @@ const root = path.resolve(__dirname, '../..');
     assert.equal(await page.evaluate(() => lpStatAvailableModes().includes('injuries')), false);
     await page.evaluate(() => { renderInjuryCyclePanel({ homeInjuries: injuryFixture.homeInjuries }, {}); });
     assert.equal(await page.evaluate(() => lpStatAvailableModes().includes('injuries')), true);
-    for (const count of [9, 10, 20]) {
+    // 미출전 명단은 12명을 한 페이지로 보고, 시작·종료 대기는 기본 간격의 35%다.
+    for (const count of [9, 10, 11, 12, 20]) {
       const duration = await page.evaluate(count => { _lpStatInjuryCount = count; const o = _lpInjuryScrollOptions(10000); return o.scrollDurationMs == null ? 10000 : o.startHoldMs + o.scrollDurationMs + o.endHoldMs; }, count);
-      assert.equal(duration, count < 10 ? 10000 : 3500 + count * 1000);
+      assert.equal(duration, count < 12 ? 10000 : 3500 + Math.round(10000 * count / 12));
     }
     await page.evaluate(() => {
       const cases = [
@@ -104,7 +105,7 @@ const root = path.resolve(__dirname, '../..');
     assert.equal(await page.evaluate(() => _lpEventsScrollEl('injuries').scrollTop), stopped);
     // 실제 스크롤 완료 위치와 다음 패널 전환까지의 경과 시간을 측정한다.
     const timings = [];
-    for (const [count, seconds] of [[22, 2.5], [10, 2.5], [9, 2.5], [12, 5]]) {
+    for (const [count, seconds] of [[22, 2.5], [12, 2.5], [11, 2.5], [9, 2.5], [12, 5]]) {
       const expected = await page.evaluate(({ count, seconds }) => {
         _lpAutoClear(); _lpStatCycle.paused = true;
         const entries = Array.from({ length: count }, (_, i) => ({ playerId: 500 + i, name: '측정 선수 ' + i, reason: 'Knee Injury' }));
@@ -123,7 +124,7 @@ const root = path.resolve(__dirname, '../..');
         window.injuryTiming = null; _lpStatCycle.mode = 'injuries'; _lpStatCycle.paused = false;
         window.injuryStarted = performance.now(); lpStatUpdateVisibility();
         const base = seconds * 1000;
-        return count < 10 ? base : base * (count / 10 + 0.35);
+        return count < 12 ? base : base * (count / 12 + 0.35);
       }, { count, seconds });
       await page.waitForFunction(() => window.injuryTiming !== null, null, { timeout: expected + 3000 });
       const timing = await page.evaluate(() => window.injuryTiming);
@@ -155,11 +156,11 @@ const root = path.resolve(__dirname, '../..');
         const restored = parseFloat(getComputedStyle(reason).fontSize);
         reason.textContent = 'A very long unknown injury reason '.repeat(8);
         label.style.width = '120px'; fitInjuryReasons(panel);
-        return { base, shrunk, restored, nameSize, fallback: label.classList.contains('ic-reason-wrap'), minimum: parseFloat(getComputedStyle(reason).fontSize) };
+        return { base, shrunk, restored, nameSize, fallback: label.classList.contains('ic-reason-wrap'), fallbackFont: parseFloat(getComputedStyle(reason).fontSize) };
       }, { mode, selector });
       assert(sizing.shrunk.font < sizing.base && sizing.shrunk.font >= 8, JSON.stringify(sizing));
       assert(sizing.shrunk.fits); assert.equal(sizing.shrunk.name, sizing.nameSize);
-      assert.equal(sizing.restored, sizing.base); assert(sizing.fallback); assert.equal(sizing.minimum, 8);
+      assert.equal(sizing.restored, sizing.base); assert(sizing.fallback); assert.equal(sizing.fallbackFont, sizing.base);
     }
     console.log('PASS shared reason font fitting: shrink, keep name size, expand back, readable long-text fallback (big/small)');
     if (process.env.INJURY_SCREENSHOT) {

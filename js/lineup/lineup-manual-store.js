@@ -13,6 +13,11 @@ const DETAIL_MANUAL_STORAGE_KEY = 'obs.detail.manual.v1';
 const DETAIL_MANUAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DETAIL_DEFAULT_FORMATION = '4-3-3';
 const DETAIL_BENCH_ROWS = 18;
+/** 빈 슬롯에 직접 입력한 선수의 기본 프로필 사진. */
+function getManualSlotPhotoUrl() {
+  const path = 'resources/imgs/manual-player.png';
+  return typeof appAssetPath === 'function' ? appAssetPath(path) : path;
+}
 const DETAIL_INJURY_ROWS = 12;
 const DETAIL_SIDE_TITLES = { home: '홈', away: '원정' };
 const DETAIL_PANEL_BALANCE_EPSILON_PX = 1;
@@ -195,7 +200,8 @@ function writeManualStore(store) {
  * 한 side의 수동 입력 데이터를 저장 형식으로 정규화.
  *
  * - lineup: startXi 풀폼(11명+포메이션) 또는 grid-only(formation+gridByPlayerId) 두 모드 지원.
- * - bench / injuries: 빈 배열은 키 자체 제외(저장 공간 절약).
+ * - bench: API 기준 키가 있으면 전체 삭제를 뜻하는 빈 배열도 보존한다.
+ * - injuries: 빈 배열은 키 자체 제외(저장 공간 절약).
  * - coachName: 공백 trim 후 빈 값이면 키 제외.
  *
  * 결과가 빈 객체면 null 반환 — 호출자가 store에서 키를 지울지 판단.
@@ -220,13 +226,13 @@ function sanitizeManualSideData(sideData) {
     if (hasStartXiArr) {
       next.lineup = { formation, startXi: clonePlayers(sideData.lineup.startXi) };
     } else if (hasGrids && formation) {
-      next.lineup = { formation, gridByPlayerId: { ...gridByPlayerId } };
+      next.lineup = { formation, gridByPlayerId: { ...gridByPlayerId }, manualSlots: clonePlayers(sideData.lineup.manualSlots || []) };
     }
   }
 
-  if (Array.isArray(sideData?.bench) && sideData.bench.length) {
+  if (Array.isArray(sideData?.bench) && (sideData.bench.length || typeof sideData.benchApiBaseline === 'string')) {
     next.bench = clonePlayers(sideData.bench);
-    // 수동 입력 당시의 API 교체 명단 키 — 교체 명단이 있을 때만 의미가 있어 같이 보존.
+    // 마지막 선수를 지운 빈 명단도 API 기준 키와 함께 보존한다.
     if (typeof sideData.benchApiBaseline === 'string') next.benchApiBaseline = sideData.benchApiBaseline;
   }
 
