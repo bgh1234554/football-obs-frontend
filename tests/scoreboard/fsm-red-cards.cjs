@@ -50,7 +50,7 @@ const root = path.resolve(__dirname, '../..');
       if (scale === 100) await page.locator('#boardStageInner').screenshot({ path: path.join(root, 'screenshots/red-cards', `${theme}.png`) });
       if (!process.env.RC_AUDIT) {
         assert.equal(cards.length, 5);
-        assert(cards.every(card => card.above >= 7 * scale / 100 && card.visible && card.sideCorrect), `${theme} ${scale}%: cards must be exposed above their own side: ${JSON.stringify(cards)}`);
+        assert(cards.every(card => card.above >= (theme === 'czech' ? 13 : 7) * scale / 100 && card.visible && card.sideCorrect), `${theme} ${scale}%: cards must be exposed above their own side: ${JSON.stringify(cards)}`);
         const shapes = await page.locator('.rc-card').evaluateAll(nodes => nodes.map(node => {
           const style = getComputedStyle(node);
           return [style.transform, style.borderRadius, style.backgroundColor, node.childElementCount,

@@ -524,9 +524,10 @@ function applyTheme(theme, logoUrl) {
       ligue2: ['#00fcd0', '#000000'],
       ligaportugal: ['#ffffff', '#102556'],
       rpl: ['#0e2a5c', '#ffffff'],
+      fnl: ['#000000', '#00c7b2'],
       czech: ['#ffffff', '#181E73'],
       romanian: ['transparent', '#ffffff'],
-      belarus: ['transparent', '#ffffff']
+      belarus: ['#000000', '#ffffff']
     }[_currentTheme];
     const palette = fixedAggregatePalette || FSM_PSO_PALETTES[_currentTheme] || FSM_PSO_PALETTES.default;
     board.style.setProperty('--fsm-aggregate-background', chromaSafe(palette[0]));
@@ -538,6 +539,21 @@ function applyTheme(theme, logoUrl) {
         setFsmText('.fsm-board #totalScoreLeft', aggHome);
         setFsmText('.fsm-board #totalScoreRight', aggAway);
         setFsmStyle('.fsm-board .total-score', {display: 'flex', opacity: '100%'});
+        if (_currentTheme === 'romanian') {
+          // 같은 숫자 글리프 기준으로 실제 잉크 높이를 점수판의 세로 중앙에 맞춥니다.
+          const style = getComputedStyle(board.querySelector('.total'));
+          const context = document.createElement('canvas').getContext('2d');
+          context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+          const metrics = context.measureText('0123456789');
+          const shift = Number.isFinite(metrics.fontBoundingBoxAscent)
+            ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2 : 0;
+          board.style.setProperty('--fsm-aggregate-number-shift', `${shift}px`);
+        }
+        // 자리수가 달라도 양쪽 합계 폭을 같게 유지해 중앙 로고와 경기 점수가 밀리지 않게 합니다.
+        const totals = Array.from(board.querySelectorAll('.total-score'));
+        totals.forEach(node => { node.style.width = ''; });
+        const totalWidth = Math.max(...totals.map(node => Math.max(node.offsetWidth, node.scrollWidth)));
+        totals.forEach(node => { node.style.width = `${totalWidth}px`; });
       } else {
         setFsmStyle('.fsm-board .total-score', {display: 'none', opacity: '0'});
       }
@@ -691,8 +707,8 @@ function adjustScoreboardWidth() {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
-    const homeScore = document.getElementById('team-score-left').getBoundingClientRect();
-    const awayScore = document.getElementById('team-score-right').getBoundingClientRect();
+    const homeScore = (board.dataset.fsmAggregate === 'true' && _currentTheme !== 'czech' ? document.getElementById('totalScoreLeft').parentElement : document.getElementById('team-score-left')).getBoundingClientRect();
+    const awayScore = (board.dataset.fsmAggregate === 'true' && _currentTheme !== 'czech' ? document.getElementById('totalScoreRight').parentElement : document.getElementById('team-score-right')).getBoundingClientRect();
     const overlap = Math.max(0,
       (cards[0].getBoundingClientRect().right - homeScore.left) / scale,
       (awayScore.right - cards[1].getBoundingClientRect().left) / scale);

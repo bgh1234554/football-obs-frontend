@@ -15,34 +15,69 @@
 }
 
 .board.fsm-board.outline-on { box-shadow: none; }
+/* 합계를 바깥에 추가해도 원래 점수·로고의 겹침과 팀명 경계는 유지합니다. */
+#board.fsm-board[data-fsm-theme="rpl"] { --fsm-aggregate-outer-overlap: 80px; --fsm-aggregate-inner-overlap: 30px; }
+#board.fsm-board[data-fsm-theme="czech"] { --fsm-aggregate-outer-overlap: 62px; --fsm-aggregate-inner-overlap: 0px; }
+#board.fsm-board[data-fsm-theme="ligaportugal"] { --fsm-aggregate-outer-overlap: 45px; --fsm-aggregate-inner-overlap: 5px; }
+#board.fsm-board[data-fsm-theme="romanian"] { --fsm-aggregate-outer-overlap: 90px; --fsm-aggregate-inner-overlap: 0px; --fsm-aggregate-number-font: 32px; }
+#board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="rpl"], [data-fsm-theme="czech"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="romanian"]) .total-score:has(#totalScoreLeft) { margin-left: calc(-1 * var(--fsm-aggregate-outer-overlap)); }
+#board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="rpl"], [data-fsm-theme="czech"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="romanian"]) .total-score:has(#totalScoreRight) { margin-right: calc(-1 * var(--fsm-aggregate-outer-overlap)); }
+#board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="rpl"], [data-fsm-theme="czech"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="romanian"]) #team-score-left { margin-right: calc(-1 * var(--fsm-aggregate-inner-overlap)); }
+#board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="rpl"], [data-fsm-theme="czech"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="romanian"]) #team-score-right { margin-left: calc(-1 * var(--fsm-aggregate-inner-overlap)); }
+#board.fsm-board[data-fsm-theme="romanian"][data-fsm-aggregate="true"] .score-div { left: auto; top: auto; transform: none; }
+#board.fsm-board[data-fsm-theme="romanian"][data-fsm-aggregate="true"] .total { display: block; line-height: 1; transform: translateY(var(--fsm-aggregate-number-shift, 0px)); text-shadow: 2.285714px 0 0 rgba(0, 0, 0, .45); }
+/* 곡선·사다리꼴은 가장 바깥 합계 칸으로 옮겨 중앙 영역을 한 덩어리로 연결합니다. */
+#board.fsm-board[data-fsm-theme="ligaportugal"][data-fsm-aggregate="true"] .team-score { border-radius: 0; }
+#board.fsm-board[data-fsm-theme="ligaportugal"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { border-radius: 15px 0 0 15px; }
+#board.fsm-board[data-fsm-theme="ligaportugal"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { border-radius: 0 15px 15px 0; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #team-logo-left { order: 0; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #homeCard { order: 1; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #team-score-left { order: 2; margin-left: -62px; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { order: 3; margin-left: 0; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] .score-div { order: 4; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { order: 5; margin-right: 0; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #team-score-right { order: 6; margin-right: -62px; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #awayCard { order: 7; }
+#board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #team-logo-right { order: 8; }
+#board.fsm-board[data-fsm-theme="czech"] .div-rc { top: -21px; }
+/* 벨라루스 합계 배경도 기존 꺾인 경계를 따라 칠합니다. */
+#board.fsm-board[data-fsm-theme="belarus"][data-fsm-aggregate="true"] .total-score { background: transparent; isolation: isolate; }
+#board.fsm-board[data-fsm-theme="belarus"][data-fsm-aggregate="true"] .total-score::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none;
+  top: var(--fsm-belarus-edge-top, 0px); bottom: var(--fsm-belarus-edge-bottom, 0px);
+  width: calc(100% + 10px); background: #000000;
+  clip-path: polygon(var(--fsm-belarus-edge-top-x, 1.36px) 0, 100% 0, 100% 100%, var(--fsm-belarus-edge-bottom-x, 5.36px) 100%,
+    var(--fsm-belarus-lower-outer, 4.36px) var(--fsm-belarus-lower-paint-y, 75%),
+    var(--fsm-belarus-lower-inner, 9.82px) var(--fsm-belarus-lower-paint-y, 75%),
+    var(--fsm-belarus-upper-inner, 7.638px) var(--fsm-belarus-upper-paint-y, 20.45%),
+    var(--fsm-belarus-upper-outer, 2.178px) var(--fsm-belarus-upper-paint-y, 20.45%));
+}
+#board.fsm-board[data-fsm-theme="belarus"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft)::before { left: -10px; }
+#board.fsm-board[data-fsm-theme="belarus"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight)::before { right: -10px; transform: scaleX(-1); }
+#board.fsm-board[data-fsm-theme="cnl"][data-fsm-aggregate="true"] :is(#team-score-left, #team-score-right) { clip-path: none; }
+#board.fsm-board[data-fsm-theme="cnl"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { clip-path: circle(var(--cnl-radius) at var(--cnl-radius) 24px); }
+#board.fsm-board[data-fsm-theme="cnl"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { clip-path: circle(var(--cnl-radius) at calc(100% - var(--cnl-radius)) 24px); }
+#board.fsm-board[data-fsm-theme="jleague"][data-fsm-aggregate="true"] .team-score { background: #0D0D0D; }
+#board.fsm-board[data-fsm-theme="jleague"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { background: linear-gradient(to right, #323232, #0D0D0D); }
+#board.fsm-board[data-fsm-theme="jleague"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { background: linear-gradient(to left, #323232, #0D0D0D); }
 /* 루마니아·벨라루스 합계는 배경 칸 없이 경기 점수 옆의 작은 숫자로 표시합니다. */
 #board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="romanian"], [data-fsm-theme="belarus"]) .total-score {
   min-width: 28px;
   padding: 0 2px;
   font-family: 'Pretendard-Medium';
-  font-size: 24px;
+  font-size: var(--fsm-aggregate-number-font, 24px);
   font-weight: bold;
   line-height: 48px;
 }
-/* 둥근 모서리·사다리꼴 외곽은 경기 점수에 남기고 합계 칸을 안쪽에 넣어 중앙 영역을 늘립니다. */
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > #team-logo-left { order: 0; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > #homeCard { order: 1; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > #team-score-left { order: 2; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > .total-score:has(#totalScoreLeft) { order: 3; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > .score-div { order: 4; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > .total-score:has(#totalScoreRight) { order: 5; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > #team-score-right { order: 6; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > #awayCard { order: 7; }
-.board.fsm-board:is([data-fsm-theme="ligaportugal"], [data-fsm-theme="czech"], [data-fsm-theme="cnl"])[data-fsm-aggregate="true"] .scoreboard-main > #team-logo-right { order: 8; }
 /* CNL은 EPL처럼 로고 칸 다음의 팀명 영역 위에 카드를 놓아 사선 장식을 피합니다. */
 .board.fsm-board[data-fsm-theme="cnl"] #rcHome { left: 100px; right: auto; }
 .board.fsm-board[data-fsm-theme="cnl"] #rcAway { right: 100px; left: auto; }
-/* 점수판 카드는 이벤트 그림이나 테마의 기울기 없이 직사각형으로 표시합니다. */
+/* 이벤트 아이콘을 담는 카드 외곽은 테마의 기울기 없이 직사각형으로 표시합니다. */
 #board.fsm-board .div-rc .rc-card { transform: none; border-radius: 0; }
 /* 경기 점수와 같은 사선을 쓰되 합계 숫자는 역변환해 반듯하게 표시합니다. */
 #board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="kleague"], [data-fsm-theme="seriea"]) .total-score { transform: skewX(-10deg); }
 #board.fsm-board[data-fsm-aggregate="true"]:is([data-fsm-theme="kleague"], [data-fsm-theme="seriea"]) .total { display: inline-block; transform: skewX(10deg); }
-/* CNL 합계 칸은 중앙 원을 안쪽으로 연장하며 경기 점수와 같은 그라데이션을 이어갑니다. */
+/* CNL의 바깥 합계 칸까지 같은 중앙 원과 경기 점수 그라데이션으로 감쌉니다. */
 #board.fsm-board[data-fsm-theme="cnl"][data-fsm-aggregate="true"] .total-score {
   min-width: 28px;
   padding: 0 2px;
@@ -56,7 +91,7 @@
   margin: 0;
   flex-shrink: 0;
 }
-/* 전용 합계점수 디자인이 없는 클럽 테마도 테마 팔레트로 같은 48px 높이를 유지합니다. */
+/* 합계 칸의 기본 높이를 유지하고 테마별 색상·곡선·사선 보정을 함께 적용합니다. */
 .board.fsm-board[data-fsm-aggregate="true"]:not(:is([data-fsm-theme="default"], [data-fsm-theme="cl"], [data-fsm-theme="uel"], [data-fsm-theme="uecl"], [data-fsm-theme="acle"], [data-fsm-theme="russiancup"])) .total-score {
   position: relative;
   z-index: 3;
