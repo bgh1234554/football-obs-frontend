@@ -14,6 +14,14 @@ function setFsmAttr(selector, name, value) {
   });
 }
 const LEAGUE_THEME_MAP = {
+  100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
+  237: { theme: 'russiancup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/KubokRossii.png', type: 'club' },
+  79: { theme: 'bundes2', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga2.svg', type: 'club' }, // 분데스리가 2
+  78: { theme: 'bundes', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga.svg', type: 'club' }, // 분데스리가
+  141: { theme: 'laliga2', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가 2
+  140: { theme: 'laliga', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
   40: { theme: 'eflchampionship', logoUrl: null, type: 'club' },
   41: { theme: 'eflleagueone', logoUrl: null, type: 'club' },
@@ -32,10 +40,6 @@ const LEAGUE_THEME_MAP = {
   4:   { theme: 'er24',    logoUrl: null, type: 'national' },  // UEFA 유로 2024
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
-  140: { theme: 'laliga', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
-  141: { theme: 'laliga2', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가 2
-  78: { theme: 'bundes', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga.svg', type: 'club' }, // 분데스리가
-  79: { theme: 'bundes2', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga2.svg', type: 'club' }, // 분데스리가 2
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
   94: { theme: 'ligaportugal', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/PrimeiraLiga.png', type: 'club' },
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
@@ -47,7 +51,6 @@ const LEAGUE_THEME_MAP = {
   342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
   144: { theme: 'belgian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelgianProLeague.svg', type: 'club' },
   203: { theme: 'superlig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishSuperLig.svg', type: 'club' },
-  237: { theme: 'russiancup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/KubokRossii.png', type: 'club' },
   235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
   116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
   236: { theme: 'fnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianFirstLeague.svg', type: 'club' },
@@ -61,9 +64,6 @@ const LEAGUE_THEME_MAP = {
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
   294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵
   295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
-  98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
-  99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
-  100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
   1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
   // 리그 추가 시 여기에만 한 줄 추가
@@ -80,6 +80,15 @@ const FSM_THEMES = Object.freeze({
   acle: 'AFC 챔피언스리그 엘리트', cnl: 'CONCACAF 네이션스리그',
   kleague: 'K리그', jleague: 'J리그', mls: 'MLS', wc26: '월드컵'
 });
+
+// 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
+// 리그별 확인 근거와 시즌 예외는 about.md의 합계 점수 안내를 참고합니다.
+const FSM_AGGREGATE_THEMES = Object.freeze([
+  'default', 'cl', 'uel', 'uecl', 'acle', 'russiancup',
+  'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
+  'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
+  'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl'
+]);
 
 function initFsmThemeSelect() {
   const select = document.getElementById('fsmThemeSelect');
@@ -504,7 +513,25 @@ function applyTheme(theme, logoUrl) {
        setFsmStyle('.pso-status', {display: 'none'});
     }
 
-    if(_currentTheme == 'cl' || _currentTheme == 'uel' || _currentTheme == 'uecl' || _currentTheme == 'acle' || _currentTheme == 'default' || _currentTheme == 'russiancup') {
+    const supportsAggregate = FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    board.dataset.fsmAggregate = String(supportsAggregate && !!state.aggEnabled);
+    // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않습니다.
+    const fixedAggregatePalette = {
+      eflchampionship: ['#b69b42', '#ffffff'],
+      eflleagueone: ['#7f8384', '#ffffff'],
+      eflleaguetwo: ['#cc0935', '#ffffff'],
+      ligue1: ['#085FFF', '#ffffff'],
+      ligue2: ['#00fcd0', '#000000'],
+      ligaportugal: ['#ffffff', '#102556'],
+      rpl: ['#0e2a5c', '#ffffff'],
+      czech: ['#ffffff', '#181E73'],
+      romanian: ['transparent', '#ffffff'],
+      belarus: ['transparent', '#ffffff']
+    }[_currentTheme];
+    const palette = fixedAggregatePalette || FSM_PSO_PALETTES[_currentTheme] || FSM_PSO_PALETTES.default;
+    board.style.setProperty('--fsm-aggregate-background', chromaSafe(palette[0]));
+    board.style.setProperty('--fsm-aggregate-ink', fixedAggregatePalette ? chromaSafeText(palette[1]) : getColorContract(chromaSafe(palette[0])));
+    if(supportsAggregate) {
       if(state.aggEnabled) {
         var aggHome = (Number(state.aggHomeBase)||0)+(Number(state.homeScore)||0);
         var aggAway = (Number(state.aggAwayBase)||0)+(Number(state.awayScore)||0);
@@ -772,6 +799,10 @@ function adjustScoreboardWidth() {
     // 네이션스리그 분기가 로고 칸에 넣은 팀 컬러 배경을 지운다. 지우지 않으면 다른 테마로 바꿔도
     // 인라인 스타일이 남아 로고 칸이 테마 CSS 색(whitesmoke/검정 등) 대신 팀 컬러로 보인다.
     setFsmStyle('.fsm-board .team-logo', {background: ''});
+    // UNL 전용 이미지·필터가 다른 테마의 팀 로고에 남지 않도록 복원합니다.
+    setFsmAttr('.fsm-board #team-logo-left > img', 'src', state.homeLogo);
+    setFsmAttr('.fsm-board #team-logo-right > img', 'src', state.awayLogo);
+    setFsmStyle('.fsm-board .team-logo > img', {width: '', height: '', filter: ''});
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
@@ -809,6 +840,13 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board .team-logo > img', {outline: 'none'});
       setFsmStyle('.fsm-board #team-logo-left', {background: teamColors.homeBg});
       setFsmStyle('.fsm-board #team-logo-right', {background: teamColors.awayBg});
+      setFsmAttr('.fsm-board .team-logo > img', 'src', 'resources/imgs/UNL_shape.png');
+      ['home', 'away'].forEach(side => {
+        setFsmStyle(`.fsm-board #team-logo-${side === 'home' ? 'left' : 'right'} > img`, {
+          width: '100%', height: '100%',
+          filter: getColorContract(teamColors[`${side}Bg`]) === '#ffffff' ? 'brightness(0.2) invert(1)' : 'none'
+        });
+      });
     } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
@@ -931,8 +969,9 @@ function adjustScoreboardWidth() {
   }
 
   function syncCnlGeometry(board) {
-    const centerWidth = ['#team-score-left', '.score-div', '#team-score-right']
-      .reduce((sum, selector) => sum + board.querySelector(selector).offsetWidth, 0);
+    // 합계 숫자도 경기 점수·로고와 같은 원 안에 포함합니다. 숨긴 합계 칸의 폭은 0입니다.
+    const centerWidth = Array.from(board.querySelectorAll('#team-score-left, .score-div, #team-score-right, .total-score'))
+      .reduce((sum, node) => sum + node.offsetWidth, 0);
     const innerRadius = centerWidth / 2;
     const radius = innerRadius + 7;
     const halfHeight = 24;

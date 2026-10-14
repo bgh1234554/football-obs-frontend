@@ -67,6 +67,7 @@
     'Meniscus Injury':   '반월판 부상',
     'Heel Injury':       '발뒤꿈치 부상',
     'Jumpers Knee':      '슬개건염',
+    'Eye injury':        '눈 부상',
     'Surgery':           '수술',
     'Heart Problems':    '심장 문제',
     'Contusion':         '타박상',
