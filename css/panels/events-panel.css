@@ -844,3 +844,9 @@
       transform: translate(-50%, -50%) translate(var(--logo-trim-x, 0%), var(--logo-trim-y, 0%));
       pointer-events: none;
     }
+
+/* 캠 큰 화면의 새 이벤트 강조는 패널 전환까지 유지한다. */
+.layout-big .lp-stat .ev-row.ev-row-glow-held {
+  animation: none;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px var(--ev-new-glow);
+}
