@@ -1083,7 +1083,7 @@ function adjustScoreboardWidth() {
     default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
     seriea: ['#0456e5', '#f5f5f5'], superlig: ['#ff0203', '#ffffff'],
     // 라리가·라리가 2·분데스리가는 추가시간 칸과 같은 배경/글자색
-    laliga: ['#FF4B44', '#ffffff'], laliga2: ['#00D4D6', '#ffffff'], bundes: ['#D20515', '#ffffff'], bundes2: ['#D20515', '#ffffff'],
+    laliga: ['#FF4B44', '#ffffff'], laliga2: ['#00D4D6', '#ffffff'], bundes: ['#D20515', '#ffffff'], bundes2: ['#8F9191', '#000000'],
     ekstraklasa: ['#003BEF', '#ffffff'],
     czech: ['#3041C3', '#ffffff'],
     armenian: ['#000000', '#ffffff'],
