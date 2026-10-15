@@ -83,22 +83,33 @@ const LEAGUE_THEME_MAP = {
 const FSM_FALLBACK_THEME = 'default';  // 친선경기 포함 매핑 없는 모든 리그
 const FSM_FALLBACK_TYPE = 'club';
 const FSM_THEMES = Object.freeze({
-  default: '기본', pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투', nationalleague: '내셔널리그', facup: 'FA 컵', carabao: 'EFL 컵',
-  seriea: '세리에 A', coppaitalia: '코파 이탈리아', laliga: '라리가', laliga2: '세군다 디비시온', bundes: '분데스리가', bundes2: '2. 분데스리가', ligue1: '리그 1', ligue2: '리그 2', coupedefrance: '쿠프 드 프랑스',
+  default: '기본',
+  //잉글랜드
+  pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투', nationalleague: '내셔널리그', facup: 'FA 컵', carabao: 'EFL 컵',
+  //UEFA 계수 2,3위
+  seriea: '세리에 A', coppaitalia: '코파 이탈리아', laliga: '라리가', laliga2: '세군다 디비시온',
+  //UEFA 계수 4,5위
+  bundes: '분데스리가', bundes2: '2. 분데스리가', ligue1: '리그 1', ligue2: '리그 2', coupedefrance: '쿠프 드 프랑스',
+  //UEFA 계수 6~9위
   ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그',
+  //러시아
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B', russiancup: '러시아 컵',
+  //기타 유럽 리그 (가능하면 UEFA 남자 국가 계수 순)
   czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', danish: '덴마크 수페르리가', romanian: '루마니아 리가 I', belarus: '벨라루스 프리미어 리그', armenian: '아르메니아 프리미어 리그',
+  //유럽 대항전
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', unl: 'UEFA 네이션스리그', er24: '유로',
-  acle: 'AFC 챔피언스리그 엘리트', cnl: 'CONCACAF 네이션스리그',
-  kleague: 'K리그', jleague: 'J리그', mls: 'MLS', wc26: '월드컵',
-  concacafcc: 'CONCACAF 챔피언스 컵',
-  libertadores: '코파 리베르타도레스',
-  sudamericana: '코파 수다메리카나',
-  recopa: '레코파 수다메리카나',
-  cafcl: 'CAF 챔피언스리그',
-  cafcc: 'CAF 컨페더레이션 컵',
-  acl2: 'AFC 챔피언스리그 2',
-  acgl: 'AFC 챌린지 리그',
+  //아시아 리그
+  kleague: 'K리그', jleague: 'J리그',
+  //아시아 대항전
+  acle: 'AFC 챔피언스리그 엘리트', acl2: 'AFC 챔피언스리그 2', acgl: 'AFC 챌린지 리그',
+  //북중미
+  mls: 'MLS', concacafcc: 'CONCACAF 챔피언스 컵', cnl: 'CONCACAF 네이션스리그',
+  //남미
+  libertadores: '코파 리베르타도레스', sudamericana: '코파 수다메리카나', recopa: '레코파 수다메리카나',
+  //아프리카
+  cafcl: 'CAF 챔피언스리그', cafcc: 'CAF 컨페더레이션 컵',
+  //오세아니아 + 세계
+  wc26: '월드컵',
 });
 
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
