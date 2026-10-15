@@ -1,0 +1,66 @@
+@import url('./result_style_LIGUE1.css');
+
+/* 본체 크기는 유지하면서 전체 외곽만 얇게 감쌉니다. */
+.fsm-board .scoreboard-main {
+    box-shadow: 0 0 0 1.5px #ffffff;
+}
+
+.fsm-board .teams-left,
+.fsm-board .teams-right {
+    position: relative;
+    background: #061768;
+    color: #ffffff;
+}
+
+#board.fsm-board[data-fsm-theme="coupedefrance"] :is(#team-score-left, #team-score-right, .score-div) {
+    height: 48px;
+    background: #000121;
+    color: #ffffff;
+}
+
+.fsm-board .score-div {
+    position: relative;
+    z-index: 2;
+    overflow: visible;
+}
+
+/* 48px 본체를 기준으로 육각형 로고를 위아래로 13px씩 노출합니다. */
+.fsm-board .epl-lion {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 66px;
+    height: 66px;
+    padding: 0;
+    object-fit: contain;
+    transform: translate(-50%, -50%);
+}
+
+.fsm-board .team-color {
+    position: absolute;
+    top: 0;
+    width: 8px;
+    height: 48px;
+    display: block;
+}
+
+.fsm-board #homeColor { right: var(--fsm-score-overlap, 45px); }
+.fsm-board #awayColor { left: var(--fsm-score-overlap, 45px); }
+
+.fsm-board .time {
+    background: #ffffff;
+    color: #101B36;
+}
+
+.fsm-board .extra-time {
+    background: #000121;
+    color: #ffffff;
+}
+
+.fsm-board :is(.time, .extra-time, .pso-main) {
+    box-shadow: 0 0 0 1.5px #ffffff;
+}
+
+/* 합계 타일이 바깥에 추가되어도 점수와 로고의 기존 겹침을 유지합니다. */
+#board.fsm-board[data-fsm-theme="coupedefrance"][data-fsm-aggregate="true"] #team-score-left { margin-right: -5px; }
+#board.fsm-board[data-fsm-theme="coupedefrance"][data-fsm-aggregate="true"] #team-score-right { margin-left: -5px; }

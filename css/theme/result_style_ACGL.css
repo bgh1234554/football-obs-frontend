@@ -1,0 +1,53 @@
+@import url('./result_style_ACL2.css');
+
+/* ACL2의 배치와 크기를 유지하고 대회 이미지의 자주색·코랄색·크림색만 적용합니다. */
+.fsm-board .scoreboard-main {
+    background: #E9DFC6;
+}
+
+.fsm-board .teams-left,
+.fsm-board .teams-right {
+    background: linear-gradient(120deg, #48002B, #650E35, #54102F, #48002B);
+}
+
+.fsm-board .team-name,
+.fsm-board .team-score {
+    color: #ffffff;
+}
+
+.fsm-board #team-score-left {
+    background: linear-gradient(90deg, #DC573C, #F16C43, #FF784B);
+}
+
+.fsm-board #team-score-right {
+    background: linear-gradient(90deg, #FF784B, #F16C43, #DC573C);
+}
+
+.fsm-board .score-div {
+    background: linear-gradient(90deg, #FF784B, #F16C43);
+    color: #48002B;
+}
+
+.fsm-board .divider {
+    background: #48002B;
+}
+
+.fsm-board .team-logo {
+    background: linear-gradient(90deg, #E9DFC6, #FF784B);
+    border-color: #E9DFC6;
+}
+
+.fsm-board .scoreboard-timer {
+    color: #ffffff;
+}
+
+.fsm-board .time {
+    background: linear-gradient(0deg, #48002B 80%, #650E35);
+    color: #ffffff;
+}
+
+.fsm-board .extra-time,
+#board.fsm-board[data-fsm-theme="acgl"][data-fsm-aggregate="true"] .total-score {
+    background: #E9DFC6 linear-gradient(90deg, #E9DFC6, #F4C5A5);
+    color: #48002B;
+}

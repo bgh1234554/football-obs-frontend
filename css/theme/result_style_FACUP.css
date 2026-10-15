@@ -285,7 +285,6 @@
 }
 
 .fsm-board .team-color {
-    width: 8px;
-    height: 48px;
-    display: block;
+    /* FA컵은 하단 가로 팀컬러만 사용하므로 이전 테마의 세로 띠를 노출하지 않습니다. */
+    display: none;
 }

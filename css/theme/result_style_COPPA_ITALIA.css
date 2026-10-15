@@ -1,0 +1,89 @@
+@import url('./result_style_SERIEA.css');
+
+/* 세리에 A의 배치와 기울기를 그대로 사용하고 대회 색상만 바꿉니다. */
+.fsm-board .teams-left,
+.fsm-board .teams-right {
+    background: #A52931;
+}
+
+/* 사선 칸과 팀명 칸 사이의 삼각형 영역에도 팀명 배경을 이어줍니다. */
+.fsm-board .div-background {
+    background: #A52931;
+    z-index: -1;
+}
+
+.fsm-board .scoreboard-main {
+    isolation: isolate;
+}
+
+.fsm-board .team-score {
+    background: #ffffff;
+    color: #661729;
+}
+
+.fsm-board .divider {
+    background: #ffffff;
+}
+
+/* 72px 로고 하단을 48px 본체 하단보다 2px 위에 맞춥니다. */
+.fsm-board .epl-lion {
+    transform: translateY(-14px) skewX(10deg);
+}
+
+#board.fsm-board[data-fsm-theme="coppaitalia"] .score-div {
+    /* 합계 표시로 일반 흐름에 들어와도 본체 높이가 늘어나지 않게 합니다. */
+    box-sizing: border-box;
+    width: 80px;
+    height: 48px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    color: #661729;
+}
+
+/* 같은 흰색 사선 경계의 안티앨리어싱 틈을 1px 겹쳐 닫습니다. */
+#board.fsm-board[data-fsm-theme="coppaitalia"] :is(.team-score, .score-div) {
+    box-shadow: -1px 0 #ffffff, 1px 0 #ffffff;
+}
+
+#board.fsm-board[data-fsm-theme="coppaitalia"] .total-score {
+    box-shadow: -1px 0 #661729, 1px 0 #661729;
+}
+
+/* 합계 칸은 바깥에만 추가하고 기존 점수와 중앙 로고의 겹침은 유지합니다. */
+#board.fsm-board[data-fsm-theme="coppaitalia"][data-fsm-aggregate="true"] #team-score-left {
+    margin-right: -30px;
+}
+
+#board.fsm-board[data-fsm-theme="coppaitalia"][data-fsm-aggregate="true"] #team-score-right {
+    margin-left: -30px;
+}
+
+#board.fsm-board[data-fsm-theme="coppaitalia"][data-fsm-aggregate="true"] .teams-right {
+    position: relative;
+}
+
+/* 원정 합계 칸의 아래 사선 끝까지 기존 가로 팀컬러 띠만 연장합니다. */
+#board.fsm-board[data-fsm-theme="coppaitalia"][data-fsm-aggregate="true"] .teams-right::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    bottom: -5px;
+    width: 6px;
+    height: 6px;
+    background: var(--fsm-away-primary-color);
+    box-shadow: inset 0 1px var(--fsm-away-number-color);
+    pointer-events: none;
+}
+
+.fsm-board .time {
+    background: #661729;
+    color: #ffffff;
+}
+
+.fsm-board .extra-time {
+    background: #ffffff;
+    color: #661729;
+}

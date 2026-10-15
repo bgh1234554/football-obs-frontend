@@ -123,20 +123,57 @@
 }
 
 .fsm-board #team-logo-left {
-    border-top-left-radius: 20px;
-    border-bottom-left-radius: 20px;
+    border-top-left-radius: 24px;
+    border-bottom-left-radius: 24px;
+    --carabao-logo-color: var(--fsm-home-primary-color);
 }
 
 .fsm-board #team-logo-right {
-    border-top-right-radius: 20px;
-    border-bottom-right-radius: 20px;
+    border-top-right-radius: 24px;
+    border-bottom-right-radius: 24px;
+    --carabao-logo-color: var(--fsm-away-primary-color);
 }
 
-.fsm-board .team-logo > img {
-    width: 100%;
-    height: 100%;
+.fsm-board .team-logo::before {
+    content: '';
+    box-sizing: border-box;
+    position: absolute;
+    top: 0;
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--carabao-logo-color);
+    border-radius: 50%;
+    background: whitesmoke;
+}
+
+.fsm-board .carabao-logo-clip {
+    position: absolute;
+    top: 3px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    overflow: hidden;
+    clip-path: circle(50%);
+}
+
+.fsm-board #team-logo-left .carabao-logo-clip { left: 3px; }
+.fsm-board #team-logo-right .carabao-logo-clip { right: 3px; }
+
+.board.fsm-board[data-fsm-theme="carabao"] .team-logo img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    max-width: none;
+    max-height: none;
+    /* 기존 원형 실루엣 안에서 로고 여백을 최소화합니다. */
+    --carabao-logo-size: 40px;
+    width: min(calc(var(--carabao-logo-size) * var(--logo-fit-width, 1)), calc(var(--carabao-logo-size) * var(--logo-fit-height, 1) * var(--logo-fit-aspect, 1)));
+    height: min(calc(var(--carabao-logo-size) * var(--logo-fit-height, 1)), calc(var(--carabao-logo-size) * var(--logo-fit-width, 1) / var(--logo-fit-aspect, 1)));
     object-fit: contain;
 }
+
+.fsm-board #team-logo-left::before { left: 0; }
+.fsm-board #team-logo-right::before { right: 0; }
 
 .fsm-board .epl-lion {
     width: 50px;
