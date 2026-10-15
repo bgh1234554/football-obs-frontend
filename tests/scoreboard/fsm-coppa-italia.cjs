@@ -1,6 +1,4 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
 
@@ -8,9 +6,9 @@ const { openPage, settle } = require('../tactics/helpers');
   const browser = await chromium.launch();
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
-    await page.route('**/football-obs-logo-cdn/leagues/CoppaItalia.svg', route => route.fulfill({
-      contentType: 'image/svg+xml', body: fs.readFileSync(path.resolve(__dirname, '../../../football-obs-logo-cdn/leagues/CoppaItalia.svg'))
-    }));
+    await page.route('**/football-obs-logo-cdn/leagues/CoppaItalia.svg', async route => {
+      await route.fulfill({ response: await route.fetch() });
+    });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.evaluate(() => {

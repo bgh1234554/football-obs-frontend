@@ -1,6 +1,4 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
 
@@ -10,9 +8,9 @@ const { openPage, settle } = require('../tactics/helpers');
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.route('**/football-obs-logo-cdn/leagues/CoupeDeFrance.svg', route => route.fulfill({
-      contentType: 'image/svg+xml', body: fs.readFileSync(path.resolve(__dirname, '../../../football-obs-logo-cdn/leagues/CoupeDeFrance.svg'))
-    }));
+    await page.route('**/football-obs-logo-cdn/leagues/CoupeDeFrance.svg', async route => {
+      await route.fulfill({ response: await route.fetch() });
+    });
     await page.evaluate(() => {
       state.fsmTheme = 'auto'; state.homeName = '파리 생제르맹'; state.awayName = '올랭피크 리옹';
       state.homeScore = 2; state.awayScore = 1; state.extra = 3; state.extraShown = true; state.half = '2H';
