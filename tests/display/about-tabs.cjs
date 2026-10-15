@@ -24,10 +24,27 @@ const root = path.resolve(__dirname, '../..');
     await page.evaluate(() => activatePage('about'));
     await page.waitForSelector('.about-tabs');
     const tabs = page.locator('.about-tabs [role="tab"]');
-    assert.equal(await tabs.count(), 11);
-    assert.equal(await page.locator('#about-rendered > h1').count(), 1);
-    assert.equal(await page.locator('#about-rendered > p').count(), 1);
-    for (let index = 0; index < 11; index++) {
+    assert.equal(await tabs.count(), 12);
+    const labels = await tabs.allTextContents();
+    const scoreboardIndex = labels.indexOf('점수판 클릭 조작');
+    assert.equal(labels[scoreboardIndex - 1], '단축키');
+    assert.equal(labels[scoreboardIndex + 1], '메인 화면');
+    await page.locator('#about-tab-scoreboard').click();
+    assert.deepEqual(await page.locator('#about-panel-scoreboard h3').allTextContents(),
+      ['팀 이름 / 팀컬러', '타이머 / 추가시간', '득점자 (수동 모드)', '승부차기 (PSO)']);
+    await page.evaluate(() => {
+      document.documentElement.style.setProperty('--bg-image', 'linear-gradient(90deg, #218956, #9c8120, #777, #a30030, #009688)');
+      document.documentElement.style.setProperty('--panel-alpha', '.55');
+    });
+    assert(await page.locator('.about-tabs').evaluate(node => {
+      const style = getComputedStyle(node);
+      return style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.backdropFilter === 'none';
+    }));
+    await page.screenshot({ path: path.join(root, 'screenshots/about-scoreboard-menu.png') });
+    assert.equal(await page.locator('.about-header > h1').count(), 1);
+    assert.equal(await page.locator('.about-header > p').count(), 1);
+    assert.equal(await page.locator('#page-about .panelBody .about-tabs').count(), 0);
+    for (let index = 0; index < 12; index++) {
       await tabs.nth(index).click();
       assert.equal(await page.locator('.about-tab-panel:visible').count(), 1);
       const panel = page.locator('#' + await tabs.nth(index).getAttribute('aria-controls'));
@@ -61,6 +78,12 @@ const root = path.resolve(__dirname, '../..');
       const pane = document.querySelector('#page-about .panelBody');
       pane.scrollTop = pane.scrollHeight;
     });
+    assert(await page.evaluate(() => {
+      const nav = document.querySelector('.about-tabs').getBoundingClientRect();
+      const pane = document.querySelector('#page-about .panelBody').getBoundingClientRect();
+      return nav.bottom <= pane.top + 1;
+    }));
+    await page.screenshot({ path: path.join(root, 'screenshots/about-scrolled-menu.png') });
     await page.waitForFunction(() => document.querySelector('#about-submenu-main [aria-current="location"]')?.textContent === '선수 이름 표시');
     await mainTab.click();
     assert(await mainMenu.evaluate(menu => {

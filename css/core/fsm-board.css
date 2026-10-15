@@ -130,6 +130,7 @@
 /* 기존처럼 시계 위에 승부차기 띠를 표시하되 모서리에 시계가 비치지 않게 한다. */
 .board.fsm-board[data-fsm-pso="true"] .scoreboard-timer { visibility: hidden; }
 .board.fsm-board .pso-status {
+  flex-shrink: 0;
   position: absolute;
   z-index: 2;
   margin: 0;
@@ -147,12 +148,12 @@
   flex: 0 0 auto;
   margin-block: 0;
 }
-/* 서든데스에서도 칸을 압축하지 않고 양 팀 목록을 각각 줄바꿈한다. */
+/* 서든데스에서도 칸을 압축하지 않고 전체 띠의 너비를 늘립니다. */
 .board.fsm-board .pso-content { flex: 1 1 0; min-width: 0; }
 .board.fsm-board .pso-status > .pso-main ul {
   height: auto;
   min-height: 32px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .board.fsm-board .pso-circle {
   flex-shrink: 0;
@@ -459,3 +460,25 @@
   border-top: 1px solid #0e2a5c;
   border-bottom: 1px solid #0e2a5c;
 }
+
+/* 빠른 입력은 점수판과 같은 좌표계에서 배율을 함께 적용받습니다. */
+.board.fsm-board .pso-main[role="button"] { cursor: pointer; }
+#boardPsoControls[hidden] { display: none; }
+#boardPsoControls {
+  position: absolute; top: 100%; left: 0; width: 100%;
+  background: var(--fsm-pso-ink); color: var(--fsm-pso-background); border-radius: 0 0 6px 6px;
+  box-shadow: 0 3px 10px #0006; padding: 4px 0 6px;
+  font-family: 'NanumGothic', sans-serif; text-shadow: none;
+}
+#boardPsoControls .pso-quick-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--pso-middle-width) minmax(0, 1fr); }
+#boardPsoControls .pso-quick-team, #boardPsoControls .pso-quick-middle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#boardPsoControls button {
+  min-width: 0; height: 34px; padding: 0; margin: 2px;
+  border: 1px solid currentColor; border-radius: 4px; background: transparent;
+  color: inherit; font: bold 16px/1 sans-serif; cursor: pointer;
+}
+#boardPsoControls button:hover, #boardPsoControls button:focus-visible { background: color-mix(in srgb, var(--fsm-pso-background) 18%, var(--fsm-pso-ink)); outline: 2px solid currentColor; outline-offset: -2px; }
+#boardPsoControls .pso-quick-hint { padding: 4px 6px 0; text-align: center; font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
+#boardPsoControls .kbd { font-size: inherit; padding: 0 2px; background: #111827; color: #fff; }
+#boardPsoControls .pso-quick-hint > span { display: block; white-space: nowrap; }
+#boardPsoControls .pso-quick-middle button { font-size: 20px; }

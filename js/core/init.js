@@ -53,6 +53,7 @@
     const groups = [
       ['start', '시작하기'], ['broadcast', 'OBS 송출 환경'],
       ['guide', '데이터 안내'], ['keys', '단축키'],
+      ['scoreboard', '점수판 클릭 조작'],
       ['main', '메인 화면'], ['settings', '설정'], ['theme', '테마'],
       ['schedule', '일정'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
     ];
@@ -88,6 +89,7 @@
           : ['권장-환경', '송출-방식에-따른-차이'].includes(title) ? 'broadcast'
           : ['주요-안내-사항', '데이터가-없거나-잘못-표시될-때'].includes(title) ? 'guide'
           : title === '주요-키보드-단축키' ? 'keys'
+          : title === '점수판-클릭-조작' ? 'scoreboard'
           : title.startsWith('고급-팁') ? 'advanced' : 'info';
       } else if (featureSection && node.tagName === 'H3') {
         const title = aboutSlug(node.textContent);
@@ -240,7 +242,13 @@
     }, { signal: aboutEl.aboutTabsController.signal });
     scrollPane?.addEventListener('scroll', updateCurrentHeading, { passive: true, signal: aboutEl.aboutTabsController.signal });
     window.addEventListener('resize', updateCurrentHeading, { signal: aboutEl.aboutTabsController.signal });
-    aboutEl.append(nav, ...[...sections.values()].map(item => item.panel));
+    // 메뉴와 본문을 서로 다른 영역에 두어 스크롤해도 글자가 겹치지 않게 합니다.
+    scrollPane.parentElement.querySelector('.about-header')?.remove();
+    const header = document.createElement('div');
+    header.className = 'about-header md-body';
+    header.append(...[...aboutEl.children].filter(node => node.tagName === 'H1' || node.tagName === 'P'), nav);
+    scrollPane.before(header);
+    aboutEl.append(...[...sections.values()].map(item => item.panel));
     select(sections.get('start').panel, { resetScroll: false });
     restoreMenu();
     updateCurrentHeading();

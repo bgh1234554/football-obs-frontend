@@ -605,15 +605,16 @@
     }
 
     /* ========== 마크다운 렌더 ========== */
+    .about-header { flex: 0 0 auto; padding: 20px 24px 0; }
+    #page-about .panelBody { padding-top: 0 !important; }
     .about-tabs {
-      position: sticky;
-      top: -20px;
+      position: relative;
       z-index: 2;
       display: flex;
       flex-direction: column;
       gap: 10px;
       padding: 12px 0;
-      background: var(--panel, #111827);
+      background: transparent;
       border-bottom: 1px solid var(--line);
     }
     .about-tab-row { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -1278,12 +1278,65 @@ function adjustScoreboardWidth() {
     mls: ['#e1e3e7', '#000000'], wc26: ['#A0FBDC', '#000000'],
   });
 
-  /** 경기 상태에 따라 승부차기 영역을 표시하고 테마 색상·위치와 양 팀 기록을 갱신합니다. */
+  /** PSO 띠 아래의 빠른 입력과 기존 테마 입력 버튼을 연결합니다. */
+  function initPsoQuickControls(board) {
+    const status = board.querySelector('.pso-status');
+    const main = status.querySelector('.pso-main');
+    let panel = status.querySelector('#boardPsoControls');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'boardPsoControls';
+      panel.hidden = true;
+      panel.innerHTML = `<div class="pso-quick-row"><div class="pso-quick-team"><button type="button" data-pso-action="pkHomeGoal" aria-label="홈 성공">S</button><button type="button" data-pso-action="pkHomeMiss" aria-label="홈 실패">F</button></div><div class="pso-quick-middle"><button type="button" data-pso-action="pkUndo" aria-label="되돌리기" title="되돌리기">↶</button><button type="button" data-pso-action="pkReset" aria-label="초기화" title="초기화">⟲</button></div><div class="pso-quick-team"><button type="button" data-pso-action="pkAwayGoal" aria-label="원정 성공">S</button><button type="button" data-pso-action="pkAwayMiss" aria-label="원정 실패">F</button></div></div><div class="pso-quick-hint"></div>`;
+      status.append(panel);
+      const close = () => { panel.hidden = true; main.setAttribute('aria-expanded', 'false'); };
+      const toggle = () => { panel.hidden = !panel.hidden; main.setAttribute('aria-expanded', String(!panel.hidden)); };
+      main.tabIndex = 0;
+      main.setAttribute('role', 'button');
+      main.setAttribute('aria-label', '승부차기 입력 열기');
+      main.setAttribute('aria-controls', panel.id);
+      main.setAttribute('aria-expanded', 'false');
+      main.addEventListener('click', toggle);
+      main.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); }
+      });
+      panel.addEventListener('click', event => {
+        const action = event.target.closest('[data-pso-action]')?.dataset.psoAction;
+        if (action && state.half === 'PK') document.getElementById(action)?.click();
+      });
+      document.addEventListener('pointerdown', event => { if (!status.contains(event.target)) close(); });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) { close(); main.focus({preventScroll: true}); }
+      });
+    }
+    // 가운데 글자의 여백까지 공유해 버튼과 공 영역의 경계를 맞춥니다.
+    const middle = main.querySelector('.pso-middle');
+    const style = getComputedStyle(middle);
+    panel.style.setProperty('--pso-middle-width', `${middle.offsetWidth + parseFloat(style.marginLeft) + parseFloat(style.marginRight)}px`);
+    const hint = document.getElementById('psoControlHint');
+    if (hint) {
+      const keys = [...hint.querySelectorAll('.kbd')];
+      const input = document.createElement('span');
+      const history = document.createElement('span');
+      const key = index => keys[index]?.cloneNode(true) || document.createTextNode('');
+      input.append('홈 성공/실패 ', key(0), '/', key(1), ' · 원정 성공/실패 ', key(2), '/', key(3));
+      history.append('되돌리기 ', key(4), ' · 초기화 ', key(5));
+      panel.querySelector('.pso-quick-hint').replaceChildren(input, history);
+    }
+    panel.querySelectorAll('.pso-quick-team button').forEach(button => {
+      button.textContent = button.dataset.psoAction.endsWith('Goal') ? '성공' : '실패';
+    });
+  }
+
   function applyPSO() {
     const isPso = state.half === 'PK';
     setFsmStyle('.fsm-board .pso-status', {height: isPso ? 'auto' : '0'});
     document.querySelector('.fsm-board').dataset.fsmPso = String(isPso);
-    if (!isPso) return;
+    if (!isPso) {
+      document.querySelector('#boardPsoControls')?.setAttribute('hidden', '');
+      document.querySelector('.pso-main[role="button"]')?.setAttribute('aria-expanded', 'false');
+      return;
+    }
     const board = document.querySelector('.fsm-board');
     const clock = board.querySelector('.time');
     const boardRect = board.getBoundingClientRect();
@@ -1296,6 +1349,7 @@ function adjustScoreboardWidth() {
     const homePso = toPsoArr(state.pk.home);  // 'G'/'M' → [1,0,-1,...] 변환
     const awayPso = toPsoArr(state.pk.away);
 
+    initPsoQuickControls(board);
     [homePso, awayPso].forEach((attempts, side) => {
       const list = document.querySelector(side === 0 ? '#pso-left ul' : '#pso-right ul');
       if (!list) return;
@@ -1306,6 +1360,13 @@ function adjustScoreboardWidth() {
         return item;
       }));
     });
+    // 서든데스에서는 공을 줄바꿈하지 않고 양쪽 영역을 같은 폭으로 늘립니다.
+    const circle = board.querySelector('.pso-circle');
+    const circleStyle = getComputedStyle(circle);
+    const slotWidth = circle.offsetWidth + parseFloat(circleStyle.marginLeft) + parseFloat(circleStyle.marginRight);
+    const middleWidth = parseFloat(board.querySelector('#boardPsoControls').style.getPropertyValue('--pso-middle-width'));
+    const count = Math.max(homePso.length, awayPso.length);
+    board.querySelector('.pso-status').style.width = `${Math.max(360, 5 * slotWidth * 2 + middleWidth) + Math.max(0, count - 5) * slotWidth * 2}px`;
   }
 
   /**
