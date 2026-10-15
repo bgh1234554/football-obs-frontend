@@ -100,7 +100,7 @@ const FSM_THEMES = Object.freeze({
   //유럽 대항전
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', unl: 'UEFA 네이션스리그', er24: '유로',
   //아시아 리그
-  kleague: 'K리그', jleague: 'J리그', uzbek: '우즈벡 슈퍼리그',
+  kleague: 'K리그', jleague: 'J리그', uzbek: '우즈베키스탄 슈퍼리그',
   //아시아 대항전
   acle: 'AFC 챔피언스리그 엘리트', acl2: 'AFC 챔피언스리그 2', acgl: 'AFC 챌린지 리그',
   //북중미

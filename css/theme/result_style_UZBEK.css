@@ -1,0 +1,124 @@
+@import url('./result_style_LIGUE1.css');
+
+.fsm-board .scoreboard-main {
+    position: relative;
+    height: 48px;
+    isolation: isolate;
+    border-radius: 10px;
+    z-index: 2;
+}
+
+.fsm-board .scoreboard-timer { position: relative; z-index: 1; }
+
+.fsm-board .div-background {
+    background: linear-gradient(to right,
+        #01924F 80px,
+        #00643D calc(50% - 39px),
+        #00643D calc(50% + 39px),
+        #01924F calc(100% - 80px));
+    border-radius: 10px;
+    z-index: -1;
+}
+
+.fsm-board .teams-left,
+.fsm-board .teams-right { background: transparent; }
+.fsm-board .team-name { color: #ffffff; }
+
+/* CNL과 같은 추가 방식으로 바깥 합계 칸만 늘어나도록 중앙 칸들을 일반 흐름에 둡니다. */
+#board.fsm-board[data-fsm-theme="uzbek"] :is(#team-score-left, #team-score-right) {
+    position: relative;
+    margin: 0;
+    width: 56px;
+    height: 48px;
+    background: transparent;
+    color: #ffffff;
+    font-size: 64px;
+    font-family: 'Pretendard-Medium';
+    font-weight: bold;
+    z-index: 2;
+}
+
+.fsm-board .score-left,
+.fsm-board .score-right {
+    display: block;
+    line-height: 1;
+    transform: translateY(-4px);
+    text-shadow: 5px 0 0 rgba(0, 0, 0, .45);
+}
+
+#board.fsm-board[data-fsm-theme="uzbek"] .score-div {
+    position: relative;
+    width: 78px;
+    height: 48px;
+    background: transparent;
+    overflow: visible;
+    z-index: 3;
+}
+
+.fsm-board .score-div::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #021D3D;
+    z-index: -1;
+}
+
+.fsm-board .epl-lion {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 58px;
+    height: 58px;
+    padding: 0;
+    object-fit: contain;
+}
+
+.fsm-board .team-logo {
+    width: 80px;
+    background: whitesmoke;
+    border: 0;
+}
+.fsm-board #team-logo-left { border-radius: 10px 0 0 10px; }
+.fsm-board #team-logo-right { border-radius: 0 10px 10px 0; }
+
+/* 곡선은 점수 바깥이 아니라 고정된 중앙 로고 원을 감쌉니다. */
+.fsm-board .team-color {
+    display: block;
+    position: absolute;
+    top: 0;
+    width: 24px;
+    height: 48px;
+    left: calc(50% - var(--cnl-color-offset));
+    z-index: 4;
+    border: 0;
+    box-shadow: none;
+}
+.fsm-board #awayColor { left: auto; right: calc(50% - var(--cnl-color-offset)); transform: scaleX(-1); }
+#board.fsm-board[data-fsm-theme="uzbek"] :is(#homeColor, #awayColor) { background: transparent !important; box-shadow: none; }
+.fsm-board .cnl-curve { display: block; width: 24px; height: 48px; }
+.fsm-board .cnl-curve path { fill: var(--fsm-primary-color); stroke: var(--fsm-number-color); stroke-width: 1px; }
+
+.fsm-board .time {
+    background: #ffffff;
+    color: #000000;
+    border-radius: 0 0 10px 10px;
+}
+.fsm-board .extra-time {
+    background: linear-gradient(to right, #012853, #003877 50%, #012853);
+    color: #ffffff;
+    border-radius: 0 0 8px 8px;
+}
+
+#board.fsm-board[data-fsm-theme="uzbek"][data-fsm-aggregate="true"] .total-score {
+    min-width: 28px;
+    padding: 0 2px;
+    font-size: 28px;
+    background: transparent;
+    color: #ffffff;
+}
