@@ -24,14 +24,15 @@
   /** #RGB 또는 #RRGGBB 형식의 HEX 색상 문자열을 정규화. 유효하지 않으면 null 반환 */
   function normalizeHex(v){ if(!v) return null; v=String(v).trim(); if(/^#?[0-9a-fA-F]{3}$/.test(v)){ const h=v.replace('#',''); return '#'+h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; } if(/^#?[0-9a-fA-F]{6}$/.test(v)) return '#'+v.replace('#','').toLowerCase(); return null; }
 
-  /**
-   * 색상 피커(input[type=color])와 HEX 텍스트 입력 필드를 양방향으로 연결.
-   * 어느 쪽을 변경해도 state, CSS 변수, 상대 필드가 모두 동기화됨.
-   */
   // 사용자가 테마 탭에서 직접 만지면 state.teamColorOverride=true로 마킹할 키 목록.
   // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
   const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
+  /**
+   * 색상 상태와 입력기를 함께 갱신하고, 실제 변경이 있을 때 저장·렌더링·알림을 수행합니다.
+   * @param {Object<string,string>} updates 변경할 색상 키와 HEX 값입니다.
+   * @param {boolean} [syncColorInput=true] 색상 선택기의 값도 함께 동기화할지 지정합니다.
+   */
   function commitThemeColors(updates, syncColorInput = true) {
     const keys = Object.keys(updates);
     const changed = keys.some(key => state.colors[key] !== updates[key]);
@@ -61,17 +62,76 @@
    *   - change(피커 닫힘): state 저장 + persist + render + 라인업/스탯 패널 dispatch 한 번만 실행.
    * 결과: 60fps로 점수판이 즉시 반영되면서도 드래그 도중 lag 없음.
    */
-  function bindColorWithHex(colorId, key, cssVar){
+  function bindColorWithHex(colorId, key, cssVar, signal){
     const colorInput=$(colorId); if(!colorInput) return;
     const hexInput=document.createElement('input'); hexInput.type='text'; hexInput.id=colorId+'Hex'; hexInput.placeholder='#RRGGBB'; hexInput.style.width='92px'; hexInput.style.marginLeft='6px'; hexInput.value=state.colors[key]||colorInput.value||'#000000';
     // bootstrap 스타일 적용
     hexInput.style.background='#0b1220'; hexInput.style.color='#e5e7eb'; hexInput.style.border='1px solid #ffffff20'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
     colorInput.insertAdjacentElement('afterend', hexInput);
+    const editor = document.createElement('span');
+    editor.className = 'theme-color-editor';
+    editor.dataset.themeColor = key;
+    colorInput.before(editor);
+    editor.append(colorInput, hexInput);
+    hexInput.classList.add('sp-color-code');
+    const rgb = document.createElement('div');
+    rgb.className = 'sp-color-rgb';
+    rgb.hidden = true;
+    ['R', 'G', 'B'].forEach((name, index) => {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      Object.assign(input, { type: 'number', min: '0', max: '255', step: '1', inputMode: 'numeric' });
+      input.dataset.colorChannel = index;
+      input.setAttribute('aria-label', `${key} ${name}`);
+      label.append(name, input);
+      rgb.append(label);
+    });
+    const sync = (value = state.colors[key]) => {
+      value = normalizeHex(value) || '#000000';
+      rgb.querySelectorAll('input').forEach((input, index) => {
+        input.value = parseInt(value.slice(1 + index * 2, 3 + index * 2), 16);
+      });
+    };
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'sp-color-format-btn';
+    toggle.innerHTML = document.getElementById('settingsBgColorFormat').innerHTML;
+    const updateToggle = () => {
+      toggle.title = rgb.hidden ? 'RGB 입력으로 전환' : 'HEX 입력으로 전환';
+      toggle.setAttribute('aria-label', toggle.title);
+    };
+    toggle.addEventListener('click', () => {
+      rgb.hidden = !rgb.hidden;
+      hexInput.hidden = !rgb.hidden;
+      sync();
+      updateToggle();
+      (rgb.hidden ? hexInput : rgb.querySelector('input')).focus();
+    });
+    /** 세 채널이 모두 유효할 때만 HEX로 변환해 저장해, 입력 중인 빈 칸은 색상에 반영하지 않습니다. */
+    const commitRgb = () => {
+      const inputs = [...rgb.querySelectorAll('input')];
+      if (inputs.some(input => input.value === '' || !input.validity.valid)) return false;
+      commitThemeColors({ [key]: '#' + inputs.map(input => Number(input.value).toString(16).padStart(2, '0')).join('') });
+      return true;
+    };
+    rgb.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', commitRgb);
+      input.addEventListener('change', () => { if (!commitRgb()) sync(); });
+    });
+    colorInput.syncRgb = sync;
+    document.addEventListener('theme:colors-changed', () => {
+      colorInput.value = hexInput.value = state.colors[key];
+      sync();
+    }, signal ? { signal } : undefined);
+    editor.append(rgb, toggle);
+    sync();
+    updateToggle();
 
     /** 드래그 중 가벼운 라이브 프리뷰 — CSS 변수와 hex 표시만 갱신. state/persist/render/dispatch 안 함. */
     const previewThemeColor = value => {
       setCSS(cssVar, value);
       hexInput.value = value;
+      sync(value);
     };
 
     /** 피커 닫힘/HEX 입력 확정 시 한 번만 실행되는 무거운 commit. */
@@ -95,6 +155,178 @@
     });
   }
   window.colorMap.forEach(([id,key,varName])=>bindColorWithHex(id,key,varName));
+
+  // 팝업에는 별도 입력기를 만들고 같은 색상 저장 경로로 동기화한다.
+  const teamColorDialog = document.createElement('div');
+  teamColorDialog.className = 'team-color-dialog pm-popup';
+  teamColorDialog.popover = 'auto';
+  teamColorDialog.setAttribute('role', 'dialog');
+  document.body.append(teamColorDialog);
+  let quickColorAbort;
+  /** 닫힌 팝업의 동기화 이벤트를 해제해 다음 편집창에 이전 입력기가 남지 않게 합니다. */
+  const restoreColorEditors = () => {
+    quickColorAbort?.abort();
+    teamColorDialog.replaceChildren();
+  };
+  teamColorDialog.addEventListener('toggle', event => {
+    if (event.newState === 'closed' && !teamColorDialog.matches(':popover-open')) restoreColorEditors();
+  });
+  ['home', 'away'].forEach(side => {
+    const chip = document.getElementById(side + 'Color');
+    if (!chip) return;
+    chip.tabIndex = 0;
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('aria-label', side === 'home' ? '홈 팀컬러 편집' : '원정 팀컬러 편집');
+    /** 해당 팀의 편집 입력기를 새로 만들고 클릭 위치에서 화면을 벗어나지 않도록 엽니다. */
+    const open = (event) => {
+      teamColorDialog.hidePopover();
+      restoreColorEditors();
+      teamColorDialog.replaceChildren();
+      quickColorAbort = new AbortController();
+      const heading = document.createElement('h3');
+      heading.className = 'pm-nick-title';
+      heading.textContent = side === 'home' ? '홈 팀컬러' : '원정 팀컬러';
+      teamColorDialog.append(heading);
+      ['Bg', 'Text'].forEach((suffix, index) => {
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.id = 'quickTeam' + side + suffix;
+        input.value = state.colors[side + suffix];
+        const row = document.createElement('div');
+        row.className = 'team-color-dialog-row';
+        const label = document.createElement('span');
+        label.textContent = index === 0 ? '배경 색' : '글자 색';
+        row.append(label, input);
+        teamColorDialog.append(row);
+        bindColorWithHex(input.id, side + suffix, '--' + side + (suffix === 'Bg' ? '-bg' : '-text'), quickColorAbort.signal);
+        row.querySelector('input[type=text]').classList.add('pm-nick-input');
+      });
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'pm-btn';
+      close.textContent = '닫기';
+      close.addEventListener('click', () => teamColorDialog.hidePopover());
+      const actions = document.createElement('div');
+      actions.className = 'pm-nick-btns';
+      const swap = document.createElement('button');
+      swap.type = 'button';
+      swap.className = 'pm-btn';
+      swap.textContent = '색상 맞바꾸기';
+      swap.title = '배경색과 글자색 바꾸기';
+      swap.addEventListener('click', () => swapTeamColors(side));
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'pm-btn pm-btn-danger';
+      reset.textContent = '초기화';
+      reset.title = side === 'home' ? '홈 팀컬러를 API 색상으로 초기화' : '원정 팀컬러를 API 색상으로 초기화';
+      reset.disabled = !window.canResetFixtureTeamColors?.();
+      reset.addEventListener('click', () => window.resetFixtureTeamColors?.(side));
+      actions.append(close, swap, reset);
+      teamColorDialog.append(actions);
+      teamColorDialog.showPopover();
+      const rect = chip.getBoundingClientRect();
+      // 최상위 popover는 body 배율이 아닌 화면 좌표로 배치한다.
+      const popupRect = teamColorDialog.getBoundingClientRect();
+      const x = event?.clientX ?? rect.left;
+      const y = event?.clientY ?? rect.bottom;
+      teamColorDialog.style.left = Math.max(8, Math.min(x + 12, innerWidth - popupRect.width - 8)) + 'px';
+      teamColorDialog.style.top = Math.max(8, Math.min(y + 12, innerHeight - popupRect.height - 8)) + 'px';
+    };
+    const choose = event => {
+      event.stopPropagation?.();
+      const rect = document.getElementById(side + 'Card').getBoundingClientRect();
+      window.openScoreboardTeamEditMenu(side, event.clientX ?? rect.left, event.clientY ?? rect.bottom);
+    };
+    chip.addEventListener('click', choose);
+    chip.openColorEditor = open;
+    const teamBox = document.getElementById(side + 'Card');
+    teamBox?.addEventListener('click', choose);
+    if (teamBox) {
+      teamBox.tabIndex = 0;
+      teamBox.setAttribute('role', 'button');
+      teamBox.setAttribute('aria-label', side === 'home' ? '홈 팀 이름·컬러 수정' : '원정 팀 이름·컬러 수정');
+      teamBox.addEventListener('keydown', event => {
+        if (event.target !== teamBox || !['Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        choose(event);
+      });
+    }
+    chip.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      choose(event);
+    });
+    const logoBox = document.getElementById(side === 'home' ? 'team-logo-left' : 'team-logo-right');
+    logoBox?.addEventListener('click', event => {
+      if (document.getElementById('board')?.dataset.fsmTheme === 'unl') choose(event);
+    });
+    logoBox?.addEventListener('keydown', event => {
+      if (document.getElementById('board')?.dataset.fsmTheme !== 'unl' || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      const bounds = logoBox.getBoundingClientRect();
+      choose({ clientX: bounds.left, clientY: bounds.bottom });
+    });
+    /** 로고 칸으로 팀컬러를 표현하는 네이션스리그에서만 로고에 키보드 편집 진입점을 둡니다. */
+    const syncLogoColorButton = () => {
+      const enabled = document.getElementById('board')?.dataset.fsmTheme === 'unl';
+      if (!logoBox) return;
+      if (enabled) {
+        logoBox.tabIndex = 0;
+        logoBox.setAttribute('role', 'button');
+        logoBox.setAttribute('aria-label', side === 'home' ? '홈 팀컬러 편집' : '원정 팀컬러 편집');
+      } else {
+        logoBox.removeAttribute('tabindex');
+        logoBox.removeAttribute('role');
+        logoBox.removeAttribute('aria-label');
+      }
+    };
+    new MutationObserver(syncLogoColorButton).observe(document.getElementById('board'), { attributes: true, attributeFilter: ['data-fsm-theme'] });
+    syncLogoColorButton();
+  });
+  /**
+   * 점수판에서 팀 이름 또는 팀컬러 편집을 선택하는 메뉴를 엽니다.
+   * @param {'home'|'away'} side 편집할 팀입니다.
+   * @param {number} x 메뉴를 열 화면의 가로 좌표입니다.
+   * @param {number} y 메뉴를 열 화면의 세로 좌표입니다.
+   */
+  window.openScoreboardTeamEditMenu = (side, x, y) => {
+    pmHideAll();
+    pmContainer().innerHTML = `<div class="pm-popup" id="scoreboardTeamEditMenu" role="dialog" aria-label="팀 수정 선택">
+      <button type="button" class="pm-btn" data-team-edit="name">팀이름 수정</button>
+      <button type="button" class="pm-btn" data-team-edit="color">팀컬러 수정</button>
+    </div>`;
+    const menu = document.getElementById('scoreboardTeamEditMenu');
+    pmPositionPopup(menu, x, y);
+    menu.querySelector('[data-team-edit="name"]').onclick = () => {
+      showTeamNicknameEditor(scoreboardTeamIdentity(side), x, y);
+    };
+    menu.querySelector('[data-team-edit="color"]').onclick = () => {
+      pmHideAll();
+      document.getElementById(side + 'Color').openColorEditor({ clientX: x, clientY: y });
+    };
+    menu.querySelector('button').focus();
+    return true;
+  };
+
+  // 수동 입력이 늘어나도 기본 패널 상단을 유지한다.
+  const themePanel = document.getElementById('themePanel');
+  /** 수동 입력 영역을 제외한 기본 높이를 기록하고, 수동 모드에서는 이미 정한 높이를 유지합니다. */
+  const syncThemePanelLimit = () => {
+    if (!themePanel?.offsetWidth || window.__POPOUT_MODE__) return;
+    if (state.manualMode && document.documentElement.style.getPropertyValue('--theme-panel-limit')) return;
+    const style = getComputedStyle(themePanel);
+    const children = [...themePanel.children].filter(node => node.id !== 'manual-section' && node.offsetHeight);
+    const height = children.reduce((sum, node) => {
+      const childStyle = getComputedStyle(node);
+      return sum + node.offsetHeight + parseFloat(childStyle.marginTop) + parseFloat(childStyle.marginBottom);
+    }, parseFloat(style.paddingTop) + parseFloat(style.paddingBottom))
+      + Math.max(0, children.length - 1) * parseFloat(style.rowGap);
+    document.documentElement.style.setProperty('--theme-panel-limit', `${Math.ceil(height)}px`);
+  };
+  const themePanelObserver = new ResizeObserver(syncThemePanelLimit);
+  [...themePanel.children].forEach(node => themePanelObserver.observe(node));
+  document.addEventListener('page:activated', () => requestAnimationFrame(syncThemePanelLimit));
+  window.addEventListener('resize', syncThemePanelLimit);
 
   // 선택한 팀의 배경색과 글자색을 서로 바꾸고 사용자 지정 색상으로 저장한다.
   function swapTeamColors(side){

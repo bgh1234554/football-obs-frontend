@@ -841,3 +841,49 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .sp-modal:has(#shortcutSettings:not([hidden])) {
   height: min(820px, calc(calc(var(--display-vh, 1vh) * 100) - 24px));
 }
+/* 테마와 빠른 편집에서 설정의 색상 입력 스타일을 공유한다. */
+.theme-color-editor { display: inline-flex; align-items: center; gap: 6px; }
+.theme-color-editor .sp-color-rgb label { margin: 0; }
+.theme-color-editor .sp-color-format-btn { padding: 0; }
+.team-color-dialog { color: #e5e7eb; background: #0b1220; border: 1px solid #ffffff30; border-radius: 14px; padding: 20px; max-width: calc(100vw - 32px); }
+.team-color-dialog::backdrop { background: #0008; }
+.team-color-dialog h3 { margin: 0 0 16px; }
+.team-color-dialog-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.team-color-dialog input[type=color] { width: 32px; height: 32px; padding: 0; border: 0; }
+#homeColor[role=button], #awayColor[role=button] { cursor: pointer; pointer-events: auto; }
+#homeColor:focus-visible, #awayColor:focus-visible { outline: 2px solid var(--control-accent); outline-offset: 2px; }
+.theme-color-editor { flex-wrap: wrap; }
+.theme-color-editor .sp-color-rgb input { width: 30px; height: 30px; padding: 0; }
+.theme-color-editor .sp-color-code { margin-left: 0 !important; }
+
+.team-color-dialog > button { color: #e5e7eb; background: #19273e; border: 1px solid #ffffff30; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+#scoreboardTeamEditMenu { display: flex; gap: 4px; width: max-content; min-width: 0; }
+
+/* ??? ?? ??? ?? ??? ???? ?? ?? ??? ????. */
+.team-color-dialog { position: fixed; inset: auto; margin: 0; padding: 12px; width: max-content; min-width: 0; max-width: calc(100vw - 24px); }
+.team-color-dialog::backdrop { background: transparent; }
+.team-color-dialog h3 { font-size: 14px; margin: 0 0 10px; }
+.team-color-dialog-row { gap: 8px; margin-bottom: 8px; flex-wrap: nowrap; font-size: 13px; }
+.team-color-dialog .theme-color-editor { display: grid; grid-template-columns: 32px 166px 32px; gap: 6px; align-items: center; }
+.team-color-dialog .sp-color-code { width: 166px !important; margin: 0 !important; font-family: inherit; font-size: 13px; }
+.team-color-dialog .sp-color-rgb { width: 166px; }
+.team-color-dialog .sp-color-rgb label { flex: 1; padding: 0 4px; gap: 3px; }
+.team-color-dialog .sp-color-rgb input { width: 29px; font-size: 13px; }
+.team-color-dialog .sp-color-code { height: 32px !important; }
+.team-color-dialog .theme-color-editor { height: 32px; }
+/* 닉네임 편집과 동일한 팝업 표면과 입력 디자인을 사용한다. */
+.team-color-dialog.pm-popup { background: rgba(18,18,32,.97); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; padding: 10px 12px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.65); color: #f0f0f0; }
+.team-color-dialog .pm-nick-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,.75); margin: 0 0 8px; }
+.team-color-dialog .pm-nick-input { background: rgba(255,255,255,.08) !important; border: 1px solid rgba(255,255,255,.2) !important; border-radius: 6px !important; color: #f0f0f0 !important; padding: 6px 8px !important; margin: 0 !important; outline: none; }
+.team-color-dialog .pm-nick-input:focus { border-color: #3b82f6 !important; }
+.team-color-dialog .sp-color-rgb { background: rgba(255,255,255,.08); border-radius: 6px; }
+.team-color-dialog > .pm-btn { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 6px; padding: 5px 12px; font-size: 12px; }
+.team-color-dialog.pm-popup { animation: none; }
+.fsm-board[data-fsm-theme="unl"] .team-logo { cursor: pointer; }
+/* 컬러 띠를 직접 가리킬 때 자식 이름 요소에도 클릭 포인터를 표시한다. */
+#board :is(#homeCard, #awayCard), #board :is(#homeCard, #awayCard) * { cursor: pointer; }
+.board.fsm-board[data-fsm-theme="kleague"] :is(.teams-left, .teams-right)::after { pointer-events: auto; }
+/* 장식 배경이 팀 이름 박스와 컬러 띠의 클릭을 가로채지 않게 한다. */
+.fsm-board .div-background { pointer-events: none; }
+#board :is(#homeCard, #awayCard):focus-visible { outline: 2px solid var(--control-accent); outline-offset: 2px; }
+#board.fsm-board[data-fsm-theme="kleague"] :is(.teams-left, .teams-right)::after { pointer-events: auto; cursor: pointer; }

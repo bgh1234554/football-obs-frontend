@@ -1,5 +1,6 @@
 // 설정 팝업 내부의 단축키 관리 화면
 (() => {
+  // 키 입력 대기 중인 기능과 관리 화면 진입 전 스크롤 위치를 따로 보관합니다.
   let editing=null, scrollTop=0;
   const history=[];
   const body=document.querySelector('.sp-body');
@@ -14,7 +15,9 @@
   const status=panel.querySelector('.sc-status');
   const search=panel.querySelector('input');
   function message(text){status.textContent=text;}
+  /** 저장된 키는 그대로 두고 새 키 입력 대기 상태만 취소합니다. */
   function stopEditing(){editing=null;renderShortcutSettings();}
+  /** 검색어에 맞는 기능을 그룹별로 그리고, 입력 대기 및 되돌리기 가능 상태를 갱신합니다. */
   window.renderShortcutSettings=function(){
     updateTacticsShortcutHints();
     panel.querySelector('#shortcutUndoBtn').disabled=!history.length;
@@ -34,6 +37,7 @@
     }
     if(!count){const empty=document.createElement('p');empty.className='sc-empty';empty.textContent='검색 결과가 없습니다.';rows.append(empty);}
   };
+  /** 저장 성공 시에만 이전 설정을 되돌리기 기록에 넣고, 실패하면 메모리 설정도 복원합니다. */
   function commit(action,key){
     const previous={...shortcutBindings};shortcutBindings[action[0]]=key;
     if(!saveShortcutBindings()){shortcutBindings=previous;message('저장하지 못했습니다. 브라우저 저장 공간을 확인하세요.');return;}
@@ -55,6 +59,7 @@
       hint.append(' · ',keycap(action),' '+action[2]);
     });
   }
+  /** 관리 화면을 닫고 기존 설정 화면의 스크롤과 선택적으로 실행 버튼의 포커스를 복원합니다. */
   function back(focus=true){
     editing=null;panel.hidden=true;tabs.hidden=false;document.getElementById('settingsTitle').textContent='설정';applySettingsTab('general');body.scrollTop=scrollTop;if(focus)document.getElementById('shortcutManageBtn').focus();
   }
@@ -73,11 +78,13 @@
     if(!confirm('모든 단축키를 기본값으로 복원할까요?'))return;
     const previous=shortcutBindings;shortcutBindings={};if(!saveShortcutBindings()){shortcutBindings=previous;message('저장하지 못했습니다. 브라우저 저장 공간을 확인하세요.');return;}history.push({...previous});stopEditing();updateHints();message('모든 단축키를 기본값으로 초기화했습니다.');
   };
+  // 입력 대기 중에는 전역 단축키보다 먼저 키를 받아 실제 기능 실행을 막습니다.
   window.addEventListener('keydown',event=>{
     if(panel.hidden || !isSettingsOpen())return;
     if(editing){
       event.preventDefault();event.stopImmediatePropagation();
       if(event.key==='Escape'){stopEditing();message('키 변경을 취소했습니다.');return;}
+      // 한글 조합, 키 반복, 보조 키만 누른 상태는 완성된 단축키로 저장하지 않습니다.
       if(event.isComposing || event.repeat || ['Control','Shift','Alt','Meta'].includes(event.key))return;
       const code=shortcutCode(event);
       if(!code || ['Tab','Enter','Backspace','Delete'].includes(code) && !event.ctrlKey && !event.altKey && !event.shiftKey){message('Tab, Enter, Backspace, Delete는 조합 키와 함께 사용하세요.');return;}

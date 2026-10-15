@@ -1634,7 +1634,7 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     "embedCode": "<div id=\"widget-627amqrnsb4o\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/623225f2a2303b43bc269a36?widgetId=627amqrnsb4o&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
   },
   {
-    "leagueId": null,
+    "leagueId": 50,
     "country": "England",
     "scoreaxisLeagueName": "National League North/South England",
     "embedCode": "<div id=\"widget-97mvmqrnsbwx\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/62322674bf1fa71a67215cae?widgetId=97mvmqrnsbwx&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
@@ -2840,7 +2840,7 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
     "embedCode": "<div id=\"widget-ico7mqrnvuiq\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/6232364e53237524a63b33fe?widgetId=ico7mqrnvuiq&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
   },
   {
-    "leagueId": null,
+    "leagueId": 369,
     "country": "Uzbekistan",
     "scoreaxisLeagueName": "Super League Uzbekistan",
     "embedCode": "<div id=\"widget-karpmqrnvz93\" class=\"scoreaxis-widget\" style=\"width: auto;height: auto;font-size: 14px;background-color: #0b1220;color: #f0f0f0;border: 1px solid;border-color: #2f3b52;overflow: auto;\"><script src=\"https://widgets.scoreaxis.com/api/football/league-table/6232262aa2303b43bc26a2d2?widgetId=karpmqrnvz93&lang=en&teamLogo=1&tableLines=1&homeAway=1&header=1&position=1&goals=1&gamesCount=1&diff=1&winCount=1&drawCount=1&loseCount=1&lastGames=1&points=1&teamsLimit=all&links=0&font=heebo&fontSize=14&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230b1220&textColor=%23f0f0f0&linkColor=%23ffffff&borderColor=%232f3b52&tabColor=%230b1220\" async></script><div class=\"widget-main-link\" style=\"padding: 6px 12px;font-weight: 500;\">Live data by <a href=\"https://www.scoreaxis.com/\" style=\"color: inherit;\">Scoreaxis</a></div></div>"
@@ -2903,6 +2903,13 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
 
 (function () {
   const entries = window.SCOREAXIS_STANDINGS_EMBEDS || [];
+  // ScoreAxis가 하나의 위젯으로 제공하는 대회의 API 리그 ID를 연결합니다.
+  const leagueIdAliases = Object.freeze({
+    51: 50,   // 내셔널리그 노스·사우스 통합 위젯
+    984: 50,  // 내셔널리그 노스 승격 플레이오프
+    985: 50,  // 내셔널리그 사우스 승격 플레이오프
+    1166: 15, // 확대 개편된 FIFA 클럽 월드컵
+  });
 
   /**
    * 값을 유한 숫자 리그 ID로 변환한다. 변환 불가능하면 null을 반환한다.
@@ -3027,8 +3034,9 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
    * @returns {Array} 매칭된 ScoreAxis embed 항목 배열. 없으면 빈 배열.
    */
   function resolveScoreaxisStandingsEmbeds(input) {
-    const leagueId = getFixtureLeagueId(input);
-    if (leagueId == null) return [];
+    const fixtureLeagueId = getFixtureLeagueId(input);
+    if (fixtureLeagueId == null) return [];
+    const leagueId = leagueIdAliases[fixtureLeagueId] ?? fixtureLeagueId;
 
     const candidates = entries.filter(entry => toFiniteLeagueId(entry.leagueId) === leagueId);
     if (!candidates.length) return [];

@@ -53,6 +53,7 @@
     const groups = [
       ['start', '시작하기'], ['broadcast', 'OBS 송출 환경'],
       ['guide', '데이터 안내'], ['keys', '단축키'],
+      ['scoreboard', '점수판 클릭 조작'],
       ['main', '메인 화면'], ['settings', '설정'], ['theme', '테마'],
       ['schedule', '일정'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
     ];
@@ -88,6 +89,7 @@
           : ['권장-환경', '송출-방식에-따른-차이'].includes(title) ? 'broadcast'
           : ['주요-안내-사항', '데이터가-없거나-잘못-표시될-때'].includes(title) ? 'guide'
           : title === '주요-키보드-단축키' ? 'keys'
+          : title === '점수판-클릭-조작' ? 'scoreboard'
           : title.startsWith('고급-팁') ? 'advanced' : 'info';
       } else if (featureSection && node.tagName === 'H3') {
         const title = aboutSlug(node.textContent);
@@ -100,6 +102,7 @@
       else if (group) sections.get(group).panel.append(node);
       else if (node.tagName === 'HR') node.remove();
     }
+    /** 선택한 본문과 탭의 접근성 상태를 맞추고, 문서 내 이동에서는 스크롤을 유지합니다. */
     function select(panel, { resetScroll = true, focus = false } = {}) {
       for (const { panel: item, button } of sections.values()) {
         const active = item === panel;
@@ -112,6 +115,7 @@
       restoreMenu();
       updateCurrentHeading();
     }
+    /** 모든 소메뉴를 닫으며 각 탭 버튼의 펼침 상태도 함께 갱신합니다. */
     function closeMenus() {
       for (const { button, menu } of sections.values()) {
         if (!menu) continue;
@@ -119,15 +123,18 @@
         button.setAttribute('aria-expanded', 'false');
       }
     }
+    /** 본문 탭을 바꾸지 않고 지정한 탭의 소메뉴만 열어 마우스 탐색을 지원합니다. */
     function openMenu(section) {
       closeMenus();
       section.menu.hidden = false;
       section.button.setAttribute('aria-expanded', 'true');
     }
+    /** 마우스나 포커스가 메뉴를 벗어나면 현재 본문에 해당하는 소메뉴로 돌아갑니다. */
     function restoreMenu() {
       const current = [...sections.values()].find(section => !section.panel.hidden);
       if (current) openMenu(current);
     }
+    /** 고정 메뉴 아래의 현재 제목을 표시하며, 본문 끝에서는 마지막 제목을 선택합니다. */
     function updateCurrentHeading() {
       const section = [...sections.values()].find(item => !item.panel.hidden);
       if (!section) return;
@@ -240,7 +247,13 @@
     }, { signal: aboutEl.aboutTabsController.signal });
     scrollPane?.addEventListener('scroll', updateCurrentHeading, { passive: true, signal: aboutEl.aboutTabsController.signal });
     window.addEventListener('resize', updateCurrentHeading, { signal: aboutEl.aboutTabsController.signal });
-    aboutEl.append(nav, ...[...sections.values()].map(item => item.panel));
+    // 메뉴와 본문을 서로 다른 영역에 두어 스크롤해도 글자가 겹치지 않게 합니다.
+    scrollPane.parentElement.querySelector('.about-header')?.remove();
+    const header = document.createElement('div');
+    header.className = 'about-header md-body';
+    header.append(...[...aboutEl.children].filter(node => node.tagName === 'H1' || node.tagName === 'P'), nav);
+    scrollPane.before(header);
+    aboutEl.append(...[...sections.values()].map(item => item.panel));
     select(sections.get('start').panel, { resetScroll: false });
     restoreMenu();
     updateCurrentHeading();

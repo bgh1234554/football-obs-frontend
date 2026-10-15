@@ -605,15 +605,16 @@
     }
 
     /* ========== 마크다운 렌더 ========== */
+    .about-header { flex: 0 0 auto; padding: 20px 24px 0; }
+    #page-about .panelBody { padding-top: 0 !important; }
     .about-tabs {
-      position: sticky;
-      top: -20px;
+      position: relative;
       z-index: 2;
       display: flex;
       flex-direction: column;
       gap: 10px;
       padding: 12px 0;
-      background: var(--panel, #111827);
+      background: transparent;
       border-bottom: 1px solid var(--line);
     }
     .about-tab-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1030,3 +1031,52 @@ html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; 
     color: var(--control-accent-on);
   }
 }
+/* 색상 입력을 하나의 행으로 묶어 HEX/RGB 전환 시에도 정렬을 유지한다. */
+#themePanel .theme-colors-card > .prow { display: flex; flex-wrap: wrap; gap: 10px 8px; }
+#themePanel .theme-colors-card .pgroup:has(.theme-color-editor) { flex: 0 0 auto; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor { gap: 4px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor input[type=color] { width: 24px; height: 28px; flex-basis: 24px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor input[type=text] { box-sizing: border-box; width: 72px !important; height: 28px !important; padding: 4px; font-family: inherit; font-size: 13px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-format-btn { width: 24px !important; height: 28px; flex-basis: 24px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .pgroup:has(.theme-color-editor) { grid-template-columns: auto; grid-template-rows: auto auto; min-width: 0; }
+#themePanel .theme-color-editor { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+#themePanel .theme-color-editor input[type=color] { flex: 0 0 32px; }
+#themePanel .theme-color-editor .sp-color-format-btn { width: 32px !important; height: 32px; padding: 0; flex: 0 0 32px; }
+#themePanel .theme-color-editor .sp-color-rgb input { width: 30px; height: 30px; padding: 0; }
+#themePanel .theme-notes-card > .prow { flex-wrap: wrap; }
+#themePanel .theme-notes-card .pgroup:has(.theme-color-editor) { min-width: 200px; }
+
+/* RGB ? ??? HEX ??? ?? ?? ??? ?? ??? ????. */
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor { width: 128px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-rgb { width: 72px; height: 28px; flex: 0 0 72px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-rgb label { display: flex; flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 0; padding: 0; font-size: 8px; line-height: 9px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-rgb input { width: 100%; min-width: 0; height: 16px; padding: 0; font-family: inherit; font-size: 11px; line-height: 16px; }
+
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor:has(.sp-color-rgb:not([hidden])) input[type=color] { display: none; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-rgb { width: 100px; flex-basis: 100px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-rgb label { font-size: 9px; line-height: 10px; }
+#themePanel :is(.theme-colors-card, .theme-notes-card) .theme-color-editor .sp-color-rgb input { font-size: 13px; height: 16px; }
+/* 팀별 배경과 글자를 위아래로 배치한다. */
+#themePanel .theme-colors-card > .prow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#themePanel .theme-colors-card .pgroup:has(#inHomeBg) { grid-column: 1; grid-row: 1; }
+#themePanel .theme-colors-card .pgroup:has(#inHomeText) { grid-column: 1; grid-row: 2; }
+#themePanel .theme-colors-card .pgroup:has(#inAwayBg) { grid-column: 2; grid-row: 1; }
+#themePanel .theme-colors-card .pgroup:has(#inAwayText) { grid-column: 2; grid-row: 2; }
+#themePanel .theme-colors-card .pgroup:has(#inPkGoal) { grid-column: 3; grid-row: 1; }
+#themePanel .theme-colors-card .pgroup:has(#inPkMiss) { grid-column: 3; grid-row: 2; }
+#themePanel .theme-colors-card .theme-color-editor { width: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr) 26px; gap: 4px; height: 32px; }
+#themePanel .theme-colors-card .theme-color-editor input[type=text] { width: 100% !important; height: 32px !important; font-family: inherit; font-size: 13px; }
+#themePanel .theme-colors-card .theme-color-editor:has(.sp-color-rgb:not([hidden])) input[type=color] { display: block; width: 28px; }
+#themePanel .theme-colors-card .theme-color-editor .sp-color-rgb { width: 100%; height: 32px; }
+#themePanel .theme-colors-card .theme-color-editor .sp-color-rgb label { flex-direction: row; padding: 0 3px; gap: 2px; font-size: 10px; }
+#themePanel .theme-colors-card .theme-color-editor .sp-color-rgb input { width: 100%; min-width: 0; height: 30px; font-size: 13px; }
+#themePanel .theme-colors-card .theme-color-editor .sp-color-format-btn { width: 26px !important; height: 32px; }
+#themePanel .theme-notes-card .theme-color-editor { width: 144px; }
+#themePanel .theme-notes-card .theme-color-editor input[type=text] { width: 88px !important; }
+#themePanel .theme-notes-card .theme-color-editor .sp-color-rgb { width: 116px; flex-basis: 116px; height: 32px; }
+#themePanel .theme-notes-card .theme-color-editor .sp-color-rgb input { height: 18px; }
+#themePanel .theme-colors-card .pgroup:has(input[type=color]) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 32px; }
+#themePanel .theme-colors-card .theme-color-editor .sp-color-rgb label { min-width: 0; }
+#themePanel .theme-colors-card .theme-color-editor .sp-color-rgb input { flex: 1; }
+/* 수동 입력은 기본 패널 영역 안에서 스크롤하며 미리보기 영역을 침범하지 않는다. */
+html:not(.is-popout) .pages:has(> #page-theme.active) { max-height: var(--theme-panel-limit); }

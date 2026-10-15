@@ -37,6 +37,8 @@ const LEAGUE_THEME_MAP = {
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
   144: { theme: 'belgian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelgianProLeague.svg', type: 'club' },
   203: { theme: 'superlig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishSuperLig.svg', type: 'club' },
+  204: { theme: 'tff1lig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TFF1Lig.svg', type: 'club' },
+  206: { theme: 'turkishcup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishCup.svg', type: 'club' },
   235: { theme: 'rpl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg', type: 'club' },  // Russian Premier League - API logo
   236: { theme: 'fnl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianFirstLeague.svg', type: 'club' },
   1025: { theme: 'fnl2a', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueA.svg', type: 'club' },
@@ -97,7 +99,7 @@ const FSM_THEMES = Object.freeze({
   //UEFA 계수 4,5위
   bundes: '분데스리가', bundes2: '2. 분데스리가', ligue1: '리그 1', ligue2: '리그 2', coupedefrance: '쿠프 드 프랑스',
   //UEFA 계수 6~9위
-  ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그',
+  ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그', tff1lig: 'TFF 1. 리그', turkishcup: '튀르키예 쿠파스',
   //러시아
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B', russiancup: '러시아 컵',
   //기타 유럽 리그 (가능하면 UEFA 남자 국가 계수 순)
@@ -121,7 +123,7 @@ const FSM_THEMES = Object.freeze({
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
 // 리그별 확인 근거와 시즌 예외는 about.md의 합계 점수 안내를 참고합니다.
 const FSM_AGGREGATE_THEMES = Object.freeze([
-  'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup',
+  'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
   'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
   'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
   'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
@@ -454,6 +456,11 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_LIBERTADORES.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'turkishcup':
+    case 'tff1lig':
+      changeCSS('css/theme/result_style_TFF1LIG.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'belgian':
       changeCSS('css/theme/result_style_BELGIAN.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -584,7 +591,7 @@ function applyTheme(theme, logoUrl) {
   }
 }
 
-  /** 팀 이름·점수 등 점수판 텍스트를 state 기준으로 다시 채운다 (FSM 원본의 data 대신 state를 읽도록 수정). */
+  /** 현재 상태를 점수판에 반영하고 테마별 합계 점수·타이머·숫자 위치를 맞춥니다. */
   function applyText() {
     applyFsmChromaTheme();
     const board = document.querySelector('.fsm-board');
@@ -643,6 +650,7 @@ function applyTheme(theme, logoUrl) {
     board.dataset.fsmAggregate = String(supportsAggregate && !!state.aggEnabled);
     // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않습니다.
     const fixedAggregatePalette = {
+      turkishcup: ['#08151B', '#ffffff'], tff1lig: ['#08151B', '#ffffff'],
       aleague: ['#141993', '#ffffff'],
       brazilseriea: ['transparent', '#ffffff'],
       saudikingscup: ['#B7993C', '#22242A'],
@@ -847,7 +855,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -1264,7 +1272,7 @@ function adjustScoreboardWidth() {
     cnl: ['#031F98', '#ffffff'],
     ligue1: ['#ffffff', '#000000'], ligue2: ['#ffffff', '#000000'],
     ligaportugal: ['#ffffff', '#102556'], eredivisie: ['#d1d1d1', '#0a0a0a'],
-    concacafcc: ['#01FCDA', '#001021'], cafcc: ['#787F7E', '#ffffff'], cafcl: ['#B0902E', '#ffffff'], recopa: ['#77F8FB', '#000000'], sudamericana: ['#ffffff', '#000000'], libertadores: ['#F2DA82', '#000000'], belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
+    concacafcc: ['#01FCDA', '#001021'], cafcc: ['#787F7E', '#ffffff'], cafcl: ['#B0902E', '#ffffff'], recopa: ['#77F8FB', '#000000'], sudamericana: ['#ffffff', '#000000'], libertadores: ['#F2DA82', '#000000'], turkishcup: ['#E51636', '#ffffff'], tff1lig: ['#ffffff', '#08151B'], belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
     uel: ['#ffffff', '#000000'], uecl: ['#ffffff', '#000000'], acle: ['#ffffff', '#000000'],
     unl: ['#48516E', '#ffffff'], er24: ['#ffffff', '#000000'],
     russiancup: ['#162940', '#ffffff'],
@@ -1278,12 +1286,68 @@ function adjustScoreboardWidth() {
     mls: ['#e1e3e7', '#000000'], wc26: ['#A0FBDC', '#000000'],
   });
 
-  /** 경기 상태에 따라 승부차기 영역을 표시하고 테마 색상·위치와 양 팀 기록을 갱신합니다. */
+  /** PSO 띠 아래의 빠른 입력과 기존 테마 입력 버튼을 연결합니다. */
+  function initPsoQuickControls(board) {
+    const status = board.querySelector('.pso-status');
+    const main = status.querySelector('.pso-main');
+    let panel = status.querySelector('#boardPsoControls');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'boardPsoControls';
+      panel.hidden = true;
+      panel.innerHTML = `<div class="pso-quick-row"><div class="pso-quick-team"><button type="button" data-pso-action="pkHomeGoal" aria-label="홈 성공">S</button><button type="button" data-pso-action="pkHomeMiss" aria-label="홈 실패">F</button></div><div class="pso-quick-middle"><button type="button" data-pso-action="pkUndo" aria-label="되돌리기" title="되돌리기">↶</button><button type="button" data-pso-action="pkReset" aria-label="초기화" title="초기화">×</button></div><div class="pso-quick-team"><button type="button" data-pso-action="pkAwayGoal" aria-label="원정 성공">S</button><button type="button" data-pso-action="pkAwayMiss" aria-label="원정 실패">F</button></div></div><div class="pso-quick-hint"></div>`;
+      status.append(panel);
+      /** 클릭·포커스 이동·Esc가 같은 닫힘 상태와 접근성 속성을 사용합니다. */
+      const close = () => { panel.hidden = true; main.setAttribute('aria-expanded', 'false'); };
+      const toggle = () => { panel.hidden = !panel.hidden; main.setAttribute('aria-expanded', String(!panel.hidden)); };
+      main.tabIndex = 0;
+      main.setAttribute('role', 'button');
+      main.setAttribute('aria-label', '승부차기 입력 열기');
+      main.setAttribute('aria-controls', panel.id);
+      main.setAttribute('aria-expanded', 'false');
+      main.addEventListener('click', toggle);
+      main.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); }
+      });
+      panel.addEventListener('click', event => {
+        const action = event.target.closest('[data-pso-action]')?.dataset.psoAction;
+        if (action && state.half === 'PK') document.getElementById(action)?.click();
+      });
+      document.addEventListener('pointerdown', event => { if (!status.contains(event.target)) close(); });
+      document.addEventListener('focusin', event => { if (!status.contains(event.target)) close(); });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) { close(); main.focus({preventScroll: true}); }
+      });
+    }
+    // 가운데 글자의 여백까지 공유해 버튼과 공 영역의 경계를 맞춥니다.
+    const middle = main.querySelector('.pso-middle');
+    const style = getComputedStyle(middle);
+    panel.style.setProperty('--pso-middle-width', `${middle.offsetWidth + parseFloat(style.marginLeft) + parseFloat(style.marginRight)}px`);
+    const hint = document.getElementById('psoControlHint');
+    if (hint) {
+      const keys = [...hint.querySelectorAll('.kbd')];
+      const input = document.createElement('span');
+      const history = document.createElement('span');
+      const key = index => keys[index]?.cloneNode(true) || document.createTextNode('');
+      input.append('홈 성공/실패 ', key(0), '/', key(1), ' · 원정 성공/실패 ', key(2), '/', key(3));
+      history.append('되돌리기 ', key(4), ' · 초기화 ', key(5));
+      panel.querySelector('.pso-quick-hint').replaceChildren(input, history);
+    }
+    panel.querySelectorAll('.pso-quick-team button').forEach(button => {
+      button.textContent = button.dataset.psoAction.endsWith('Goal') ? '성공' : '실패';
+    });
+  }
+
+  /** 승부차기 상태에서만 타이머 위치에 PSO를 표시하고 기록·테마 색상·서든데스 폭을 맞춥니다. */
   function applyPSO() {
     const isPso = state.half === 'PK';
     setFsmStyle('.fsm-board .pso-status', {height: isPso ? 'auto' : '0'});
     document.querySelector('.fsm-board').dataset.fsmPso = String(isPso);
-    if (!isPso) return;
+    if (!isPso) {
+      document.querySelector('#boardPsoControls')?.setAttribute('hidden', '');
+      document.querySelector('.pso-main[role="button"]')?.setAttribute('aria-expanded', 'false');
+      return;
+    }
     const board = document.querySelector('.fsm-board');
     const clock = board.querySelector('.time');
     const boardRect = board.getBoundingClientRect();
@@ -1296,6 +1360,7 @@ function adjustScoreboardWidth() {
     const homePso = toPsoArr(state.pk.home);  // 'G'/'M' → [1,0,-1,...] 변환
     const awayPso = toPsoArr(state.pk.away);
 
+    initPsoQuickControls(board);
     [homePso, awayPso].forEach((attempts, side) => {
       const list = document.querySelector(side === 0 ? '#pso-left ul' : '#pso-right ul');
       if (!list) return;
@@ -1306,6 +1371,13 @@ function adjustScoreboardWidth() {
         return item;
       }));
     });
+    // 서든데스에서는 공을 줄바꿈하지 않고 양쪽 영역을 같은 폭으로 늘립니다.
+    const circle = board.querySelector('.pso-circle');
+    const circleStyle = getComputedStyle(circle);
+    const slotWidth = circle.offsetWidth + parseFloat(circleStyle.marginLeft) + parseFloat(circleStyle.marginRight);
+    const middleWidth = parseFloat(board.querySelector('#boardPsoControls').style.getPropertyValue('--pso-middle-width'));
+    const count = Math.max(homePso.length, awayPso.length);
+    board.querySelector('.pso-status').style.width = `${Math.max(360, 5 * slotWidth * 2 + middleWidth) + Math.max(0, count - 5) * slotWidth * 2}px`;
   }
 
   /**
