@@ -16,7 +16,7 @@ const { openPage, settle } = require('../tactics/helpers');
       'default', 'cl', 'uel', 'uecl', 'acle', 'russiancup',
       'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
       'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
-      'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'libertadores', 'sudamericana', 'recopa'
+      'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc'
     ]);
     for (const theme of themes) {
       await page.evaluate(theme => {
