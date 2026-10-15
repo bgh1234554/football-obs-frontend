@@ -12,6 +12,18 @@ await page.evaluate(({theme,scale})=>{state.manualMode=true;state.half='PK';stat
 await page.waitForFunction(()=>!pendingThemeLink);
 await page.locator('.pso-main').click();
 assert(await page.locator('#boardPsoControls').isVisible(),theme);
+await page.locator('.pso-main').focus();
+await page.locator('[data-pso-action=pkHomeGoal]').focus();
+assert(await page.locator('[data-pso-action=pkHomeGoal]').evaluate(n=>n===document.activeElement),theme+' focus enters controls');
+assert(await page.locator('#boardPsoControls').isVisible(),theme+' internal focus keeps panel open');
+await page.locator('.pso-main').focus();
+assert(await page.locator('#boardPsoControls').isVisible(),theme+' display focus keeps panel open');
+await page.evaluate(()=>{const target=document.createElement('button');target.id='psoOutsideFocus';document.body.append(target);target.focus();});
+assert(!(await page.locator('#boardPsoControls').isVisible()),theme+' outside focus closes panel');
+assert.equal(await page.locator('.pso-main').getAttribute('aria-expanded'),'false');
+await page.locator('#psoOutsideFocus').evaluate(n=>n.remove());
+await page.locator('.pso-main').click();
+assert.equal(await page.locator('.pso-main').getAttribute('aria-expanded'),'true');
 assert(await page.locator('#boardPsoControls .kbd').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).color==='rgb(255, 255, 255)')),theme+' keycap color');
 assert(await page.locator('#boardPsoControls').evaluate(n=>{const p=getComputedStyle(document.querySelector('.pso-main')),m=getComputedStyle(n);return m.backgroundColor===p.color && m.color===p.backgroundColor}),theme+' inverted palette');
 for(const id of ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss'])await page.locator(`[data-pso-action=${id}]`).click();

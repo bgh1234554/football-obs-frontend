@@ -24,14 +24,15 @@
   /** #RGB 또는 #RRGGBB 형식의 HEX 색상 문자열을 정규화. 유효하지 않으면 null 반환 */
   function normalizeHex(v){ if(!v) return null; v=String(v).trim(); if(/^#?[0-9a-fA-F]{3}$/.test(v)){ const h=v.replace('#',''); return '#'+h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; } if(/^#?[0-9a-fA-F]{6}$/.test(v)) return '#'+v.replace('#','').toLowerCase(); return null; }
 
-  /**
-   * 색상 피커(input[type=color])와 HEX 텍스트 입력 필드를 양방향으로 연결.
-   * 어느 쪽을 변경해도 state, CSS 변수, 상대 필드가 모두 동기화됨.
-   */
   // 사용자가 테마 탭에서 직접 만지면 state.teamColorOverride=true로 마킹할 키 목록.
   // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드.
   const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
+  /**
+   * 색상 상태와 입력기를 함께 갱신하고, 실제 변경이 있을 때 저장·렌더링·알림을 수행합니다.
+   * @param {Object<string,string>} updates 변경할 색상 키와 HEX 값입니다.
+   * @param {boolean} [syncColorInput=true] 색상 선택기의 값도 함께 동기화할지 지정합니다.
+   */
   function commitThemeColors(updates, syncColorInput = true) {
     const keys = Object.keys(updates);
     const changed = keys.some(key => state.colors[key] !== updates[key]);
@@ -106,6 +107,7 @@
       updateToggle();
       (rgb.hidden ? hexInput : rgb.querySelector('input')).focus();
     });
+    /** 세 채널이 모두 유효할 때만 HEX로 변환해 저장해, 입력 중인 빈 칸은 색상에 반영하지 않습니다. */
     const commitRgb = () => {
       const inputs = [...rgb.querySelectorAll('input')];
       if (inputs.some(input => input.value === '' || !input.validity.valid)) return false;
@@ -161,6 +163,7 @@
   teamColorDialog.setAttribute('role', 'dialog');
   document.body.append(teamColorDialog);
   let quickColorAbort;
+  /** 닫힌 팝업의 동기화 이벤트를 해제해 다음 편집창에 이전 입력기가 남지 않게 합니다. */
   const restoreColorEditors = () => {
     quickColorAbort?.abort();
     teamColorDialog.replaceChildren();
@@ -174,6 +177,7 @@
     chip.tabIndex = 0;
     chip.setAttribute('role', 'button');
     chip.setAttribute('aria-label', side === 'home' ? '홈 팀컬러 편집' : '원정 팀컬러 편집');
+    /** 해당 팀의 편집 입력기를 새로 만들고 클릭 위치에서 화면을 벗어나지 않도록 엽니다. */
     const open = (event) => {
       teamColorDialog.hidePopover();
       restoreColorEditors();
@@ -262,6 +266,7 @@
       const bounds = logoBox.getBoundingClientRect();
       choose({ clientX: bounds.left, clientY: bounds.bottom });
     });
+    /** 로고 칸으로 팀컬러를 표현하는 네이션스리그에서만 로고에 키보드 편집 진입점을 둡니다. */
     const syncLogoColorButton = () => {
       const enabled = document.getElementById('board')?.dataset.fsmTheme === 'unl';
       if (!logoBox) return;
@@ -278,6 +283,12 @@
     new MutationObserver(syncLogoColorButton).observe(document.getElementById('board'), { attributes: true, attributeFilter: ['data-fsm-theme'] });
     syncLogoColorButton();
   });
+  /**
+   * 점수판에서 팀 이름 또는 팀컬러 편집을 선택하는 메뉴를 엽니다.
+   * @param {'home'|'away'} side 편집할 팀입니다.
+   * @param {number} x 메뉴를 열 화면의 가로 좌표입니다.
+   * @param {number} y 메뉴를 열 화면의 세로 좌표입니다.
+   */
   window.openScoreboardTeamEditMenu = (side, x, y) => {
     pmHideAll();
     pmContainer().innerHTML = `<div class="pm-popup" id="scoreboardTeamEditMenu" role="dialog" aria-label="팀 수정 선택">
@@ -299,6 +310,7 @@
 
   // 수동 입력이 늘어나도 기본 패널 상단을 유지한다.
   const themePanel = document.getElementById('themePanel');
+  /** 수동 입력 영역을 제외한 기본 높이를 기록하고, 수동 모드에서는 이미 정한 높이를 유지합니다. */
   const syncThemePanelLimit = () => {
     if (!themePanel?.offsetWidth || window.__POPOUT_MODE__) return;
     if (state.manualMode && document.documentElement.style.getPropertyValue('--theme-panel-limit')) return;

@@ -591,7 +591,7 @@ function applyTheme(theme, logoUrl) {
   }
 }
 
-  /** 팀 이름·점수 등 점수판 텍스트를 state 기준으로 다시 채운다 (FSM 원본의 data 대신 state를 읽도록 수정). */
+  /** 현재 상태를 점수판에 반영하고 테마별 합계 점수·타이머·숫자 위치를 맞춥니다. */
   function applyText() {
     applyFsmChromaTheme();
     const board = document.querySelector('.fsm-board');
@@ -1297,6 +1297,7 @@ function adjustScoreboardWidth() {
       panel.hidden = true;
       panel.innerHTML = `<div class="pso-quick-row"><div class="pso-quick-team"><button type="button" data-pso-action="pkHomeGoal" aria-label="홈 성공">S</button><button type="button" data-pso-action="pkHomeMiss" aria-label="홈 실패">F</button></div><div class="pso-quick-middle"><button type="button" data-pso-action="pkUndo" aria-label="되돌리기" title="되돌리기">↶</button><button type="button" data-pso-action="pkReset" aria-label="초기화" title="초기화">×</button></div><div class="pso-quick-team"><button type="button" data-pso-action="pkAwayGoal" aria-label="원정 성공">S</button><button type="button" data-pso-action="pkAwayMiss" aria-label="원정 실패">F</button></div></div><div class="pso-quick-hint"></div>`;
       status.append(panel);
+      /** 클릭·포커스 이동·Esc가 같은 닫힘 상태와 접근성 속성을 사용합니다. */
       const close = () => { panel.hidden = true; main.setAttribute('aria-expanded', 'false'); };
       const toggle = () => { panel.hidden = !panel.hidden; main.setAttribute('aria-expanded', String(!panel.hidden)); };
       main.tabIndex = 0;
@@ -1313,6 +1314,7 @@ function adjustScoreboardWidth() {
         if (action && state.half === 'PK') document.getElementById(action)?.click();
       });
       document.addEventListener('pointerdown', event => { if (!status.contains(event.target)) close(); });
+      document.addEventListener('focusin', event => { if (!status.contains(event.target)) close(); });
       document.addEventListener('keydown', event => {
         if (event.key === 'Escape' && !panel.hidden) { close(); main.focus({preventScroll: true}); }
       });
@@ -1336,6 +1338,7 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /** 승부차기 상태에서만 타이머 위치에 PSO를 표시하고 기록·테마 색상·서든데스 폭을 맞춥니다. */
   function applyPSO() {
     const isPso = state.half === 'PK';
     setFsmStyle('.fsm-board .pso-status', {height: isPso ? 'auto' : '0'});

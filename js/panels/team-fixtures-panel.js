@@ -4,6 +4,7 @@
   let fixture = null;
   let page = 0;
   let bigPage = 0;
+  // 초기화 이전에 시작한 요청이 새 경기의 결과를 덮어쓰지 않도록 세대를 구분합니다.
   let sequence = 0;
   let dataRows = {};
   let pending = {};
@@ -16,6 +17,13 @@
     return el;
   };
 
+  /**
+   * 팀·기간별 요청 Promise를 12시간 공유해 두 캠에서 같은 데이터를 중복 요청하지 않습니다.
+   * 실패한 요청은 자신의 캐시 항목만 지워 다음 조회에서 재시도할 수 있게 합니다.
+   * @param {number|string} teamId 조회할 팀 ID입니다.
+   * @param {'last'|'next'} period 최근 경기 또는 예정 경기입니다.
+   * @returns {Promise<Object>} 팀의 경기 목록 응답입니다.
+   */
   function load(teamId, period) {
     const key = `${teamId}:${period}`;
     const entry = cache.get(key);
@@ -181,6 +189,7 @@
           const scale = rect.width / (label.offsetWidth || 1);
           return range.getBoundingClientRect().width <= rect.width - (parseFloat(css.paddingLeft) + parseFloat(css.paddingRight)) * scale + 1;
         };
+        /** 원래 글자 크기부터 다시 측정해 긴 이름·단축명 모두 같은 기준으로 맞춥니다. */
         const shrink = () => {
           for (let size = initialSize; size >= 9; size -= 0.5) {
             label.style.fontSize = `${size}px`;
@@ -208,6 +217,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const widths = new WeakMap();
     const observer = new ResizeObserver(entries => {
+      // 높이 보정으로 다시 발생한 알림은 무시해 행 정렬이 반복되지 않게 합니다.
       if (entries.some(entry => {
         const changed = widths.get(entry.target) !== entry.contentRect.width;
         widths.set(entry.target, entry.contentRect.width);
@@ -217,6 +227,7 @@
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(el => observer.observe(el));
   });
 
+  /** 양 팀을 독립적으로 조회해 한쪽 실패도 표시하며, 경기 초기화 후의 응답은 버립니다. */
   async function refresh(viewPage = page) {
     const seq = sequence;
     const period = periods[viewPage];
@@ -233,6 +244,7 @@
     pending[period] = request;
     return request;
   }
+  /** 작은 캠을 최근 경기 페이지로 열고, 같은 경기인지 확인한 뒤 데이터를 불러옵니다. */
   window.teamFixturesShow = data => {
     if (!hthGetTeamIds(data)) return;
     window.teamFixturesSync(data);
@@ -241,6 +253,7 @@
     hthSetMode('fixtures');
     refresh();
   };
+  /** 요청 세대를 바꿔 진행 중 응답을 무효화하고 양 캠의 표시 상태를 비웁니다. */
   window.teamFixturesReset = () => {
     sequence++;
     fixture = null;
@@ -251,6 +264,7 @@
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(el => el.replaceChildren());
   };
   // 큰 캠은 작은 캠의 선택 페이지와 독립적으로 최근→예정 순환한다.
+  /** 큰 캠의 페이지를 선택하고, 양 팀 캐시와 표시 데이터가 모두 유효하면 즉시 재사용합니다. */
   window.teamFixturesEnsure = (data, index = 0) => {
     if (!hthGetTeamIds(data)) return Promise.resolve();
     window.teamFixturesSync(data);
@@ -265,6 +279,7 @@
     return refresh(index);
   };
   // 경기 제거·수동 모드 진입에서도 이전 팀과 진행 중인 요청을 정리한다.
+  /** 경기 또는 팀 구성이 바뀌면 패널을 초기화하고, 같은 경기의 갱신 데이터는 유지합니다. */
   window.teamFixturesSync = data => {
     if (!fixture) return;
     const old = fixture.matchInfo;

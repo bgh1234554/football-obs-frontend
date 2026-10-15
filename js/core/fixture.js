@@ -584,6 +584,11 @@
   }
 
   window.canResetFixtureTeamColors = () => !!fixtureDataForColorReset()?.matchInfo;
+  /**
+   * 지정한 팀 또는 양 팀의 색상을 현재 경기의 자동 색상으로 되돌립니다.
+   * @param {'home'|'away'} [onlySide] 생략하면 양 팀을 초기화합니다.
+   * @returns {boolean} 초기화할 경기 정보가 있고 요청이 유효하면 true입니다.
+   */
   window.resetFixtureTeamColors = function(onlySide) {
     if (onlySide !== undefined && onlySide !== 'home' && onlySide !== 'away') return false;
     const data = fixtureDataForColorReset();
@@ -658,6 +663,12 @@
   // 첫 render는 기본색으로 즉시 끝내고, 로고 색상은 뒤늦게 도착하면 state.colors만 갱신한다.
   // _lastFixtureData.matchInfo는 API 원본 확인용으로 남겨 두기 때문에 여기서 수정하지 않는다.
   // 응답이 늦게 도착했거나 사용자가 컬러를 수동 수정한 경우에는 적용하지 않는다.
+  /**
+   * API 색상이 없는 팀의 로고 색상을 비동기로 추출해 적용합니다.
+   * @param {Object} data 색상을 적용할 경기 데이터입니다.
+   * @param {boolean} preserveTeamColors 사용자 지정 색상을 유지하면 추출을 생략합니다.
+   * @param {'home'|'away'} [onlySide] 한 팀만 초기화할 때 추출 대상을 제한합니다.
+   */
   function queueFixtureLogoTeamColorFallback(data, preserveTeamColors, onlySide) {
     if (preserveTeamColors) return;
     const matchInfo = data?.matchInfo || {};

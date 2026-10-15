@@ -1,19 +1,31 @@
 // 선수 ID 연결·빈 슬롯 입력에서 함께 사용하는 높이별 페이지 후보 선택기.
+/** 양의 안전한 정수만 선수 ID로 인정하며, 사용할 수 없는 값은 0으로 반환합니다. */
 function playerSearchId(value) {
   const text = String(value ?? '').trim();
   const id = /^[0-9]+$/.test(text) ? Number(text) : 0;
   return Number.isSafeInteger(id) && id > 0 ? id : 0;
 }
 
+/**
+ * API 검색 결과를 캐시하고 패널 높이에 맞는 화면 페이지로 나누어 관리합니다.
+ * @param {Object} options 검색 상태와 선택 결과를 전달할 콜백입니다.
+ * @param {Function} options.onChange 활성 상태에서 검색 상태가 바뀌면 호출합니다.
+ * @param {Function} options.onSelect 유효한 선수 후보를 선택하면 호출합니다.
+ * @param {Function} [options.isActive] 닫히거나 교체된 편집창에 결과를 적용하지 않도록 확인합니다.
+ * @returns {Object} 검색 상태와 검색·페이지 이동·선택 메서드입니다.
+ */
 function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
   const state = { query: '', pages: new Map(), rawPage: 1, localPage: 0, screenPage: 1, pageSize: 5, totalPages: 1, loading: false, message: '', selected: null };
+  // 새 검색이나 초기화 이후 도착한 이전 응답은 결과와 로딩 상태를 바꾸지 못합니다.
   let version = 0;
   const notify = () => { if (isActive()) onChange(state); };
   const current = () => state.pages.get(state.rawPage) || [];
+  /** API 페이지마다 화면에 나뉘는 페이지 수를 합쳐 사용자에게 보일 페이지 번호를 계산합니다. */
   const updateScreenPage = () => {
     state.screenPage = 1 + state.localPage;
     for (let page = 1; page < state.rawPage; page++) state.screenPage += Math.max(1, Math.ceil((state.pages.get(page)?.length || 0) / state.pageSize));
   };
+  /** API 페이지를 가져오거나 캐시에서 읽으며, localPage가 -1이면 해당 결과의 마지막 화면을 엽니다. */
   async function load(rawPage, localPage, screenPage) {
     const request = ++version;
     state.loading = true;
@@ -41,6 +53,7 @@ function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
   }
   return {
     state,
+    /** 패널 높이가 바뀌어도 기존 화면의 첫 후보가 포함된 페이지를 유지합니다. */
     setPageSize(size) {
       size = Math.max(1, Math.floor(size));
       if (size === state.pageSize) return;
@@ -51,6 +64,7 @@ function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
       notify();
     },
     reset() { ++version; state.loading = false; state.selected = null; state.pages.clear(); state.message = ''; },
+    /** 검색어를 검증하고 이전 결과를 비운 뒤 첫 API 페이지를 요청합니다. */
     async search(input) {
       ++version;
       const raw = String(input || '');
@@ -63,6 +77,7 @@ function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
       if (!/^[0-9]+$/.test(query) && [...query].length < 4) { state.message = '영문 이름을 4글자 이상 입력하세요'; notify(); return; }
       await load(1, 0, 1);
     },
+    /** 현재 API 결과 안에서 먼저 이동하고, 끝에 도달하면 앞뒤 API 페이지를 불러옵니다. */
     async move(direction) {
       if (state.loading || state.selected) return;
       const next = state.localPage + direction;
@@ -70,6 +85,7 @@ function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
       else if (direction > 0 && state.rawPage < state.totalPages) await load(state.rawPage + 1, 0, state.screenPage + 1);
       else if (direction < 0 && state.rawPage > 1) await load(state.rawPage - 1, -1, state.screenPage - 1);
     },
+    /** 화면 페이지의 상대 위치가 아닌 현재 API 결과 배열의 인덱스로 선수를 선택합니다. */
     choose(index) {
       if (state.loading) return;
       const player = current()[index];
@@ -81,6 +97,7 @@ function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
   };
 }
 
+/** 외부 검색 데이터는 이스케이프하고, 선택 상태·로딩 상태를 반영한 결과 목록을 만듭니다. */
 function playerSearchResultsHtml(search) {
   const s = search.state;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

@@ -1,4 +1,5 @@
 // 사용자 단축키 정의와 실행
+// 각 항목은 기능 ID, 그룹, 표시 이름, 기본 키 조합, 실행 함수 순서입니다.
 const shortcutActions = [
   ['clockToggle','타이머','시작 / 정지','Space',()=>{ window.toggleClockRunning ? window.toggleClockRunning() : state.running=!state.running; render(); persist(); }],
   ...[['clock0','00:00으로 초기화','KeyR',0],['clock45','45:00으로 초기화','KeyE',2700],['clock90','90:00으로 초기화','Shift+KeyR',5400],['clock105','105:00으로 초기화','Shift+KeyE',6300]].map(([id,label,key,seconds])=>[id,'타이머',label,key,()=>{ if(window.setClockSeconds) window.setClockSeconds(seconds); else {state.seconds=seconds;state.running=false;el.clock.textContent=fmtClock(seconds);} render();persist(); }]),
@@ -24,7 +25,9 @@ const shortcutActions = [
 const SHORTCUT_STORAGE_KEY='obs.shortcuts.v1';
 let shortcutBindings={};
 try { const saved=JSON.parse(localStorage.getItem(SHORTCUT_STORAGE_KEY)||'{}'); if(saved && typeof saved==='object') shortcutBindings=saved; } catch {}
+/** 저장된 빈 문자열은 해제 상태로 존중하며, 사용자 설정이 없을 때만 기본 키를 사용합니다. */
 function shortcutBinding(action){const value=shortcutBindings[action[0]];return typeof value==='string'?value:action[3];}
+/** event.code를 우선하고, 이를 제공하지 않는 OBS 환경에서는 가상 키와 key 값으로 보완합니다. */
 function shortcutCode(event){
   if(event.code && event.code!=='Unidentified')return event.code;
   // OBS 브라우저 소스에서의 단축키 대응
@@ -42,8 +45,11 @@ function shortcutCode(event){
   if(names[key])return names[key];
   return /^(Escape|Tab|Enter|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Arrow(Left|Right|Up|Down)|F([1-9]|1[0-9]|2[0-4]))$/.test(key || '')?key:'';
 }
+/** 보조 키를 일정한 순서로 합쳐 저장·충돌 검사·실행에서 같은 키 조합으로 비교합니다. */
 function shortcutKey(event){const code=shortcutCode(event);return code?[event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,code].filter(Boolean).join('+'):'';}
+/** 저장용 키 코드를 화면에 표시할 이름으로 바꾸며, 빈 값은 미지정으로 표시합니다. */
 function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').replace('Equal','=').replace('Minus','−').replace('BracketLeft','[').replace('BracketRight',']').split('+').join(' + ') : '미지정';}
+/** 점수판 테마 선택 옆의 이전·다음 단축키 안내를 현재 설정으로 갱신합니다. */
 function updateThemeCycleShortcutHint(){
   const hint=document.getElementById('themeCycleShortcutHint');
   if(!hint)return;
@@ -55,6 +61,7 @@ function updateThemeCycleShortcutHint(){
     row.append(key,' '+label);hint.append(row);
   }
 }
+/** 테마 전환 안내와 전술판 되돌리기·다시 실행 버튼의 툴팁을 함께 갱신합니다. */
 function updateTacticsShortcutHints(){
   updateThemeCycleShortcutHint();
   for(const [id,buttonId] of [['undo','td-undo-btn'],['redo','td-redo-btn']]){
@@ -63,6 +70,7 @@ function updateTacticsShortcutHints(){
     if(button)button.title=action[2]+' ('+shortcutLabel(shortcutBinding(action))+')';
   }
 }
+/** 저장 공간 접근에 실패하면 호출부가 이전 설정으로 되돌릴 수 있도록 false를 반환합니다. */
 function saveShortcutBindings(){try{localStorage.setItem(SHORTCUT_STORAGE_KEY,JSON.stringify(shortcutBindings));return true;}catch{return false;}}
 window.addEventListener('storage',event=>{if(event.key===SHORTCUT_STORAGE_KEY){try{shortcutBindings=JSON.parse(event.newValue||'{}')||{};}catch{shortcutBindings={};}window.renderShortcutSettings?.();}});
 window.addEventListener('keydown',event=>{

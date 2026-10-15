@@ -102,6 +102,7 @@
       else if (group) sections.get(group).panel.append(node);
       else if (node.tagName === 'HR') node.remove();
     }
+    /** 선택한 본문과 탭의 접근성 상태를 맞추고, 문서 내 이동에서는 스크롤을 유지합니다. */
     function select(panel, { resetScroll = true, focus = false } = {}) {
       for (const { panel: item, button } of sections.values()) {
         const active = item === panel;
@@ -114,6 +115,7 @@
       restoreMenu();
       updateCurrentHeading();
     }
+    /** 모든 소메뉴를 닫으며 각 탭 버튼의 펼침 상태도 함께 갱신합니다. */
     function closeMenus() {
       for (const { button, menu } of sections.values()) {
         if (!menu) continue;
@@ -121,15 +123,18 @@
         button.setAttribute('aria-expanded', 'false');
       }
     }
+    /** 본문 탭을 바꾸지 않고 지정한 탭의 소메뉴만 열어 마우스 탐색을 지원합니다. */
     function openMenu(section) {
       closeMenus();
       section.menu.hidden = false;
       section.button.setAttribute('aria-expanded', 'true');
     }
+    /** 마우스나 포커스가 메뉴를 벗어나면 현재 본문에 해당하는 소메뉴로 돌아갑니다. */
     function restoreMenu() {
       const current = [...sections.values()].find(section => !section.panel.hidden);
       if (current) openMenu(current);
     }
+    /** 고정 메뉴 아래의 현재 제목을 표시하며, 본문 끝에서는 마지막 제목을 선택합니다. */
     function updateCurrentHeading() {
       const section = [...sections.values()].find(item => !item.panel.hidden);
       if (!section) return;
