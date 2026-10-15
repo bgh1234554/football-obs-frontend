@@ -19,4 +19,6 @@ Node.js가 필요하다. 브라우저 테스트는 Playwright와 Chromium도 필
 
 점수판 검증은 `node tests/scoreboard/fsm-extra-editor.cjs`처럼 실행한다. 자동 생성 이미지는 `screenshots/tests/`에 저장한다. 공통 브라우저 설정과 결과물 폴더 준비는 `tactics/helpers.js`를 사용한다.
 
+CAF·남미·CONCACAF 클럽 대항전과 코파 이탈리아·쿠프 드 프랑스 점수판 테스트는 로고를 CDN URL에서 직접 불러오므로 인터넷 연결이 필요하다. 별도의 `football-obs-logo-cdn` 체크아웃이나 로고 이미지 복사 없이 위의 `npm test --prefix tests`로 실행한다.
+
 중복된 폭·긴 팀명 검증은 `scoreboard/fsm-board-layout.cjs`, K리그·세리에 A의 점수 경계 검증은 `scoreboard/fsm-score-edges.cjs`, EPL·네이션스리그의 글자 정렬 검증은 `scoreboard/fsm-name-vertical-alignment.cjs`로 합쳤다. 추가시간의 숨김 영역 클릭과 기존 편집 동작은 `scoreboard/fsm-extra-editor.cjs`에서 함께 검증한다. 소스에 폭 후보를 주입하던 일회성 비교 스크립트는 제거했다.
