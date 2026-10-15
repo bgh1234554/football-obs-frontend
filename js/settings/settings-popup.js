@@ -1410,20 +1410,20 @@ function getSwitchSides(category) {
  * 2) cluster 안의 좌/우 텍스트 라벨도 is-active 토글해 시각적으로 어느 쪽인지 표시.
  */
 function syncSwitchUi(category) {
-  const input = document.querySelector(`input[data-settings-cat="${category}"]`);
-  if (!input) return;
-
   const value = getSetting(category);
   const { off, on } = getSwitchSides(category);
-  input.checked = value === on;
+  // 일반 설정과 테마 탭에 있는 같은 옵션을 함께 동기화합니다.
+  document.querySelectorAll(`input[data-settings-cat="${category}"]`).forEach(input => {
+    input.checked = value === on;
 
-  const cluster = input.closest('.sp-toggle-cluster');
-  if (!cluster) return;
+    const cluster = input.closest('.sp-toggle-cluster');
+    if (!cluster) return;
 
-  const offEl = cluster.querySelector(`[data-side="${off}"]`);
-  const onEl = cluster.querySelector(`[data-side="${on}"]`);
-  if (offEl) offEl.classList.toggle('is-active', value === off);
-  if (onEl) onEl.classList.toggle('is-active', value === on);
+    const offEl = cluster.querySelector(`[data-side="${off}"]`);
+    const onEl = cluster.querySelector(`[data-side="${on}"]`);
+    if (offEl) offEl.classList.toggle('is-active', value === off);
+    if (onEl) onEl.classList.toggle('is-active', value === on);
+  });
   if (category === 'statCycleAuto' || category === 'statsAutoSwipe') {
     syncStatsAutoSwipeLockUi();
   }

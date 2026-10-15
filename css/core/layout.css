@@ -488,6 +488,8 @@
     #themePanel .theme-cycle-shortcut-hint > span { white-space: nowrap; }
     #themePanel .theme-selector-heading > label { margin: 0; white-space: nowrap; }
     #themePanel .theme-cycle-shortcut-hint .kbd { font-size: inherit; }
+    #themePanel .theme-notes-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    #themePanel .theme-notes-heading .section-title { margin: 0; white-space: nowrap; }
     #themePanel .theme-selector-card select { width: 100%; min-width: 0 !important; }
     #themePanel .theme-selector-card .pgroup { width: 100%; }
     #themePanel small { color: #a8b6cc; font-size: 11px; line-height: 1.5; }

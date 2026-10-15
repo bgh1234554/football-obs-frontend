@@ -10,6 +10,28 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 
 await page.setViewportSize({width:1920,height:1000});await page.locator('[data-page="theme"]').evaluate(n=>n.click());
 assert((await page.locator('.theme-shortcut-hint').textContent()).includes('105:00'));
+const heading=page.locator('.theme-notes-heading');
+const titleBox=await heading.locator('.section-title').boundingBox();const hintBox=await heading.locator('#noteSizeShortcutHint').boundingBox();
+assert(Math.abs(titleBox.y+titleBox.height/2-hintBox.y-hintBox.height/2)<2);
+const initialSize=await page.evaluate(()=>state.noteFontSize);
+await page.keyboard.press('Shift+Equal');assert.equal(await page.evaluate(()=>state.noteFontSize),initialSize+1);
+await page.keyboard.press('Shift+Minus');assert.equal(await page.evaluate(()=>state.noteFontSize),initialSize);
+await page.keyboard.press('Shift+NumpadAdd');assert.equal(await page.evaluate(()=>state.noteFontSize),initialSize+1);
+await page.keyboard.press('Shift+NumpadSubtract');assert.equal(await page.evaluate(()=>state.noteFontSize),initialSize);
+await page.evaluate(()=>{state.noteFontSize=10;render();});await page.keyboard.press('Shift+Minus');assert.equal(await page.evaluate(()=>state.noteFontSize),10);
+for(const category of ['noteShowPenaltyMisses','noteShowRedCards']){
+  const inputs=page.locator(`input[data-settings-cat="${category}"]`);assert.equal(await inputs.count(),2);
+  await inputs.last().evaluate(n=>n.click());assert.deepEqual(await inputs.evaluateAll(ns=>ns.map(n=>n.checked)),[false,false]);
+  await inputs.first().evaluate(n=>n.click());assert.deepEqual(await inputs.evaluateAll(ns=>ns.map(n=>n.checked)),[true,true]);
+}
+await page.evaluate(()=>{shortcutBindings.noteSizePlus='Alt+KeyU';saveShortcutBindings();renderShortcutSettings();});
+assert((await page.locator('#noteSizeShortcutHint').textContent()).includes('Alt + U'));
+await page.keyboard.press('Shift+Equal');assert.equal(await page.evaluate(()=>state.noteFontSize),10);
+await page.keyboard.press('Shift+NumpadAdd');assert.equal(await page.evaluate(()=>state.noteFontSize),10);
+await page.keyboard.press('Alt+u');assert.equal(await page.evaluate(()=>state.noteFontSize),11);
+await page.reload();assert.equal(await page.evaluate(()=>state.noteFontSize),11);
+assert((await page.locator('#noteSizeShortcutHint').textContent()).includes('Alt + U'));
+await page.locator('[data-page="theme"]').evaluate(n=>n.click());
 for(const [key,seconds] of [['r',0],['e',2700],['Shift+r',5400],['Shift+e',6300]]){await page.keyboard.press(key);assert.equal(await page.evaluate(()=>state.seconds),seconds);}
 await page.locator('#settingsGearBtn').evaluate(n=>n.click());await page.locator('[data-sp-tab="general"]').click();
 const ys=await page.locator('.sp-row-manual-reset:has(#mrResetLineup) .sp-mini-toggle-item').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().top));assert.equal(ys.length,6);assert(Math.max(...ys)-Math.min(...ys)<1,JSON.stringify(ys));

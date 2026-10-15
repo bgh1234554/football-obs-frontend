@@ -17,6 +17,7 @@ const shortcutActions = [
   ['fullscreen','전술판','전체화면 전환','Backslash',()=>{if(document.getElementById('page-tactics')?.classList.contains('active'))tacticsToggleFullscreen();}],
   ['themePrevious','점수판','이전 점수판','Shift+BracketLeft',()=>cycleFsmTheme(-1)],
   ['themeNext','점수판','다음 점수판','Shift+BracketRight',()=>cycleFsmTheme(1)],
+  ...[['noteSizePlus','글자 크기 +1px','Shift+Equal',1],['noteSizeMinus','글자 크기 −1px','Shift+Minus',-1]].map(([id,label,key,delta])=>[id,'득점자 표시',label,key,()=>{state.noteFontSize=Math.max(10,(state.noteFontSize??18)+delta);render();persist();}]),
   ['tabs','화면 이동','탭바 표시 / 숨기기','KeyH',()=>toggleTabsAndPages()],
   ...['main-big','main-small','theme','schedule','tactics','about'].map((page,i)=>['page'+i,'화면 이동',['캠 큼','캠 작음','테마','일정','전술판','소개'][i]+' 화면','Digit'+(i+1),()=>activatePage(page)]),
   ['fixture','화면 이동','경기 ID 입력','Digit7',()=>document.getElementById('open-fixture-overlay')?.click()],
@@ -64,6 +65,15 @@ function updateThemeCycleShortcutHint(){
 /** 테마 전환 안내와 전술판 되돌리기·다시 실행 버튼의 툴팁을 함께 갱신합니다. */
 function updateTacticsShortcutHints(){
   updateThemeCycleShortcutHint();
+  const hint=document.getElementById('noteSizeShortcutHint');
+  if(hint){
+    hint.replaceChildren('글자 크기 ');
+    for(const [id,label] of [['noteSizePlus','키우기'],['noteSizeMinus','줄이기']]){
+      const action=shortcutActions.find(action=>action[0]===id);
+      const key=document.createElement('span');key.className='kbd';key.textContent=shortcutLabel(shortcutBinding(action));
+      hint.append(key,' '+label+' ');
+    }
+  }
   for(const [id,buttonId] of [['undo','td-undo-btn'],['redo','td-redo-btn']]){
     const action=shortcutActions.find(action=>action[0]===id);
     const button=document.getElementById(buttonId);
@@ -76,8 +86,11 @@ window.addEventListener('storage',event=>{if(event.key===SHORTCUT_STORAGE_KEY){t
 window.addEventListener('keydown',event=>{
   if(event.defaultPrevented || event.repeat || event.isComposing || document.activeElement?.closest('input,textarea,select,[contenteditable="true"]') || document.getElementById('settingsBackdrop')?.classList.contains('open'))return;
   const key=shortcutKey(event);
+  // 숫자패드의 +/-도 글자 크기에 지정된 일반 +/- 키처럼 처리합니다.
+  const noteKey=key.replace(/NumpadAdd$/, 'Equal').replace(/NumpadSubtract$/, 'Minus');
   const action=shortcutActions.find(action=>shortcutBinding(action)===key)
-    || (/Numpad[0-9]$/.test(key) ? shortcutActions.find(action=>shortcutBinding(action)===key.replace(/Numpad([0-9])$/, 'Digit$1')) : null);
+    || (/Numpad[0-9]$/.test(key) ? shortcutActions.find(action=>shortcutBinding(action)===key.replace(/Numpad([0-9])$/, 'Digit$1')) : null)
+    || (noteKey!==key ? shortcutActions.find(action=>['noteSizePlus','noteSizeMinus'].includes(action[0]) && shortcutBinding(action)===noteKey) : null);
   if(action){event.preventDefault();action[4]();}
 });
 
