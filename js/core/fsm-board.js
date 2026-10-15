@@ -970,9 +970,12 @@ function adjustScoreboardWidth() {
       }
     });
     setFsmStyle('.fsm-board .team-name', {color: ''});
+    // 이전 테마의 팀컬러·글자색과 카라바오 전용 마감을 현재 테마로 넘기지 않습니다.
+    setFsmStyle('.fsm-board .team-color', {background: ''});
+    setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {color: '', boxShadow: ''});
     // 네이션스리그 분기가 로고 칸에 넣은 팀 컬러 배경을 지운다. 지우지 않으면 다른 테마로 바꿔도
     // 인라인 스타일이 남아 로고 칸이 테마 CSS 색(whitesmoke/검정 등) 대신 팀 컬러로 보인다.
-    setFsmStyle('.fsm-board .team-logo', {background: ''});
+    setFsmStyle('.fsm-board .team-logo', {background: '', border: ''});
     // UNL 전용 이미지·필터가 다른 테마의 팀 로고에 남지 않도록 복원합니다.
     setFsmAttr('.fsm-board #team-logo-left img', 'src', state.homeLogo);
     setFsmAttr('.fsm-board #team-logo-right img', 'src', state.awayLogo);
