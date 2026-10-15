@@ -49,7 +49,7 @@ const LEAGUE_THEME_MAP = {
   283: { theme: 'romanian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg', type: 'club' },
   342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
   116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
-  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그 (leagues.csv CDN URL 우선)
+  2:   { theme: 'cl',      logoUrl: null, type: 'club' },  // UEFA 챔피언스리그
   3:   { theme: 'uel',     logoUrl: null, type: 'club' },  // UEFA 유로파리그
   848: { theme: 'uecl',    logoUrl: null, type: 'club' },  // UEFA 컨퍼런스 리그
   17:  { theme: 'acle',    logoUrl: null, type: 'club' },  // AFC 챔피언스리그 엘리트
@@ -64,7 +64,7 @@ const LEAGUE_THEME_MAP = {
   13: { theme: 'libertadores', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CopaLibertadores.svg', type: 'club' },
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
-  294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵
+  294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵 - 추후 따로 만들기
   295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
   100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },

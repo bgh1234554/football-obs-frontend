@@ -68,9 +68,9 @@ const root = path.resolve(__dirname, '../..');
     });
     await page.waitForFunction(() => document.querySelectorAll('#homeNote .note-row').length === 6);
     await page.evaluate(() => { document.querySelector('.time').style.height = '12px'; document.querySelector('.scoreboard-timer').style.height = '12px'; });
-    await page.waitForFunction(() => document.querySelectorAll('#homeNote .note-row').length === 3);
+    await page.waitForFunction(() => document.querySelectorAll('#homeNote .note-row').length === 4);
     await page.evaluate(() => { document.querySelector('.scoreboard-timer').style.display = 'none'; });
-    await page.waitForFunction(() => parseFloat(getComputedStyle(document.querySelector('#homeNote')).fontSize) < 18);
+    await page.waitForFunction(() => document.querySelectorAll('#homeNote .note-row').length === 1 && parseFloat(getComputedStyle(document.querySelector('#homeNote')).fontSize) === 20);
     await page.evaluate(() => {
       document.querySelector('.time').style.height = ''; document.querySelector('.scoreboard-timer').style.height = '';
       document.querySelector('.scoreboard-timer').style.display = '';
