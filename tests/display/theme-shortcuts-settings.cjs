@@ -13,6 +13,29 @@ assert((await page.locator('.theme-shortcut-hint').textContent()).includes('105:
 const heading=page.locator('.theme-notes-heading');
 const titleBox=await heading.locator('.section-title').boundingBox();const hintBox=await heading.locator('#noteSizeShortcutHint').boundingBox();
 assert(Math.abs(titleBox.y+titleBox.height/2-hintBox.y-hintBox.height/2)<2);
+for(const [category,variable] of [['noteOwnGoalColor','--note-own-goal'],['notePenaltyMissColor','--note-pk-miss'],['noteRedCardColor','--note-red-card']]){
+  const editors=page.locator(`[data-color-editor="${category}"]`);assert.equal(await editors.count(),2);
+  await editors.last().locator('[data-color-hex]').evaluate(n=>{n.value='#123456';n.dispatchEvent(new Event('change',{bubbles:true}));});
+  assert.deepEqual(await editors.locator('[data-color-hex]').evaluateAll(ns=>ns.map(n=>n.value)),['#123456','#123456']);
+  assert.equal(await page.evaluate(v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim(),variable),'#123456');
+}
+await page.locator('#themePanel [data-note-colors-reset]').evaluate(n=>n.click());
+const labelStyles=await page.locator('.theme-note-controls .pgroup > label').evaluateAll(ns=>ns.map(n=>{const s=getComputedStyle(n);return [s.fontSize,s.fontWeight,s.color,s.textAlign,s.lineHeight];}));
+assert.equal(labelStyles.length,7);
+labelStyles.forEach(style=>assert.deepEqual(style,labelStyles[0]));
+for(const group of await page.locator('.theme-note-event-colors .pgroup').all()){
+  const label=await group.locator(':scope > label').boundingBox();const editor=await group.locator('.theme-color-editor').boundingBox();
+  assert(Math.abs(label.x-editor.x)<1);
+}
+await page.locator('.theme-notes-card').screenshot({path:'screenshots/tests/theme-note-event-colors.png'});
+assert.equal(await page.evaluate(()=>getSetting('noteOwnGoalColor')),'#b6c2d1');
+page.once('dialog',d=>d.accept());
+await page.locator('#manualModeToggle').evaluate(n=>{n.checked=true;toggleManualMode();});await page.waitForTimeout(100);
+const manualTop=await page.locator('.pages').evaluate(n=>n.getBoundingClientRect().top);
+await page.locator('[data-page="main-small"]').evaluate(n=>n.click());
+assert(Math.abs(manualTop-await page.locator('.pages').evaluate(n=>n.getBoundingClientRect().top))<2);
+await page.locator('[data-page="theme"]').evaluate(n=>n.click());
+await page.locator('#manualModeToggle').evaluate(n=>{n.checked=false;toggleManualMode();});
 const initialSize=await page.evaluate(()=>state.noteFontSize);
 await page.keyboard.press('Shift+Equal');assert.equal(await page.evaluate(()=>state.noteFontSize),initialSize+1);
 await page.keyboard.press('Shift+Minus');assert.equal(await page.evaluate(()=>state.noteFontSize),initialSize);

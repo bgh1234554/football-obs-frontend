@@ -531,6 +531,7 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
   box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18);
 }
 .sp-color-code { flex: 0 1 92px; width: 92px; font-variant-numeric: tabular-nums; }
+.sp-note-color-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
 .sp-color-editor { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .sp-color-editor .sp-rating-color-item { flex: 0 0 auto; }
 .sp-color-editor .sp-color-code { width: 82px; flex-basis: 82px; padding: 4px 7px; }
@@ -593,6 +594,9 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
   appearance: textfield;
 }
 .sp-color-rgb input::-webkit-inner-spin-button, .sp-color-rgb input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+/* 채널 글자와 숫자가 같은 줄 높이와 기준선을 사용하도록 맞춥니다. */
+#settingsBackdrop .sp-color-rgb label { align-items: baseline; line-height: 30px; }
+#settingsBackdrop .sp-color-rgb input { line-height: 30px; }
 .sp-color-rgb:focus-within { border-color: var(--control-accent); box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18); }
 .sp-color-rgb label:focus-within { background: rgba(var(--control-accent-rgb),.10); }
 .sp-color-rgb input:focus { outline: none; }
