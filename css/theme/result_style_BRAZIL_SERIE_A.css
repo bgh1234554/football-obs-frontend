@@ -1,0 +1,25 @@
+@import url('./result_style_SAUDI_KINGS_CUP.css');
+
+/* 팀명과 점수는 같은 배경 위에 놓아 경계에서도 그라디언트가 이어집니다. */
+.fsm-board .div-background {
+    background: linear-gradient(to right, #3E5589 80px, #3CA9B2 calc(50% - 35px), #3CA9B2 calc(50% + 35px), #3E5589 calc(100% - 80px));
+}
+.fsm-board .teams-left,
+.fsm-board .teams-right { position: relative; background: transparent; color: #ffffff; }
+#board.fsm-board[data-fsm-theme="brazilseriea"] :is(#team-score-left, #team-score-right) {
+    background: transparent;
+    color: #ffffff;
+}
+#board.fsm-board[data-fsm-theme="brazilseriea"] .score-div {
+    position: relative;
+    width: 70px;
+    height: 48px;
+    background: #C7FF00;
+    z-index: 2;
+    clip-path: inset(-30px 0 0);
+}
+.fsm-board .team-color { display: block; position: absolute; top: 0; width: 8px; height: 48px; }
+.fsm-board #homeColor { right: 0; }
+.fsm-board #awayColor { left: 0; }
+.fsm-board .time { background: #131428; color: #ffffff; }
+.fsm-board .extra-time { background: #C7FF00; color: #131428; }
