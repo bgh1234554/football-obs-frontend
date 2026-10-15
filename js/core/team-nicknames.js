@@ -178,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const scoreboard = target.id === 'homeName' || target.id === 'awayName';
     const side = scoreboard ? (target.id === 'homeName' ? 'home' : 'away') : target.dataset.teamNicknameSide;
+    if (scoreboard && window.openScoreboardTeamEditMenu?.(side, x, y)) return;
     const identity = scoreboard ? scoreboardTeamIdentity(side)
       : teamNicknameIdentity(lineupPanelState.lastEffectiveData?.matchInfo || lineupPanelState.lastFixture?.matchInfo, side);
     showTeamNicknameEditor(identity, x, y);

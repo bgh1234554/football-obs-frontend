@@ -420,6 +420,7 @@
       window.colorMap.forEach(([id, key]) => {
         const hex = $(id+'Hex');
         if(hex) hex.value = state.colors[key];
+        $(id)?.syncRgb?.(state.colors[key]);
       });
     }
 
