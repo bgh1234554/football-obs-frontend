@@ -89,13 +89,14 @@ async function checkScrollingAndOwnGoals(page) {
     applyLineupPanels(fixture);
   });
   await frames(page);
-  assert.equal(await page.locator('.layout-small .dp-lineup-node[data-player-id="201"] .dp-node-count-og').count(), 1, 'own goal initially on pitch');
+  assert.equal(await page.locator('.layout-small .dp-lineup-node[data-player-id="201"] .football-icon-own-goal').count(), 1, 'own goal initially on pitch');
   await page.evaluate(() => setSetting('subReflect', 'on'));
   await frames(page);
   const row = page.locator('#benchPanel .dp-item[data-player-id="201"]');
   assert.equal(await row.locator('.dp-sub-marker.is-out').count(), 1, 'scorer moved to bench');
-  assert.equal(await row.locator('.dp-event-own-goal-count').textContent(), '1');
-  assert.equal(await row.locator('.dp-event-own-goal-count').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(211, 47, 47)');
+  // 한 번의 자책골은 숫자 1을 생략하고 승인된 자책골 아이콘만 표시한다.
+  assert.equal(await row.locator('.dp-event-own-goal-count').count(), 0);
+  assert.equal(await row.locator('.football-icon-own-goal').count(), 1);
   assert.equal(await page.locator('.layout-big [data-bench-away-panel] .dp-item[data-player-id="201"] .dp-event-own-goal').count(), 1, 'big cycle roster uses own goal badge');
   const mixed = await page.evaluate(() => {
     const el = document.createElement('div');
@@ -180,9 +181,9 @@ async function checkScrollingAndOwnGoals(page) {
       await page.locator(handle).press('Enter');
       await seed(page, 'main-big');
       const big = await read(page);
-      await drag(page, '.lp-big-stat-edge-top', 80);
+      await drag(page, '.lp-big-height-resize', 80);
       near((await read(page)).height, big.height - 80, 'big panel drag');
-      await page.locator('.lp-big-stat-edge-top').dblclick();
+      await page.locator('.lp-big-height-resize').dblclick();
       await frames(page);
       assert.equal((await read(page)).count, 9, 'big reset');
       await page.evaluate(() => { setSetting('bigPanelLinked', 'off'); applyStoredBigPanelHeights(); stRerenderActivePanels(); });

@@ -17,6 +17,7 @@ const context=vm.createContext({console,performance:{now:()=>now},
 context.window=context;
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../../js/panels/stat-cycle.js'),'utf8'),context);
 const run=code=>vm.runInContext(code,context);
+const originalAdvance=context.lpStatAutoAdvance;
 run("_lpAutoCycleModes=()=>['events','stats']; lpStatAutoAdvance=()=>recordAdvance(); _lpStatCycle.mode='events';");
 context.recordAdvance=()=>advanced++;
 const frame=()=>{const [key,cb]=frames.entries().next().value; frames.delete(key); cb(now);};
@@ -37,7 +38,11 @@ for(const [rows,sec,hold,travel,end] of [[0,10,1000,6500,2500],[14,10,1000,6500,
   assert.equal(advanced,1);
 }
 start(30,10,true);
+assert.equal(list.scrollTop,0,'new event insertion stays visible at the top');
 assert.equal(fire(run('_lpAuto.scrollTimer')),5000,'new event holds exactly five seconds');
+frame();frame();
+assert.equal(list.scrollTop,1000,'then starts the full bottom-to-top pass');
+assert.equal(fire(run('_lpAuto.scrollTimer')),1000);
 now=20000;frame();assert.equal(list.scrollTop,0);
 assert.equal(fire(run('_lpAuto.scrollTimer')),2500);
 start(30);
@@ -46,5 +51,20 @@ assert.equal(frames.size,0,'user scroll cancels animation');
 assert.equal(fire(run('_lpAuto.timer')),10000,'user scroll restores ordinary timer');
 start(30);run('lpStatTogglePause()');assert.equal(frames.size,0);assert.equal(timers.size,0);
 for(const invalid of [0,-1,NaN,Infinity]) assert.equal(Object.keys(context._lpEventScrollOptions(invalid)).length,0);
+run('_lpStatCycle.paused=false');
+// 실제 자동 전환 함수로 이전 패널 복귀를 검사한다.
+context.lpStatAutoAdvance=originalAdvance;
+run(" lpStatAvailableModes=()=>['stats','events','hth','fixtures']; _lpAutoCycleModes=()=>['stats','events','hth','fixtures']; _lpEnsureModeReadyUnlessAutoHandled=()=>{}; lpStatUpdateVisibility=()=>{};");
+for (const mode of ['stats','hth','fixtures']) {
+  run(`_lpStatCycle.mode='${mode}'; _lpStatCycle.fixturesPage=1;`);
+  assert.equal(run('lpStatPrepareForNewEvent()'),true);
+  assert.equal(run('_lpStatCycle.mode'),'events');
+  run('lpStatAutoAdvance()');
+  assert.equal(run('_lpStatCycle.mode'),mode,'returns to interrupted panel');
+  assert.equal(run('_lpStatCycle.fixturesPage'),1,'preserves fixture page');
+  assert.equal(run('_lpNewEventReturn'),null,'return consumed once');
+}
+run("_lpStatCycle.mode='hth'; lpStatPrepareForNewEvent(); lpStatCycleNext();");
+assert.equal(run('_lpNewEventReturn'),null,'manual navigation cancels return');
 console.log('PASS: 0/14/15/30/60 rows, custom interval threshold, actual scroll progress and advance timing, five-second new-event hold, manual interruption and pause.');
 

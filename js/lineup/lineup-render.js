@@ -1224,7 +1224,7 @@ function renderInjuryCyclePanel(effectiveData, rawData) {
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor, side) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
-  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span> 교체명단</div>`;
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span>&nbsp;교체 명단</div>`;
   if (!players || !players.length) {
     return `${title}<div class="st-empty">교체 선수 없음</div>`;
   }
@@ -1576,6 +1576,11 @@ function clearTacticsLineupSync(data = lineupPanelState.lastFixture) {
 
   if (typeof tacticsState !== 'undefined' && tacticsState) {
     tacticsState.lineup = null;
+    tacticsState.sourceLineup = null;
+    ['home', 'away'].forEach(side => {
+      const select = document.getElementById(`tactics-${side}-fm`);
+      if (select) select.value = 'auto';
+    });
     tacticsState.homePositions = [];
     tacticsState.awayPositions = [];
   }
@@ -1649,7 +1654,8 @@ function rerenderLineupPanels() {
   renderBenchPanel(effectiveData, lineupPanelState.lastFixture);
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
   renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
-  syncTacticsBoard(effectiveData);
+  // 같은 경기의 갱신에서는 드래그한 좌표를 유지한다. 경기 전환 시에는 앞서 좌표를 비운다.
+  syncTacticsBoard(effectiveData, { preservePositions: true });
   renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
   renderInjuryCyclePanel(effectiveData, lineupPanelState.lastFixture);

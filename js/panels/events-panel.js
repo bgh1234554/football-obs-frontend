@@ -832,14 +832,16 @@ function evCaptureRowRects(list) {
   return rects;
 }
 
-/**
- * FLIP 애니메이션 — 새로 렌더된 row 목록을 이전 위치(previousRects) 기준으로 부드럽게 이동.
- *
- * 1) 모든 row 순회.
- * 2) 이전에 있던 row면 deltaY 계산 → translateY로 이전 위치로 보낸 뒤 0으로 transition.
- * 3) 새로 들어온 row면 위에서 살짝 떨어뜨리며 fade-in.
- * 4) 애니메이션 종료 후 inline style 정리.
- */
+// 폴링 재렌더 이후에도 캠 큰 화면에서 강조할 이벤트 키를 유지한다.
+const evBigHeldGlowKeys = new Set();
+window.evClearBigHeldGlow = () => {
+  evBigHeldGlowKeys.clear();
+  document.querySelectorAll('.lp-stat .ev-row-glow-held').forEach(row => {
+    row.classList.remove('ev-row-glow-held', 'ev-row-new');
+  });
+};
+
+/** 기존 행은 이전 위치에서 이동하고 새 행은 위에서 내려오며 나타난다. */
 function evAnimateListInsertion(list, previousRects) {
   if (!list || !previousRects?.size) return;
   const rows = Array.from(list.querySelectorAll('.ev-row[data-ev-key]'));
@@ -869,6 +871,11 @@ function evAnimateListInsertion(list, previousRects) {
     // 경고=노랑, 퇴장=빨강, 교체=초록, PK실축/VAR취소=주황, 기타=흰색)를 CSS 쪽에서
     // 그대로 참조한다(css/panels/events-panel.css의 .ev-row-new.ev-bar-{color} 규칙).
     row.classList.add('ev-row-new');
+    if (list.closest('.layout-big .lp-stat') && window._lpStatCycle?.mode === 'events'
+      && !window._lpStatCycle.paused && typeof getSetting === 'function' && getSetting('statCycleAuto') === 'on') {
+      evBigHeldGlowKeys.add(row.dataset.evKey);
+      row.classList.add('ev-row-glow-held');
+    }
     row.style.transition = 'none';
     row.style.opacity = '0';
     row.style.transform = `translateY(-${EVENTS_PANEL_ROW_ENTER_OFFSET_PX}px) scale(.985)`;
@@ -880,7 +887,7 @@ function evAnimateListInsertion(list, previousRects) {
       row.style.transition = '';
       row.style.transform = '';
       row.style.opacity = '';
-      row.classList.remove('ev-row-new');
+      if (!row.classList.contains('ev-row-glow-held')) row.classList.remove('ev-row-new');
     }, EVENTS_PANEL_ROW_GLOW_MS);
   });
 }
@@ -1385,6 +1392,11 @@ function applyEventsPanel(fixtureData, options = {}) {
       }
       list.appendChild(evCreateRow(item.ev, fixtureData, item.renderKey || '', timeContext));
     });
+    if (container.closest('.layout-big .lp-stat')) {
+      list.querySelectorAll('.ev-row[data-ev-key]').forEach(row => {
+        if (evBigHeldGlowKeys.has(row.dataset.evKey)) row.classList.add('ev-row-new', 'ev-row-glow-held');
+      });
+    }
     container.replaceChildren(titleBar, list);
     container.dataset.evFixtureId = nextFixtureId;
 
