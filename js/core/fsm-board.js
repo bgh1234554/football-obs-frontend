@@ -68,6 +68,7 @@ const LEAGUE_THEME_MAP = {
   11: { theme: 'sudamericana', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CopaSudamericana.svg', type: 'club' },
   13: { theme: 'libertadores', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CopaLibertadores.svg', type: 'club' },
   188: { theme: 'aleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ALeagueMen.svg', type: 'club' },
+  169: { theme: 'chinesesuperleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ChineseSuperLeague.svg', type: 'club' },
   71: { theme: 'brazilseriea', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BrazilSerieA.svg', type: 'club' },
   504: { theme: 'saudikingscup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/SaudiKingsCup.png', type: 'club' },
   307: { theme: 'saudi', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/SaudiProLeague.svg', type: 'club' },
@@ -104,7 +105,7 @@ const FSM_THEMES = Object.freeze({
   //유럽 대항전
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', unl: 'UEFA 네이션스리그', er24: '유로',
   //아시아 리그
-  kleague: 'K리그', jleague: 'J리그', aleague: 'A리그 남자부', saudi: '사우디 프로 리그', saudikingscup: '사우디 국왕컵', uzbek: '우즈베키스탄 슈퍼 리그',
+  kleague: 'K리그', saudi: '사우디 프로 리그', saudikingscup: '사우디 국왕컵', jleague: 'J리그', aleague: 'A리그 남자부', chinesesuperleague: '중국 슈퍼리그', uzbek: '우즈베키스탄 슈퍼 리그',
   //아시아 대항전
   acle: 'AFC 챔피언스리그 엘리트', acl2: 'AFC 챔피언스리그 2', acgl: 'AFC 챌린지 리그',
   //북중미
@@ -123,7 +124,7 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup',
   'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
   'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
-  'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'saudikingscup', 'brazilseriea',
+  'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
   'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance'
 ]);
 
@@ -469,6 +470,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_SAUDI_KINGS_CUP.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'chinesesuperleague':
+      changeCSS('css/theme/result_style_CHINESE_SUPER_LEAGUE.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'saudi':
       changeCSS('css/theme/result_style_SAUDI.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -641,6 +646,7 @@ function applyTheme(theme, logoUrl) {
       aleague: ['#141993', '#ffffff'],
       brazilseriea: ['transparent', '#ffffff'],
       saudikingscup: ['#B7993C', '#22242A'],
+      chinesesuperleague: ['#03356C', '#ffffff'],
       saudi: ['#273441', '#ffffff'],
       uzbek: ['transparent', '#ffffff'],
       acgl: ['#E9DFC6', '#48002B'],
@@ -841,7 +847,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -988,7 +994,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
         ? 'none' : ['czech', 'ekstraklasa'].includes(theme) ? 'strip-top' : ['rpl', 'belgian', 'concacafcc', 'armenian', 'cnl', 'uzbek', 'ligaportugal', 'coupedefrance'].includes(theme) ? 'chip' : 'strip';
     }
     if (theme === 'aleague') {
@@ -1032,7 +1038,7 @@ function adjustScoreboardWidth() {
           mixBlendMode: nearBlack ? 'screen' : 'multiply'
         });
       });
-    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi'].includes(theme)) {
+    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
         setFsmStyle('.fsm-board .team-color', {background: ''});
@@ -1237,6 +1243,7 @@ function adjustScoreboardWidth() {
     aleague: ['#3640CD', '#ffffff'],
     brazilseriea: ['#131428', '#ffffff'],
     saudikingscup: ['#7A5D3B', '#37261C'],
+    chinesesuperleague: ['#0772BB', '#ffffff'],
     saudi: ['#141722', '#ffffff'],
     uzbek: ['#ffffff', '#000000'],
     acgl: ['#FF784B', '#48002B'],
