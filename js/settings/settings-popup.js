@@ -100,6 +100,9 @@ const SETTINGS_DEFAULTS = {
   // 점수판 양옆 득점자 박스에 골 외 이벤트를 함께 표시할지.
   noteShowPenaltyMisses: 'on',
   noteShowRedCards: 'on',
+  noteOwnGoalColor: '#b6c2d1',
+  notePenaltyMissColor: '#fb923c',
+  noteRedCardColor: '#ff6b6b',
   // 평점 색상 (Iter 5-4). lineup-events.js의 lpRatingColor가 이 값을 우선 사용.
   // 사용자가 설정 팝업의 '이벤트/스탯' 탭에서 7구간 색을 직접 조정할 수 있다.
   // color input은 항상 소문자 hex를 반환하므로 default도 소문자로 통일 — 비교/리셋 일관성.
@@ -379,6 +382,7 @@ const RATING_COLOR_KEYS = new Set([
   'ratingColor7', 'ratingColor8', 'ratingColor9', 'ratingColor95',
 ]);
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const NOTE_COLOR_VARS = { noteOwnGoalColor: '--note-own-goal', notePenaltyMissColor: '--note-pk-miss', noteRedCardColor: '--note-red-card' };
 
 // on/off 토글 카테고리 — isValidSetting과 getSwitchSides 양쪽이 같은 목록을 참조해야
 // 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
@@ -395,7 +399,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 
 function isValidSetting(category, value) {
   if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical'].includes(value);
-  if (RATING_COLOR_KEYS.has(category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
+  if (RATING_COLOR_KEYS.has(category) || Object.hasOwn(NOTE_COLOR_VARS, category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgImageUrl') return typeof value === 'string';     // 빈 문자열 허용 (= 배경 없음)
   if (category === 'bgImageData') return typeof value === 'string';    // 빈 문자열 또는 data URL
@@ -658,6 +662,7 @@ function setSetting(category, value) {
  * 자체는 메인 창에 동기화돼도 실제 화면(CSS 변수·재렌더)엔 반영되지 않는 문제가 있었다.
  */
 function applySettingSideEffects(category) {
+  if (Object.hasOwn(NOTE_COLOR_VARS, category)) applyLayoutSettings();
   if (category === 'matchInfoLabelColor') applyLayoutSettings();
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
@@ -789,6 +794,9 @@ function resetRatingColorsToDefaults() {
  * 마지막에 fitLineupNamePills로 이름 잘림 보정 재호출(이름 폰트 크기 변경 영향).
  */
 function applyLayoutSettings() {
+  Object.entries(NOTE_COLOR_VARS).forEach(([category, variable]) => {
+    document.documentElement.style.setProperty(variable, chromaSafe(getSetting(category)));
+  });
   const scale = Math.max(LINEUP_SCALE_MIN, Math.min(LINEUP_SCALE_MAX, Number(getSetting('lineupScale')) || 100)) / 100;
   const nameSize = Math.max(LINEUP_NAME_SIZE_MIN, Math.min(LINEUP_NAME_SIZE_MAX, Number(getSetting('lineupNameSize')) || 12));
   const eventSize = Math.max(EVENT_NAME_SIZE_MIN, Math.min(EVENT_NAME_SIZE_MAX, Number(getSetting('eventNameSize')) || 15));
@@ -1015,22 +1023,23 @@ function syncNumberUi(category) {
 
 /** 색상 input(<input type="color">) UI 동기화. 평점 색상 7구간 등에 사용. */
 function syncColorUi(category) {
-  const input = document.querySelector(`input[data-settings-color="${category}"]`);
-  if (!input) return;
   const value = String(getSetting(category) || '').toLowerCase();
   if (category === 'panelColor') {
     const preset = document.getElementById('panelColorPreset');
     if (preset) preset.value = [...preset.options].some(option => option.value === value) ? value : 'custom';
   }
-  if (HEX_COLOR_RE.test(value) && input.value.toLowerCase() !== value) input.value = value;
-  const editor = document.querySelector(`[data-color-editor="${category}"]`);
-  if (editor && HEX_COLOR_RE.test(value)) {
+  document.querySelectorAll(`input[data-settings-color="${category}"]`).forEach(input => {
+    if (HEX_COLOR_RE.test(value) && input.value.toLowerCase() !== value) input.value = value;
+  });
+  document.querySelectorAll(`[data-color-editor="${category}"]`).forEach(editor => {
+  if (HEX_COLOR_RE.test(value)) {
     editor.querySelector('[data-color-hex]').value = value;
     editor.querySelectorAll('[data-color-channel]').forEach(channel => {
       const start = 1 + Number(channel.dataset.colorChannel) * 2;
       channel.value = parseInt(value.slice(start, start + 2), 16);
     });
   }
+  });
 }
 
 function initSettingsColorEditors() {
@@ -1045,6 +1054,18 @@ function initSettingsColorEditors() {
     editor.dataset.colorEditor = category;
     label.replaceWith(editor);
     editor.append(label);
+    // 테마 탭에서는 기존 팀 색상 편집기처럼 라벨 아래에 입력기를 한 줄로 배치합니다.
+    if (swatch.closest('#themePanel')) {
+      const group = document.createElement('div');
+      group.className = 'pgroup';
+      const groupLabel = document.createElement('label');
+      groupLabel.textContent = title;
+      editor.before(group);
+      group.append(groupLabel, editor);
+      editor.className = 'theme-color-editor';
+      editor.append(swatch);
+      label.remove();
+    }
     const hex = document.createElement('input');
     hex.type = 'text';
     hex.className = 'sp-text-input sp-color-code';
@@ -1410,20 +1431,20 @@ function getSwitchSides(category) {
  * 2) cluster 안의 좌/우 텍스트 라벨도 is-active 토글해 시각적으로 어느 쪽인지 표시.
  */
 function syncSwitchUi(category) {
-  const input = document.querySelector(`input[data-settings-cat="${category}"]`);
-  if (!input) return;
-
   const value = getSetting(category);
   const { off, on } = getSwitchSides(category);
-  input.checked = value === on;
+  // 일반 설정과 테마 탭에 있는 같은 옵션을 함께 동기화합니다.
+  document.querySelectorAll(`input[data-settings-cat="${category}"]`).forEach(input => {
+    input.checked = value === on;
 
-  const cluster = input.closest('.sp-toggle-cluster');
-  if (!cluster) return;
+    const cluster = input.closest('.sp-toggle-cluster');
+    if (!cluster) return;
 
-  const offEl = cluster.querySelector(`[data-side="${off}"]`);
-  const onEl = cluster.querySelector(`[data-side="${on}"]`);
-  if (offEl) offEl.classList.toggle('is-active', value === off);
-  if (onEl) onEl.classList.toggle('is-active', value === on);
+    const offEl = cluster.querySelector(`[data-side="${off}"]`);
+    const onEl = cluster.querySelector(`[data-side="${on}"]`);
+    if (offEl) offEl.classList.toggle('is-active', value === off);
+    if (onEl) onEl.classList.toggle('is-active', value === on);
+  });
   if (category === 'statCycleAuto' || category === 'statsAutoSwipe') {
     syncStatsAutoSwipeLockUi();
   }
@@ -1580,6 +1601,9 @@ function initSettingsTabs() {
  */
 function initSettingsPopup() {
   initSettingsColorEditors();
+  document.querySelectorAll('[data-note-colors-reset]').forEach(button => {
+    button.addEventListener('click', () => Object.keys(NOTE_COLOR_VARS).forEach(category => setSetting(category, SETTINGS_DEFAULTS[category])));
+  });
   document.getElementById('panelColorPreset')?.addEventListener('change', event => {
     const value = event.currentTarget.value;
     if (value === 'custom') {

@@ -67,7 +67,7 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.evaluate(() => { state.fsmTheme = 'rpl'; autoApplyTemplateByLeagueId(235, null); render(); });
     await page.waitForFunction(() => !pendingThemeLink);
     await settle(page);
-    assert(await page.locator('.cnl-curve').evaluateAll(curves => curves.length === 2 && curves.every(el => getComputedStyle(el).display === 'none')));
+    assert.equal(await page.locator('.cnl-curve').count(), 0);
     console.log('PASS Uzbek auto/manual, fixed circular logo and inner team arcs, gradients, Romanian score style, aggregate spacing at four scales and three positions');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

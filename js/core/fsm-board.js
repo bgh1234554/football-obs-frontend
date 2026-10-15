@@ -995,6 +995,10 @@ function adjustScoreboardWidth() {
     setFsmAttr('.fsm-board #team-logo-right img', 'src', state.awayLogo);
     setFsmStyle('.fsm-board .team-logo img', {width: '', height: '', filter: '', mixBlendMode: ''});
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
+    // 원호를 쓰지 않는 테마에서는 SVG를 제거해 세로 팀컬러 칸 밖으로 새지 않게 합니다.
+    if (!['cnl', 'uzbek'].includes(theme)) {
+      document.querySelectorAll('.fsm-board .cnl-curve').forEach(curve => curve.remove());
+    }
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
       colorBoard.style.setProperty('--fsm-home-number-color', teamColors.homeText);

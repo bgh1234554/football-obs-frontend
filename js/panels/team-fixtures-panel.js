@@ -1,6 +1,6 @@
 // 양 캠의 최근·예정 경기: 팀별 요청을 공유하고 경기 전환 후 늦은 응답은 버린다.
 (() => {
-  const cache = new Map();
+  const inFlight = new Map();
   let fixture = null;
   let page = 0;
   let bigPage = 0;
@@ -18,21 +18,19 @@
   };
 
   /**
-   * 팀·기간별 요청 Promise를 12시간 공유해 두 캠에서 같은 데이터를 중복 요청하지 않습니다.
-   * 실패한 요청은 자신의 캐시 항목만 지워 다음 조회에서 재시도할 수 있게 합니다.
+   * 진행 중인 팀·기간별 요청만 공유해 두 캠의 동시 중복 요청을 막습니다.
+   * 요청이 끝나면 제거해 다음 조회에서는 새 응답을 받습니다.
    * @param {number|string} teamId 조회할 팀 ID입니다.
    * @param {'last'|'next'} period 최근 경기 또는 예정 경기입니다.
    * @returns {Promise<Object>} 팀의 경기 목록 응답입니다.
    */
   function load(teamId, period) {
     const key = `${teamId}:${period}`;
-    const entry = cache.get(key);
-    if (entry && entry.expires > Date.now()) return entry.promise;
-    const promise = fetchTeamFixtures(teamId, period).catch(error => {
-      if (cache.get(key)?.promise === promise) cache.delete(key);
-      throw error;
+    if (inFlight.has(key)) return inFlight.get(key);
+    const promise = fetchTeamFixtures(teamId, period).finally(() => {
+      if (inFlight.get(key) === promise) inFlight.delete(key);
     });
-    cache.set(key, { promise, expires: Date.now() + 12 * 60 * 60 * 1000 });
+    inFlight.set(key, promise);
     return promise;
   }
 
@@ -264,18 +262,12 @@
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(el => el.replaceChildren());
   };
   // 큰 캠은 작은 캠의 선택 페이지와 독립적으로 최근→예정 순환한다.
-  /** 큰 캠의 페이지를 선택하고, 양 팀 캐시와 표시 데이터가 모두 유효하면 즉시 재사용합니다. */
+  /** 큰 캠의 페이지를 선택하고 양 팀의 경기 목록을 새로 조회합니다. */
   window.teamFixturesEnsure = (data, index = 0) => {
     if (!hthGetTeamIds(data)) return Promise.resolve();
     window.teamFixturesSync(data);
     fixture = data;
     bigPage = index;
-    const ids = hthGetTeamIds(data);
-    const fresh = [ids.homeTeamId, ids.awayTeamId].every(id => (cache.get(`${id}:${periods[index]}`)?.expires || 0) > Date.now());
-    if (fresh && dataRows[periods[index]]?.every(row => row.status === 'fulfilled')) {
-      render();
-      return Promise.resolve();
-    }
     return refresh(index);
   };
   // 경기 제거·수동 모드 진입에서도 이전 팀과 진행 중인 요청을 정리한다.

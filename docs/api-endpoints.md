@@ -777,7 +777,7 @@ API-Football 문서상 `h2h` 값은 `ID-ID` 형식이다. 같은 엔드포인트
 | 429 | `RATE_LIMIT_EXCEEDED` |
 | 502 | `UPSTREAM_API_ERROR`: 원본 API 오류 또는 비정상 응답 |
 
-두 응답 모두 `Cache-Control: max-age=43200` (12시간)을 사용한다.
+두 응답 모두 별도의 `Cache-Control` 헤더를 설정하지 않는다. 프런트는 진행 중인 동일 팀·기간 요청만 공유하고, 조회가 끝난 응답은 다음 조회에 재사용하지 않는다.
 
 ---
 
