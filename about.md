@@ -737,6 +737,15 @@ OBS 윈도우 캡처로 송출 시, 배경에 단색 초록색 크로마키 배�
 - **BE 소스코드** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-backend)
 - **커스텀 로고 저장소** — [![GitHub](https://img.shields.io/badge/GitHub-000?logo=github)](https://github.com/bgh1234554/football-obs-logo-cdn)
 
+## 월 평균 유지 비용
+- API-Football: 약 $17.10/월
+- BunnyCDN: 약 $1/월 가정
+- Render + Vercel: 현재 무료 요금제 사용, 트래픽 증가 시 유료 요금제 전환 가능
+- **계 (API 구독료·CDN 사용료)**: 약 $18.10/월 (한화 약 2만 5천 원) 
+- **후원**: [Buy Me a Coffee ☕](https://www.buymeacoffee.com/bgh1234554)
+
+이 웹사이트는 현재 오직 후원과 개인 사비로만 운영되고 있습니다. 서비스에 만족하셨다면, 후원은 서비스 운영과 지속적인 유지보수에 도움이 됩니다.
+
 ### 개발 기간
 
 v1.0을 기준으로 대학 생활 중 틈틈이 약 8개월(2026.2.26 ~ 2026.10.31) 동안 개발했습니다. 본격적인 개발은 6월 중순부터 시작했습니다.

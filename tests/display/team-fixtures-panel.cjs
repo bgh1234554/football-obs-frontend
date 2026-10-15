@@ -64,7 +64,8 @@ const { openPage } = require('../tactics/helpers');
     await checkHalves(panel);
     await panel.getByTitle('이전 페이지', { exact: true }).click();
     await page.waitForFunction(() => document.querySelectorAll('.lp-events-s .tf-result').length === 10);
-    assert.equal(await page.evaluate(() => calls.length), 4);
+    await page.waitForFunction(() => calls.length === 6);
+    assert.equal(await page.evaluate(() => calls.length), 6);
     await page.evaluate(() => { activatePage('main'); lpStatShowTeamFixturesPage(0); });
     const bigPanel = page.locator('.lp-stat [data-team-fixtures-panel]');
     await page.waitForFunction(() => document.querySelectorAll('.lp-stat .tf-result').length === 10);
@@ -97,6 +98,27 @@ const { openPage } = require('../tactics/helpers');
     await page.evaluate(() => { teamFixturesShow(testFixture); applyEventsPanel(null); });
     await page.waitForTimeout(50);
     assert.equal(await panel.locator('.tf-card').count(), 0);
+    const shared = await page.evaluate(async () => {
+      const resolvers = [];
+      let count = 0;
+      fetchTeamFixtures = () => {
+        count++;
+        return new Promise(resolve => resolvers.push(resolve));
+      };
+      const data = { matchInfo: { fixtureId: 400, homeTeamId: 5, awayTeamId: 6 } };
+      const first = teamFixturesEnsure(data, 1);
+      const second = teamFixturesEnsure(data, 1);
+      const concurrentCount = count;
+      resolvers.splice(0).forEach(resolve => resolve({ matches: [] }));
+      await Promise.all([first, second]);
+      const next = teamFixturesEnsure(data, 1);
+      const refetchCount = count;
+      resolvers.splice(0).forEach(resolve => resolve({ matches: [] }));
+      await next;
+      teamFixturesReset();
+      return { concurrentCount, refetchCount };
+    });
+    assert.deepEqual(shared, { concurrentCount: 2, refetchCount: 4 });
     await page.evaluate(() => {
       fetchTeamFixtures = (id, period) => new Promise(resolve => { window.lateResolve = resolve; });
       teamFixturesShow({ matchInfo: { fixtureId: 300, homeTeamId: 3, awayTeamId: 4 } });
@@ -106,6 +128,6 @@ const { openPage } = require('../tactics/helpers');
     assert.equal(await panel.isVisible(), false);
     assert.equal(await panel.locator('.tf-card').count(), 0);
     assert.deepEqual(errors, []);
-    console.log('PASS team fixture cards, pages, cache, manual selection and stale response reset');
+    console.log('PASS team fixture cards, pages, refetch, manual selection and stale response reset');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
