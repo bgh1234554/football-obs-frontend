@@ -214,9 +214,9 @@
       reset.type = 'button';
       reset.className = 'pm-btn pm-btn-danger';
       reset.textContent = '초기화';
-      reset.title = '홈·원정 팀컬러를 API 색상으로 초기화';
+      reset.title = side === 'home' ? '홈 팀컬러를 API 색상으로 초기화' : '원정 팀컬러를 API 색상으로 초기화';
       reset.disabled = !window.canResetFixtureTeamColors?.();
-      reset.addEventListener('click', () => window.resetFixtureTeamColors?.());
+      reset.addEventListener('click', () => window.resetFixtureTeamColors?.(side));
       actions.append(close, swap, reset);
       teamColorDialog.append(actions);
       teamColorDialog.showPopover();

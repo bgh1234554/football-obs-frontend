@@ -584,12 +584,16 @@
   }
 
   window.canResetFixtureTeamColors = () => !!fixtureDataForColorReset()?.matchInfo;
-  window.resetFixtureTeamColors = function() {
+  window.resetFixtureTeamColors = function(onlySide) {
+    if (onlySide !== undefined && onlySide !== 'home' && onlySide !== 'away') return false;
     const data = fixtureDataForColorReset();
     if (!data?.matchInfo) return false;
-    state.teamColorOverride = false;
-    state.teamColorOverrideFixtureId = null;
-    ['home', 'away'].forEach(side => {
+    // 한 팀만 초기화할 때는 상대 팀의 사용자 지정 색상 보호를 유지한다.
+    if (!onlySide) {
+      state.teamColorOverride = false;
+      state.teamColorOverrideFixtureId = null;
+    }
+    (onlySide ? [onlySide] : ['home', 'away']).forEach(side => {
       const keys = fixtureTeamColorKeys(side);
       if (!applyFixtureTeamColorsFromApi(side, data.matchInfo[keys.primary], data.matchInfo[keys.number])) {
         applyFixtureTeamColorPair(side, getFixtureDefaultTeamColors(side));
@@ -598,7 +602,7 @@
     render();
     persist();
     document.dispatchEvent(new CustomEvent('theme:colors-changed'));
-    queueFixtureLogoTeamColorFallback(data, false);
+    queueFixtureLogoTeamColorFallback(data, false, onlySide);
     return true;
   };
 
@@ -654,11 +658,12 @@
   // 첫 render는 기본색으로 즉시 끝내고, 로고 색상은 뒤늦게 도착하면 state.colors만 갱신한다.
   // _lastFixtureData.matchInfo는 API 원본 확인용으로 남겨 두기 때문에 여기서 수정하지 않는다.
   // 응답이 늦게 도착했거나 사용자가 컬러를 수동 수정한 경우에는 적용하지 않는다.
-  function queueFixtureLogoTeamColorFallback(data, preserveTeamColors) {
+  function queueFixtureLogoTeamColorFallback(data, preserveTeamColors, onlySide) {
     if (preserveTeamColors) return;
     const matchInfo = data?.matchInfo || {};
-    const sides = ['home', 'away'].filter(side => !fixtureHasAuthoritativeTeamColor(matchInfo, side));
+    const sides = (onlySide ? [onlySide] : ['home', 'away']).filter(side => !fixtureHasAuthoritativeTeamColor(matchInfo, side));
     if (!sides.length) return;
+    const resetColors = onlySide ? fixtureCurrentTeamColorPair(onlySide) : null;
 
     const fixtureId = String(matchInfo.fixtureId ?? '').trim();
     Promise.all(sides.map(async side => ({
@@ -667,7 +672,10 @@
     }))).then(results => {
       const currentFixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
       if (fixtureId && currentFixtureId && currentFixtureId !== fixtureId) return;
-      if (state.teamColorOverride && (!fixtureId || state.teamColorOverrideFixtureId === fixtureId)) return;
+      if (onlySide) {
+        const current = fixtureCurrentTeamColorPair(onlySide);
+        if (current.bg !== resetColors.bg || current.text !== resetColors.text) return;
+      } else if (state.teamColorOverride && (!fixtureId || state.teamColorOverrideFixtureId === fixtureId)) return;
 
       const adjustedResults = resolveFixtureFallbackPrimaryConflict(results);
       let changed = false;
