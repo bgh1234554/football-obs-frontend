@@ -1,0 +1,29 @@
+@import url('./result_style_LIGUE1.css');
+
+.fsm-board .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
+.fsm-board .div-background { background: #0772BB; z-index: -1; }
+
+/* 팀명과 번호색은 EFL 챔피언십과 동일하게 적용합니다. */
+.fsm-board .teams-left { background: var(--fsm-home-primary-color); }
+.fsm-board .teams-right { background: var(--fsm-away-primary-color); }
+.fsm-board .teams-left .team-name { color: var(--fsm-home-number-color); }
+.fsm-board .teams-right .team-name { color: var(--fsm-away-number-color); }
+.fsm-board .team-logo { background: #E4E4E4; border-color: #E4E4E4; }
+.fsm-board .team-color { display: none; }
+
+#board.fsm-board[data-fsm-theme="chinesesuperleague"] :is(#team-score-left, #team-score-right) {
+    background: #0772BB;
+    color: #ffffff;
+}
+/* 로고 비율을 유지하며 좌우 3px, 상하 2px 여백을 둡니다. */
+#board.fsm-board[data-fsm-theme="chinesesuperleague"] .score-div {
+    width: calc(44px * 95.78 / 49.82 + 6px);
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #03356C;
+}
+.fsm-board .epl-lion { width: calc(100% - 6px); height: 44px; padding: 0; object-fit: contain; }
+.fsm-board .time { background: #0772BB; color: #ffffff; }
+.fsm-board .extra-time { background: #ffffff; color: #03356C; }

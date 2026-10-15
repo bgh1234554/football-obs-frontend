@@ -334,7 +334,6 @@
 }
 
 .fsm-board .team-color {
-    width: 8px;
-    height: 48px;
-    display: block;
+    /* 팀컬러는 원형 로고 테두리로 표시하며 별도의 세로 띠는 사용하지 않습니다. */
+    display: none;
 }

@@ -6,6 +6,10 @@ const { openPage, settle } = require('../tactics/helpers');
   const browser = await chromium.launch();
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
+    // 세로 팀컬러를 사용한 테마에서 넘어와도 띠가 남지 않아야 합니다.
+    await page.evaluate(() => { applyTheme('laliga', null); fsmBoardRender(); });
+    await page.waitForFunction(() => !pendingThemeLink);
+    await settle(page);
     await page.evaluate(() => {
       state.fsmTheme = 'carabao';
       Object.assign(state.colors, { homeBg: '#a02030', homeText: '#ffe080', awayBg: '#123456', awayText: '#ffffff' });
@@ -15,7 +19,7 @@ const { openPage, settle } = require('../tactics/helpers');
     });
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => document.fonts.ready);
-    for (const scale of [60, 100, 150]) {
+    for (const scale of [60, 75, 100, 150]) {
       await page.evaluate(scale => {
         state.boardScale = scale; state.aggEnabled = true;
         state.half = 'PK'; state.pk = { home: ['G', 'M'], away: ['G'] };
@@ -31,7 +35,8 @@ const { openPage, settle } = require('../tactics/helpers');
             return [ring.width, ring.height, ring.borderRadius, ring.borderTopColor];
           }),
           colors: ['.time', '.pso-main', '.total-score'].map(s => [style(s).backgroundColor, style(s).color]),
-          aggregate: document.querySelector('#board').dataset.fsmAggregate
+          aggregate: document.querySelector('#board').dataset.fsmAggregate,
+          chips: [...document.querySelectorAll('.team-color')].map(el => getComputedStyle(el).display)
         };
       });
       assert.deepEqual(actual.names, ['rgb(255, 224, 128)', 'rgb(255, 255, 255)']);
@@ -40,6 +45,7 @@ const { openPage, settle } = require('../tactics/helpers');
         ['48px', '48px', '50%', 'rgb(18, 52, 86)']
       ]);
       assert.equal(actual.aggregate, 'true');
+      assert.deepEqual(actual.chips, ['none', 'none']);
       actual.colors.forEach(pair => assert.deepEqual(pair, ['rgb(0, 143, 94)', 'rgb(255, 255, 255)']));
     }
     await page.locator('#board').screenshot({ path: 'screenshots/tests/fsm-carabao.png' });
@@ -66,8 +72,9 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.locator('#board').screenshot({ path: 'screenshots/tests/fsm-carabao-clipping.png' });
     await page.evaluate(() => { state.fsmTheme = 'seriea'; autoApplyTemplateByLeagueId(135, null); render(); });
     await page.waitForFunction(() => !pendingThemeLink);
+    await settle(page);
     assert.equal(await page.locator('.carabao-logo-clip').count(), 0);
     assert.equal(await page.locator('.team-logo > img').count(), 2);
-    console.log('PASS Carabao circular logos, team colors, timer/PSO/aggregate palette at 60/100/150%');
+    console.log('PASS Carabao circular logos, no stale vertical strips, timer/PSO/aggregate palette at 60/75/100/150%');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

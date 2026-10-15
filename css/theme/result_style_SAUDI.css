@@ -1,0 +1,64 @@
+@import url('./result_style_LIGUE1.css');
+
+.fsm-board .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
+/* 팀명 안쪽의 둥근 모서리 뒤까지 숫자 배경을 잇되 바깥 로고 모서리는 제외합니다. */
+.fsm-board .div-background {
+    display: block;
+    background: linear-gradient(to bottom, #273441, #151D2B);
+    clip-path: inset(0 80px);
+    z-index: -1;
+}
+
+/* EFL 챔피언십과 같은 팀 배경색·번호색 글자 조합을 사용합니다. */
+.fsm-board .teams-left { background: var(--fsm-home-primary-color); }
+.fsm-board .teams-right { background: var(--fsm-away-primary-color); }
+.fsm-board .teams-left .team-name { color: var(--fsm-home-number-color); }
+.fsm-board .teams-right .team-name { color: var(--fsm-away-number-color); }
+.fsm-board .team-color { display: none; }
+
+/* 홈·원정의 바깥 위 모서리와 안쪽 아래 모서리를 서로 대칭으로 둥글게 합니다. */
+.fsm-board .teams-left { border-bottom-right-radius: 12px; }
+.fsm-board .teams-right { border-bottom-left-radius: 12px; }
+.fsm-board .team-logo { width: 80px; background: #E4E4E4; border: 0; }
+.fsm-board #team-logo-left { border-top-left-radius: 12px; }
+.fsm-board #team-logo-right { border-top-right-radius: 12px; }
+
+/* 우즈벡 숫자의 크기·위치·그림자를 유지하며 합계 칸은 바깥에만 추가합니다. */
+#board.fsm-board[data-fsm-theme="saudi"] :is(#team-score-left, #team-score-right) {
+    position: relative;
+    margin: 0;
+    width: 56px;
+    height: 48px;
+    background: linear-gradient(to bottom, #273441, #151D2B);
+    color: #ffffff;
+    font-size: 64px;
+    font-family: 'Pretendard-Medium';
+    font-weight: bold;
+    z-index: 2;
+}
+.fsm-board .score-left,
+.fsm-board .score-right {
+    display: block;
+    line-height: 1;
+    transform: translateY(-4px);
+    text-shadow: 5px 0 0 rgba(0, 0, 0, .45);
+}
+
+#board.fsm-board[data-fsm-theme="saudi"] .score-div {
+    position: relative;
+    width: 70px;
+    height: 48px;
+    background: #ffffff;
+}
+.fsm-board .epl-lion { width: 100%; height: 48px; padding: 4px; object-fit: contain; }
+
+#board.fsm-board[data-fsm-theme="saudi"][data-fsm-aggregate="true"] .total-score {
+    min-width: 28px;
+    padding: 0 2px;
+    font-size: 28px;
+    background: linear-gradient(to bottom, #273441, #151D2B);
+    color: #ffffff;
+}
+
+.fsm-board .time { background: #141722; color: #ffffff; border-radius: 0 0 8px 8px; }
+.fsm-board .extra-time { background: #DF3A3D; color: #ffffff; border-radius: 0 0 8px 8px; }

@@ -1487,7 +1487,7 @@
     // 전술판 타임라인은 슬라이더 위치를 유지한 채 이벤트만 교체(교체 선수 override와 같은 경로).
     if (typeof window.ttRefreshEventsData === 'function') {
       const fixtureId = String(data?.matchInfo?.fixtureId ?? '').trim();
-      const events = typeof window.evPatchSubstEvents === 'function' ? window.evPatchSubstEvents(data.events, fixtureId) : data.events;
+      const events = typeof window.evPatchSubstEvents === 'function' ? window.evPatchSubstEvents(data.events, fixtureId, data) : data.events;
       window.ttRefreshEventsData({ ...data, events });
     }
     try { sessionStorage.setItem('cached_fixture_data', JSON.stringify(data)); } catch {}

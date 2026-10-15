@@ -324,7 +324,7 @@
     if(el.inNoteStroke) el.inNoteStroke.value = state.colors.noteStroke;
     if(el.inNoteText) el.inNoteText.value = state.colors.noteText;
 
-    // 6. 득점자 텍스트 자동 레이아웃 (1줄→2줄→폰트 축소)
+    // 6. 득점자 텍스트 자동 레이아웃 (허용 줄 수→묶음 최적화→폰트 축소)
     autoLayoutNotes();
 
     // 7. 로고 정렬 모드 및 보드 테두리 클래스 적용
@@ -519,7 +519,7 @@
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // [스코어보드 렌더링 - 득점자 자동 레이아웃] 1줄 → 2명씩 한 줄 → 폰트 축소로 넘침 방지
+  // [스코어보드 렌더링 - 득점자 자동 레이아웃] 허용 높이와 폭에 맞춰 줄 묶음을 최적화
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   /*
   [테스트 케이스 - 콘솔에 붙여넣어 사용]
@@ -623,20 +623,57 @@
     const baseSize = state.noteFontSize ?? 18;
     const MIN_SIZE = 8;
 
-    // 1단계: 1줄씩, 기본 폰트 크기로 시작
+    // 설정한 글자 크기를 우선 유지하며 배치를 탐색합니다.
     let effectiveSize = baseSize;
-    setCSS(cssVar, effectiveSize + 'px');
-    noteEl.innerHTML = formatScorers(lines, 1);
-
-    // 2단계: 보드 높이를 넘치면 2명씩 한 줄로 압축
-    if (noteEl.scrollHeight > boardH) {
-      noteEl.innerHTML = formatScorers(lines, 2);
-    }
-
-    // 3단계: 그래도 넘치면 폰트 크기를 1px씩 줄여 MIN_SIZE까지 축소
-    while ((noteEl.scrollHeight > boardH || noteEl.scrollWidth > maxWidth) && effectiveSize > MIN_SIZE) {
-      effectiveSize -= 1;
+    while (true) {
+      // 1단계: 현재 글자 크기로 항목을 한 줄씩 그려 각 항목의 실제 폭을 측정합니다.
       setCSS(cssVar, effectiveSize + 'px');
+      noteEl.innerHTML = formatScorers(lines, 1);
+      const entries = [...noteEl.querySelectorAll('.note-line')];
+      if (!entries.length) break;
+      const style = getComputedStyle(noteEl);
+      // 2단계: 상하 패딩을 뺀 허용 높이를 줄 높이로 나눠 최대 줄 수를 정합니다.
+      // 줄 높이에는 글자 크기와 외곽선 두께가 포함되며, 항목 수보다 많은 줄은 만들지 않습니다.
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      const rowHeight = parseFloat(style.lineHeight);
+      const rowCount = Math.max(1, Math.min(lines.length, Math.floor((boardH - padding) / rowHeight)));
+      if (rowCount < lines.length) {
+        // 3단계: 항목 순서를 유지하면서 가장 긴 줄의 폭이 최소가 되는 묶음을 찾습니다.
+        // 누적 폭으로 연속 항목의 너비를 구하고, 항목 사이 간격도 함께 더합니다.
+        const gap = parseFloat(style.fontSize) * .9;
+        const prefix = [0];
+        entries.forEach(entry => prefix.push(prefix[prefix.length - 1] + entry.offsetWidth));
+        const costs = Array.from({length: rowCount + 1}, () => Array(lines.length + 1).fill(Infinity));
+        const breaks = Array.from({length: rowCount + 1}, () => []);
+        costs[0][0] = 0;
+        // costs[줄 수][항목 수]는 해당 항목들을 배치했을 때 가장 긴 줄의 최소 폭입니다.
+        // 가능한 이전 줄의 끝을 비교하고, 선택한 경계를 breaks에 기록합니다.
+        for (let row = 1; row <= rowCount; row++) {
+          for (let end = row; end <= lines.length; end++) {
+            for (let start = row - 1; start < end; start++) {
+              const width = prefix[end] - prefix[start] + gap * (end - start - 1);
+              const cost = Math.max(costs[row - 1][start], width);
+              if (cost < costs[row][end]) {
+                costs[row][end] = cost;
+                breaks[row][end] = start;
+              }
+            }
+          }
+        }
+        const rows = [];
+        // 4단계: 마지막 항목부터 선택한 경계를 역추적해 실제 줄을 구성합니다.
+        // 선수 이름이나 여러 득점 시간을 나누지 않고 항목 전체를 같은 줄에 둡니다.
+        let end = lines.length;
+        for (let row = rowCount; row > 0; row--) {
+          const start = breaks[row][end];
+          rows.unshift(`<span class="note-row">${lines.slice(start, end).map(renderNoteLine).join('<span class="note-line-gap">  </span>')}</span>`);
+          end = start;
+        }
+        noteEl.innerHTML = rows.join('');
+      }
+      // 5단계: 높이와 폭이 모두 맞으면 확정합니다. 부족할 때만 1px 줄여 줄 수와 묶음을 다시 계산합니다.
+      if ((noteEl.scrollHeight <= boardH && noteEl.scrollWidth <= maxWidth) || effectiveSize <= MIN_SIZE) break;
+      effectiveSize -= 1;
     }
 
     alignNoteSvg(noteEl);
