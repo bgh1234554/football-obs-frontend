@@ -276,9 +276,29 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
  * lineup-data.js의 buildEffectiveFixtureData에서 호출해
  * subReflect 교체 swap이 override를 반영하도록 함.
  */
-function evPatchSubstEvents(events, fixtureId) {
+function evPatchSubstEvents(events, fixtureId, fixtureData = window._eventsLastData) {
   if (!Array.isArray(events) || !fixtureId) return events;
   const overrides = evLoadSubstOverrides()[fixtureId] || {};
+  // 같은 팀의 미해결 교체 필드와 ID 0 명단 선수가 각각 하나일 때만 빈 이름을 보완합니다.
+  // ID는 그대로 두어 자동 추정 후에도 기존 밑줄과 수동 수정 기능을 유지합니다.
+  const fallback = {};
+  if (String(fixtureData?.matchInfo?.fixtureId ?? '') === String(fixtureId)) {
+    for (const side of ['home', 'away']) {
+      const unresolved = events.flatMap(ev => String(ev?.type || '').toLowerCase() === 'subst' && ev.side === side
+        ? ['player', 'assist'].filter(field => evSubstHasUnlinkedId(ev, field)).map(field => ({ev, field})) : []);
+      const lineup = fixtureData[`${side}Lineup`];
+      const candidates = [...(lineup?.startXi || []), ...(lineup?.substitutes || [])]
+        .filter(player => Number(player?.playerId) === 0);
+      if (unresolved.length !== 1 || candidates.length !== 1) continue;
+      const {ev, field} = unresolved[0];
+      const candidate = candidates[0];
+      const rolePlayers = field === 'assist' ? lineup?.substitutes : lineup?.startXi;
+      if (!rolePlayers?.includes(candidate) || overrides[evSubstEventKey(ev)]?.[field]) continue;
+      if ([`${field}Name`, `${field}NameKoLong`, `${field}OrigName`].some(key => String(ev[key] || '').trim())) continue;
+      if (!String(candidate.name || candidate.nameKoLong || '').trim()) continue;
+      fallback[side] = {ev, field, candidate};
+    }
+  }
 
   // override가 없어도 모든 교체 이벤트에 원본 키(_evSubstKey)를 새겨둔다 — 이후 applyZeroIdOverrides의
   // alt ID 리매핑이나 이 함수의 패치로 ID가 바뀌어도 선택 창의 저장/초기화가 같은 키를 쓰게 하기 위함.
@@ -286,15 +306,21 @@ function evPatchSubstEvents(events, fixtureId) {
     if (String(ev?.type || '').toLowerCase() !== 'subst') return ev;
     const key = evSubstEventKey(ev);
     const evOverride = overrides[key];
-    if (!evOverride) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
+    if (!evOverride && fallback[ev.side]?.ev !== ev) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
     const patched = { ...ev, _evSubstKey: key };
-    if (evOverride.player) {
+    const inferred = fallback[ev.side];
+    if (inferred?.ev === ev) {
+      patched[`${inferred.field}Name`] = inferred.candidate.name || inferred.candidate.nameKoLong;
+      patched[`${inferred.field}NameKoLong`] = inferred.candidate.nameKoLong || null;
+      patched[`${inferred.field}OrigName`] = inferred.candidate.origName || null;
+    }
+    if (evOverride?.player) {
       patched.playerId = evOverride.player.playerId;
       patched.playerName = evOverride.player.name;
       patched.playerNameKoLong = null;
       patched.playerOrigName = null;
     }
-    if (evOverride.assist) {
+    if (evOverride?.assist) {
       patched.assistId = evOverride.assist.playerId;
       patched.assistName = evOverride.assist.name;
       patched.assistNameKoLong = null;

@@ -343,7 +343,7 @@ function ttApplySubstOverrides(fixtureData) {
   if (!fixtureData || !Array.isArray(fixtureData.events)) return fixtureData;
   const fixtureId = String(fixtureData?.matchInfo?.fixtureId ?? '').trim();
   if (!fixtureId || typeof window.evPatchSubstEvents !== 'function') return fixtureData;
-  return { ...fixtureData, events: window.evPatchSubstEvents(fixtureData.events, fixtureId) };
+  return { ...fixtureData, events: window.evPatchSubstEvents(fixtureData.events, fixtureId, fixtureData) };
 }
 
 /**

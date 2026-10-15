@@ -26,7 +26,7 @@ function buildEffectiveFixtureData(data) {
   };
   // 교체 선수 수동 연동 override(events-panel.js) 적용 — subReflect swap이 이를 반영하도록.
   if (typeof window.evPatchSubstEvents === 'function' && Array.isArray(next.events)) {
-    next.events = window.evPatchSubstEvents(next.events, fixtureId);
+    next.events = window.evPatchSubstEvents(next.events, fixtureId, next);
   }
   if (!entry) {
     applyManualCaptainToFixture(next, null);
