@@ -468,8 +468,8 @@
 
 /* 빠른 입력은 점수판과 같은 좌표계에서 배율을 함께 적용받습니다. */
 .board.fsm-board .pso-main[role="button"] { cursor: pointer; }
-#boardPsoControls[hidden] { display: none; }
-#boardPsoControls {
+#boardPsoControls[hidden], #boardAggControls[hidden] { display: none; }
+:is(#boardPsoControls, #boardAggControls) {
   position: absolute; top: 100%; left: 0; width: 100%;
   background: var(--fsm-pso-ink); color: var(--fsm-pso-background); border-radius: 0 0 6px 6px;
   box-shadow: 0 3px 10px #0006; padding: 4px 0 6px;
@@ -477,13 +477,34 @@
 }
 #boardPsoControls .pso-quick-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--pso-middle-width) minmax(0, 1fr); }
 #boardPsoControls .pso-quick-team, #boardPsoControls .pso-quick-middle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-#boardPsoControls button {
+:is(#boardPsoControls, #boardAggControls) button {
   min-width: 0; height: 34px; padding: 0; margin: 2px;
   border: 1px solid currentColor; border-radius: 4px; background: transparent;
   color: inherit; font: bold 16px/1 sans-serif; cursor: pointer;
 }
-#boardPsoControls button:hover, #boardPsoControls button:focus-visible { background: color-mix(in srgb, var(--fsm-pso-background) 18%, var(--fsm-pso-ink)); outline: 2px solid currentColor; outline-offset: -2px; }
-#boardPsoControls .pso-quick-hint { padding: 4px 6px 0; text-align: center; font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
+:is(#boardPsoControls, #boardAggControls) button:hover, :is(#boardPsoControls, #boardAggControls) button:focus-visible { background: color-mix(in srgb, var(--fsm-pso-background) 18%, var(--fsm-pso-ink)); outline: 2px solid currentColor; outline-offset: -2px; }
+:is(#boardPsoControls, #boardAggControls) .pso-quick-hint { padding: 4px 6px 0; text-align: center; font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
 #boardPsoControls .kbd { font-size: inherit; padding: 0 2px; background: #111827; color: #fff; }
-#boardPsoControls .pso-quick-hint > span { display: block; white-space: nowrap; }
+:is(#boardPsoControls, #boardAggControls) .pso-quick-hint > span { display: block; white-space: nowrap; }
 #boardPsoControls .pso-quick-middle button { font-size: 20px; }
+
+/* 합계 점수 빠른 입력: 점수 영역 클릭 시 점수판 아래에 열리며 승부차기 빠른 입력과 같은 모양을 쓴다. */
+.board.fsm-board .scoreboard-main :is(.team-score, .score-div, .total-score) { cursor: pointer; }
+#boardAggControls { z-index: 102; padding: 4px 4px 6px; box-sizing: border-box; }
+#boardAggControls .agg-quick-toggle { display: block; width: calc(100% - 4px); }
+#boardAggControls .agg-quick-toggle[aria-pressed="true"] { background: var(--fsm-pso-background); color: var(--fsm-pso-ink); }
+#boardAggControls .agg-quick-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 2px; }
+#boardAggControls .agg-quick-team { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
+#boardAggControls .agg-quick-label { padding: 2px 0 0; text-align: center; font-size: 13px; font-weight: bold; }
+#boardAggControls .agg-quick-stepper { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; align-items: center; }
+#boardAggControls .agg-quick-stepper button { font-size: 20px; }
+#boardAggControls input {
+  min-width: 0; height: 34px; margin: 2px; box-sizing: border-box; padding: 0;
+  border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit;
+  font: bold 18px/1 sans-serif; text-align: center; -moz-appearance: textfield; appearance: textfield;
+}
+#boardAggControls input::-webkit-inner-spin-button, #boardAggControls input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#boardAggControls input:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+#boardAggControls .agg-quick-total { font-weight: bold; }
+#boardAggControls .pso-quick-hint > .agg-quick-unsupported { display: none; opacity: .75; white-space: normal; }
+#boardAggControls.is-unsupported .pso-quick-hint > .agg-quick-unsupported { display: block; }

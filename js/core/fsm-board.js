@@ -1442,6 +1442,91 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /**
+   * 점수 영역(경기 점수·합계 칸·구분 칸) 클릭 시 점수판 아래에 합계 점수 빠른 입력을 엽니다.
+   * 테마 탭의 '합계 점수 표시'(aggToggle/aggHomeBase/aggAwayBase)와 같은 state 값을 바꾸며,
+   * 색상·버튼 모양은 승부차기 빠른 입력(#boardPsoControls)과 같은 테마 팔레트를 씁니다.
+   */
+  function syncAggQuickControls(board) {
+    const main = board.querySelector('.scoreboard-main');
+    let panel = board.querySelector('#boardAggControls');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'boardAggControls';
+      panel.hidden = true;
+      panel.setAttribute('role', 'group');
+      panel.setAttribute('aria-label', '합계 점수 입력');
+      const team = (side, label) => `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-agg-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><input type="number" min="0" step="1" inputmode="numeric" data-agg-input="${side}" aria-label="${label}"><button type="button" data-agg-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
+      panel.innerHTML = `<button type="button" class="agg-quick-toggle" data-agg-action="toggle" aria-pressed="false"></button><div class="agg-quick-row">${team('home', '홈 기준')}${team('away', '원정 기준')}</div><div class="pso-quick-hint"><span class="agg-quick-total"></span><span>합계 = 기준값 + 현재 점수</span><span class="agg-quick-unsupported">이 점수판은 합계 점수를 표시하지 않습니다</span></div>`;
+      board.append(panel);
+      const targets = '.team-score, .score-div, .total-score';
+      /** 클릭·Esc·바깥 클릭이 같은 닫힘 상태를 사용합니다. */
+      const close = () => { panel.hidden = true; };
+      const commit = () => { render(); persist(); };
+      const setBase = (side, value) => {
+        state[side === 'home' ? 'aggHomeBase' : 'aggAwayBase'] = Math.max(0, Math.floor(Number(value) || 0));
+        commit();
+      };
+      main.addEventListener('click', event => {
+        if (!event.target.closest(targets)) return;
+        panel.hidden = !panel.hidden;
+        if (!panel.hidden) syncAggQuickControls(board);
+      });
+      main.querySelectorAll(targets).forEach(node => node.setAttribute('title', '클릭하여 합계 점수 입력'));
+      panel.addEventListener('click', event => {
+        const action = event.target.closest('[data-agg-action]')?.dataset.aggAction;
+        if (!action) return;
+        if (action === 'toggle') { state.aggEnabled = !state.aggEnabled; commit(); return; }
+        const side = action.startsWith('home') ? 'home' : 'away';
+        const key = side === 'home' ? 'aggHomeBase' : 'aggAwayBase';
+        setBase(side, (Number(state[key]) || 0) + (action.endsWith('Plus') ? 1 : -1));
+      });
+      panel.addEventListener('input', event => {
+        const side = event.target.dataset.aggInput;
+        if (side && event.target.value !== '') setBase(side, event.target.value);
+      });
+      // 입력 중 칸을 비웠다가 나가면 저장된 값으로 다시 채웁니다.
+      panel.addEventListener('focusout', () => requestAnimationFrame(() => syncAggQuickControls(board)));
+      panel.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && event.target.matches('input')) { event.preventDefault(); event.target.blur(); }
+      });
+      document.addEventListener('pointerdown', event => {
+        if (!panel.contains(event.target) && !event.target.closest?.('.fsm-board .scoreboard-main :is(.team-score, .score-div, .total-score)')) close();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) close();
+      });
+    }
+    // 승부차기 빠른 입력과 같은 테마 팔레트로 칠합니다.
+    const [background, ink] = FSM_PSO_PALETTES[_currentTheme] || FSM_PSO_PALETTES.default;
+    panel.style.setProperty('--fsm-pso-background', chromaSafe(background));
+    panel.style.setProperty('--fsm-pso-ink', chromaSafe(ink));
+    const toggle = panel.querySelector('.agg-quick-toggle');
+    toggle.setAttribute('aria-pressed', String(!!state.aggEnabled));
+    toggle.textContent = state.aggEnabled ? '합계 점수 표시 중' : '합계 점수 표시 안 함';
+    panel.querySelectorAll('[data-agg-input]').forEach(input => {
+      // 입력 중인 칸은 사용자가 친 값을 덮어쓰지 않습니다.
+      if (document.activeElement === input) return;
+      input.value = state[input.dataset.aggInput === 'home' ? 'aggHomeBase' : 'aggAwayBase'];
+    });
+    const homeTotal = (Number(state.aggHomeBase) || 0) + (Number(state.homeScore) || 0);
+    const awayTotal = (Number(state.aggAwayBase) || 0) + (Number(state.awayScore) || 0);
+    panel.querySelector('.agg-quick-total').textContent = `합계 ${homeTotal} : ${awayTotal}`;
+    panel.classList.toggle('is-unsupported', !FSM_AGGREGATE_THEMES.includes(_currentTheme));
+    if (panel.hidden) return;
+    // 점수 영역 가운데 아래(타이머 아래)에 열고, 좁은 점수 칸에서도 입력이 잘리지 않게 최소 폭을 둡니다.
+    const boardRect = board.getBoundingClientRect();
+    const scale = boardRect.width / board.offsetWidth || 1;
+    const areas = [...main.querySelectorAll('.team-score, .score-div, .total-score')]
+      .map(node => node.getBoundingClientRect()).filter(rect => rect.width > 0);
+    const left = Math.min(...areas.map(rect => rect.left));
+    const right = Math.max(...areas.map(rect => rect.right));
+    const center = areas.length ? ((left + right) / 2 - boardRect.left) / scale : board.offsetWidth / 2;
+    const width = Math.max(280, areas.length ? (right - left) / scale : 0);
+    panel.style.width = `${width}px`;
+    panel.style.left = `${center - width / 2}px`;
+  }
+
   /** 승부차기 상태에서만 타이머 위치에 PSO를 표시하고 기록·테마 색상·서든데스 폭을 맞춥니다. */
   function applyPSO() {
     const isPso = state.half === 'PK';
@@ -1522,7 +1607,7 @@ function adjustScoreboardWidth() {
 })();
 
 /** 점수판 내용·승부차기·메모 배치·배율을 갱신하고 준비된 점수판을 표시합니다. */
-window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); revealFsmBoard(); };
+window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); revealFsmBoard(); };
 
 if (document.fonts) {
   document.fonts.ready.then(() => window.fsmBoardRender());
