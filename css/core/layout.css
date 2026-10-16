@@ -494,6 +494,9 @@
     #themePanel .theme-selector-card .pgroup { width: 100%; }
     #themePanel small { color: #a8b6cc; font-size: 11px; line-height: 1.5; }
     #themePanel .theme-selector-card small { margin-top: 4px; }
+    /* 점수판 둘러보기 버튼: 진행 중에는 강조색으로 표시 */
+    #themePanel .fsm-theme-tour-btn { display: block; box-sizing: border-box; width: 100%; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #themePanel .fsm-theme-tour-btn[aria-pressed="true"] { background: var(--control-accent); border-color: var(--control-accent); color: var(--control-accent-on); }
     #themePanel .theme-card button.ghost {
       background: #19273e; border: 1px solid #ffffff24;
     }

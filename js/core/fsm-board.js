@@ -153,6 +153,7 @@ function initFsmThemeSelect() {
     .map(([value, label]) => new Option(label, value)));
   select.value = state.fsmTheme;
   select.addEventListener('change', () => {
+    stopFsmThemeTour({ restore: false });
     state.fsmTheme = select.value;
     window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl);
     render();
@@ -183,6 +184,67 @@ function cycleFsmTheme(direction) {
     notify();
   }
 }
+/** 점수판 둘러보기: 전환 효과가 끝난 뒤 한 테마를 보여 주는 시간(ms). */
+const FSM_THEME_TOUR_HOLD_MS = 1000;
+/** 테마 전환 효과 시간(ms). css의 --fsm-transition-duration(.9s)과 같다. */
+const FSM_THEME_TOUR_TRANSITION_MS = 750;
+let fsmThemeTour = null;
+
+/**
+ * 모든 점수판 테마를 목록 순서대로 하나씩 보여 주고 원래 선택으로 돌아온다.
+ * 저장된 테마 선택(state.fsmTheme)은 바꾸지 않고 화면에만 적용하므로, 중간에 새로고침해도 설정은 그대로다.
+ */
+function startFsmThemeTour() {
+  if (fsmThemeTour) return;
+  const button = document.getElementById('fsmThemeTourBtn');
+  const themes = Object.keys(FSM_THEMES);
+  fsmThemeTour = { index: -1, timer: null };
+  button?.setAttribute('aria-pressed', 'true');
+  const next = () => {
+    if (!fsmThemeTour) return;
+    fsmThemeTour.index++;
+    if (fsmThemeTour.index >= themes.length) { stopFsmThemeTour(); return; }
+    const theme = themes[fsmThemeTour.index];
+    // 버튼에는 진행 순서만 두고, 점수판 이름은 Shift+[ / ] 순환과 같은 아래쪽 알림으로 보여 준다(긴 이름이 버튼을 넘치지 않게).
+    if (button) button.textContent = `${fsmThemeTour.index + 1}/${themes.length} · 멈추기`;
+    showToast(`점수판 둘러보기: ${FSM_THEMES[theme]}`);
+    const entry = Object.values(LEAGUE_THEME_MAP).find(item => item.theme === theme);
+    _currentType = entry ? entry.type : FSM_FALLBACK_TYPE;
+    applyTheme(theme, entry?.logoUrl || state.leagueLogoUrl || null);
+    render();
+    // CSS 로딩이 끝나고 전환 효과까지 마친 뒤 2초 보여 준다.
+    const waitLoaded = () => {
+      if (!fsmThemeTour) return;
+      if (pendingThemeLink) { fsmThemeTour.timer = setTimeout(waitLoaded, 50); return; }
+      fsmThemeTour.timer = setTimeout(next, FSM_THEME_TOUR_TRANSITION_MS + FSM_THEME_TOUR_HOLD_MS);
+    };
+    waitLoaded();
+  };
+  next();
+}
+
+/**
+ * 둘러보기를 멈춘다. restore가 true면 원래 선택(자동/수동 테마)으로 되돌리고,
+ * 사용자가 둘러보기 중 직접 테마를 고른 경우에는 그 선택을 그대로 둔다.
+ */
+function stopFsmThemeTour({ restore = true } = {}) {
+  if (!fsmThemeTour) return;
+  clearTimeout(fsmThemeTour.timer);
+  fsmThemeTour = null;
+  const button = document.getElementById('fsmThemeTourBtn');
+  if (button) { button.textContent = '점수판 둘러보기'; button.setAttribute('aria-pressed', 'false'); }
+  if (restore) { window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl); render(); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fsmThemeTourBtn')?.addEventListener('click', () => {
+    if (fsmThemeTour) stopFsmThemeTour(); else startFsmThemeTour();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && fsmThemeTour) stopFsmThemeTour();
+  });
+});
+
 const CSS_LINK_INDEX = 17;
 var _currentTheme = 'default';
 var _currentType = 'club';
