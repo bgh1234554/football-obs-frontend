@@ -714,13 +714,37 @@
 
     // 렌더·폰트 완료·크기 감지가 같은 배치를 다시 요청하더라도 내용과 실제 배치가
     // 같으면 SVG와 줄 묶음을 다시 만들지 않는다. 색상은 기존 CSS 상속으로 갱신된다.
+    /**
+     * 득점자 줄, 표시 설정, 보드 기하 정보, 로딩된 글꼴과 계산된 스타일을 직렬화한다.
+     * 내용이 같아도 테마·배율·사용 가능한 공간이 바뀌면 다시 배치해야 하므로 함께 기록한다.
+     * 캐시 적중 여부는 이 키뿐 아니라 실제 자식 노드의 동일성도 확인해 판정한다.
+     * 배치 과정에서 보드 위치가 달라질 수 있으므로 최종 결과를 저장할 때 다시 호출한다.
+     *
+     * @returns {string} 현재 득점자 레이아웃 입력을 나타내는 JSON 문자열.
+     */
     const inputKey = () => {
       const stage = $('boardStageInner');
+      /**
+       * 현재 미리보기 변환이 적용된 화면 좌표와 크기를 읽는다.
+       * 득점자 배치는 보드와 주변 영역의 위치 관계에 의존하므로 폭·높이뿐 아니라
+       * 좌측·상단 좌표도 기록한다. DOM을 변경하지 않지만 필요하면 브라우저 배치를 확정한다.
+       *
+       * @param {Element|null} node 측정할 요소.
+       * @returns {number[]|null} [left, top, width, height], 요소가 없으면 null.
+       */
       const rectKey = node => {
         if (!node) return null;
         const r = node.getBoundingClientRect();
         return [r.left, r.top, r.width, r.height];
       };
+      /**
+       * 득점자 글자의 자연 크기와 줄바꿈, 외곽선 여유에 영향을 주는 스타일을 수집한다.
+       * 글꼴 이름이 같아도 크기·굵기·자간·패딩이 바뀔 수 있어 각 값을 함께 비교한다.
+       * 현재 피팅 결과의 fontSize도 포함해 외부 스타일 변경을 캐시 적중으로 오인하지 않는다.
+       *
+       * @param {Element} node 득점자 텍스트 요소.
+       * @returns {string[]} 계산된 글꼴·박스·외곽선 관련 값의 배열.
+       */
       const fontKey = node => {
         const s = getComputedStyle(node);
         return [s.fontFamily, s.fontSize, s.lineHeight, s.fontWeight, s.fontStyle, s.fontStretch, s.letterSpacing, s.wordSpacing,
@@ -835,6 +859,15 @@
     return s;
   }
   let appliedBoardScale = 1;
+  /**
+   * 보드의 자연 높이에 마지막으로 적용한 배율을 곱해 래퍼의 높이를 동기화한다.
+   * 합계·승부차기 빠른 입력 메뉴는 본문 아래에 겹쳐 표시되므로 측정 중 잠시 숨긴다.
+   * 메뉴를 scrollHeight에 포함하면 메뉴를 열기만 해도 아래 패널이 밀려난다.
+   * 높이가 같으면 인라인 스타일을 다시 쓰지 않는다. 배율·슬라이더·위치 전체를
+   * 재적용하지 않으므로 ResizeObserver에서 애니메이션의 중간 높이를 반영할 때도 사용한다.
+   *
+   * @returns {void} boardStageWrap.style.height를 필요할 때만 변경한다.
+   */
   function syncBoardStageHeight(){
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
@@ -846,6 +879,15 @@
     const height = (naturalH * appliedBoardScale) + 'px';
     if (boardStageWrap.style.height !== height) boardStageWrap.style.height = height;
   }
+  /**
+   * 사용자가 선택한 백분율 배율에 터치 전술판의 화면 폭 제한을 반영한다.
+   * 실제 변환 배율을 저장한 뒤 보드 transform, 래퍼 높이, 슬라이더와 표시값을 맞춘다.
+   * 이어 좌우·중앙 배치와 테마별 경계 픽셀 보정을 수행한다.
+   * 단순 높이 변화는 이 함수 대신 syncBoardStageHeight를 사용해 전체 보정을 반복하지 않는다.
+   *
+   * @param {number} pct 사용자가 선택한 백분율 배율.
+   * @returns {void} 미리보기 배치 및 배율 컨트롤을 갱신한다.
+   */
   function applyBoardScale(pct){
     const s = boardScaleFactor(pct);
     appliedBoardScale = s;

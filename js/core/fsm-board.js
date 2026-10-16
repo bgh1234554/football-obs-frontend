@@ -1726,6 +1726,14 @@ window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickContro
 
 if (document.fonts) {
   let fontRenderRaf = 0;
+  /**
+   * 글꼴 준비 완료 후 실제 글꼴의 메트릭으로 보드 배치를 다시 계산하도록 예약한다.
+   * 최초 fonts.ready와 loadingdone이 같은 프레임에 도착하면 하나의 rAF로 합친다.
+   * 예약 플래그는 렌더 직전에 해제하므로 이후 다른 테마의 새 글꼴이 완료되면
+   * 별도의 갱신을 예약할 수 있다. 파일 캐시 여부와 관계없이 실제 완료 알림을 처리한다.
+   *
+   * @returns {void} 보드 갱신은 다음 애니메이션 프레임에서 실행된다.
+   */
   const scheduleFontRender = () => {
     // 같은 글꼴 완료에서 ready와 loadingdone이 함께 오는 경우 한 번만 갱신한다.
     if (fontRenderRaf) return;

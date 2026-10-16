@@ -1522,6 +1522,10 @@ function rectsOverlap(rectA, rectB) {
  * 뒤에도 이어지는 fitLineupNameSelf의 측정에 영향을 주는 부작용이 있었다(서브픽셀/내부
  * line-clamp 상태 오염으로 추정). 복제본에서만 측정하면 실패 시 원본은 처음 상태 그대로
  * 남아있어 기존(이 기능 추가 전) 동작과 완전히 동일하게 폴백된다.
+ * 생성한 복제본은 부모에 연결된 상태로 반환하므로 호출자가 측정 후 제거해야 한다.
+ *
+ * @param {HTMLElement} nameEl 부모에 연결된 원본 이름 라벨.
+ * @returns {HTMLElement} 숨겨진 한 줄 측정용 복제본.
  */
 function createLineupNameNaturalSizeClone(nameEl) {
   const clone = nameEl.cloneNode(true);
@@ -1538,6 +1542,15 @@ function createLineupNameNaturalSizeClone(nameEl) {
   return clone;
 }
 
+/**
+ * 원본 라벨을 바꾸지 않고 숨겨진 복제본에서 한 줄 자연 폭과 높이를 측정한다.
+ * 측정 후 복제본을 제거한다. 높이는 미리보기 변환을 보정한 레이아웃 좌표로 구한다.
+ * 여러 이름을 연속 측정할 때는 DOM 추가와 크기 읽기를 모으는
+ * measureLineupNameNaturalSizes를 사용해 이름마다 강제 배치가 반복되는 것을 피한다.
+ *
+ * @param {HTMLElement} nameEl 부모에 연결된 측정 대상 이름 라벨.
+ * @returns {{width: number, height: number}} 한 줄로 펼친 이름의 자연 크기.
+ */
 function measureLineupNameNaturalSizeViaClone(nameEl) {
   const clone = createLineupNameNaturalSizeClone(nameEl);
   const width = clone.scrollWidth;
@@ -1546,7 +1559,15 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
   return { width, height };
 }
 
-/** 같은 설정의 복제본을 모아서 추가·측정·삭제해 이름마다 재계산하지 않는다. */
+/**
+ * 측정 가능한 이름의 복제본을 모두 붙인 다음 크기를 읽어 DOM 쓰기와 읽기를 분리한다.
+ * 숨겨졌거나 이름 래퍼가 없는 라벨은 결과에서 제외한다. 원본 라벨은 변경하지 않는다.
+ * 측정 도중 오류가 발생해도 finally에서 생성한 모든 복제본을 제거한다.
+ * 반환한 크기는 자연 폭 후보 검사에만 사용하며 실제 충돌 보정 순서는 호출자가 유지한다.
+ *
+ * @param {HTMLElement[]} labels 자연 크기를 일괄 측정할 이름 라벨 목록.
+ * @returns {Map<HTMLElement, {width: number, height: number}>} 원본 라벨을 키로 하는 측정 결과.
+ */
 function measureLineupNameNaturalSizes(labels) {
   // 측정 가능한 요소부터 고르고, 복제본 추가와 크기 읽기를 번갈아 실행하지 않는다.
   const measurable = labels.filter(nameEl => canMeasureTextElement(nameEl) && getLineupNameWrap(nameEl));
@@ -2162,6 +2183,9 @@ const lineupNameFitStamps = new WeakMap();
 /**
  * 라벨이 쓰는 글꼴 중 로딩이 끝난 글꼴 수. 라벨 글꼴이 늦게 로딩되면 값이 바뀌어 다시 맞춘다.
  * 점수판 테마 글꼴처럼 라벨과 무관한 글꼴의 로딩은 결과에 영향이 없으므로 세지 않는다.
+ *
+ * @param {HTMLElement|null} label 계산된 font-family를 확인할 라벨.
+ * @returns {number} 라벨의 글꼴 목록과 일치하는 loaded 상태 FontFace 수. 측정 대상이 없으면 0.
  */
 function getLineupNameLoadedFontCount(label) {
   if (!label || !document.fonts) return 0;
@@ -2174,7 +2198,15 @@ function getLineupNameLoadedFontCount(label) {
   return count;
 }
 
-/** 패널의 피팅 입력을 묶는다. 화면 전체가 이동해도 내부 충돌 관계는 같으므로 상대 위치만 기록한다. */
+/**
+ * 이름 DOM의 동일성·개수, 패널과 피치의 기하 정보, 관련 글꼴 준비 상태를 기록한다.
+ * 화면 전체가 이동해도 내부 충돌 관계는 같으므로 패널을 기준으로 한 상대 좌표를 사용한다.
+ * 좌표는 소수 셋째 자리까지 기록해 좌표 차감의 미세한 부동소수 오차로 재피팅하지 않는다.
+ * 텍스트 교체 등 DOM을 새로 만드는 경로는 첫 라벨의 참조 변경으로 구분한다.
+ *
+ * @param {HTMLElement} panel 피팅 입력을 수집할 라인업 패널.
+ * @returns {{first: Element|null, count: number, size: string, font: number}} 재사용 비교용 입력값.
+ */
 function getLineupNameFitSignature(panel) {
   const labels = panel.querySelectorAll('.dp-lineup-name');
   const panelRect = panel.getBoundingClientRect();
@@ -2187,7 +2219,15 @@ function getLineupNameFitSignature(panel) {
   return { first: labels[0] || null, count: labels.length, size: `${rectKey(panel)}|${pitches}`, font: getLineupNameLoadedFontCount(labels[0]) };
 }
 
-/** 피팅을 마친 패널(들)의 입력값을 기록한다. 문서 전체를 맞춘 경우 모든 라인업 패널을 기록. */
+/**
+ * 피팅이 끝난 실제 DOM과 크기를 패널별 WeakMap에 저장한다.
+ * 한 패널을 전달하면 그 패널만, 문서나 상위 컨테이너를 전달하면 내부 라인업 패널을 기록한다.
+ * 결과를 적용하기 전에 저장하면 피팅 자체가 바꾼 크기를 다음 호출에서 변경으로 오인하므로
+ * 반드시 피팅 완료 후 호출해야 한다.
+ *
+ * @param {Document|Element} [scope] 기록할 범위. 생략하면 document 전체.
+ * @returns {void} 패널별 피팅 입력 캐시를 갱신한다.
+ */
 function stampLineupNameFit(scope) {
   const panels = scope?.matches?.('[data-dp-role="lineup"]')
     ? [scope]
@@ -2195,7 +2235,14 @@ function stampLineupNameFit(scope) {
   panels.forEach(panel => lineupNameFitStamps.set(panel, getLineupNameFitSignature(panel)));
 }
 
-/** 직전 피팅과 입력이 같으면 건너뛰고, 다르면 fitLineupNamePills를 실행한다. 실행했으면 true. */
+/**
+ * 표시 가능한 패널의 DOM·기하 정보·글꼴 상태가 이전 피팅과 다를 때만 이름을 다시 맞춘다.
+ * 숨은 패널은 0 크기를 결과로 저장하지 않으며 활성화 후 실제 크기로 피팅하도록 남겨 둔다.
+ * 직접 피팅이 필요한 설정 변경 등의 경로는 fitLineupNamePills를 호출할 수 있다.
+ *
+ * @param {HTMLElement} panel 재사용 여부를 검사할 라인업 패널.
+ * @returns {boolean} 실제 피팅을 실행하면 true, 숨겨졌거나 입력이 같아 생략하면 false.
+ */
 function fitLineupNamePillsIfChanged(panel) {
   // 숨은 패널은 측정 결과를 남기지 않고, 페이지가 활성화된 뒤 실제 크기로 맞춘다.
   if (!canMeasureTextElement(panel)) return false;

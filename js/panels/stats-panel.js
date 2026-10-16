@@ -29,11 +29,28 @@ const ST_BAR_SIMILAR_DELTA_E = 25;
  */
 let statsActiveRenderRaf = 0;
 let statsLayoutTransitionWait = null;
+/**
+ * 보드와 자식 요소에서 통계 패널의 가용 공간을 바꿀 수 있는 CSS 전환을 찾는다.
+ * 높이·폭·여백·글자 크기·flex·gap 전환을 대상으로 하며 색상이나 투명도만의 변화는 제외한다.
+ * 색상 전환까지 기다리면 크기가 이미 확정된 통계 갱신도 불필요하게 늦어지기 때문이다.
+ * 키프레임 애니메이션처럼 transitionProperty가 없는 항목은 대상에 포함하지 않는다.
+ *
+ * @returns {Animation[]} 현재 진행 중인 크기 관련 전환. 보드가 없으면 빈 배열.
+ */
 function stGetBoardLayoutTransitions() {
   return document.querySelector('.fsm-board')?.getAnimations({ subtree: true })
     .filter(animation => ['running', 'pending'].includes(animation.playState)
       && /^(height|width|min-height|max-height|min-width|max-width|padding.*|margin.*|font-size|line-height|flex.*|gap|row-gap|column-gap)$/.test(animation.transitionProperty || '')) || [];
 }
+/**
+ * 최신 경기 데이터로 현재 활성 페이지에서 실제 표시 중인 통계 패널의 갱신을 예약한다.
+ * 같은 프레임의 리사이즈·페이지 활성화 요청은 하나의 rAF로 합친다.
+ * 보드 크기가 전환 중이면 완료 또는 취소를 기다린 뒤 다시 검사해 중간 높이마다
+ * 행 수를 측정하지 않는다. 대기 중 새 테마 전환이 시작돼도 다음 검사에서 처리한다.
+ * 실행 시점의 활성 페이지와 최신 데이터를 사용하므로 이전 페이지·경기 정보를 붙잡지 않는다.
+ *
+ * @returns {void} 데이터가 없거나 이미 예약·대기 중이면 추가 작업 없이 반환한다.
+ */
 function stRerenderActivePanels() {
   if (statsLastFixtureData == null) return;
   // 높이 보정·모드 전환·경기 적용이 같은 프레임에 요청한 재렌더는 한 번으로 합친다.
@@ -418,6 +435,20 @@ function stDefaultPanelHeight(panel) {
  * 실제 스탯 행을 숨겨서 렌더링해 패널에 들어가는 항목 수를 구한다.
  * reserveControls가 true이면 페이지 버튼 공간을 확보하며, 측정 불가 시 설정값(기본 9개)을 반환한다.
  * 측정 결과는 공간이 부족해도 최소 1개를 보장한다.
+ *
+ * 패널 크기·계산된 스타일·글꼴 준비 상태·행 내용·제목 등의 점유 높이가 같으면
+ * 직전 결과를 재사용한다. 컨트롤 유무는 서로 다른 캐시 슬롯으로 관리한다.
+ * 캐시가 없으면 실제 행을 한 번에 배치해 경계로 후보를 구한 뒤 기존 넘침 판정으로
+ * 후보와 다음 행을 검증한다. 추정이 맞지 않으면 탐색을 계속해 실제 최대 개수를 찾는다.
+ * 숨은 패널의 기본 반환값은 캐시에 넣지 않아 페이지 활성화 후 실측을 건너뛰지 않는다.
+ *
+ * @param {HTMLElement} panel 제목 줄이 준비된 통계 패널. 측정용 DOM을 잠시 추가한다.
+ * @param {Object[]} rows 표시 순서대로 정렬된 통계 행 목록.
+ * @param {Object|null} fixtureData 행의 팀 색상 등 표시 정보에 사용하는 경기 데이터.
+ * @param {Object} [options={}] 측정 옵션.
+ * @param {boolean} [options.reserveControls=false] 페이지 버튼 영역을 함께 예약할지 여부.
+ * @param {string} [options.panelBackground] 미리 계산한 합성 배경색. 없으면 패널에서 계산한다.
+ * @returns {number} 실제로 들어가는 최대 행 수. 측정 불가 시 설정값, 측정 시 최소 1.
  */
 const statsCapacityCache = new WeakMap();
 function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
@@ -472,6 +503,15 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
     if (row.offsetTop - firstTop + row.offsetHeight <= availableHeight + 0.5) estimate++;
     else break;
   }
+  /**
+   * 원본 순서의 앞 count개 행을 측정용 페이지에 넣고 실제 넘침 여부를 검사한다.
+   * 행 경계로 구한 추정치만 믿지 않고 기존 scrollHeight/clientHeight 판정을 유지해
+   * 배율과 브라우저 반올림 차이가 있어도 마지막 행을 잘라 표시하지 않도록 한다.
+   * DOM 교체 후 크기 읽기는 강제 배치를 유발할 수 있으므로 후보 검증에 필요한 만큼만 호출한다.
+   *
+   * @param {number} count 이번 후보에서 표시할 행 수.
+   * @returns {boolean} 페이지 높이를 넘지 않으면 true.
+   */
   const measure = count => {
     page.replaceChildren(...rowNodes.slice(0, count));
     return page.scrollHeight <= page.clientHeight + 0.5;
