@@ -267,6 +267,51 @@ async function testResolutionPersistence(page) {
   console.log('PASS: FHD/QHD/4K/tablet aspect ratios, combined DPI changes, 30 reloads, double-click reset persistence');
 }
 
+// 글꼴과 가용 높이가 바뀌어도 스탯은 잘리지 않는 최대 행 수를 사용한다.
+async function testStatsCapacity(page) {
+  await page.evaluate(() => activatePage('main-small'));
+  await frames(page);
+  const results = await page.evaluate(() => {
+    const original = document.querySelector('.layout-small [data-stat-panel]');
+    const panel = original.cloneNode(false);
+    original.parentElement.appendChild(panel);
+    Object.assign(panel.style, { display: 'flex', flexDirection: 'column', flex: 'none', width: '300px' });
+    const rows = Array.from({ length: 24 }, (_, i) => ({ label: `스탯 ${i}`, homeVal: i, awayVal: 24 - i }));
+    const results = [];
+    try {
+      for (const height of [60, 100, 180, 300, 480, 800]) {
+        for (const font of [10, 12, 18, 24]) {
+          for (const reserveControls of [false, true]) {
+            panel.style.height = `${height}px`;
+            panel.style.setProperty('--st-name-base-size', `${font}px`);
+            panel.innerHTML = '<div class="st-title-bar">경기 스탯</div>';
+            const count = stComputeItemsPerPage(panel, rows, null, { reserveControls });
+            const wrap = document.createElement('div');
+            wrap.className = 'st-wrap';
+            const body = document.createElement('div');
+            body.className = 'st-page';
+            wrap.appendChild(body);
+            if (reserveControls) wrap.appendChild(stCreateControlsProbe());
+            panel.appendChild(wrap);
+            const bg = teamPanelBackground(panel);
+            rows.slice(0, count).forEach(row => body.appendChild(stCreateRow(row, null, bg)));
+            const fits = body.scrollHeight <= body.clientHeight + 0.5;
+            if (count < rows.length) body.appendChild(stCreateRow(rows[count], null, bg));
+            const maximal = count === rows.length || body.scrollHeight > body.clientHeight + 0.5;
+            results.push({ height, font, reserveControls, count, fits, maximal });
+          }
+        }
+      }
+    } finally { panel.remove(); }
+    return results;
+  });
+  for (const result of results) {
+    assert.ok(result.count >= 1, JSON.stringify(result));
+    assert.ok(result.fits || result.count === 1, JSON.stringify(result));
+    assert.ok(result.maximal, JSON.stringify(result));
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -296,6 +341,7 @@ async function testResolutionPersistence(page) {
       await testDrag(page, dpr);
       if (dpr === 1) await testResolutionPersistence(page);
       await testSmallBenchHeight(page, dpr);
+      if (dpr === 1) await testStatsCapacity(page);
       // 별도의 이전 테마 테스트가 삭제된 css/theme 경로를 참조합니다.
       // 외부 라이브러리와 API는 차단하며, 기존 jQuery 어댑터는
       // 이 테스트 범위에서 제외합니다. 핵심 점수 렌더링, 애니메이션, 패널 크기 조정은 정상 실행합니다.

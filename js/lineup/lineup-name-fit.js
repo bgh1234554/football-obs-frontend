@@ -2031,6 +2031,9 @@ function fitLineupNamePills(root) {
     nameEl.style.whiteSpace = '';
     nameEl.style.display = '';
     nameEl.style.flexShrink = '';
+  });
+  // 모든 초기화를 마친 뒤 읽어야 라벨마다 스타일 재계산이 반복되지 않는다.
+  labels.forEach(nameEl => {
     configuredFonts.set(nameEl, parseFloat(getComputedStyle(nameEl).fontSize));
   });
 

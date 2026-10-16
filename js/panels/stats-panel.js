@@ -399,7 +399,7 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
 
   // 2) 실제 패널 안에 숨겨진 측정용 DOM을 만든다. 필요하면 페이지 버튼 공간도 미리 확보한다.
   // 고정 rowH 추정으로는 브라우저별 line-height 반올림을 못 따라가 마지막 행이 반쯤 보일 수 있다.
-  // 실제 렌더 트리를 숨겨서 한 행씩 넣어 보고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
+  // 실제 렌더 트리를 숨겨서 측정하고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
   const wrap = document.createElement('div');
   wrap.className = 'st-wrap';
   Object.assign(wrap.style, {
@@ -414,15 +414,31 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
 
   panel.appendChild(wrap);
 
-  // 3) 한 행씩 추가하다가 높이를 초과하면 중단한다. 넘친 마지막 행은 수용 개수에 포함하지 않는다.
-  let fits = 0;
-  for (const row of rows) {
-    page.appendChild(stCreateRow(row, fixtureData));
-    if (page.scrollHeight > page.clientHeight + 0.5) {
-      page.lastElementChild?.remove();
-      break;
+  // 3) 높이를 초과하지 않는 최대 행 수를 찾는다.
+  // 행 추가와 높이 읽기를 반복하지 않고 실제 행의 앞부분을 이진 탐색한다.
+  // 기존 overflow 판정을 유지하므로 글꼴과 패널 크기에 따른 수용 개수는 같다.
+  const panelBackground = teamPanelBackground(panel);
+  const rowNodes = [];
+  const measure = count => {
+    while (rowNodes.length < count) {
+      rowNodes.push(stCreateRow(rows[rowNodes.length], fixtureData, panelBackground));
     }
-    fits += 1;
+    page.replaceChildren(...rowNodes.slice(0, count));
+    return page.scrollHeight <= page.clientHeight + 0.5;
+  };
+  let fits = 0;
+  // 기본 행 수부터 두 배씩 상한을 찾아 낮은 패널에서 불필요한 행 DOM을 줄인다.
+  let upper = Math.min(fallback, rows.length);
+  while (measure(upper)) {
+    fits = upper;
+    if (upper === rows.length) break;
+    upper = Math.min(upper * 2, rows.length);
+  }
+  if (fits < upper) upper -= 1;
+  while (fits < upper) {
+    const count = Math.ceil((fits + upper) / 2);
+    if (!measure(count)) upper = count - 1;
+    else fits = count;
   }
 
   // 4) 측정용 DOM을 제거하고 최소 1개를 보장한 결과를 반환한다.
