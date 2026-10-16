@@ -310,6 +310,38 @@ async function testStatsCapacity(page) {
     assert.ok(result.fits || result.count === 1, JSON.stringify(result));
     assert.ok(result.maximal, JSON.stringify(result));
   }
+
+  // 같은 프레임의 여러 크기 보정 요청은 한 번만 렌더하고 페이지 내용은 유지한다.
+  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'json', 'juveparma.json'), 'utf8').replace(/^\uFEFF/, ''));
+  await page.evaluate(data => {
+    _lpStatCycle.mode = 'stats';
+    applyStatsPanel(data);
+    stResetAllPanelPages();
+    stRerenderActivePanels();
+  }, fixture);
+  await frames(page);
+  const reuse = await page.evaluate(async () => {
+    const panel = document.querySelector('.page.active [data-stat-panel]');
+    const before = panel.innerHTML;
+    const render = window.stRenderPanel;
+    let calls = 0;
+    window.stRenderPanel = function (...args) {
+      if (args[0] === panel) calls++;
+      return render.apply(this, args);
+    };
+    try {
+      stRerenderActivePanels();
+      stRerenderActivePanels();
+      lpStatUpdateVisibility();
+      stRerenderActivePanels();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return { calls, unchanged: before === panel.innerHTML };
+    } finally {
+      window.stRenderPanel = render;
+    }
+  });
+  assert.equal(reuse.calls, 1, 'same-frame stats requests render once');
+  assert.ok(reuse.unchanged, 'coalesced stats render preserves rows and controls');
 }
 
 (async () => {

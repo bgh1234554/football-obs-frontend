@@ -1523,7 +1523,7 @@ function rectsOverlap(rectA, rectB) {
  * line-clamp 상태 오염으로 추정). 복제본에서만 측정하면 실패 시 원본은 처음 상태 그대로
  * 남아있어 기존(이 기능 추가 전) 동작과 완전히 동일하게 폴백된다.
  */
-function measureLineupNameNaturalSizeViaClone(nameEl) {
+function createLineupNameNaturalSizeClone(nameEl) {
   const clone = nameEl.cloneNode(true);
   clone.style.position = 'absolute';
   clone.style.visibility = 'hidden';
@@ -1535,10 +1535,30 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
   clone.style.whiteSpace = 'nowrap';
   clone.style.display = 'inline-block';
   nameEl.parentNode.appendChild(clone);
+  return clone;
+}
+
+function measureLineupNameNaturalSizeViaClone(nameEl) {
+  const clone = createLineupNameNaturalSizeClone(nameEl);
   const width = clone.scrollWidth;
   const height = getDisplayLayoutRect(clone).height;
   clone.remove();
   return { width, height };
+}
+
+/** 같은 설정의 복제본을 모아서 추가·측정·삭제해 이름마다 재계산하지 않는다. */
+function measureLineupNameNaturalSizes(labels) {
+  // 측정 가능한 요소부터 고르고, 복제본 추가와 크기 읽기를 번갈아 실행하지 않는다.
+  const measurable = labels.filter(nameEl => canMeasureTextElement(nameEl) && getLineupNameWrap(nameEl));
+  const clones = measurable.map(nameEl => createLineupNameNaturalSizeClone(nameEl));
+  try {
+    return new Map(measurable.map((nameEl, i) => [nameEl, {
+      width: clones[i].scrollWidth,
+      height: getDisplayLayoutRect(clones[i]).height,
+    }]));
+  } finally {
+    clones.forEach(clone => clone.remove());
+  }
 }
 
 /** hasLineupNamePitchOverflow와 동일 판정이지만, 아직 실제로 적용 안 한 가상의 rect로 미리 검사. */
@@ -1567,7 +1587,7 @@ function hasLineupNamePitchOverflowForRect(rect, nameEl, paddingPx) {
  * 확정된 라벨의 "현재" 크기를 기준으로 겹침을 검사 — 두 라벨이 동시에 넓어져 결과적으로
  * 겹치는 경우는 생기지 않는다.
  */
-function tryLineupNameNaturalSingleLine(nameEl, labels) {
+function tryLineupNameNaturalSingleLine(nameEl, labels, naturalSize) {
   if (!canMeasureTextElement(nameEl)) return false;
 
   const wrap = getLineupNameWrap(nameEl);
@@ -1576,7 +1596,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
   const centerX = wrapRect.left + (wrapRect.width / 2);
   const top = wrapRect.top;
 
-  const { width: naturalWidthPx, height: naturalHeightPx } = measureLineupNameNaturalSizeViaClone(nameEl);
+  const { width: naturalWidthPx, height: naturalHeightPx } = naturalSize || measureLineupNameNaturalSizeViaClone(nameEl);
   if (!Number.isFinite(naturalWidthPx) || naturalWidthPx <= 0) return false;
 
   const hypotheticalRect = {
@@ -2046,9 +2066,10 @@ function fitLineupNamePills(root) {
 
   // 1) 먼저 자연 1줄 폭이 안전한지 시도하고(주변과 안 겹치면 그대로 유지), 안전하지 않으면
   // 기존 텍스트 폭 고정/축소 로직으로 넘긴다.
+  const naturalSizes = measureLineupNameNaturalSizes(labels);
   labels.forEach(nameEl => {
     if (!canMeasureTextElement(nameEl)) return;
-    if (tryLineupNameNaturalSingleLine(nameEl, labels)) return;
+    if (tryLineupNameNaturalSingleLine(nameEl, labels, naturalSizes.get(nameEl))) return;
     fitLineupNameSelf(nameEl);
   });
 
@@ -2171,6 +2192,8 @@ function stampLineupNameFit(scope) {
 
 /** 직전 피팅과 입력이 같으면 건너뛰고, 다르면 fitLineupNamePills를 실행한다. 실행했으면 true. */
 function fitLineupNamePillsIfChanged(panel) {
+  // 숨은 패널은 측정 결과를 남기지 않고, 페이지가 활성화된 뒤 실제 크기로 맞춘다.
+  if (!canMeasureTextElement(panel)) return false;
   const prev = lineupNameFitStamps.get(panel);
   if (prev) {
     const next = getLineupNameFitSignature(panel);
@@ -2221,9 +2244,6 @@ function scheduleLineupViewportFit() {
     lineupViewportFitRaf = requestAnimationFrame(() => {
       lineupViewportFitRaf = 0;
       syncBigLineupFullscreenGeometry();
-      // 폭 잠금을 기다리며 렌더 직후 피팅을 미뤄 둔 패널(lineup-render.js)은 이제 아래에서 맞춘다.
-      // 숨은 페이지의 패널은 아래 범위에서 빠지지만, 그 페이지로 전환될 때 이 함수가 다시 실행된다.
-      if (typeof lpLineupAwaitingWidthLock !== 'undefined') lpLineupAwaitingWidthLock.clear();
       const activePage = document.querySelector('.page.active');
       const scope = activePage || document;
       // 렌더 직후 이미 같은 크기로 맞춘 패널은 다시 맞추지 않는다(폭 고정으로 크기가 바뀐 패널만).

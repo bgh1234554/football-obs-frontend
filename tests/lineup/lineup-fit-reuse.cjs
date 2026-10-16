@@ -37,8 +37,8 @@ const fixtureFiles = ['juveparma.json', 'womensleague.json'];
           const frames = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))));
           const panel = document.querySelector('.page.active [data-dp-role="lineup"]');
           /** 스타일 속성 순서/표기 차이를 없앤 패널 HTML. */
-          const html = () => {
-            const clone = panel.cloneNode(true);
+          const html = (target = panel) => {
+            const clone = target.cloneNode(true);
             clone.querySelectorAll('[style]').forEach(el => {
               const parts = [];
               for (let i = 0; i < el.style.length; i += 1) parts.push(`${el.style[i]}:${el.style.getPropertyValue(el.style[i])}`);
@@ -77,8 +77,44 @@ const fixtureFiles = ['juveparma.json', 'womensleague.json'];
           await frames();
           await wait(300);
           const fresh = html();
+
+          // 4) 폭 보정 예약 도중 렌더가 들어와도 최종 활성 패널은 한 번만 맞춘다.
+          fits = 0;
+          scheduleLineupViewportFit();
+          await new Promise(resolve => requestAnimationFrame(() => {
+            rerenderLineupPanels();
+            resolve();
+          }));
+          await frames();
+          await wait(300);
+          const singlePassFits = fits;
+          const scheduled = html();
+
+          // 5) 모아서 측정한 자연 폭으로도 개별 복제본 측정과 같은 이름 배치가 나와야 한다.
+          const batchMeasure = window.measureLineupNameNaturalSizes;
+          try {
+            window.measureLineupNameNaturalSizes = () => new Map();
+            rerenderLineupPanels();
+            await frames();
+            await wait(300);
+          } finally {
+            window.measureLineupNameNaturalSizes = batchMeasure;
+          }
+          const sameAsSequential = scheduled === html();
+
+          // 6) 숨은 패널은 건너뛰되, 페이지 전환 후에는 전체 피팅과 같은 결과를 보여준다.
+          const otherPanel = [...document.querySelectorAll('[data-dp-role="lineup"]')].find(el => el !== panel);
+          fits = 0;
+          fitLineupNamePillsIfChanged(otherPanel);
+          const hiddenFits = fits;
+          activatePage(panel.closest('.page').id === 'page-main-big' ? 'main-small' : 'main-big');
+          await frames();
+          await wait(300);
+          const activated = html(otherPanel);
+          original(otherPanel);
+          const sameAfterActivation = activated === html(otherPanel);
           window.fitLineupNamePills = original;
-          return { viewportRefits, unchanged, colorRefits, keptDom, colorApplied, sameAsFresh: patched === fresh };
+          return { viewportRefits, unchanged, colorRefits, keptDom, colorApplied, sameAsFresh: patched === fresh, singlePassFits, sameAsSequential, hiddenFits, sameAfterActivation };
         });
 
         const label = `${file} ${pageName}`;
@@ -88,6 +124,10 @@ const fixtureFiles = ['juveparma.json', 'womensleague.json'];
         assert.ok(result.keptDom, `${label}: color-only change replaced lineup DOM`);
         assert.ok(result.colorApplied, `${label}: new team color not applied`);
         assert.ok(result.sameAsFresh, `${label}: color patch differs from a fresh render`);
+        assert.equal(result.singlePassFits, 1, `${label}: pending viewport fit and render fitted twice`);
+        assert.ok(result.sameAsSequential, `${label}: batch measurements changed name layout`);
+        assert.equal(result.hiddenFits, 0, `${label}: hidden panel was fitted`);
+        assert.ok(result.sameAfterActivation, `${label}: page activation differs from full fitting`);
         assert.deepEqual(errors, [], `${label}: page errors`);
         await page.close();
       }

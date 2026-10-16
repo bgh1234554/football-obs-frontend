@@ -27,11 +27,18 @@ const ST_BAR_SIMILAR_DELTA_E = 25;
  * 현재 활성 페이지(.page.active) 안의 stat 패널만 재렌더.
  * page activated / window resize / settings 변경 시 호출 — 비활성 페이지의 패널은 다음 활성화 시 자연 갱신.
  */
+let statsActiveRenderRaf = 0;
 function stRerenderActivePanels() {
   if (statsLastFixtureData == null) return;
-  document.querySelectorAll('.page.active [data-stat-panel]').forEach(panel => {
-    if (getComputedStyle(panel).display === 'none' || panel.getClientRects().length === 0) return;
-    stRenderPanel(panel, statsLastFixtureData);
+  // 높이 보정·모드 전환·경기 적용이 같은 프레임에 요청한 재렌더는 한 번으로 합친다.
+  // 실행 시점의 활성 페이지와 최신 데이터를 사용하므로 중간 상태를 다시 그리지 않는다.
+  if (statsActiveRenderRaf) return;
+  statsActiveRenderRaf = requestAnimationFrame(() => {
+    statsActiveRenderRaf = 0;
+    if (statsLastFixtureData == null) return;
+    const panels = Array.from(document.querySelectorAll('.page.active [data-stat-panel]'))
+      .filter(panel => getComputedStyle(panel).display !== 'none' && panel.getClientRects().length > 0);
+    panels.forEach(panel => stRenderPanel(panel, statsLastFixtureData));
   });
 }
 
@@ -579,10 +586,8 @@ function applyStatsPanel(fixtureData) {
   document.querySelectorAll('[data-stat-panel]').forEach(panel => {
     stRenderPanel(panel, fixtureData);
   });
-  requestAnimationFrame(() => {
-    stRerenderActivePanels();
-    window.lpStatUpdateVisibility?.();
-  });
+  window.lpStatUpdateVisibility?.();
+  stRerenderActivePanels();
 }
 
 // settings 변경(자동 스와이프 토글/간격) 감지 시 즉시 반영.
@@ -607,16 +612,12 @@ document.addEventListener('theme:colors-changed', e => {
 // 페이지 활성화 시점에 비활성이었던 패널의 컨테이너 높이가 0에서 실제 값으로 바뀌므로
 // itemsPerPage가 다시 계산돼야 함. RAF로 layout 안정화 한 사이클 미루기.
 document.addEventListener('page:activated', () => {
-  requestAnimationFrame(() => {
-    stRerenderActivePanels();
-  });
+  stRerenderActivePanels();
 });
 
 // 윈도우 리사이즈 시에도 itemsPerPage가 바뀔 수 있어 활성 패널 재렌더.
 window.addEventListener('resize', () => {
-  requestAnimationFrame(() => {
-    stRerenderActivePanels();
-  });
+  stRerenderActivePanels();
 });
 
 /** 스탯 패널 사이클 모드로 다시 들어올 때 마지막 페이지가 아닌 첫 페이지부터 보이도록 리셋. */

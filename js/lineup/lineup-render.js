@@ -1601,8 +1601,6 @@ function renderLineupGrid(effectiveData, rawData, options = {}) {
   const longMode = typeof isLongName === 'function' && isLongName('lineup');
 
   // 3) 현재 페이지에 떠 있는 모든 라인업 패널 인스턴스에 같은 결과를 주입한다.
-  // 색만 바뀐 재렌더(options.colorsOnly)에서 모든 패널의 DOM을 유지했는지 — 호출부가 이름 피팅 생략 여부를 정한다.
-  let keptAll = true;
   panels.forEach(panel => {
     const body = ensureLineupPanelScaffold(panel);
     if (!body) return;
@@ -1617,9 +1615,8 @@ function renderLineupGrid(effectiveData, rawData, options = {}) {
     setPanelTitle(panel, '선발 라인업', '');
     // 패널 모드 클래스가 바뀌면 배치가 달라지므로 색만 바꾸는 경로를 쓰지 않는다.
     const sameMode = classesBefore === `${panel.className}|${wrap?.className || ''}`;
-    if (!lpSetLineupBodyHtml(body, isBig ? splitHtml : smallCombinedHtml, !!options.colorsOnly && sameMode)) keptAll = false;
+    lpSetLineupBodyHtml(body, isBig ? splitHtml : smallCombinedHtml, !!options.colorsOnly && sameMode);
   });
-  return keptAll;
 }
 
 /**
@@ -1725,7 +1722,7 @@ function syncTacticsBoard(effectiveData, options = {}) {
  * 3) applySubReflectToFixture로 subReflect=on이면 교체 이벤트 기반 startXi/벤치 swap.
  * 4) 이벤트/평점 lookup 캐시 생성(lineupPanelState.context) — 렌더 헬퍼들이 매 row마다 read.
  * 5) 벤치/부상/라인업 그리드 + 전술판 4개 패널 동시 갱신.
- * 6) 다음 frame(layout 안정화 후)에 fitLineupNamePills/fitBenchFooterNames/balanceBenchInjuryPanelHeights 호출.
+ * 6) 화면 폭 보정 예약에서 최종 배치 후 이름·벤치 하단 피팅과 높이 균형을 맞춘다.
  *    options.colorsOnly(팀 컬러만 바뀜)이고 라인업 DOM을 유지했으면 같은 크기의 패널은 이름 피팅을 생략한다.
  */
 function rerenderLineupPanels(options = {}) {
@@ -1767,33 +1764,17 @@ function rerenderLineupPanels(options = {}) {
   // 2) 상세 패널 3종과 전술판을 같은 기준 데이터로 동시에 갱신한다.
   renderBenchPanel(effectiveData, lineupPanelState.lastFixture);
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
-  const keptLineupDom = renderLineupGrid(effectiveData, lineupPanelState.lastFixture, { colorsOnly: !!options.colorsOnly });
+  renderLineupGrid(effectiveData, lineupPanelState.lastFixture, { colorsOnly: !!options.colorsOnly });
   // 같은 경기의 갱신에서는 드래그한 좌표를 유지한다. 경기 전환 시에는 앞서 좌표를 비운다.
   syncTacticsBoard(effectiveData, { preservePositions: true });
   renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
   renderInjuryCyclePanel(effectiveData, lineupPanelState.lastFixture);
 
-  // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
-  // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).
-  // 양쪽 페이지의 라인업 인스턴스 모두 처리.
-  requestAnimationFrame(() => {
-    // 색만 바뀌어 DOM을 유지한 경우: 크기도 같으면 직전 피팅 결과가 그대로 맞으므로 건너뛴다.
-    const fit = keptLineupDom && options.colorsOnly ? fitLineupNamePillsIfChanged : fitLineupNamePills;
-    document.querySelectorAll('[data-dp-role="lineup"]').forEach(p => {
-      // 새 경기라 캠 큼 라인업 폭을 다시 잠그는 중이면, 폭이 정해진 뒤 화면 폭 재계산 경로가
-      // 맞추므로 지금(잠그기 전 폭) 맞추지 않는다. 같은 패널을 두 번 맞추던 비용을 없앤다.
-      if (lpLineupAwaitingWidthLock.has(p)) return;
-      fit(p);
-    });
-    fitBenchFooterNames(document.getElementById('benchPanel'));
-    balanceBenchInjuryPanelHeights();
-  });
+  // 3) 화면 폭 보정과 렌더 후 피팅을 같은 예약으로 합친다.
+  // 먼저 최종 폭을 잠근 뒤 활성 패널을 맞추며, 숨은 패널은 페이지 활성화 때 맞춘다.
+  scheduleLineupViewportFit();
 }
-
-// 새 경기 로딩으로 폭 잠금을 풀어 둔 캠 큼 라인업 패널. scheduleLineupViewportFit(lineup-name-fit.js)이
-// 폭을 다시 잠그고 이름을 맞추면서 비운다.
-const lpLineupAwaitingWidthLock = new Set();
 
 /** 외부에서 fixture 데이터를 넘겨 상세 패널 전체를 적용할 때 쓰는 공개 진입점. */
 function applyLineupPanels(fixtureData) {
@@ -1818,21 +1799,12 @@ function applyLineupPanels(fixtureData) {
       if (panel.classList.contains('has-w-override') || panel.classList.contains('has-edge-override')) return;
       if (typeof _lineupClearFullscreenWidthLock === 'function') _lineupClearFullscreenWidthLock(panel);
       panel.style.removeProperty('width');
-      // 아래 scheduleLineupViewportFit이 폭을 다시 잠근 뒤 이름을 맞출 때까지 렌더 직후 피팅을 미룬다.
-      if (typeof scheduleLineupViewportFit === 'function') {
-        panel.querySelectorAll('[data-dp-role="lineup"]').forEach(p => lpLineupAwaitingWidthLock.add(p));
-      }
     });
   }
   // API가 라인업 없이 playerStats만 준 경우 선발/교체 명단을 추정해 채운 객체로 보관 (lineup-data.js).
   lineupPanelState.lastFixture = inferLineupsFromPlayerStats(fixtureData);
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
-  if (incomingId !== currentId && typeof scheduleLineupViewportFit === 'function') {
-    // 라인업 그리드가 실제로 그려진 다음(rerenderLineupPanels가 위에서 이미 requestAnimationFrame으로
-    // 예약한 텍스트 피팅 이후) 폭 캐시를 새로 잠가야 하므로, 한 프레임 더 늦춰서 호출한다.
-    requestAnimationFrame(() => scheduleLineupViewportFit());
-  }
 }
 
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
