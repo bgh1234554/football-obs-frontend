@@ -1714,7 +1714,9 @@ document.addEventListener('DOMContentLoaded', () => {
           // 크기가 아직 변하지 않은 드래그 시작 직후에도 예약 작업이 실행되지 않게 한다.
           if (isDragging()) return;
           applyStoredLineupEdgeOverrides();
-          window.fitLineupNamePills?.();
+          // 화면 폭 재계산 경로가 이미 같은 크기로 맞춘 패널은 건너뛴다(크기가 바뀐 패널만 다시 맞춤).
+          document.querySelectorAll('[data-dp-role="lineup"]')
+            .forEach(panel => window.fitLineupNamePillsIfChanged?.(panel));
         }, 150);
       };
     })();

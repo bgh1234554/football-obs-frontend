@@ -2125,10 +2125,61 @@ function fitLineupNamePills(root) {
   regrowShrunkLineupNames(labels, configuredFonts);
   // 기존 결과가 우선이다. 모든 충돌 보정 이후 더 큰 폰트가 안전하게 들어갈 때만 개선한다.
   labels.forEach(nameEl => improveLineupNameWithNumberLine(nameEl, labels, configuredFonts.get(nameEl)));
+  stampLineupNameFit(scope);
+}
+
+// ━━━ [라인업 이름 피팅 중복 생략] 같은 렌더 결과를 같은 크기에서 다시 맞추지 않기 ━━━
+// 경기 로딩 한 번에 렌더 직후 / 화면 폭 재계산 후 / 페이지 전환 후 / 패널 크기 감지 후
+// 경로가 각자 fitLineupNamePills를 예약해 같은 패널을 4번까지 다시 맞췄다. 피팅 결과는
+// 패널 안 DOM(라벨 요소)과 패널/피치 크기, 로딩된 폰트로만 정해지므로, 이 셋이 직전
+// 피팅과 같으면 결과도 같다 — 그런 예약 호출만 fitLineupNamePillsIfChanged로 건너뛴다.
+// 설정 변경/리사이즈 종료처럼 직접 호출하는 경로는 그대로 fitLineupNamePills로 항상 다시 맞춘다.
+const lineupNameFitStamps = new WeakMap();
+/**
+ * 라벨이 쓰는 글꼴 중 로딩이 끝난 글꼴 수. 라벨 글꼴이 늦게 로딩되면 값이 바뀌어 다시 맞춘다.
+ * 점수판 테마 글꼴처럼 라벨과 무관한 글꼴의 로딩은 결과에 영향이 없으므로 세지 않는다.
+ */
+function getLineupNameLoadedFontCount(label) {
+  if (!label || !document.fonts) return 0;
+  const families = getComputedStyle(label).fontFamily.split(',')
+    .map(name => name.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
+  let count = 0;
+  document.fonts.forEach(face => {
+    if (face.status === 'loaded' && families.includes(face.family.replace(/^['"]|['"]$/g, '').toLowerCase())) count += 1;
+  });
+  return count;
+}
+
+/** 패널의 피팅 입력(첫 라벨 요소, 라벨 수, 패널/피치 위치와 크기, 라벨 글꼴 로딩 수)을 한 값으로 묶는다. */
+function getLineupNameFitSignature(panel) {
+  const labels = panel.querySelectorAll('.dp-lineup-name');
+  const rectKey = el => { const r = el.getBoundingClientRect(); return `${r.left},${r.top},${r.width},${r.height}`; };
+  const pitches = Array.from(panel.querySelectorAll('.dp-lineup-vertical-pitch'), rectKey).join('|');
+  return { first: labels[0] || null, count: labels.length, size: `${rectKey(panel)}|${pitches}`, font: getLineupNameLoadedFontCount(labels[0]) };
+}
+
+/** 피팅을 마친 패널(들)의 입력값을 기록한다. 문서 전체를 맞춘 경우 모든 라인업 패널을 기록. */
+function stampLineupNameFit(scope) {
+  const panels = scope?.matches?.('[data-dp-role="lineup"]')
+    ? [scope]
+    : Array.from((scope || document).querySelectorAll('[data-dp-role="lineup"]'));
+  panels.forEach(panel => lineupNameFitStamps.set(panel, getLineupNameFitSignature(panel)));
+}
+
+/** 직전 피팅과 입력이 같으면 건너뛰고, 다르면 fitLineupNamePills를 실행한다. 실행했으면 true. */
+function fitLineupNamePillsIfChanged(panel) {
+  const prev = lineupNameFitStamps.get(panel);
+  if (prev) {
+    const next = getLineupNameFitSignature(panel);
+    if (prev.first === next.first && prev.count === next.count && prev.size === next.size && prev.font === next.font) return false;
+  }
+  fitLineupNamePills(panel);
+  return true;
 }
 
 // 라인업 리사이즈/설정 변경 후 외부에서 다시 fit을 호출할 수 있도록 노출
 window.fitLineupNamePills = fitLineupNamePills;
+window.fitLineupNamePillsIfChanged = fitLineupNamePillsIfChanged;
 window.fitBenchFooterNames = fitBenchFooterNames;
 window.balanceBenchInjuryPanelHeights = balanceBenchInjuryPanelHeights;
 
@@ -2167,9 +2218,13 @@ function scheduleLineupViewportFit() {
     lineupViewportFitRaf = requestAnimationFrame(() => {
       lineupViewportFitRaf = 0;
       syncBigLineupFullscreenGeometry();
+      // 폭 잠금을 기다리며 렌더 직후 피팅을 미뤄 둔 패널(lineup-render.js)은 이제 아래에서 맞춘다.
+      // 숨은 페이지의 패널은 아래 범위에서 빠지지만, 그 페이지로 전환될 때 이 함수가 다시 실행된다.
+      if (typeof lpLineupAwaitingWidthLock !== 'undefined') lpLineupAwaitingWidthLock.clear();
       const activePage = document.querySelector('.page.active');
       const scope = activePage || document;
-      scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePills(panel));
+      // 렌더 직후 이미 같은 크기로 맞춘 패널은 다시 맞추지 않는다(폭 고정으로 크기가 바뀐 패널만).
+      scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePillsIfChanged(panel));
       fitBigLineupTeamChips(scope);
       fitBenchFooterNames(scope.querySelector('#benchPanel') || document.getElementById('benchPanel'));
       balanceBenchInjuryPanelHeights();
