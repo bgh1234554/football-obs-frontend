@@ -48,9 +48,20 @@ const LEAGUE_THEME_MAP = {
   650: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   653: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   237: { theme: 'russiancup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/KubokRossii.png', type: 'club' },
+  197: { theme: 'greecesuperleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/GreeceSuperLeague.svg', type: 'club' },
   345: { theme: 'czech', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CzechFirstLeagueTransparent.svg', type: 'club' },
   106: { theme: 'ekstraklasa', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ekstraklasa.svg', type: 'club' },
+  103: { theme: 'eliteserien', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Eliteserien.svg', type: 'club' },
   119: { theme: 'danish', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishSuperliga.svg', type: 'club' },
+  318: { theme: 'cypriotfirstdivision', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CypriotFirstDivision.svg', type: 'club' },
+  207: { theme: 'swisssuperleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/SwissSuperLeague.svg', type: 'club' },
+  179: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  180: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  183: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  184: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  181: { theme: 'scottishcup', logoUrl: null, type: 'club' },
+  185: { theme: 'scottishcup', logoUrl: null, type: 'club' },
+  113: { theme: 'allsvenskan', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Allsvenskan.svg', type: 'club' },
   283: { theme: 'romanian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg', type: 'club' },
   342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
   116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
@@ -103,7 +114,10 @@ const FSM_THEMES = Object.freeze({
   //러시아
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B', russiancup: '러시아 컵',
   //기타 유럽 리그 (가능하면 UEFA 남자 국가 계수 순)
-  czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', danish: '덴마크 수페르리가', romanian: '루마니아 리가 I', belarus: '벨라루스 프리미어 리그', armenian: '아르메니아 프리미어 리그',
+  greecesuperleague: '그리스 슈퍼리그', czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', eliteserien: '엘리트세리엔',
+  danish: '덴마크 수페르리가', cypriotfirstdivision: '키프로스 퍼스트 디비전', swisssuperleague: '스위스 슈퍼리그',
+  spfl: 'SPFL', scottishcup: '스코티시 컵', allsvenskan: '알스벤스칸', romanian: '루마니아 리가 I',
+  belarus: '벨라루스 프리미어 리그', armenian: '아르메니아 프리미어 리그',
   //유럽 대항전
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', unl: 'UEFA 네이션스리그', er24: '유로',
   //아시아 리그
@@ -123,9 +137,9 @@ const FSM_THEMES = Object.freeze({
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
 // 리그별 확인 근거와 시즌 예외는 about.md의 합계 점수 안내를 참고합니다.
 const FSM_AGGREGATE_THEMES = Object.freeze([
-  'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
-  'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
-  'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
+  'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
+  'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
+  'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
   'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
   'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance'
 ]);
@@ -139,6 +153,7 @@ function initFsmThemeSelect() {
     .map(([value, label]) => new Option(label, value)));
   select.value = state.fsmTheme;
   select.addEventListener('change', () => {
+    stopFsmThemeTour({ restore: false });
     state.fsmTheme = select.value;
     window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl);
     render();
@@ -169,6 +184,67 @@ function cycleFsmTheme(direction) {
     notify();
   }
 }
+/** 점수판 둘러보기: 전환 효과가 끝난 뒤 한 테마를 보여 주는 시간(ms). */
+const FSM_THEME_TOUR_HOLD_MS = 1000;
+/** 테마 전환 효과 시간(ms). css의 --fsm-transition-duration(.9s)과 같다. */
+const FSM_THEME_TOUR_TRANSITION_MS = 750;
+let fsmThemeTour = null;
+
+/**
+ * 모든 점수판 테마를 목록 순서대로 하나씩 보여 주고 원래 선택으로 돌아온다.
+ * 저장된 테마 선택(state.fsmTheme)은 바꾸지 않고 화면에만 적용하므로, 중간에 새로고침해도 설정은 그대로다.
+ */
+function startFsmThemeTour() {
+  if (fsmThemeTour) return;
+  const button = document.getElementById('fsmThemeTourBtn');
+  const themes = Object.keys(FSM_THEMES);
+  fsmThemeTour = { index: -1, timer: null };
+  button?.setAttribute('aria-pressed', 'true');
+  const next = () => {
+    if (!fsmThemeTour) return;
+    fsmThemeTour.index++;
+    if (fsmThemeTour.index >= themes.length) { stopFsmThemeTour(); return; }
+    const theme = themes[fsmThemeTour.index];
+    // 버튼에는 진행 순서만 두고, 점수판 이름은 Shift+[ / ] 순환과 같은 아래쪽 알림으로 보여 준다(긴 이름이 버튼을 넘치지 않게).
+    if (button) button.textContent = `${fsmThemeTour.index + 1}/${themes.length} · 멈추기`;
+    showToast(`점수판 둘러보기: ${FSM_THEMES[theme]}`);
+    const entry = Object.values(LEAGUE_THEME_MAP).find(item => item.theme === theme);
+    _currentType = entry ? entry.type : FSM_FALLBACK_TYPE;
+    applyTheme(theme, entry?.logoUrl || state.leagueLogoUrl || null);
+    render();
+    // CSS 로딩이 끝나고 전환 효과까지 마친 뒤 2초 보여 준다.
+    const waitLoaded = () => {
+      if (!fsmThemeTour) return;
+      if (pendingThemeLink) { fsmThemeTour.timer = setTimeout(waitLoaded, 50); return; }
+      fsmThemeTour.timer = setTimeout(next, FSM_THEME_TOUR_TRANSITION_MS + FSM_THEME_TOUR_HOLD_MS);
+    };
+    waitLoaded();
+  };
+  next();
+}
+
+/**
+ * 둘러보기를 멈춘다. restore가 true면 원래 선택(자동/수동 테마)으로 되돌리고,
+ * 사용자가 둘러보기 중 직접 테마를 고른 경우에는 그 선택을 그대로 둔다.
+ */
+function stopFsmThemeTour({ restore = true } = {}) {
+  if (!fsmThemeTour) return;
+  clearTimeout(fsmThemeTour.timer);
+  fsmThemeTour = null;
+  const button = document.getElementById('fsmThemeTourBtn');
+  if (button) { button.textContent = '점수판 둘러보기'; button.setAttribute('aria-pressed', 'false'); }
+  if (restore) { window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl); render(); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fsmThemeTourBtn')?.addEventListener('click', () => {
+    if (fsmThemeTour) stopFsmThemeTour(); else startFsmThemeTour();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && fsmThemeTour) stopFsmThemeTour();
+  });
+});
+
 const CSS_LINK_INDEX = 17;
 var _currentTheme = 'default';
 var _currentType = 'club';
@@ -392,6 +468,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_COPPA_ITALIA.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'eliteserien':
+      changeCSS('css/theme/result_style_ELITESERIEN.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'seriea':
       changeCSS('css/theme/result_style_SERIEA.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -501,6 +581,22 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_COUPE_DE_FRANCE.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'greecesuperleague':
+      changeCSS('css/theme/result_style_GREECE_SUPER_LEAGUE.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'swisssuperleague':
+      changeCSS('css/theme/result_style_SWISS_SUPER_LEAGUE.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'cypriotfirstdivision':
+      changeCSS('css/theme/result_style_CYPRIOT_FIRST_DIVISION.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'allsvenskan':
+      changeCSS('css/theme/result_style_ALLSVENSKAN.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'ligue1':
       changeCSS('css/theme/result_style_LIGUE1.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -511,6 +607,14 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'nationalleague':
       changeCSS('css/theme/result_style_NATIONAL_LEAGUE.css', theme);
+      break;
+    case 'scottishcup':
+      changeCSS('css/theme/result_style_SCOTTISH_CUP.css', theme);
+      setFsmAttr('.epl-lion', 'src', null);
+      break;
+    case 'spfl':
+      changeCSS('css/theme/result_style_SPFL.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'eflchampionship':
       changeCSS('css/theme/result_style_EFL_CHAMPIONSHIP.css', theme);
@@ -650,8 +754,13 @@ function applyTheme(theme, logoUrl) {
     board.dataset.fsmAggregate = String(supportsAggregate && !!state.aggEnabled);
     // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않습니다.
     const fixedAggregatePalette = {
+      allsvenskan: ['#020125', '#ffffff'],
+      scottishcup: ['transparent', '#ffffff'],
+      spfl: ['#202956', '#ffffff'],
+      cypriotfirstdivision: ['#007F8A', '#ffffff'],
+      eliteserien: ['transparent', '#ffffff'],
       turkishcup: ['#08151B', '#ffffff'], tff1lig: ['#08151B', '#ffffff'],
-      aleague: ['#141993', '#ffffff'],
+      aleague: ['#2C2C2C', '#E6E6E6'],
       brazilseriea: ['transparent', '#ffffff'],
       saudikingscup: ['#B7993C', '#22242A'],
       chinesesuperleague: ['#03356C', '#ffffff'],
@@ -666,6 +775,8 @@ function applyTheme(theme, logoUrl) {
       eflchampionship: ['#b69b42', '#ffffff'],
       eflleagueone: ['#7f8384', '#ffffff'],
       eflleaguetwo: ['#cc0935', '#ffffff'],
+      greecesuperleague: ['#3A3A38', '#ffffff'],
+      swisssuperleague: ['#A2A2A2', '#000000'],
       ligue1: ['#085FFF', '#ffffff'],
       ligue2: ['#00fcd0', '#000000'],
       ligaportugal: ['#ffffff', '#102556'],
@@ -803,6 +914,43 @@ const FSM_WIDTH_LIMITS = Object.freeze({
  * 두 팀 이름이 원래 글꼴 크기로 들어가도록 점수판 너비를 조정한다(FSM_WIDTH_LIMITS 범위 안).
  * 테마별로 점수 영역·로고와 겹치는 폭을 팀명 영역에서 빼고, 그래도 넘치면 글꼴을 줄인다.
  */
+/** 팀명 글자가 실제로 그려진 픽셀의 상하 경계로 세로 보정값을 구합니다. 같은 글꼴·문자열·배율은 다시 그리지 않습니다. */
+const fsmNameInkOffsetCache = new Map();
+function measureFsmNameInkOffset(font, value, fontSize, renderScale) {
+  const key = `${font}|${renderScale}|${value}`;
+  if (fsmNameInkOffsetCache.has(key)) return fsmNameInkOffsetCache.get(key);
+  const context = document.createElement('canvas').getContext('2d');
+  context.font = font;
+  const metrics = context.measureText(value);
+  let offset = null;
+  if (value && Number.isFinite(metrics.fontBoundingBoxAscent)) {
+    const baseline = Math.ceil(parseFloat(fontSize) * 2);
+    context.canvas.width = Math.ceil((metrics.width + 16) * renderScale);
+    context.canvas.height = Math.ceil(baseline * 2 * renderScale);
+    context.font = font;
+    context.scale(renderScale, renderScale);
+    context.fillText(value, 8, baseline);
+    const pixels = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+    let top = pixels.height, bottom = -1;
+    for (let y = 0; y < pixels.height; y++) {
+      for (let x = 0; x < pixels.width; x++) {
+        if (pixels.data[(y * pixels.width + x) * 4 + 3] >= 192) {
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+        }
+      }
+    }
+    if (bottom >= top) offset = baseline - (top + bottom + 1) / (2 * renderScale)
+      - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
+  }
+  // 글꼴 로딩 전 측정값이 남지 않도록 결과가 있을 때만 보관합니다.
+  if (offset !== null && document.fonts.status === 'loaded') {
+    if (fsmNameInkOffsetCache.size > 200) fsmNameInkOffsetCache.clear();
+    fsmNameInkOffsetCache.set(key, offset);
+  }
+  return offset;
+}
+
 function adjustScoreboardWidth() {
   const board = document.querySelector('.fsm-board');
   const scoreboard = board?.querySelector('.scoreboard-main');
@@ -855,7 +1003,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -880,7 +1028,14 @@ function adjustScoreboardWidth() {
         (cards[0].getBoundingClientRect().right - homeEdge) / scale,
         (awayEdge - cards[1].getBoundingClientRect().left) / scale) - overlap;
     }
-    const reserved = overlap + (_currentTheme === 'russiancup' ? cards[0].clientHeight : _currentTheme === 'danish' ? danishWidth : _currentTheme === 'wc26' ? 41 : ['cnl', 'aleague'].includes(_currentTheme) ? 7 : _currentTheme === 'ligaportugal' ? 16 : ['rpl', 'belgian', 'coupedefrance', 'brazilseriea'].includes(_currentTheme) ? 8 : 0);
+    // 사선이 팀명 칸을 덮는 최대 폭을 빼면 위아래 중 짧은 변의 유효 너비가 됩니다.
+    let eliteserienInset = 0;
+    if (_currentTheme === 'eliteserien') {
+      const angle = parseFloat(getComputedStyle(board).getPropertyValue('--eliteserien-angle'));
+      eliteserienInset = board.querySelector('.score-div').offsetHeight * Math.abs(Math.tan(angle * Math.PI / 180));
+      board.style.setProperty('--eliteserien-inset', eliteserienInset + 'px');
+    }
+    const reserved = overlap + (_currentTheme === 'eliteserien' ? eliteserienInset : _currentTheme === 'russiancup' ? cards[0].clientHeight : _currentTheme === 'danish' ? danishWidth : _currentTheme === 'wc26' ? 41 : _currentTheme === 'cnl' ? 7 : _currentTheme === 'ligaportugal' ? 16 : ['allsvenskan', 'rpl', 'belgian', 'coupedefrance', 'brazilseriea'].includes(_currentTheme) ? 8 : 0);
     board.style.setProperty('--fsm-name-reserved-width', reserved + 'px');
   }
   const reservedWidth = parseFloat(getComputedStyle(board).getPropertyValue('--fsm-name-reserved-width')) || 0;
@@ -902,13 +1057,16 @@ function adjustScoreboardWidth() {
   cards.forEach(card => { card.style.width = teamWidth + 'px'; });
   scoreboard.style.width = boardWidth + 'px';
   if (_currentTheme === 'cnl') syncCnlGeometry(board);
-  if (_currentTheme === 'aleague') syncCnlGeometry(board, null, false);
   if (_currentTheme === 'uzbek') syncCnlGeometry(board, 32);
   if (_currentTheme === 'ekstraklasa') {
     window.syncEkstraklasaBoundaryPixelGrid();
   }
   const background = board.querySelector('.div-background');
   if (background) background.style.width = boardWidth + 'px';
+  // 팀명마다 따로 가운데를 맞추면 '로디나'/'스파르타크'처럼 글자 높이가 같아도 반 픽셀 반올림
+  // 차이로 한쪽만 1px 올라가 보입니다. 양쪽 글자를 합친 높이로 맞춘 값이 팀명별 값과
+  // 0.5px 이내면 그 값을 써서 홈/원정 기준선을 같게 둡니다. 차이가 크면 팀명별 가운데를 우선합니다.
+  const sharedInkText = texts.map(text => text.textContent).join('');
   // 양쪽 팀 영역에 동일한 최종 너비를 적용한 뒤 글자를 맞춥니다.
   texts.forEach((text, index) => {
     const style = getComputedStyle(names[index]);
@@ -924,43 +1082,34 @@ function adjustScoreboardWidth() {
     const context = document.createElement('canvas').getContext('2d');
     context.font = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
     const metrics = context.measureText(text.textContent);
+    const sharedMetrics = context.measureText(sharedInkText);
     const cardStyle = getComputedStyle(cards[index]);
     text.style.transform = 'none';
     const cardRect = cards[index].getBoundingClientRect();
     const textRect = text.getBoundingClientRect();
     const layoutScale = cardRect.height / cards[index].offsetHeight || 1;
-    const topInset = (parseFloat(cardStyle.borderTopWidth) || 0) + (parseFloat(cardStyle.paddingTop) || 0);
-    const stripEdge = board.dataset.fsmColorEdge === 'strip' && cardStyle.boxShadow !== 'none' ? 1 : 0;
+    // 팀컬러 띠와 팀명 칸 사이의 1px 경계선도 빼고 남은 높이에서 가운데를 맞춥니다.
+    // K리그(하단)와 체코·엑스트라클라사(상단)는 경계선을 가상 요소로 그려 box-shadow로는 판별되지 않습니다.
+    const colorEdge = board.dataset.fsmColorEdge;
+    const stripEdge = colorEdge === 'strip' && (cardStyle.boxShadow !== 'none' || _currentTheme === 'kleague') ? 1 : 0;
+    const topStripEdge = colorEdge === 'strip-top' ? 1 : 0;
+    const topInset = (parseFloat(cardStyle.borderTopWidth) || 0) + (parseFloat(cardStyle.paddingTop) || 0) + topStripEdge;
     const bottomInset = (parseFloat(cardStyle.borderBottomWidth) || 0) + (parseFloat(cardStyle.paddingBottom) || 0) + stripEdge;
     const contentCenter = cardRect.top + (cardRect.height + (topInset - bottomInset) * layoutScale) / 2;
     const layoutOffset = (contentCenter - (textRect.top + textRect.bottom) / 2) / layoutScale;
-    let inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
-      ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2
+    const renderScale = cards[index].getBoundingClientRect().width / cards[index].offsetWidth || 1;
+    const metricOffset = value => Number.isFinite(value.fontBoundingBoxAscent)
+      ? (value.actualBoundingBoxAscent - value.actualBoundingBoxDescent - value.fontBoundingBoxAscent + value.fontBoundingBoxDescent) / 2
       : 0;
-    if (_currentTheme === 'pl' && Number.isFinite(metrics.fontBoundingBoxAscent)) {
-      // 합성 굵기가 적용된 한글은 글꼴 측정값과 실제 픽셀 높이가 다를 수 있습니다.
-      // 실제로 그려진 글자의 상하 경계로 프리미어리그 팀명을 보정합니다.
-      const font = context.font;
-      const renderScale = cards[index].getBoundingClientRect().width / cards[index].offsetWidth || 1;
-      const baseline = Math.ceil(parseFloat(textStyle.fontSize) * 2);
-      context.canvas.width = Math.ceil((metrics.width + 16) * renderScale);
-      context.canvas.height = Math.ceil(baseline * 2 * renderScale);
-      context.font = font;
-      context.scale(renderScale, renderScale);
-      context.fillText(text.textContent, 8, baseline);
-      const pixels = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-      let top = pixels.height, bottom = -1;
-      for (let y = 0; y < pixels.height; y++) {
-        for (let x = 0; x < pixels.width; x++) {
-          if (pixels.data[(y * pixels.width + x) * 4 + 3] >= 192) {
-            top = Math.min(top, y);
-            bottom = Math.max(bottom, y);
-          }
-        }
-      }
-      if (bottom >= top) inkOffset = baseline - (top + bottom + 1) / (2 * renderScale)
-        - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
-    }
+    let inkOffset = metricOffset(metrics);
+    const sharedOffset = metricOffset(sharedMetrics);
+    if (Math.abs(sharedOffset - inkOffset) <= .5) inkOffset = sharedOffset;
+    // 글꼴 측정값은 실제로 그려진 픽셀과 최대 0.5px 차이가 날 수 있습니다.
+    // 프리미어리그는 합성 굵기 때문에 팀명별 실제 픽셀 높이로 다시 보정합니다.
+    // 유로는 기본 크기에서 정중앙이 되도록 양쪽 팀명을 합친 실제 픽셀 높이로 보정합니다(6px 팀컬러 줄과 함께 맞춤).
+    // 다른 점수판에 일괄 적용하면 50% 배율에서 오히려 0.5px 어긋나는 경우가 많아 두 테마로 한정합니다.
+    if (_currentTheme === 'pl') inkOffset = measureFsmNameInkOffset(context.font, text.textContent, textStyle.fontSize, renderScale) ?? inkOffset;
+    if (_currentTheme === 'er24') inkOffset = measureFsmNameInkOffset(context.font, sharedInkText, textStyle.fontSize, renderScale) ?? inkOffset;
     text.style.transform = `translateY(${inkOffset + layoutOffset}px)`;
   });
 }
@@ -1001,13 +1150,21 @@ function adjustScoreboardWidth() {
     }
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
+      if (theme === 'scottishcup') {
+        // 흰색에 가까운 팀 배경에서 흰 팀명이 묻히지 않도록 글자 외곽선만 추가합니다.
+        ['home', 'away'].forEach(side => {
+          const rgb = parseAnyColor(teamColors[`${side}Bg`]);
+          const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
+          colorBoard.style.setProperty(`--fsm-scottish-${side}-text-stroke`, nearWhite ? '1px #000000' : '0px transparent');
+        });
+      }
       colorBoard.style.setProperty('--fsm-home-number-color', teamColors.homeText);
       colorBoard.style.setProperty('--fsm-away-number-color', teamColors.awayText);
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
-        ? 'none' : ['czech', 'ekstraklasa'].includes(theme) ? 'strip-top' : ['rpl', 'belgian', 'concacafcc', 'armenian', 'cnl', 'uzbek', 'ligaportugal', 'coupedefrance'].includes(theme) ? 'chip' : 'strip';
+      colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
+        ? 'none' : ['czech', 'ekstraklasa'].includes(theme) ? 'strip-top' : ['allsvenskan', 'rpl', 'belgian', 'concacafcc', 'armenian', 'cnl', 'uzbek', 'ligaportugal', 'coupedefrance'].includes(theme) ? 'chip' : 'strip';
     }
     if (theme === 'aleague') {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: '5px solid transparent', borderTop: 'none'});
@@ -1050,7 +1207,7 @@ function adjustScoreboardWidth() {
           mixBlendMode: nearBlack ? 'screen' : 'multiply'
         });
       });
-    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague'].includes(theme)) {
+    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
         setFsmStyle('.fsm-board .team-color', {background: ''});
@@ -1096,7 +1253,7 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .team-color', {background: ''});
       ensureDanishTriangles();
-    } else if(theme == 'uzbek' || theme == 'concacafcc' || theme == 'coupedefrance' || theme == 'rpl' || theme == 'belgian' || theme == 'armenian' || theme == 'ligaportugal' || theme == 'cnl') {
+    } else if(theme == 'allsvenskan' || theme == 'uzbek' || theme == 'concacafcc' || theme == 'coupedefrance' || theme == 'rpl' || theme == 'belgian' || theme == 'armenian' || theme == 'ligaportugal' || theme == 'cnl') {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board #homeColor', {background: teamColors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: teamColors.awayBg});
@@ -1115,8 +1272,10 @@ function adjustScoreboardWidth() {
     } else {
       // default / cl / seriea / ligue1 등 나머지 모든 테마 — 팀명 칸 아래 5px 팀 컬러 줄
       // (테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨)
-      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '5px solid ' + teamColors.homeBg, borderTop: 'none'});
-      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '5px solid ' + teamColors.awayBg, borderTop: 'none'});
+      // 유로는 6px로 두어 기본 크기에서 팀명 칸 남은 높이와 글자 높이 차이가 짝수가 되게 합니다(반 픽셀 없이 정중앙).
+      const stripWidth = theme === 'er24' ? 6 : 5;
+      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: stripWidth + 'px solid ' + teamColors.homeBg, borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: stripWidth + 'px solid ' + teamColors.awayBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .team-logo img', {outline: 'none'});
     }
   }
@@ -1252,7 +1411,12 @@ function adjustScoreboardWidth() {
 
   // 점수 또는 시계에 이미 쓰이는 고정 색상만 사용한다. 전환 중 보간색은 읽지 않는다.
   const FSM_PSO_PALETTES = Object.freeze({
-    aleague: ['#3640CD', '#ffffff'],
+    allsvenskan: ['#020125', '#ffffff'],
+    scottishcup: ['#ffffff', '#000000'],
+    spfl: ['#202956', '#ffffff'],
+    cypriotfirstdivision: ['#007F8A', '#ffffff'],
+    eliteserien: ['#152132', '#ffffff'],
+    aleague: ['#2C2C2C', '#E6E6E6'],
     brazilseriea: ['#131428', '#ffffff'],
     saudikingscup: ['#7A5D3B', '#37261C'],
     chinesesuperleague: ['#0772BB', '#ffffff'],
@@ -1274,6 +1438,8 @@ function adjustScoreboardWidth() {
     czech: ['#3041C3', '#ffffff'],
     armenian: ['#000000', '#ffffff'],
     cnl: ['#031F98', '#ffffff'],
+    greecesuperleague: ['#D4D7D6', '#0D0D0D'],
+    swisssuperleague: ['#C5093F', '#ffffff'],
     ligue1: ['#ffffff', '#000000'], ligue2: ['#ffffff', '#000000'],
     ligaportugal: ['#ffffff', '#102556'], eredivisie: ['#d1d1d1', '#0a0a0a'],
     concacafcc: ['#01FCDA', '#001021'], cafcc: ['#787F7E', '#ffffff'], cafcl: ['#B0902E', '#ffffff'], recopa: ['#77F8FB', '#000000'], sudamericana: ['#ffffff', '#000000'], libertadores: ['#F2DA82', '#000000'], turkishcup: ['#E51636', '#ffffff'], tff1lig: ['#ffffff', '#08151B'], belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
@@ -1340,6 +1506,110 @@ function adjustScoreboardWidth() {
     panel.querySelectorAll('.pso-quick-team button').forEach(button => {
       button.textContent = button.dataset.psoAction.endsWith('Goal') ? '성공' : '실패';
     });
+  }
+
+  /**
+   * 점수 영역(경기 점수·합계 칸·구분 칸) 클릭 시 점수판 아래에 합계 점수 빠른 입력을 엽니다.
+   * 테마 탭의 '합계 점수 표시'(aggToggle/aggHomeBase/aggAwayBase)와 같은 state 값을 바꾸며,
+   * 색상·버튼 모양은 승부차기 빠른 입력(#boardPsoControls)과 같은 테마 팔레트를 씁니다.
+   */
+  function syncAggQuickControls(board) {
+    const main = board.querySelector('.scoreboard-main');
+    let panel = board.querySelector('#boardAggControls');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'boardAggControls';
+      panel.hidden = true;
+      panel.setAttribute('role', 'group');
+      panel.setAttribute('aria-label', '합계 점수 입력');
+      const team = (side, label) => `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-agg-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><input type="number" min="0" step="1" inputmode="numeric" data-agg-input="${side}" aria-label="${label}"><button type="button" data-agg-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
+      panel.innerHTML = `<button type="button" class="agg-quick-toggle" data-agg-action="toggle" aria-pressed="false"></button><div class="agg-quick-row">${team('home', '홈 기준')}${team('away', '원정 기준')}</div><div class="pso-quick-hint"><span class="agg-quick-total"></span><span>합계 = 기준값 + 현재 점수</span><span class="agg-quick-unsupported">이 점수판은 합계 점수를 표시하지 않습니다</span></div>`;
+      board.append(panel);
+      const targets = '.team-score, .score-div, .total-score';
+      /** 클릭·Esc·바깥 클릭이 같은 닫힘 상태를 사용합니다. */
+      const scoreNodes = [...main.querySelectorAll(targets)];
+      // 열림 상태를 점수 칸의 aria-expanded와 함께 맞춘다(승부차기 빠른 입력과 같은 방식).
+      const setOpen = open => {
+        panel.hidden = !open;
+        scoreNodes.forEach(node => node.setAttribute('aria-expanded', String(open)));
+        if (open) syncAggQuickControls(board);
+      };
+      const close = () => setOpen(false);
+      const commit = () => { render(); persist(); };
+      const setBase = (side, value) => {
+        state[side === 'home' ? 'aggHomeBase' : 'aggAwayBase'] = Math.max(0, Math.floor(Number(value) || 0));
+        commit();
+      };
+      main.addEventListener('click', event => {
+        if (!event.target.closest(targets)) return;
+        setOpen(panel.hidden);
+      });
+      // 키보드로도 열 수 있게 점수 칸을 버튼처럼 노출한다(Enter/Space).
+      scoreNodes.forEach(node => {
+        node.setAttribute('title', '클릭하여 합계 점수 입력');
+        node.tabIndex = 0;
+        node.setAttribute('role', 'button');
+        node.setAttribute('aria-label', '합계 점수 입력 열기');
+        node.setAttribute('aria-controls', panel.id);
+        node.setAttribute('aria-expanded', 'false');
+        node.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          setOpen(panel.hidden);
+        });
+      });
+      panel.addEventListener('click', event => {
+        const action = event.target.closest('[data-agg-action]')?.dataset.aggAction;
+        if (!action) return;
+        if (action === 'toggle') { state.aggEnabled = !state.aggEnabled; commit(); return; }
+        const side = action.startsWith('home') ? 'home' : 'away';
+        const key = side === 'home' ? 'aggHomeBase' : 'aggAwayBase';
+        setBase(side, (Number(state[key]) || 0) + (action.endsWith('Plus') ? 1 : -1));
+      });
+      panel.addEventListener('input', event => {
+        const side = event.target.dataset.aggInput;
+        if (side && event.target.value !== '') setBase(side, event.target.value);
+      });
+      // 입력 중 칸을 비웠다가 나가면 저장된 값으로 다시 채웁니다.
+      panel.addEventListener('focusout', () => requestAnimationFrame(() => syncAggQuickControls(board)));
+      panel.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && event.target.matches('input')) { event.preventDefault(); event.target.blur(); }
+      });
+      document.addEventListener('pointerdown', event => {
+        if (!panel.contains(event.target) && !event.target.closest?.('.fsm-board .scoreboard-main :is(.team-score, .score-div, .total-score)')) close();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) close();
+      });
+    }
+    // 승부차기 빠른 입력과 같은 테마 팔레트로 칠합니다.
+    const [background, ink] = FSM_PSO_PALETTES[_currentTheme] || FSM_PSO_PALETTES.default;
+    panel.style.setProperty('--fsm-pso-background', chromaSafe(background));
+    panel.style.setProperty('--fsm-pso-ink', chromaSafe(ink));
+    const toggle = panel.querySelector('.agg-quick-toggle');
+    toggle.setAttribute('aria-pressed', String(!!state.aggEnabled));
+    toggle.textContent = state.aggEnabled ? '합계 점수 표시 중' : '합계 점수 표시 안 함';
+    panel.querySelectorAll('[data-agg-input]').forEach(input => {
+      // 입력 중인 칸은 사용자가 친 값을 덮어쓰지 않습니다.
+      if (document.activeElement === input) return;
+      input.value = state[input.dataset.aggInput === 'home' ? 'aggHomeBase' : 'aggAwayBase'];
+    });
+    const homeTotal = (Number(state.aggHomeBase) || 0) + (Number(state.homeScore) || 0);
+    const awayTotal = (Number(state.aggAwayBase) || 0) + (Number(state.awayScore) || 0);
+    panel.querySelector('.agg-quick-total').textContent = `합계 ${homeTotal} : ${awayTotal}`;
+    panel.classList.toggle('is-unsupported', !FSM_AGGREGATE_THEMES.includes(_currentTheme));
+    if (panel.hidden) return;
+    // 점수 영역 가운데 아래(타이머 아래)에 열고, 좁은 점수 칸에서도 입력이 잘리지 않게 최소 폭을 둡니다.
+    const boardRect = board.getBoundingClientRect();
+    const scale = boardRect.width / board.offsetWidth || 1;
+    const areas = [...main.querySelectorAll('.team-score, .score-div, .total-score')]
+      .map(node => node.getBoundingClientRect()).filter(rect => rect.width > 0);
+    const left = Math.min(...areas.map(rect => rect.left));
+    const right = Math.max(...areas.map(rect => rect.right));
+    const center = areas.length ? ((left + right) / 2 - boardRect.left) / scale : board.offsetWidth / 2;
+    const width = Math.max(280, areas.length ? (right - left) / scale : 0);
+    panel.style.width = `${width}px`;
+    panel.style.left = `${center - width / 2}px`;
   }
 
   /** 승부차기 상태에서만 타이머 위치에 PSO를 표시하고 기록·테마 색상·서든데스 폭을 맞춥니다. */
@@ -1422,7 +1692,33 @@ function adjustScoreboardWidth() {
 })();
 
 /** 점수판 내용·승부차기·메모 배치·배율을 갱신하고 준비된 점수판을 표시합니다. */
-window.fsmBoardRender = function() { applyText(); applyPSO(); autoLayoutNotes(); initBoardScale(); revealFsmBoard(); };
+/** 퇴장 카드가 팀 칸 위로 드러나는 비율. 테마와 관계없이 카드 높이의 55%만 보이게 한다. */
+const FSM_RED_CARD_EXPOSURE = .55;
+/**
+ * 퇴장 카드를 팀 칸 윗변 기준으로 카드 높이의 55%만 위로 나오게 옮기고, 나머지(팀 칸과 겹치는 부분)는 잘라낸다.
+ * 테마마다 카드 top과 z-index, 팀 칸 배경(투명/그라데이션)이 달라 겹친 부분이 비치거나(엑스트라클라사·브라질)
+ * 완전히 가려지는(엘리트세리엔) 문제가 있어, 위치와 보이는 영역을 실제 렌더 좌표로 직접 맞춘다.
+ */
+function syncFsmRedCardExposure(board) {
+  if (!board) return;
+  const scale = board.getBoundingClientRect().width / board.offsetWidth || 1;
+  board.querySelectorAll('.div-rc').forEach(rc => {
+    rc.style.top = '';
+    rc.style.clipPath = '';
+    const card = rc.querySelector('.rc-card');
+    const team = rc.closest('.teams-left, .teams-right');
+    if (!card || !team || rc.classList.contains('hidden')) return;
+    const cardRect = card.getBoundingClientRect(), teamTop = team.getBoundingClientRect().top;
+    if (!cardRect.height) return;
+    const shift = (teamTop - FSM_RED_CARD_EXPOSURE * cardRect.height - cardRect.top) / scale;
+    rc.style.top = `${(parseFloat(getComputedStyle(rc).top) || 0) + shift}px`;
+    // 이동 후 컨테이너 아랫변에서 팀 칸 윗변까지를 잘라 겹친 부분이 어떤 배경 위에서도 보이지 않게 한다.
+    const bottom = rc.getBoundingClientRect().bottom;
+    rc.style.clipPath = `inset(-4px -4px ${Math.max(0, (bottom - teamTop) / scale)}px -4px)`;
+  });
+}
+
+window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); syncFsmRedCardExposure(document.querySelector('.fsm-board')); revealFsmBoard(); };
 
 if (document.fonts) {
   document.fonts.ready.then(() => window.fsmBoardRender());

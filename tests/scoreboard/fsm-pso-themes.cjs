@@ -40,6 +40,7 @@ const { openPage, settle } = require('../tactics/helpers');
               labelVisible: hit(label), contrast: teamColorContrastRatio(s.backgroundColor, ink),
               bg: s.backgroundColor, ink,
               timer: { bg: getComputedStyle(document.querySelector('.time')).backgroundColor, ink: getComputedStyle(document.querySelector('.time')).color },
+              extra: { bg: getComputedStyle(document.querySelector('.extra-time')).backgroundColor, ink: getComputedStyle(document.querySelector('.extra-time')).color },
               circles: [...document.querySelectorAll('.pso-circle')].map(el => ({ ...rect(el), visible: hit(el), widthBeforeScale: el.offsetWidth, border: getComputedStyle(el).borderColor })),
               counts: ['#pso-left', '#pso-right'].map(sel => document.querySelectorAll(sel + ' li').length),
               scale: board.getBoundingClientRect().width / board.offsetWidth,
@@ -55,7 +56,9 @@ const { openPage, settle } = require('../tactics/helpers');
           } else assert(m.panel.bottom >= m.clock.bottom - .1, context);
           // EFL과 라리가 2는 지정된 고정 색상 계약을 별도로 검증한다.
           // 라리가 2의 청록/흰색은 추가시간과 같은 의도된 팔레트다.
-          if (!theme.startsWith('efl') && theme !== 'laliga2') assert(m.contrast >= 3, context);
+          // 테마 디자인의 추가시간 칸과 같은 색 쌍(예: 사우디 국왕컵)은 대비가 낮아도 디자인을 따른다.
+          const usesExtraPalette = m.bg === m.extra.bg && m.ink === m.extra.ink;
+          if (!theme.startsWith('efl') && theme !== 'laliga2' && !usesExtraPalette) assert(m.contrast >= 3, context);
           if (theme === 'laliga2') assert.deepEqual({ bg: m.bg, ink: m.ink }, { bg: 'rgb(0, 212, 214)', ink: 'rgb(255, 255, 255)' });
           assert(m.labelVisible, context);
           assert.deepEqual(m.counts, [Math.max(5, count), Math.max(5, count - 1)]);

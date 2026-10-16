@@ -118,11 +118,11 @@
   align-items: center;
 }
 /* 팀 영역을 기준으로 배치하는 테마도 EPL처럼 카드 윗부분을 배경 위로 노출한다. */
-.board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) .div-rc {
+.board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) .div-rc {
   top: -15px;
 }
-.board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) #rcHome { left: 20px; }
-.board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) #rcAway { right: 20px; }
+.board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) #rcHome { left: 20px; }
+.board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) #rcAway { right: 20px; }
 /* PSO가 읽는 시계 위치는 테마 전환 즉시 확정하고 색상만 전환한다. */
 .board.fsm-board[data-fsm-pso="true"] .scoreboard-timer {
   transition-property: background-color, color, border-color, border-radius, box-shadow;
@@ -211,13 +211,18 @@
 }
 
 /* 배경이 없는 점수/로고 칸은 이전 테마의 불투명 배경을 페이드하지 않습니다. */
-.board.fsm-board:is([data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .team-score,
+.board.fsm-board:is([data-fsm-theme="greecesuperleague"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) .team-score,
 .board.fsm-board:is([data-fsm-theme="seriea"], [data-fsm-theme="coppaitalia"]) .score-div {
   background: transparent;
   transition-property: color, font-size, border-color, border-radius, box-shadow;
 }
 .board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: var(--fsm-team-name-padding, 24px); margin-top: 0; line-height: 1; display: flex; align-items: center; }
 .fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
+/* 프리미어리그 계열의 흰 점수 숫자는 작은 합계까지 같은 검은 윤곽을 유지합니다. */
+.board.fsm-board:is([data-fsm-theme="pl"], [data-fsm-theme="romanian"], [data-fsm-theme="uzbek"], [data-fsm-theme="jleague"], [data-fsm-theme="belarus"], [data-fsm-theme="saudi"], [data-fsm-theme="turkishcup"]) :is(.score-left, .score-right, .total) {
+  -webkit-text-stroke: 1px #000000;
+  paint-order: stroke fill;
+}
 /* J리그는 곡선 장식 가까이까지 팀명을 배치해 좌우 여백을 줄인다. */
 .board.fsm-board[data-fsm-theme="jleague"] .team-name {
   position: relative;
@@ -248,25 +253,25 @@
 }
 /* 러시아 하부리그와 리그앙 계열은 점수와 중앙 칸을 같은 배치 흐름에 둔다.
    절대 위치와 일반 배치 사이에서 생기는 소수 픽셀 경계 차이를 없앤다. */
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="russiancup"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) #team-score-left,
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="russiancup"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) #team-score-right {
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="russiancup"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="greecesuperleague"], [data-fsm-theme="swisssuperleague"], [data-fsm-theme="eliteserien"], [data-fsm-theme="cypriotfirstdivision"], [data-fsm-theme="scottishcup"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) #team-score-left,
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="russiancup"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="greecesuperleague"], [data-fsm-theme="swisssuperleague"], [data-fsm-theme="eliteserien"], [data-fsm-theme="cypriotfirstdivision"], [data-fsm-theme="scottishcup"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"]) #team-score-right {
   position: relative;
   margin: 0;
 }
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-score {
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-score {
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 /* 팀명과 점수 칸 사이에만 선을 그려 점수 묶음의 내부 간격은 유지한다. */
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) {
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) {
   --fsm-score-separator: #000000;
 }
-.board.fsm-board:is([data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) {
+.board.fsm-board:is([data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) {
   --fsm-score-separator: #999B9A;
 }
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-score::after {
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-score::after {
   content: '';
   position: absolute;
   top: 0;
@@ -275,8 +280,8 @@
   background: var(--fsm-score-separator);
   pointer-events: none;
 }
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) #team-score-left::after { left: 0; }
-.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) #team-score-right::after { right: 0; }
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) #team-score-left::after { left: 0; }
+.board.fsm-board:is([data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) #team-score-right::after { right: 0; }
 .board.fsm-board .team-logo > img {
   position: absolute;
   top: 50%; left: 50%;
@@ -333,12 +338,12 @@
 .board.fsm-board[data-fsm-theme="unl"] .teams-left .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="unl"] .teams-right .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] :is(.teams-left, .teams-right) { position: relative; }
-.board.fsm-board:is([data-fsm-theme="coppaitalia"], [data-fsm-theme="coupedefrance"], [data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="laliga"], [data-fsm-theme="laliga2"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="wc26"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-name {
+.board.fsm-board:is([data-fsm-theme="coppaitalia"], [data-fsm-theme="coupedefrance"], [data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="laliga"], [data-fsm-theme="laliga2"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="wc26"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="greecesuperleague"], [data-fsm-theme="swisssuperleague"], [data-fsm-theme="eliteserien"], [data-fsm-theme="cypriotfirstdivision"], [data-fsm-theme="scottishcup"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .team-name {
   width: calc(100% - var(--fsm-name-reserved-width, 0px));
   justify-content: center; margin-inline: 0; padding-inline: var(--fsm-team-name-padding, 24px);
 }
-.board.fsm-board:is([data-fsm-theme="coppaitalia"], [data-fsm-theme="coupedefrance"], [data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="laliga"], [data-fsm-theme="laliga2"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="wc26"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
-.board.fsm-board:is([data-fsm-theme="coppaitalia"], [data-fsm-theme="coupedefrance"], [data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="laliga"], [data-fsm-theme="laliga2"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="wc26"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="coppaitalia"], [data-fsm-theme="coupedefrance"], [data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="laliga"], [data-fsm-theme="laliga2"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="wc26"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="greecesuperleague"], [data-fsm-theme="swisssuperleague"], [data-fsm-theme="eliteserien"], [data-fsm-theme="cypriotfirstdivision"], [data-fsm-theme="scottishcup"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .teams-right .team-name { margin-left: var(--fsm-name-reserved-width, 0px); }
+.board.fsm-board:is([data-fsm-theme="coppaitalia"], [data-fsm-theme="coupedefrance"], [data-fsm-theme="seriea"], [data-fsm-theme="superlig"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="laliga"], [data-fsm-theme="laliga2"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="rpl"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="wc26"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="saudi"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="greecesuperleague"], [data-fsm-theme="swisssuperleague"], [data-fsm-theme="eliteserien"], [data-fsm-theme="cypriotfirstdivision"], [data-fsm-theme="scottishcup"], [data-fsm-theme="allsvenskan"], [data-fsm-theme="ligue1"], [data-fsm-theme="ligue2"], [data-fsm-theme="fnl"], [data-fsm-theme="fnl2a"], [data-fsm-theme="fnl2b"], [data-fsm-theme="nationalleague"], [data-fsm-theme="spfl"], [data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .teams-left .team-name { margin-right: var(--fsm-name-reserved-width, 0px); }
 .board.fsm-board[data-fsm-theme="wc26"] .team-color { top: 50%; transform: translateY(-50%); }
 .board.fsm-board[data-fsm-theme="wc26"] #homeColor { left: auto; right: calc(var(--fsm-score-overlap, 0px) + 12px); }
 .board.fsm-board[data-fsm-theme="wc26"] #awayColor { right: auto; left: calc(var(--fsm-score-overlap, 0px) + 12px); }
@@ -389,7 +394,7 @@
 .fsm-board #clockEditor :is(.ce-arrow, .ce-num, .ce-colon, .ce-preset-btn) {
   color: var(--fsm-clock-color);
 }
-.fsm-board #cePresets { background: var(--fsm-clock-background); }
+.fsm-board #cePresets { background: var(--fsm-clock-menu-background, var(--fsm-clock-background)); }
 .board-stage-inner:has(.fsm-board) > .pk-wrap { display: none; }
 
 /* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */
@@ -432,7 +437,8 @@
   content: '';
   position: absolute;
   bottom: -5px;
-  height: 5px;
+  /* 팀컬러 5px(테두리 칸) + 경계선 1px(팀명 칸 마지막 줄): 다른 점수판처럼 경계선이 팀컬러를 덮지 않게 한다. */
+  height: 6px;
   background: var(--fsm-primary-color);
   box-shadow: inset 0 1px 0 var(--fsm-number-color);
   pointer-events: none;
@@ -463,8 +469,8 @@
 
 /* 빠른 입력은 점수판과 같은 좌표계에서 배율을 함께 적용받습니다. */
 .board.fsm-board .pso-main[role="button"] { cursor: pointer; }
-#boardPsoControls[hidden] { display: none; }
-#boardPsoControls {
+#boardPsoControls[hidden], #boardAggControls[hidden] { display: none; }
+:is(#boardPsoControls, #boardAggControls) {
   position: absolute; top: 100%; left: 0; width: 100%;
   background: var(--fsm-pso-ink); color: var(--fsm-pso-background); border-radius: 0 0 6px 6px;
   box-shadow: 0 3px 10px #0006; padding: 4px 0 6px;
@@ -472,13 +478,34 @@
 }
 #boardPsoControls .pso-quick-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--pso-middle-width) minmax(0, 1fr); }
 #boardPsoControls .pso-quick-team, #boardPsoControls .pso-quick-middle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-#boardPsoControls button {
+:is(#boardPsoControls, #boardAggControls) button {
   min-width: 0; height: 34px; padding: 0; margin: 2px;
   border: 1px solid currentColor; border-radius: 4px; background: transparent;
   color: inherit; font: bold 16px/1 sans-serif; cursor: pointer;
 }
-#boardPsoControls button:hover, #boardPsoControls button:focus-visible { background: color-mix(in srgb, var(--fsm-pso-background) 18%, var(--fsm-pso-ink)); outline: 2px solid currentColor; outline-offset: -2px; }
-#boardPsoControls .pso-quick-hint { padding: 4px 6px 0; text-align: center; font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
+:is(#boardPsoControls, #boardAggControls) button:hover, :is(#boardPsoControls, #boardAggControls) button:focus-visible { background: color-mix(in srgb, var(--fsm-pso-background) 18%, var(--fsm-pso-ink)); outline: 2px solid currentColor; outline-offset: -2px; }
+:is(#boardPsoControls, #boardAggControls) .pso-quick-hint { padding: 4px 6px 0; text-align: center; font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
 #boardPsoControls .kbd { font-size: inherit; padding: 0 2px; background: #111827; color: #fff; }
-#boardPsoControls .pso-quick-hint > span { display: block; white-space: nowrap; }
+:is(#boardPsoControls, #boardAggControls) .pso-quick-hint > span { display: block; white-space: nowrap; }
 #boardPsoControls .pso-quick-middle button { font-size: 20px; }
+
+/* 합계 점수 빠른 입력: 점수 영역 클릭 시 점수판 아래에 열리며 승부차기 빠른 입력과 같은 모양을 쓴다. */
+.board.fsm-board .scoreboard-main :is(.team-score, .score-div, .total-score) { cursor: pointer; }
+#boardAggControls { z-index: 102; padding: 4px 4px 6px; box-sizing: border-box; }
+#boardAggControls .agg-quick-toggle { display: block; width: calc(100% - 4px); }
+#boardAggControls .agg-quick-toggle[aria-pressed="true"] { background: var(--fsm-pso-background); color: var(--fsm-pso-ink); }
+#boardAggControls .agg-quick-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 2px; }
+#boardAggControls .agg-quick-team { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
+#boardAggControls .agg-quick-label { padding: 2px 0 0; text-align: center; font-size: 13px; font-weight: bold; }
+#boardAggControls .agg-quick-stepper { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; align-items: center; }
+#boardAggControls .agg-quick-stepper button { font-size: 20px; }
+#boardAggControls input {
+  min-width: 0; height: 34px; margin: 2px; box-sizing: border-box; padding: 0;
+  border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit;
+  font: bold 18px/1 sans-serif; text-align: center; -moz-appearance: textfield; appearance: textfield;
+}
+#boardAggControls input::-webkit-inner-spin-button, #boardAggControls input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#boardAggControls input:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+#boardAggControls .agg-quick-total { font-weight: bold; }
+#boardAggControls .pso-quick-hint > .agg-quick-unsupported { display: none; opacity: .75; white-space: normal; }
+#boardAggControls.is-unsupported .pso-quick-hint > .agg-quick-unsupported { display: block; }

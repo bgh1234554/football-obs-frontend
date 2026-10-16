@@ -804,8 +804,13 @@
     const s = boardScaleFactor(pct);
     boardStageInner.style.transition = 'none';
     boardStageInner.style.transform = `scale(${s})`;
-    // wrap 높이를 실제 축소 높이에 맞게 조정
+    // wrap 높이를 실제 축소 높이에 맞게 조정.
+    // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
+    // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
+    const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden])')];
+    quickMenus.forEach(menu => { menu.style.display = 'none'; });
     const naturalH = boardStageInner.scrollHeight;
+    quickMenus.forEach(menu => { menu.style.display = ''; });
     boardStageWrap.style.height = (naturalH * s) + 'px';
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;

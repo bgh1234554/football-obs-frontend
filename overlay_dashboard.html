@@ -338,6 +338,11 @@
               <span class="sp-label-sub">저장된 모든 선수 닉네임을 삭제합니다.</span>
             </div>
             <div style="display:flex;gap:6px;flex:0 0 auto;">
+              <div class="sp-nickname-csv" data-nickname-csv="player">
+                <button type="button" class="sp-action-btn" data-csv-action="import">불러오기</button>
+                <button type="button" class="sp-action-btn" data-csv-action="export">내보내기</button>
+                <input type="file" accept=".csv,text/csv" hidden aria-label="선수 닉네임 CSV 파일">
+              </div>
               <button id="showNicknameListBtn" class="sp-action-btn">목록 보기</button>
               <button id="clearAllNicknamesBtn" class="sp-action-btn sp-action-btn-danger">초기화</button>
             </div>
@@ -348,6 +353,11 @@
               <span class="sp-label-sub">저장된 모든 팀 닉네임을 삭제합니다.</span>
             </div>
             <div style="display:flex;gap:6px;flex:0 0 auto;">
+              <div class="sp-nickname-csv" data-nickname-csv="team">
+                <button type="button" class="sp-action-btn" data-csv-action="import">불러오기</button>
+                <button type="button" class="sp-action-btn" data-csv-action="export">내보내기</button>
+                <input type="file" accept=".csv,text/csv" hidden aria-label="팀 닉네임 CSV 파일">
+              </div>
               <button id="showTeamNicknameListBtn" class="sp-action-btn">목록 보기</button>
               <button id="clearAllTeamNicknamesBtn" class="sp-action-btn sp-action-btn-danger">초기화</button>
             </div>
@@ -672,6 +682,28 @@
             <div class="sp-slider-cluster">
               <input type="range" min="10" max="18" step="1" data-settings-slider="statsNameSize" />
               <span class="sp-slider-value">12px</span>
+            </div>
+          </div>
+          <div class="sp-section-title">신규 이벤트 표시</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">신규 이벤트 표시</span>
+              <span class="sp-label-sub">새 이벤트를 메인 화면에 5초간 띄웁니다. 위는 점수판 바로 밑, 아래는 화면 하단 가운데입니다.</span>
+            </div>
+            <div class="sp-radio-cluster">
+              <button type="button" class="sp-radio-btn" data-settings-radio="eventSpotlight" data-settings-radio-value="off">OFF</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="eventSpotlight" data-settings-radio-value="board">위</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="eventSpotlight" data-settings-radio-value="bottom">아래</button>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">신규 이벤트 표시 크기</span>
+              <!-- <span class="sp-label-sub">100%는 이벤트 패널 너비의 1.25배입니다. 위는 아래로, 아래는 위로 커집니다.</span> -->
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="100" max="250" step="5" data-settings-slider="eventSpotlightScale" />
+              <span class="sp-slider-value">100%</span>
             </div>
           </div>
           <div class="sp-section-title">경기 정보</div>
@@ -1143,7 +1175,7 @@
 
       <!-- ─── 색상 ─── -->
       <div class="theme-appearance-grid">
-      <div class="theme-card theme-selector-card"><div class="section-title">점수판 테마</div><div class="prow"><div class="pgroup"><div class="theme-selector-heading"><label for="fsmThemeSelect">FSM 테마 선택</label><div id="themeCycleShortcutHint" class="theme-cycle-shortcut-hint"></div></div><select id="fsmThemeSelect" style="min-width:240px"></select><small>자동 선택은 경기의 리그에 맞춰 적용됩니다.</small></div></div></div>
+      <div class="theme-card theme-selector-card"><div class="section-title">점수판 테마</div><div class="prow"><div class="pgroup"><div class="theme-selector-heading"><label for="fsmThemeSelect">FSM 테마 선택</label><div id="themeCycleShortcutHint" class="theme-cycle-shortcut-hint"></div></div><select id="fsmThemeSelect" style="min-width:240px"></select><small>자동 선택은 경기의 리그에 맞춰 적용됩니다.</small><button type="button" id="fsmThemeTourBtn" class="fsm-theme-tour-btn" aria-pressed="false" title="모든 점수판을 차례로 2초씩 보여준 뒤 원래 점수판으로 돌아갑니다. Esc로 멈춤">점수판 둘러보기</button></div></div></div>
       <div class="theme-card theme-colors-card"><div class="theme-color-header"><div class="section-title">색상</div><div class="theme-color-actions"><button id="swapHomeTeamColors" type="button" title="홈 배경색과 글자색 바꾸기" aria-label="홈 배경색과 글자색 바꾸기">홈 &#8644;</button><button id="swapAwayTeamColors" type="button" title="원정 배경색과 글자색 바꾸기" aria-label="원정 배경색과 글자색 바꾸기">원정 &#8644;</button><button id="resetApiTeamColors" class="theme-color-reset" type="button" title="API 색상으로 초기화" aria-label="API 색상으로 초기화">&#8634;</button></div></div><div class="prow"><div class="pgroup"><label>홈 배경</label><input id="inHomeBg" type="color" value="#1d4ed8"></div><div class="pgroup"><label>홈 글자</label><input id="inHomeText" type="color" value="#ffffff"></div><div class="pgroup"><label>원정 배경</label><input id="inAwayBg" type="color" value="#ef4444"></div><div class="pgroup"><label>원정 글자</label><input id="inAwayText" type="color" value="#ffffff"></div><div class="pgroup"><label for="inPkGoal">승부차기 성공</label><input id="inPkGoal" type="color" value="#32cd32"></div><div class="pgroup"><label for="inPkMiss">승부차기 실패</label><input id="inPkMiss" type="color" value="#ff0000"></div></div></div>
         <div class="theme-card theme-notes-card">
           <div class="theme-notes-heading"><div class="section-title">득점자 표시</div><div id="noteSizeShortcutHint" class="theme-cycle-shortcut-hint"></div></div>
@@ -1474,6 +1506,7 @@
 <script src="js/player/player-menu-stat-labels.js"></script>
 <script src="js/player/player-menu-szn-labels.js"></script>
 <script src="js/player/player-menu.js"></script>
+<script src="js/settings/nickname-csv.js"></script>
 <script src="js/player/player-search.js"></script>
 <script src="js/player/player-id-resolve.js"></script>
 <script src="js/lineup/lineup-resize.js"></script>
@@ -1483,6 +1516,7 @@
 <script src="js/panels/event-comments.js"></script>
 <script src="js/core/event-time.js"></script>
 <script src="js/panels/events-panel.js"></script>
+<script src="js/panels/event-spotlight.js"></script>
 <script src="js/panels/event-hide.js"></script>
 <script src="js/panels/hth-panel.js"></script>
 <script src="js/panels/team-fixtures-panel.js"></script>

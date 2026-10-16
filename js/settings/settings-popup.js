@@ -76,6 +76,10 @@ const SETTINGS_DEFAULTS = {
   // 경기 스탯 패널 (.st-title/.st-val) 글자 크기 (px). 막대 굵기(.st-bar height)가
   // 기본값(12px) 대비 이 값의 비율만큼 함께 굵어진다 (statBarHeight = 6px * size/12).
   statsNameSize: 12,
+  // 신규 이벤트 화면 중앙 하단 표시 (js/panels/event-spotlight.js). 배율은 이벤트 패널 칼럼 너비 기준 %.
+  // 'off' = 표시 안 함, 'board' = 점수판 바로 아래(윗변 고정, 아래로 커짐), 'bottom' = 화면 가운데 패널 하단선(아랫변 고정, 위로 커짐).
+  eventSpotlight: 'board',
+  eventSpotlightScale: 100,
   // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
@@ -436,6 +440,10 @@ function isValidSetting(category, value) {
   }
   if (category === 'statsNameSize') {
     return Number.isFinite(value) && value >= STATS_NAME_SIZE_MIN && value <= STATS_NAME_SIZE_MAX;
+  }
+  if (category === 'eventSpotlight') return ['off', 'board', 'bottom'].includes(value);
+  if (category === 'eventSpotlightScale') {
+    return Number.isFinite(value) && value >= 100 && value <= 250;
   }
   if (category === 'tacticsNameSize') {
     return Number.isFinite(value) && value >= TACTICS_NAME_SIZE_MIN && value <= TACTICS_NAME_SIZE_MAX;
