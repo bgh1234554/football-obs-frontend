@@ -684,6 +684,28 @@
               <span class="sp-slider-value">12px</span>
             </div>
           </div>
+          <div class="sp-section-title">신규 이벤트 표시</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">신규 이벤트 표시</span>
+              <span class="sp-label-sub">새 이벤트를 메인 화면에 5초간 띄웁니다. 위는 점수판 바로 밑, 아래는 화면 하단 가운데입니다.</span>
+            </div>
+            <div class="sp-radio-cluster">
+              <button type="button" class="sp-radio-btn" data-settings-radio="eventSpotlight" data-settings-radio-value="off">OFF</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="eventSpotlight" data-settings-radio-value="board">위</button>
+              <button type="button" class="sp-radio-btn" data-settings-radio="eventSpotlight" data-settings-radio-value="bottom">아래</button>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">신규 이벤트 표시 크기</span>
+              <!-- <span class="sp-label-sub">100%는 이벤트 패널 너비의 1.25배입니다. 위는 아래로, 아래는 위로 커집니다.</span> -->
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="100" max="250" step="5" data-settings-slider="eventSpotlightScale" />
+              <span class="sp-slider-value">100%</span>
+            </div>
+          </div>
           <div class="sp-section-title">경기 정보</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -1494,6 +1516,7 @@
 <script src="js/panels/event-comments.js"></script>
 <script src="js/core/event-time.js"></script>
 <script src="js/panels/events-panel.js"></script>
+<script src="js/panels/event-spotlight.js"></script>
 <script src="js/panels/event-hide.js"></script>
 <script src="js/panels/hth-panel.js"></script>
 <script src="js/panels/team-fixtures-panel.js"></script>

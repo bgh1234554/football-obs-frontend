@@ -899,3 +899,7 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .fsm-board .div-background { pointer-events: none; }
 #board :is(#homeCard, #awayCard):focus-visible { outline: 2px solid var(--control-accent); outline-offset: 2px; }
 #board.fsm-board[data-fsm-theme="kleague"] :is(.teams-left, .teams-right)::after { pointer-events: auto; cursor: pointer; }
+
+/* 설명이 길어도 오른쪽 선택 버튼(OFF/위/아래 등)이 줄어들어 글자가 세로로 꺾이지 않게 한다. */
+.sp-row > .sp-radio-cluster:not(.sp-radio-cluster-wrap) { flex: 0 0 auto; }
+.sp-row > .sp-radio-cluster:not(.sp-radio-cluster-wrap) .sp-radio-btn { white-space: nowrap; }
