@@ -312,6 +312,14 @@
 }
 .board.fsm-board[data-fsm-theme="scottishcup"] :is(.teams-left, .teams-right, #team-score-left, #team-score-right, .score-div) { background: transparent; color: #ffffff; }
 .board.fsm-board[data-fsm-theme="scottishcup"] .team-name { color: #ffffff; }
+.board.fsm-board[data-fsm-theme="scottishcup"] .teams-left .team-name .text {
+  -webkit-text-stroke: var(--fsm-scottish-home-text-stroke, 0px transparent);
+  paint-order: stroke fill;
+}
+.board.fsm-board[data-fsm-theme="scottishcup"] .teams-right .team-name .text {
+  -webkit-text-stroke: var(--fsm-scottish-away-text-stroke, 0px transparent);
+  paint-order: stroke fill;
+}
 .board.fsm-board[data-fsm-theme="scottishcup"] .team-logo { border: 0; background: whitesmoke; }
 .board.fsm-board[data-fsm-theme="scottishcup"] .team-score { height: 48px; display: flex; align-items: center; justify-content: center; }
 .board.fsm-board[data-fsm-theme="scottishcup"] .score-div { position: relative; width: 12px; }

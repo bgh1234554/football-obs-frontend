@@ -23,5 +23,15 @@ await page.evaluate(()=>{state.half='PK';render();fsmBoardRender();});
 const pso=await page.locator('.pso-main').evaluate(n=>[getComputedStyle(n).backgroundColor,getComputedStyle(n).color]);assert.deepEqual(pso,['rgb(255, 255, 255)','rgb(0, 0, 0)']);
 await page.evaluate(()=>{state.half='2H';render();fsmBoardRender();});
 fs.mkdirSync(path.join(root,'screenshots/tests'),{recursive:true});await page.locator('#boardStageInner').screenshot({path:path.join(root,'screenshots/tests/scottishcup-scoreboard.png')});
+
+for(const scale of [75,100]) for(const aggregate of [false,true]) {
+ for(const [home,away,expected] of [['#ffffff','#c5093f',[true,false]],['#00b4d8','#ffffff',[false,true]],['#ebebeb','#f5f5f5',[true,true]],['#eaeaea','#000000',[false,false]],['#234567','#a02030',[false,false]]]) {
+ await page.evaluate(({home,away,scale,aggregate})=>{Object.assign(state.colors,{homeBg:home,awayBg:away,homeText:'#000000',awayText:'#000000'});state.boardScale=scale;state.aggEnabled=aggregate;render();fsmBoardRender();reapplyBoardScale();},{home,away,scale,aggregate});
+ const texts=await page.evaluate(()=>['.teams-left','.teams-right'].map(q=>{const card=document.querySelector(q),text=card.querySelector('.text'),c=getComputedStyle(text),r=text.getBoundingClientRect(),b=card.getBoundingClientRect();return {stroke:c.webkitTextStrokeWidth,strokeColor:c.webkitTextStrokeColor,ink:c.color,order:c.paintOrder,shadow:getComputedStyle(card).boxShadow,fits:r.left>=b.left&&r.right<=b.right};}));
+ texts.forEach((t,i)=>{assert.equal(t.stroke,expected[i]?'1px':'0px');if(expected[i])assert.equal(t.strokeColor,'rgb(0, 0, 0)');assert.equal(t.ink,'rgb(255, 255, 255)');assert(t.order.startsWith('stroke'));assert.equal(t.shadow,'none');assert(t.fits);});
+ if(away==='#ffffff'&&scale===100&&aggregate)await page.locator('#boardStageInner').screenshot({path:path.join(root,'screenshots/tests/scottishcup-white-primary.png')});
+ }
+}
+await page.evaluate(()=>applyTheme('ligue1',null));await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>fsmBoardRender());assert(await page.locator('.team-name .text').evaluateAll(ns=>ns.every(n=>getComputedStyle(n).webkitTextStrokeWidth==='0px')));
 console.log('PASS Scottish Cup/League Cup mapping, gradients, extended center line, outer small aggregate, timer/extra and scales');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

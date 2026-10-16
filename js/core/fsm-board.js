@@ -1056,6 +1056,14 @@ function adjustScoreboardWidth() {
     }
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
+      if (theme === 'scottishcup') {
+        // 흰색에 가까운 팀 배경에서 흰 팀명이 묻히지 않도록 글자 외곽선만 추가합니다.
+        ['home', 'away'].forEach(side => {
+          const rgb = parseAnyColor(teamColors[`${side}Bg`]);
+          const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
+          colorBoard.style.setProperty(`--fsm-scottish-${side}-text-stroke`, nearWhite ? '1px #000000' : '0px transparent');
+        });
+      }
       colorBoard.style.setProperty('--fsm-home-number-color', teamColors.homeText);
       colorBoard.style.setProperty('--fsm-away-number-color', teamColors.awayText);
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
