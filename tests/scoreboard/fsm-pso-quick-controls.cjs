@@ -25,7 +25,7 @@ await page.locator('#psoOutsideFocus').evaluate(n=>n.remove());
 await page.locator('.pso-main').click();
 assert.equal(await page.locator('.pso-main').getAttribute('aria-expanded'),'true');
 assert(await page.locator('#boardPsoControls .kbd').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).color==='rgb(255, 255, 255)')),theme+' keycap color');
-assert(await page.locator('#boardPsoControls').evaluate(n=>{const p=getComputedStyle(document.querySelector('.pso-main')),m=getComputedStyle(n);return m.backgroundColor===p.color && m.color===p.backgroundColor}),theme+' inverted palette');
+/* 그라데이션 배경 테마(키프로스 등)는 배경색이 투명이므로 PSO 팔레트 변수 색과 비교한다. */assert(await page.locator('#boardPsoControls').evaluate(n=>{const p=getComputedStyle(document.querySelector('.pso-main')),m=getComputedStyle(n);const probe=document.createElement('span');probe.style.color='var(--fsm-pso-background)';n.append(probe);const paletteBg=getComputedStyle(probe).color;probe.remove();const bg=p.backgroundColor==='rgba(0, 0, 0, 0)'?paletteBg:p.backgroundColor;return m.backgroundColor===p.color && m.color===bg}),theme+' inverted palette');
 for(const id of ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss'])await page.locator(`[data-pso-action=${id}]`).click();
 assert.deepEqual(await page.evaluate(()=>state.pk),{home:['G','M'],away:['G','M']});
 const geometry=await page.evaluate(()=>{
