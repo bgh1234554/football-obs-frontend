@@ -852,6 +852,43 @@ const FSM_WIDTH_LIMITS = Object.freeze({
  * 두 팀 이름이 원래 글꼴 크기로 들어가도록 점수판 너비를 조정한다(FSM_WIDTH_LIMITS 범위 안).
  * 테마별로 점수 영역·로고와 겹치는 폭을 팀명 영역에서 빼고, 그래도 넘치면 글꼴을 줄인다.
  */
+/** 팀명 글자가 실제로 그려진 픽셀의 상하 경계로 세로 보정값을 구합니다. 같은 글꼴·문자열·배율은 다시 그리지 않습니다. */
+const fsmNameInkOffsetCache = new Map();
+function measureFsmNameInkOffset(font, value, fontSize, renderScale) {
+  const key = `${font}|${renderScale}|${value}`;
+  if (fsmNameInkOffsetCache.has(key)) return fsmNameInkOffsetCache.get(key);
+  const context = document.createElement('canvas').getContext('2d');
+  context.font = font;
+  const metrics = context.measureText(value);
+  let offset = null;
+  if (value && Number.isFinite(metrics.fontBoundingBoxAscent)) {
+    const baseline = Math.ceil(parseFloat(fontSize) * 2);
+    context.canvas.width = Math.ceil((metrics.width + 16) * renderScale);
+    context.canvas.height = Math.ceil(baseline * 2 * renderScale);
+    context.font = font;
+    context.scale(renderScale, renderScale);
+    context.fillText(value, 8, baseline);
+    const pixels = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+    let top = pixels.height, bottom = -1;
+    for (let y = 0; y < pixels.height; y++) {
+      for (let x = 0; x < pixels.width; x++) {
+        if (pixels.data[(y * pixels.width + x) * 4 + 3] >= 192) {
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+        }
+      }
+    }
+    if (bottom >= top) offset = baseline - (top + bottom + 1) / (2 * renderScale)
+      - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
+  }
+  // 글꼴 로딩 전 측정값이 남지 않도록 결과가 있을 때만 보관합니다.
+  if (offset !== null && document.fonts.status === 'loaded') {
+    if (fsmNameInkOffsetCache.size > 200) fsmNameInkOffsetCache.clear();
+    fsmNameInkOffsetCache.set(key, offset);
+  }
+  return offset;
+}
+
 function adjustScoreboardWidth() {
   const board = document.querySelector('.fsm-board');
   const scoreboard = board?.querySelector('.scoreboard-main');
@@ -964,6 +1001,10 @@ function adjustScoreboardWidth() {
   }
   const background = board.querySelector('.div-background');
   if (background) background.style.width = boardWidth + 'px';
+  // 팀명마다 따로 가운데를 맞추면 '로디나'/'스파르타크'처럼 글자 높이가 같아도 반 픽셀 반올림
+  // 차이로 한쪽만 1px 올라가 보입니다. 양쪽 글자를 합친 높이로 맞춘 값이 팀명별 값과
+  // 0.5px 이내면 그 값을 써서 홈/원정 기준선을 같게 둡니다. 차이가 크면 팀명별 가운데를 우선합니다.
+  const sharedInkText = texts.map(text => text.textContent).join('');
   // 양쪽 팀 영역에 동일한 최종 너비를 적용한 뒤 글자를 맞춥니다.
   texts.forEach((text, index) => {
     const style = getComputedStyle(names[index]);
@@ -979,6 +1020,7 @@ function adjustScoreboardWidth() {
     const context = document.createElement('canvas').getContext('2d');
     context.font = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
     const metrics = context.measureText(text.textContent);
+    const sharedMetrics = context.measureText(sharedInkText);
     const cardStyle = getComputedStyle(cards[index]);
     text.style.transform = 'none';
     const cardRect = cards[index].getBoundingClientRect();
@@ -989,33 +1031,19 @@ function adjustScoreboardWidth() {
     const bottomInset = (parseFloat(cardStyle.borderBottomWidth) || 0) + (parseFloat(cardStyle.paddingBottom) || 0) + stripEdge;
     const contentCenter = cardRect.top + (cardRect.height + (topInset - bottomInset) * layoutScale) / 2;
     const layoutOffset = (contentCenter - (textRect.top + textRect.bottom) / 2) / layoutScale;
-    let inkOffset = Number.isFinite(metrics.fontBoundingBoxAscent)
-      ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2
+    const renderScale = cards[index].getBoundingClientRect().width / cards[index].offsetWidth || 1;
+    const metricOffset = value => Number.isFinite(value.fontBoundingBoxAscent)
+      ? (value.actualBoundingBoxAscent - value.actualBoundingBoxDescent - value.fontBoundingBoxAscent + value.fontBoundingBoxDescent) / 2
       : 0;
-    if (_currentTheme === 'pl' && Number.isFinite(metrics.fontBoundingBoxAscent)) {
-      // 합성 굵기가 적용된 한글은 글꼴 측정값과 실제 픽셀 높이가 다를 수 있습니다.
-      // 실제로 그려진 글자의 상하 경계로 프리미어리그 팀명을 보정합니다.
-      const font = context.font;
-      const renderScale = cards[index].getBoundingClientRect().width / cards[index].offsetWidth || 1;
-      const baseline = Math.ceil(parseFloat(textStyle.fontSize) * 2);
-      context.canvas.width = Math.ceil((metrics.width + 16) * renderScale);
-      context.canvas.height = Math.ceil(baseline * 2 * renderScale);
-      context.font = font;
-      context.scale(renderScale, renderScale);
-      context.fillText(text.textContent, 8, baseline);
-      const pixels = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-      let top = pixels.height, bottom = -1;
-      for (let y = 0; y < pixels.height; y++) {
-        for (let x = 0; x < pixels.width; x++) {
-          if (pixels.data[(y * pixels.width + x) * 4 + 3] >= 192) {
-            top = Math.min(top, y);
-            bottom = Math.max(bottom, y);
-          }
-        }
-      }
-      if (bottom >= top) inkOffset = baseline - (top + bottom + 1) / (2 * renderScale)
-        - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
-    }
+    let inkOffset = metricOffset(metrics);
+    const sharedOffset = metricOffset(sharedMetrics);
+    if (Math.abs(sharedOffset - inkOffset) <= .5) inkOffset = sharedOffset;
+    // 글꼴 측정값은 실제로 그려진 픽셀과 최대 0.5px 차이가 날 수 있습니다.
+    // 프리미어리그는 합성 굵기 때문에 팀명별 실제 픽셀 높이로 다시 보정합니다.
+    // 유로는 기본 크기에서 정중앙이 되도록 양쪽 팀명을 합친 실제 픽셀 높이로 보정합니다(6px 팀컬러 줄과 함께 맞춤).
+    // 다른 점수판에 일괄 적용하면 50% 배율에서 오히려 0.5px 어긋나는 경우가 많아 두 테마로 한정합니다.
+    if (_currentTheme === 'pl') inkOffset = measureFsmNameInkOffset(context.font, text.textContent, textStyle.fontSize, renderScale) ?? inkOffset;
+    if (_currentTheme === 'er24') inkOffset = measureFsmNameInkOffset(context.font, sharedInkText, textStyle.fontSize, renderScale) ?? inkOffset;
     text.style.transform = `translateY(${inkOffset + layoutOffset}px)`;
   });
 }
@@ -1178,8 +1206,10 @@ function adjustScoreboardWidth() {
     } else {
       // default / cl / seriea / ligue1 등 나머지 모든 테마 — 팀명 칸 아래 5px 팀 컬러 줄
       // (테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨)
-      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: '5px solid ' + teamColors.homeBg, borderTop: 'none'});
-      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: '5px solid ' + teamColors.awayBg, borderTop: 'none'});
+      // 유로는 6px로 두어 기본 크기에서 팀명 칸 남은 높이와 글자 높이 차이가 짝수가 되게 합니다(반 픽셀 없이 정중앙).
+      const stripWidth = theme === 'er24' ? 6 : 5;
+      setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: stripWidth + 'px solid ' + teamColors.homeBg, borderTop: 'none'});
+      setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: stripWidth + 'px solid ' + teamColors.awayBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .team-logo img', {outline: 'none'});
     }
   }
