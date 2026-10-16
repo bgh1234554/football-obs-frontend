@@ -338,6 +338,11 @@
               <span class="sp-label-sub">저장된 모든 선수 닉네임을 삭제합니다.</span>
             </div>
             <div style="display:flex;gap:6px;flex:0 0 auto;">
+              <div class="sp-nickname-csv" data-nickname-csv="player">
+                <button type="button" class="sp-action-btn" data-csv-action="import">불러오기</button>
+                <button type="button" class="sp-action-btn" data-csv-action="export">내보내기</button>
+                <input type="file" accept=".csv,text/csv" hidden aria-label="선수 닉네임 CSV 파일">
+              </div>
               <button id="showNicknameListBtn" class="sp-action-btn">목록 보기</button>
               <button id="clearAllNicknamesBtn" class="sp-action-btn sp-action-btn-danger">초기화</button>
             </div>
@@ -348,6 +353,11 @@
               <span class="sp-label-sub">저장된 모든 팀 닉네임을 삭제합니다.</span>
             </div>
             <div style="display:flex;gap:6px;flex:0 0 auto;">
+              <div class="sp-nickname-csv" data-nickname-csv="team">
+                <button type="button" class="sp-action-btn" data-csv-action="import">불러오기</button>
+                <button type="button" class="sp-action-btn" data-csv-action="export">내보내기</button>
+                <input type="file" accept=".csv,text/csv" hidden aria-label="팀 닉네임 CSV 파일">
+              </div>
               <button id="showTeamNicknameListBtn" class="sp-action-btn">목록 보기</button>
               <button id="clearAllTeamNicknamesBtn" class="sp-action-btn sp-action-btn-danger">초기화</button>
             </div>
@@ -1474,6 +1484,7 @@
 <script src="js/player/player-menu-stat-labels.js"></script>
 <script src="js/player/player-menu-szn-labels.js"></script>
 <script src="js/player/player-menu.js"></script>
+<script src="js/settings/nickname-csv.js"></script>
 <script src="js/player/player-search.js"></script>
 <script src="js/player/player-id-resolve.js"></script>
 <script src="js/lineup/lineup-resize.js"></script>

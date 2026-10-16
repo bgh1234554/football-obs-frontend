@@ -801,6 +801,14 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
   white-space: nowrap;
 }
 .sp-action-btn:hover { background: rgba(255,255,255,.16); }
+.sp-nickname-csv { display: flex; gap: 6px; }
+.sp-nickname-csv .sp-action-btn {
+  background: rgba(var(--control-accent-rgb), .22);
+  border-color: rgba(var(--control-accent-rgb), .55);
+  color: var(--control-accent-text);
+}
+.sp-nickname-csv .sp-action-btn:hover { background: rgba(var(--control-accent-rgb), .30); }
+.sp-nickname-csv-result { margin: 6px 0; color: #c6d4e5; font-size: 12px; }
 .sp-action-btn-danger {
   background: rgba(185,28,28,.45);
   border-color: #ef4444;
