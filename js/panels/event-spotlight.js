@@ -21,6 +21,21 @@
   const queue = [];
   let showing = false;
   let host = null;
+  let hideTimer = null;    // 표시 시간(SHOW_MS)이 끝나면 사라지기 시작
+  let fadeTimer = null;    // 사라지는 효과(FADE_MS)가 끝나면 다음 이벤트로
+
+  /**
+   * 대기열·보이는 표시·진행 중인 타이머를 모두 치운다. 설정을 끄거나 다른 경기로 바뀔 때 쓴다.
+   * 타이머를 취소하지 않으면 다시 켠 뒤 새 표시가 예전 타이머 때문에 일찍 사라지거나 순서가 꼬인다.
+   */
+  function reset() {
+    clearTimeout(hideTimer);
+    clearTimeout(fadeTimer);
+    hideTimer = fadeTimer = null;
+    queue.length = 0;
+    if (host) { host.classList.remove('is-visible'); host.hidden = true; host.replaceChildren(); }
+    showing = false;
+  }
 
   const mode = () => (typeof getSetting === 'function' ? getSetting('eventSpotlight') : 'off');
   const enabled = () => ['board', 'bottom'].includes(mode());
@@ -95,9 +110,11 @@
       void row.offsetWidth;
       row.classList.add('ev-row-new');
     });
-    setTimeout(() => {
+    hideTimer = setTimeout(() => {
+      hideTimer = null;
       host.classList.remove('is-visible');
-      setTimeout(() => {
+      fadeTimer = setTimeout(() => {
+        fadeTimer = null;
         host.hidden = true;
         host.replaceChildren();
         showing = false;
@@ -129,6 +146,8 @@
     const source = Array.from(containers).find(container => container.querySelector('.ev-row[data-ev-key]')) || containers[0];
     const rows = source ? [...source.querySelectorAll('.ev-list > .ev-row[data-ev-key]:not(.ev-period-marker)')] : [];
     const keys = new Set(rows.map(row => row.dataset.evKey));
+    // 다른 경기로 바뀌면 이전 경기의 대기 중·표시 중인 이벤트를 치운다.
+    if (seenFixtureId && fixtureId !== seenFixtureId) reset();
     const sameFixture = fixtureId && fixtureId === seenFixtureId && seenKeys;
     const fresh = sameFixture && pendingNew && enabled() ? rows.filter(row => !seenKeys.has(row.dataset.evKey)) : [];
     seenFixtureId = fixtureId;
@@ -140,11 +159,7 @@
   // 설정을 끄면 대기 중인 표시도 바로 치운다. 배율을 바꾸면 보이는 중인 표시에도 바로 반영한다.
   document.addEventListener('settings:change', event => {
     const category = event.detail?.category;
-    if (category === 'eventSpotlight' && !enabled()) {
-      queue.length = 0;
-      if (host) { host.classList.remove('is-visible'); host.hidden = true; host.replaceChildren(); }
-      showing = false;
-    }
+    if (category === 'eventSpotlight' && !enabled()) reset();
     if ((category === 'eventSpotlightScale' || category === 'eventSpotlight') && enabled() && host && !host.hidden) {
       const target = activeLayout();
       if (target) place(target);

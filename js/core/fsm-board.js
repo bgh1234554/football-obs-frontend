@@ -1527,7 +1527,14 @@ function adjustScoreboardWidth() {
       board.append(panel);
       const targets = '.team-score, .score-div, .total-score';
       /** 클릭·Esc·바깥 클릭이 같은 닫힘 상태를 사용합니다. */
-      const close = () => { panel.hidden = true; };
+      const scoreNodes = [...main.querySelectorAll(targets)];
+      // 열림 상태를 점수 칸의 aria-expanded와 함께 맞춘다(승부차기 빠른 입력과 같은 방식).
+      const setOpen = open => {
+        panel.hidden = !open;
+        scoreNodes.forEach(node => node.setAttribute('aria-expanded', String(open)));
+        if (open) syncAggQuickControls(board);
+      };
+      const close = () => setOpen(false);
       const commit = () => { render(); persist(); };
       const setBase = (side, value) => {
         state[side === 'home' ? 'aggHomeBase' : 'aggAwayBase'] = Math.max(0, Math.floor(Number(value) || 0));
@@ -1535,10 +1542,22 @@ function adjustScoreboardWidth() {
       };
       main.addEventListener('click', event => {
         if (!event.target.closest(targets)) return;
-        panel.hidden = !panel.hidden;
-        if (!panel.hidden) syncAggQuickControls(board);
+        setOpen(panel.hidden);
       });
-      main.querySelectorAll(targets).forEach(node => node.setAttribute('title', '클릭하여 합계 점수 입력'));
+      // 키보드로도 열 수 있게 점수 칸을 버튼처럼 노출한다(Enter/Space).
+      scoreNodes.forEach(node => {
+        node.setAttribute('title', '클릭하여 합계 점수 입력');
+        node.tabIndex = 0;
+        node.setAttribute('role', 'button');
+        node.setAttribute('aria-label', '합계 점수 입력 열기');
+        node.setAttribute('aria-controls', panel.id);
+        node.setAttribute('aria-expanded', 'false');
+        node.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          setOpen(panel.hidden);
+        });
+      });
       panel.addEventListener('click', event => {
         const action = event.target.closest('[data-agg-action]')?.dataset.aggAction;
         if (!action) return;
