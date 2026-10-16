@@ -381,14 +381,8 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
           const target = frames[frames.length - 1]?.backgroundColor;
           if (target === 'transparent' || target === 'rgba(0, 0, 0, 0)') animation.finish();
         }));
-      autoLayoutNotes();
-      initBoardScale();
-      document.fonts.ready.then(() => {
-        if (oldlink !== newlink || pendingThemeLink) return;
-        window.fsmBoardRender();
-        autoLayoutNotes();
-        initBoardScale();
-      });
+      // 실제 글꼴 로딩 완료는 공통 loadingdone 처리에서 다시 그린다.
+      // 이미 준비된 fonts.ready로 같은 전환을 한 번 더 갱신하지 않는다.
     });
   };
   newlink.onerror = () => {

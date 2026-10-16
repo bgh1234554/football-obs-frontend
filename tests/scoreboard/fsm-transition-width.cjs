@@ -22,7 +22,22 @@ const { openPage, settle } = require('../tactics/helpers');
       await page.evaluate(() => document.fonts.ready);
       await settle(page);
       const initial = await page.locator('.scoreboard-main').evaluate(el => parseFloat(el.style.width));
-      await page.waitForTimeout(1000);
+      const heightError = await page.evaluate(() => new Promise(resolve => {
+        const stage = document.querySelector('#boardStageInner');
+        const wrap = document.querySelector('#boardStageWrap');
+        let maxError = 0;
+        const end = performance.now() + 1000;
+        function sample() {
+          const scale = new DOMMatrixReadOnly(getComputedStyle(stage).transform).a;
+          maxError = Math.max(maxError, Math.abs(parseFloat(wrap.style.height) - stage.scrollHeight * scale));
+          if (performance.now() < end) requestAnimationFrame(afterLayout);
+          else resolve(maxError);
+        }
+        // ResizeObserver의 높이 반영이 끝난 뒤 전환 중의 실제 표시 영역을 확인한다.
+        function afterLayout() { setTimeout(sample, 0); }
+        requestAnimationFrame(afterLayout);
+      }));
+      assert(heightError <= 1, JSON.stringify({ theme, heightError }));
       const settled = await page.evaluate(() => {
         fsmBoardRender();
         return parseFloat(document.querySelector('.scoreboard-main').style.width);

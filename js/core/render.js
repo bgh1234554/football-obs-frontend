@@ -834,10 +834,8 @@
     }
     return s;
   }
-  function applyBoardScale(pct){
-    const s = boardScaleFactor(pct);
-    boardStageInner.style.transition = 'none';
-    boardStageInner.style.transform = `scale(${s})`;
+  let appliedBoardScale = 1;
+  function syncBoardStageHeight(){
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
     // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
@@ -845,7 +843,16 @@
     quickMenus.forEach(menu => { menu.style.display = 'none'; });
     const naturalH = boardStageInner.scrollHeight;
     quickMenus.forEach(menu => { menu.style.display = ''; });
-    boardStageWrap.style.height = (naturalH * s) + 'px';
+    const height = (naturalH * appliedBoardScale) + 'px';
+    if (boardStageWrap.style.height !== height) boardStageWrap.style.height = height;
+  }
+  function applyBoardScale(pct){
+    const s = boardScaleFactor(pct);
+    appliedBoardScale = s;
+    boardStageInner.style.transition = 'none';
+    const transform = `scale(${s})`;
+    if (boardStageInner.style.transform !== transform) boardStageInner.style.transform = transform;
+    syncBoardStageHeight();
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
     syncBoardPosition();
@@ -912,13 +919,16 @@
   window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 75);
 
   if (window.ResizeObserver && boardStageInner) {
-    let scaleFrame = null;
-    new ResizeObserver(() => {
-      if (scaleFrame !== null) return;
-      scaleFrame = requestAnimationFrame(() => {
-        scaleFrame = null;
-        if (boardStageInner.offsetHeight > 0) initBoardScale();
-      });
+    new ResizeObserver(entries => {
+      const size = entries[0]?.contentRect;
+      if (!size || size.height <= 0) return;
+      // 높이 전환은 배율 변경이 아니다. 브라우저가 배치를 계산한 직후 높이만
+      // 반영해 다음 프레임의 전체 배율 재적용과 한 프레임 지연을 피한다.
+      syncBoardStageHeight();
+      // 전환 중 득점자와 팀 영역의 폭도 바뀔 수 있어 기존 위치·픽셀 보정은 유지한다.
+      syncBoardPosition();
+      window.syncBelarusBoundaryPixelGrid?.();
+      window.syncEkstraklasaBoundaryPixelGrid?.();
     }).observe(boardStageInner);
   }
 
