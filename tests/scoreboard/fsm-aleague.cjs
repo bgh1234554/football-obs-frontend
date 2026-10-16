@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { chromium } = require('playwright');
 const { openPage, settle } = require('../tactics/helpers');
 
@@ -6,8 +8,10 @@ const { openPage, settle } = require('../tactics/helpers');
   const browser = await chromium.launch();
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
-    await page.route('**/leagues/ALeagueMen.svg', route => route.fulfill({ contentType: 'image/svg+xml',
-      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22.98 23.24"><rect width="22.98" height="23.24" fill="white"/></svg>' }));
+    const logoPath = path.resolve(__dirname, '../../../football-obs-logo-cdn/leagues/ALeagueMen.svg');
+    const logoSvg = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'utf8')
+      : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22.98 23.24"><rect width="22.98" height="23.24" fill="white"/></svg>';
+    await page.route('**/leagues/ALeagueMen.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: logoSvg }));
     await page.evaluate(() => {
       state.fsmTheme = 'auto'; state.homeName = 'MELBOURNE CITY'; state.awayName = 'SYDNEY FC';
       state.homeScore = 2; state.awayScore = 1; state.extra = 3; state.extraShown = true;
@@ -32,7 +36,7 @@ const { openPage, settle } = require('../tactics/helpers');
             const main = rect('.scoreboard-main'), logo = rect('.epl-lion'), center = rect('.score-div');
             const scale = main.width / document.querySelector('.scoreboard-main').offsetWidth, cx = (center.left + center.right) / 2;
             const read = s => [style(s).backgroundColor, style(s).color];
-            return { theme: _currentTheme, radius: parseFloat(document.querySelector('#board').style.getPropertyValue('--cnl-radius')),
+            return { theme: _currentTheme,
               central: ['#team-score-left', '#team-score-right', '.score-div'].map(read),
               names: ['.teams-left', '.teams-right'].map(s => [style(s).backgroundColor, getComputedStyle(document.querySelector(s + ' .team-name')).color]),
               strips: ['.teams-left', '.teams-right'].map(s => getComputedStyle(document.querySelector(s), '::after').backgroundImage),
@@ -41,18 +45,22 @@ const { openPage, settle } = require('../tactics/helpers');
               clock: read('.time'), extra: read('.extra-time'), top: (main.top - logo.top) / scale, bottom: (main.bottom - logo.bottom) / scale, logoAspect: logo.width / logo.height,
               tops: [main.top, center.top, rect('.time').top],
               gaps: ['#team-score-left', '#team-score-right'].map(s => (rect(s).left - cx) / scale),
+              nameCenters: ['.teams-left', '.teams-right'].map(s => {
+                const box = rect(s), name = rect(s + ' .team-name');
+                return Math.abs((name.left + name.right - box.left - box.right) / 2);
+              }),
               hiddenCurves: [...document.querySelectorAll('.cnl-curve')].every(el => getComputedStyle(el).display === 'none') };
           });
           assert.equal(m.theme, 'aleague');
-          assert.equal(m.radius, enabled ? 110 : 82);
-          m.central.forEach(pair => assert.deepEqual(pair, ['rgb(20, 25, 147)', 'rgb(255, 255, 255)']));
-          m.names.forEach(pair => assert.deepEqual(pair, ['rgb(255, 255, 255)', 'rgb(21, 20, 59)']));
+          m.central.forEach(pair => assert.deepEqual(pair, ['rgb(230, 230, 230)', 'rgb(44, 44, 44)']));
+          assert.deepEqual(m.names, [['rgb(32, 128, 255)', 'rgb(255, 224, 128)'], ['rgb(224, 32, 48)', 'rgb(64, 223, 128)']]);
+          assert(m.nameCenters.every(error => error < 1));
           assert.equal(m.strips[0], 'linear-gradient(to right, rgb(32, 128, 255) 50%, rgb(255, 224, 128) 50%)');
           assert.equal(m.strips[1], 'linear-gradient(to right, rgb(224, 32, 48) 50%, rgb(64, 223, 128) 50%)');
-          m.clip.forEach(clip => assert(enabled ? clip === 'none' : clip.startsWith('circle(82px')));
-          if (enabled) m.totals.forEach(t => { assert.deepEqual(t.slice(0, 2), m.central[0]); assert(t[2].startsWith('circle(110px')); });
-          assert.deepEqual(m.clock, ['rgb(54, 64, 205)', 'rgb(255, 255, 255)']);
-          assert.deepEqual(m.extra, ['rgb(216, 72, 103)', 'rgb(255, 255, 255)']);
+          m.clip.forEach(clip => assert.equal(clip, 'none'));
+          if (enabled) m.totals.forEach(t => { assert.deepEqual(t.slice(0, 2), m.clock); assert.equal(t[2], 'none'); });
+          assert.deepEqual(m.clock, ['rgb(44, 44, 44)', 'rgb(230, 230, 230)']);
+          assert.deepEqual(m.extra, ['rgb(20, 25, 147)', 'rgb(255, 255, 255)']);
           assert(Math.abs(m.top - 14) < .1); assert(Math.abs(m.bottom) < .1);
           assert(Math.abs(m.logoAspect - 22.98 / 23.24) < .001); assert(m.hiddenCurves);
           if (scale === 100 && position === 'center') {
@@ -64,11 +72,11 @@ const { openPage, settle } = require('../tactics/helpers');
               const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
               return ['#homeCard', '#awayCard'].map((selector, i) => {
                 const r = document.querySelector(selector).getBoundingClientRect();
-                const x = i ? r.left - 1 : r.right + 1;
+                const x = i ? r.left + 1 : r.right - 1;
                 return [...ctx.getImageData(Math.floor(x - origin.left), Math.floor(r.bottom - origin.top - 2), 1, 1).data];
               });
             }, png.toString('base64'));
-            assert.deepEqual(ends, [[255, 224, 128, 255], [224, 32, 48, 255]], 'two-color strips must reach the circular score edge on both sides');
+            assert.deepEqual(ends, [[255, 224, 128, 255], [224, 32, 48, 255]], 'two-color strips must retain their original ends on both sides');
           }
           samples.push(m);
         }
@@ -79,6 +87,8 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.waitForFunction(() => !pendingThemeLink);
     await settle(page);
     await page.locator('#board').screenshot({ path: 'screenshots/tests/fsm-aleague.png' });
-    console.log('PASS A-League auto/manual, CNL circle/aggregate logic, upward-only logo, horizontal two-color strips, exact palette at four scales and three positions');
+    await page.evaluate(() => { state.half = 'PK'; render(); fsmBoardRender(); });
+    assert.deepEqual(await page.locator('.pso-main').evaluate(node => [getComputedStyle(node).backgroundColor, getComputedStyle(node).color]), ['rgb(44, 44, 44)', 'rgb(230, 230, 230)']);
+    console.log('PASS A-League Ligue 1 geometry, EFL team-name colors, original logo/strips, aggregate, timer/extra/PSO at four scales and three positions');
   } finally { await browser.close(); }
 })().catch(e => { console.error(e); process.exitCode = 1; });

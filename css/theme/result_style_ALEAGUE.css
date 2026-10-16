@@ -1,10 +1,14 @@
 @import url('./result_style_LIGUE1.css');
 
 .fsm-board .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
-.fsm-board .div-background { background: #ffffff; z-index: -1; }
+.fsm-board .div-background { background: #E6E6E6; z-index: -1; }
 .fsm-board .teams-left,
-.fsm-board .teams-right { position: relative; background: #ffffff; }
-.fsm-board .team-name { color: #15143B; }
+.fsm-board .teams-right { position: relative; }
+/* 팀명 패널은 EFL 챔피언십과 같은 primary 배경·number 글자색을 사용합니다. */
+.fsm-board .teams-left { background: var(--fsm-home-primary-color); }
+.fsm-board .teams-right { background: var(--fsm-away-primary-color); }
+.fsm-board .teams-left .team-name { color: var(--fsm-home-number-color); }
+.fsm-board .teams-right .team-name { color: var(--fsm-away-number-color); }
 
 /* 각 팀의 띠를 화면 왼쪽 primary, 오른쪽 number 순서로 나눕니다. */
 #board.fsm-board[data-fsm-theme="aleague"] :is(.teams-left, .teams-right) { box-shadow: none; }
@@ -28,17 +32,17 @@
 .fsm-board #team-logo-right { clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
 
 #board.fsm-board[data-fsm-theme="aleague"] :is(#team-score-left, #team-score-right) {
-    background: #141993;
-    color: #ffffff;
+    background: #E6E6E6;
+    color: #2C2C2C;
+    font-size: 42px;
 }
-#board.fsm-board[data-fsm-theme="aleague"] #team-score-left { clip-path: circle(var(--cnl-radius) at var(--cnl-radius) 24px); }
-#board.fsm-board[data-fsm-theme="aleague"] #team-score-right { clip-path: circle(var(--cnl-radius) at calc(50px - var(--cnl-radius)) 24px); }
 
 #board.fsm-board[data-fsm-theme="aleague"] .score-div {
     position: relative;
     width: 64px;
     height: 48px;
-    background: #141993;
+    background: #E6E6E6;
+    color: #2C2C2C;
     z-index: 3;
     /* 하단은 본체에 맞추고 위쪽으로만 로고 돌출을 허용합니다. */
     clip-path: inset(-30px 0 0);
@@ -55,16 +59,13 @@
     object-fit: contain;
 }
 
-.fsm-board .time { background: #3640CD; color: #ffffff; }
-.fsm-board .extra-time { background: #D84867; color: #ffffff; }
+.fsm-board .time { background: #2C2C2C; color: #E6E6E6; }
+.fsm-board .extra-time { background: #141993; color: #ffffff; }
 
-#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] :is(#team-score-left, #team-score-right) { clip-path: none; }
 #board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] .total-score {
     min-width: 28px;
     padding: 0 2px;
     font-size: 20px;
-    background: #141993;
-    color: #ffffff;
+    background: #2C2C2C;
+    color: #E6E6E6;
 }
-#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { clip-path: circle(var(--cnl-radius) at var(--cnl-radius) 24px); }
-#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { clip-path: circle(var(--cnl-radius) at calc(100% - var(--cnl-radius)) 24px); }

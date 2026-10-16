@@ -691,7 +691,7 @@ function applyTheme(theme, logoUrl) {
       cypriotfirstdivision: ['#007F8A', '#ffffff'],
       eliteserien: ['transparent', '#ffffff'],
       turkishcup: ['#08151B', '#ffffff'], tff1lig: ['#08151B', '#ffffff'],
-      aleague: ['#141993', '#ffffff'],
+      aleague: ['#2C2C2C', '#E6E6E6'],
       brazilseriea: ['transparent', '#ffffff'],
       saudikingscup: ['#B7993C', '#22242A'],
       chinesesuperleague: ['#03356C', '#ffffff'],
@@ -929,7 +929,7 @@ function adjustScoreboardWidth() {
       eliteserienInset = board.querySelector('.score-div').offsetHeight * Math.abs(Math.tan(angle * Math.PI / 180));
       board.style.setProperty('--eliteserien-inset', eliteserienInset + 'px');
     }
-    const reserved = overlap + (_currentTheme === 'eliteserien' ? eliteserienInset : _currentTheme === 'russiancup' ? cards[0].clientHeight : _currentTheme === 'danish' ? danishWidth : _currentTheme === 'wc26' ? 41 : ['cnl', 'aleague'].includes(_currentTheme) ? 7 : _currentTheme === 'ligaportugal' ? 16 : ['rpl', 'belgian', 'coupedefrance', 'brazilseriea'].includes(_currentTheme) ? 8 : 0);
+    const reserved = overlap + (_currentTheme === 'eliteserien' ? eliteserienInset : _currentTheme === 'russiancup' ? cards[0].clientHeight : _currentTheme === 'danish' ? danishWidth : _currentTheme === 'wc26' ? 41 : _currentTheme === 'cnl' ? 7 : _currentTheme === 'ligaportugal' ? 16 : ['rpl', 'belgian', 'coupedefrance', 'brazilseriea'].includes(_currentTheme) ? 8 : 0);
     board.style.setProperty('--fsm-name-reserved-width', reserved + 'px');
   }
   const reservedWidth = parseFloat(getComputedStyle(board).getPropertyValue('--fsm-name-reserved-width')) || 0;
@@ -951,7 +951,6 @@ function adjustScoreboardWidth() {
   cards.forEach(card => { card.style.width = teamWidth + 'px'; });
   scoreboard.style.width = boardWidth + 'px';
   if (_currentTheme === 'cnl') syncCnlGeometry(board);
-  if (_currentTheme === 'aleague') syncCnlGeometry(board, null, false);
   if (_currentTheme === 'uzbek') syncCnlGeometry(board, 32);
   if (_currentTheme === 'ekstraklasa') {
     window.syncEkstraklasaBoundaryPixelGrid();
@@ -1305,7 +1304,7 @@ function adjustScoreboardWidth() {
     spfl: ['#202956', '#ffffff'],
     cypriotfirstdivision: ['#007F8A', '#ffffff'],
     eliteserien: ['#152132', '#ffffff'],
-    aleague: ['#3640CD', '#ffffff'],
+    aleague: ['#2C2C2C', '#E6E6E6'],
     brazilseriea: ['#131428', '#ffffff'],
     saudikingscup: ['#7A5D3B', '#37261C'],
     chinesesuperleague: ['#0772BB', '#ffffff'],
