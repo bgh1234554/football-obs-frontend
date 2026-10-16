@@ -20,6 +20,7 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
  const styles=await page.locator('#clock').evaluate(e=>({display:getComputedStyle(e).display,background:getComputedStyle(e).backgroundColor,editorBackground:getComputedStyle(document.querySelector('#clockEditor')).backgroundColor,margin:getComputedStyle(document.querySelector('#clockEditor')).marginTop}));
  assert.notEqual(styles.display,'none');assert.equal(styles.background,styles.editorBackground);assert.equal(styles.margin,'0px');
  await page.locator('#ceColon').hover();assert(await page.locator('#cePresets').isVisible());
+ if(['eliteserien','danish'].includes(theme))assert.equal(await page.locator('#cePresets').evaluate(n=>getComputedStyle(n).backgroundColor),theme==='danish'?'rgb(189, 229, 94)':'rgb(251, 248, 253)');
  if(theme==='result_style_CL.css'){fs.mkdirSync(path.join(root,'screenshots','fsm-clock-editor'),{recursive:true});await page.screenshot({path:path.join(root,'screenshots','fsm-clock-editor','cl-editing.png')});}
  await page.locator('.ce-preset-btn[data-min="45"]').click();
  assert.equal(await page.evaluate(()=>Math.floor(state.seconds)),2700);assert(await page.evaluate(()=>state.running));assert(!await page.locator('#clockEditor').isVisible());

@@ -1,0 +1,372 @@
+@font-face {
+    font-family: 'SsangmunDongB';
+    src: url('/resources/fonts/Typo_SsangmunDongB.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Koverwatch';
+    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Pretendard-Medium';
+    src: url('/resources/fonts/Pretendard-Medium.woff') format('woff');
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('/resources/fonts/NanumGothic.ttf') format('woff');
+}
+@font-face {
+    font-family: 'GmarketSansMedium';
+    src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
+}
+
+.fsm-board { margin:0; padding:0; overflow:hidden; }
+
+.fsm-board .scoreboard-main {
+    width: 984px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    vertical-align: middle;
+    margin: 0 auto;
+    margin-top: 30px;
+}
+
+.fsm-board .div-background {
+    width: 984px;
+    height: 48px;
+    position: absolute;
+    background-image: url("/resources/background/background_sbleft.png");
+    background-repeat: no-repeat;
+    background-blend-mode: darken;
+    display: flex;
+}
+
+.fsm-board .teams-left, .teams-right {
+    width: 360px;
+    height: 48px;
+    background: #04235E;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .team-name {
+    width: 360px;
+    height: 100%;
+    font-family: 'GmarketSansMedium';
+    font-size: 33px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.fsm-board .teams-left > .team-name {
+    display: flex;
+    justify-content: flex-start;
+    margin-left: 20px;
+}
+
+.fsm-board .teams-right > .team-name {
+    display: flex;
+    justify-content: flex-end;
+    margin-right: 20px;
+}
+
+.fsm-board .text {
+    text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
+}
+
+.fsm-board .team-score {
+    width: 70px;
+    height: 48px;
+    font-family: 'Pretendard-Medium';
+    font-size: 32px;
+    font-weight: bold;
+    background: #0456E5;
+    color: whitesmoke;
+    text-align: center;
+    transition: 0.9s ease-in-out;
+    position: absolute;
+    transform: skewX(-10deg);
+}
+
+.fsm-board #team-score-left {
+    margin-right: 90px;
+}
+
+.fsm-board .score-left {
+    margin-right: 15px;
+}
+
+.fsm-board #team-score-right {
+    margin-left: 90px;
+}
+
+.fsm-board .score-right {
+    margin-left: 15px;
+}
+
+.fsm-board .score-left, .score-right {
+    display: inline-block;
+    transform: skewX(10deg);
+}
+
+.fsm-board .score-div {
+    height: auto;
+    font-family: 'Pretendard-Medium';
+    font-size: 28px;
+    font-weight: bold;
+    color: #2A235B;
+    padding: 8px;
+    text-align: center;
+    transition: 0.9s ease-in-out;
+    position: absolute;
+    z-index: 1;
+    transform: skewX(-10deg);
+}
+
+.fsm-board .hipen {
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    transform: skewX(10deg);
+}
+
+ .fsm-board .divider {
+    background: #0456E5;
+}
+
+.fsm-board .team-logo {
+    width: 80px;
+    height: 48px;
+    background: whitesmoke;
+    border: 2px solid whitesmoke;
+    position: relative;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .team-logo > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.fsm-board .epl-lion {
+    width: 64px;
+    height: 72px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1;
+    transform: skewX(10deg);
+}
+
+.fsm-board .team-color {
+    display: none;
+}
+
+.fsm-board .scoreboard-timer {
+    width: 260px;
+    height: 32px;
+    margin: 0 auto;
+    text-align: center;
+    vertical-align: middle;
+    color: #2A235B;
+    font-family: 'NanumGothic';
+    font-size: 22px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: 0.9s ease-in-out;
+    position: relative;
+    z-index: 1;
+    margin-top: -10px;
+    margin-left: none;
+}
+
+.fsm-board .time {
+    width: 114px;
+    height: 100%;
+    background: white;
+    position: relative;
+    z-index: 1;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .extra-time {
+    width: 80px;
+    height: 32px;
+    color: #04235E;
+    background: #03E7DB;
+    position: absolute;
+    margin-left: 0px;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-status {
+    width: 360px;
+    height: 32px;
+    top: 78px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    align-items: flex-start;
+    position: absolute;
+    z-index: 1;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-main {
+    width: 100%;
+    height: 0px;
+    transition: 0.9s ease-in-out;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    vertical-align: middle;
+    background: linear-gradient(0deg, #03E7DB 80%, #02b1a9);
+}
+
+.fsm-board .pso-circle {
+    width: 25px;
+    height: 25px;
+    border-radius: 20px;
+    border: 1px solid black;
+    margin: 2px;
+    transition: 0.9s ease-in-out;
+}
+
+.fsm-board .pso-status > .pso-main ul {
+    width: 100%;
+    height: 32px;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fsm-board .pso-middle {
+    display: flex;
+    font-family: 'NanumGothic';
+    font-weight: bold;
+    font-size: 20px;
+    margin: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.clock-editor {
+    margin-top: 100px;
+}
+
+.pk-wrap.show, .pk-score-row {
+    display: none;
+}
+
+.fsm-board .div-rc {
+    position: absolute;
+    top: 16px;
+    gap: 6px;
+    z-index: -1;
+}
+
+.fsm-board #rcHome {
+    display: flex;
+    left: 40px;
+    justify-content: flex-end; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board #rcAway {
+    display: flex;
+    right: 40px;
+    justify-content: flex-start; 
+    flex-direction: row-reverse;
+}
+
+.fsm-board .div-rc .rc-card {
+    width: 14px;
+    height: 22px;
+    background: #ef4444;
+    border-radius: 3px;
+}
+
+.fsm-board #rcHome .rc-card {
+    transform: skewX(3deg);
+}
+
+.fsm-board #rcAway .rc-card {
+    transform: skewX(-3deg);
+}
+
+.fsm-board .div-rc.hidden {
+    display: none; 
+}
+
+.fsm-board .total-score {
+    display: none;
+}
+/* 참고 이미지의 경계는 높이 31px당 가로 약 29px을 이동합니다. */
+.board.fsm-board[data-fsm-theme="eliteserien"] { --eliteserien-angle: -43.09deg; --eliteserien-center-width: 200px; }
+.board.fsm-board[data-fsm-theme="eliteserien"][data-fsm-aggregate="true"] { --eliteserien-center-width: 256px; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .scoreboard-main { position: relative; isolation: isolate; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .div-background { background: none; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .teams-left { background: linear-gradient(to bottom left, #FBF8FD, #7F9FB5); color: #152132; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .teams-right { background: linear-gradient(to bottom right, #FBF8FD, #7F9FB5); color: #152132; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .team-name { color: #152132; }
+/* 합계를 켜면 같은 점수 배경을 바깥으로 연장합니다. */
+.board.fsm-board[data-fsm-theme="eliteserien"] .scoreboard-main::before {
+ content: ''; position: absolute; left: 50%; top: 0; height: 48px; width: calc(var(--eliteserien-center-width) + var(--eliteserien-inset, 44.907px));
+ transform: translateX(-50%) skewX(var(--eliteserien-angle));
+ background: linear-gradient(to top right, #115586, #47B5E0); z-index: 1; pointer-events: none;
+}
+.board.fsm-board[data-fsm-theme="eliteserien"] :is(#team-score-left, #team-score-right, .score-div) {
+ position: relative; margin: 0; transform: none; background: transparent; color: #ffffff; z-index: 2; height: 48px;
+ display: flex; align-items: center; justify-content: center;
+}
+.board.fsm-board[data-fsm-theme="eliteserien"] :is(.score-left, .score-right) { transform: none; margin: 0; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .score-div { width: 60px; padding: 0; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .epl-lion { width: 52px; height: 40px; transform: none; object-fit: contain; }
+#board.fsm-board[data-fsm-theme="eliteserien"][data-fsm-aggregate="true"] .total-score {
+ min-width: 28px; width: 28px; padding: 0; font-size: 20px; background: transparent; color: #ffffff;
+}
+.board.fsm-board[data-fsm-theme="eliteserien"] :is(.time, .extra-time) { background: transparent; isolation: isolate; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .time { color: #152132; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .extra-time { color: #ffffff; }
+.board.fsm-board[data-fsm-theme="eliteserien"] :is(.time, .extra-time)::before {
+ content: ''; position: absolute; inset: 0; transform: skewX(var(--eliteserien-angle)); z-index: -1; pointer-events: none;
+}
+.board.fsm-board[data-fsm-theme="eliteserien"] .time::before { background: #FBF8FD; }
+.board.fsm-board[data-fsm-theme="eliteserien"] .extra-time::before { background: #0B498B; }
+
+/* 확인 버튼과 증감 버튼이 숫자 중앙을 밀지 않도록 별도 배치합니다. */
+.board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor {
+ width: var(--fsm-clock-width); height: 32px; min-width: 0; box-sizing: border-box; gap: 0;
+ padding: var(--clock-padding-top) 0 var(--clock-padding-bottom); font: bold 22px/1 'NanumGothic';
+}
+.board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-unit { position: relative; gap: 0; }
+.board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-num {
+ font: inherit; height: 1em; padding: 0; border: 0; border-radius: 0; box-sizing: content-box; min-width: 0;
+}
+.board.fsm-board[data-fsm-theme="eliteserien"] #ceMin { width: var(--clock-minute-width); }
+.board.fsm-board[data-fsm-theme="eliteserien"] #ceSec { width: var(--clock-second-width); }
+.board.fsm-board[data-fsm-theme="eliteserien"] #ceColon { font: inherit; width: var(--clock-colon-width); padding: 0; }
+.board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-arrow { position: absolute; left: 50%; transform: translateX(-50%); }
+.board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-arrow:first-child { bottom: 100%; }
+.board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-arrow:last-child { top: 100%; }
+.board.fsm-board[data-fsm-theme="eliteserien"] #ceConfirm { position: absolute; left: calc(100% + 18px); top: 50%; transform: translateY(-50%); margin: 0; }
+
+
+.board.fsm-board[data-fsm-theme="eliteserien"] #extra.hidden::before { display: none; }

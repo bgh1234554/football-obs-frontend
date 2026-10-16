@@ -14,6 +14,8 @@ function setFsmAttr(selector, name, value) {
   });
 }
 const LEAGUE_THEME_MAP = {
+  181: { theme: 'scottishcup', logoUrl: null, type: 'club' },
+  185: { theme: 'scottishcup', logoUrl: null, type: 'club' },
   39:  { theme: 'pl',      logoUrl: 'https://indvel.github.io/utils/fsm/logos/EPL/premierleague-1536x1536.png', type: 'club' },
   40: { theme: 'eflchampionship', logoUrl: null, type: 'club' },
   41: { theme: 'eflleagueone', logoUrl: null, type: 'club' },
@@ -48,9 +50,17 @@ const LEAGUE_THEME_MAP = {
   650: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   653: { theme: 'fnl2b', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RussianSecondLeagueB.svg', type: 'club' },
   237: { theme: 'russiancup', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/KubokRossii.png', type: 'club' },
+  197: { theme: 'greecesuperleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/GreeceSuperLeague.svg', type: 'club' },
   345: { theme: 'czech', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CzechFirstLeagueTransparent.svg', type: 'club' },
   106: { theme: 'ekstraklasa', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ekstraklasa.svg', type: 'club' },
+  103: { theme: 'eliteserien', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Eliteserien.svg', type: 'club' },
   119: { theme: 'danish', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/DanishSuperliga.svg', type: 'club' },
+  318: { theme: 'cypriotfirstdivision', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CypriotFirstDivision.svg', type: 'club' },
+  207: { theme: 'swisssuperleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/SwissSuperLeague.svg', type: 'club' },
+  179: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  180: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  183: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
+  184: { theme: 'spfl', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ScottishPremiership.svg', type: 'club' },
   283: { theme: 'romanian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg', type: 'club' },
   342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
   116: { theme: 'belarus', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelarusianPremierLeague.svg', type: 'club' },
@@ -103,7 +113,9 @@ const FSM_THEMES = Object.freeze({
   //러시아
   rpl: '러시아 프리미어 리그', fnl: '러시아 퍼스트 리그', fnl2a: '러시아 세컨드리그 A', fnl2b: '러시아 세컨드리그 B', russiancup: '러시아 컵',
   //기타 유럽 리그 (가능하면 UEFA 남자 국가 계수 순)
-  czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', danish: '덴마크 수페르리가', romanian: '루마니아 리가 I', belarus: '벨라루스 프리미어 리그', armenian: '아르메니아 프리미어 리그',
+  greecesuperleague: '그리스 슈퍼리그', czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', eliteserien: '엘리트세리엔', danish: '덴마크 수페르리가',
+  cypriotfirstdivision: '키프로스 퍼스트 디비전', swisssuperleague: '스위스 슈퍼리그', spfl: 'SPFL', scottishcup: '스코티시 컵',
+  romanian: '루마니아 리가 I', belarus: '벨라루스 프리미어 리그', armenian: '아르메니아 프리미어 리그',
   //유럽 대항전
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', unl: 'UEFA 네이션스리그', er24: '유로',
   //아시아 리그
@@ -123,9 +135,9 @@ const FSM_THEMES = Object.freeze({
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
 // 리그별 확인 근거와 시즌 예외는 about.md의 합계 점수 안내를 참고합니다.
 const FSM_AGGREGATE_THEMES = Object.freeze([
-  'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
-  'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
-  'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
+  'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
+  'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
+  'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
   'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
   'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance'
 ]);
@@ -392,6 +404,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_COPPA_ITALIA.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'eliteserien':
+      changeCSS('css/theme/result_style_ELITESERIEN.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'seriea':
       changeCSS('css/theme/result_style_SERIEA.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -501,6 +517,18 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_COUPE_DE_FRANCE.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'greecesuperleague':
+      changeCSS('css/theme/result_style_GREECE_SUPER_LEAGUE.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'swisssuperleague':
+      changeCSS('css/theme/result_style_SWISS_SUPER_LEAGUE.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'cypriotfirstdivision':
+      changeCSS('css/theme/result_style_CYPRIOT_FIRST_DIVISION.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'ligue1':
       changeCSS('css/theme/result_style_LIGUE1.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -511,6 +539,14 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'nationalleague':
       changeCSS('css/theme/result_style_NATIONAL_LEAGUE.css', theme);
+      break;
+    case 'scottishcup':
+      changeCSS('css/theme/result_style_SCOTTISH_CUP.css', theme);
+      setFsmAttr('.epl-lion', 'src', null);
+      break;
+    case 'spfl':
+      changeCSS('css/theme/result_style_SPFL.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'eflchampionship':
       changeCSS('css/theme/result_style_EFL_CHAMPIONSHIP.css', theme);
@@ -650,6 +686,10 @@ function applyTheme(theme, logoUrl) {
     board.dataset.fsmAggregate = String(supportsAggregate && !!state.aggEnabled);
     // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않습니다.
     const fixedAggregatePalette = {
+      scottishcup: ['transparent', '#ffffff'],
+      spfl: ['#202956', '#ffffff'],
+      cypriotfirstdivision: ['#007F8A', '#ffffff'],
+      eliteserien: ['transparent', '#ffffff'],
       turkishcup: ['#08151B', '#ffffff'], tff1lig: ['#08151B', '#ffffff'],
       aleague: ['#141993', '#ffffff'],
       brazilseriea: ['transparent', '#ffffff'],
@@ -666,6 +706,8 @@ function applyTheme(theme, logoUrl) {
       eflchampionship: ['#b69b42', '#ffffff'],
       eflleagueone: ['#7f8384', '#ffffff'],
       eflleaguetwo: ['#cc0935', '#ffffff'],
+      greecesuperleague: ['#3A3A38', '#ffffff'],
+      swisssuperleague: ['#A2A2A2', '#000000'],
       ligue1: ['#085FFF', '#ffffff'],
       ligue2: ['#00fcd0', '#000000'],
       ligaportugal: ['#ffffff', '#102556'],
@@ -855,7 +897,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'ligue1', 'ligue2', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -880,7 +922,14 @@ function adjustScoreboardWidth() {
         (cards[0].getBoundingClientRect().right - homeEdge) / scale,
         (awayEdge - cards[1].getBoundingClientRect().left) / scale) - overlap;
     }
-    const reserved = overlap + (_currentTheme === 'russiancup' ? cards[0].clientHeight : _currentTheme === 'danish' ? danishWidth : _currentTheme === 'wc26' ? 41 : ['cnl', 'aleague'].includes(_currentTheme) ? 7 : _currentTheme === 'ligaportugal' ? 16 : ['rpl', 'belgian', 'coupedefrance', 'brazilseriea'].includes(_currentTheme) ? 8 : 0);
+    // 사선이 팀명 칸을 덮는 최대 폭을 빼면 위아래 중 짧은 변의 유효 너비가 됩니다.
+    let eliteserienInset = 0;
+    if (_currentTheme === 'eliteserien') {
+      const angle = parseFloat(getComputedStyle(board).getPropertyValue('--eliteserien-angle'));
+      eliteserienInset = board.querySelector('.score-div').offsetHeight * Math.abs(Math.tan(angle * Math.PI / 180));
+      board.style.setProperty('--eliteserien-inset', eliteserienInset + 'px');
+    }
+    const reserved = overlap + (_currentTheme === 'eliteserien' ? eliteserienInset : _currentTheme === 'russiancup' ? cards[0].clientHeight : _currentTheme === 'danish' ? danishWidth : _currentTheme === 'wc26' ? 41 : ['cnl', 'aleague'].includes(_currentTheme) ? 7 : _currentTheme === 'ligaportugal' ? 16 : ['rpl', 'belgian', 'coupedefrance', 'brazilseriea'].includes(_currentTheme) ? 8 : 0);
     board.style.setProperty('--fsm-name-reserved-width', reserved + 'px');
   }
   const reservedWidth = parseFloat(getComputedStyle(board).getPropertyValue('--fsm-name-reserved-width')) || 0;
@@ -1006,7 +1055,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-away-primary-color', teamColors.awayBg);
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
-      colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
+      colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
         ? 'none' : ['czech', 'ekstraklasa'].includes(theme) ? 'strip-top' : ['rpl', 'belgian', 'concacafcc', 'armenian', 'cnl', 'uzbek', 'ligaportugal', 'coupedefrance'].includes(theme) ? 'chip' : 'strip';
     }
     if (theme === 'aleague') {
@@ -1050,7 +1099,7 @@ function adjustScoreboardWidth() {
           mixBlendMode: nearBlack ? 'screen' : 'multiply'
         });
       });
-    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague'].includes(theme)) {
+    } else if(['jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague'].includes(theme)) {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       if (theme === 'jleague') {
         setFsmStyle('.fsm-board .team-color', {background: ''});
@@ -1252,6 +1301,10 @@ function adjustScoreboardWidth() {
 
   // 점수 또는 시계에 이미 쓰이는 고정 색상만 사용한다. 전환 중 보간색은 읽지 않는다.
   const FSM_PSO_PALETTES = Object.freeze({
+    scottishcup: ['#ffffff', '#000000'],
+    spfl: ['#202956', '#ffffff'],
+    cypriotfirstdivision: ['#007F8A', '#ffffff'],
+    eliteserien: ['#152132', '#ffffff'],
     aleague: ['#3640CD', '#ffffff'],
     brazilseriea: ['#131428', '#ffffff'],
     saudikingscup: ['#7A5D3B', '#37261C'],
@@ -1274,6 +1327,8 @@ function adjustScoreboardWidth() {
     czech: ['#3041C3', '#ffffff'],
     armenian: ['#000000', '#ffffff'],
     cnl: ['#031F98', '#ffffff'],
+    greecesuperleague: ['#D4D7D6', '#0D0D0D'],
+    swisssuperleague: ['#C5093F', '#ffffff'],
     ligue1: ['#ffffff', '#000000'], ligue2: ['#ffffff', '#000000'],
     ligaportugal: ['#ffffff', '#102556'], eredivisie: ['#d1d1d1', '#0a0a0a'],
     concacafcc: ['#01FCDA', '#001021'], cafcc: ['#787F7E', '#ffffff'], cafcl: ['#B0902E', '#ffffff'], recopa: ['#77F8FB', '#000000'], sudamericana: ['#ffffff', '#000000'], libertadores: ['#F2DA82', '#000000'], turkishcup: ['#E51636', '#ffffff'], tff1lig: ['#ffffff', '#08151B'], belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
