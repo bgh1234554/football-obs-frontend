@@ -44,13 +44,18 @@ const root = path.resolve(__dirname, '../..');
         const home = node.closest('.div-rc').id === 'rcHome';
         const sideCorrect = home ? r.right <= main.x + main.width / 2 : r.left >= main.x + main.width / 2;
         const exposedY = Math.min(r.bottom - 2, team.top - 2);
-        return { sideCorrect, above: team.top - r.top, visible: exposedY > r.top &&
+        // 겹친 부분은 clip-path로 잘려 팀 칸 윗변 아래에서는 카드가 보이지 않아야 한다.
+        const rc = node.closest('.div-rc').getBoundingClientRect();
+        const clip = getComputedStyle(node.closest('.div-rc')).clipPath.match(/inset\(([-\d.]+)px ([-\d.]+)px ([-\d.]+)px/);
+        const clippedBottom = clip ? rc.bottom - parseFloat(clip[3]) * (r.height / node.offsetHeight) : Infinity;
+        return { sideCorrect, height: r.height, above: team.top - r.top, clippedAtTeam: Math.abs(clippedBottom - team.top) < .6, visible: exposedY > r.top &&
           document.elementsFromPoint(r.x + r.width / 2, exposedY).some(hit => node.contains(hit)) };
       }));
       if (scale === 100) await page.locator('#boardStageInner').screenshot({ path: path.join(root, 'screenshots/red-cards', `${theme}.png`) });
       if (!process.env.RC_AUDIT) {
         assert.equal(cards.length, 5);
-        assert(cards.every(card => card.above >= (theme === 'czech' ? 13 : 7) * scale / 100 && card.visible && card.sideCorrect), `${theme} ${scale}%: cards must be exposed above their own side: ${JSON.stringify(cards)}`);
+        // 모든 테마에서 카드 높이의 55%만 팀 칸 위로 드러난다.
+        assert(cards.every(card => Math.abs(card.above - .55 * card.height) < .6 && card.clippedAtTeam && card.visible && card.sideCorrect), `${theme} ${scale}%: cards must be exposed 55% above their own side: ${JSON.stringify(cards)}`);
         const shapes = await page.locator('.rc-card').evaluateAll(nodes => nodes.map(node => {
           const style = getComputedStyle(node);
           return [style.transform, style.borderRadius, style.backgroundColor, node.childElementCount,

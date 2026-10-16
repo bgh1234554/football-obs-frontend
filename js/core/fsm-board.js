@@ -1026,8 +1026,12 @@ function adjustScoreboardWidth() {
     const cardRect = cards[index].getBoundingClientRect();
     const textRect = text.getBoundingClientRect();
     const layoutScale = cardRect.height / cards[index].offsetHeight || 1;
-    const topInset = (parseFloat(cardStyle.borderTopWidth) || 0) + (parseFloat(cardStyle.paddingTop) || 0);
-    const stripEdge = board.dataset.fsmColorEdge === 'strip' && cardStyle.boxShadow !== 'none' ? 1 : 0;
+    // 팀컬러 띠와 팀명 칸 사이의 1px 경계선도 빼고 남은 높이에서 가운데를 맞춥니다.
+    // K리그(하단)와 체코·엑스트라클라사(상단)는 경계선을 가상 요소로 그려 box-shadow로는 판별되지 않습니다.
+    const colorEdge = board.dataset.fsmColorEdge;
+    const stripEdge = colorEdge === 'strip' && (cardStyle.boxShadow !== 'none' || _currentTheme === 'kleague') ? 1 : 0;
+    const topStripEdge = colorEdge === 'strip-top' ? 1 : 0;
+    const topInset = (parseFloat(cardStyle.borderTopWidth) || 0) + (parseFloat(cardStyle.paddingTop) || 0) + topStripEdge;
     const bottomInset = (parseFloat(cardStyle.borderBottomWidth) || 0) + (parseFloat(cardStyle.paddingBottom) || 0) + stripEdge;
     const contentCenter = cardRect.top + (cardRect.height + (topInset - bottomInset) * layoutScale) / 2;
     const layoutOffset = (contentCenter - (textRect.top + textRect.bottom) / 2) / layoutScale;
@@ -1607,7 +1611,33 @@ function adjustScoreboardWidth() {
 })();
 
 /** 점수판 내용·승부차기·메모 배치·배율을 갱신하고 준비된 점수판을 표시합니다. */
-window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); revealFsmBoard(); };
+/** 퇴장 카드가 팀 칸 위로 드러나는 비율. 테마와 관계없이 카드 높이의 55%만 보이게 한다. */
+const FSM_RED_CARD_EXPOSURE = .55;
+/**
+ * 퇴장 카드를 팀 칸 윗변 기준으로 카드 높이의 55%만 위로 나오게 옮기고, 나머지(팀 칸과 겹치는 부분)는 잘라낸다.
+ * 테마마다 카드 top과 z-index, 팀 칸 배경(투명/그라데이션)이 달라 겹친 부분이 비치거나(엑스트라클라사·브라질)
+ * 완전히 가려지는(엘리트세리엔) 문제가 있어, 위치와 보이는 영역을 실제 렌더 좌표로 직접 맞춘다.
+ */
+function syncFsmRedCardExposure(board) {
+  if (!board) return;
+  const scale = board.getBoundingClientRect().width / board.offsetWidth || 1;
+  board.querySelectorAll('.div-rc').forEach(rc => {
+    rc.style.top = '';
+    rc.style.clipPath = '';
+    const card = rc.querySelector('.rc-card');
+    const team = rc.closest('.teams-left, .teams-right');
+    if (!card || !team || rc.classList.contains('hidden')) return;
+    const cardRect = card.getBoundingClientRect(), teamTop = team.getBoundingClientRect().top;
+    if (!cardRect.height) return;
+    const shift = (teamTop - FSM_RED_CARD_EXPOSURE * cardRect.height - cardRect.top) / scale;
+    rc.style.top = `${(parseFloat(getComputedStyle(rc).top) || 0) + shift}px`;
+    // 이동 후 컨테이너 아랫변에서 팀 칸 윗변까지를 잘라 겹친 부분이 어떤 배경 위에서도 보이지 않게 한다.
+    const bottom = rc.getBoundingClientRect().bottom;
+    rc.style.clipPath = `inset(-4px -4px ${Math.max(0, (bottom - teamTop) / scale)}px -4px)`;
+  });
+}
+
+window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); syncFsmRedCardExposure(document.querySelector('.fsm-board')); revealFsmBoard(); };
 
 if (document.fonts) {
   document.fonts.ready.then(() => window.fsmBoardRender());
