@@ -10,8 +10,10 @@ const themes=process.env.PSO_THEMES?.split(',') || await page.evaluate(()=>Objec
 for(const theme of themes) for(const scale of [50,75,100,150]) {
 await page.evaluate(({theme,scale})=>{state.manualMode=true;state.half='PK';state.pk={home:[],away:[]};state.fsmTheme=theme;autoApplyTemplateByLeagueId(39,null);state.boardScale=scale;render();applyBoardScale(scale)}, {theme,scale});
 await page.waitForFunction(()=>!pendingThemeLink);
+const closedHeight=await page.evaluate(()=>document.getElementById('boardStageWrap').getBoundingClientRect().height);
 await page.locator('.pso-main').click();
 assert(await page.locator('#boardPsoControls').isVisible(),theme);
+/* 열린 메뉴는 점수판 영역 높이에 들어가지 않는다(다시 그린 뒤에도). */await page.evaluate(()=>fsmBoardRender());assert.equal(await page.evaluate(()=>document.getElementById('boardStageWrap').getBoundingClientRect().height),closedHeight,theme+' open menu must not grow board area');
 await page.locator('.pso-main').focus();
 await page.locator('[data-pso-action=pkHomeGoal]').focus();
 assert(await page.locator('[data-pso-action=pkHomeGoal]').evaluate(n=>n===document.activeElement),theme+' focus enters controls');

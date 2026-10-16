@@ -20,6 +20,8 @@ const { openPage, settle } = require('../tactics/helpers');
       await settle(page);
       const panel = page.locator('#boardAggControls');
       assert.equal(await panel.isHidden(), true, `${theme}: closed by default`);
+      const wrapHeight = () => page.evaluate(() => document.getElementById('boardStageWrap').getBoundingClientRect().height);
+      const closedHeight = await wrapHeight();
 
       // 점수 칸 클릭으로 열고, 다시 클릭하면 닫힌다.
       await page.locator('#team-score-left').click();
@@ -39,6 +41,8 @@ const { openPage, settle } = require('../tactics/helpers');
       await panel.locator('[data-agg-action="homeMinus"]').click();
       await panel.locator('[data-agg-input="away"]').fill('2');
       await settle(page); await settle(page);
+      // 메뉴는 아래 패널 위에 겹쳐 뜰 뿐 점수판 영역 높이에 들어가지 않는다(다시 그린 뒤에도).
+      assert.equal(await wrapHeight(), closedHeight, `${theme}: open menu must not grow board area`);
       const result = await page.evaluate(() => ({
         enabled: state.aggEnabled, home: state.aggHomeBase, away: state.aggAwayBase,
         themeToggle: document.getElementById('aggToggle').checked,
