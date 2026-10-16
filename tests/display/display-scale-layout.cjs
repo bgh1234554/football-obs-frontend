@@ -342,6 +342,39 @@ async function testStatsCapacity(page) {
   });
   assert.equal(reuse.calls, 1, 'same-frame stats requests render once');
   assert.ok(reuse.unchanged, 'coalesced stats render preserves rows and controls');
+
+  // 반복 렌더는 실측을 재사용하되 글꼴·행 내용 변경은 다시 측정해야 한다.
+  const capacityReuse = await page.evaluate(() => {
+    const panel = document.querySelector('.page.active [data-stat-panel]');
+    const append = Element.prototype.appendChild;
+    let probes = 0;
+    Element.prototype.appendChild = function (node) {
+      if (this === panel && node.classList?.contains('st-wrap') && node.style.visibility === 'hidden') probes++;
+      return append.call(this, node);
+    };
+    const font = panel.style.getPropertyValue('--st-name-base-size');
+    try {
+      stRenderPanel(panel, statsLastFixtureData);
+      const repeated = probes;
+      probes = 0;
+      panel.style.setProperty('--st-name-base-size', '21px');
+      stRenderPanel(panel, statsLastFixtureData);
+      const changedFont = probes;
+      probes = 0;
+      const data = structuredClone(statsLastFixtureData);
+      data.teamStats[0].totalShots += 1;
+      stRenderPanel(panel, data);
+      return { repeated, changedFont, changedData: probes };
+    } finally {
+      Element.prototype.appendChild = append;
+      if (font) panel.style.setProperty('--st-name-base-size', font);
+      else panel.style.removeProperty('--st-name-base-size');
+      stRenderPanel(panel, statsLastFixtureData);
+    }
+  });
+  assert.equal(capacityReuse.repeated, 0, 'unchanged stats capacity avoids DOM measurement');
+  assert.ok(capacityReuse.changedFont > 0, 'stats font change invalidates capacity');
+  assert.ok(capacityReuse.changedData > 0, 'stats data change invalidates capacity');
 }
 
 (async () => {

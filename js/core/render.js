@@ -276,8 +276,12 @@
     setCSS('--away-outline-w', (state.awayOutlineWidth??1)+'px');
     setCSS('--board-outline-w', (state.boardOutlineWidth??1)+'px');
     setCSS('--score-outline-w', (state.scoreOutlineWidth??1)+'px');
-    setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
-    setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
+    // 정상 배치의 폰트 크기는 autoLayoutNotes가 관리한다. 폴링마다 기본값으로
+    // 되돌리면 축소해서 맞춘 배치도 다시 계산해야 한다. 편집 중에는 설정값을 반영한다.
+    if (activeNoteEditor) {
+      setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
+      setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
+    }
     setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
     const noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
     const noteKeyGuardWidth = isGreenscreenOn() && noteStrokeWidth > 0 ? 0.75 : 0;
@@ -685,6 +689,7 @@
    * 홈/어웨이 득점자 패널을 각각 독립적으로 자동 레이아웃하고
    * note-side 박스를 스코어보드 양 옆에 절대 위치로 고정시키는 통합 함수.
    */
+  let noteLayoutStamp = null;
   function autoLayoutNotes() {
     if (activeNoteEditor) return;
     // 1. 보드 높이 측정 — 아직 렌더되지 않으면 종료
@@ -706,6 +711,33 @@
 
     const homeNoteSide = $('homeNoteSide');
     const awayNoteSide = $('awayNoteSide');
+
+    // 렌더·폰트 완료·크기 감지가 같은 배치를 다시 요청하더라도 내용과 실제 배치가
+    // 같으면 SVG와 줄 묶음을 다시 만들지 않는다. 색상은 기존 CSS 상속으로 갱신된다.
+    const inputKey = () => {
+      const stage = $('boardStageInner');
+      const rectKey = node => {
+        if (!node) return null;
+        const r = node.getBoundingClientRect();
+        return [r.left, r.top, r.width, r.height];
+      };
+      const fontKey = node => {
+        const s = getComputedStyle(node);
+        return [s.fontFamily, s.fontSize, s.lineHeight, s.fontWeight, s.fontStyle, s.fontStretch, s.letterSpacing, s.wordSpacing,
+          s.padding, s.borderWidth, s.boxSizing, s.textTransform,
+          s.getPropertyValue('--note-stroke-w'), s.getPropertyValue('--note-key-guard-w')];
+      };
+      let loadedFonts = 0;
+      document.fonts?.forEach(face => { if (face.status === 'loaded') loadedFonts++; });
+      return JSON.stringify([homeLines, awayLines, state.noteFontSize ?? 18,
+        state.noteEnabled, state.manualMode, state.boardScale, state.boardPosition,
+        boardEl.className, boardEl.dataset.fsmTheme, boardH, timerH, loadedFonts,
+        $('boardStageWrap').clientWidth, rectKey(stage), rectKey(boardEl), rectKey(main),
+        main ? Array.from(main.children, rectKey) : [], fontKey(el.homeNote), fontKey(el.awayNote)]);
+    };
+    const key = inputKey();
+    if (noteLayoutStamp?.key === key && noteLayoutStamp.home === el.homeNote.firstChild
+      && noteLayoutStamp.away === el.awayNote.firstChild) return;
 
     // 중요: autoLayoutNote는 noteEl.scrollHeight를 보고 보드 높이 초과 여부를 판정하는데,
     // .note에 overflow-wrap:anywhere + white-space:pre-line이 걸려있어서, 부모 noteSide의
@@ -776,6 +808,8 @@
       if (awayNoteSide) awayNoteSide.style.top = noteTop;
       syncBoardPosition();
     }
+    // 배치 과정에서 보드 중심이 이동할 수 있으므로 최종 위치를 기록한다.
+    noteLayoutStamp = { key: inputKey(), home: el.homeNote.firstChild, away: el.awayNote.firstChild };
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

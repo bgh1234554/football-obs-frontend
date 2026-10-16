@@ -5,7 +5,10 @@ function setFsmStyle(selector, styles, index) {
 }
 /** selector에 맞는 모든 노드의 텍스트를 바꾼다. null/undefined는 빈 문자열. */
 function setFsmText(selector, value) {
-  document.querySelectorAll(selector).forEach(node => { node.textContent = value ?? ''; });
+  document.querySelectorAll(selector).forEach(node => {
+    const text = String(value ?? '');
+    if (node.textContent !== text) node.textContent = text;
+  });
 }
 /** selector에 맞는 모든 노드의 속성을 설정한다. 값이 비어 있으면 속성을 제거한다. */
 function setFsmAttr(selector, name, value) {
@@ -717,10 +720,14 @@ function applyTheme(theme, logoUrl) {
     // 나머지 테마는 state.colors.homeBg 를 border-bottom 색상으로 사용
     applyTeamColors();
 
-    board.querySelectorAll('.team-logo').forEach(box => {
+    const logoSizes = Array.from(board.querySelectorAll('.team-logo'), box => {
       const style = getComputedStyle(box);
       const width = box.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
       const height = box.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+      return { box, width, height };
+    });
+    // 양 팀 크기를 먼저 읽어 로고 CSS 변수 쓰기 사이에 재계산이 끼지 않게 한다.
+    logoSizes.forEach(({ box, width, height }) => {
       box.style.setProperty('--fsm-logo-width', Math.max(0, width) + 'px');
       box.style.setProperty('--fsm-logo-height', Math.max(0, height) + 'px');
     });
@@ -1721,8 +1728,17 @@ function syncFsmRedCardExposure(board) {
 window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); syncFsmRedCardExposure(document.querySelector('.fsm-board')); revealFsmBoard(); };
 
 if (document.fonts) {
-  document.fonts.ready.then(() => window.fsmBoardRender());
+  let fontRenderRaf = 0;
+  const scheduleFontRender = () => {
+    // 같은 글꼴 완료에서 ready와 loadingdone이 함께 오는 경우 한 번만 갱신한다.
+    if (fontRenderRaf) return;
+    fontRenderRaf = requestAnimationFrame(() => {
+      fontRenderRaf = 0;
+      window.fsmBoardRender();
+    });
+  };
+  document.fonts.ready.then(scheduleFontRender);
   // 최초 글꼴 준비 완료 이후에도 테마 변경으로 새 글꼴이 로딩될 수 있습니다.
   // 대체 글꼴이 아닌 로딩된 글꼴로 숫자의 위치 보정값을 다시 계산합니다.
-  document.fonts.addEventListener('loadingdone', () => window.fsmBoardRender());
+  document.fonts.addEventListener('loadingdone', scheduleFontRender);
 }

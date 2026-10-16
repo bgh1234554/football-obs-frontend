@@ -77,5 +77,46 @@ const manualDuringRequest=await page.evaluate(async()=>{
 });assert.equal(manualDuringRequest,true);
 const retryHeader=await page.evaluate(()=>readRetryAfterMs({headers:new Headers({'Retry-After':'5'})}));
 assert.equal(retryHeader,5000);
+// 실제 폴링 예약이 silent 조회와 화면 렌더까지 연결되는 경로를 확인한다.
+const fixture=JSON.parse(fs.readFileSync(path.join(root,'json','juveparma.json'),'utf8').replace(/^\uFEFF/,''));
+const screen=await page.evaluate(async base=>{
+ const original=fetchFixture;let current=structuredClone(base),requests=0;
+ const frames=async()=>{for(let i=0;i<4;i++)await new Promise(requestAnimationFrame);};
+ const notes=()=>[el.homeNote.innerHTML,el.awayNote.innerHTML,getComputedStyle(el.homeNote).fontSize];
+ try{
+  state.manualMode=false;state.teamColorOverride=false;state.noteEnabled=true;state.noteFontSize=32;
+  current.matchInfo={...current.matchInfo,fixtureId:'poll-screen',status:'2H',elapsed:70,homeScore:1,awayScore:0,
+    homePrimaryColor:'#2563eb',homeNumberColor:'#ffffff',awayPrimaryColor:'#dc2626',awayNumberColor:'#ffffff'};
+  current.events=[{elapsed:12,side:'home',teamId:current.matchInfo.homeTeamId,playerId:999991,
+    playerName:'폴링화면갱신시이름축소를유지하는검사선수'.repeat(2),type:'Goal',detail:'Normal Goal'}];
+  fetchFixture=async()=>{requests++;return structuredClone(current);};
+  activatePage('main-small');await fetchAndApplyFixtureData('poll-screen');clearPolling();
+  await document.fonts.ready;await frames();
+  state.noteEnabled=true;state.noteFontSize=32;state.boardScale=150;render();fsmBoardRender();await frames();
+  const before=notes();
+  const tick=async()=>{schedulePoll(current);_pollDueAt=Date.now()-1;resumeOverduePolling();await frames();clearPolling();};
+  const initialRequests=requests;await tick();const unchanged=JSON.stringify(before)===JSON.stringify(notes());
+  const shrunk=parseFloat(before[2])<state.noteFontSize;
+  const statsPanel=document.querySelector('.page.active [data-stat-panel]');const oldStats=statsPanel.textContent;
+  current.matchInfo.homeScore=2;
+  current.events.push({elapsed:71,side:'home',teamId:current.matchInfo.homeTeamId,playerId:999992,
+    playerName:'폴링추가선수',type:'Goal',detail:'Normal Goal'});
+  current.teamStats[0].totalShots+=5;
+  current.homeLineup.startXi[0].number=99;
+  await tick();
+  const updated=state.homeScore===2&&el.homeNote.textContent.includes('폴링추가선수')
+    &&statsPanel.textContent!==oldStats
+    &&document.querySelector('.page.active [data-dp-role="lineup"]').textContent.includes('99');
+  const latest=notes();noteLayoutStamp=null;render();fsmBoardRender();
+  const sameAsFresh=JSON.stringify(latest)===JSON.stringify(notes());
+  return {unchanged,shrunk,updated,sameAsFresh,polls:requests-initialRequests,
+    font:before[2],configured:state.noteFontSize,label:el.homeNote.textContent.slice(0,140),width:document.getElementById('boardStageWrap').clientWidth};
+ }finally{fetchFixture=original;clearPolling();}
+},fixture);
+assert.equal(screen.polls,2,'scheduler performs both silent polls');
+assert.ok(screen.unchanged&&screen.shrunk,`unchanged polling preserves fitted scorer font and layout: ${JSON.stringify(screen)}`);
+assert.ok(screen.updated,'poll updates score, scorer, lineup number and stats');
+assert.ok(screen.sameAsFresh,'polling result matches full scorer layout');
+console.log('PASS scheduled silent polls preserve fitted notes and update scores, scorers, lineup and stats');
 assert.deepEqual(errors,[]);console.log('PASS polling recovery, duplicate prevention, selection/manual/terminal/popout guards and stalled response body timeout');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

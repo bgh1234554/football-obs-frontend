@@ -59,11 +59,27 @@ const fixtureFiles = ['juveparma.json', 'womensleague.json'];
           const viewportRefits = fits;
           const unchanged = html() === before;
 
+          // 페이지 전체의 이동은 이름과 충돌 대상의 상대 배치를 바꾸지 않는다.
+          const activePage = panel.closest('.page');
+          const transform = activePage.style.transform;
+          fits = 0;
+          try {
+            activePage.style.transform = 'translate(11px, 7px)';
+            fitLineupNamePillsIfChanged(panel);
+          } finally {
+            activePage.style.transform = transform;
+          }
+          const translationRefits = fits;
+
           // 2) 팀 컬러만 바뀌면 라벨 DOM을 유지하고 다시 맞추지 않는다.
           fits = 0;
           const firstLabel = panel.querySelector('.dp-lineup-name');
           state.colors.homeBg = '#7a1f5c';
           state.colors.awayBg = '#1f7a3a';
+          state.colors.homeText = '#f4e4b2';
+          state.colors.awayText = '#e2f0ff';
+          // 로고 색상 추출 완료와 같은 순서로 전체 색상 렌더 후 이벤트를 보낸다.
+          render();
           document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: 'homeBg' } }));
           await frames();
           await wait(300);
@@ -114,11 +130,12 @@ const fixtureFiles = ['juveparma.json', 'womensleague.json'];
           original(otherPanel);
           const sameAfterActivation = activated === html(otherPanel);
           window.fitLineupNamePills = original;
-          return { viewportRefits, unchanged, colorRefits, keptDom, colorApplied, sameAsFresh: patched === fresh, singlePassFits, sameAsSequential, hiddenFits, sameAfterActivation };
+          return { viewportRefits, translationRefits, unchanged, colorRefits, keptDom, colorApplied, sameAsFresh: patched === fresh, singlePassFits, sameAsSequential, hiddenFits, sameAfterActivation };
         });
 
         const label = `${file} ${pageName}`;
         assert.equal(result.viewportRefits, 0, `${label}: repeated viewport fit refitted`);
+        assert.equal(result.translationRefits, 0, `${label}: translated page refitted unchanged lineup`);
         assert.ok(result.unchanged, `${label}: skipped fit changed the DOM`);
         assert.equal(result.colorRefits, 0, `${label}: color-only change refitted names`);
         assert.ok(result.keptDom, `${label}: color-only change replaced lineup DOM`);

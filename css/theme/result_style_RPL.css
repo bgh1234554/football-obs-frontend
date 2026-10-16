@@ -41,7 +41,6 @@
     width: 984px;
     height: 48px;
     position: absolute;
-    background-image: url("/resources/background/background_sbleft.png");
     background-repeat: no-repeat;
     background-blend-mode: darken;
     display: flex;

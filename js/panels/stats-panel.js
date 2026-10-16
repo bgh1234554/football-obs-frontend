@@ -398,11 +398,29 @@ function stDefaultPanelHeight(panel) {
  * reserveControls가 true이면 페이지 버튼 공간을 확보하며, 측정 불가 시 설정값(기본 9개)을 반환한다.
  * 측정 결과는 공간이 부족해도 최소 1개를 보장한다.
  */
+const statsCapacityCache = new WeakMap();
 function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
   // 1) 패널 높이나 표시할 데이터가 없으면 실측 대신 설정된 기본 개수를 사용한다.
   const cfg = window.STATS_CONFIG;
   const fallback = cfg?.itemsPerPage || 9;
   if (!panel?.clientHeight || !Array.isArray(rows) || !rows.length) return fallback;
+
+  // 색 갱신이나 페이지 버튼 클릭은 행의 높이를 바꾸지 않는다. 실제 크기와 글꼴,
+  // 행 내용이 같으면 앞서 실측한 수용 개수를 재사용한다. 숨은 패널의 기본값은 저장하지 않는다.
+  const style = getComputedStyle(panel);
+  let loadedFonts = 0;
+  document.fonts?.forEach(face => { if (face.status === 'loaded') loadedFonts++; });
+  const key = JSON.stringify([
+    panel.clientWidth, panel.clientHeight, style.font, style.lineHeight,
+    style.padding, style.borderWidth, style.boxSizing, style.rowGap,
+    style.getPropertyValue('--st-name-base-size'), style.getPropertyValue('--st-bar-height'),
+    style.getPropertyValue('--panel-title-bar-height'), loadedFonts, rows,
+    Array.from(panel.children, child => [child.className, child.offsetHeight]),
+  ]);
+  const slot = options.reserveControls === true ? 'controls' : 'plain';
+  const cached = statsCapacityCache.get(panel)?.[slot];
+  if (cached?.key === key) return cached.count;
+  const panelBackground = options.panelBackground || teamPanelBackground(panel);
 
   // 2) 실제 패널 안에 숨겨진 측정용 DOM을 만든다. 필요하면 페이지 버튼 공간도 미리 확보한다.
   // 고정 rowH 추정으로는 브라우저별 line-height 반올림을 못 따라가 마지막 행이 반쯤 보일 수 있다.
@@ -424,7 +442,6 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
   // 3) 높이를 초과하지 않는 최대 행 수를 찾는다.
   // 행 추가와 높이 읽기를 반복하지 않고 실제 행의 앞부분을 이진 탐색한다.
   // 기존 overflow 판정을 유지하므로 글꼴과 패널 크기에 따른 수용 개수는 같다.
-  const panelBackground = teamPanelBackground(panel);
   const rowNodes = [];
   const measure = count => {
     while (rowNodes.length < count) {
@@ -452,7 +469,11 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
   wrap.remove();
   // 이 지점에 도달했다면 panel.clientHeight와 rows.length는 이미 보장됨(위 가드) — 측정은 항상 시도된 상태.
   // fits===0(첫 행부터 넘침)이어도 fallback으로 되돌리지 않고 최소 1행은 보여준다.
-  return Math.max(1, fits);
+  const count = Math.max(1, fits);
+  const entries = statsCapacityCache.get(panel) || {};
+  entries[slot] = { key, count };
+  statsCapacityCache.set(panel, entries);
+  return count;
 }
 
 /**
@@ -476,6 +497,8 @@ function stRenderPanel(panel, fixtureData) {
   }
 
   const rows = stCollectRows(fixtureData);
+  // 같은 렌더 안에서는 합성 배경이 같으므로 DOM을 바꾸기 전에 한 번만 읽는다.
+  const panelBackground = rows.length ? teamPanelBackground(panel) : null;
 
   panel.innerHTML = '';
 
@@ -496,9 +519,9 @@ function stRenderPanel(panel, fixtureData) {
 
   // 먼저 단일 페이지 기준으로 계산하고, 실제로 2페이지 이상 필요하면
   // 페이지 컨트롤 높이까지 예약해서 다시 계산한다.
-  const itemsWithoutControls = stComputeItemsPerPage(panel, rows, fixtureData);
+  const itemsWithoutControls = stComputeItemsPerPage(panel, rows, fixtureData, { panelBackground });
   const itemsPerPage = rows.length > itemsWithoutControls
-    ? stComputeItemsPerPage(panel, rows, fixtureData, { reserveControls: true })
+    ? stComputeItemsPerPage(panel, rows, fixtureData, { reserveControls: true, panelBackground })
     : itemsWithoutControls;
   const pages = stChunk(rows, itemsPerPage);
   if (state.page >= pages.length) state.page = pages.length - 1;
@@ -509,7 +532,6 @@ function stRenderPanel(panel, fixtureData) {
 
   const pageEl = document.createElement('div');
   pageEl.className = 'st-page';
-  const panelBackground = teamPanelBackground(panel);
   pages[state.page].forEach(row => pageEl.appendChild(stCreateRow(row, fixtureData, panelBackground)));
   wrap.appendChild(pageEl);
 

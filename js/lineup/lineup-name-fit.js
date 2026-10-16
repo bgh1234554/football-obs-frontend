@@ -2174,10 +2174,15 @@ function getLineupNameLoadedFontCount(label) {
   return count;
 }
 
-/** 패널의 피팅 입력(첫 라벨 요소, 라벨 수, 패널/피치 위치와 크기, 라벨 글꼴 로딩 수)을 한 값으로 묶는다. */
+/** 패널의 피팅 입력을 묶는다. 화면 전체가 이동해도 내부 충돌 관계는 같으므로 상대 위치만 기록한다. */
 function getLineupNameFitSignature(panel) {
   const labels = panel.querySelectorAll('.dp-lineup-name');
-  const rectKey = el => { const r = el.getBoundingClientRect(); return `${r.left},${r.top},${r.width},${r.height}`; };
+  const panelRect = panel.getBoundingClientRect();
+  const rectKey = el => {
+    const r = el.getBoundingClientRect();
+    // 좌표를 빼면서 생긴 부동소수 오차를 없앤다. 실제 크기와 내부 배치 변화는 유지한다.
+    return [r.left - panelRect.left, r.top - panelRect.top, r.width, r.height].map(n => n.toFixed(3)).join(',');
+  };
   const pitches = Array.from(panel.querySelectorAll('.dp-lineup-vertical-pitch'), rectKey).join('|');
   return { first: labels[0] || null, count: labels.length, size: `${rectKey(panel)}|${pitches}`, font: getLineupNameLoadedFontCount(labels[0]) };
 }
