@@ -218,6 +218,11 @@
 }
 .board.fsm-board .team-name { width: 100%; min-width: 0; padding-inline: var(--fsm-team-name-padding, 24px); margin-top: 0; line-height: 1; display: flex; align-items: center; }
 .fsm-board .team-name .text { display: block; white-space: nowrap; min-width: 0; }
+/* 프리미어리그 계열의 흰 점수 숫자는 작은 합계까지 같은 검은 윤곽을 유지합니다. */
+.board.fsm-board:is([data-fsm-theme="pl"], [data-fsm-theme="romanian"], [data-fsm-theme="uzbek"], [data-fsm-theme="jleague"], [data-fsm-theme="belarus"], [data-fsm-theme="saudi"], [data-fsm-theme="turkishcup"]) :is(.score-left, .score-right, .total) {
+  -webkit-text-stroke: 1px #000000;
+  paint-order: stroke fill;
+}
 /* J리그는 곡선 장식 가까이까지 팀명을 배치해 좌우 여백을 줄인다. */
 .board.fsm-board[data-fsm-theme="jleague"] .team-name {
   position: relative;

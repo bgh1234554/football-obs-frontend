@@ -11,6 +11,8 @@ for(const theme of ['pl','seriea','wc26','ligue1','ligue2']){
  // 프리미어리그를 거쳐 전환하여 남아 있는 인라인 색상과 정렬 설정을 확인합니다.
  await page.evaluate(()=>applyTheme('pl',null));await page.waitForTimeout(100);
  await page.evaluate(theme=>theme==='ligue2'?autoApplyTemplateByLeagueId(62,'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"/%3E'):applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
+ const strokes=await page.locator('.score-left,.score-right').evaluateAll(ns=>ns.map(n=>{const c=getComputedStyle(n);return [c.webkitTextStrokeWidth,c.webkitTextStrokeColor]}));
+ assert(strokes.every(s=>s[0]===(theme==='pl'?'1px':'0px')));if(theme==='pl')assert(strokes.every(s=>s[1]==='rgb(0, 0, 0)'));
  if(theme==='ligue2'){
    assert((await page.locator('#fsm-theme-link').getAttribute('href')).endsWith('result_style_LIGUE2.css'));
    assert.equal(await page.locator('.score-div').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(0, 252, 208)');
