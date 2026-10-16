@@ -1523,7 +1523,7 @@ function rectsOverlap(rectA, rectB) {
  * line-clamp 상태 오염으로 추정). 복제본에서만 측정하면 실패 시 원본은 처음 상태 그대로
  * 남아있어 기존(이 기능 추가 전) 동작과 완전히 동일하게 폴백된다.
  */
-function measureLineupNameNaturalSizeViaClone(nameEl) {
+function createLineupNameNaturalSizeClone(nameEl) {
   const clone = nameEl.cloneNode(true);
   clone.style.position = 'absolute';
   clone.style.visibility = 'hidden';
@@ -1535,10 +1535,30 @@ function measureLineupNameNaturalSizeViaClone(nameEl) {
   clone.style.whiteSpace = 'nowrap';
   clone.style.display = 'inline-block';
   nameEl.parentNode.appendChild(clone);
+  return clone;
+}
+
+function measureLineupNameNaturalSizeViaClone(nameEl) {
+  const clone = createLineupNameNaturalSizeClone(nameEl);
   const width = clone.scrollWidth;
   const height = getDisplayLayoutRect(clone).height;
   clone.remove();
   return { width, height };
+}
+
+/** 같은 설정의 복제본을 모아서 추가·측정·삭제해 이름마다 재계산하지 않는다. */
+function measureLineupNameNaturalSizes(labels) {
+  // 측정 가능한 요소부터 고르고, 복제본 추가와 크기 읽기를 번갈아 실행하지 않는다.
+  const measurable = labels.filter(nameEl => canMeasureTextElement(nameEl) && getLineupNameWrap(nameEl));
+  const clones = measurable.map(nameEl => createLineupNameNaturalSizeClone(nameEl));
+  try {
+    return new Map(measurable.map((nameEl, i) => [nameEl, {
+      width: clones[i].scrollWidth,
+      height: getDisplayLayoutRect(clones[i]).height,
+    }]));
+  } finally {
+    clones.forEach(clone => clone.remove());
+  }
 }
 
 /** hasLineupNamePitchOverflow와 동일 판정이지만, 아직 실제로 적용 안 한 가상의 rect로 미리 검사. */
@@ -1567,7 +1587,7 @@ function hasLineupNamePitchOverflowForRect(rect, nameEl, paddingPx) {
  * 확정된 라벨의 "현재" 크기를 기준으로 겹침을 검사 — 두 라벨이 동시에 넓어져 결과적으로
  * 겹치는 경우는 생기지 않는다.
  */
-function tryLineupNameNaturalSingleLine(nameEl, labels) {
+function tryLineupNameNaturalSingleLine(nameEl, labels, naturalSize) {
   if (!canMeasureTextElement(nameEl)) return false;
 
   const wrap = getLineupNameWrap(nameEl);
@@ -1576,7 +1596,7 @@ function tryLineupNameNaturalSingleLine(nameEl, labels) {
   const centerX = wrapRect.left + (wrapRect.width / 2);
   const top = wrapRect.top;
 
-  const { width: naturalWidthPx, height: naturalHeightPx } = measureLineupNameNaturalSizeViaClone(nameEl);
+  const { width: naturalWidthPx, height: naturalHeightPx } = naturalSize || measureLineupNameNaturalSizeViaClone(nameEl);
   if (!Number.isFinite(naturalWidthPx) || naturalWidthPx <= 0) return false;
 
   const hypotheticalRect = {
@@ -2031,6 +2051,9 @@ function fitLineupNamePills(root) {
     nameEl.style.whiteSpace = '';
     nameEl.style.display = '';
     nameEl.style.flexShrink = '';
+  });
+  // 모든 초기화를 마친 뒤 읽어야 라벨마다 스타일 재계산이 반복되지 않는다.
+  labels.forEach(nameEl => {
     configuredFonts.set(nameEl, parseFloat(getComputedStyle(nameEl).fontSize));
   });
 
@@ -2043,9 +2066,10 @@ function fitLineupNamePills(root) {
 
   // 1) 먼저 자연 1줄 폭이 안전한지 시도하고(주변과 안 겹치면 그대로 유지), 안전하지 않으면
   // 기존 텍스트 폭 고정/축소 로직으로 넘긴다.
+  const naturalSizes = measureLineupNameNaturalSizes(labels);
   labels.forEach(nameEl => {
     if (!canMeasureTextElement(nameEl)) return;
-    if (tryLineupNameNaturalSingleLine(nameEl, labels)) return;
+    if (tryLineupNameNaturalSingleLine(nameEl, labels, naturalSizes.get(nameEl))) return;
     fitLineupNameSelf(nameEl);
   });
 
@@ -2125,10 +2149,68 @@ function fitLineupNamePills(root) {
   regrowShrunkLineupNames(labels, configuredFonts);
   // 기존 결과가 우선이다. 모든 충돌 보정 이후 더 큰 폰트가 안전하게 들어갈 때만 개선한다.
   labels.forEach(nameEl => improveLineupNameWithNumberLine(nameEl, labels, configuredFonts.get(nameEl)));
+  stampLineupNameFit(scope);
+}
+
+// ━━━ [라인업 이름 피팅 중복 생략] 같은 렌더 결과를 같은 크기에서 다시 맞추지 않기 ━━━
+// 경기 로딩 한 번에 렌더 직후 / 화면 폭 재계산 후 / 페이지 전환 후 / 패널 크기 감지 후
+// 경로가 각자 fitLineupNamePills를 예약해 같은 패널을 4번까지 다시 맞췄다. 피팅 결과는
+// 패널 안 DOM(라벨 요소)과 패널/피치 크기, 로딩된 폰트로만 정해지므로, 이 셋이 직전
+// 피팅과 같으면 결과도 같다 — 그런 예약 호출만 fitLineupNamePillsIfChanged로 건너뛴다.
+// 설정 변경/리사이즈 종료처럼 직접 호출하는 경로는 그대로 fitLineupNamePills로 항상 다시 맞춘다.
+const lineupNameFitStamps = new WeakMap();
+/**
+ * 라벨이 쓰는 글꼴 중 로딩이 끝난 글꼴 수. 라벨 글꼴이 늦게 로딩되면 값이 바뀌어 다시 맞춘다.
+ * 점수판 테마 글꼴처럼 라벨과 무관한 글꼴의 로딩은 결과에 영향이 없으므로 세지 않는다.
+ */
+function getLineupNameLoadedFontCount(label) {
+  if (!label || !document.fonts) return 0;
+  const families = getComputedStyle(label).fontFamily.split(',')
+    .map(name => name.trim().replace(/^['"]|['"]$/g, '').toLowerCase());
+  let count = 0;
+  document.fonts.forEach(face => {
+    if (face.status === 'loaded' && families.includes(face.family.replace(/^['"]|['"]$/g, '').toLowerCase())) count += 1;
+  });
+  return count;
+}
+
+/** 패널의 피팅 입력을 묶는다. 화면 전체가 이동해도 내부 충돌 관계는 같으므로 상대 위치만 기록한다. */
+function getLineupNameFitSignature(panel) {
+  const labels = panel.querySelectorAll('.dp-lineup-name');
+  const panelRect = panel.getBoundingClientRect();
+  const rectKey = el => {
+    const r = el.getBoundingClientRect();
+    // 좌표를 빼면서 생긴 부동소수 오차를 없앤다. 실제 크기와 내부 배치 변화는 유지한다.
+    return [r.left - panelRect.left, r.top - panelRect.top, r.width, r.height].map(n => n.toFixed(3)).join(',');
+  };
+  const pitches = Array.from(panel.querySelectorAll('.dp-lineup-vertical-pitch'), rectKey).join('|');
+  return { first: labels[0] || null, count: labels.length, size: `${rectKey(panel)}|${pitches}`, font: getLineupNameLoadedFontCount(labels[0]) };
+}
+
+/** 피팅을 마친 패널(들)의 입력값을 기록한다. 문서 전체를 맞춘 경우 모든 라인업 패널을 기록. */
+function stampLineupNameFit(scope) {
+  const panels = scope?.matches?.('[data-dp-role="lineup"]')
+    ? [scope]
+    : Array.from((scope || document).querySelectorAll('[data-dp-role="lineup"]'));
+  panels.forEach(panel => lineupNameFitStamps.set(panel, getLineupNameFitSignature(panel)));
+}
+
+/** 직전 피팅과 입력이 같으면 건너뛰고, 다르면 fitLineupNamePills를 실행한다. 실행했으면 true. */
+function fitLineupNamePillsIfChanged(panel) {
+  // 숨은 패널은 측정 결과를 남기지 않고, 페이지가 활성화된 뒤 실제 크기로 맞춘다.
+  if (!canMeasureTextElement(panel)) return false;
+  const prev = lineupNameFitStamps.get(panel);
+  if (prev) {
+    const next = getLineupNameFitSignature(panel);
+    if (prev.first === next.first && prev.count === next.count && prev.size === next.size && prev.font === next.font) return false;
+  }
+  fitLineupNamePills(panel);
+  return true;
 }
 
 // 라인업 리사이즈/설정 변경 후 외부에서 다시 fit을 호출할 수 있도록 노출
 window.fitLineupNamePills = fitLineupNamePills;
+window.fitLineupNamePillsIfChanged = fitLineupNamePillsIfChanged;
 window.fitBenchFooterNames = fitBenchFooterNames;
 window.balanceBenchInjuryPanelHeights = balanceBenchInjuryPanelHeights;
 
@@ -2169,7 +2251,8 @@ function scheduleLineupViewportFit() {
       syncBigLineupFullscreenGeometry();
       const activePage = document.querySelector('.page.active');
       const scope = activePage || document;
-      scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePills(panel));
+      // 렌더 직후 이미 같은 크기로 맞춘 패널은 다시 맞추지 않는다(폭 고정으로 크기가 바뀐 패널만).
+      scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePillsIfChanged(panel));
       fitBigLineupTeamChips(scope);
       fitBenchFooterNames(scope.querySelector('#benchPanel') || document.getElementById('benchPanel'));
       balanceBenchInjuryPanelHeights();

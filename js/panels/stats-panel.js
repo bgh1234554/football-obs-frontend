@@ -27,11 +27,37 @@ const ST_BAR_SIMILAR_DELTA_E = 25;
  * 현재 활성 페이지(.page.active) 안의 stat 패널만 재렌더.
  * page activated / window resize / settings 변경 시 호출 — 비활성 페이지의 패널은 다음 활성화 시 자연 갱신.
  */
+let statsActiveRenderRaf = 0;
+let statsLayoutTransitionWait = null;
+function stGetBoardLayoutTransitions() {
+  return document.querySelector('.fsm-board')?.getAnimations({ subtree: true })
+    .filter(animation => ['running', 'pending'].includes(animation.playState)
+      && /^(height|width|min-height|max-height|min-width|max-width|padding.*|margin.*|font-size|line-height|flex.*|gap|row-gap|column-gap)$/.test(animation.transitionProperty || '')) || [];
+}
 function stRerenderActivePanels() {
   if (statsLastFixtureData == null) return;
-  document.querySelectorAll('.page.active [data-stat-panel]').forEach(panel => {
-    if (getComputedStyle(panel).display === 'none' || panel.getClientRects().length === 0) return;
-    stRenderPanel(panel, statsLastFixtureData);
+  // 높이 보정·모드 전환·경기 적용이 같은 프레임에 요청한 재렌더는 한 번으로 합친다.
+  // 실행 시점의 활성 페이지와 최신 데이터를 사용하므로 중간 상태를 다시 그리지 않는다.
+  if (statsActiveRenderRaf || statsLayoutTransitionWait) return;
+  statsActiveRenderRaf = requestAnimationFrame(() => {
+    statsActiveRenderRaf = 0;
+    if (statsLastFixtureData == null) return;
+    // 테마 높이가 변하는 동안의 중간 크기로 매 프레임 다시 측정하지 않는다.
+    // 취소된 전환도 기다림을 해제하며, 새 전환은 다음 실행에서 다시 확인한다.
+    const transitions = stGetBoardLayoutTransitions();
+    if (transitions.length) {
+      const wait = Promise.allSettled(transitions.map(animation => animation.finished));
+      statsLayoutTransitionWait = wait;
+      wait.then(() => {
+        if (statsLayoutTransitionWait !== wait) return;
+        statsLayoutTransitionWait = null;
+        stRerenderActivePanels();
+      });
+      return;
+    }
+    const panels = Array.from(document.querySelectorAll('.page.active [data-stat-panel]'))
+      .filter(panel => getComputedStyle(panel).display !== 'none' && panel.getClientRects().length > 0);
+    panels.forEach(panel => stRenderPanel(panel, statsLastFixtureData));
   });
 }
 
@@ -318,7 +344,9 @@ function stSetupAutoSwipe(panel, state, totalPages, currentPageItemCount) {
   state.autoTimer = setInterval(() => {
     const isLastPage = state.page === totalPages - 1;
     state.page = (state.page + 1) % totalPages;
-    stRenderPanel(panel, statsLastFixtureData);
+    // 자동 페이지 전환도 테마 높이 보정 도중 무거운 실측을 끼워 넣지 않는다.
+    if (stGetBoardLayoutTransitions().length && panel.closest('.page.active')) stRerenderActivePanels();
+    else stRenderPanel(panel, statsLastFixtureData);
     if (isLastPage) {
       panel.dispatchEvent(new CustomEvent('statspanel:cycle-done', { bubbles: true }));
     }
@@ -391,15 +419,33 @@ function stDefaultPanelHeight(panel) {
  * reserveControls가 true이면 페이지 버튼 공간을 확보하며, 측정 불가 시 설정값(기본 9개)을 반환한다.
  * 측정 결과는 공간이 부족해도 최소 1개를 보장한다.
  */
+const statsCapacityCache = new WeakMap();
 function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
   // 1) 패널 높이나 표시할 데이터가 없으면 실측 대신 설정된 기본 개수를 사용한다.
   const cfg = window.STATS_CONFIG;
   const fallback = cfg?.itemsPerPage || 9;
   if (!panel?.clientHeight || !Array.isArray(rows) || !rows.length) return fallback;
 
+  // 색 갱신이나 페이지 버튼 클릭은 행의 높이를 바꾸지 않는다. 실제 크기와 글꼴,
+  // 행 내용이 같으면 앞서 실측한 수용 개수를 재사용한다. 숨은 패널의 기본값은 저장하지 않는다.
+  const style = getComputedStyle(panel);
+  let loadedFonts = 0;
+  document.fonts?.forEach(face => { if (face.status === 'loaded') loadedFonts++; });
+  const key = JSON.stringify([
+    panel.clientWidth, panel.clientHeight, style.font, style.lineHeight,
+    style.padding, style.borderWidth, style.boxSizing, style.rowGap,
+    style.getPropertyValue('--st-name-base-size'), style.getPropertyValue('--st-bar-height'),
+    style.getPropertyValue('--panel-title-bar-height'), loadedFonts, rows,
+    Array.from(panel.children, child => [child.className, child.offsetHeight]),
+  ]);
+  const slot = options.reserveControls === true ? 'controls' : 'plain';
+  const cached = statsCapacityCache.get(panel)?.[slot];
+  if (cached?.key === key) return cached.count;
+  const panelBackground = options.panelBackground || teamPanelBackground(panel);
+
   // 2) 실제 패널 안에 숨겨진 측정용 DOM을 만든다. 필요하면 페이지 버튼 공간도 미리 확보한다.
   // 고정 rowH 추정으로는 브라우저별 line-height 반올림을 못 따라가 마지막 행이 반쯤 보일 수 있다.
-  // 실제 렌더 트리를 숨겨서 한 행씩 넣어 보고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
+  // 실제 렌더 트리를 숨겨서 측정하고, scrollHeight가 넘치기 직전 개수를 페이지 크기로 쓴다.
   const wrap = document.createElement('div');
   wrap.className = 'st-wrap';
   Object.assign(wrap.style, {
@@ -414,22 +460,46 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
 
   panel.appendChild(wrap);
 
-  // 3) 한 행씩 추가하다가 높이를 초과하면 중단한다. 넘친 마지막 행은 수용 개수에 포함하지 않는다.
+  // 3) 모든 행을 한 번에 배치하고 실제 경계로 탐색 시작점을 구한다.
+  // 최종 판정은 기존 scrollHeight 비교로 검증하므로 배율·반올림이나
+  // 행 높이 차이가 있어도 표시 개수와 잘림 판정은 그대로 유지한다.
+  const rowNodes = rows.map(row => stCreateRow(row, fixtureData, panelBackground));
+  page.replaceChildren(...rowNodes);
+  const availableHeight = page.clientHeight;
+  const firstTop = rowNodes[0].offsetTop;
+  let estimate = 0;
+  for (const row of rowNodes) {
+    if (row.offsetTop - firstTop + row.offsetHeight <= availableHeight + 0.5) estimate++;
+    else break;
+  }
+  const measure = count => {
+    page.replaceChildren(...rowNodes.slice(0, count));
+    return page.scrollHeight <= page.clientHeight + 0.5;
+  };
   let fits = 0;
-  for (const row of rows) {
-    page.appendChild(stCreateRow(row, fixtureData));
-    if (page.scrollHeight > page.clientHeight + 0.5) {
-      page.lastElementChild?.remove();
-      break;
-    }
-    fits += 1;
+  // 보통은 실측한 후보와 다음 한 행만 확인하면 최대 개수가 확정된다.
+  let upper = Math.max(1, estimate);
+  while (measure(upper)) {
+    fits = upper;
+    if (upper === rows.length) break;
+    upper = Math.min(upper === estimate ? upper + 1 : upper * 2, rows.length);
+  }
+  if (fits < upper) upper -= 1;
+  while (fits < upper) {
+    const count = Math.ceil((fits + upper) / 2);
+    if (!measure(count)) upper = count - 1;
+    else fits = count;
   }
 
   // 4) 측정용 DOM을 제거하고 최소 1개를 보장한 결과를 반환한다.
   wrap.remove();
   // 이 지점에 도달했다면 panel.clientHeight와 rows.length는 이미 보장됨(위 가드) — 측정은 항상 시도된 상태.
   // fits===0(첫 행부터 넘침)이어도 fallback으로 되돌리지 않고 최소 1행은 보여준다.
-  return Math.max(1, fits);
+  const count = Math.max(1, fits);
+  const entries = statsCapacityCache.get(panel) || {};
+  entries[slot] = { key, count };
+  statsCapacityCache.set(panel, entries);
+  return count;
 }
 
 /**
@@ -453,6 +523,8 @@ function stRenderPanel(panel, fixtureData) {
   }
 
   const rows = stCollectRows(fixtureData);
+  // 같은 렌더 안에서는 합성 배경이 같으므로 DOM을 바꾸기 전에 한 번만 읽는다.
+  const panelBackground = rows.length ? teamPanelBackground(panel) : null;
 
   panel.innerHTML = '';
 
@@ -473,9 +545,9 @@ function stRenderPanel(panel, fixtureData) {
 
   // 먼저 단일 페이지 기준으로 계산하고, 실제로 2페이지 이상 필요하면
   // 페이지 컨트롤 높이까지 예약해서 다시 계산한다.
-  const itemsWithoutControls = stComputeItemsPerPage(panel, rows, fixtureData);
+  const itemsWithoutControls = stComputeItemsPerPage(panel, rows, fixtureData, { panelBackground });
   const itemsPerPage = rows.length > itemsWithoutControls
-    ? stComputeItemsPerPage(panel, rows, fixtureData, { reserveControls: true })
+    ? stComputeItemsPerPage(panel, rows, fixtureData, { reserveControls: true, panelBackground })
     : itemsWithoutControls;
   const pages = stChunk(rows, itemsPerPage);
   if (state.page >= pages.length) state.page = pages.length - 1;
@@ -486,7 +558,6 @@ function stRenderPanel(panel, fixtureData) {
 
   const pageEl = document.createElement('div');
   pageEl.className = 'st-page';
-  const panelBackground = teamPanelBackground(panel);
   pages[state.page].forEach(row => pageEl.appendChild(stCreateRow(row, fixtureData, panelBackground)));
   wrap.appendChild(pageEl);
 
@@ -563,10 +634,8 @@ function applyStatsPanel(fixtureData) {
   document.querySelectorAll('[data-stat-panel]').forEach(panel => {
     stRenderPanel(panel, fixtureData);
   });
-  requestAnimationFrame(() => {
-    stRerenderActivePanels();
-    window.lpStatUpdateVisibility?.();
-  });
+  window.lpStatUpdateVisibility?.();
+  stRerenderActivePanels();
 }
 
 // settings 변경(자동 스와이프 토글/간격) 감지 시 즉시 반영.
@@ -591,16 +660,12 @@ document.addEventListener('theme:colors-changed', e => {
 // 페이지 활성화 시점에 비활성이었던 패널의 컨테이너 높이가 0에서 실제 값으로 바뀌므로
 // itemsPerPage가 다시 계산돼야 함. RAF로 layout 안정화 한 사이클 미루기.
 document.addEventListener('page:activated', () => {
-  requestAnimationFrame(() => {
-    stRerenderActivePanels();
-  });
+  stRerenderActivePanels();
 });
 
 // 윈도우 리사이즈 시에도 itemsPerPage가 바뀔 수 있어 활성 패널 재렌더.
 window.addEventListener('resize', () => {
-  requestAnimationFrame(() => {
-    stRerenderActivePanels();
-  });
+  stRerenderActivePanels();
 });
 
 /** 스탯 패널 사이클 모드로 다시 들어올 때 마지막 페이지가 아닌 첫 페이지부터 보이도록 리셋. */

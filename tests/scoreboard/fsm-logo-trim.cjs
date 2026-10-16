@@ -11,6 +11,15 @@ const { openPage, settle } = require('../tactics/helpers');
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
     await page.evaluate(() => {
+      // 전용 원형 슬롯이 있는 테마는 바깥 팀 칸 전체를 채우는 디자인이 아니다.
+      window.logoTrimTestFrame = img => {
+        const style = getComputedStyle(img);
+        const theme = img.closest('.fsm-board').dataset.fsmTheme;
+        const size = parseFloat(style.getPropertyValue(`--${theme}-logo-size`));
+        const box = getComputedStyle(img.parentElement);
+        return Number.isFinite(size) ? [size, size]
+          : [parseFloat(box.getPropertyValue('--fsm-logo-width')), parseFloat(box.getPropertyValue('--fsm-logo-height'))];
+      };
       const logo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect x="40" y="15" width="80" height="40" fill="blue"/></svg>');
       state.homeLogo = logo; state.awayLogo = logo;
       state.homeLogoScale = 1; state.awayLogoScale = 1;
@@ -29,10 +38,11 @@ const { openPage, settle } = require('../tactics/helpers');
         const scale = document.querySelector('.scoreboard-main').getBoundingClientRect().width / document.querySelector('.scoreboard-main').offsetWidth;
         const offsetX = _currentTheme === 'unl' ? 0 : (parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth)) * scale / 2;
         const offsetY = _currentTheme === 'unl' ? 0 : (parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth)) * scale / 2;
+        const [frameWidth, frameHeight] = window.logoTrimTestFrame(img);
         return {
           x: image.x + image.width * .4 - (rect.x + rect.width / 2 + offsetX),
           y: image.y + image.height * .35 - (rect.y + rect.height / 2 + offsetY),
-          width: image.width * .4, expected: Math.min(parseFloat(style.getPropertyValue('--fsm-logo-width')) / 82, parseFloat(style.getPropertyValue('--fsm-logo-height')) / 42) * scale * 80,
+          width: image.width * .4, expected: Math.min(frameWidth / 82, frameHeight / 42) * scale * 80,
           boxTransform: style.transform, imageTransform: getComputedStyle(img).transform,
         };
       }));
@@ -70,15 +80,16 @@ const { openPage, settle } = require('../tactics/helpers');
         await page.evaluate(() => { render(); fsmBoardRender(); });
         await settle(page);
         const sizes = await page.evaluate(() => ['homeLogo', 'awayLogo'].map(id => {
-          const img = document.getElementById(id), s = getComputedStyle(img), box = getComputedStyle(img.parentElement);
-          return { width: parseFloat(s.width), height: parseFloat(s.height), boxWidth: parseFloat(box.getPropertyValue('--fsm-logo-width')), boxHeight: parseFloat(box.getPropertyValue('--fsm-logo-height')) };
+          const img = document.getElementById(id), s = getComputedStyle(img);
+          const [boxWidth, boxHeight] = window.logoTrimTestFrame(img);
+          return { width: parseFloat(s.width), height: parseFloat(s.height), boxWidth, boxHeight };
         }));
         for (const size of sizes) {
           const factor = Math.min(size.boxWidth / width, size.boxHeight / height);
           assert(Math.abs(size.width - width * factor) < .1 && Math.abs(size.height - height * factor) < .1, JSON.stringify({ theme, width, height, size }));
         }
       }
-      console.log('PASS full-bleed logo fit across 17 themes', width, height);
+      console.log('PASS full-bleed logo fit across all themes', width, height);
     }
   } finally { await browser.close(); rmSync(screenshotDir, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

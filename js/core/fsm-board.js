@@ -5,7 +5,10 @@ function setFsmStyle(selector, styles, index) {
 }
 /** selector에 맞는 모든 노드의 텍스트를 바꾼다. null/undefined는 빈 문자열. */
 function setFsmText(selector, value) {
-  document.querySelectorAll(selector).forEach(node => { node.textContent = value ?? ''; });
+  document.querySelectorAll(selector).forEach(node => {
+    const text = String(value ?? '');
+    if (node.textContent !== text) node.textContent = text;
+  });
 }
 /** selector에 맞는 모든 노드의 속성을 설정한다. 값이 비어 있으면 속성을 제거한다. */
 function setFsmAttr(selector, name, value) {
@@ -378,14 +381,8 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
           const target = frames[frames.length - 1]?.backgroundColor;
           if (target === 'transparent' || target === 'rgba(0, 0, 0, 0)') animation.finish();
         }));
-      autoLayoutNotes();
-      initBoardScale();
-      document.fonts.ready.then(() => {
-        if (oldlink !== newlink || pendingThemeLink) return;
-        window.fsmBoardRender();
-        autoLayoutNotes();
-        initBoardScale();
-      });
+      // 실제 글꼴 로딩 완료는 공통 loadingdone 처리에서 다시 그린다.
+      // 이미 준비된 fonts.ready로 같은 전환을 한 번 더 갱신하지 않는다.
     });
   };
   newlink.onerror = () => {
@@ -717,10 +714,14 @@ function applyTheme(theme, logoUrl) {
     // 나머지 테마는 state.colors.homeBg 를 border-bottom 색상으로 사용
     applyTeamColors();
 
-    board.querySelectorAll('.team-logo').forEach(box => {
+    const logoSizes = Array.from(board.querySelectorAll('.team-logo'), box => {
       const style = getComputedStyle(box);
       const width = box.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
       const height = box.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+      return { box, width, height };
+    });
+    // 양 팀 크기를 먼저 읽어 로고 CSS 변수 쓰기 사이에 재계산이 끼지 않게 한다.
+    logoSizes.forEach(({ box, width, height }) => {
       box.style.setProperty('--fsm-logo-width', Math.max(0, width) + 'px');
       box.style.setProperty('--fsm-logo-height', Math.max(0, height) + 'px');
     });
@@ -731,13 +732,17 @@ function applyTheme(theme, logoUrl) {
     });
     // 두 박스에 같은 숫자 기준을 사용하여 추가시간과 타이머의 기준선을 맞춥니다.
     // 각 값을 따로 측정하면 높이가 낮은 글자가 90:00보다 아래로 이동합니다.
-    board.querySelectorAll('.time, .extra-time').forEach(element => {
+    const timerPadding = Array.from(board.querySelectorAll('.time, .extra-time'), element => {
       const style = getComputedStyle(element);
       const context = document.createElement('canvas').getContext('2d');
       context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       const metrics = context.measureText('0123456789');
       const shift = Number.isFinite(metrics.fontBoundingBoxAscent)
         ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2 : 0;
+      return { element, shift };
+    });
+    // 양쪽 글꼴 측정을 마친 뒤 적용해 앞 박스 쓰기가 다음 측정을 강제하지 않게 한다.
+    timerPadding.forEach(({ element, shift }) => {
       element.style.paddingTop = Math.max(0, 2 * shift) + 'px';
       element.style.paddingBottom = Math.max(0, -2 * shift) + 'px';
     });
@@ -962,13 +967,12 @@ function adjustScoreboardWidth() {
   // 모든 테마의 실제 좌우 패딩을 너비 계산에 사용하는 설정과 동기화합니다.
   board.style.setProperty('--fsm-team-name-padding', `${limits.teamPadding / 2}px`);
   // 이전 렌더링 결과와 무관하게 원래 글꼴 크기로 측정합니다.
-  const widths = texts.map(text => {
+  texts.forEach(text => {
     text.style.fontSize = limits.maxFont + 'px';
     text.style.width = 'max-content';
-    const width = text.scrollWidth;
-    text.style.width = '';
-    return width;
   });
+  const widths = texts.map(text => text.scrollWidth);
+  texts.forEach(text => { text.style.width = ''; });
   if (_currentTheme === 'jleague') {
     // 글자의 실제 높이에서 원호가 차지하는 최대 폭을 구해 최소한의 여백만 확보한다.
     const radius = cards[0].clientHeight;
@@ -1721,8 +1725,17 @@ function syncFsmRedCardExposure(board) {
 window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); syncFsmRedCardExposure(document.querySelector('.fsm-board')); revealFsmBoard(); };
 
 if (document.fonts) {
-  document.fonts.ready.then(() => window.fsmBoardRender());
+  let fontRenderRaf = 0;
+  const scheduleFontRender = () => {
+    // 같은 글꼴 완료에서 ready와 loadingdone이 함께 오는 경우 한 번만 갱신한다.
+    if (fontRenderRaf) return;
+    fontRenderRaf = requestAnimationFrame(() => {
+      fontRenderRaf = 0;
+      window.fsmBoardRender();
+    });
+  };
+  document.fonts.ready.then(scheduleFontRender);
   // 최초 글꼴 준비 완료 이후에도 테마 변경으로 새 글꼴이 로딩될 수 있습니다.
   // 대체 글꼴이 아닌 로딩된 글꼴로 숫자의 위치 보정값을 다시 계산합니다.
-  document.fonts.addEventListener('loadingdone', () => window.fsmBoardRender());
+  document.fonts.addEventListener('loadingdone', scheduleFontRender);
 }

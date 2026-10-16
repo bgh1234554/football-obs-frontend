@@ -34,9 +34,16 @@ const { openPage, settle } = require('../tactics/helpers');
       homeLabels: [...document.querySelectorAll('[data-team-nickname-side="home"]')].map(el => el.textContent),
       awayLabels: [...document.querySelectorAll('[data-team-nickname-side="away"]')].map(el => el.textContent),
     }));
+    /** 점수판은 수정 선택 메뉴를 거쳐 이름 편집기로 진입한다. 패널 라벨은 바로 진입한다. */
+    const openEditor = async selector => {
+      await page.locator(selector).click();
+      if (selector === '#homeName' || selector === '#awayName') {
+        await page.locator('#scoreboardTeamEditMenu [data-team-edit="name"]').click();
+      }
+    };
     /** selector 라벨을 클릭해 팀 닉네임을 name으로 저장한다. */
     const edit = async (selector, name) => {
-      await page.locator(selector).click();
+      await openEditor(selector);
       await page.locator('#teamNickInput').fill(name);
       await page.locator('#teamNickSave').click();
       await settle(page);
@@ -64,7 +71,7 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.evaluate(() => setSetting('splitLineup', 'off'));
     assert.equal(await page.locator('.page.active .is-formation-only [data-team-nickname-side]').count(), 0);
     await page.evaluate(() => { activatePage('main-small'); state.boardScale = 75; reapplyBoardScale(); });
-    await page.locator('#homeName').click();
+    await openEditor('#homeName');
     const popup = await page.locator('#teamNickPopup').boundingBox();
     assert(popup.x >= 0 && popup.y >= 0 && popup.x + popup.width <= 1920 && popup.y + popup.height <= 1080);
     await page.screenshot({ path: 'screenshots/tests/team-nickname-editor.png' });
@@ -88,12 +95,13 @@ const { openPage, settle } = require('../tactics/helpers');
     // 키보드 진입과 취소, 빈 값 저장, 개별 초기화를 확인한다.
     await page.locator('#awayName').focus();
     await page.keyboard.press('Enter');
+    await page.locator('#scoreboardTeamEditMenu [data-team-edit="name"]').press('Enter');
     await page.locator('#teamNickInput').fill('저장하지 않음');
     await page.keyboard.press('Escape');
     assert.equal((await displayed()).away, '피치 별명');
     await edit('#awayName', '   ');
     assert.equal((await displayed()).away, '홈팀 전체 이름');
-    await page.locator('#homeName').click();
+    await openEditor('#homeName');
     await page.locator('#teamNickClear').click();
     assert.equal((await displayed()).home, '원정팀 전체 이름');
 
