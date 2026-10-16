@@ -732,13 +732,17 @@ function applyTheme(theme, logoUrl) {
     });
     // 두 박스에 같은 숫자 기준을 사용하여 추가시간과 타이머의 기준선을 맞춥니다.
     // 각 값을 따로 측정하면 높이가 낮은 글자가 90:00보다 아래로 이동합니다.
-    board.querySelectorAll('.time, .extra-time').forEach(element => {
+    const timerPadding = Array.from(board.querySelectorAll('.time, .extra-time'), element => {
       const style = getComputedStyle(element);
       const context = document.createElement('canvas').getContext('2d');
       context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
       const metrics = context.measureText('0123456789');
       const shift = Number.isFinite(metrics.fontBoundingBoxAscent)
         ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2 : 0;
+      return { element, shift };
+    });
+    // 양쪽 글꼴 측정을 마친 뒤 적용해 앞 박스 쓰기가 다음 측정을 강제하지 않게 한다.
+    timerPadding.forEach(({ element, shift }) => {
       element.style.paddingTop = Math.max(0, 2 * shift) + 'px';
       element.style.paddingBottom = Math.max(0, -2 * shift) + 'px';
     });
@@ -963,13 +967,12 @@ function adjustScoreboardWidth() {
   // 모든 테마의 실제 좌우 패딩을 너비 계산에 사용하는 설정과 동기화합니다.
   board.style.setProperty('--fsm-team-name-padding', `${limits.teamPadding / 2}px`);
   // 이전 렌더링 결과와 무관하게 원래 글꼴 크기로 측정합니다.
-  const widths = texts.map(text => {
+  texts.forEach(text => {
     text.style.fontSize = limits.maxFont + 'px';
     text.style.width = 'max-content';
-    const width = text.scrollWidth;
-    text.style.width = '';
-    return width;
   });
+  const widths = texts.map(text => text.scrollWidth);
+  texts.forEach(text => { text.style.width = ''; });
   if (_currentTheme === 'jleague') {
     // 글자의 실제 높이에서 원호가 차지하는 최대 폭을 구해 최소한의 여백만 확보한다.
     const radius = cards[0].clientHeight;

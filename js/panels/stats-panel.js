@@ -28,14 +28,33 @@ const ST_BAR_SIMILAR_DELTA_E = 25;
  * page activated / window resize / settings 변경 시 호출 — 비활성 페이지의 패널은 다음 활성화 시 자연 갱신.
  */
 let statsActiveRenderRaf = 0;
+let statsLayoutTransitionWait = null;
+function stGetBoardLayoutTransitions() {
+  return document.querySelector('.fsm-board')?.getAnimations({ subtree: true })
+    .filter(animation => ['running', 'pending'].includes(animation.playState)
+      && /^(height|width|min-height|max-height|min-width|max-width|padding.*|margin.*|font-size|line-height|flex.*|gap|row-gap|column-gap)$/.test(animation.transitionProperty || '')) || [];
+}
 function stRerenderActivePanels() {
   if (statsLastFixtureData == null) return;
   // 높이 보정·모드 전환·경기 적용이 같은 프레임에 요청한 재렌더는 한 번으로 합친다.
   // 실행 시점의 활성 페이지와 최신 데이터를 사용하므로 중간 상태를 다시 그리지 않는다.
-  if (statsActiveRenderRaf) return;
+  if (statsActiveRenderRaf || statsLayoutTransitionWait) return;
   statsActiveRenderRaf = requestAnimationFrame(() => {
     statsActiveRenderRaf = 0;
     if (statsLastFixtureData == null) return;
+    // 테마 높이가 변하는 동안의 중간 크기로 매 프레임 다시 측정하지 않는다.
+    // 취소된 전환도 기다림을 해제하며, 새 전환은 다음 실행에서 다시 확인한다.
+    const transitions = stGetBoardLayoutTransitions();
+    if (transitions.length) {
+      const wait = Promise.allSettled(transitions.map(animation => animation.finished));
+      statsLayoutTransitionWait = wait;
+      wait.then(() => {
+        if (statsLayoutTransitionWait !== wait) return;
+        statsLayoutTransitionWait = null;
+        stRerenderActivePanels();
+      });
+      return;
+    }
     const panels = Array.from(document.querySelectorAll('.page.active [data-stat-panel]'))
       .filter(panel => getComputedStyle(panel).display !== 'none' && panel.getClientRects().length > 0);
     panels.forEach(panel => stRenderPanel(panel, statsLastFixtureData));
@@ -325,7 +344,9 @@ function stSetupAutoSwipe(panel, state, totalPages, currentPageItemCount) {
   state.autoTimer = setInterval(() => {
     const isLastPage = state.page === totalPages - 1;
     state.page = (state.page + 1) % totalPages;
-    stRenderPanel(panel, statsLastFixtureData);
+    // 자동 페이지 전환도 테마 높이 보정 도중 무거운 실측을 끼워 넣지 않는다.
+    if (stGetBoardLayoutTransitions().length && panel.closest('.page.active')) stRerenderActivePanels();
+    else stRenderPanel(panel, statsLastFixtureData);
     if (isLastPage) {
       panel.dispatchEvent(new CustomEvent('statspanel:cycle-done', { bubbles: true }));
     }

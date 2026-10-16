@@ -1130,6 +1130,7 @@ function lpFitBenchCycleTitle(titleEl) {
 
 const injuryReasonFitObserved = new WeakSet();
 const injuryReasonFitQueued = new WeakSet();
+const injuryReasonFitWidths = new WeakMap();
 let injuryReasonFitObserver = null;
 
 /** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
@@ -1174,7 +1175,14 @@ function fitInjuryReasons(panel) {
 function queueFitInjuryReasons(panel) {
   if (!panel) return;
   if (typeof ResizeObserver !== 'undefined' && !injuryReasonFitObserved.has(panel)) {
-    injuryReasonFitObserver ||= new ResizeObserver(entries => entries.forEach(entry => queueFitInjuryReasons(entry.target)));
+    injuryReasonFitObserver ||= new ResizeObserver(entries => entries.forEach(entry => {
+      const width = entry.contentRect.width;
+      // 사유의 줄바꿈은 폭에 의존한다. 보드 높이 전환이나 피팅 결과로 패널
+      // 높이만 바뀐 경우 다시 축소·측정하는 순환을 만들지 않는다.
+      if (injuryReasonFitWidths.get(entry.target) === width) return;
+      injuryReasonFitWidths.set(entry.target, width);
+      queueFitInjuryReasons(entry.target);
+    }));
     injuryReasonFitObserved.add(panel);
     injuryReasonFitObserver.observe(panel);
   }

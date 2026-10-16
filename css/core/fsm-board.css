@@ -12,6 +12,8 @@
   background: transparent;
   box-shadow: none;
   overflow: visible;
+  /* 테마별 세로 간격도 타이머 높이와 함께 전환해 먼저 움츠러드는 현상을 막는다. */
+  transition: row-gap var(--fsm-transition-duration) ease-in-out;
 }
 
 .board.fsm-board.outline-on { box-shadow: none; }

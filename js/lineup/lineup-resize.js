@@ -554,8 +554,18 @@ function startSmallLayoutResize(event) {
 function observeSmallLayoutResize() {
   if (typeof ResizeObserver === 'function') {
     if (!smallLayoutResizeObserver) {
-      smallLayoutResizeObserver = new ResizeObserver(() => {
-        applyStoredSmallLayoutResize();
+      const widths = new WeakMap();
+      smallLayoutResizeObserver = new ResizeObserver(entries => {
+        let widthChanged = false;
+        for (const entry of entries) {
+          if (widths.get(entry.target) !== entry.contentRect.width) {
+            widths.set(entry.target, entry.contentRect.width);
+            widthChanged = true;
+          }
+        }
+        // 열 너비는 높이 변화와 무관하다. 테마 전환의 매 프레임에
+        // 저장된 열 너비를 다시 쓰고 배치를 강제로 읽지 않는다.
+        if (widthChanged) applyStoredSmallLayoutResize();
       });
     } else {
       // 이미 옵저버 있으면 재구독을 위해 disconnect → 아래 forEach에서 다시 observe.
