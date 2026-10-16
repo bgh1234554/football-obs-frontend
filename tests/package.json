@@ -3,7 +3,7 @@
   "scripts": {
     "test": "node run-all.cjs",
     "test:unit": "node lineup/formation-transitions.cjs && node events/events-adaptive-scroll.cjs && node events/events-period-boundaries.cjs && node unit/review-regressions.cjs",
-    "test:lineup": "node lineup/formation-transitions-browser.cjs && node lineup/manual-lineup-controls.cjs && node lineup/manual-captain.cjs"
+    "test:lineup": "node lineup/formation-transitions-browser.cjs && node lineup/manual-lineup-controls.cjs"
   },
   "devDependencies": {
     "playwright": "^1.60.0"

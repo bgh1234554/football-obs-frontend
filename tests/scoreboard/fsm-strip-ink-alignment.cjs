@@ -46,10 +46,12 @@ const { openPage, settle } = require('../tactics/helpers');
                 }
               }
             }
-            return { name: text.textContent, error: (first + last + 1) / 2 - (top + bottom) / 2 };
+            return { name: text.textContent, font: getComputedStyle(text).fontSize, error: (first + last + 1) / 2 - (top + bottom) / 2 };
           });
         }, screenshot);
         for (const value of measurements) assert(Math.abs(value.error) <= 1, JSON.stringify({ theme, scale, ...value }));
+        // 글꼴 크기가 같으면 홈/원정 팀명의 세로 위치(기준선)가 같아야 한다. 팀명별 반 픽셀 반올림으로 1px 어긋나던 회귀 방지.
+        if (measurements[0].font === measurements[1].font) assert(Math.abs(measurements[0].error - measurements[1].error) <= .5, JSON.stringify({ theme, scale, measurements }));
         console.log('PASS strip-theme visible text centering', theme, scale, JSON.stringify(measurements));
       }
       measuredThemes.add(theme);
