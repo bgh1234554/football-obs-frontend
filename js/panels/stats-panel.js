@@ -439,24 +439,29 @@ function stComputeItemsPerPage(panel, rows, fixtureData, options = {}) {
 
   panel.appendChild(wrap);
 
-  // 3) 높이를 초과하지 않는 최대 행 수를 찾는다.
-  // 행 추가와 높이 읽기를 반복하지 않고 실제 행의 앞부분을 이진 탐색한다.
-  // 기존 overflow 판정을 유지하므로 글꼴과 패널 크기에 따른 수용 개수는 같다.
-  const rowNodes = [];
+  // 3) 모든 행을 한 번에 배치하고 실제 경계로 탐색 시작점을 구한다.
+  // 최종 판정은 기존 scrollHeight 비교로 검증하므로 배율·반올림이나
+  // 행 높이 차이가 있어도 표시 개수와 잘림 판정은 그대로 유지한다.
+  const rowNodes = rows.map(row => stCreateRow(row, fixtureData, panelBackground));
+  page.replaceChildren(...rowNodes);
+  const availableHeight = page.clientHeight;
+  const firstTop = rowNodes[0].offsetTop;
+  let estimate = 0;
+  for (const row of rowNodes) {
+    if (row.offsetTop - firstTop + row.offsetHeight <= availableHeight + 0.5) estimate++;
+    else break;
+  }
   const measure = count => {
-    while (rowNodes.length < count) {
-      rowNodes.push(stCreateRow(rows[rowNodes.length], fixtureData, panelBackground));
-    }
     page.replaceChildren(...rowNodes.slice(0, count));
     return page.scrollHeight <= page.clientHeight + 0.5;
   };
   let fits = 0;
-  // 기본 행 수부터 두 배씩 상한을 찾아 낮은 패널에서 불필요한 행 DOM을 줄인다.
-  let upper = Math.min(fallback, rows.length);
+  // 보통은 실측한 후보와 다음 한 행만 확인하면 최대 개수가 확정된다.
+  let upper = Math.max(1, estimate);
   while (measure(upper)) {
     fits = upper;
     if (upper === rows.length) break;
-    upper = Math.min(upper * 2, rows.length);
+    upper = Math.min(upper === estimate ? upper + 1 : upper * 2, rows.length);
   }
   if (fits < upper) upper -= 1;
   while (fits < upper) {

@@ -279,8 +279,8 @@ async function testStatsCapacity(page) {
     const rows = Array.from({ length: 24 }, (_, i) => ({ label: `스탯 ${i}`, homeVal: i, awayVal: 24 - i }));
     const results = [];
     try {
-      for (const height of [60, 100, 180, 300, 480, 800]) {
-        for (const font of [10, 12, 18, 24]) {
+      for (const height of [60, 100, 179.5, 180, 300, 480, 800]) {
+        for (const font of [10, 12, 12.5, 18, 24]) {
           for (const reserveControls of [false, true]) {
             panel.style.height = `${height}px`;
             panel.style.setProperty('--st-name-base-size', `${font}px`);
@@ -375,6 +375,37 @@ async function testStatsCapacity(page) {
   assert.equal(capacityReuse.repeated, 0, 'unchanged stats capacity avoids DOM measurement');
   assert.ok(capacityReuse.changedFont > 0, 'stats font change invalidates capacity');
   assert.ok(capacityReuse.changedData > 0, 'stats data change invalidates capacity');
+
+  // 실제 버튼과 타이머를 통해 페이지 이동·일시정지·재생 계약을 확인한다.
+  await page.evaluate(() => {
+    activatePage('main-big');
+    _lpStatCycle.mode = 'stats';
+    lpStatUpdateVisibility();
+    setSetting('statsAutoSwipe', 'on');
+    setSetting('statsAutoSwipeSec', 2.5);
+    stResetAllPanelPages();
+    applyStatsPanel(statsLastFixtureData);
+  });
+  await frames(page);
+  const statsPanel = page.locator('.page.active [data-stat-panel]');
+  await statsPanel.locator('.st-pause').click();
+  const activeDot = () => statsPanel.locator('.st-dot.is-active').evaluate(el => [...el.parentElement.children].indexOf(el));
+  const firstPage = await activeDot();
+  await statsPanel.locator('.st-arrow-next').click();
+  assert.notEqual(await activeDot(), firstPage, 'next button changes stats page');
+  await statsPanel.locator('.st-arrow-prev').click();
+  assert.equal(await activeDot(), firstPage, 'previous button restores stats page');
+  await page.waitForTimeout(2800);
+  assert.equal(await activeDot(), firstPage, 'paused stats page stays still');
+  await statsPanel.locator('.st-pause').click();
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('.page.active [data-stat-panel]');
+    return [...panel.querySelectorAll('.st-dot')].findIndex(dot => dot.classList.contains('is-active')) !== 0;
+  }, null, { timeout: 6000 });
+  await page.evaluate(() => {
+    setSetting('statsAutoSwipe', 'off');
+    applyStatsPanel(statsLastFixtureData);
+  });
 }
 
 (async () => {
