@@ -2290,21 +2290,40 @@ function syncBigLineupFullscreenGeometry() {
     }
   });
 }
-function scheduleLineupViewportFit() {
-  if (lineupViewportFitRaf) cancelAnimationFrame(lineupViewportFitRaf);
-  lineupViewportFitRaf = requestAnimationFrame(() => {
-    lineupViewportFitRaf = requestAnimationFrame(() => {
-      lineupViewportFitRaf = 0;
-      syncBigLineupFullscreenGeometry();
-      const activePage = document.querySelector('.page.active');
-      const scope = activePage || document;
-      // 렌더 직후 이미 같은 크기로 맞춘 패널은 다시 맞추지 않는다(폭 고정으로 크기가 바뀐 패널만).
-      scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePillsIfChanged(panel));
-      fitBigLineupTeamChips(scope);
-      fitBenchFooterNames(scope.querySelector('#benchPanel') || document.getElementById('benchPanel'));
-      balanceBenchInjuryPanelHeights();
-
-    });
+// 지금 걸린 예약이 두 프레임을 기다리는(폭·배율 확정 대기) 예약인지.
+let lineupViewportFitWaitsForLayout = false;
+/**
+ * 라인업 폭 잠금과 이름·팀칩·벤치 하단 피팅, 벤치/부상 높이 균형을 예약한다.
+ * 기본은 두 프레임 뒤(전체화면 전환, resize, 새 경기의 폭 잠금 해제처럼 배치가 한 프레임 뒤에야 확정되는 경우).
+ * options.nextFrame이면 다음 프레임 그리기 전에 맞춘다 — 같은 경기 폴링처럼 폭이 그대로인 재렌더에서
+ * 두 프레임을 기다리면, 새로 그린 라벨이 맞추기 전 기본 폭(2줄 113px)으로 한 프레임 화면에 보였다가
+ * 다시 펴졌다(2026-10-17, 9c45c59에서 예약을 두 프레임으로 통합하며 생긴 회귀. 폴링 15초마다 깜빡임).
+ * 두 프레임 예약이 이미 걸려 있으면 그쪽이 맞추므로 다음 프레임 예약으로 바꾸지 않는다.
+ *
+ * @param {{nextFrame?: boolean}} [options] nextFrame이 true면 한 프레임만 기다린다.
+ * @returns {void}
+ */
+function scheduleLineupViewportFit(options) {
+  const nextFrame = options?.nextFrame === true;
+  if (lineupViewportFitRaf) {
+    if (nextFrame && lineupViewportFitWaitsForLayout) return;
+    cancelAnimationFrame(lineupViewportFitRaf);
+  }
+  lineupViewportFitWaitsForLayout = !nextFrame;
+  const run = () => {
+    lineupViewportFitRaf = 0;
+    lineupViewportFitWaitsForLayout = false;
+    syncBigLineupFullscreenGeometry();
+    const activePage = document.querySelector('.page.active');
+    const scope = activePage || document;
+    // 렌더 직후 이미 같은 크기로 맞춘 패널은 다시 맞추지 않는다(폭 고정으로 크기가 바뀐 패널만).
+    scope.querySelectorAll('[data-dp-role="lineup"]').forEach(panel => fitLineupNamePillsIfChanged(panel));
+    fitBigLineupTeamChips(scope);
+    fitBenchFooterNames(scope.querySelector('#benchPanel') || document.getElementById('benchPanel'));
+    balanceBenchInjuryPanelHeights();
+  };
+  lineupViewportFitRaf = requestAnimationFrame(nextFrame ? run : () => {
+    lineupViewportFitRaf = requestAnimationFrame(run);
   });
 }
 

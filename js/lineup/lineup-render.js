@@ -1798,6 +1798,8 @@ function syncTacticsBoard(effectiveData, options = {}) {
  * 5) 벤치/부상/라인업 그리드 + 전술판 4개 패널 동시 갱신.
  * 6) 화면 폭 보정 예약에서 최종 배치 후 이름·벤치 하단 피팅과 높이 균형을 맞춘다.
  *    options.colorsOnly(팀 컬러만 바뀜)이고 라인업 DOM을 유지했으면 같은 크기의 패널은 이름 피팅을 생략한다.
+ *    options.awaitWidthLock(새 경기로 캠 큼 폭 잠금을 푼 경우)이면 폭이 다시 잠긴 뒤(두 프레임) 맞추고,
+ *    그 외에는 다음 프레임 그리기 전에 맞춘다.
  */
 function rerenderLineupPanels(options = {}) {
   if (!lineupPanelState.lastFixture) {
@@ -1847,7 +1849,9 @@ function rerenderLineupPanels(options = {}) {
 
   // 3) 화면 폭 보정과 렌더 후 피팅을 같은 예약으로 합친다.
   // 먼저 최종 폭을 잠근 뒤 활성 패널을 맞추며, 숨은 패널은 페이지 활성화 때 맞춘다.
-  scheduleLineupViewportFit();
+  // 새 경기라 캠 큼 폭 잠금을 풀었을 때만 두 프레임을 기다리고, 같은 경기 갱신(폴링 등)은 다음 프레임 그리기 전에
+  // 맞춰 덜 맞춘 라벨이 화면에 보이지 않게 한다(scheduleLineupViewportFit 참고).
+  scheduleLineupViewportFit({ nextFrame: !options.awaitWidthLock });
 }
 
 /** 외부에서 fixture 데이터를 넘겨 상세 패널 전체를 적용할 때 쓰는 공개 진입점. */
@@ -1878,7 +1882,7 @@ function applyLineupPanels(fixtureData) {
   // API가 라인업 없이 playerStats만 준 경우 선발/교체 명단을 추정해 채운 객체로 보관 (lineup-data.js).
   lineupPanelState.lastFixture = inferLineupsFromPlayerStats(fixtureData);
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
-  rerenderLineupPanels();
+  rerenderLineupPanels({ awaitWidthLock: incomingId !== currentId });
 }
 
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
