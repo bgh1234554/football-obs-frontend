@@ -1,0 +1,36 @@
+@import url('./result_style_LIGUE1.css');
+
+.board.fsm-board[data-fsm-theme="allsvenskan"] .scoreboard-main { position: relative; background: #0656FA; }
+/* 48px 본체 안에 테두리를 그려 타이머와 기존 배치 높이를 유지합니다. */
+.board.fsm-board[data-fsm-theme="allsvenskan"] .scoreboard-main::after {
+  content: ''; position: absolute; inset: 0; border: 2px solid #E8EAF0;
+  pointer-events: none; z-index: 4;
+}
+.board.fsm-board[data-fsm-theme="allsvenskan"] :is(.teams-left, .teams-right) {
+  position: relative; background: #E8EAF0; color: #050311;
+}
+.board.fsm-board[data-fsm-theme="allsvenskan"] .team-name { color: #050311; }
+.board.fsm-board[data-fsm-theme="allsvenskan"] .team-logo {
+  background: #E8EAF0; border-color: #E8EAF0; color: #050311;
+}
+.board.fsm-board[data-fsm-theme="allsvenskan"] :is(#team-score-left, #team-score-right, .score-div) {
+  background: #0656FA; color: #ffffff;
+}
+.board.fsm-board[data-fsm-theme="allsvenskan"] .team-score { font-size: 42px; }
+.board.fsm-board[data-fsm-theme="allsvenskan"] .score-div {
+  position: relative; width: 44px; z-index: 2;
+}
+/* 바깥 테두리 2px씩을 뺀 44px 안에 원형 테두리 3px까지 포함합니다. */
+.board.fsm-board[data-fsm-theme="allsvenskan"] .epl-lion {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 44px; height: 44px; padding: 0; box-sizing: border-box;
+  border: 3px solid #E8EAF0; border-radius: 50%; object-fit: contain;
+}
+/* RPL과 같은 8px 세로 팀 컬러 띠를 점수 칸 바깥에 배치합니다. */
+.board.fsm-board[data-fsm-theme="allsvenskan"] .team-color {
+  position: absolute; top: 0; width: 8px; height: 48px; display: block;
+}
+.board.fsm-board[data-fsm-theme="allsvenskan"] #homeColor { right: var(--fsm-score-overlap, 0px); }
+.board.fsm-board[data-fsm-theme="allsvenskan"] #awayColor { left: var(--fsm-score-overlap, 0px); }
+.board.fsm-board[data-fsm-theme="allsvenskan"] .time { background: #DE241E; color: #ffffff; }
+.board.fsm-board[data-fsm-theme="allsvenskan"] .extra-time { background: #020125; color: #ffffff; }

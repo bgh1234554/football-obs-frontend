@@ -109,6 +109,25 @@ const root = path.resolve(__dirname, '../..');
       }
     }
     console.log('PASS SVG event colors, rounded strokes, alignment and greenscreen reinforcement');
+    const reuse = await page.evaluate(() => {
+      autoLayoutNotes();
+      const home = el.homeNote.firstChild;
+      const away = el.awayNote.firstChild;
+      const before = [el.homeNote.innerHTML, el.awayNote.innerHTML];
+      autoLayoutNotes();
+      autoLayoutNotes();
+      const kept = home === el.homeNote.firstChild && away === el.awayNote.firstChild;
+      const unchanged = before[0] === el.homeNote.innerHTML && before[1] === el.awayNote.innerHTML;
+      const size = state.noteFontSize;
+      state.noteFontSize = size + 2;
+      autoLayoutNotes();
+      const refitted = home !== el.homeNote.firstChild;
+      state.noteFontSize = size;
+      autoLayoutNotes();
+      return { kept, unchanged, refitted };
+    });
+    assert.ok(reuse.kept && reuse.unchanged, 'unchanged notes retain DOM and layout');
+    assert.ok(reuse.refitted, 'font size change refits notes');
     await page.evaluate(() => {
       const note = document.getElementById('homeNote');
       const text = note.querySelector('svg text');

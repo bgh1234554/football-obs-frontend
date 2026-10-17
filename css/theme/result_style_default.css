@@ -1,24 +1,3 @@
-@font-face {
-    font-family: 'SsangmunDongB';
-    src: url('/resources/fonts/Typo_SsangmunDongB.ttf') format('truetype');
-}
-@font-face {
-    font-family: 'Koverwatch';
-    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
-}
-@font-face {
-    font-family: 'Pretendard-Medium';
-    src: url('/resources/fonts/Pretendard-Medium.woff') format('woff');
-}
-@font-face {
-    font-family: 'NanumGothic';
-    src: url('/resources/fonts/NanumGothic.ttf') format('woff');
-}
-@font-face {
-    font-family: 'GmarketSansMedium';
-    src: url('/resources/fonts/GmarketSansTTFMedium.ttf') format('truetype');
-}
-
 .fsm-board { margin:0; padding:0; overflow:hidden; }
 
 .div-contents {
@@ -49,7 +28,6 @@
     width: 984px;
     height: 48px;
     position: absolute;
-    background-image: url("/resources/background/background_sbleft.png");
     background-repeat: no-repeat;
     background-blend-mode: screen;
     display: none;

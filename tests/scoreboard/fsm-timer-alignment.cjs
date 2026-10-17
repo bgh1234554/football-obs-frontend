@@ -19,15 +19,20 @@ await page.evaluate(async()=>{
  const original=window.fsmBoardRender;window.fontCompletionRenders=0;
  /** 폰트 로딩 완료 후 다시 그린 횟수를 세도록 fsmBoardRender를 감싼다. */
  window.fsmBoardRender=()=>{window.fontCompletionRenders++;original();};
- const font=new FontFace('FSMDelayedTimerFont','url(http://localhost/resources/fonts/Pretendard-Medium.woff)');
+ const font=new FontFace('FSMDelayedTimerFont','url(http://localhost/resources/fonts/Pretendard-Medium.woff2)');
  document.fonts.add(font);
  document.querySelector('.scoreboard-timer').style.fontFamily='FSMDelayedTimerFont';
  original();
  await font.load();
  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
- window.fsmBoardRender=original;
+ // 글꼴 완료 이벤트는 font.load()와 별도 작업으로 도착할 수 있다.
+ window.restoreFontCompletionRender=()=>{window.fsmBoardRender=original;};
 });
+await page.waitForFunction(()=>window.fontCompletionRenders>0);
 assert(await page.evaluate(()=>window.fontCompletionRenders>0),'Font completion must recalculate timer alignment');
+const coalesced=await page.evaluate(async()=>{const before=window.fontCompletionRenders;document.fonts.dispatchEvent(new Event('loadingdone'));document.fonts.dispatchEvent(new Event('loadingdone'));await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return window.fontCompletionRenders-before;});
+assert.equal(coalesced,1,'same-frame font completion events render once');
+await page.evaluate(()=>window.restoreFontCompletionRender());
 console.log('PASS late timer font completion recalculates alignment');
 assert.deepEqual(errors,[]);
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

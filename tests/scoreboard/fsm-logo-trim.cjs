@@ -11,6 +11,15 @@ const { openPage, settle } = require('../tactics/helpers');
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
     await page.evaluate(() => {
+      // 전용 원형 슬롯이 있는 테마는 바깥 팀 칸 전체를 채우는 디자인이 아니다.
+      window.logoTrimTestFrame = img => {
+        const style = getComputedStyle(img);
+        const theme = img.closest('.fsm-board').dataset.fsmTheme;
+        const size = parseFloat(style.getPropertyValue(`--${theme}-logo-size`));
+        const box = getComputedStyle(img.parentElement);
+        return Number.isFinite(size) ? [size, size]
+          : [parseFloat(box.getPropertyValue('--fsm-logo-width')), parseFloat(box.getPropertyValue('--fsm-logo-height'))];
+      };
       const logo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect x="40" y="15" width="80" height="40" fill="blue"/></svg>');
       state.homeLogo = logo; state.awayLogo = logo;
       state.homeLogoScale = 1; state.awayLogoScale = 1;
@@ -29,10 +38,11 @@ const { openPage, settle } = require('../tactics/helpers');
         const scale = document.querySelector('.scoreboard-main').getBoundingClientRect().width / document.querySelector('.scoreboard-main').offsetWidth;
         const offsetX = _currentTheme === 'unl' ? 0 : (parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth)) * scale / 2;
         const offsetY = _currentTheme === 'unl' ? 0 : (parseFloat(style.borderTopWidth) - parseFloat(style.borderBottomWidth)) * scale / 2;
+        const [frameWidth, frameHeight] = window.logoTrimTestFrame(img);
         return {
           x: image.x + image.width * .4 - (rect.x + rect.width / 2 + offsetX),
           y: image.y + image.height * .35 - (rect.y + rect.height / 2 + offsetY),
-          width: image.width * .4, expected: Math.min(parseFloat(style.getPropertyValue('--fsm-logo-width')) / 82, parseFloat(style.getPropertyValue('--fsm-logo-height')) / 42) * scale * 80,
+          width: image.width * .4, expected: Math.min(frameWidth / 82, frameHeight / 42) * scale * 80,
           boxTransform: style.transform, imageTransform: getComputedStyle(img).transform,
         };
       }));
@@ -70,15 +80,59 @@ const { openPage, settle } = require('../tactics/helpers');
         await page.evaluate(() => { render(); fsmBoardRender(); });
         await settle(page);
         const sizes = await page.evaluate(() => ['homeLogo', 'awayLogo'].map(id => {
-          const img = document.getElementById(id), s = getComputedStyle(img), box = getComputedStyle(img.parentElement);
-          return { width: parseFloat(s.width), height: parseFloat(s.height), boxWidth: parseFloat(box.getPropertyValue('--fsm-logo-width')), boxHeight: parseFloat(box.getPropertyValue('--fsm-logo-height')) };
+          const img = document.getElementById(id), s = getComputedStyle(img);
+          const [boxWidth, boxHeight] = window.logoTrimTestFrame(img);
+          return { width: parseFloat(s.width), height: parseFloat(s.height), boxWidth, boxHeight };
         }));
         for (const size of sizes) {
           const factor = Math.min(size.boxWidth / width, size.boxHeight / height);
           assert(Math.abs(size.width - width * factor) < .1 && Math.abs(size.height - height * factor) < .1, JSON.stringify({ theme, width, height, size }));
         }
       }
-      console.log('PASS full-bleed logo fit across 17 themes', width, height);
+      console.log('PASS full-bleed logo fit across all themes', width, height);
     }
+    // 로고 픽셀 분석은 Web Worker(logo-trim-worker.js)에서 한다(2026-10-17, 처음 보는 로고마다 메인 스레드가
+    // 약 100ms 멈춰 테마 전환이 끊기던 문제). PNG는 Worker가 직접 받아 디코딩하고, SVG는 메인 스레드가 그린
+    // 비트맵을 넘긴다. 두 경우 모두 메인 스레드 경로와 같은 경계·채우기 마스크가 나와야 하고 실패 경고가 없어야 한다.
+    const workerWarnings = [];
+    page.on('console', message => { if (message.text().includes('Worker 분석 실패')) workerWarnings.push(message.text()); });
+    const ring = await page.evaluate(() => {
+      const c = document.createElement('canvas'); c.width = 120; c.height = 80;
+      const g = c.getContext('2d'); g.fillStyle = '#c00'; g.fillRect(20, 10, 80, 60); g.clearRect(35, 22, 50, 36);
+      return c.toDataURL('image/png');
+    });
+    const svgRing = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><path fill-rule="evenodd" fill="#c00" d="M20 10h80v60H20zM35 22v36h50V22z"/></svg>');
+    for (const logo of [ring, svgRing]) {
+      const result = await page.evaluate(async logo => {
+        LogoTrim.clearCache();
+        const img = document.createElement('img');
+        await new Promise(resolve => { LogoTrim.render(img, logo, ready => { if (ready) resolve(); }); setTimeout(resolve, 8000); });
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const pixels = async src => {
+          const bitmap = await createImageBitmap(await (await fetch(src)).blob());
+          const c = new OffscreenCanvas(bitmap.width, bitmap.height), g = c.getContext('2d');
+          g.drawImage(bitmap, 0, 0);
+          return Array.from(g.getImageData(0, 0, bitmap.width, bitmap.height).data);
+        };
+        const fill = img.style.backgroundImage.match(/url\("(.*)"\)/)?.[1];
+        // 메인 스레드 경로와 같은 순서(그리기 -> 경계 -> 채우기 마스크)로 기대값을 만든다.
+        const source = new Image(); source.src = logo; await source.decode();
+        const svg = logo.startsWith('data:image/svg');
+        const scale = svg ? Math.max(1, 1024 / Math.max(source.naturalWidth, source.naturalHeight)) : 1;
+        const width = Math.ceil(source.naturalWidth * scale), height = Math.ceil(source.naturalHeight * scale);
+        const draw = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(source, 0, 0, w, h); return g.getImageData(0, 0, w, h); };
+        const bounds = LogoTrimAnalysis.findBounds(draw(width, height));
+        const geometry = LogoTrimAnalysis.fillGeometry(bounds);
+        const mask = LogoTrimAnalysis.buildFillMask(draw(geometry.width, geometry.height), geometry.minArea);
+        return { bounds: LogoTrim.getCachedBounds(logo), expectedBounds: bounds,
+          fillPixels: fill ? await pixels(fill) : null, expectedFill: mask ? Array.from(mask.data) : null };
+      }, logo);
+      assert.deepEqual(result.bounds, result.expectedBounds, 'worker bounds match main-thread analysis');
+      assert(result.expectedFill, 'ring logo has an enclosed fill area');
+      assert.deepEqual(result.fillPixels, result.expectedFill, 'worker fill mask matches main-thread analysis');
+    }
+    assert(page.workers().some(worker => worker.url().endsWith('/js/core/logo-trim-worker.js')), 'logo analysis runs in a Web Worker');
+    assert.deepEqual(workerWarnings, [], 'worker analysis did not fall back to the main thread');
+    console.log('PASS worker logo analysis matches main-thread result (png, svg)');
   } finally { await browser.close(); rmSync(screenshotDir, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

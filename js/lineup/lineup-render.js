@@ -1130,6 +1130,7 @@ function lpFitBenchCycleTitle(titleEl) {
 
 const injuryReasonFitObserved = new WeakSet();
 const injuryReasonFitQueued = new WeakSet();
+const injuryReasonFitWidths = new WeakMap();
 let injuryReasonFitObserver = null;
 
 /** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
@@ -1171,10 +1172,27 @@ function fitInjuryReasons(panel) {
   });
 }
 
+/**
+ * 부상 사유의 글자 축소·줄바꿈 보정을 패널별로 다음 프레임에 한 번 예약한다.
+ * 최초 호출 때 ResizeObserver를 등록하되 이후 자동 보정은 패널의 폭이 달라질 때만 수행한다.
+ * 보드 높이 전환이나 사유 피팅 자체로 생긴 높이 변화는 다시 피팅하지 않아 순환을 방지한다.
+ * 내용 교체·설정 변경·페이지 활성화에서 직접 호출하면 폭이 같아도 다시 검사하므로
+ * 너비 캐시 때문에 새 선수나 변경된 글꼴 설정을 놓치지 않는다.
+ *
+ * @param {HTMLElement|null} panel 부상 사유 라벨을 포함하는 패널.
+ * @returns {void} 패널이 없거나 이미 예약 중이면 추가 작업 없이 반환한다.
+ */
 function queueFitInjuryReasons(panel) {
   if (!panel) return;
   if (typeof ResizeObserver !== 'undefined' && !injuryReasonFitObserved.has(panel)) {
-    injuryReasonFitObserver ||= new ResizeObserver(entries => entries.forEach(entry => queueFitInjuryReasons(entry.target)));
+    injuryReasonFitObserver ||= new ResizeObserver(entries => entries.forEach(entry => {
+      const width = entry.contentRect.width;
+      // 사유의 줄바꿈은 폭에 의존한다. 보드 높이 전환이나 피팅 결과로 패널
+      // 높이만 바뀐 경우 다시 축소·측정하는 순환을 만들지 않는다.
+      if (injuryReasonFitWidths.get(entry.target) === width) return;
+      injuryReasonFitWidths.set(entry.target, width);
+      queueFitInjuryReasons(entry.target);
+    }));
     injuryReasonFitObserved.add(panel);
     injuryReasonFitObserver.observe(panel);
   }
@@ -1466,7 +1484,170 @@ function renderInjuryPanel(effectiveData, rawData) {
  * 선발 라인업 패널을 모든 라인업 인스턴스에 동기 렌더한다.
  * 포메이션 + startXi가 모두 유효하면 피치 모드, 아니면 리스트 모드로 자동 전환된다.
  */
-function renderLineupGrid(effectiveData, rawData) {
+// ━━━ [팀 컬러만 바뀐 재렌더] 라인업 DOM을 유지하고 색만 바꾸기 ━━━
+// 로고에서 팀 컬러를 뽑은 직후나 테마 탭에서 색을 바꿀 때 라인업 전체를 innerHTML로 다시
+// 넣으면 이름 피팅(fitLineupNamePills)을 처음부터 다시 해야 한다(캠 작음 실측 약 380ms).
+// 이름 라벨에는 팀 컬러가 없고 피팅은 색을 보지 않으므로, 새 HTML이 직전 HTML과 색 값만
+// 다르면 살아 있는 DOM의 색 속성만 바꿔 피팅 결과를 그대로 유지한다. 색 이외의 차이(문구,
+// 클래스, 구조)가 하나라도 있으면 기존처럼 innerHTML로 다시 넣는다.
+const lpLineupBodyRender = new WeakMap(); // body -> { html, first }: 마지막으로 넣은 HTML과 그 첫 노드
+
+/**
+ * 분리된 임시 요소의 CSSStyleDeclaration으로 인라인 스타일 문자열을 정규화한다.
+ * 단축 속성 해석은 브라우저에 맡기고 !important 우선순위도 함께 보존한다.
+ * 임시 요소는 문서에 연결하지 않으므로 실제 라인업이나 배치를 변경하지 않는다.
+ *
+ * @param {string|null} styleText 비교할 style 속성. 없으면 빈 스타일로 취급한다.
+ * @returns {Map<string, string[]>} 속성명별 [값, 우선순위] 목록.
+ */
+function lpParseInlineStyle(styleText) {
+  const probe = document.createElement('div');
+  probe.setAttribute('style', styleText || '');
+  const map = new Map();
+  for (let i = 0; i < probe.style.length; i += 1) {
+    const name = probe.style[i];
+    map.set(name, [probe.style.getPropertyValue(name), probe.style.getPropertyPriority(name)]);
+  }
+  return map;
+}
+
+/**
+ * 라인업의 색상 변경을 DOM 교체 없이 반영할 수 있는 스타일 속성인지 판단한다.
+ * 알려진 색상·배경·그림자·SVG 칠 속성은 허용하고, 커스텀 속성은 이전·이후 값이
+ * 모두 비어 있거나 CSS 색상으로 해석 가능한 경우에만 허용한다.
+ * 일반 길이·글꼴 속성이 섞이면 false를 반환해 전체 렌더와 피팅 경로로 되돌린다.
+ *
+ * @param {string} name 브라우저가 정규화한 CSS 속성명.
+ * @param {(string|undefined)[]} values 이전 값과 새 값.
+ * @returns {boolean} 색상 변경용 부분 갱신에서 허용하는 속성이면 true.
+ */
+function lpIsColorStyleProperty(name, values) {
+  if (/^(color|background(-.*)?|border(-[a-z]+)?-color|outline-color|box-shadow|text-shadow|fill|stroke|caret-color|accent-color)$/.test(name)) return true;
+  if (!name.startsWith('--')) return false;
+  return values.every(value => !value || CSS.supports('color', value.trim()));
+}
+
+/**
+ * 직전 HTML(oldHtml)과 새 HTML(newHtml)이 색 값만 다르면 body의 살아 있는 DOM에 색만 반영하고 true.
+ * 색 이외의 차이가 있거나 살아 있는 DOM과 대응이 맞지 않으면 아무것도 바꾸지 않고 false.
+ * 변경 작업을 먼저 수집하고 전체 비교에 성공한 뒤 적용하므로 실패 시 일부 색만 바뀌지 않는다.
+ * 피팅이 인라인 크기나 내부 구조를 바꿨을 수 있으므로 대응을 확신할 수 없는 분기는 포기한다.
+ *
+ * @param {HTMLElement} body 실제 화면에 연결된 라인업 본문.
+ * @param {string} oldHtml 직전 렌더 입력 HTML. 피팅 후 실제 DOM 문자열과는 다를 수 있다.
+ * @param {string} newHtml 이번 렌더에서 생성한 HTML.
+ * @returns {boolean} 구조를 유지한 채 허용된 속성 변경을 모두 적용할 수 있으면 true.
+ */
+function lpPatchLineupBodyColors(body, oldHtml, newHtml) {
+  /**
+   * HTML을 실제 화면에 붙이지 않고 비교용 트리로 해석한다.
+   * @param {string} html 비교할 HTML 문자열.
+   * @returns {DocumentFragment} 문서와 분리된 비교용 트리.
+   */
+  const parse = html => { const t = document.createElement('template'); t.innerHTML = html; return t.content; };
+  const patches = [];
+
+  // 1. 같은 위치의 노드끼리 비교하며 바꿀 색 속성만 모은다(적용은 전부 확인된 뒤에 한 번에).
+  /**
+   * 이전·새 트리를 재귀 비교하고 대응하는 실제 노드에 적용할 변경을 수집한다.
+   * 이 단계에서는 실제 DOM을 변경하지 않으며, 구조나 비색상 속성이 다르면 즉시 중단한다.
+   *
+   * @param {Node} oldNode 이전 렌더 입력의 노드.
+   * @param {Node} newNode 새 렌더 입력의 노드.
+   * @param {Node} liveNode 피팅 결과를 포함하는 실제 화면 노드.
+   * @returns {boolean} 이 분기를 안전하게 부분 갱신할 수 있으면 true.
+   */
+  const walk = (oldNode, newNode, liveNode) => {
+    if (oldNode.nodeType !== newNode.nodeType) return false;
+    if (oldNode.nodeType !== Node.ELEMENT_NODE && oldNode.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+      return oldNode.nodeValue === newNode.nodeValue;
+    }
+    if (oldNode.nodeType === Node.ELEMENT_NODE) {
+      if (oldNode.tagName !== newNode.tagName) return false;
+      const names = new Set([...oldNode.getAttributeNames(), ...newNode.getAttributeNames()]);
+      for (const name of names) {
+        const oldValue = oldNode.getAttribute(name);
+        const newValue = newNode.getAttribute(name);
+        if (oldValue === newValue) continue;
+        if (!liveNode || liveNode.nodeType !== Node.ELEMENT_NODE || liveNode.tagName !== oldNode.tagName) return false;
+        if (name === 'fill' || name === 'stroke' || name === 'stop-color') {
+          patches.push(() => (newValue == null ? liveNode.removeAttribute(name) : liveNode.setAttribute(name, newValue)));
+          continue;
+        }
+        if (name !== 'style') return false;
+        const oldStyle = lpParseInlineStyle(oldValue);
+        const newStyle = lpParseInlineStyle(newValue);
+        const changed = [...new Set([...oldStyle.keys(), ...newStyle.keys()])]
+          .filter(prop => String(oldStyle.get(prop)) !== String(newStyle.get(prop)));
+        if (!changed.every(prop => lpIsColorStyleProperty(prop, [oldStyle.get(prop)?.[0], newStyle.get(prop)?.[0]]))) return false;
+        // 피팅이 이 요소의 style을 건드리지 않았으면 새 문자열 그대로, 건드렸으면 바뀐 색 속성만 덮는다.
+        if (liveNode.getAttribute('style') === oldValue) {
+          patches.push(() => liveNode.setAttribute('style', newValue));
+        } else {
+          patches.push(() => changed.forEach(prop => {
+            const next = newStyle.get(prop);
+            if (next) liveNode.style.setProperty(prop, next[0], next[1]);
+            else liveNode.style.removeProperty(prop);
+          }));
+        }
+      }
+    }
+    const oldKids = oldNode.childNodes;
+    const newKids = newNode.childNodes;
+    if (oldKids.length !== newKids.length) return false;
+    for (let i = 0; i < oldKids.length; i += 1) {
+      if (oldKids[i].isEqualNode(newKids[i])) continue;
+      // 차이가 있는 가지만 살아 있는 DOM과 맞춰 본다. 피팅이 자식 구조를 바꾼 곳(이름 라벨 안쪽)에
+      // 색 차이가 있으면 대응을 확신할 수 없으므로 포기한다.
+      if (!liveNode || liveNode.childNodes.length !== oldKids.length) return false;
+      if (!walk(oldKids[i], newKids[i], liveNode.childNodes[i])) return false;
+    }
+    return true;
+  };
+
+  if (!walk(parse(oldHtml), parse(newHtml), body)) return false;
+  // 2. 모두 색 차이로 확인됐을 때만 적용한다.
+  patches.forEach(apply => apply());
+  return true;
+}
+
+/**
+ * 라인업 패널 본문에 HTML을 넣는다. colorsOnly면 직전 HTML과 색만 다를 때 DOM을 유지하고 색만 바꾼다.
+ * DOM을 유지했으면 true(이름 피팅 결과가 그대로 유효), 새로 넣었으면 false.
+ * 첫 자식 참조가 바뀌면 다른 코드가 본문을 교체한 것으로 보고 재사용하지 않는다.
+ * 두 경로 모두 마지막 입력 HTML과 실제 첫 자식을 저장해 다음 갱신의 기준으로 삼는다.
+ *
+ * @param {HTMLElement} body HTML을 표시할 라인업 본문.
+ * @param {string} html 이번 렌더의 HTML 문자열.
+ * @param {boolean} colorsOnly 색상만 바뀌는 경로에서 DOM 재사용을 시도할지 여부.
+ * @returns {boolean} 기존 DOM을 유지했으면 true, 본문을 교체했으면 false.
+ */
+function lpSetLineupBodyHtml(body, html, colorsOnly) {
+  const prev = lpLineupBodyRender.get(body);
+  // 직전에 이 함수가 넣은 DOM이 그대로 남아 있을 때만(다른 코드가 본문을 바꾸지 않았을 때) 재사용한다.
+  const reusable = colorsOnly && prev && prev.first && prev.first === body.firstChild;
+  if (reusable && (prev.html === html || lpPatchLineupBodyColors(body, prev.html, html))) {
+    lpLineupBodyRender.set(body, { html, first: body.firstChild });
+    return true;
+  }
+  body.innerHTML = html;
+  lpLineupBodyRender.set(body, { html, first: body.firstChild });
+  return false;
+}
+
+/**
+ * 수동 편집 등이 반영된 유효 라인업을 캠 큰 화면과 작은 화면의 모든 피치에 표시한다.
+ * 원본 경기 데이터는 편집·상태 판정에 필요한 보조 정보로 함께 전달한다.
+ * 색상 전용 갱신에서는 구조가 같을 때 DOM과 기존 이름 피팅을 유지하고,
+ * 그 외에는 본문을 다시 만든다. 최종 폭 보정과 이름 피팅은 후속 예약 경로에서 처리한다.
+ *
+ * @param {Object} effectiveData 수동 편집 등을 반영한 표시용 경기 데이터.
+ * @param {Object} rawData 원본 경기 데이터.
+ * @param {Object} [options={}] 렌더링 옵션.
+ * @param {boolean} [options.colorsOnly=false] 색상만 부분 갱신할 수 있는지 확인한다.
+ * @returns {void} 라인업 DOM을 갱신하며 대상 패널이 없으면 종료한다.
+ */
+function renderLineupGrid(effectiveData, rawData, options = {}) {
   // 메인 (캠 큼) + 메인 (캠 작음) 양쪽 페이지에 같은 라인업 패널이 있으므로
   // [data-dp-role="lineup"]가 붙은 모든 인스턴스에 동일하게 렌더.
   const panels = document.querySelectorAll('[data-dp-role="lineup"]');
@@ -1499,13 +1680,16 @@ function renderLineupGrid(effectiveData, rawData) {
     if (!body) return;
     const isBig = !!panel.closest('.layout-big');
     const splitActive = isBig && splitOn && usePitchMode;
+    const wrap = panel.closest('.lp-lineup, .lp-lineup-s');
+    const classesBefore = `${panel.className}|${wrap?.className || ''}`;
     panel.classList.toggle('dp-mode-long', longMode);
     panel.classList.toggle('dp-mode-split', splitActive);
     // outer .lp-lineup wrapper — aspect-ratio 변경을 위해 같은 클래스 미러.
-    const wrap = panel.closest('.lp-lineup, .lp-lineup-s');
     if (wrap) wrap.classList.toggle('dp-mode-split', splitActive);
     setPanelTitle(panel, '선발 라인업', '');
-    body.innerHTML = isBig ? splitHtml : smallCombinedHtml;
+    // 패널 모드 클래스가 바뀌면 배치가 달라지므로 색만 바꾸는 경로를 쓰지 않는다.
+    const sameMode = classesBefore === `${panel.className}|${wrap?.className || ''}`;
+    lpSetLineupBodyHtml(body, isBig ? splitHtml : smallCombinedHtml, !!options.colorsOnly && sameMode);
   });
 }
 
@@ -1612,9 +1796,10 @@ function syncTacticsBoard(effectiveData, options = {}) {
  * 3) applySubReflectToFixture로 subReflect=on이면 교체 이벤트 기반 startXi/벤치 swap.
  * 4) 이벤트/평점 lookup 캐시 생성(lineupPanelState.context) — 렌더 헬퍼들이 매 row마다 read.
  * 5) 벤치/부상/라인업 그리드 + 전술판 4개 패널 동시 갱신.
- * 6) 다음 frame(layout 안정화 후)에 fitLineupNamePills/fitBenchFooterNames/balanceBenchInjuryPanelHeights 호출.
+ * 6) 화면 폭 보정 예약에서 최종 배치 후 이름·벤치 하단 피팅과 높이 균형을 맞춘다.
+ *    options.colorsOnly(팀 컬러만 바뀜)이고 라인업 DOM을 유지했으면 같은 크기의 패널은 이름 피팅을 생략한다.
  */
-function rerenderLineupPanels() {
+function rerenderLineupPanels(options = {}) {
   if (!lineupPanelState.lastFixture) {
     clearLineupPanels();
     return;
@@ -1653,21 +1838,16 @@ function rerenderLineupPanels() {
   // 2) 상세 패널 3종과 전술판을 같은 기준 데이터로 동시에 갱신한다.
   renderBenchPanel(effectiveData, lineupPanelState.lastFixture);
   renderInjuryPanel(effectiveData, lineupPanelState.lastFixture);
-  renderLineupGrid(effectiveData, lineupPanelState.lastFixture);
+  renderLineupGrid(effectiveData, lineupPanelState.lastFixture, { colorsOnly: !!options.colorsOnly });
   // 같은 경기의 갱신에서는 드래그한 좌표를 유지한다. 경기 전환 시에는 앞서 좌표를 비운다.
   syncTacticsBoard(effectiveData, { preservePositions: true });
   renderMatchInfoCyclePanel(effectiveData, lineupPanelState.lastFixture);
   renderBenchCyclePanels(effectiveData);
   renderInjuryCyclePanel(effectiveData, lineupPanelState.lastFixture);
 
-  // 3) DOM이 실제 배치된 다음 frame에서 텍스트 피팅을 다시 돌린다.
-  // 라인업 그리드의 이름 pill 폭을 실제 렌더된 라인 폭에 맞춤 (layout 안정화 다음 frame).
-  // 양쪽 페이지의 라인업 인스턴스 모두 처리.
-  requestAnimationFrame(() => {
-    document.querySelectorAll('[data-dp-role="lineup"]').forEach(p => fitLineupNamePills(p));
-    fitBenchFooterNames(document.getElementById('benchPanel'));
-    balanceBenchInjuryPanelHeights();
-  });
+  // 3) 화면 폭 보정과 렌더 후 피팅을 같은 예약으로 합친다.
+  // 먼저 최종 폭을 잠근 뒤 활성 패널을 맞추며, 숨은 패널은 페이지 활성화 때 맞춘다.
+  scheduleLineupViewportFit();
 }
 
 /** 외부에서 fixture 데이터를 넘겨 상세 패널 전체를 적용할 때 쓰는 공개 진입점. */
@@ -1699,11 +1879,6 @@ function applyLineupPanels(fixtureData) {
   lineupPanelState.lastFixture = inferLineupsFromPlayerStats(fixtureData);
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
   rerenderLineupPanels();
-  if (incomingId !== currentId && typeof scheduleLineupViewportFit === 'function') {
-    // 라인업 그리드가 실제로 그려진 다음(rerenderLineupPanels가 위에서 이미 requestAnimationFrame으로
-    // 예약한 텍스트 피팅 이후) 폭 캐시를 새로 잠가야 하므로, 한 프레임 더 늦춰서 호출한다.
-    requestAnimationFrame(() => scheduleLineupViewportFit());
-  }
 }
 
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */
@@ -1770,8 +1945,9 @@ function clearLineupPanels() {
 // 테마 탭에서 홈/원정 컬러 변경 시 라인업 토큰/팀 chip도 재렌더 (전술판과 동일한 동작)
 document.addEventListener('theme:colors-changed', () => {
   if (!lineupPanelState.lastFixture) return;
-  // home/away 컬러 키만 영향 — 다른 키(boardA/scoreBg 등)도 들어오지만 재렌더 비용 작아서 통과
-  rerenderLineupPanels();
+  // home/away 컬러 키만 영향 — 다른 키(boardA/scoreBg 등)도 들어오지만 재렌더 비용 작아서 통과.
+  // 색만 바뀌므로 라인업 DOM은 유지하고 색 속성만 바꿔 이름 피팅을 다시 하지 않는다.
+  rerenderLineupPanels({ colorsOnly: true });
 });
 
 document.addEventListener('settings:change', event => {

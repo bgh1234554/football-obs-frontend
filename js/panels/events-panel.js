@@ -1439,6 +1439,9 @@ function applyEventsPanel(fixtureData, options = {}) {
     });
   });
 
+  // 신규 이벤트 화면 중앙 하단 표시(event-spotlight.js)가 새로 생긴 행을 고르도록 알린다.
+  window.evSpotlightAfterRender?.(nextFixtureId, containers);
+
   // lp-stat cycle 버튼 상태 갱신 (Iter 7)
   if (typeof window.lpStatUpdateBtn === 'function') window.lpStatUpdateBtn();
 }

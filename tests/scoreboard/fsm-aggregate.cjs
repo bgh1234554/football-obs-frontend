@@ -13,10 +13,11 @@ const { openPage, settle } = require('../tactics/helpers');
     const nativeBaselines = new Map();
     // 승인한 리그 포맷 목록을 고정해 클럽 전체로 지원 범위가 넓어지는 회귀를 막습니다.
     const supportedThemes = new Set([
-      'default', 'cl', 'uel', 'uecl', 'acle', 'russiancup',
-      'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
-      'bundes', 'bundes2', 'ligue1', 'ligue2', 'ligaportugal', 'eredivisie',
-      'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc'
+      'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
+      'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
+      'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
+      'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
+      'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance'
     ]);
     for (const theme of themes) {
       await page.evaluate(theme => {

@@ -1042,6 +1042,8 @@
       const newEventCount = Array.isArray(data.events) ? data.events.length : 0;
       const isNewEventForSameFixture = previousFixtureId === normalizedFixtureId && newEventCount > prevEventCount;
       let preparedForNewEvent = false;
+      // 신규 이벤트 화면 중앙 하단 표시(event-spotlight.js)는 패널 자동 전환과 관계없이 동작한다.
+      if (isNewEventForSameFixture) window.evSpotlightMarkNewEvents?.();
       if (isNewEventForSameFixture && typeof window.lpStatPrepareForNewEvent === 'function') {
         // lpStatAvailableModes()가 최신 이벤트 유무를 바로 반영하도록 미리 갱신 —
         // applyEventsPanel도 곧 같은 값으로 다시 대입하므로 중복 대입이라도 무해하다.

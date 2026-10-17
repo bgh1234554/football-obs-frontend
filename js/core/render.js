@@ -276,8 +276,12 @@
     setCSS('--away-outline-w', (state.awayOutlineWidth??1)+'px');
     setCSS('--board-outline-w', (state.boardOutlineWidth??1)+'px');
     setCSS('--score-outline-w', (state.scoreOutlineWidth??1)+'px');
-    setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
-    setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
+    // 정상 배치의 폰트 크기는 autoLayoutNotes가 관리한다. 폴링마다 기본값으로
+    // 되돌리면 축소해서 맞춘 배치도 다시 계산해야 한다. 편집 중에는 설정값을 반영한다.
+    if (activeNoteEditor) {
+      setCSS('--note-font-size-home', (state.noteFontSize??18)+'px');
+      setCSS('--note-font-size-away', (state.noteFontSize??18)+'px');
+    }
     setCSS('--note-stroke', chromaSafe(state.colors.noteStroke));
     const noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
     const noteKeyGuardWidth = isGreenscreenOn() && noteStrokeWidth > 0 ? 0.75 : 0;
@@ -685,6 +689,7 @@
    * 홈/어웨이 득점자 패널을 각각 독립적으로 자동 레이아웃하고
    * note-side 박스를 스코어보드 양 옆에 절대 위치로 고정시키는 통합 함수.
    */
+  let noteLayoutStamp = null;
   function autoLayoutNotes() {
     if (activeNoteEditor) return;
     // 1. 보드 높이 측정 — 아직 렌더되지 않으면 종료
@@ -706,6 +711,57 @@
 
     const homeNoteSide = $('homeNoteSide');
     const awayNoteSide = $('awayNoteSide');
+
+    // 렌더·폰트 완료·크기 감지가 같은 배치를 다시 요청하더라도 내용과 실제 배치가
+    // 같으면 SVG와 줄 묶음을 다시 만들지 않는다. 색상은 기존 CSS 상속으로 갱신된다.
+    /**
+     * 득점자 줄, 표시 설정, 보드 기하 정보, 로딩된 글꼴과 계산된 스타일을 직렬화한다.
+     * 내용이 같아도 테마·배율·사용 가능한 공간이 바뀌면 다시 배치해야 하므로 함께 기록한다.
+     * 캐시 적중 여부는 이 키뿐 아니라 실제 자식 노드의 동일성도 확인해 판정한다.
+     * 배치 과정에서 보드 위치가 달라질 수 있으므로 최종 결과를 저장할 때 다시 호출한다.
+     *
+     * @returns {string} 현재 득점자 레이아웃 입력을 나타내는 JSON 문자열.
+     */
+    const inputKey = () => {
+      const stage = $('boardStageInner');
+      /**
+       * 현재 미리보기 변환이 적용된 화면 좌표와 크기를 읽는다.
+       * 득점자 배치는 보드와 주변 영역의 위치 관계에 의존하므로 폭·높이뿐 아니라
+       * 좌측·상단 좌표도 기록한다. DOM을 변경하지 않지만 필요하면 브라우저 배치를 확정한다.
+       *
+       * @param {Element|null} node 측정할 요소.
+       * @returns {number[]|null} [left, top, width, height], 요소가 없으면 null.
+       */
+      const rectKey = node => {
+        if (!node) return null;
+        const r = node.getBoundingClientRect();
+        return [r.left, r.top, r.width, r.height];
+      };
+      /**
+       * 득점자 글자의 자연 크기와 줄바꿈, 외곽선 여유에 영향을 주는 스타일을 수집한다.
+       * 글꼴 이름이 같아도 크기·굵기·자간·패딩이 바뀔 수 있어 각 값을 함께 비교한다.
+       * 현재 피팅 결과의 fontSize도 포함해 외부 스타일 변경을 캐시 적중으로 오인하지 않는다.
+       *
+       * @param {Element} node 득점자 텍스트 요소.
+       * @returns {string[]} 계산된 글꼴·박스·외곽선 관련 값의 배열.
+       */
+      const fontKey = node => {
+        const s = getComputedStyle(node);
+        return [s.fontFamily, s.fontSize, s.lineHeight, s.fontWeight, s.fontStyle, s.fontStretch, s.letterSpacing, s.wordSpacing,
+          s.padding, s.borderWidth, s.boxSizing, s.textTransform,
+          s.getPropertyValue('--note-stroke-w'), s.getPropertyValue('--note-key-guard-w')];
+      };
+      let loadedFonts = 0;
+      document.fonts?.forEach(face => { if (face.status === 'loaded') loadedFonts++; });
+      return JSON.stringify([homeLines, awayLines, state.noteFontSize ?? 18,
+        state.noteEnabled, state.manualMode, state.boardScale, state.boardPosition,
+        boardEl.className, boardEl.dataset.fsmTheme, boardH, timerH, loadedFonts,
+        $('boardStageWrap').clientWidth, rectKey(stage), rectKey(boardEl), rectKey(main),
+        main ? Array.from(main.children, rectKey) : [], fontKey(el.homeNote), fontKey(el.awayNote)]);
+    };
+    const key = inputKey();
+    if (noteLayoutStamp?.key === key && noteLayoutStamp.home === el.homeNote.firstChild
+      && noteLayoutStamp.away === el.awayNote.firstChild) return;
 
     // 중요: autoLayoutNote는 noteEl.scrollHeight를 보고 보드 높이 초과 여부를 판정하는데,
     // .note에 overflow-wrap:anywhere + white-space:pre-line이 걸려있어서, 부모 noteSide의
@@ -741,7 +797,6 @@
     // 5. note-side 너비를 내용 scrollWidth에 맞게 동적 조정 (위에서 'auto'로 풀어둔 상태)
     const PAD = 20;
     const MIN_EDIT_W = (state.manualMode && state.noteEnabled) ? 140 : 0;
-    const stageEl = $('boardStageInner');
     const homeW = Math.max(MIN_EDIT_W, homeLines.length ? el.homeNote.scrollWidth + PAD : 0);
     const awayW = Math.max(MIN_EDIT_W, awayLines.length ? el.awayNote.scrollWidth + PAD : 0);
 
@@ -749,33 +804,96 @@
     if (awayNoteSide) awayNoteSide.style.width = awayW + 'px';
 
     // 6. stageInner 기준으로 note-side를 board 양 옆에 절대 위치로 고정
-    if (stageEl && boardEl) {
-      const boardLeft  = boardEl.offsetLeft;
-      const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
-      if (homeNoteSide) homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
-      if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
-      if (main) {
-        // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
-        // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.
-        const stageRect = stageEl.getBoundingClientRect();
-        const scale = stageRect.width / stageEl.offsetWidth || 1;
-        const slots = Array.from(main.children).filter(child => {
-          const style = getComputedStyle(child);
-          return style.display !== 'none' && style.position !== 'absolute';
-        }).map(child => child.getBoundingClientRect());
-        if (slots.length) {
-          const left = (Math.min(...slots.map(rect => rect.left)) - stageRect.left) / scale;
-          const right = (Math.max(...slots.map(rect => rect.right)) - stageRect.left) / scale;
-          const noteGap = 5;
-          if (homeNoteSide) homeNoteSide.style.right = stageEl.offsetWidth - left + noteGap + 'px';
-          if (awayNoteSide) awayNoteSide.style.left = right + noteGap + 'px';
-        }
+    positionNoteSides(boardEl, main);
+    // 배치 과정에서 보드 중심이 이동할 수 있으므로 최종 위치를 기록한다.
+    noteLayoutStamp = { key: inputKey(), home: el.homeNote.firstChild, away: el.awayNote.firstChild };
+  }
+
+  /**
+   * 득점자 박스(note-side)를 점수판 띠 양 옆과 세로 가운데에 붙이고 보드 좌우 배치를 다시 맞춘다.
+   * 글자 크기·줄 묶음·박스 폭은 건드리지 않는 위치 전용 단계라, 전체 피팅(autoLayoutNotes)과
+   * 전환 애니메이션 중 크기 감지 경로(autoLayoutNotesOnResize)가 같은 계산을 공유한다.
+   *
+   * @param {HTMLElement} boardEl 점수판 요소.
+   * @param {HTMLElement|null} main 점수판 띠(.scoreboard-main).
+   * @returns {void} note-side의 right/left/top과 보드 이동량을 갱신한다.
+   */
+  function positionNoteSides(boardEl, main) {
+    const stageEl = $('boardStageInner');
+    const homeNoteSide = $('homeNoteSide');
+    const awayNoteSide = $('awayNoteSide');
+    if (!stageEl || !boardEl) return;
+    const boardLeft  = boardEl.offsetLeft;
+    const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
+    if (homeNoteSide) homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
+    if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
+    if (main) {
+      // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
+      // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.
+      const stageRect = stageEl.getBoundingClientRect();
+      const scale = stageRect.width / stageEl.offsetWidth || 1;
+      const slots = Array.from(main.children).filter(child => {
+        const style = getComputedStyle(child);
+        return style.display !== 'none' && style.position !== 'absolute';
+      }).map(child => child.getBoundingClientRect());
+      if (slots.length) {
+        const left = (Math.min(...slots.map(rect => rect.left)) - stageRect.left) / scale;
+        const right = (Math.max(...slots.map(rect => rect.right)) - stageRect.left) / scale;
+        const noteGap = 5;
+        if (homeNoteSide) homeNoteSide.style.right = stageEl.offsetWidth - left + noteGap + 'px';
+        if (awayNoteSide) awayNoteSide.style.left = right + noteGap + 'px';
       }
-      const noteTop = main ? boardEl.offsetTop + main.offsetTop + main.offsetHeight / 2 + 'px' : '50%';
-      if (homeNoteSide) homeNoteSide.style.top = noteTop;
-      if (awayNoteSide) awayNoteSide.style.top = noteTop;
-      syncBoardPosition();
     }
+    const noteTop = main ? boardEl.offsetTop + main.offsetTop + main.offsetHeight / 2 + 'px' : '50%';
+    if (homeNoteSide) homeNoteSide.style.top = noteTop;
+    if (awayNoteSide) awayNoteSide.style.top = noteTop;
+    syncBoardPosition();
+  }
+
+  // 점수판 크기 감지(init.js ResizeObserver) 진입점.
+  // 테마 전환 같은 CSS 전환 애니메이션(0.9초) 동안은 점수판 크기가 매 프레임 바뀌어 감지가 매 프레임 온다.
+  // 이때 전체 피팅을 돌리면 캐시 키(보드 rect)가 매번 달라 적중하지 않고, 득점자 줄을 매 프레임 다시 그리며
+  // 강제 레이아웃을 반복한다(2026-10-17, 득점자 있는 상태 CPU 4배 감속에서 russiancup/cl 전환당 460~566ms).
+  // 전환 중에는 위치만 따라가게 하고, 전환이 모두 끝난 뒤 최종 크기로 한 번만 전체 피팅한다.
+  let noteTransitionWait = null;
+  /**
+   * 점수판 안에서 진행 중인 CSS 전환(transition)을 모은다. 무한 반복 keyframe 애니메이션은
+   * 끝나지 않으므로 대상이 아니다.
+   *
+   * @param {HTMLElement} boardEl 점수판 요소.
+   * @returns {Animation[]} 진행 중인 CSSTransition 목록.
+   */
+  function runningBoardTransitions(boardEl) {
+    if (!boardEl.getAnimations || typeof CSSTransition === 'undefined') return [];
+    return boardEl.getAnimations({ subtree: true })
+      .filter(anim => anim instanceof CSSTransition && anim.playState === 'running');
+  }
+  /**
+   * 크기 감지 콜백. 전환 중이면 득점자 박스 위치만 맞추고, 전환이 끝나면 전체 피팅을 한 번 예약한다.
+   * 전환이 아니면(시계 글자 폭 변화 등) 기존처럼 바로 전체 피팅한다.
+   *
+   * @returns {void}
+   */
+  function autoLayoutNotesOnResize() {
+    if (activeNoteEditor) return;
+    const boardEl = $('board');
+    if (!boardEl) return;
+    const transitions = runningBoardTransitions(boardEl);
+    if (!transitions.length) {
+      if (!noteTransitionWait) autoLayoutNotes();
+      return;
+    }
+    positionNoteSides(boardEl, boardEl.querySelector('.scoreboard-main'));
+    if (noteTransitionWait) return;
+    // 기다리는 동안 새 전환이 시작될 수 있어, 끝날 때 다시 확인하고 남아 있으면 그것도 기다린다.
+    const waitAll = list => Promise.allSettled(list.map(anim => anim.finished)).then(() => {
+      const rest = runningBoardTransitions(boardEl);
+      return rest.length ? waitAll(rest) : null;
+    });
+    noteTransitionWait = waitAll(transitions).then(() => {
+      noteTransitionWait = null;
+      autoLayoutNotes();
+    });
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -800,13 +918,43 @@
     }
     return s;
   }
+  let appliedBoardScale = 1;
+  /**
+   * 보드의 자연 높이에 마지막으로 적용한 배율을 곱해 래퍼의 높이를 동기화한다.
+   * 합계·승부차기 빠른 입력 메뉴는 본문 아래에 겹쳐 표시되므로 측정 중 잠시 숨긴다.
+   * 메뉴를 scrollHeight에 포함하면 메뉴를 열기만 해도 아래 패널이 밀려난다.
+   * 높이가 같으면 인라인 스타일을 다시 쓰지 않는다. 배율·슬라이더·위치 전체를
+   * 재적용하지 않으므로 ResizeObserver에서 애니메이션의 중간 높이를 반영할 때도 사용한다.
+   *
+   * @returns {void} boardStageWrap.style.height를 필요할 때만 변경한다.
+   */
+  function syncBoardStageHeight(){
+    // wrap 높이를 실제 축소 높이에 맞게 조정.
+    // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
+    // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
+    const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden])')];
+    quickMenus.forEach(menu => { menu.style.display = 'none'; });
+    const naturalH = boardStageInner.scrollHeight;
+    quickMenus.forEach(menu => { menu.style.display = ''; });
+    const height = (naturalH * appliedBoardScale) + 'px';
+    if (boardStageWrap.style.height !== height) boardStageWrap.style.height = height;
+  }
+  /**
+   * 사용자가 선택한 백분율 배율에 터치 전술판의 화면 폭 제한을 반영한다.
+   * 실제 변환 배율을 저장한 뒤 보드 transform, 래퍼 높이, 슬라이더와 표시값을 맞춘다.
+   * 이어 좌우·중앙 배치와 테마별 경계 픽셀 보정을 수행한다.
+   * 단순 높이 변화는 이 함수 대신 syncBoardStageHeight를 사용해 전체 보정을 반복하지 않는다.
+   *
+   * @param {number} pct 사용자가 선택한 백분율 배율.
+   * @returns {void} 미리보기 배치 및 배율 컨트롤을 갱신한다.
+   */
   function applyBoardScale(pct){
     const s = boardScaleFactor(pct);
+    appliedBoardScale = s;
     boardStageInner.style.transition = 'none';
-    boardStageInner.style.transform = `scale(${s})`;
-    // wrap 높이를 실제 축소 높이에 맞게 조정
-    const naturalH = boardStageInner.scrollHeight;
-    boardStageWrap.style.height = (naturalH * s) + 'px';
+    const transform = `scale(${s})`;
+    if (boardStageInner.style.transform !== transform) boardStageInner.style.transform = transform;
+    syncBoardStageHeight();
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
     syncBoardPosition();
@@ -848,7 +996,56 @@
       flashElement(stage);
     }
     stage.dataset.positionShift = shift / surfaceScale;
-    stage.style.translate = `${shift / surfaceScale}px 0`;
+    const shiftY = boardPixelSnapShiftY(stage, board, surfaceScale);
+    stage.style.translate = `${shift / surfaceScale}px ${shiftY}px`;
+  }
+
+  // 띠 위아래 경계의 가로선을 화면 픽셀에 맞출 테마와 그 선의 굵기(CSS px, 배율 적용 전).
+  // 1px 흰 테두리처럼 얇은 가로선이 띠 경계에 붙은 테마만 대상이다.
+  const BOARD_PIXEL_SNAP_Y_THEMES = { belgian: 1 };
+  /**
+   * 점수판 띠(.scoreboard-main)의 위·아래 경계선이 화면 픽셀에 최대한 걸치도록 미리보기 영역을 세로로 미세 이동할 값을 구한다.
+   * Chrome은 배율 변환 전에 테두리 위치와 굵기를 CSS 정수 px로 반올림하므로, 75%에서 띠 위쪽이 y=31.5처럼
+   * 반 픽셀에 걸리면 1px 테두리(화면 0.75px)가 두 행에 나뉘어 위쪽만 얇고 흐리게 보였다(2026-10-17, 벨기에).
+   * 테마 CSS 값으로는 맞출 수 없어(정수 px로 반올림됨) 반올림되지 않는 translate로 옮긴다.
+   * 띠 높이 x 배율이 화면 정수 px가 아니면(80% 등) 두 선을 동시에 맞출 수 없으므로, 각 선이 한 화면 행에
+   * 칠해지는 비율 중 작은 쪽이 가장 커지는 이동량을 1/16 화면 px 단위로 찾는다(같으면 이동이 작은 쪽).
+   * 이동량은 화면 1px 미만이다.
+   *
+   * @param {HTMLElement} stage 미리보기 영역(#boardStageInner).
+   * @param {HTMLElement} board 점수판 요소.
+   * @param {number} surfaceScale 바깥 영역 배율(stage translate는 이 배율 적용 전 단위).
+   * @returns {number} stage translate의 세로 값(px). 대상 테마가 아니면 0.
+   */
+  function boardPixelSnapShiftY(stage, board, surfaceScale) {
+    const previous = Number(stage.dataset.positionShiftY || 0);
+    const lineWidth = BOARD_PIXEL_SNAP_Y_THEMES[board.dataset.fsmTheme];
+    const main = lineWidth ? board.querySelector('.scoreboard-main') : null;
+    let shiftY = 0;
+    if (main && main.offsetHeight) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = main.getBoundingClientRect();
+      // 화면 픽셀 단위 좌표. 선 굵기는 배율 변환 후 화면 px로 환산한다.
+      const top = (rect.top - previous * surfaceScale) * dpr;
+      const bottom = top + rect.height * dpr;
+      const line = Math.min(1, lineWidth * rect.height / main.offsetHeight * dpr);
+      /** [start, start+line] 구간이 가장 많이 걸친 화면 행에 칠해지는 비율. */
+      const rowCoverage = start => {
+        const edge = Math.floor(start) + 1;
+        return start + line <= edge ? line : Math.max(edge - start, start + line - edge);
+      };
+      let best = 0, bestScore = -1;
+      for (let step = -7; step <= 8; step++) {
+        const delta = step / 16;
+        const score = Math.min(rowCoverage(top + delta), rowCoverage(bottom + delta - line));
+        if (score > bestScore + 1e-6 || (Math.abs(score - bestScore) <= 1e-6 && Math.abs(delta) < Math.abs(best))) {
+          best = delta; bestScore = score;
+        }
+      }
+      shiftY = best / dpr / surfaceScale;
+    }
+    stage.dataset.positionShiftY = shiftY;
+    return shiftY;
   }
   $('boardPosition')?.addEventListener('change', event => {
     state.boardPosition = event.target.value;
@@ -873,13 +1070,16 @@
   window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 75);
 
   if (window.ResizeObserver && boardStageInner) {
-    let scaleFrame = null;
-    new ResizeObserver(() => {
-      if (scaleFrame !== null) return;
-      scaleFrame = requestAnimationFrame(() => {
-        scaleFrame = null;
-        if (boardStageInner.offsetHeight > 0) initBoardScale();
-      });
+    new ResizeObserver(entries => {
+      const size = entries[0]?.contentRect;
+      if (!size || size.height <= 0) return;
+      // 높이 전환은 배율 변경이 아니다. 브라우저가 배치를 계산한 직후 높이만
+      // 반영해 다음 프레임의 전체 배율 재적용과 한 프레임 지연을 피한다.
+      syncBoardStageHeight();
+      // 전환 중 득점자와 팀 영역의 폭도 바뀔 수 있어 기존 위치·픽셀 보정은 유지한다.
+      syncBoardPosition();
+      window.syncBelarusBoundaryPixelGrid?.();
+      window.syncEkstraklasaBoundaryPixelGrid?.();
     }).observe(boardStageInner);
   }
 

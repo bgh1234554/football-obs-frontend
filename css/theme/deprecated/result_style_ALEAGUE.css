@@ -1,0 +1,70 @@
+@import url('./result_style_LIGUE1.css');
+
+.fsm-board .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
+.fsm-board .div-background { background: #ffffff; z-index: -1; }
+.fsm-board .teams-left,
+.fsm-board .teams-right { position: relative; background: #ffffff; }
+.fsm-board .team-name { color: #15143B; }
+
+/* 각 팀의 띠를 화면 왼쪽 primary, 오른쪽 number 순서로 나눕니다. */
+#board.fsm-board[data-fsm-theme="aleague"] :is(.teams-left, .teams-right) { box-shadow: none; }
+.fsm-board .teams-left::after,
+.fsm-board .teams-right::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -5px;
+    height: 5px;
+    background: linear-gradient(to right, var(--fsm-primary-color) 50%, var(--fsm-number-color) 50%);
+    pointer-events: none;
+}
+.fsm-board .teams-left::after { right: -5px; }
+.fsm-board .teams-right::after { left: -5px; }
+.fsm-board .team-color { display: none; }
+
+.fsm-board .team-logo { width: 80px; border: 0; background: transparent; overflow: hidden; z-index: 2; }
+.fsm-board #team-logo-left { clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%); }
+.fsm-board #team-logo-right { clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
+
+#board.fsm-board[data-fsm-theme="aleague"] :is(#team-score-left, #team-score-right) {
+    background: #141993;
+    color: #ffffff;
+}
+#board.fsm-board[data-fsm-theme="aleague"] #team-score-left { clip-path: circle(var(--cnl-radius) at var(--cnl-radius) 24px); }
+#board.fsm-board[data-fsm-theme="aleague"] #team-score-right { clip-path: circle(var(--cnl-radius) at calc(50px - var(--cnl-radius)) 24px); }
+
+#board.fsm-board[data-fsm-theme="aleague"] .score-div {
+    position: relative;
+    width: 64px;
+    height: 48px;
+    background: #141993;
+    z-index: 3;
+    /* 하단은 본체에 맞추고 위쪽으로만 로고 돌출을 허용합니다. */
+    clip-path: inset(-30px 0 0);
+}
+.fsm-board .epl-lion {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    /* 원본 비율로 박스까지 맞춰 contain 여백을 없애고 실제 로고 높이를 약 5px 키웁니다. */
+    width: calc(62px * 22.98 / 23.24);
+    height: 62px;
+    padding: 0;
+    object-fit: contain;
+}
+
+.fsm-board .time { background: #3640CD; color: #ffffff; }
+.fsm-board .extra-time { background: #D84867; color: #ffffff; }
+
+#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] :is(#team-score-left, #team-score-right) { clip-path: none; }
+#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] .total-score {
+    min-width: 28px;
+    padding: 0 2px;
+    font-size: 20px;
+    background: #141993;
+    color: #ffffff;
+}
+#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { clip-path: circle(var(--cnl-radius) at var(--cnl-radius) 24px); }
+#board.fsm-board[data-fsm-theme="aleague"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { clip-path: circle(var(--cnl-radius) at calc(100% - var(--cnl-radius)) 24px); }

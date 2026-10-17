@@ -267,6 +267,147 @@ async function testResolutionPersistence(page) {
   console.log('PASS: FHD/QHD/4K/tablet aspect ratios, combined DPI changes, 30 reloads, double-click reset persistence');
 }
 
+// 글꼴과 가용 높이가 바뀌어도 스탯은 잘리지 않는 최대 행 수를 사용한다.
+async function testStatsCapacity(page) {
+  await page.evaluate(() => activatePage('main-small'));
+  await frames(page);
+  const results = await page.evaluate(() => {
+    const original = document.querySelector('.layout-small [data-stat-panel]');
+    const panel = original.cloneNode(false);
+    original.parentElement.appendChild(panel);
+    Object.assign(panel.style, { display: 'flex', flexDirection: 'column', flex: 'none', width: '300px' });
+    const rows = Array.from({ length: 24 }, (_, i) => ({ label: `스탯 ${i}`, homeVal: i, awayVal: 24 - i }));
+    const results = [];
+    try {
+      for (const height of [60, 100, 179.5, 180, 300, 480, 800]) {
+        for (const font of [10, 12, 12.5, 18, 24]) {
+          for (const reserveControls of [false, true]) {
+            panel.style.height = `${height}px`;
+            panel.style.setProperty('--st-name-base-size', `${font}px`);
+            panel.innerHTML = '<div class="st-title-bar">경기 스탯</div>';
+            const count = stComputeItemsPerPage(panel, rows, null, { reserveControls });
+            const wrap = document.createElement('div');
+            wrap.className = 'st-wrap';
+            const body = document.createElement('div');
+            body.className = 'st-page';
+            wrap.appendChild(body);
+            if (reserveControls) wrap.appendChild(stCreateControlsProbe());
+            panel.appendChild(wrap);
+            const bg = teamPanelBackground(panel);
+            rows.slice(0, count).forEach(row => body.appendChild(stCreateRow(row, null, bg)));
+            const fits = body.scrollHeight <= body.clientHeight + 0.5;
+            if (count < rows.length) body.appendChild(stCreateRow(rows[count], null, bg));
+            const maximal = count === rows.length || body.scrollHeight > body.clientHeight + 0.5;
+            results.push({ height, font, reserveControls, count, fits, maximal });
+          }
+        }
+      }
+    } finally { panel.remove(); }
+    return results;
+  });
+  for (const result of results) {
+    assert.ok(result.count >= 1, JSON.stringify(result));
+    assert.ok(result.fits || result.count === 1, JSON.stringify(result));
+    assert.ok(result.maximal, JSON.stringify(result));
+  }
+
+  // 같은 프레임의 여러 크기 보정 요청은 한 번만 렌더하고 페이지 내용은 유지한다.
+  const fixture = JSON.parse(fs.readFileSync(path.join(root, 'json', 'juveparma.json'), 'utf8').replace(/^\uFEFF/, ''));
+  await page.evaluate(data => {
+    _lpStatCycle.mode = 'stats';
+    applyStatsPanel(data);
+    stResetAllPanelPages();
+    stRerenderActivePanels();
+  }, fixture);
+  await frames(page);
+  const reuse = await page.evaluate(async () => {
+    const panel = document.querySelector('.page.active [data-stat-panel]');
+    const before = panel.innerHTML;
+    const render = window.stRenderPanel;
+    let calls = 0;
+    window.stRenderPanel = function (...args) {
+      if (args[0] === panel) calls++;
+      return render.apply(this, args);
+    };
+    try {
+      stRerenderActivePanels();
+      stRerenderActivePanels();
+      lpStatUpdateVisibility();
+      stRerenderActivePanels();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return { calls, unchanged: before === panel.innerHTML };
+    } finally {
+      window.stRenderPanel = render;
+    }
+  });
+  assert.equal(reuse.calls, 1, 'same-frame stats requests render once');
+  assert.ok(reuse.unchanged, 'coalesced stats render preserves rows and controls');
+
+  // 반복 렌더는 실측을 재사용하되 글꼴·행 내용 변경은 다시 측정해야 한다.
+  const capacityReuse = await page.evaluate(() => {
+    const panel = document.querySelector('.page.active [data-stat-panel]');
+    const append = Element.prototype.appendChild;
+    let probes = 0;
+    Element.prototype.appendChild = function (node) {
+      if (this === panel && node.classList?.contains('st-wrap') && node.style.visibility === 'hidden') probes++;
+      return append.call(this, node);
+    };
+    const font = panel.style.getPropertyValue('--st-name-base-size');
+    try {
+      stRenderPanel(panel, statsLastFixtureData);
+      const repeated = probes;
+      probes = 0;
+      panel.style.setProperty('--st-name-base-size', '21px');
+      stRenderPanel(panel, statsLastFixtureData);
+      const changedFont = probes;
+      probes = 0;
+      const data = structuredClone(statsLastFixtureData);
+      data.teamStats[0].totalShots += 1;
+      stRenderPanel(panel, data);
+      return { repeated, changedFont, changedData: probes };
+    } finally {
+      Element.prototype.appendChild = append;
+      if (font) panel.style.setProperty('--st-name-base-size', font);
+      else panel.style.removeProperty('--st-name-base-size');
+      stRenderPanel(panel, statsLastFixtureData);
+    }
+  });
+  assert.equal(capacityReuse.repeated, 0, 'unchanged stats capacity avoids DOM measurement');
+  assert.ok(capacityReuse.changedFont > 0, 'stats font change invalidates capacity');
+  assert.ok(capacityReuse.changedData > 0, 'stats data change invalidates capacity');
+
+  // 실제 버튼과 타이머를 통해 페이지 이동·일시정지·재생 계약을 확인한다.
+  await page.evaluate(() => {
+    activatePage('main-big');
+    _lpStatCycle.mode = 'stats';
+    lpStatUpdateVisibility();
+    setSetting('statsAutoSwipe', 'on');
+    setSetting('statsAutoSwipeSec', 2.5);
+    stResetAllPanelPages();
+    applyStatsPanel(statsLastFixtureData);
+  });
+  await frames(page);
+  const statsPanel = page.locator('.page.active [data-stat-panel]');
+  await statsPanel.locator('.st-pause').click();
+  const activeDot = () => statsPanel.locator('.st-dot.is-active').evaluate(el => [...el.parentElement.children].indexOf(el));
+  const firstPage = await activeDot();
+  await statsPanel.locator('.st-arrow-next').click();
+  assert.notEqual(await activeDot(), firstPage, 'next button changes stats page');
+  await statsPanel.locator('.st-arrow-prev').click();
+  assert.equal(await activeDot(), firstPage, 'previous button restores stats page');
+  await page.waitForTimeout(2800);
+  assert.equal(await activeDot(), firstPage, 'paused stats page stays still');
+  await statsPanel.locator('.st-pause').click();
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('.page.active [data-stat-panel]');
+    return [...panel.querySelectorAll('.st-dot')].findIndex(dot => dot.classList.contains('is-active')) !== 0;
+  }, null, { timeout: 6000 });
+  await page.evaluate(() => {
+    setSetting('statsAutoSwipe', 'off');
+    applyStatsPanel(statsLastFixtureData);
+  });
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -296,6 +437,7 @@ async function testResolutionPersistence(page) {
       await testDrag(page, dpr);
       if (dpr === 1) await testResolutionPersistence(page);
       await testSmallBenchHeight(page, dpr);
+      if (dpr === 1) await testStatsCapacity(page);
       // 별도의 이전 테마 테스트가 삭제된 css/theme 경로를 참조합니다.
       // 외부 라이브러리와 API는 차단하며, 기존 jQuery 어댑터는
       // 이 테스트 범위에서 제외합니다. 핵심 점수 렌더링, 애니메이션, 패널 크기 조정은 정상 실행합니다.

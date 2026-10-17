@@ -193,8 +193,25 @@
     if (clockEl.closest('.fsm-board')) {
       const style = getComputedStyle(clockEl);
       clockEditor.style.setProperty('--fsm-clock-background', style.background);
+      // 가상 요소의 배경을 프리셋 메뉴에도 전달합니다.
+      const shapeStyle = getComputedStyle(clockEl, '::before');
+      const usesShapeBackground = style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.backgroundImage === 'none'
+        && shapeStyle.content !== 'none' && shapeStyle.content !== 'normal';
+      clockEditor.style.setProperty('--fsm-clock-menu-background', usesShapeBackground ? shapeStyle.background : style.background);
       clockEditor.style.setProperty('--fsm-clock-color', style.color);
       clockEditor.style.setProperty('--fsm-clock-width', clockEl.offsetWidth + 'px');
+      if (clockEl.closest('[data-fsm-theme="eliteserien"]')) {
+        // 편집 전후 숫자 폭과 기준선을 같게 유지하고 확인 버튼은 바깥에 둡니다.
+        ceMin.value = String(m).padStart(2, '0');
+        ceSec.value = String(s).padStart(2, '0');
+        const context = document.createElement('canvas').getContext('2d');
+        context.font = style.font;
+        clockEditor.style.setProperty('--clock-minute-width', context.measureText(ceMin.value).width + 'px');
+        clockEditor.style.setProperty('--clock-second-width', context.measureText(ceSec.value).width + 'px');
+        clockEditor.style.setProperty('--clock-colon-width', context.measureText(':').width + 'px');
+        clockEditor.style.setProperty('--clock-padding-top', style.paddingTop);
+        clockEditor.style.setProperty('--clock-padding-bottom', style.paddingBottom);
+      }
       clockEl.classList.add('is-editing');
     } else {
       clockEl.style.display = 'none';

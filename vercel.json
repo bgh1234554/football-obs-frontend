@@ -6,5 +6,19 @@
     { "source": "/schedule", "destination": "/overlay_dashboard.html" },
     { "source": "/tactics", "destination": "/overlay_dashboard.html" },
     { "source": "/about", "destination": "/overlay_dashboard.html" }
+  ],
+  "headers": [
+    {
+      "source": "/resources/fonts/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/css/theme/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=60, stale-while-revalidate=86400" }
+      ]
+    }
   ]
 }

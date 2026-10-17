@@ -10,8 +10,10 @@ const themes=process.env.PSO_THEMES?.split(',') || await page.evaluate(()=>Objec
 for(const theme of themes) for(const scale of [50,75,100,150]) {
 await page.evaluate(({theme,scale})=>{state.manualMode=true;state.half='PK';state.pk={home:[],away:[]};state.fsmTheme=theme;autoApplyTemplateByLeagueId(39,null);state.boardScale=scale;render();applyBoardScale(scale)}, {theme,scale});
 await page.waitForFunction(()=>!pendingThemeLink);
+const closedHeight=await page.evaluate(()=>document.getElementById('boardStageWrap').getBoundingClientRect().height);
 await page.locator('.pso-main').click();
 assert(await page.locator('#boardPsoControls').isVisible(),theme);
+/* 열린 메뉴는 점수판 영역 높이에 들어가지 않는다(다시 그린 뒤에도). */await page.evaluate(()=>fsmBoardRender());assert.equal(await page.evaluate(()=>document.getElementById('boardStageWrap').getBoundingClientRect().height),closedHeight,theme+' open menu must not grow board area');
 await page.locator('.pso-main').focus();
 await page.locator('[data-pso-action=pkHomeGoal]').focus();
 assert(await page.locator('[data-pso-action=pkHomeGoal]').evaluate(n=>n===document.activeElement),theme+' focus enters controls');
@@ -25,7 +27,7 @@ await page.locator('#psoOutsideFocus').evaluate(n=>n.remove());
 await page.locator('.pso-main').click();
 assert.equal(await page.locator('.pso-main').getAttribute('aria-expanded'),'true');
 assert(await page.locator('#boardPsoControls .kbd').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).color==='rgb(255, 255, 255)')),theme+' keycap color');
-assert(await page.locator('#boardPsoControls').evaluate(n=>{const p=getComputedStyle(document.querySelector('.pso-main')),m=getComputedStyle(n);return m.backgroundColor===p.color && m.color===p.backgroundColor}),theme+' inverted palette');
+/* 그라데이션 배경 테마(키프로스 등)는 배경색이 투명이므로 PSO 팔레트 변수 색과 비교한다. */assert(await page.locator('#boardPsoControls').evaluate(n=>{const p=getComputedStyle(document.querySelector('.pso-main')),m=getComputedStyle(n);const probe=document.createElement('span');probe.style.color='var(--fsm-pso-background)';n.append(probe);const paletteBg=getComputedStyle(probe).color;probe.remove();const bg=p.backgroundColor==='rgba(0, 0, 0, 0)'?paletteBg:p.backgroundColor;return m.backgroundColor===p.color && m.color===bg}),theme+' inverted palette');
 for(const id of ['pkHomeGoal','pkHomeMiss','pkAwayGoal','pkAwayMiss'])await page.locator(`[data-pso-action=${id}]`).click();
 assert.deepEqual(await page.evaluate(()=>state.pk),{home:['G','M'],away:['G','M']});
 const geometry=await page.evaluate(()=>{

@@ -104,6 +104,23 @@ const root = path.resolve(__dirname, '../..');
       }
     }
     await page.setViewportSize({width:1920,height:1080});
+    // 벨기에 띠의 1px 흰 테두리: 배율마다 위·아래 선이 반 픽셀에 걸려 한쪽만 얇아지지 않게 세로 미세 이동(render.js boardPixelSnapShiftY).
+    // 75%는 띠 높이가 화면 정수 px라 두 경계 모두 화면 픽셀에 맞고, 다른 테마는 세로 이동이 없어야 한다.
+    await page.evaluate(()=>{state.boardPosition='center';state.notes={home:'',away:''};render();applyTheme('belgian',null);});
+    await page.waitForFunction(()=>!pendingThemeLink);
+    for (const pct of [75,70,80,90,100]) {
+      const r=await page.evaluate(pct=>{state.boardScale=pct;applyBoardScale(pct);
+        const m=document.querySelector('.scoreboard-main').getBoundingClientRect();
+        return {top:m.top,bottom:m.bottom,shiftY:Number(document.getElementById('boardStageInner').dataset.positionShiftY)};},pct);
+      assert(Math.abs(r.shiftY)<1,`belgian ${pct}% shift stays under one pixel ${JSON.stringify(r)}`);
+      if (pct===75||pct===100) {
+        assert(Math.abs(r.top-Math.round(r.top))<.01&&Math.abs(r.bottom-Math.round(r.bottom))<.01,`belgian ${pct}% strip edges on pixels ${JSON.stringify(r)}`);
+      }
+    }
+    await page.evaluate(()=>{applyTheme('pl',null);});
+    await page.waitForFunction(()=>!pendingThemeLink);
+    assert.equal(await page.evaluate(()=>{state.boardScale=75;applyBoardScale(75);return Number(document.getElementById('boardStageInner').dataset.positionShiftY);}),0,'other themes have no vertical shift');
+    console.log('PASS belgian outline pixel snap');
     await page.selectOption('#boardPosition','left',{force:true});
     await page.reload();
     await page.waitForFunction(()=>document.body.dataset.boardPosition==='left');

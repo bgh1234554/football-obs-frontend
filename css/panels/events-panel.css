@@ -850,3 +850,35 @@
   animation: none;
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px var(--ev-new-glow);
 }
+
+/* 신규 이벤트 화면 중앙 하단 표시 (js/panels/event-spotlight.js).
+   너비는 이벤트 패널 칼럼 너비(JS가 지정), 배율은 --ev-spotlight-scale. 아랫변을 고정하고 위로 커진다. */
+.ev-spotlight {
+  --panel-ui-rgb: var(--info-panel-rgb, 11, 18, 32);
+  position: fixed; left: 50%; z-index: 900; pointer-events: none;
+  /* 바깥 패널 테두리 없이 이벤트 행만 보이게 한다. 행 배경이 반투명이라 같은 모양(모서리 6px)의 패널 색만 뒤에 깐다. */
+  box-sizing: border-box; padding: 0;
+  /* 다른 패널 위에 겹쳐 뜨므로 패널 투명도 설정과 관계없이 불투명하게 깐다(뒤 패널 글자가 비치지 않게). */
+  background: rgb(var(--panel-ui-rgb));
+  border: none; border-radius: 6px;
+  transform-origin: bottom center;
+  transform: translateX(-50%) scale(var(--ev-spotlight-scale, 1)) translateY(12px);
+  opacity: 0;
+  transition: opacity 320ms ease, transform 320ms cubic-bezier(.22,.78,.2,1);
+}
+.ev-spotlight.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) scale(var(--ev-spotlight-scale, 1)) translateY(0);
+}
+/* 점수판 아래 위치: 윗변을 점수판 밑에 고정하고 아래로 커지며, 위에서 내려오듯 나타난다. */
+.ev-spotlight.is-board { transform-origin: top center; transform: translateX(-50%) scale(var(--ev-spotlight-scale, 1)) translateY(-12px); }
+.ev-spotlight.is-board.is-visible { transform: translateX(-50%) scale(var(--ev-spotlight-scale, 1)) translateY(0); }
+.ev-spotlight[hidden] { display: none; }
+.ev-spotlight .ev-list { overflow: visible; padding: 0; margin: 0; }
+.ev-spotlight .ev-row { cursor: default; }
+/* 밝은 배경화면 위에서도 경계가 보이도록 왼쪽 색 막대 쪽만 빼고 1px 테두리를 두른다.
+   행의 새 이벤트 빛 효과(box-shadow)와 겹치지 않게 테두리는 위에 덮는 가상 요소로 그린다. */
+.ev-spotlight::after {
+  content: ''; position: absolute; inset: 0 0 0 4px; pointer-events: none; /* 왼쪽 4px은 색 막대(.ev-bar) */
+  border: 1px solid #A9A9A9; border-left: none; border-radius: 0 6px 6px 0;
+}
