@@ -28,6 +28,15 @@ await page.evaluate(logo=>syncScoreboardStateFromStorage(JSON.stringify({...stat
 assert.equal(await page.locator('.epl-lion').getAttribute('src'),'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RPL.svg');assert.equal(await page.evaluate(()=>_currentTheme),'rpl');// 이미 로드한 글꼴을 쓰는 테마로 바꿀 때 글꼴을 다시 로딩(loadingdone -> 점수판 재렌더)하지 않는다.
 const fontReloads=await page.evaluate(async()=>{let n=0;const count=()=>n++;document.fonts.addEventListener('loadingdone',count);for(const t of ['pl','rpl','pl']){applyTheme(t,null);await new Promise(r=>{const w=()=>pendingThemeLink?requestAnimationFrame(w):setTimeout(r,300);w();});}document.fonts.removeEventListener('loadingdone',count);return n;});
 assert.equal(fontReloads,0,'theme switches reuse the shared font faces');assert.deepEqual(errors,[]);
+// 테마 CSS가 준비돼도 무거운 프레임이 이어지는 동안에는 교체하지 않고, 프레임이 가벼워지면 교체한다(fsm-board.js whenBoardFramesSettle).
+// 계속 바쁘더라도 600ms 안에는 교체한다. 경기 로딩 직후 작업과 전환 애니메이션이 겹쳐 끊기던 문제(2026-10-17).
+{const busy=await page.evaluate(async()=>{const block=ms=>{const end=performance.now()+ms;while(performance.now()<end);};
+const run=async(frames)=>{let n=0;const heavy=()=>{block(80);if(++n<frames)requestAnimationFrame(heavy);};requestAnimationFrame(heavy);const t=performance.now();applyTheme(_currentTheme==='pl'?'rpl':'pl',null);
+let appliedDuringBusy=false;await new Promise(r=>{const w=()=>{if(!pendingThemeLink){r();return;}requestAnimationFrame(w);};w();});const waited=performance.now()-t;appliedDuringBusy=n<frames;return {waited,appliedDuringBusy};};
+const short=await run(4);await new Promise(r=>setTimeout(r,300));const long=await run(40);await new Promise(r=>setTimeout(r,3000));return {short,long};});
+assert.equal(busy.short.appliedDuringBusy,false,`swap waits for heavy frames to pass ${JSON.stringify(busy)}`);
+assert(busy.long.appliedDuringBusy&&busy.long.waited<1000,`swap is not delayed beyond the cap while busy ${JSON.stringify(busy)}`);}
+console.log('PASS theme swap waits for heavy frames, capped');
 // 배포 화면(localhost가 아닌 주소)은 한가할 때 모든 테마 CSS를 rel=prefetch로 미리 받아 두고 적용하지는 않는다(fsm-board.js prefetchThemeStylesheets).
 // 목록은 applyTheme의 changeCSS 경로 전체와 같아야 하고, 로컬(localhost)은 미리 받지 않는다.
 assert.equal(await page.locator('link[rel="prefetch"]').count(),0,'localhost skips theme prefetch');

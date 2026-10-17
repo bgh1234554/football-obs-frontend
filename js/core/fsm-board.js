@@ -390,30 +390,9 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
   newlink.onload = () => {
     if (pendingThemeLink !== newlink) return;
     newlink.onload = newlink.onerror = null;
-    // 목적 테마의 전환 속성을 CSS 교체 전에 준비해야 크기/위치 전환이
-    // 스타일 계산 타이밍에 따라 생략되지 않습니다.
-    const board = document.querySelector('.fsm-board');
-    _currentTheme = requestedTheme;
-    if (board) board.dataset.fsmTheme = _currentTheme;
-    oldlink?.remove();
-    newlink.id = 'fsm-theme-link';
-    newlink.media = 'all';
-    oldlink = newlink;
-    pendingThemeLink = null;
-    requestAnimationFrame(() => {
-      window.fsmBoardRender();
-      // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않습니다.
-      // 불투명한 배경끼리의 색상 전환과 다른 전환 효과는 그대로 유지합니다.
-      document.querySelectorAll('.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div)')
-        .forEach(node => node.getAnimations().forEach(animation => {
-          if (animation.transitionProperty !== 'background-color') return;
-          const frames = animation.effect.getKeyframes();
-          const target = frames[frames.length - 1]?.backgroundColor;
-          if (target === 'transparent' || target === 'rgba(0, 0, 0, 0)') animation.finish();
-        }));
-      // 실제 글꼴 로딩 완료는 공통 loadingdone 처리에서 다시 그린다.
-      // 이미 준비된 fonts.ready로 같은 전환을 한 번 더 갱신하지 않는다.
-    });
+    // CSS가 준비돼도 경기 로딩 직후의 무거운 프레임이 지나간 뒤에 교체해 전환 애니메이션이 그 프레임과 겹치지 않게 한다.
+    // 기다리는 동안에도 pendingThemeLink로 남아 있어 다른 테마 요청이 오면 이 교체는 취소된다.
+    whenBoardFramesSettle(() => { if (pendingThemeLink === newlink) swapThemeLink(newlink, requestedTheme); });
   };
   newlink.onerror = () => {
     if (pendingThemeLink !== newlink) return;
@@ -426,6 +405,68 @@ function changeCSS(cssFile, requestedTheme = _currentTheme) {
   // 기존 link 바로 뒤에 넣어 다른 스타일시트와의 우선순위도 유지한다.
   if (oldlink) oldlink.after(newlink);
   else document.head.appendChild(newlink);
+}
+
+/**
+ * 메인 스레드가 한가해질 때(연속 두 프레임이 THEME_SWAP_CALM_FRAME_MS 이내로 그려질 때) callback을 실행한다.
+ * 경기를 불러오며 테마가 바뀌면, 페이지 전환으로 처음 보이는 라인업 이름 맞추기(약 114ms) 같은 무거운 작업이
+ * 테마 교체와 같은 프레임에 겹쳐 0.9초 전환 애니메이션의 첫 프레임부터 끊겼다(2026-10-17, 사용자 실측 241ms 프레임).
+ * 전환 시작만 그 뒤로 미루며 애니메이션 자체는 바꾸지 않는다. 계속 바쁘더라도 THEME_SWAP_MAX_WAIT_MS 안에는 실행한다.
+ * 탭이 숨어 있어 requestAnimationFrame이 멈춰도 같은 시간 제한으로 실행된다.
+ *
+ * @param {Function} callback 실행할 함수(한 번만 호출).
+ * @returns {void}
+ */
+const THEME_SWAP_CALM_FRAME_MS = 40;
+const THEME_SWAP_MAX_WAIT_MS = 600;
+function whenBoardFramesSettle(callback) {
+  let done = false, last = performance.now(), calm = 0;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    callback();
+  };
+  const timer = setTimeout(finish, THEME_SWAP_MAX_WAIT_MS);
+  const tick = now => {
+    if (done) return;
+    calm = now - last <= THEME_SWAP_CALM_FRAME_MS ? calm + 1 : 0;
+    last = now;
+    if (calm >= 2) finish(); else requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/**
+ * 로딩이 끝난 테마 link를 적용하고 다음 프레임에 점수판 배치를 갱신한다.
+ * @param {HTMLLinkElement} newlink 적용할 테마 link.
+ * @param {string} requestedTheme 요청한 테마 키입니다.
+ */
+function swapThemeLink(newlink, requestedTheme) {
+  // 목적 테마의 전환 속성을 CSS 교체 전에 준비해야 크기/위치 전환이
+  // 스타일 계산 타이밍에 따라 생략되지 않습니다.
+  const board = document.querySelector('.fsm-board');
+  _currentTheme = requestedTheme;
+  if (board) board.dataset.fsmTheme = _currentTheme;
+  oldlink?.remove();
+  newlink.id = 'fsm-theme-link';
+  newlink.media = 'all';
+  oldlink = newlink;
+  pendingThemeLink = null;
+  requestAnimationFrame(() => {
+    window.fsmBoardRender();
+    // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않습니다.
+    // 불투명한 배경끼리의 색상 전환과 다른 전환 효과는 그대로 유지합니다.
+    document.querySelectorAll('.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div)')
+      .forEach(node => node.getAnimations().forEach(animation => {
+        if (animation.transitionProperty !== 'background-color') return;
+        const frames = animation.effect.getKeyframes();
+        const target = frames[frames.length - 1]?.backgroundColor;
+        if (target === 'transparent' || target === 'rgba(0, 0, 0, 0)') animation.finish();
+      }));
+    // 실제 글꼴 로딩 완료는 공통 loadingdone 처리에서 다시 그린다.
+    // 이미 준비된 fonts.ready로 같은 전환을 한 번 더 갱신하지 않는다.
+  });
 }
 
 let fsmChromaSheet = null;
