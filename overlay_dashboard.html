@@ -1480,6 +1480,8 @@
 <script src="js/core/state.js"></script>
 <!-- 점수판 render가 LogoTrim을 사용하므로 로고 경계 분석·캐시 모듈을 먼저 로드한다. -->
 <script src="js/core/logo-fill-exceptions.js"></script>
+<!-- 로고 픽셀 분석 공용 함수. logo-trim.js와 Web Worker(logo-trim-worker.js)가 함께 쓴다. -->
+<script src="js/core/logo-trim-analysis.js"></script>
 <script src="js/core/logo-trim.js"></script>
 <script src="js/core/scoreboard-logo-contrast.js"></script>
 <script src="js/core/team-nicknames.js"></script>

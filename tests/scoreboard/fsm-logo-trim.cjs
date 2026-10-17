@@ -91,5 +91,48 @@ const { openPage, settle } = require('../tactics/helpers');
       }
       console.log('PASS full-bleed logo fit across all themes', width, height);
     }
+    // 로고 픽셀 분석은 Web Worker(logo-trim-worker.js)에서 한다(2026-10-17, 처음 보는 로고마다 메인 스레드가
+    // 약 100ms 멈춰 테마 전환이 끊기던 문제). PNG는 Worker가 직접 받아 디코딩하고, SVG는 메인 스레드가 그린
+    // 비트맵을 넘긴다. 두 경우 모두 메인 스레드 경로와 같은 경계·채우기 마스크가 나와야 하고 실패 경고가 없어야 한다.
+    const workerWarnings = [];
+    page.on('console', message => { if (message.text().includes('Worker 분석 실패')) workerWarnings.push(message.text()); });
+    const ring = await page.evaluate(() => {
+      const c = document.createElement('canvas'); c.width = 120; c.height = 80;
+      const g = c.getContext('2d'); g.fillStyle = '#c00'; g.fillRect(20, 10, 80, 60); g.clearRect(35, 22, 50, 36);
+      return c.toDataURL('image/png');
+    });
+    const svgRing = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><path fill-rule="evenodd" fill="#c00" d="M20 10h80v60H20zM35 22v36h50V22z"/></svg>');
+    for (const logo of [ring, svgRing]) {
+      const result = await page.evaluate(async logo => {
+        LogoTrim.clearCache();
+        const img = document.createElement('img');
+        await new Promise(resolve => { LogoTrim.render(img, logo, ready => { if (ready) resolve(); }); setTimeout(resolve, 8000); });
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const pixels = async src => {
+          const bitmap = await createImageBitmap(await (await fetch(src)).blob());
+          const c = new OffscreenCanvas(bitmap.width, bitmap.height), g = c.getContext('2d');
+          g.drawImage(bitmap, 0, 0);
+          return Array.from(g.getImageData(0, 0, bitmap.width, bitmap.height).data);
+        };
+        const fill = img.style.backgroundImage.match(/url\("(.*)"\)/)?.[1];
+        // 메인 스레드 경로와 같은 순서(그리기 -> 경계 -> 채우기 마스크)로 기대값을 만든다.
+        const source = new Image(); source.src = logo; await source.decode();
+        const svg = logo.startsWith('data:image/svg');
+        const scale = svg ? Math.max(1, 1024 / Math.max(source.naturalWidth, source.naturalHeight)) : 1;
+        const width = Math.ceil(source.naturalWidth * scale), height = Math.ceil(source.naturalHeight * scale);
+        const draw = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(source, 0, 0, w, h); return g.getImageData(0, 0, w, h); };
+        const bounds = LogoTrimAnalysis.findBounds(draw(width, height));
+        const geometry = LogoTrimAnalysis.fillGeometry(bounds);
+        const mask = LogoTrimAnalysis.buildFillMask(draw(geometry.width, geometry.height), geometry.minArea);
+        return { bounds: LogoTrim.getCachedBounds(logo), expectedBounds: bounds,
+          fillPixels: fill ? await pixels(fill) : null, expectedFill: mask ? Array.from(mask.data) : null };
+      }, logo);
+      assert.deepEqual(result.bounds, result.expectedBounds, 'worker bounds match main-thread analysis');
+      assert(result.expectedFill, 'ring logo has an enclosed fill area');
+      assert.deepEqual(result.fillPixels, result.expectedFill, 'worker fill mask matches main-thread analysis');
+    }
+    assert(page.workers().some(worker => worker.url().endsWith('/js/core/logo-trim-worker.js')), 'logo analysis runs in a Web Worker');
+    assert.deepEqual(workerWarnings, [], 'worker analysis did not fall back to the main thread');
+    console.log('PASS worker logo analysis matches main-thread result (png, svg)');
   } finally { await browser.close(); rmSync(screenshotDir, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
