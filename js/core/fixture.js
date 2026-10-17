@@ -255,6 +255,7 @@
       });
     }
     closeOverlay();
+    if (!result) return;
     const target = (typeof getSetting === 'function' && getSetting('mainPage') === 'small') ? 'main-small' : 'main-big';
     if (typeof window.activatePage === 'function') window.activatePage(target);
   }
@@ -864,6 +865,12 @@
     if (clearFixtureId) {
       setFixtureId(null);
       activeFixtureId = null;
+      // 불러올 경기 없이 메인 화면이 비면 일정에서 다음 경기를 고를 수 있게 한다.
+      const page = document.querySelector('.page.active')?.id;
+      if (!state.manualMode && !window.__POPOUT_MODE__
+        && (page === 'page-main-big' || page === 'page-main-small')) {
+        window.activatePage?.('schedule', { historyMode: 'replace' });
+      }
     }
 
     if (state.manualMode) {
@@ -1613,7 +1620,9 @@
         // 캐시 복원 후에도 폴링 시작 (stale 방지)
         schedulePoll(data);
       });
-    } catch {}
+    } catch {
+      resetFixtureDrivenState({ clearFixtureId: true, clearCache: true, statusMessage: '경기 선택 대기' });
+    }
   });
 
   /**
