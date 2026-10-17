@@ -996,7 +996,56 @@
       flashElement(stage);
     }
     stage.dataset.positionShift = shift / surfaceScale;
-    stage.style.translate = `${shift / surfaceScale}px 0`;
+    const shiftY = boardPixelSnapShiftY(stage, board, surfaceScale);
+    stage.style.translate = `${shift / surfaceScale}px ${shiftY}px`;
+  }
+
+  // 띠 위아래 경계의 가로선을 화면 픽셀에 맞출 테마와 그 선의 굵기(CSS px, 배율 적용 전).
+  // 1px 흰 테두리처럼 얇은 가로선이 띠 경계에 붙은 테마만 대상이다.
+  const BOARD_PIXEL_SNAP_Y_THEMES = { belgian: 1 };
+  /**
+   * 점수판 띠(.scoreboard-main)의 위·아래 경계선이 화면 픽셀에 최대한 걸치도록 미리보기 영역을 세로로 미세 이동할 값을 구한다.
+   * Chrome은 배율 변환 전에 테두리 위치와 굵기를 CSS 정수 px로 반올림하므로, 75%에서 띠 위쪽이 y=31.5처럼
+   * 반 픽셀에 걸리면 1px 테두리(화면 0.75px)가 두 행에 나뉘어 위쪽만 얇고 흐리게 보였다(2026-10-17, 벨기에).
+   * 테마 CSS 값으로는 맞출 수 없어(정수 px로 반올림됨) 반올림되지 않는 translate로 옮긴다.
+   * 띠 높이 x 배율이 화면 정수 px가 아니면(80% 등) 두 선을 동시에 맞출 수 없으므로, 각 선이 한 화면 행에
+   * 칠해지는 비율 중 작은 쪽이 가장 커지는 이동량을 1/16 화면 px 단위로 찾는다(같으면 이동이 작은 쪽).
+   * 이동량은 화면 1px 미만이다.
+   *
+   * @param {HTMLElement} stage 미리보기 영역(#boardStageInner).
+   * @param {HTMLElement} board 점수판 요소.
+   * @param {number} surfaceScale 바깥 영역 배율(stage translate는 이 배율 적용 전 단위).
+   * @returns {number} stage translate의 세로 값(px). 대상 테마가 아니면 0.
+   */
+  function boardPixelSnapShiftY(stage, board, surfaceScale) {
+    const previous = Number(stage.dataset.positionShiftY || 0);
+    const lineWidth = BOARD_PIXEL_SNAP_Y_THEMES[board.dataset.fsmTheme];
+    const main = lineWidth ? board.querySelector('.scoreboard-main') : null;
+    let shiftY = 0;
+    if (main && main.offsetHeight) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = main.getBoundingClientRect();
+      // 화면 픽셀 단위 좌표. 선 굵기는 배율 변환 후 화면 px로 환산한다.
+      const top = (rect.top - previous * surfaceScale) * dpr;
+      const bottom = top + rect.height * dpr;
+      const line = Math.min(1, lineWidth * rect.height / main.offsetHeight * dpr);
+      /** [start, start+line] 구간이 가장 많이 걸친 화면 행에 칠해지는 비율. */
+      const rowCoverage = start => {
+        const edge = Math.floor(start) + 1;
+        return start + line <= edge ? line : Math.max(edge - start, start + line - edge);
+      };
+      let best = 0, bestScore = -1;
+      for (let step = -7; step <= 8; step++) {
+        const delta = step / 16;
+        const score = Math.min(rowCoverage(top + delta), rowCoverage(bottom + delta - line));
+        if (score > bestScore + 1e-6 || (Math.abs(score - bestScore) <= 1e-6 && Math.abs(delta) < Math.abs(best))) {
+          best = delta; bestScore = score;
+        }
+      }
+      shiftY = best / dpr / surfaceScale;
+    }
+    stage.dataset.positionShiftY = shiftY;
+    return shiftY;
   }
   $('boardPosition')?.addEventListener('change', event => {
     state.boardPosition = event.target.value;
