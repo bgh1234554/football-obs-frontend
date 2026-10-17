@@ -20,7 +20,7 @@
 .fsm-board .teams-left, .teams-right {
     width: 360px;
     height: 48px;
-    background: #1F1B2B;
+    background: #231C35;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -50,20 +50,57 @@
     font-family: 'Pretendard-Medium';
     font-size: 40px;
     font-weight: bold;
-    background: #F81E3B;
+    background: #FE0B32;
     color: white;
     text-align: center;
     transition: 0.9s ease-in-out;
     z-index: 1;
 }
 
+/* 빨간 점수 칸의 바깥 아래 모서리는 둥글게 그리되, 깎인 자리는 바로 바깥 칸(합계 칸, 없으면 팀명 칸) 모양으로 채운다.
+   border-radius로 깎으면 그 자리가 비어 점수판 뒤 배경이 보였다(2026-10-17). 모서리 25px 칸에서 원 안은 빨강,
+   원 바깥은 아래 --cdr-corner-* 층(팀명 칸이면 팀명 칸 색 + 아래 5px 팀 컬러 띠와 그 위 1px 경계선까지 이어 그림).
+   채움 층은 24px로 1px 작게 둔다 — 원 바깥은 바깥 아래 모서리 근처뿐이라 충분하고, 같은 25px로 두면 칸 경계가
+   반 픽셀에 걸릴 때 빨간 영역 안에 채움 층 가장자리가 가는 선으로 비쳤다. */
+.fsm-board {
+    --cdr-corner-left: linear-gradient(#231C35, #231C35);
+    --cdr-corner-right: linear-gradient(#231C35, #231C35);
+}
+.fsm-board[data-fsm-color-edge="strip"] {
+    --cdr-corner-left: linear-gradient(to top, var(--fsm-home-primary-color) 5px, var(--fsm-home-number-color) 5px 6px, #231C35 6px);
+    --cdr-corner-right: linear-gradient(to top, var(--fsm-away-primary-color) 5px, var(--fsm-away-number-color) 5px 6px, #231C35 6px);
+}
+.fsm-board[data-fsm-aggregate="true"] {
+    --cdr-corner-left: linear-gradient(var(--fsm-aggregate-background), var(--fsm-aggregate-background));
+    --cdr-corner-right: linear-gradient(var(--fsm-aggregate-background), var(--fsm-aggregate-background));
+}
+
 .fsm-board #team-score-left {
-    border-bottom-left-radius: 25px;
+    background:
+        radial-gradient(circle at 100% 0, #FE0B32 24.5px, transparent 25px) left bottom / 25px 25px no-repeat,
+        var(--cdr-corner-left) left bottom / 24px 24px no-repeat,
+        #FE0B32;
 }
 
 .fsm-board #team-score-right {
-    border-bottom-right-radius: 25px;
+    background:
+        radial-gradient(circle at 0 0, #FE0B32 24.5px, transparent 25px) right bottom / 25px 25px no-repeat,
+        var(--cdr-corner-right) right bottom / 24px 24px no-repeat,
+        #FE0B32;
 }
+
+/* 합계 칸과 빨간 점수 칸의 경계가 배율(80% 등)에 따라 화면 픽셀 중간에 걸리면 두 칸이 그 픽셀을 반씩만 덮어
+   뒤 배경이 세로선으로 비쳤다. 점수 칸 바깥으로 합계 칸 색을 2px 더 칠해 둔다(합계 칸이 위에 그려져 평소엔 가려짐). */
+/* 점수 칸과 가운데 칸(빨간색끼리)의 경계도 배율(88% 등)에 따라 뒤 배경이 세로선으로 비쳐, 점수 칸 안쪽으로도 같은 빨강을
+   2px 덧칠한다(점수 칸이 가운데 칸 위에 그려져 덧칠은 가운데 칸 빨간 바탕 위에만 놓임). */
+.fsm-board #team-score-left { box-shadow: 2px 0 0 #FE0B32; }
+.fsm-board #team-score-right { box-shadow: -2px 0 0 #FE0B32; }
+.fsm-board[data-fsm-aggregate="true"] #team-score-left { box-shadow: -2px 0 0 var(--fsm-aggregate-background), 2px 0 0 #FE0B32; }
+.fsm-board[data-fsm-aggregate="true"] #team-score-right { box-shadow: 2px 0 0 var(--fsm-aggregate-background), -2px 0 0 #FE0B32; }
+/* 합계 칸 바깥쪽(팀명 칸과 흰 합계 칸 경계)도 배율에 따라 뒤 배경이 세로선으로 비쳐, 팀명 칸 색을 합계 칸 아래로 2px 더 칠한다.
+   합계 칸이 위에 그려져 덧칠은 가려지고 팀명 칸 아래 팀 컬러 띠도 덮지 않는다. 띠 위 1px 경계선(strip)은 그대로 둔다. */
+#board.fsm-board[data-fsm-aggregate="true"] #homeCard { box-shadow: inset 0 -1px 0 var(--fsm-number-color), 2px 0 0 #231C35; }
+#board.fsm-board[data-fsm-aggregate="true"] #awayCard { box-shadow: inset 0 -1px 0 var(--fsm-number-color), -2px 0 0 #231C35; }
 
 .fsm-board .score {
     text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
@@ -75,7 +112,7 @@
     font-family: 'Pretendard-Medium';
     font-size: 26px;
     font-weight: bold;
-    background: #F81E3B;
+    background: #FE0B32;
     color: white;
     text-align: center;
     transition: 0.9s ease-in-out;
@@ -129,7 +166,7 @@
     margin: 0 auto;
     text-align: center;
     vertical-align: middle;
-    color: black;
+    color: #231C35;
     font-family: 'NanumGothic';
     font-size: 22px;
     font-weight: bold;
@@ -156,7 +193,7 @@
     width: 80px;
     height: 32px;
     color: white;
-    background: #1F1B2B;
+    background: #FE0B32;
     position: absolute;
     margin-left: 0px;
     transition: 0.9s ease-in-out;
@@ -278,4 +315,9 @@
     width: 8px;
     height: 48px;
     display: block;
+}
+/* 경계 보정용 2px(box-shadow)은 공통 CSS가 0.9초 전환 대상으로 넣어 두어, 합계 점수를 켜고 끌 때 팀명 칸 위에서
+   서서히 나타나고 사라지며 세로선처럼 보였다(2026-10-17). 점수 칸에서는 전환 대상에서 뺀다. */
+#board.fsm-board :is(#team-score-left, #team-score-right) {
+    transition-property: background-color, color, font-size, border-color, border-radius;
 }

@@ -57,15 +57,38 @@
     z-index: 1;
 }
 
+/* 아래 모서리 채움은 팀명 칸 아래의 팀 컬러 띠(5px)와 그 위 1px 경계선까지 이어 그린다. */
+.fsm-board {
+    --korcup-corner-left: linear-gradient(#011362, #011362);
+    --korcup-corner-right: linear-gradient(#011362, #011362);
+}
+.fsm-board[data-fsm-color-edge="strip"] {
+    --korcup-corner-left: linear-gradient(to top, var(--fsm-home-primary-color) 5px, var(--fsm-home-number-color) 5px 6px, #011362 6px);
+    --korcup-corner-right: linear-gradient(to top, var(--fsm-away-primary-color) 5px, var(--fsm-away-number-color) 5px 6px, #011362 6px);
+}
+
+/* 흰 점수 칸의 바깥쪽 위아래 모서리는 둥글게 그리되, 깎인 자리는 팀명 칸 쪽 색(#011362)으로 채운다.
+   border-radius로 깎으면 점수 칸과 팀명 칸 사이 꼭짓점 근처가 비어 점수판 뒤 배경이 보였다(2026-10-17).
+   모서리 20px 칸에서 원 안은 흰색, 원 바깥은 채움 층. 채움 층을 19px로 1px 작게 두어 칸 경계가 반 픽셀에
+   걸려도 흰 영역 안에 채움 층 가장자리가 선으로 비치지 않게 한다(코파 델 레이와 같은 방식). */
 .fsm-board #team-score-left {
-    border-top-left-radius: 20px;
-    border-bottom-left-radius: 20px;
+    background:
+        radial-gradient(circle at 100% 100%, white 19.5px, transparent 20px) left top / 20px 20px no-repeat,
+        radial-gradient(circle at 100% 0, white 19.5px, transparent 20px) left bottom / 20px 20px no-repeat,
+        linear-gradient(#011362, #011362) left top / 19px 19px no-repeat,
+        var(--korcup-corner-left) left bottom / 19px 19px no-repeat,
+        white;
 }
 
 .fsm-board #team-score-right {
-    border-top-right-radius: 20px;
-    border-bottom-right-radius: 20px;
+    background:
+        radial-gradient(circle at 0 100%, white 19.5px, transparent 20px) right top / 20px 20px no-repeat,
+        radial-gradient(circle at 0 0, white 19.5px, transparent 20px) right bottom / 20px 20px no-repeat,
+        linear-gradient(#011362, #011362) right top / 19px 19px no-repeat,
+        var(--korcup-corner-right) right bottom / 19px 19px no-repeat,
+        white;
 }
+
 
 .fsm-board .score {
     text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
@@ -159,12 +182,13 @@
 .fsm-board .extra-time {
     width: 80px;
     height: 32px;
-    color: #A4FA4D;
+    color: #0760FD;
     background: black;
     position: absolute;
     margin-left: 0px;
     transition: 0.9s ease-in-out;
     border-bottom-right-radius: 15px;
+    border-bottom-left-radius: 15px;
 }
 
 .fsm-board .pso-status {
@@ -282,4 +306,39 @@
     width: 8px;
     height: 48px;
     display: block;
+}
+
+/* 합계 점수는 흰 점수 원을 바깥쪽으로 연장한 자리에 작은 숫자로 넣는다(2026-10-17). 합계 칸이 있으면 점수 칸은
+   네모난 흰 칸이 되고, 둥근 모서리와 모서리 채움(남색 + 아래 팀 컬러 띠)은 합계 칸 바깥쪽으로 옮겨 간다.
+   글자색은 fsm-board.js 합계 색 목록(흰 바탕 검정). 기본 합계 칸 규칙보다 우선하도록 #board로 지정한다. */
+#board.fsm-board[data-fsm-aggregate="true"] :is(#team-score-left, #team-score-right) { background: white; }
+/* 합계 칸과 점수 칸의 경계가 배율(80% 등)에 따라 화면 픽셀 중간에 걸리면 두 흰 칸 사이로 뒤 배경이 세로선으로 비쳤다.
+   점수 칸 바깥으로 흰색을 2px 더 칠해 둔다(합계 칸이 위에 그려져 평소엔 가려짐). */
+/* 점수 칸과 가운데 로고 칸(흰색끼리)의 경계도 같은 이유로 회색 세로선이 비쳐(88% 등), 점수 칸 안쪽으로도 흰색을 2px 덧칠한다
+   (점수 칸이 로고 칸 위에 그려져 덧칠은 로고 칸 흰 바탕 위에만 놓임). */
+#board.fsm-board #team-score-left { box-shadow: 2px 0 0 white; }
+#board.fsm-board #team-score-right { box-shadow: -2px 0 0 white; }
+#board.fsm-board[data-fsm-aggregate="true"] #team-score-left { box-shadow: -2px 0 0 white, 2px 0 0 white; }
+#board.fsm-board[data-fsm-aggregate="true"] #team-score-right { box-shadow: 2px 0 0 white, -2px 0 0 white; }
+#board.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) {
+    background:
+        radial-gradient(circle at 100% 100%, white 19.5px, transparent 20px) left top / 20px 20px no-repeat,
+        radial-gradient(circle at 100% 0, white 19.5px, transparent 20px) left bottom / 20px 20px no-repeat,
+        linear-gradient(#011362, #011362) left top / 19px 19px no-repeat,
+        var(--korcup-corner-left) left bottom / 19px 19px no-repeat,
+        white;
+}
+#board.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) {
+    background:
+        radial-gradient(circle at 0 100%, white 19.5px, transparent 20px) right top / 20px 20px no-repeat,
+        radial-gradient(circle at 0 0, white 19.5px, transparent 20px) right bottom / 20px 20px no-repeat,
+        linear-gradient(#011362, #011362) right top / 19px 19px no-repeat,
+        var(--korcup-corner-right) right bottom / 19px 19px no-repeat,
+        white;
+}
+
+/* 경계 보정용 2px 흰색(box-shadow)은 공통 CSS가 0.9초 전환 대상으로 넣어 두어, 합계 점수를 켜고 끌 때 팀명 칸 위에서
+   서서히 나타나고 사라지며 세로선처럼 보였다(2026-10-17). 점수 칸에서는 전환 대상에서 뺀다. */
+#board.fsm-board :is(#team-score-left, #team-score-right) {
+    transition-property: background-color, color, font-size, border-color, border-radius;
 }

@@ -27,15 +27,18 @@ const LEAGUE_THEME_MAP = {
   984: { theme: 'nationalleague', logoUrl: null, type: 'club' },
   985: { theme: 'nationalleague', logoUrl: null, type: 'club' },
   45:  { theme: 'facup', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/emirates-fa-cup-logo-trophy.svg", type: 'club' }, // FA컵
-  137: { theme: 'coppaitalia', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CoppaItalia.svg', type: 'club' },
+  48:  { theme: 'carabao', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/EFL_Carabao_Cup_without_back.svg", type: 'club' }, // EFL컵(카라바오컵)
   135: { theme: 'seriea',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/SerieA/Serie_A_symbol_stroke.svg', type: 'club' },
+  137: { theme: 'coppaitalia', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CoppaItalia.svg', type: 'club' },
   140: { theme: 'laliga', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가
   141: { theme: 'laliga2', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Laliga/LL_RGB_white.png', type: 'club' }, // 라리가 2
+  143:  { theme: 'cdr', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/Copa_del_Rey_logo_(2021)_white.svg", type: 'club' }, // 코파 델 레이
   78: { theme: 'bundes', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga.svg', type: 'club' }, // 분데스리가
   79: { theme: 'bundes2', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Bundesliga2.svg', type: 'club' }, // 분데스리가 2
-  66: { theme: 'coupedefrance', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CoupeDeFrance.svg', type: 'club' },
+  81:  { theme: 'dfb', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/dfb-pokal-logo.svg", type: 'club' }, // DFB 포칼
   61:  { theme: 'ligue1',  logoUrl: 'https://indvel.github.io/utils/fsm/logos/Ligue1/france_ligue-1-logos.svg', type: 'club' },
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
+  66: { theme: 'coupedefrance', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CoupeDeFrance.svg', type: 'club' },
   94: { theme: 'ligaportugal', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/PrimeiraLiga.png', type: 'club' },
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
   89: { theme: 'eredivisie', logoUrl: null, type: 'club' }, //eerste divisie
@@ -94,9 +97,6 @@ const LEAGUE_THEME_MAP = {
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
   294: { theme: 'korcup', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/Korea_Cup_Logo.svg", type: 'club' },  // 코리아컵
   295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
-  48:  { theme: 'carabao', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/EFL_Carabao_Cup_without_back.svg", type: 'club' }, // EFL컵(카라바오컵)
-  81:  { theme: 'dfb', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/dfb-pokal-logo.svg", type: 'club' }, // DFB 포칼
-  143:  { theme: 'cdr', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/Copa_del_Rey_logo_(2021)_white.svg", type: 'club' }, // 코파 델 레이
   100: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
@@ -112,9 +112,9 @@ const FSM_THEMES = Object.freeze({
   //잉글랜드
   pl: '프리미어 리그', eflchampionship: 'EFL 챔피언십', eflleagueone: 'EFL 리그 원', eflleaguetwo: 'EFL 리그 투', nationalleague: '내셔널리그', facup: 'FA 컵', carabao: 'EFL 컵',
   //UEFA 계수 2,3위
-  seriea: '세리에 A', coppaitalia: '코파 이탈리아', laliga: '라리가', laliga2: '세군다 디비시온',
+  seriea: '세리에 A', coppaitalia: '코파 이탈리아', laliga: '라리가', laliga2: '세군다 디비시온', cdr: '코파 델 레이',
   //UEFA 계수 4,5위
-  bundes: '분데스리가', bundes2: '2. 분데스리가', ligue1: '리그 1', ligue2: '리그 2', coupedefrance: '쿠프 드 프랑스',
+  bundes: '분데스리가', bundes2: '2. 분데스리가', dfb: 'DFB-포칼', ligue1: '리그 1', ligue2: '리그 2', coupedefrance: '쿠프 드 프랑스',
   //UEFA 계수 6~9위
   ligaportugal: '프리메이라리가', eredivisie: '에레디비시', belgian: '벨기에 프로 리그', superlig: '튀르키예 쉬페르리그', tff1lig: 'TFF 1. 리그', turkishcup: '튀르키예 쿠파스',
   //러시아
@@ -127,7 +127,7 @@ const FSM_THEMES = Object.freeze({
   //유럽 대항전
   cl: 'UEFA 챔피언스 리그',  uel: 'UEFA 유로파 리그', uecl: 'UEFA 컨퍼런스 리그', unl: 'UEFA 네이션스리그', er24: '유로',
   //아시아 리그
-  kleague: 'K리그', saudi: '사우디 프로 리그', saudikingscup: '사우디 국왕컵', jleague: 'J리그', aleague: 'A리그 남자부', chinesesuperleague: '중국 슈퍼리그', uzbek: '우즈베키스탄 슈퍼 리그',
+  kleague: 'K리그', korcup: '코리아컵', saudi: '사우디 프로 리그', saudikingscup: '사우디 국왕컵', jleague: 'J리그', aleague: 'A리그 남자부', chinesesuperleague: '중국 슈퍼리그', uzbek: '우즈베키스탄 슈퍼 리그',
   //아시아 대항전
   acle: 'AFC 챔피언스리그 엘리트', acl2: 'AFC 챔피언스리그 2', acgl: 'AFC 챌린지 리그',
   //북중미
@@ -137,7 +137,7 @@ const FSM_THEMES = Object.freeze({
   //아프리카
   cafcl: 'CAF 챔피언스리그', cafcc: 'CAF 컨페더레이션 컵',
   //오세아니아 + 세계
-  wc26: '월드컵', dfb: 'DFB-포칼', cdr: '코파 델 레이', korcup: '코리아컵'
+  wc26: '월드컵'
 });
 
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
@@ -147,7 +147,8 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
   'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
   'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
-  'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'dfb', 'cdr', 'korcup'
+  'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
+  // DFB-포칼은 단판 경기라 합계 점수를 쓰지 않는다(체크해도 표시하지 않음).
 ]);
 
 /** 테마 선택 목록을 초기화하고 선택 변경을 저장 상태와 점수판에 반영합니다. */
@@ -862,6 +863,10 @@ function applyTheme(theme, logoUrl) {
       coppaitalia: ['#661729', '#ffffff'],
       facup: ['#ED1C24', '#ffffff'],
       carabao: ['#008F5E', '#ffffff'],
+      // 코리아컵 합계 칸은 흰 점수 원을 바깥쪽으로 연장한 칸(흰 바탕에 작은 검정 숫자)
+      korcup: ['#ffffff', '#000000'],
+      // 코파 델 레이 합계 칸은 흰 바탕에 점수 칸과 같은 빨간 숫자
+      cdr: ['#ffffff', '#FE0B32'],
       eflchampionship: ['#b69b42', '#ffffff'],
       eflleagueone: ['#7f8384', '#ffffff'],
       eflleaguetwo: ['#cc0935', '#ffffff'],
@@ -1092,7 +1097,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance', 'dfb'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -1517,6 +1522,12 @@ function adjustScoreboardWidth() {
     coppaitalia: ['#661729', '#ffffff'],
     facup: ['#ED1C24', '#ffffff'],
     carabao: ['#008F5E', '#ffffff'],
+    // 코리아컵 승부차기 띠
+    korcup: ['#00125E', '#ffffff'],
+    // DFB-포칼 승부차기 띠는 팀명 칸과 같은 배경/글자색
+    dfb: ['#004942', '#ffffff'],
+    // 코파 델 레이 승부차기 띠는 점수 칸과 같은 빨간 배경
+    cdr: ['#FE0B32', '#ffffff'],
     belarus: ['#233434', '#14EB4B'],
     jleague: ['#0D0D0D', '#ffffff'],
     default: ['#ffd700', '#000000'], pl: ['#3E0B3D', '#ffffff'],
@@ -1620,7 +1631,7 @@ function adjustScoreboardWidth() {
       // 열림 상태를 점수 칸의 aria-expanded와 함께 맞춘다(승부차기 빠른 입력과 같은 방식).
       const setOpen = open => {
         panel.hidden = !open;
-        scoreNodes.forEach(node => node.setAttribute('aria-expanded', String(open)));
+        if (board.dataset.fsmAggregateMenu === 'true') scoreNodes.forEach(node => node.setAttribute('aria-expanded', String(open)));
         if (open) syncAggQuickControls(board);
       };
       const close = () => setOpen(false);
@@ -1630,19 +1641,15 @@ function adjustScoreboardWidth() {
         commit();
       };
       main.addEventListener('click', event => {
-        if (!event.target.closest(targets)) return;
+        // 합계 점수를 표시하지 않는 점수판(DFB-포칼 등)은 점수를 눌러도 메뉴를 열지 않는다.
+        if (!event.target.closest(targets) || board.dataset.fsmAggregateMenu !== 'true') return;
         setOpen(panel.hidden);
       });
-      // 키보드로도 열 수 있게 점수 칸을 버튼처럼 노출한다(Enter/Space).
+      // 키보드로도 열 수 있게 점수 칸을 버튼처럼 노출한다(Enter/Space). 버튼 속성은 아래에서 테마별로 켜고 끈다.
       scoreNodes.forEach(node => {
-        node.setAttribute('title', '클릭하여 합계 점수 입력');
-        node.tabIndex = 0;
-        node.setAttribute('role', 'button');
-        node.setAttribute('aria-label', '합계 점수 입력 열기');
-        node.setAttribute('aria-controls', panel.id);
-        node.setAttribute('aria-expanded', 'false');
         node.addEventListener('keydown', event => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
+          if (board.dataset.fsmAggregateMenu !== 'true') return;
           event.preventDefault();
           setOpen(panel.hidden);
         });
@@ -1687,6 +1694,22 @@ function adjustScoreboardWidth() {
     const awayTotal = (Number(state.aggAwayBase) || 0) + (Number(state.awayScore) || 0);
     panel.querySelector('.agg-quick-total').textContent = `합계 ${homeTotal} : ${awayTotal}`;
     panel.classList.toggle('is-unsupported', !FSM_AGGREGATE_THEMES.includes(_currentTheme));
+    // 합계 점수를 표시하지 않는 점수판은 점수 칸을 버튼으로 노출하지 않고, 열려 있던 메뉴도 닫는다.
+    const menuEnabled = FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    board.dataset.fsmAggregateMenu = String(menuEnabled);
+    main.querySelectorAll('.team-score, .score-div, .total-score').forEach(node => {
+      if (menuEnabled) {
+        node.setAttribute('title', '클릭하여 합계 점수 입력');
+        node.tabIndex = 0;
+        node.setAttribute('role', 'button');
+        node.setAttribute('aria-label', '합계 점수 입력 열기');
+        node.setAttribute('aria-controls', panel.id);
+        if (!node.hasAttribute('aria-expanded')) node.setAttribute('aria-expanded', 'false');
+      } else {
+        ['title', 'tabindex', 'role', 'aria-label', 'aria-controls', 'aria-expanded'].forEach(name => node.removeAttribute(name));
+      }
+    });
+    if (!menuEnabled) panel.hidden = true;
     if (panel.hidden) return;
     // 점수 영역 가운데 아래(타이머 아래)에 열고, 좁은 점수 칸에서도 입력이 잘리지 않게 최소 폭을 둡니다.
     const boardRect = board.getBoundingClientRect();
