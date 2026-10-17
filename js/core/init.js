@@ -26,7 +26,8 @@
   if (window.ResizeObserver) {
     const board = $('board');
     if (board) {
-      const noteLayoutObserver = new ResizeObserver(() => autoLayoutNotes());
+      // 전환 애니메이션 중에는 위치만 따라가고 끝난 뒤 한 번 피팅한다(render.js autoLayoutNotesOnResize).
+      const noteLayoutObserver = new ResizeObserver(() => autoLayoutNotesOnResize());
       noteLayoutObserver.observe(board);
       board.querySelectorAll('.scoreboard-main, .scoreboard-timer, .time, .extra-time')
         .forEach(node => noteLayoutObserver.observe(node));

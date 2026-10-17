@@ -797,7 +797,6 @@
     // 5. note-side 너비를 내용 scrollWidth에 맞게 동적 조정 (위에서 'auto'로 풀어둔 상태)
     const PAD = 20;
     const MIN_EDIT_W = (state.manualMode && state.noteEnabled) ? 140 : 0;
-    const stageEl = $('boardStageInner');
     const homeW = Math.max(MIN_EDIT_W, homeLines.length ? el.homeNote.scrollWidth + PAD : 0);
     const awayW = Math.max(MIN_EDIT_W, awayLines.length ? el.awayNote.scrollWidth + PAD : 0);
 
@@ -805,35 +804,96 @@
     if (awayNoteSide) awayNoteSide.style.width = awayW + 'px';
 
     // 6. stageInner 기준으로 note-side를 board 양 옆에 절대 위치로 고정
-    if (stageEl && boardEl) {
-      const boardLeft  = boardEl.offsetLeft;
-      const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
-      if (homeNoteSide) homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
-      if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
-      if (main) {
-        // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
-        // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.
-        const stageRect = stageEl.getBoundingClientRect();
-        const scale = stageRect.width / stageEl.offsetWidth || 1;
-        const slots = Array.from(main.children).filter(child => {
-          const style = getComputedStyle(child);
-          return style.display !== 'none' && style.position !== 'absolute';
-        }).map(child => child.getBoundingClientRect());
-        if (slots.length) {
-          const left = (Math.min(...slots.map(rect => rect.left)) - stageRect.left) / scale;
-          const right = (Math.max(...slots.map(rect => rect.right)) - stageRect.left) / scale;
-          const noteGap = 5;
-          if (homeNoteSide) homeNoteSide.style.right = stageEl.offsetWidth - left + noteGap + 'px';
-          if (awayNoteSide) awayNoteSide.style.left = right + noteGap + 'px';
-        }
-      }
-      const noteTop = main ? boardEl.offsetTop + main.offsetTop + main.offsetHeight / 2 + 'px' : '50%';
-      if (homeNoteSide) homeNoteSide.style.top = noteTop;
-      if (awayNoteSide) awayNoteSide.style.top = noteTop;
-      syncBoardPosition();
-    }
+    positionNoteSides(boardEl, main);
     // 배치 과정에서 보드 중심이 이동할 수 있으므로 최종 위치를 기록한다.
     noteLayoutStamp = { key: inputKey(), home: el.homeNote.firstChild, away: el.awayNote.firstChild };
+  }
+
+  /**
+   * 득점자 박스(note-side)를 점수판 띠 양 옆과 세로 가운데에 붙이고 보드 좌우 배치를 다시 맞춘다.
+   * 글자 크기·줄 묶음·박스 폭은 건드리지 않는 위치 전용 단계라, 전체 피팅(autoLayoutNotes)과
+   * 전환 애니메이션 중 크기 감지 경로(autoLayoutNotesOnResize)가 같은 계산을 공유한다.
+   *
+   * @param {HTMLElement} boardEl 점수판 요소.
+   * @param {HTMLElement|null} main 점수판 띠(.scoreboard-main).
+   * @returns {void} note-side의 right/left/top과 보드 이동량을 갱신한다.
+   */
+  function positionNoteSides(boardEl, main) {
+    const stageEl = $('boardStageInner');
+    const homeNoteSide = $('homeNoteSide');
+    const awayNoteSide = $('awayNoteSide');
+    if (!stageEl || !boardEl) return;
+    const boardLeft  = boardEl.offsetLeft;
+    const boardRight = stageEl.offsetWidth - boardEl.offsetLeft - boardEl.offsetWidth;
+    if (homeNoteSide) homeNoteSide.style.right = boardRight + boardEl.offsetWidth + 'px';
+    if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
+    if (main) {
+      // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
+      // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.
+      const stageRect = stageEl.getBoundingClientRect();
+      const scale = stageRect.width / stageEl.offsetWidth || 1;
+      const slots = Array.from(main.children).filter(child => {
+        const style = getComputedStyle(child);
+        return style.display !== 'none' && style.position !== 'absolute';
+      }).map(child => child.getBoundingClientRect());
+      if (slots.length) {
+        const left = (Math.min(...slots.map(rect => rect.left)) - stageRect.left) / scale;
+        const right = (Math.max(...slots.map(rect => rect.right)) - stageRect.left) / scale;
+        const noteGap = 5;
+        if (homeNoteSide) homeNoteSide.style.right = stageEl.offsetWidth - left + noteGap + 'px';
+        if (awayNoteSide) awayNoteSide.style.left = right + noteGap + 'px';
+      }
+    }
+    const noteTop = main ? boardEl.offsetTop + main.offsetTop + main.offsetHeight / 2 + 'px' : '50%';
+    if (homeNoteSide) homeNoteSide.style.top = noteTop;
+    if (awayNoteSide) awayNoteSide.style.top = noteTop;
+    syncBoardPosition();
+  }
+
+  // 점수판 크기 감지(init.js ResizeObserver) 진입점.
+  // 테마 전환 같은 CSS 전환 애니메이션(0.9초) 동안은 점수판 크기가 매 프레임 바뀌어 감지가 매 프레임 온다.
+  // 이때 전체 피팅을 돌리면 캐시 키(보드 rect)가 매번 달라 적중하지 않고, 득점자 줄을 매 프레임 다시 그리며
+  // 강제 레이아웃을 반복한다(2026-10-17, 득점자 있는 상태 CPU 4배 감속에서 russiancup/cl 전환당 460~566ms).
+  // 전환 중에는 위치만 따라가게 하고, 전환이 모두 끝난 뒤 최종 크기로 한 번만 전체 피팅한다.
+  let noteTransitionWait = null;
+  /**
+   * 점수판 안에서 진행 중인 CSS 전환(transition)을 모은다. 무한 반복 keyframe 애니메이션은
+   * 끝나지 않으므로 대상이 아니다.
+   *
+   * @param {HTMLElement} boardEl 점수판 요소.
+   * @returns {Animation[]} 진행 중인 CSSTransition 목록.
+   */
+  function runningBoardTransitions(boardEl) {
+    if (!boardEl.getAnimations || typeof CSSTransition === 'undefined') return [];
+    return boardEl.getAnimations({ subtree: true })
+      .filter(anim => anim instanceof CSSTransition && anim.playState === 'running');
+  }
+  /**
+   * 크기 감지 콜백. 전환 중이면 득점자 박스 위치만 맞추고, 전환이 끝나면 전체 피팅을 한 번 예약한다.
+   * 전환이 아니면(시계 글자 폭 변화 등) 기존처럼 바로 전체 피팅한다.
+   *
+   * @returns {void}
+   */
+  function autoLayoutNotesOnResize() {
+    if (activeNoteEditor) return;
+    const boardEl = $('board');
+    if (!boardEl) return;
+    const transitions = runningBoardTransitions(boardEl);
+    if (!transitions.length) {
+      if (!noteTransitionWait) autoLayoutNotes();
+      return;
+    }
+    positionNoteSides(boardEl, boardEl.querySelector('.scoreboard-main'));
+    if (noteTransitionWait) return;
+    // 기다리는 동안 새 전환이 시작될 수 있어, 끝날 때 다시 확인하고 남아 있으면 그것도 기다린다.
+    const waitAll = list => Promise.allSettled(list.map(anim => anim.finished)).then(() => {
+      const rest = runningBoardTransitions(boardEl);
+      return rest.length ? waitAll(rest) : null;
+    });
+    noteTransitionWait = waitAll(transitions).then(() => {
+      noteTransitionWait = null;
+      autoLayoutNotes();
+    });
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
