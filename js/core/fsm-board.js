@@ -92,7 +92,7 @@ const LEAGUE_THEME_MAP = {
   369: { theme: 'uzbek', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/UzbekSuperLeague.svg', type: 'club' },
   292: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 1
   293: { theme: 'kleague', logoUrl: null, type: 'club' },  // K리그 2
-  294: { theme: 'kleague', logoUrl: null, type: 'club' },  // 코리아컵 - 추후 따로 만들기
+  294: { theme: 'korcup', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/Korea_Cup_Logo.svg", type: 'club' },  // 코리아컵
   295: { theme: 'kleague', logoUrl: null, type: 'club' },  // K3리그
   48:  { theme: 'carabao', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/EFL_Carabao_Cup_without_back.svg", type: 'club' }, // EFL컵(카라바오컵)
   81:  { theme: 'dfb', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/dfb-pokal-logo.svg", type: 'club' }, // DFB 포칼
@@ -137,7 +137,7 @@ const FSM_THEMES = Object.freeze({
   //아프리카
   cafcl: 'CAF 챔피언스리그', cafcc: 'CAF 컨페더레이션 컵',
   //오세아니아 + 세계
-  wc26: '월드컵',
+  wc26: '월드컵', dfb: 'DFB-포칼', cdr: '코파 델 레이', korcup: '코리아컵'
 });
 
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
@@ -147,7 +147,7 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
   'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
   'rpl', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
-  'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'dfb', 'cdr'
+  'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'dfb', 'cdr', 'korcup'
 ]);
 
 /** 테마 선택 목록을 초기화하고 선택 변경을 저장 상태와 점수판에 반영합니다. */
@@ -766,6 +766,10 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'cdr':
       changeCSS('css/theme/result_style_CDR.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'korcup':
+      changeCSS('css/theme/result_style_KORCUP.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     default:
