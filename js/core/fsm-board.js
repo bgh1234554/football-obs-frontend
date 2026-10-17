@@ -332,6 +332,35 @@ function revealFsmBoard() {
 }
 
 /**
+ * 모든 점수판 테마 CSS를 미리 받아 브라우저 캐시에 넣어 둔다(적용하지 않음).
+ * 배포 화면에서는 경기를 불러와 테마가 바뀔 때 테마 CSS를 네트워크로 받느라 전환 시작이 약 250ms 늦어지고,
+ * 그 사이 경기 로딩 후속 작업(로고 색상 추출 등)과 0.9초 전환 애니메이션이 겹쳐 끊겨 보였다(2026-10-17,
+ * 로컬은 파일이 즉시 도착해 해당 없음). rel=prefetch는 가장 낮은 우선순위로 받기만 하고 스타일을 적용하지
+ * 않으므로 화면이나 스타일 계산에 영향이 없다. 66개 합계 압축 전송 약 104KB.
+ * 파일 목록은 applyTheme의 changeCSS 경로에서 뽑아 테마 추가 시 별도 목록을 고치지 않게 한다.
+ * @import로 불러오는 파일(LIGUE1 등)도 같은 목록에 있어 함께 받아진다.
+ * 로컬(localhost)은 파일이 즉시 도착하므로 건너뛴다.
+ */
+function prefetchThemeStylesheets() {
+  if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) return;
+  const files = new Set(applyTheme.toString().match(/css\/theme\/[\w.-]+\.css/g) || []);
+  files.forEach(file => {
+    const href = new URL(file, document.baseURI).href;
+    if (oldlink?.href === href || document.querySelector(`link[rel="prefetch"][href="${href}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.as = 'style';
+    link.href = href;
+    document.head.appendChild(link);
+  });
+}
+// 첫 화면과 저장된 경기 복원 요청이 끝날 시간을 두고, 브라우저가 한가할 때 받는다.
+window.addEventListener('load', () => setTimeout(() => {
+  if (window.requestIdleCallback) requestIdleCallback(prefetchThemeStylesheets, { timeout: 5000 });
+  else prefetchThemeStylesheets();
+}, 3000));
+
+/**
  * 테마 스타일시트를 교체하고 로딩이 끝난 최신 요청의 점수판 배치를 갱신합니다.
  * @param {string} cssFile 적용할 테마 CSS 경로입니다.
  * @param {string} requestedTheme 요청한 테마 키입니다.
