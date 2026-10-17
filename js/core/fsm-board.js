@@ -38,6 +38,7 @@ const LEAGUE_THEME_MAP = {
   62:  { theme: 'ligue2',  logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Ligue2Black.svg', type: 'club' },  // 프랑스 리그2 — 추후 logoUrl에 전용 로고 URL 지정
   94: { theme: 'ligaportugal', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/PrimeiraLiga.png', type: 'club' },
   88: { theme: 'eredivisie', logoUrl: null, type: 'club' },
+  89: { theme: 'eredivisie', logoUrl: null, type: 'club' }, //eerste divisie
   144: { theme: 'belgian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BelgianProLeague.svg', type: 'club' },
   203: { theme: 'superlig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TurkishSuperLig.svg', type: 'club' },
   204: { theme: 'tff1lig', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/TFF1Lig.svg', type: 'club' },
