@@ -1,0 +1,33 @@
+/*
+ * 점수판 테마 공통 글꼴. 모든 테마 CSS가 같은 @font-face 6개를 각자 선언하고 있어서,
+ * 테마를 바꿀 때마다(테마 link 교체) 글꼴 객체가 새로 만들어지고 문서 전체 글꼴 스타일
+ * 재계산 + loadingdone에 따른 점수판 재렌더가 한 번 더 일어났다(2026-10-17 측정).
+ * 테마 link와 별개로 한 번만 로드되는 이 파일에 모아 테마 전환 시 글꼴을 다시 만들지 않는다.
+ * 테마 CSS에 @font-face를 새로 넣지 말고 이 파일에 추가할 것.
+ */
+@font-face {
+    font-family: 'SsangmunDongB';
+    src: url('/resources/fonts/Typo_SsangmunDongB.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Koverwatch';
+    src: url('/resources/fonts/koverwatch.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Pretendard-Medium';
+    src: url('/resources/fonts/Pretendard-Medium.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('/resources/fonts/NanumGothic.woff2') format('woff2');
+    font-weight: 400;
+}
+@font-face {
+    font-family: 'NanumGothic';
+    src: url('/resources/fonts/NanumGothic-ExtraBold.woff2') format('woff2');
+    font-weight: 700;
+}
+@font-face {
+    font-family: 'GmarketSansMedium';
+    src: url('/resources/fonts/GmarketSansTTFMedium.woff2') format('woff2');
+}

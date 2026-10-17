@@ -129,6 +129,8 @@
 .board.fsm-board[data-fsm-pso="true"] .scoreboard-timer {
   transition-property: background-color, color, border-color, border-radius, box-shadow;
 }
+/* 테마별 세로 간격(row-gap) 전환도 시계를 움직이므로 PSO 중에는 즉시 확정한다(russiancup row-gap: 0). */
+.board.fsm-board[data-fsm-pso="true"] { transition: none; }
 /* 기존처럼 시계 위에 승부차기 띠를 표시하되 모서리에 시계가 비치지 않게 한다. */
 .board.fsm-board[data-fsm-pso="true"] .scoreboard-timer { visibility: hidden; }
 .board.fsm-board .pso-status {

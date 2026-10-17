@@ -92,7 +92,48 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(transition.columnFits, 0, 'height-only transition does not restore column widths');
       console.log('PASS height transition and deferred stats', theme);
     }
+    // 득점자가 있을 때 전환 애니메이션 중 크기 감지는 득점자 박스를 다시 피팅하지 않고(위치만 따라감),
+    // 전환이 끝난 뒤 한 번 피팅한 결과가 새로 피팅한 결과와 같아야 한다(render.js autoLayoutNotesOnResize).
     await page.evaluate(() => {
+      state.noteEnabled = true;
+      state.notes.home = "9' 조나탕 밤바\n50' 필리프 징커나겔\n88' 마렌 하일레셀라시";
+      state.notes.away = "73' 마티아스 라보르다";
+      render();
+    });
+    await page.waitForTimeout(1200);
+    for (const theme of ['russiancup', 'cl', 'ekstraklasa']) {
+      const notes = await page.evaluate(async theme => {
+        const original = window.autoLayoutNotes;
+        let midTransitionFits = 0, fits = 0;
+        window.autoLayoutNotes = function (...args) {
+          fits++;
+          const running = document.querySelector('.fsm-board').getAnimations({ subtree: true })
+            .some(animation => animation instanceof CSSTransition && animation.playState === 'running');
+          if (running && !/fsmBoardRender/.test(new Error().stack)) midTransitionFits++;
+          return original.apply(this, args);
+        };
+        const snap = () => ['homeNoteSide', 'awayNoteSide'].map(id => {
+          const node = document.getElementById(id);
+          return [node.style.width, node.style.left, node.style.right, node.style.top, node.innerHTML].join('|');
+        }).join('||');
+        try {
+          applyTheme(theme, null);
+          await new Promise(resolve => setTimeout(resolve, 1600));
+          const settled = snap();
+          noteLayoutStamp = null;
+          original();
+          return { fits, midTransitionFits, finalMatches: settled === snap() };
+        } finally {
+          window.autoLayoutNotes = original;
+        }
+      }, theme);
+      assert.equal(notes.midTransitionFits, 0, `${theme}: notes are not refit during transition ${JSON.stringify(notes)}`);
+      assert(notes.fits > 0, `${theme}: notes fit after transition`);
+      assert(notes.finalMatches, `${theme}: deferred note layout matches fresh fit`);
+      console.log('PASS deferred note fit', theme, notes.fits);
+    }
+    await page.evaluate(() => {
+      state.notes.home = ''; state.notes.away = ''; render();
       window.transitionStatsRenders = 0;
       window.transitionStatsStacks = [];
       const original = window.stRenderPanel;
