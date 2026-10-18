@@ -571,7 +571,10 @@ function observeSmallLayoutResize() {
       // 이미 옵저버 있으면 재구독을 위해 disconnect → 아래 forEach에서 다시 observe.
       smallLayoutResizeObserver.disconnect();
     }
-    document.querySelectorAll('.layout-small').forEach(layout => smallLayoutResizeObserver.observe(layout));
+    // F11은 화면 너비를 유지한 채 높이만 바꾸기도 한다. 높이 비례인 라인업 폭도 감시해야
+    // 남은 칼럼의 픽셀 폭을 다시 배분해 오른쪽 여백이나 넘침을 막을 수 있다.
+    document.querySelectorAll('.layout-small, .layout-small .lp-lineup-s')
+      .forEach(panel => smallLayoutResizeObserver.observe(panel));
     return;
   }
 
@@ -592,86 +595,51 @@ function startLineupResize(event) {
   if (event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
-
   const handle = event.currentTarget;
   const panel = handle.closest('.lp-lineup');
-  const layout = panel?.closest('.layout-wrap');
-  if (!panel || !layout) return;
-
-  const layoutHeight = layout.clientHeight;
-  if (!layoutHeight) return;
-
-  const storedScalePct = Number(typeof getSetting === 'function' ? getSetting('lineupScale') : 100) || 100;
-  const hasEdgeOverride = panel.classList.contains('has-w-override')
-    || panel.classList.contains('has-h-override');
-  const hasFixedSize = hasEdgeOverride || panel.classList.contains('lp-width-locked');
-  const currentHeightPct = Math.round((getDisplayLayoutRect(panel).height / layoutHeight) * 100);
-  const startScalePct = hasEdgeOverride
-    ? Math.max(
-      LINEUP_RESIZE_MIN,
-      Math.min(LINEUP_RESIZE_MAX, currentHeightPct || storedScalePct),
-    )
-    : storedScalePct;
-  const saveBaselinePct = hasEdgeOverride ? startScalePct : storedScalePct;
+  if (!panel) return;
+  const start = getDisplayLayoutRect(panel);
+  if (!(start.height > 0 && start.width > 0)) return;
+  const available = _lineupGetMaxHeight(panel);
   const startY = toDisplayLayoutPixels(event.clientY);
-
+  const minFactor = Math.min(1, Math.max(available * LINEUP_RESIZE_MIN / 100 / start.height, LINEUP_EDGE_MIN_W / start.width));
+  const maxFactor = Math.min(available / start.height, _lineupGetMaxWidth(panel) / start.width);
+  let factor = 1;
+  let moved = false;
+  let raf = 0;
+  const apply = () => {
+    _lineupApplyHeightOverride(panel, start.height * factor, start.width);
+    _lineupApplyWidthOverride(panel, start.width * factor, start.height * factor);
+  };
   panel.classList.add('is-resizing');
   document.body.classList.add('lp-lineup-resizing');
   handle.setPointerCapture?.(event.pointerId);
-
-  let lastPct = startScalePct;
-  let releasedEdgeOverrides = false;
-
-  const onMove = (e) => {
-    // 1) 포인터 이동량을 layout 높이 기준 백분율로 환산한다.
-    // 위로 드래그(deltaY > 0) → 확장, 아래로 드래그(deltaY < 0) → 축소.
-    const deltaY = startY - toDisplayLayoutPixels(e.clientY);
-    const deltaPct = (deltaY / layoutHeight) * 100;
-    let next = startScalePct + deltaPct;
-    next = Math.max(LINEUP_RESIZE_MIN, Math.min(LINEUP_RESIZE_MAX, Math.round(next)));
-    if (next === lastPct) return;
-
-    // 개별 크기 지정뿐 아니라 전체화면용 폭 잠금도 첫 이동에서 해제한다.
-    // 폭 잠금이 남아 있으면 배율을 줄여도 높이만 줄어든다.
-    if (!releasedEdgeOverrides && hasFixedSize) {
-      _lineupEdgeClear(LINEUP_EDGE_W_KEY);
-      _lineupEdgeClear(LINEUP_EDGE_H_KEY);
-      _lineupClearWidthOverride(panel);
-      _lineupClearHeightOverride(panel);
-      document.documentElement.style.setProperty('--lp-lineup-scale', String(startScalePct / 100));
-      releasedEdgeOverrides = true;
-    }
-
-    lastPct = next;
-
-    // 2) 드래그 중에는 root CSS 변수만 바꿔 미리보기를 즉시 반영한다.
-    // document root에 변수 설정 → settings-popup.js의 applyLayoutSettings와 동일 위치.
-    // .layout-big 별도 인라인 스타일이 있으면 root보다 우선되므로 root만 셋해도 화면 반영.
-    document.documentElement.style.setProperty('--lp-lineup-scale', String(next / 100));
+  const onMove = e => {
+    const delta = startY - toDisplayLayoutPixels(e.clientY);
+    if (!delta && !moved) return;
+    factor = Math.min(maxFactor, Math.max(minFactor, 1 + delta / start.height));
+    moved = true;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; apply(); });
   };
-
   const onUp = () => {
-    // 3) 드래그 종료 시 이벤트를 정리하고 최종 값만 저장한다.
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onUp);
+    if (raf) cancelAnimationFrame(raf);
+    if (moved) {
+      apply();
+      _lineupEdgeSave(LINEUP_EDGE_W_KEY, start.width * factor);
+      _lineupSaveHeightReference(panel, start.height * factor);
+    }
     panel.classList.remove('is-resizing');
     document.body.classList.remove('lp-lineup-resizing');
     handle.releasePointerCapture?.(event.pointerId);
-    if (typeof setSetting === 'function' && (lastPct !== saveBaselinePct || releasedEdgeOverrides)) {
-      // setSetting 내부에서 applyLayoutSettings → fitLineupNamePills 호출되므로 별도 호출 불필요.
-      setSetting('lineupScale', lastPct);
-    } else if (typeof window.fitLineupNamePills === 'function') {
-      // 값이 안 바뀐 케이스도 혹시 모를 폭 변동 대비 pill 재계산
-      requestAnimationFrame(() => window.fitLineupNamePills());
-    }
+    requestAnimationFrame(() => window.fitLineupNamePills?.());
   };
-
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
   document.addEventListener('pointercancel', onUp);
 }
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // (3) 캠 큰 우측 패널(팬 반응 / 경기 스탯) 독립 엣지 리사이즈
 //   - bigPanelLinked=on (ON):  두 패널 칼럼 꽉 채움, 너비 공유, 높이 연동
@@ -742,7 +710,7 @@ function _bigMigrateOnce() {
         BIG_COL_WIDTH_KEY, BIG_CHAT_H_KEY, BIG_STAT_H_KEY, BIG_CHAT_W_KEY, BIG_STAT_W_KEY, BIG_CHAT_FRACTION_KEY,
         SMALL_LAYOUT_RESIZE_STORAGE_KEY,
         SMALL_LAYOUT_COLUMNS_KEY,
-        LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
+        LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY, LINEUP_HEIGHT_FRACTION_KEY, LINEUP_HEIGHT_REFERENCE_KEY,
       ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
     }
     localStorage.setItem(BIG_LAYOUT_MIGRATED_KEY, '1');
@@ -1322,6 +1290,14 @@ function ensureBigPanelHandles() {
 
 const LINEUP_EDGE_W_KEY = 'obs.lineup.edgeWidthPx.v1';
 const LINEUP_EDGE_H_KEY = 'obs.lineup.edgeHeightPx.v1';
+const LINEUP_HEIGHT_FRACTION_KEY = 'obs.lineup.heightFraction.v2';
+const LINEUP_HEIGHT_REFERENCE_KEY = 'obs.lineup.heightReference.v3';
+const lineupHeightReferences = new WeakMap();
+
+/** F11과 Fullscreen API 모두 표시 모드로 구분한다. 높이 증가 자체를 전체화면으로 간주하지 않는다. */
+function _lineupIsFullscreen() {
+  return !!document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches;
+}
 const LINEUP_EDGE_MIN_W = 80;
 const LINEUP_EDGE_MIN_H = 80;
 const LINEUP_RESET_SCALE_SPLIT_PCT = 100;
@@ -1362,10 +1338,10 @@ function _lineupResetScalePct(panel) {
 /** 소속 레이아웃 또는 화면 높이로 라인업 최대 높이를 구하며 최소 허용 높이 이상을 보장한다. */
 function _lineupGetMaxHeight(panel) {
   const layout = panel?.closest('.layout-wrap') || document.body;
-  return Math.max(
-    LINEUP_EDGE_MIN_H,
-    layout?.clientHeight || document.body?.clientHeight || window.innerHeight || LINEUP_EDGE_MIN_H
-  );
+  const css = getComputedStyle(layout);
+  // 부모 패딩은 피치가 사용할 수 없는 영역이다. 드래그와 화면 전환에 같은 기준을 쓴다.
+  return Math.max(LINEUP_EDGE_MIN_H, layout.clientHeight
+    - (parseFloat(css.paddingTop) || 0) - (parseFloat(css.paddingBottom) || 0));
 }
 
 /** 라인업 패널 너비 오버라이드의 상한 — 소속 layout-wrap(또는 body) 너비의 80%. */
@@ -1409,16 +1385,22 @@ function _lineupSyncEdgeOverrideClass(panel) {
 function _lineupClearFullscreenWidthLock(panel) {
   panel.classList.remove('lp-width-locked');
   delete panel.dataset.lineupWindowWidth;
+  // 초기화 직후의 일반 화면 폭을 먼저 확정해야 다음 화면 전환에서 폭이 커지지 않는다.
+  if (typeof scheduleLineupViewportFit === 'function') scheduleLineupViewportFit();
 }
 
 /** 수동 너비와 이름 배율을 해제한다. 높이 조절을 위해 임시 고정했던 너비가 있으면 복원한다. */
 function _lineupClearWidthOverride(panel) {
+  const naturalWidth = getDisplayLayoutRect(panel).height * _lineupNaturalAspectRatio(panel);
   _lineupClearFullscreenWidthLock(panel);
   panel.style.removeProperty('width');
   panel.style.removeProperty('--lp-lineup-x-scale');
   panel.classList.remove('has-w-override');
-  if (panel.classList.contains('has-h-frozen-width')) {
-    panel.style.width = panel.dataset.lineupFrozenWidth || panel.style.width;
+  if (panel.classList.contains('has-h-override')) {
+    // 높이 조절은 남겨두고 폭만 초기화할 때도 폭 0으로 붕괴하지 않게 한다.
+    panel.classList.add('has-h-frozen-width');
+    panel.dataset.lineupFrozenWidth = `${Math.round(naturalWidth)}px`;
+    panel.style.width = panel.dataset.lineupFrozenWidth;
   }
   _lineupSyncEdgeOverrideClass(panel);
 }
@@ -1439,13 +1421,16 @@ function _lineupApplyHeightOverride(panel, px, knownWidth = null) {
       return;
     }
   }
-  panel.style.height = `${Math.round(px)}px`;
+  // 화면 진입 시 피치 자체는 커지지 않도록 표시 크기를 픽셀로 고정한다.
+  panel.style.height = `${px}px`;
   panel.classList.add('has-h-override');
   panel.classList.add('has-edge-override');
 }
 
 /** 수동 높이와 그때 임시 고정한 너비를 해제한다. 사용자가 별도로 지정한 너비는 유지한다. */
 function _lineupClearHeightOverride(panel) {
+  lineupHeightReferences.delete(panel);
+  _lineupEdgeClear(LINEUP_HEIGHT_REFERENCE_KEY);
   panel.style.removeProperty('height');
   panel.classList.remove('has-h-override');
   if (panel.classList.contains('has-h-frozen-width') && !panel.classList.contains('has-w-override')) {
@@ -1457,28 +1442,58 @@ function _lineupClearHeightOverride(panel) {
   _lineupSyncEdgeOverrideClass(panel);
 }
 
-/** 저장된 라인업 높이·너비를 현재 화면의 허용 범위로 보정해 적용하고 보정된 크기를 다시 저장한다. */
+/** 마지막으로 직접 조절한 높이와 당시 화면을 원본으로 사용한다. 환산 결과는 원본에 덮어쓰지 않는다. */
 function applyStoredLineupEdgeOverrides() {
-  // 높이를 먼저 적용한 뒤 너비를 적용해야 이름의 가로 배율 계산에 복원된 높이가 사용된다.
+  if (document.body.matches('.lp-lineup-resizing, .lp-lineup-w-resizing, .lp-lineup-h-resizing')) return;
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
-    const storedH = _lineupEdgeLoad(LINEUP_EDGE_H_KEY, LINEUP_EDGE_MIN_H);
-    if (storedH != null) {
-      const nextH = _clampPx(storedH, LINEUP_EDGE_MIN_H, _lineupGetMaxHeight(panel));
-      if (nextH != null) {
-        _lineupApplyHeightOverride(panel, nextH);
-        if (Math.round(nextH) !== Math.round(storedH)) _lineupEdgeSave(LINEUP_EDGE_H_KEY, nextH);
+    if (!panel.getClientRects().length || panel.closest('.layout-wrap').clientHeight <= 0) return;
+    const available = _lineupGetMaxHeight(panel);
+    const rect = getDisplayLayoutRect(panel);
+    let reference = lineupHeightReferences.get(panel);
+    if (!reference) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LINEUP_HEIGHT_REFERENCE_KEY));
+        if (saved && Number.isFinite(saved.height) && saved.height > 0
+          && Number.isFinite(saved.available) && saved.available > 0 && typeof saved.fullscreen === 'boolean') reference = saved;
+      } catch {}
+      if (!reference) {
+        const fraction = _lineupEdgeLoad(LINEUP_HEIGHT_FRACTION_KEY, LINEUP_RESIZE_MIN / 100);
+        const legacy = _lineupEdgeLoad(LINEUP_EDGE_H_KEY, LINEUP_EDGE_MIN_H);
+        const height = fraction != null ? Math.min(1, fraction) * available : (legacy ?? rect.height);
+        reference = { height: Math.min(available, Math.max(available * LINEUP_RESIZE_MIN / 100, height)),
+          available, fullscreen: _lineupIsFullscreen() };
       }
+      lineupHeightReferences.set(panel, reference);
     }
+    // 전체화면 진입은 크기 유지. 일반 화면 복귀는 원본 화면의 높이 비율로 환산한다.
+    const height = Math.min(available, _lineupIsFullscreen()
+      ? reference.height : reference.height * available / reference.available);
     const storedW = _lineupEdgeLoad(LINEUP_EDGE_W_KEY, LINEUP_EDGE_MIN_W);
-    if (storedW != null) {
-      const nextW = _clampPx(storedW, LINEUP_EDGE_MIN_W, _lineupGetMaxWidth(panel));
-      if (nextW != null) {
-        _lineupApplyWidthOverride(panel, nextW);
-        if (Math.round(nextW) !== Math.round(storedW)) _lineupEdgeSave(LINEUP_EDGE_W_KEY, nextW);
-      }
-    }
+    const width = storedW ?? (Number(panel.dataset.lineupWindowWidth)
+      || (panel.classList.contains('has-edge-override') ? rect.width : rect.height * _lineupNaturalAspectRatio(panel)));
+    panel.dataset.lineupWindowWidth = String(width);
+    _lineupApplyHeightOverride(panel, height, width);
+    panel.style.width = `${Math.min(width, _lineupGetMaxWidth(panel))}px`;
+    if (storedW != null) _lineupApplyWidthOverride(panel, Math.min(width, _lineupGetMaxWidth(panel)), height);
   });
 }
+
+/** 사용자 조작이 끝난 경우에만 저장한다. 숨겨진 페이지나 창 전환은 저장 경로에 들어오지 않는다. */
+function _lineupSaveHeightReference(panel, height) {
+  const reference = { height, available: _lineupGetMaxHeight(panel), fullscreen: _lineupIsFullscreen() };
+  lineupHeightReferences.set(panel, reference);
+  try { localStorage.setItem(LINEUP_HEIGHT_REFERENCE_KEY, JSON.stringify(reference)); } catch {}
+  _lineupEdgeClear(LINEUP_HEIGHT_FRACTION_KEY);
+  _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+}
+
+document.addEventListener('settings:change', event => {
+  if (event.detail?.category !== 'lineupScale') return;
+  // 설정에서 크기를 지정하면 수동 높이 대신 해당 배율을 사용한다.
+  _lineupEdgeClear(LINEUP_HEIGHT_FRACTION_KEY);
+  _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+  document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => _lineupClearHeightOverride(panel));
+});
 
 // ── 드래그: 오른쪽 엣지 → 너비 ──
 /** 라인업 오른쪽 경계를 드래그해 너비를 조절하며, 화면 반영은 프레임당 한 번으로 묶고 종료 시 저장한다. */
@@ -1522,7 +1537,10 @@ function startLineupWidthDrag(event, panel) {
       rafId = 0;
       _lineupApplyWidthOverride(panel, lastW, startH);
     }
-    _lineupEdgeSave(LINEUP_EDGE_W_KEY, lastW);
+    if (lastW !== startW) {
+      _lineupEdgeSave(LINEUP_EDGE_W_KEY, lastW);
+      _lineupSaveHeightReference(panel, startH);
+    }
     requestAnimationFrame(() => window.fitLineupNamePills?.());
   };
   document.addEventListener('pointermove', onMove);
@@ -1551,7 +1569,7 @@ function startLineupHeightDrag(event, panel) {
   // 2) 이동을 프레임 단위로 합쳐 적용한다. 수동 너비가 있으면 바뀐 자연 너비를 기준으로 라벨 배율도 맞춘다.
   const onMove = (e) => {
     // 위로 드래그(dy < 0) = 높이 증가
-    const newH = Math.max(LINEUP_EDGE_MIN_H, Math.min(maxH, startH - (toDisplayLayoutPixels(e.clientY) - startY)));
+    const newH = Math.max(Math.min(startH, maxH * LINEUP_RESIZE_MIN / 100), Math.min(maxH, startH - (toDisplayLayoutPixels(e.clientY) - startY)));
     lastH = newH;
     pendingH = newH;
     if (rafId) return;
@@ -1583,7 +1601,10 @@ function startLineupHeightDrag(event, panel) {
         panel.style.setProperty('--lp-lineup-x-scale', xScale.toFixed(3));
       }
     }
-    _lineupEdgeSave(LINEUP_EDGE_H_KEY, lastH);
+    if (lastH !== startH) {
+      _lineupEdgeSave(LINEUP_EDGE_W_KEY, startW);
+      _lineupSaveHeightReference(panel, lastH);
+    }
     requestAnimationFrame(() => window.fitLineupNamePills?.());
   };
   document.addEventListener('pointermove', onMove);
@@ -1631,6 +1652,7 @@ function resetLineupHeightOnly(event, panel) {
   event.preventDefault();
   event.stopPropagation();
   _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+  _lineupEdgeClear(LINEUP_HEIGHT_FRACTION_KEY);
   _lineupClearHeightOverride(panel);
   requestAnimationFrame(() => window.fitLineupNamePills?.());
 }
@@ -1641,6 +1663,7 @@ function resetLineupAllSizes(event, panel) {
   event.stopPropagation();
   _lineupEdgeClear(LINEUP_EDGE_W_KEY);
   _lineupEdgeClear(LINEUP_EDGE_H_KEY);
+  _lineupEdgeClear(LINEUP_HEIGHT_FRACTION_KEY);
   _lineupClearWidthOverride(panel);
   _lineupClearHeightOverride(panel);
   const resetScalePct = _lineupResetScalePct(panel);
@@ -1782,7 +1805,7 @@ window.resetAllLayoutSizes = function resetAllLayoutSizes() {
     SMALL_LAYOUT_RESIZE_STORAGE_KEY,
     SMALL_LAYOUT_COLUMNS_KEY,
     SMALL_BENCH_HEIGHT_KEY,
-    LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY,
+    LINEUP_EDGE_W_KEY, LINEUP_EDGE_H_KEY, LINEUP_HEIGHT_FRACTION_KEY, LINEUP_HEIGHT_REFERENCE_KEY,
   ].forEach(k => { try { localStorage.removeItem(k); } catch {} });
 
   // 2) 캠 큰 우측 칼럼 CSS 변수 + 기본 스탯 9줄 높이 재적용

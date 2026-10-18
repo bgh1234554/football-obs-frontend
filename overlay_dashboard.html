@@ -385,7 +385,7 @@
               <span class="sp-label-sub">선발 이름 크기입니다. 기본 12px.</span>
             </div>
             <div class="sp-slider-cluster">
-              <input type="range" min="9" max="16" step="1" data-settings-slider="lineupNameSize" />
+              <input type="range" min="9" max="20" step="1" data-settings-slider="lineupNameSize" />
               <span class="sp-slider-value">12px</span>
             </div>
           </div>
@@ -1050,7 +1050,7 @@
           <!-- 교체 명단 — 새로고침 버튼은 lineup-render.js의 setPanelTitle(leftActionsHtml)이 동적으로 .dp-title 안에 삽입 -->
           <div class="lp lp-bench">
             <div class="dp-panel" id="benchPanel">
-              <div class="dp-title">교체 명단</div>
+              <div class="dp-title" data-panel-font="benchInjuryNameSize" role="button" tabindex="0" title="클릭하여 글자 크기 조절">교체 명단</div>
               <div class="dp-split">
                 <div class="dp-col" data-bench-side="home">
                   <div class="dp-side-header"><span class="dp-side-name">HOME</span><button class="dp-side-edit-btn" data-manual="bench" data-side="home">수정</button></div>
@@ -1081,7 +1081,7 @@
           <!-- 부상 정보 -->
           <div class="lp lp-injury">
             <div class="dp-panel" id="injuryPanel">
-              <div class="dp-title">부상 정보</div>
+              <div class="dp-title" data-panel-font="benchInjuryNameSize" role="button" tabindex="0" title="클릭하여 글자 크기 조절">부상 정보</div>
               <div class="dp-split">
                 <div class="dp-col" data-injury-side="home">
                   <div class="dp-side-header"><span class="dp-side-name">HOME</span><button class="dp-side-edit-btn" data-manual="injury" data-side="home">수정</button></div>
@@ -1209,7 +1209,7 @@
   <div class="page-wrap">
     <div class="widgetGrid">
       <div class="panel"><div class="panelHeader"><div>Leagues</div><div class="hint">국가별 리그 선택</div></div><div class="panelBody" id="widget-leagues-body"></div></div>
-      <div class="panel"><div class="panelHeader"><div>Games</div><div class="hint">날짜별 리그 일정/경기 결과 확인</div></div><div class="panelBody" id="games-list"></div></div>
+      <div class="panel"><div class="panelHeader"><div class="games-header-title"><div>Games</div><button id="games-home-btn" class="panel-fixture-btn games-home-btn" type="button" hidden title="리그 화면을 닫고 날짜별 경기 목록으로 돌아갑니다"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>날짜별 경기</button></div><div class="hint">날짜별 리그 일정/경기 결과 확인</div></div><div class="panelBody" id="games-list"></div></div>
       <div class="panel"><div class="panelHeader"><div style="display:flex;align-items:center;gap:10px;"><div>Details</div><div class="hint">경기 클릭 후 상세 정보, 순위, 경기 ID 확인</div></div><div class="panel-fixture-tools"><div class="fixture-inline fixture-inline-compact" data-fixture-inline-wrap style="display:none"><span class="fixture-inline-label">선택 경기</span><span data-selected-fixture-id class="fixture-inline-id" title="클릭해서 복사">-</span></div><button id="panel-fixture-load-btn" class="panel-fixture-btn panel-fixture-btn-primary" disabled title="선택된 경기를 바로 메인 화면에 불러옵니다">경기 불러오기</button><button class="panel-fixture-btn" title="경기 ID를 직접 입력해 특정 경기를 불러옵니다" onclick="openOverlay()">경기 ID 입력</button></div></div><div class="panelBody" id="game-content"></div></div>
       <div class="panel"><div class="panelHeader"><div>Standings</div><div class="hint">경기 클릭 시 자동으로 해당 리그의 순위가 표시됩니다</div></div><div class="panelBody"><div id="standings-content"></div><div id="team-content"></div></div></div>
     </div>

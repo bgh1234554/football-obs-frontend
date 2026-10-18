@@ -132,6 +132,11 @@
   background: var(--lp-pitch-marking-color, rgba(255,255,255,.55));
   transform: translateY(-1px);
 }
+/* 선의 모양은 유지하고 주변 클릭 영역만 넓힌다. 선수 노드의 클릭·드래그는 그대로 우선한다. */
+.dp-lineup-marking-midline[data-panel-font] { pointer-events: auto; }
+.dp-lineup-marking-midline[data-panel-font]::before {
+  content: ''; position: absolute; inset: -6px 0;
+}
 /* 센터 서클 */
 .dp-lineup-marking-center-circle {
   left: 50%;

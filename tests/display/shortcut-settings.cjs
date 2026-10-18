@@ -5,6 +5,32 @@ const root=path.resolve(__dirname,'../..');
 const page=await browser.newPage({viewport:{width:1280,height:720}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!=='http://localhost')return route.abort();const f=path.join(root,u.pathname==='/'?'overlay_dashboard.html':decodeURIComponent(u.pathname));if(!fs.existsSync(f)||fs.statSync(f).isDirectory())return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(f),contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.ttf':'font/ttf','.woff':'font/woff'}[path.extname(f)]||'application/octet-stream'});});
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
+// CSS 로드 후 실제 테마 적용이 늦어져도 단축키의 하단 알림은 적용 완료 후 표시한다.
+await page.evaluate(()=>{
+  const select=document.getElementById('fsmThemeSelect');select.value='pl';select.dispatchEvent(new Event('change'));
+});
+await page.waitForFunction(()=>!pendingThemeLink);
+await page.evaluate(()=>{
+  document.getElementById('copy-toast').classList.remove('show');
+  window.savedThemeSettle=whenBoardFramesSettle;
+  whenBoardFramesSettle=callback=>{window.releaseThemeSwap=callback;};
+});
+await page.keyboard.press('Shift+BracketRight');
+await page.waitForFunction(()=>typeof window.releaseThemeSwap==='function');
+assert.equal(await page.locator('#copy-toast').evaluate(node=>node.classList.contains('show')),false);
+await page.evaluate(()=>{whenBoardFramesSettle=window.savedThemeSettle;window.releaseThemeSwap();});
+await page.waitForFunction(()=>!pendingThemeLink&&document.getElementById('copy-toast').classList.contains('show'));
+const themeNotice=()=>page.evaluate(()=>`점수판 변경: ${document.getElementById('fsmThemeSelect').selectedOptions[0].textContent}`);
+assert.equal(await page.locator('#copy-toast').textContent(),await themeNotice());
+for(const key of ['Shift+BracketLeft','Shift+BracketRight']){
+  await page.locator('#copy-toast').evaluate(node=>node.classList.remove('show'));
+  await page.keyboard.press(key);
+  await page.waitForFunction(()=>!pendingThemeLink&&document.getElementById('copy-toast').classList.contains('show'));
+  assert.equal(await page.locator('#copy-toast').textContent(),await themeNotice());
+}
+await page.keyboard.press('Shift+BracketRight');await page.keyboard.press('Shift+BracketRight');
+await page.waitForFunction(()=>!pendingThemeLink);
+assert.equal(await page.locator('#copy-toast').textContent(),await themeNotice());
 
 
 

@@ -184,7 +184,7 @@ function cycleFsmTheme(direction) {
   };
   const link = pendingThemeLink;
   if (link) {
-    link.addEventListener('load', () => {
+    link.addEventListener('fsm-theme-applied', () => {
       if (oldlink === link) notify();
     }, { once: true });
   } else {
@@ -451,11 +451,15 @@ function swapThemeLink(newlink, requestedTheme) {
   const board = document.querySelector('.fsm-board');
   _currentTheme = requestedTheme;
   if (board) board.dataset.fsmTheme = _currentTheme;
+  // 로고 래퍼도 CSS와 같은 프레임에 교체해야 > img 규칙이 빠져 원본 크기로 튀지 않는다.
+  syncFsmLogoClip();
   oldlink?.remove();
   newlink.id = 'fsm-theme-link';
   newlink.media = 'all';
   oldlink = newlink;
   pendingThemeLink = null;
+  // CSS 로드와 실제 적용 사이에 대기 시간이 있으므로, 완료 알림은 교체가 끝난 뒤 보낸다.
+  newlink.dispatchEvent(new Event('fsm-theme-applied'));
   requestAnimationFrame(() => {
     window.fsmBoardRender();
     // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않습니다.
@@ -1209,10 +1213,8 @@ function adjustScoreboardWidth() {
 }
 
 
-  /** 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출. 크로마키 모드면 안전한 색으로 바꿔 적용. */
-  function applyTeamColors() {
-    const teamColors = Object.fromEntries(Object.entries(state.colors).map(([key, value]) => [key, chromaSafe(value)]));
-    // 로고의 확대·이동과 독립된 고정 원형 마스크를 카라바오컵에만 적용합니다.
+  /** 로고의 확대·이동과 독립된 카라바오 전용 원형 마스크를 현재 테마와 맞춘다. */
+  function syncFsmLogoClip() {
     document.querySelectorAll('.fsm-board .team-logo').forEach(box => {
       const wrapper = box.querySelector('.carabao-logo-clip');
       if (_currentTheme === 'carabao' && !wrapper) {
@@ -1226,6 +1228,12 @@ function adjustScoreboardWidth() {
         wrapper.replaceWith(...wrapper.childNodes);
       }
     });
+  }
+
+  /** 테마별 팀 컬러 적용 분기 — applyText()와 applyTheme() 양쪽에서 호출. 크로마키 모드면 안전한 색으로 바꿔 적용. */
+  function applyTeamColors() {
+    const teamColors = Object.fromEntries(Object.entries(state.colors).map(([key, value]) => [key, chromaSafe(value)]));
+    syncFsmLogoClip();
     setFsmStyle('.fsm-board .team-name', {color: ''});
     // 이전 테마의 팀컬러·글자색과 카라바오 전용 마감을 현재 테마로 넘기지 않습니다.
     setFsmStyle('.fsm-board .team-color', {background: ''});

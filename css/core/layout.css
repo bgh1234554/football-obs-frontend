@@ -320,6 +320,12 @@
       display: flex; align-items: center; justify-content: flex-end;
       gap: 8px; flex-wrap: wrap; min-width: 0;
     }
+    /* Games 패널 "날짜별 경기" 버튼 — 리그를 골라 리그 화면이 떠 있을 때만 보인다(router.js).
+       헤더 폭이 좁아 버튼이 보이는 동안은 안내 문구를 숨긴다. */
+    .games-header-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .games-home-btn { display: inline-flex; align-items: center; gap: 4px; }
+    .games-home-btn[hidden] { display: none; }
+    .panelHeader:has(.games-home-btn:not([hidden])) .hint { display: none; }
     .fixture-inline-compact { padding: 0; }
     .fixture-inline-compact .fixture-inline-label { font-size: 11px; opacity: .8; }
     .fixture-inline-compact .fixture-inline-id { font-size: 12px; padding: 2px 8px; }

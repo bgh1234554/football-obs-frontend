@@ -833,7 +833,7 @@ function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
       <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
       <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
       <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
-      <div class="dp-lineup-marking dp-lineup-marking-midline"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-midline"${panelFontTitleAttrs('lineupNameSize')}></div>
       <div class="dp-lineup-marking dp-lineup-marking-center-circle"></div>
       <div class="dp-lineup-marking dp-lineup-marking-bottom-box"></div>
       <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
@@ -887,7 +887,7 @@ function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
         <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
         <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
         <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
-        <div class="dp-lineup-marking dp-lineup-marking-midline"></div>
+        <div class="dp-lineup-marking dp-lineup-marking-midline"${panelFontTitleAttrs('lineupNameSize')}></div>
         <div class="dp-lineup-marking dp-lineup-marking-center-circle"></div>
         <div class="dp-lineup-marking dp-lineup-marking-bottom-box"></div>
         <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
@@ -1216,7 +1216,7 @@ function renderInjuryCyclePanel(effectiveData, rawData) {
   window._lpStatInjuryCount = home.length + away.length;
   let changed = false;
   document.querySelectorAll('.lp-stat [data-injury-cycle-panel]').forEach(panel => {
-    const html = `<div class="st-title-bar">미출전 선수 명단</div><div class="ic-body">${['home', 'away'].map(side => {
+    const html = `<div class="st-title-bar"${panelFontTitleAttrs('benchInjuryNameSize')}>미출전 선수 명단</div><div class="ic-body">${['home', 'away'].map(side => {
       const list = side === 'home' ? home : away;
       const provided = Array.isArray(rawData?.[`${side}Injuries`]) || Array.isArray(effectiveData?.[`${side}Injuries`]);
       return `<section class="ic-team" data-injury-side="${side}"><div class="dp-side-header"><span class="dp-side-name"></span></div><div class="ic-list">${buildInjuryListHtml(list, provided, { inlineReason: true })}</div></section>`;
@@ -1242,12 +1242,12 @@ function renderInjuryCyclePanel(effectiveData, rawData) {
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor, side) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
-  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span>&nbsp;교체 명단</div>`;
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}${panelFontTitleAttrs('benchInjuryNameSize')}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span>&nbsp;<span class="panel-font-title-text">교체 명단</span></div>`;
   if (!players || !players.length) {
     return `${title}<div class="st-empty">교체 선수 없음</div>`;
   }
   // 모든 선수를 단일 리스트로 — CSS columns + JS 오버플로 감지가 2열 전환을 처리
-  return `${title}<div class="bc-body">${players.map(p => lpBuildRosterRowHtml(p, 'bench', side)).join('')}</div>`;
+  return `${title}<div class="bc-body" data-bench-side="${dpEscape(side)}">${players.map(p => lpBuildRosterRowHtml(p, 'bench', side)).join('')}</div>`;
 }
 
 /**
