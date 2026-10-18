@@ -4,6 +4,7 @@
 //     배지, 전술판 타임라인)에서 뺀다.
 //   - 수정: 골/경고·퇴장 row 클릭 -> 메뉴 -> 정보 수정 팝업. 골은 종류(골/페널티골/자책골)·득점
 //     팀·득점자·어시스트, 카드는 종류(경고/퇴장/경고 누적 퇴장)·팀·선수를 고친다.
+//     PK 실축·승부차기는 키커를, VAR는 판정 종류·팀·관련 선수(없음 포함)를 같은 창에서 고친다.
 //
 // - 이벤트는 "내용" 서명(시간/팀/종류/세부/코멘트/선수/어시스트)으로 식별한다. API가 그 이벤트
 //   내용을 고치면 서명이 달라져 숨김/수정이 자동으로 풀리고, 같은 내용의 이벤트가 사라지면 기록도
@@ -20,8 +21,8 @@ const EV_HIDE_STORAGE_KEY = 'obs.events.hidden.v1';
 const EV_HIDE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 수동 입력 저장소(DETAIL_MANUAL_TTL_MS)와 같은 7일
 // 수정 팝업에서 고칠 수 있는 이벤트 필드 — 원본과 전부 같으면 수정 기록을 지운다.
 const EV_EDIT_FIELDS = ['side', 'teamId', 'detail', 'playerId', 'playerName', 'playerNameKoLong', 'playerOrigName',
-  'assistId', 'assistName', 'assistNameKoLong', 'assistOrigName', 'elapsed', 'extra'];
-// 숫자로 비교하는 필드(null/0/빈 값은 같은 값으로 본다). 시간(elapsed/extra)은 골 수정에서만 patch에 들어간다.
+  'assistId', 'assistName', 'assistNameKoLong', 'assistOrigName', 'elapsed', 'extra', 'comments'];
+// 숫자로 비교하는 필드(null/0/빈 값은 같은 값으로 본다). 시간(elapsed/extra)은 골·VAR 수정에 사용한다.
 const EV_EDIT_NUMERIC_FIELDS = new Set(['teamId', 'playerId', 'assistId', 'elapsed', 'extra']);
 
 /** 이벤트 내용 서명 — API 원본 필드만 사용(화면용 가공 필드 제외). 내용이 바뀌면 서명도 바뀐다. */
@@ -106,7 +107,7 @@ function evIsGoalEvent(ev) {
 }
 
 function evIsShootoutEvent(ev) {
-  return String(ev?.comments || '').toLowerCase() === 'penalty shootout';
+  return String(ev?.comments || '').trim().toLowerCase() === 'penalty shootout';
 }
 
 /** 이벤트 목록의 득점 합계 — 일반 득점은 home/away, 승부차기 성공은 penHome/penAway. 실축 제외. */
@@ -391,13 +392,11 @@ function evHideOpenManager(fixtureId) {
 
 // ── 수정 (골/카드) ────────────────────────────────────────────────────────────
 
-/** 수정 대상 이벤트인지 — 일반 골(승부차기 제외, 실축 제외)과 카드. */
+/** 선수 정보가 비어 있어도 골·실축·승부차기·카드·VAR를 수정할 수 있다. */
 function evEditIsEditable(ev) {
   if (!ev?._hideSig) return false;
   const type = String(ev.type || '').toLowerCase();
-  const detail = String(ev.detail || '').toLowerCase();
-  if (type === 'goal') return !evIsShootoutEvent(ev) && detail !== 'missed penalty';
-  return type === 'card';
+  return ['goal', 'card', 'var'].includes(type);
 }
 window.evEditIsEditable = evEditIsEditable;
 
@@ -611,19 +610,91 @@ function evEditDisplayName(player) {
 }
 
 /**
- * 골/카드 정보 수정 팝업 — 교체 선수 선택 모달과 같은 모양(헤더 / 선수 목록 / 초기화·확인·취소).
+ * 골/카드/VAR 정보 수정 팝업 — 교체 선수 선택 모달과 같은 모양(헤더 / 선수 목록 / 초기화·확인·취소).
  * - 골: 종류(골/페널티골/자책골) + 득점 팀(득점이 인정된 팀, 자책골이면 득점자는 상대 팀 선수) +
  *   득점자/어시스트 탭(어시스트는 자책골이면 없음).
  * - 카드: 종류(경고/퇴장/경고 누적 퇴장) + 팀 + 선수.
+ * - PK 실축/승부차기: 팀 + 해당 시점의 필드 선수. 승부차기는 성공/실축도 선택한다.
+ * - VAR: 판정 종류 + 팀 + 시간 + 관련 선수(없음 포함). 판정 사유는 보존한다.
  * 선수 목록은 그 이벤트 시점에 그라운드에 있던 선수만(evAvailablePlayers). 지금 값이 목록에 없으면
  * 맨 위 "현재" 행으로 남겨 그대로 유지할 수 있다.
  */
+/** 사유 선택은 공통 UI 글꼴을 쓰고, 같은 한국어 항목은 현재 원문을 우선해 한 번만 표시한다. */
+function evEditReasonPicker(options, value, label, onChange) {
+  const unique = new Map();
+  options.forEach(option => {
+    if (!unique.has(option.label) || option.value === value) unique.set(option.label, option);
+  });
+  const root = document.createElement('div');
+  root.className = 'ev-edit-reason';
+  root.dataset.value = value;
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'ev-edit-reason-toggle';
+  toggle.setAttribute('aria-label', label);
+  toggle.setAttribute('aria-haspopup', 'listbox');
+  toggle.setAttribute('aria-expanded', 'false');
+  const menu = document.createElement('div');
+  menu.className = 'ev-edit-reason-menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', label);
+  menu.hidden = true;
+  const closeMenu = () => { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); };
+  const render = () => {
+    toggle.textContent = [...unique.values()].find(option => option.value === root.dataset.value)?.label || '없음';
+    menu.querySelectorAll('[role="option"]').forEach(item => item.setAttribute('aria-selected', String(item.dataset.value === root.dataset.value)));
+  };
+  unique.forEach(option => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'ev-edit-reason-option';
+    item.setAttribute('role', 'option');
+    item.dataset.value = option.value;
+    item.textContent = option.label;
+    item.addEventListener('click', () => {
+      root.dataset.value = option.value;
+      onChange(option.value);
+      render(); closeMenu(); toggle.focus();
+    });
+    menu.append(item);
+  });
+  toggle.addEventListener('click', () => {
+    menu.hidden = !menu.hidden;
+    toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    if (!menu.hidden) menu.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  });
+  root.addEventListener('keydown', event => {
+    const items = [...menu.querySelectorAll('button')];
+    if (event.key === 'Escape' && !menu.hidden) {
+      event.stopPropagation(); closeMenu(); toggle.focus();
+    } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      menu.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+      const index = items.indexOf(document.activeElement);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+        : (index + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+      items[next]?.focus();
+    }
+  });
+  root.addEventListener('focusout', event => { if (!root.contains(event.relatedTarget)) closeMenu(); });
+  root.append(toggle, menu);
+  render();
+  return { element: root, close: closeMenu, setDisabled(disabled) { toggle.disabled = disabled; if (disabled) closeMenu(); } };
+}
+
 function evEditOpen(ev) {
   if (!evEditIsEditable(ev)) return;
   document.querySelector('.ev-edit-modal-overlay')?.remove();
   const isGoal = evIsGoalEvent(ev);
+  const isVar = String(ev.type || '').toLowerCase() === 'var';
+  const isCard = String(ev.type || '').toLowerCase() === 'card';
+  const isShootout = isGoal && evIsShootoutEvent(ev);
+  const isMiss = isGoal && String(ev.detail || '').toLowerCase() === 'missed penalty';
+  const editsTime = isGoal || isVar;
   const sig = ev._hideSig;
-  const { modal, actions, close, mount } = evHideCreateModal(isGoal ? '골 정보 수정' : '카드 정보 수정', 'ev-edit-modal');
+  const title = isVar ? 'VAR 판정 수정' : isShootout ? '승부차기 정보 수정' : isMiss ? 'PK 실축 정보 수정' : isGoal ? '골 정보 수정' : '카드 정보 수정';
+  const { modal, actions, close, mount } = evHideCreateModal(title, 'ev-edit-modal');
 
   const keepPlayer = {
     playerId: ev.playerId ?? null,
@@ -641,20 +712,29 @@ function evEditOpen(ev) {
   // player/assist: 'keep'(현재 값 유지) | 'none'(어시스트 없음) | 선수 객체
   const draft = {
     side: ev.side === 'away' ? 'away' : 'home',
-    detail: isGoal
-      ? (['Own Goal', 'Penalty'].includes(ev.detail) ? ev.detail : 'Normal Goal')
-      : (['Red Card', 'Second Yellow Card'].includes(ev.detail) ? ev.detail : 'Yellow Card'),
+    detail: isVar ? (evIsVarCardUpgrade(ev) ? 'Card upgrade confirmed' : evVarDetailKey(ev.detail) ? evParseVarDetail(ev.detail).displayDetail : 'VAR') : isGoal
+      ? (isMiss ? 'Missed Penalty' : isShootout ? 'Penalty' : ['Own Goal', 'Penalty'].includes(ev.detail) ? ev.detail : 'Normal Goal')
+      : (ev._isCumulativeRed ? 'Second Yellow Card' : ['Red Card', 'Second Yellow Card'].includes(ev.detail) ? ev.detail : 'Yellow Card'),
     player: 'keep',
     assist: hadAssist ? 'keep' : 'none',
     tab: 'player',
     // 골 시간 — 정규시간(분)과 추가시간을 따로 받는다(예: 45 + 2 -> "45+2'"). 추가시간 0/빈 값은 없음.
     elapsed: Number(ev.elapsed) || 0,
     extra: Number(ev.extra) > 0 ? Number(ev.extra) : null,
+    varReason: isVar && !evIsVarCardUpgrade(ev) && !evVarDetailKey(ev.detail) && !/^var$/i.test(ev.detail || '') ? ev.detail : '',
+    cardReason: ev.comments || '',
   };
 
-  const typeOptions = isGoal
-    ? [{ value: 'Normal Goal', label: '골' }, { value: 'Penalty', label: '페널티골' }, { value: 'Own Goal', label: '자책골' }]
-    : [{ value: 'Yellow Card', label: '경고' }, { value: 'Red Card', label: '퇴장' }, { value: 'Second Yellow Card', label: '경고 누적' }];
+  const typeOptions = isVar
+    ? [{ value: 'VAR', label: 'VAR' }, { value: 'Goal cancelled', label: '골 취소' }, { value: 'Goal Confirmed', label: '골 선언' }, { value: 'Penalty cancelled', label: 'PK 취소' }, { value: 'Penalty confirmed', label: 'PK 선언' }, { value: 'Card upgrade confirmed', label: '카드 변경' }]
+    : isShootout ? [{ value: 'Penalty', label: '성공' }, { value: 'Missed Penalty', label: '실축' }]
+    : isGoal
+    ? [{ value: 'Normal Goal', label: '골' }, { value: 'Penalty', label: '페널티골' }, { value: 'Own Goal', label: '자책골' }, { value: 'Missed Penalty', label: 'PK 실축' }]
+    : [{ value: 'Yellow Card', label: '경고' }, { value: 'Second Yellow Card', label: '경고 누적 퇴장' }, { value: 'Red Card', label: '퇴장' }];
+  // 미분류 판정이나 API의 기존 설명도 확인만 눌렀을 때 그대로 보존한다.
+  if (!isVar && !typeOptions.some(option => option.value === draft.detail)) {
+    typeOptions.push({ value: draft.detail, label: '기타' });
+  }
   const teamOptions = ['home', 'away'].map(side => ({ value: side, label: evEditTeamName(side) }));
 
   const body = document.createElement('div');
@@ -663,10 +743,37 @@ function evEditOpen(ev) {
   tabWrap.className = 'ev-edit-seg ev-edit-tabs';
   const list = document.createElement('div');
   list.className = 'ev-subst-picker-list';
+  // 일반 VAR의 세부 판정은 종류 버튼과 분리한 드롭다운으로 선택한다.
+  const currentReason = isCard ? draft.cardReason : draft.varReason;
+  const reasonMap = (isCard ? window.EVENT_COMMENT_KO : window.EVENT_VAR_DETAIL_KO) || {};
+  const translateReason = isCard ? window.translateEventComment : window.translateEventVarDetail;
+  const reasonOptions = [{ value: '', label: '없음' }, ...Object.entries(reasonMap)
+    .filter(([value]) => isCard ? !/^penalty shootout$/i.test(value) : !evIsVarCardUpgrade({ type: 'Var', detail: value }))
+    .map(([value, label]) => ({ value, label }))];
+  if (currentReason && !reasonOptions.some(option => option.value === currentReason)) {
+    reasonOptions.push({ value: currentReason, label: translateReason?.(currentReason) || currentReason });
+  }
+  // 자주 쓰는 파울은 없음 바로 다음에 두고, 다른 사유의 순서는 유지한다.
+  if (isCard) {
+    const foulIndex = reasonOptions.findIndex(option => option.value === 'Foul');
+    if (foulIndex > 1) reasonOptions.splice(1, 0, reasonOptions.splice(foulIndex, 1)[0]);
+  }
+  const reasonPicker = evEditReasonPicker(reasonOptions, currentReason, isCard ? '카드 사유' : 'VAR 사유', value => {
+    if (isCard) draft.cardReason = value;
+    else draft.varReason = value;
+  });
+  modal.addEventListener('click', event => {
+    if (!reasonPicker.element.contains(event.target)) reasonPicker.close();
+  });
+  const reasonRow = document.createElement('div');
+  reasonRow.className = 'ev-edit-seg ev-edit-var-reason-row';
+  reasonRow.append(reasonPicker.element);
+  const updateReason = () => { reasonPicker.setDisabled(isVar && draft.detail !== 'VAR'); };
+  updateReason();
 
   // 득점자는 자책골이면 상대 팀, 아니면 득점 팀 선수. 카드는 그 팀 선수.
   const playerSide = () => (isGoal && draft.detail === 'Own Goal' ? (draft.side === 'home' ? 'away' : 'home') : draft.side);
-  const showAssist = () => isGoal && draft.detail !== 'Own Goal';
+  const showAssist = () => isGoal && !isShootout && !['Own Goal', 'Missed Penalty'].includes(draft.detail);
   const pickedName = (value, kind) => {
     if (value === 'none') return '없음';
     if (value === 'keep') return (typeof evPickPlayerName === 'function' ? evPickPlayerName(ev, kind) : '') || (kind === 'assist' ? '없음' : '선수 없음');
@@ -675,7 +782,8 @@ function evEditOpen(ev) {
 
   function renderTabs() {
     if (!showAssist() && draft.tab === 'assist') draft.tab = 'player';
-    const tabs = [{ key: 'player', label: `${isGoal ? '득점자' : '선수'}: ${pickedName(draft.player, 'player')}` }];
+    const playerLabel = isVar ? '관련 선수' : isShootout ? '키커' : draft.detail === 'Missed Penalty' ? '실축자' : isGoal ? '득점자' : '선수';
+    const tabs = [{ key: 'player', label: `${playerLabel}: ${pickedName(draft.player, 'player')}` }];
     if (showAssist()) tabs.push({ key: 'assist', label: `어시스트: ${pickedName(draft.assist, 'assist')}` });
     tabWrap.replaceChildren(...tabs.map(tab => {
       const btn = document.createElement('button');
@@ -693,7 +801,9 @@ function evEditOpen(ev) {
     const kind = draft.tab;
     const side = kind === 'assist' ? draft.side : playerSide();
     // 골 시간을 바꾸면 바뀐 시간 기준으로 후보를 다시 계산한다(그 사이 교체/퇴장 반영).
-    const timeEv = isGoal ? { ...ev, _hideSig: undefined, elapsed: draft.elapsed, extra: draft.extra } : ev;
+    // 같은 시간의 교체 순서는 원본 서명으로 유지하고, 시간을 바꾼 경우에만 새 시점으로 계산한다.
+    const timeChanged = draft.elapsed !== Number(ev.elapsed || 0) || draft.extra !== (Number(ev.extra) > 0 ? Number(ev.extra) : null);
+    const timeEv = editsTime && timeChanged ? { ...ev, _hideSig: undefined, elapsed: draft.elapsed, extra: draft.extra } : ev;
     const available = evAvailablePlayers(timeEv, side, 'onPitch');
     const keep = kind === 'assist' ? keepAssist : keepPlayer;
     const current = draft[kind];
@@ -709,7 +819,7 @@ function evEditOpen(ev) {
       const keepNum = keepPlayerObj?.number != null && keepPlayerObj.number !== '' ? String(keepPlayerObj.number) : '-';
       items.push(evEditPlayerItem(keepNum, `현재: ${pickedName('keep', kind)}`, keepPlayerObj?.pos || '', current === 'keep', () => select('keep')));
     }
-    if (kind === 'assist') items.push(evEditPlayerItem('-', '없음', '', current === 'none', () => select('none')));
+    if (kind === 'assist' || isVar) items.push(evEditPlayerItem('-', '없음', '', current === 'none', () => select('none')));
     available.forEach(p => {
       const isSelected = current !== 'keep' && current !== 'none' && current === p;
       items.push(evEditPlayerItem(p.number != null && p.number !== '' ? String(p.number) : '-',
@@ -731,14 +841,24 @@ function evEditOpen(ev) {
   }
 
   // 팀/종류를 바꾸면 득점자 팀이 달라질 수 있어 이전 선택을 비우고 현재 값 기준으로 다시 고른다.
-  const resetPicks = () => { draft.player = 'keep'; draft.assist = hadAssist ? 'keep' : 'none'; renderTabs(); renderList(); };
+  const resetPicks = () => { draft.player = 'keep'; draft.assist = hadAssist ? 'keep' : 'none'; updateReason(); renderTabs(); renderList(); };
   const segRow = document.createElement('div');
   segRow.className = 'ev-edit-seg-rows';
+  const typeSegment = evEditSegment(typeOptions, draft.detail, value => { draft.detail = value; resetPicks(); });
+  typeSegment.classList.add('ev-edit-types');
+  if (isVar) {
+    typeSegment.classList.add('ev-edit-var-types');
+    // 일반 VAR 버튼은 위의 네 판정과 분리해 사유 드롭다운 바로 옆에 둔다.
+    reasonRow.prepend(typeSegment.firstElementChild);
+    reasonRow.prepend(typeSegment.lastElementChild);
+    typeSegment.append(reasonRow);
+  }
   segRow.append(
-    evEditField('종류', evEditSegment(typeOptions, draft.detail, value => { draft.detail = value; resetPicks(); })),
-    evEditField(isGoal ? '득점 팀 (골이 인정된 팀)' : '팀', evEditSegment(teamOptions, draft.side, value => { draft.side = value; resetPicks(); })),
+    evEditField('종류', typeSegment),
+    ...(isCard ? [evEditField('사유', reasonPicker.element)] : []),
+    evEditField(isGoal && !isShootout && !isMiss ? '득점 팀 (골이 인정된 팀)' : '팀', evEditSegment(teamOptions, draft.side, value => { draft.side = value; resetPicks(); })),
   );
-  if (isGoal) {
+  if (editsTime) {
     // 정규시간/추가시간 입력 칸 — 값이 바뀌면 선수 후보를 다시 계산.
     const timeRow = document.createElement('div');
     timeRow.className = 'ev-edit-time';
@@ -800,11 +920,23 @@ function evEditOpen(ev) {
       side: draft.side,
       teamId: evEditTeamId(draft.side) ?? ev.teamId ?? null,
       detail: draft.detail,
-      ...(draft.player === 'keep' ? keepPlayer : toFields(draft.player, 'player')),
+      ...(draft.player === 'keep' ? keepPlayer : draft.player === 'none'
+        ? { playerId: null, playerName: null, playerNameKoLong: null, playerOrigName: null }
+        : toFields(draft.player, 'player')),
     };
-    if (isGoal) {
+    // 판정에 덧붙은 사유는 판정 종류를 바꾸더라도 보존한다.
+    if (isVar) {
+      const parsed = evParseVarDetail(ev.detail);
+      patch.detail = draft.detail === 'VAR' ? draft.varReason || 'VAR'
+        : draft.detail === 'Card upgrade confirmed' ? (evIsVarCardUpgrade(ev) ? ev.detail : 'Card upgrade confirmed')
+        : draft.detail === parsed.displayDetail ? ev.detail : `${draft.detail}${parsed.displayComment ? ` - ${parsed.displayComment}` : ''}`;
+    }
+    if (isCard) patch.comments = draft.cardReason || null;
+    if (editsTime) {
       patch.elapsed = draft.elapsed;
       patch.extra = draft.extra;
+    }
+    if (isGoal) {
       if (!showAssist() || draft.assist === 'none') {
         Object.assign(patch, { assistId: null, assistName: null, assistNameKoLong: null, assistOrigName: null });
       } else {

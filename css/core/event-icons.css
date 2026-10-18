@@ -25,7 +25,7 @@
 .ev-icon > .football-icon-subst { width: 16px; height: 16px; }
 .ev-icon > .football-icon-pk-goal, .ev-icon > .football-icon-pk-miss { width: 21px; }
 .ev-icon > .football-icon-var, .ev-icon > .football-icon-var-confirm,
-.ev-icon > .football-icon-var-cancel { width: 21px; }
+.ev-icon > .football-icon-var-cancel, .ev-icon > .football-icon-var-card-change { width: 21px; }
 .ev-icon > .football-icon-yellow-card, .ev-icon > .football-icon-red-card { width: 8px; height: 11px; }
 .ev-icon > .football-icon-cumulative-red { width: 9px; height: 12px; }
 

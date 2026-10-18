@@ -60,11 +60,10 @@ window.EVENT_COMMENT_KO = {
 };
 
 /** 코멘트 한글화 — 매칭 없으면 원문 반환. 빈 값 / null이면 빈 문자열. */
-window.translateEventComment = function translateEventComment(raw) {
+function eventTranslateFromMap(raw, map) {
   if (raw == null) return '';
   const s = String(raw).trim();
   if (!s) return '';
-  const map = window.EVENT_COMMENT_KO || {};
   if (map[s]) return map[s];
   // case-insensitive 시도
   const lower = s.toLowerCase();
@@ -72,4 +71,14 @@ window.translateEventComment = function translateEventComment(raw) {
     if (key.toLowerCase() === lower) return map[key];
   }
   return s;
+}
+
+// VAR detail은 comments와 별도 관리한다. 새 판정이 카드 사유 목록에 섞이지 않도록 한다.
+window.EVENT_VAR_DETAIL_KO = {
+  'Card upgrade':               '카드 변경',
+  'Card upgrade confirmed':     '카드 변경',
+  'Card upheld':                '카드 판정 유지',
+  'Card reviewed':              '카드 판정 검토 완료',
 };
+window.translateEventComment = raw => eventTranslateFromMap(raw, window.EVENT_COMMENT_KO || {});
+window.translateEventVarDetail = raw => eventTranslateFromMap(raw, window.EVENT_VAR_DETAIL_KO || {});

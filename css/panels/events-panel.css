@@ -274,23 +274,29 @@
       gap: 2px;
     }
     .ev-subst-picker-list,
-    .ev-subst-cluster-cols {
+    .ev-subst-cluster-cols,
+    .ev-edit-reason-menu {
       scrollbar-width: thin;
       scrollbar-color: rgba(255,255,255,.25) transparent;
       color-scheme: dark;
     }
     .ev-subst-picker-list::-webkit-scrollbar,
+    .ev-edit-reason-menu::-webkit-scrollbar,
     .ev-subst-cluster-cols::-webkit-scrollbar { width: 6px; height: 6px; }
     .ev-subst-picker-list::-webkit-scrollbar-track,
+    .ev-edit-reason-menu::-webkit-scrollbar-track,
     .ev-subst-cluster-cols::-webkit-scrollbar-track { background: transparent; }
     .ev-subst-picker-list::-webkit-scrollbar-thumb,
+    .ev-edit-reason-menu::-webkit-scrollbar-thumb,
     .ev-subst-cluster-cols::-webkit-scrollbar-thumb {
       background: rgba(255,255,255,.25);
       border-radius: 999px;
     }
     .ev-subst-picker-list::-webkit-scrollbar-thumb:hover,
+    .ev-edit-reason-menu::-webkit-scrollbar-thumb:hover,
     .ev-subst-cluster-cols::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
     .ev-subst-picker-list::-webkit-scrollbar-corner,
+    .ev-edit-reason-menu::-webkit-scrollbar-corner,
     .ev-subst-cluster-cols::-webkit-scrollbar-corner { background: transparent; }
     .ev-subst-picker-empty {
       padding: 20px;
@@ -554,6 +560,31 @@
       display: flex;
       gap: 4px;
     }
+    /* 판정 종류가 늘어나도 버튼 이름을 읽을 수 있도록 다음 줄로 배치한다. */
+    .ev-edit-types { flex-wrap: wrap; }
+    .ev-edit-types .ev-edit-seg-btn { flex: 1 0 80px; }
+    /* 골·PK 네 판정 아래에는 VAR 버튼과 사유 선택을 한 줄로 놓는다. */
+    .ev-edit-var-types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ev-edit-var-reason-row { grid-column: 1 / -1; }
+    .ev-edit-var-reason-row .ev-edit-seg-btn { flex: 0 0 64px; }
+    .ev-edit-var-reason-row .ev-edit-reason { flex: 1 1 0; width: 0; }
+    .ev-edit-reason { position: relative; min-width: 0; font: inherit; font-size: 12px; }
+    .ev-edit-reason-toggle, .ev-edit-reason-option {
+      width: 100%; padding: 7px 8px; border: 1px solid rgba(255,255,255,.12);
+      border-radius: 6px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.85);
+      font: inherit; text-align: left; cursor: pointer;
+    }
+    .ev-edit-reason-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .ev-edit-reason-toggle::after { content: '⌄'; color: rgba(255,255,255,.55); }
+    .ev-edit-reason-toggle:disabled { opacity: .5; cursor: default; }
+    .ev-edit-reason-menu {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+      max-height: 180px; overflow-y: auto; padding: 4px; border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.15); background: #20202b; box-shadow: 0 6px 18px #0006;
+    }
+    .ev-edit-reason-option { display: block; border-color: transparent; background: transparent; }
+    .ev-edit-reason-option:hover, .ev-edit-reason-option:focus-visible { background: rgba(255,255,255,.1); }
+    .ev-edit-reason-option[aria-selected="true"] { background: rgba(var(--control-accent-rgb),.18); color: var(--control-accent-text); }
     .ev-edit-seg-btn {
       flex: 1 1 0;
       min-width: 0;
