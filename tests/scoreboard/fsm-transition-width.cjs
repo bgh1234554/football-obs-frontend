@@ -50,11 +50,16 @@ const { openPage, settle } = require('../tactics/helpers');
         const wrap = document.querySelector('#boardStageWrap');
         const heights = [wrap.getBoundingClientRect().height];
         const originalRender = window.stRenderPanel;
-        let renders = 0, intermediateRenders = 0, injuryFits = 0, columnFits = 0;
+        let renders = 0, intermediateRenders = 0, injuryFits = 0, columnFits = 0, intermediateColumnFits = 0;
         const originalInjuryFit = window.fitInjuryReasons;
         const originalColumnFit = window.applyStoredSmallLayoutResize;
         window.fitInjuryReasons = function (...args) { injuryFits++; return originalInjuryFit.apply(this, args); };
-        window.applyStoredSmallLayoutResize = function (...args) { columnFits++; return originalColumnFit.apply(this, args); };
+        window.applyStoredSmallLayoutResize = function (...args) {
+          columnFits++;
+          if (document.querySelector('.fsm-board').getAnimations({ subtree: true }).some(animation =>
+            animation.playState === 'running' && /^(height|padding.*|margin.*|row-gap)$/.test(animation.transitionProperty || ''))) intermediateColumnFits++;
+          return originalColumnFit.apply(this, args);
+        };
         window.stRenderPanel = function (...args) {
           renders++;
           if (document.querySelector('.fsm-board').getAnimations({ subtree: true }).some(animation =>
@@ -76,7 +81,7 @@ const { openPage, settle } = require('../tactics/helpers');
           const html = panel.innerHTML;
           originalRender(panel, statsLastFixtureData);
           return { start: heights[0], end: heights.at(-1), min: Math.min(...heights), max: Math.max(...heights),
-            renders, intermediateRenders, injuryFits, columnFits, finalMatches: html === panel.innerHTML };
+            renders, intermediateRenders, injuryFits, columnFits, intermediateColumnFits, finalMatches: html === panel.innerHTML };
         } finally {
           window.stRenderPanel = originalRender;
           window.fitInjuryReasons = originalInjuryFit;
@@ -89,7 +94,9 @@ const { openPage, settle } = require('../tactics/helpers');
       assert(transition.renders > 0, 'stats render resumes after transition');
       assert(transition.finalMatches, 'deferred stats layout matches fresh final-size render');
       assert.equal(transition.injuryFits, 0, 'height-only transition does not refit injury text');
-      assert.equal(transition.columnFits, 0, 'height-only transition does not restore column widths');
+      // 높이 비례인 라인업 폭이 바뀌면 열 너비는 다시 나눠야 하지만, 전환 중간이 아니라 끝난 뒤 한 번만 한다.
+      assert.equal(transition.intermediateColumnFits, 0, 'column widths wait for final theme geometry');
+      assert(transition.columnFits <= 1, `column widths restored once after transition: ${transition.columnFits}`);
       console.log('PASS height transition and deferred stats', theme);
     }
     // 득점자가 있을 때 전환 애니메이션 중 크기 감지는 득점자 박스를 다시 피팅하지 않고(위치만 따라감),

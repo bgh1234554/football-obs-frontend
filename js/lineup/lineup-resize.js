@@ -328,6 +328,8 @@ function ensureSmallStatsHeightHandle() {
 // 윈도우 리사이즈/패널 폭 변화 시 저장된 비율을 다시 적용하기 위한 옵저버.
 // ResizeObserver가 없는 구형 환경은 window resize 이벤트로 fallback.
 let smallLayoutResizeObserver = null;
+// 점수판 크기 전환이 끝나기를 기다리는 중인 열 너비 재적용(observeSmallLayoutResize).
+let smallLayoutTransitionWait = null;
 let smallLayoutResizeFallbackBound = false;
 // layout(.layout-small) → 드래그 중인 pointerId. 한 layout당 세션 1개만 허용해
 // (events-stat/cam-chat 핸들 동시 조작이나 멀티터치로) 두 세션이 겹치는 것을 막는다.
@@ -565,7 +567,15 @@ function observeSmallLayoutResize() {
         }
         // 열 너비는 높이 변화와 무관하다. 테마 전환의 매 프레임에
         // 저장된 열 너비를 다시 쓰고 배치를 강제로 읽지 않는다.
-        if (widthChanged) applyStoredSmallLayoutResize();
+        if (!widthChanged || smallLayoutTransitionWait) return;
+        // 점수판 높이 전환 중에는 높이 비례인 라인업 폭이 매 프레임 바뀐다.
+        // 중간 폭마다 열을 다시 나누지 않고, 전환이 끝난 최종 폭으로 한 번만 맞춘다.
+        const transitions = typeof stGetBoardLayoutTransitions === 'function' ? stGetBoardLayoutTransitions() : [];
+        if (!transitions.length) { applyStoredSmallLayoutResize(); return; }
+        smallLayoutTransitionWait = Promise.allSettled(transitions.map(animation => animation.finished)).then(() => {
+          smallLayoutTransitionWait = null;
+          applyStoredSmallLayoutResize();
+        });
       });
     } else {
       // 이미 옵저버 있으면 재구독을 위해 disconnect → 아래 forEach에서 다시 observe.
