@@ -23,6 +23,45 @@ const themes = { default: 'default', pl: 'EPL', cl: 'CL', uel: 'UEL', acle: 'ACL
     await page.goto('http://localhost/');
     await page.evaluate(() => { state.homeName='맨체스터 시티'; state.awayName='선덜랜드'; render(); fsmBoardRender(); });
     await page.evaluate(() => document.fonts.ready);
+    // 모든 테마가 로고 마스크를 쓰는 테마를 드나들어도 로고는 전환 양 끝의 크기 범위를 넘지 않는다.
+    const registeredThemes = await page.evaluate(() => Object.keys(FSM_THEMES));
+    await page.evaluate(() => {
+      const logo='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><circle cx="200" cy="200" r="180" fill="orange"/></svg>');
+      state.homeLogo=logo;state.awayLogo=logo;render();
+    });
+    await page.evaluate(()=>applyTheme('carabao',null));
+    await page.waitForFunction(()=>!pendingThemeLink);
+    await page.waitForTimeout(1000);
+    for (const theme of registeredThemes.filter(theme=>theme!=='carabao')) {
+      for (const target of [theme,'carabao']) {
+        const samples=await page.evaluate(async target=>{
+          const frames=[];
+          const measure=()=>[...document.querySelectorAll('.fsm-board .team-logo img')].map(img=>{
+            const rect=img.getBoundingClientRect();return {width:rect.width,height:rect.height};
+          });
+          const first=measure();let running=true;
+          const sample=()=>frames.push(measure());
+          const tick=()=>{sample();if(running)requestAnimationFrame(tick);};requestAnimationFrame(tick);
+          applyTheme(target,null);pendingThemeLink?.addEventListener('fsm-theme-applied',sample,{once:true});
+          await new Promise(resolve=>{
+            const wait=()=>{
+              if(pendingThemeLink){requestAnimationFrame(wait);return;}
+              requestAnimationFrame(async()=>{
+                const animations=document.querySelector('.fsm-board').getAnimations({subtree:true});
+                await Promise.allSettled(animations.filter(animation=>Number.isFinite(animation.effect.getComputedTiming().endTime)).map(animation=>animation.finished));
+                resolve();
+              });
+            };wait();
+          });
+          running=false;const last=measure();return {first,last,frames};
+        },target);
+        samples.frames.forEach(frame=>frame.forEach((logo,index)=>{
+          for(const dimension of ['width','height'])assert(logo[dimension]<=Math.max(samples.first[index][dimension],samples.last[index][dimension])+1,
+            `${target}: logo ${index} ${dimension} exceeds settled endpoint sizes`);
+        }));
+      }
+    }
+    console.log('PASS logo size bounds across every registered theme, both directions and both teams');
     const failures = [];
     for (const [theme, file] of Object.entries(themes)) {
       // Compare the original theme declarations; widths deliberately follow current layout.
