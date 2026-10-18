@@ -345,6 +345,37 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 }
 
 /* ----- 슬라이더 (range) ----- */
+.panel-font-popover {
+  position: fixed;
+  z-index: 100100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 16px);
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: #20202b;
+  color: #eee;
+  box-shadow: 0 6px 22px rgba(0,0,0,.35);
+  font: 12px var(--font-family);
+}
+.panel-font-popover .sp-slider-cluster { flex: 1 1 auto; min-width: 0; }
+.panel-font-popover .sp-slider-cluster input[type="range"] { width: 140px; min-width: 50px; flex: 1 1 auto; }
+.panel-font-reset {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 5px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+[data-panel-font] { cursor: pointer; pointer-events: auto; }
+.ev-title-bar .ev-title[data-panel-font] { pointer-events: auto; }
+[data-panel-font]:focus-visible { outline: 1px solid var(--control-accent-text); outline-offset: 2px; }
+
 .sp-slider-cluster {
   display: inline-flex;
   align-items: center;

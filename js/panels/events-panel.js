@@ -981,6 +981,7 @@ function evCreateRow(ev, fixtureData, renderKey = '', timeContext) {
   const style = evStyle(ev);
   const row = document.createElement('div');
   row.className = `ev-row ev-bar-${style.color}`;
+  row.style.setProperty('--ev-ui-scale', String(evGetBaseFontSize() / EVENTS_PANEL_FONT_DEFAULT));
   if (renderKey) row.dataset.evKey = renderKey;
   if (evTypeIs(ev, 'subst')) row.classList.add('ev-row-subst');
 
@@ -1237,6 +1238,7 @@ function evCreateTitleBar(filterOptions, container) {
   const title = document.createElement('div');
   title.className = 'ev-title';
   title.textContent = '이벤트';
+  bindPanelFontTitle(title, 'eventNameSize');
   titleBar.appendChild(title);
 
   titleBar.appendChild(evCreateFilterUi(filterOptions));

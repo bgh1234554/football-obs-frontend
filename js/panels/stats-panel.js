@@ -572,6 +572,7 @@ function stRenderPanel(panel, fixtureData) {
   const titleBar = document.createElement('div');
   titleBar.className = 'st-title-bar';
   titleBar.textContent = '경기 스탯';
+  bindPanelFontTitle(titleBar, 'statsNameSize');
   panel.appendChild(titleBar);
 
   if (!rows.length) {

@@ -182,7 +182,7 @@ const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
 const LINEUP_SCALE_MIN = 50;
 const LINEUP_SCALE_MAX = 100;
 const LINEUP_NAME_SIZE_MIN = 9;
-const LINEUP_NAME_SIZE_MAX = 16;
+const LINEUP_NAME_SIZE_MAX = 20;
 const TACTICS_NAME_SIZE_MIN = 7;
 const TACTICS_NAME_SIZE_MAX = 18;
 // 전술판 선수 바둑알 크기 배율(%) — 태블릿 등 작은 화면에서 기본 44px 원이 너무 크다는 피드백으로 추가.
@@ -1020,6 +1020,96 @@ function syncSliderUi(category) {
   if (category === 'lineupNameSize' || category === 'eventNameSize' || category === 'tacticsNameSize' || category === 'benchInjuryNameSize' || category === 'statsNameSize') label.textContent = `${value}px`;
   else label.textContent = `${value}%`;
 }
+
+/** 패널 제목의 빠른 글자 크기 편집도 설정 창과 같은 저장·적용 경로를 사용한다. */
+const PANEL_FONT_SETTINGS = ['lineupNameSize', 'eventNameSize', 'benchInjuryNameSize', 'statsNameSize'];
+function panelFontTitleAttrs(category) {
+  return ` data-panel-font="${category}" role="button" tabindex="0" title="클릭하여 글자 크기 조절"`;
+}
+function bindPanelFontTitle(title, category) {
+  title.dataset.panelFont = category;
+  title.setAttribute('role', 'button');
+  title.tabIndex = 0;
+  title.title = '클릭하여 글자 크기 조절';
+}
+let panelFontPopup = null;
+function closePanelFontPopup() {
+  const recalculate = panelFontPopup?.dataset.rebalance === 'small-bench'
+    && Number(panelFontPopup.dataset.initialValue) !== Number(getSetting('benchInjuryNameSize'));
+  panelFontPopup?.remove();
+  panelFontPopup = null;
+  // 조절창을 닫은 뒤 확정된 글자 크기로 높이를 다시 맞추되, 사용자가 드래그한 비율은 유지한다.
+  if (recalculate) requestAnimationFrame(() => window.balanceBenchInjuryPanelHeights?.());
+}
+function syncPanelFontPopup() {
+  if (!panelFontPopup) return;
+  const category = panelFontPopup.dataset.category;
+  const value = Number(getSetting(category));
+  panelFontPopup.querySelector('input').value = String(value);
+  panelFontPopup.querySelector('output').textContent = `${value}px`;
+}
+function openPanelFontPopup(title) {
+  const category = title.dataset.panelFont;
+  if (!PANEL_FONT_SETTINGS.includes(category)) return;
+  const source = document.querySelector(`input[data-settings-slider="${category}"]`);
+  if (!source) return;
+  if (panelFontPopup?._anchor === title) { closePanelFontPopup(); return; }
+  closePanelFontPopup();
+  const popup = document.createElement('div');
+  popup.className = 'panel-font-popover';
+  popup.dataset.category = category;
+  popup.dataset.initialValue = String(getSetting(category));
+  if (title.closest('#benchPanel, #injuryPanel')) popup.dataset.rebalance = 'small-bench';
+  popup._anchor = title;
+  popup.setAttribute('role', 'dialog');
+  popup.setAttribute('aria-label', '패널 글자 크기');
+  const cluster = document.createElement('label');
+  cluster.className = 'sp-slider-cluster';
+  const input = document.createElement('input');
+  input.type = 'range';
+  ['min', 'max', 'step'].forEach(attr => input.setAttribute(attr, source.getAttribute(attr)));
+  input.setAttribute('aria-label', '글자 크기');
+  const value = document.createElement('output');
+  value.className = 'sp-slider-value';
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'panel-font-reset';
+  reset.textContent = '초기화';
+  reset.addEventListener('click', () => setSetting(category, SETTINGS_DEFAULTS[category]));
+  input.addEventListener('input', () => { setSetting(category, Number(input.value)); syncPanelFontPopup(); });
+  cluster.append(input, value);
+  popup.append(cluster, reset);
+  (document.fullscreenElement || document.body).append(popup);
+  panelFontPopup = popup;
+  syncPanelFontPopup();
+  const rect = title.getBoundingClientRect();
+  const point = typeof toDisplayLayoutPoint === 'function' ? toDisplayLayoutPoint(rect.left, rect.bottom + 6) : { x: rect.left, y: rect.bottom + 6 };
+  popup.style.left = `${point.x}px`;
+  popup.style.top = `${point.y}px`;
+  if (typeof pmClampPopupToViewport === 'function') pmClampPopupToViewport(popup);
+  input.focus({ preventScroll: true });
+}
+document.addEventListener('click', event => {
+  if (event.target.closest('button, a, input, select, [data-team-nickname-side], [data-team-nickname-key]')) return;
+  const title = event.target.closest('[data-panel-font]');
+  if (!title) return;
+  event.stopPropagation();
+  openPanelFontPopup(title);
+});
+document.addEventListener('pointerdown', event => {
+  if (panelFontPopup && !panelFontPopup.contains(event.target) && !event.target.closest('[data-panel-font]')) closePanelFontPopup();
+}, true);
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && panelFontPopup) { closePanelFontPopup(); event.preventDefault(); return; }
+  if (!['Enter', ' '].includes(event.key) || !event.target.matches('[data-panel-font]')) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openPanelFontPopup(event.target);
+});
+document.addEventListener('settings:change', syncPanelFontPopup);
+document.addEventListener('page:activated', closePanelFontPopup);
+document.addEventListener('fullscreenchange', closePanelFontPopup);
+window.addEventListener('resize', closePanelFontPopup);
 
 /** 숫자 input(<input type="number">) UI 동기화. statsAutoSwipeSec처럼 0.5 step 허용 카테고리에 사용. */
 function syncNumberUi(category) {
