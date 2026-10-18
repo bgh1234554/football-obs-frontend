@@ -102,6 +102,8 @@
     transition: 0.9s ease-in-out;
     position: absolute;
     z-index: 1;
+    /* 돌출된 트로피 장식이 아래 시계의 클릭을 가로채지 않게 한다. */
+    pointer-events: none;
 }
 
 .fsm-board .hipen {
@@ -159,7 +161,8 @@
     align-items: center;
     transition: 0.9s ease-in-out;
     position: relative;
-    z-index: -1;
+    /* 트로피 뒤의 배치는 유지하되 점수판 배경 뒤로 내려가지 않게 한다. */
+    z-index: 0;
     margin-top: -10px;
     margin-left: none;
 }

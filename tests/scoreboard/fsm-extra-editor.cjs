@@ -11,7 +11,7 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 
 
 
-for(const theme of ['default','pl','cl','eflchampionship','seriea']){
+for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))){
  await page.evaluate(theme=>{applyTheme(theme,null);state.half='2H';state.seconds=5400;state.running=false;setManualExtra(3);fsmBoardRender();},theme);
  await page.waitForTimeout(600);
  await page.evaluate(()=>fsmBoardRender());
