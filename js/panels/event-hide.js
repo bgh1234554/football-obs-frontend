@@ -408,7 +408,7 @@ function evEditFindRawEvent(sig) {
   return index >= 0 ? raw[index] : null;
 }
 
-/** 수정 기록 저장. patch가 원본과 전부 같거나 null이면 기록을 지운다. */
+/** 수정 기록 저장. patch가 원본과 전부 같거나 null이면 기록을 지운다(직접 퇴장 지정 `_directRed`는 예외). */
 function evEditSave(sig, patch) {
   const fixtureId = evHideCurrentFixtureId();
   if (!fixtureId || !sig) return;
@@ -417,7 +417,7 @@ function evEditSave(sig, patch) {
   // patch에 실제로 들어 있는 필드만 비교한다(카드 수정엔 시간 필드가 없음).
   const same = patch && EV_EDIT_FIELDS.filter(key => key in patch).every(key => (patch[key] ?? null) === (raw[key] ?? null)
     || (EV_EDIT_NUMERIC_FIELDS.has(key) && Number(patch[key] || 0) === Number(raw[key] || 0)));
-  if (!patch || same) delete entry.edits[sig];
+  if (!patch || (same && !patch._directRed)) delete entry.edits[sig];
   else entry.edits[sig] = { patch, editedAt: Date.now() };
   evHideSetEntry(fixtureId, entry);
   evHideReapply();
@@ -721,7 +721,10 @@ function evEditOpen(ev) {
     // 골 시간 — 정규시간(분)과 추가시간을 따로 받는다(예: 45 + 2 -> "45+2'"). 추가시간 0/빈 값은 없음.
     elapsed: Number(ev.elapsed) || 0,
     extra: Number(ev.extra) > 0 ? Number(ev.extra) : null,
-    varReason: isVar && !evIsVarCardUpgrade(ev) && !evVarDetailKey(ev.detail) && !/^var$/i.test(ev.detail || '') ? ev.detail : '',
+    // 인식된 판정("Goal cancelled - Offside")은 덧붙은 사유를, 일반 VAR는 detail 자체를 사유로 쓴다.
+    // 판정을 일반 VAR로 바꿔도 사유가 사라지지 않게 한다.
+    varReason: !isVar || evIsVarCardUpgrade(ev) || /^var$/i.test(ev.detail || '') ? ''
+      : evVarDetailKey(ev.detail) ? evParseVarDetail(ev.detail).displayComment : ev.detail,
     cardReason: ev.comments || '',
   };
 
@@ -932,6 +935,9 @@ function evEditOpen(ev) {
         : draft.detail === parsed.displayDetail ? ev.detail : `${draft.detail}${parsed.displayComment ? ` - ${parsed.displayComment}` : ''}`;
     }
     if (isCard) patch.comments = draft.cardReason || null;
+    // 원본도 Red Card라 값은 같지만, 이전 경고 때문에 경고 누적으로 표시되던 것을 직접 퇴장으로
+    // 고친 경우다. 기록을 남겨야 _evEdited가 붙어 evProcess가 다시 누적으로 분류하지 않는다.
+    if (isCard && ev._isCumulativeRed && draft.detail === 'Red Card') patch._directRed = true;
     if (editsTime) {
       patch.elapsed = draft.elapsed;
       patch.extra = draft.extra;

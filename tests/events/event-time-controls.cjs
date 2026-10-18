@@ -257,6 +257,14 @@ const fixture = {
     await openEvent(85);
     await modal.getByRole('button', { name: '초기화', exact: true }).click();
     assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').detail), 'Goal cancelled - Offside');
+    // 인식된 판정을 일반 VAR로 바꿔도 덧붙은 사유는 남는다.
+    await openEvent(85);
+    assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), 'Offside');
+    await modal.getByRole('button', { name: 'VAR', exact: true }).click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').detail), 'Offside');
+    await openEvent(85);
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
     editableFixture.events.find(ev => ev.type === 'Var').detail = 'Card upgrade';
     await poll(editableFixture);
     assert.equal(await page.evaluate(() => translateEventVarDetail('CARD UPGRADE')), '카드 변경');
@@ -324,6 +332,21 @@ const fixture = {
     assert.equal(cumulativeEvent.comments, 'Foul');
     assert.equal(await cumulativeRow.locator('.ev-comment').textContent(), '파울');
     assert.equal(await cumulativeRow.locator('.ev-icon-cumulative-red').count(), 1);
+    // 원본과 값이 같은 Red Card라도 직접 퇴장으로 고친 기록은 남아 다시 누적으로 분류되지 않는다.
+    await cumulativeRow.click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    await modal.getByRole('button', { name: '퇴장', exact: true }).click();
+    await pickReason('');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    await poll(cardFixture);
+    const directRedRow = page.locator('[data-events-panel]:visible .ev-row').filter({ has: page.locator('.ev-time', { hasText: "90+2'" }) }).first();
+    assert.equal(await directRedRow.locator('.ev-label').textContent(), '퇴장');
+    assert.equal(await directRedRow.locator('.ev-icon-cumulative-red').count(), 0);
+    await directRedRow.click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    assert.equal(await modal.locator('.ev-edit-types .is-active').textContent(), '퇴장');
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
+    assert.equal(await directRedRow.locator('.ev-label').textContent(), '경고 누적 퇴장');
     const cardReviewRow = page.locator('[data-events-panel]:visible .ev-row').filter({ hasText: '카드 변경' }).first();
     assert.equal(await cardReviewRow.locator('.ev-label').textContent(), 'VAR 카드 변경');
     assert.equal(await cardReviewRow.locator('.ev-comment').textContent(), '카드 변경');
