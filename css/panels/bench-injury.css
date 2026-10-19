@@ -403,12 +403,16 @@ body.low-panel-alpha #injuryPanel :is(.dp-title, .dp-side-name, .dp-item-num, .d
 }
 .dp-bench-footer > div {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 4px;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* 감독 라벨의 위 여백을 없애 이름이 축소되어도 글자 기준선을 맞춥니다. */
+.dp-bench-footer .mi-label {
+  padding-top: 0;
 }
 .dp-bench-footer [data-bench-coach="away"] {
   flex-direction: row-reverse;
