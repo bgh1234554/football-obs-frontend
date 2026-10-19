@@ -1,0 +1,87 @@
+@import url('./result_style_UZBEK.css');
+
+/* 우즈베키스탄과 같은 중앙 로고 원 + 팀컬러 원호 구조를 쓰고, 점수판 바탕은 점수 칸 색으로 채웁니다. */
+.fsm-board .div-background { background: #070E25; border-radius: 0 0 10px 10px; }
+
+/* 팀명 칸은 같은 폭 3열 2행 사각형 모자이크입니다. 맨 위 레이어부터 위쪽 행, 아래쪽 행, 가운데 이음 순서로 겹칩니다.
+   홈은 점수 쪽 위 칸, 원정은 점수 쪽 아래 칸이 점수 칸과 같은 색으로 이어집니다. */
+.board.fsm-board[data-fsm-theme="ukrainian"] .teams-left {
+    background:
+        linear-gradient(to right, #0F2045 0 33.333%, #152A55 33.333% 66.667%, #070E25 66.667%) top / 100% 49% no-repeat,
+        linear-gradient(to right, #071637 0 33.333%, #101F44 33.333% 66.667%, #142450 66.667%) bottom / 100% 33% no-repeat,
+        linear-gradient(to right, #0F2045 0 33.333%, #152A55 33.333% 66.667%, #142450 66.667%);
+}
+.board.fsm-board[data-fsm-theme="ukrainian"] .teams-right {
+    background:
+        linear-gradient(to right, #0F244F 0 33.333%, #0C2046 33.333% 66.667%, #061637 66.667%) top / 100% 49% no-repeat,
+        linear-gradient(to right, #070E25 0 33.333%, #152956 33.333% 66.667%, #0F1D43 66.667%) bottom / 100% 33% no-repeat,
+        linear-gradient(to right, #070E25 0 33.333%, #0C2046 33.333% 66.667%, #061637 66.667%);
+}
+.fsm-board .team-name { color: #ffffff; }
+
+#board.fsm-board[data-fsm-theme="ukrainian"] :is(#team-score-left, #team-score-right) {
+    position: relative;
+    margin: 0;
+    width: 52px;
+    height: 48px;
+    background: transparent;
+    color: #ffffff;
+    font-size: 46px;
+    font-family: 'Pretendard-Medium';
+    font-weight: bold;
+    z-index: 2;
+}
+/* 점수 칸 배경은 점수판 가운데를 중심으로, 사각형 점수 칸(합계 포함)의 바깥 위 꼭짓점까지를 반지름으로 하는 원을
+   점수판 높이로 자른 모양입니다. 반지름은 fsm-board.js가 중앙 폭으로 계산합니다. */
+#board.fsm-board[data-fsm-theme="ukrainian"] .scoreboard-main::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: calc(var(--ukr-score-radius, 90px) * 2);
+    height: 48px;
+    transform: translateX(-50%);
+    background: #070E25;
+    clip-path: circle(var(--ukr-score-radius, 90px) at 50% 24px);
+    pointer-events: none;
+    z-index: 1;
+}
+.fsm-board :is(.score-left, .score-right) { transform: none; text-shadow: none; }
+
+#board.fsm-board[data-fsm-theme="ukrainian"] .score-div {
+    position: relative;
+    width: 70px;
+    height: 48px;
+    background: #070E25;
+    overflow: visible;
+    z-index: 3;
+}
+/* 로고 원은 점수판 위아래로 조금 나옵니다. */
+.fsm-board .score-div::before {
+    width: 56px;
+    height: 56px;
+    background: #0E1C3B;
+}
+.fsm-board .epl-lion { width: 50px; height: 50px; }
+
+/* 팀 로고 칸은 흰 바탕이고, 점수판은 아래쪽 바깥 모서리만 둥글게 마감합니다. */
+.fsm-board .team-logo { background: #ffffff; }
+.fsm-board #team-logo-left { border-radius: 0 0 0 10px; }
+.fsm-board #team-logo-right { border-radius: 0 0 10px 0; }
+#board.fsm-board[data-fsm-theme="ukrainian"] :is(#homeColor, #awayColor) { background: transparent !important; box-shadow: none; }
+
+.fsm-board .time { background: #070E25; color: #ffffff; border-radius: 0 0 8px 8px; }
+.fsm-board .extra-time { background: #0F244F; color: #FCD480; border-radius: 0 0 8px 8px; }
+/* 추가시간이 보이면 경기 시간과 한 칸으로 이어지도록 맞닿는 모서리를 직선으로 둡니다. */
+.fsm-board .scoreboard-timer:has(#extra:not(.hidden)) .time { border-radius: 0 0 0 8px; }
+.fsm-board .scoreboard-timer:has(#extra:not(.hidden)) .extra-time { border-radius: 0 0 8px 0; }
+
+/* 합계를 켜면 바깥 합계 칸까지 같은 원 안에 들어갑니다. */
+#board.fsm-board[data-fsm-theme="ukrainian"][data-fsm-aggregate="true"] .total-score {
+    min-width: 28px;
+    padding: 0 2px;
+    font-size: 28px;
+    background: transparent;
+    color: #ffffff;
+    z-index: 2;
+}
