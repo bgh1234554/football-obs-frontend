@@ -15,7 +15,7 @@ async function sample(page) {
       const el = document.querySelector(selector), css = getComputedStyle(el);
       return [selector, Object.fromEntries(properties.map(p => [p, css.display === 'none' && p !== 'display' ? null : css[p]]))];
     }));
-    result.decorations = Object.fromEntries(['jleague-arc', 'danish-triangle', 'cnl-curve', 'russiancup-triangle'].map(name => [name,
+    result.decorations = Object.fromEntries(['jleague-arc', 'danish-triangle', 'cnl-curve', 'russiancup-triangle', 'az-chevron'].map(name => [name,
       [...document.querySelectorAll('.' + name)].filter(el => getComputedStyle(el).display !== 'none' && getComputedStyle(el.parentElement).display !== 'none').length]));
     return result;
   });
