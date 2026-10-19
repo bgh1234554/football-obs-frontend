@@ -194,8 +194,8 @@
     </div>
     <div class="sidebar-body">
       <!-- 탭 버튼 (수직) -->
-      <button class="tab sidebar-tab active" data-page="main-big">메인(캠 큼) <span class="tab-key">1</span></button>
-      <button class="tab sidebar-tab" data-page="main-small">메인(캠 작음) <span class="tab-key">2</span></button>
+      <button class="tab sidebar-tab active" data-page="main-big">카메라 뷰 <span class="tab-key">1</span></button>
+      <button class="tab sidebar-tab" data-page="main-small">대시보드 뷰 <span class="tab-key">2</span></button>
       <button class="tab sidebar-tab" data-page="theme">테마 <span class="tab-key">3</span></button>
       <button class="tab sidebar-tab" data-page="schedule">일정 확인 <span class="tab-key">4</span></button>
       <button class="tab sidebar-tab" data-page="tactics">전술판 <span class="tab-key">5</span></button>
@@ -406,8 +406,8 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">라인업 분할 (캠 큼)</span>
-              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다. OFF면 캠 작음과 같은 한 피치로 표시합니다.</span>
+              <span class="sp-label-main">라인업 분할 (카메라 뷰)</span>
+              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다. OFF면 대시보드 뷰와 같은 한 피치로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -454,7 +454,7 @@
             </div>
           </div>
 
-          <div class="sp-section-title">캠 큰 화면 라인업 표시</div>
+          <div class="sp-section-title">카메라 뷰 라인업 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">골 / 어시스트 이모티콘</span>
@@ -569,11 +569,11 @@
               <button type="button" class="sp-secondary-btn" id="panelColorResetBtn">초기화</button>
             </div>
           </div>
-          <div class="sp-section-title">캠 큰 메뉴 우측 하단 패널 전환</div>
+          <div class="sp-section-title">카메라 뷰 우측 하단 패널 전환</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">패널 자동 전환</span>
-              <span class="sp-label-sub">캠 큰 메뉴에서 우측 하단 스탯/이벤트/HTH/교체명단 패널 등을 순서대로 자동 전환합니다.</span>
+              <span class="sp-label-sub">카메라 뷰에서 우측 하단 스탯/이벤트/HTH/교체명단 패널 등을 순서대로 자동 전환합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -610,7 +610,7 @@
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeBenchAway" checked/><span class="sp-switch-slider"></span></span>
                   <span class="sp-mini-toggle-label">원정 교체</span>
                 </label>
-                <label class="sp-mini-toggle-item" title="캠 큰 메뉴의 양 팀 미출전 선수 명단 표시">
+                <label class="sp-mini-toggle-item" title="카메라 뷰의 양 팀 미출전 선수 명단 표시">
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeInjuries" checked/><span class="sp-switch-slider"></span></span>
                   <span class="sp-mini-toggle-label">미출전 선수 명단</span>
                 </label>
@@ -646,15 +646,15 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
-          <div class="sp-section-title">캠 큰 메뉴 패널 구성</div>
+          <div class="sp-section-title">카메라 뷰 패널 구성</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">캠 큰 화면 패널 표시</span>
-              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다. 팬 반응 패널의 경우에는 캠 작음 메뉴에도 적용됩니다</span>
+              <span class="sp-label-main">카메라 뷰 패널 표시</span>
+              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다. 팬 반응 패널의 경우에는 대시보드 뷰에도 적용됩니다</span>
             </div>
             <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap sp-big-panel-toggles">
               <label class="sp-mini-toggle-item"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigLineupVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">라인업</span></label>
-              <label class="sp-mini-toggle-item" title="캠 작은 화면의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
+              <label class="sp-mini-toggle-item" title="대시보드 뷰의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
               <label class="sp-mini-toggle-item" title="스탯·이벤트·상대전적·교체 명단·경기 정보가 표시되는 패널"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigInfoVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">경기 패널</span></label>
             </div>
           </div>
@@ -883,9 +883,9 @@
               <span class="sp-label-sub">불러오기 후 자동으로 열릴 메인 화면입니다.</span>
             </div>
             <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="big">캠 큼</span>
+              <span class="sp-toggle-side" data-side="big">카메라 뷰</span>
               <label class="sp-switch"><input type="checkbox" data-settings-cat="mainPage" /><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="small">캠 작음</span>
+              <span class="sp-toggle-side" data-side="small">대시보드 뷰</span>
             </div>
           </div>
           <div class="sp-row">
@@ -956,7 +956,7 @@
             <div class="sp-row">
               <div class="sp-row-label">
                 <span class="sp-label-main">패널 크기 초기화</span>
-                <span class="sp-label-sub">드래그로 조정한 패널 크기(캠 큰 우측 패널 높이·너비, 캠 작은 칼럼 비율, 라인업 패널 크기)를 기본값으로 되돌립니다.</span>
+                <span class="sp-label-sub">드래그로 조정한 패널 크기(카메라 뷰 우측 패널 높이·너비, 대시보드 뷰 칼럼 비율, 라인업 패널 크기)를 기본값으로 되돌립니다.</span>
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="layoutResetBtn">초기화</button>
             </div>
@@ -1009,10 +1009,10 @@
   <div id="copy-toast" class="copy-toast">복사했습니다</div>
   <!-- ========== 페이지 영역 ========== -->
   <div class="pages">
-    <!-- MAIN 캠 큰 버전 -->
+    <!-- MAIN 카메라 뷰 버전 -->
     <div id="page-main-big" class="page active">
       <div class="layout-wrap layout-big">
-        <!-- 라인업 (메인 캠 큼) — 메인 캠 작음과 같은 데이터/구조 공유 -->
+        <!-- 라인업 (메인 카메라 뷰) — 메인 대시보드 뷰와 같은 데이터/구조 공유 -->
         <div class="lp lp-lineup">
           <div class="dp-panel" data-dp-role="lineup">
             <div class="dp-title">선발 라인업</div>
@@ -1021,7 +1021,7 @@
         </div>
         <!-- 캠 -->
         <div class="lp lp-cam-big" aria-hidden="true"></div>
-        <!-- 팬 반응 + 경기 스탯 — 캠 큼 페이지의 lp-col은 팬 반응(상)/스탯(하) 두 슬롯으로 분할.
+        <!-- 팬 반응 + 경기 스탯 — 카메라 뷰 페이지의 lp-col은 팬 반응(상)/스탯(하) 두 슬롯으로 분할.
              팬 반응은 dp-panel + dp-title 구조로 경기 스탯과 동일하게 맨 윗줄에 제목 + 구분선. -->
         <div class="lp-col">
           <div class="lp lp-chat-big">
@@ -1049,7 +1049,7 @@
       </div>
     </div>
 
-    <!-- MAIN 캠 작은 버전 -->
+    <!-- MAIN 대시보드 뷰 버전 -->
     <div id="page-main-small" class="page">
       <div class="layout-wrap layout-small">
         <!-- 이벤트 (문자중계 타임라인) + 경기 스탯 — events-panel.js / stats-panel.js가 fixture 데이터로 채움 -->
@@ -1063,7 +1063,7 @@
           <div class="lp lp-stat-s"><div data-stat-panel></div></div>
         </div>
 
-        <!-- 라인업 (메인 캠 작음) — 메인 캠 큼과 같은 데이터/구조 공유 -->
+        <!-- 라인업 (메인 대시보드 뷰) — 메인 카메라 뷰와 같은 데이터/구조 공유 -->
         <div class="lp lp-lineup-s">
           <div class="dp-panel" id="lineupPanel" data-dp-role="lineup">
             <div class="dp-title">선발 라인업</div>
@@ -1093,7 +1093,7 @@
                 <div data-bench-coach="home"><span class="mi-label dp-label">감독</span><span class="dp-coach-name">-</span></div>
                 <div data-bench-coach="away"><span class="mi-label dp-label">감독</span><span class="dp-coach-name">-</span></div>
               </div>
-              <!-- 주심/대회/경기장/킥오프 — 캠 큰 메뉴 경기 정보 패널(mi-row)과 동일한 한 줄씩
+              <!-- 주심/대회/경기장/킥오프 — 카메라 뷰 경기 정보 패널(mi-row)과 동일한 한 줄씩
                    좌측 라벨/우측 값 레이아웃 재사용. 후보명단 쪽 공간이 남으면 이 블록이 flex-grow로
                    그 공간을 흡수(css/panels/bench-injury.css: #benchPanel .dp-bench-info). -->
               <div class="dp-bench-info">
@@ -1124,7 +1124,7 @@
           </div>
         </div>
 
-        <!-- 팬 반응 — 캠 큼 페이지 lp-chat-big과 동일하게 dp-panel + dp-title 구조로 윗줄 제목 + 구분선. -->
+        <!-- 팬 반응 — 카메라 뷰 페이지 lp-chat-big과 동일하게 dp-panel + dp-title 구조로 윗줄 제목 + 구분선. -->
         <div class="lp lp-cam-chat">
           <div class="dp-panel">
             <div class="dp-title">팬 반응</div>
@@ -1340,7 +1340,7 @@
         <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
           <defs></defs>
         </svg>
-        <!-- 팀 이름 라벨 — 캠 큰 메뉴 라인업 팀 chip(.dp-lineup-team-main)과 같은 팀 컬러 pill 디자인(팀명 + 포메이션).
+        <!-- 팀 이름 라벨 — 카메라 뷰 라인업 팀 chip(.dp-lineup-team-main)과 같은 팀 컬러 pill 디자인(팀명 + 포메이션).
              색상은 tacticsRenderTokens가 --td-team-accent/--td-team-text로 주입(css/tactics/tactics-timeline.css). -->
         <div class="td-team-label-wrap td-team-label-home" style="position:absolute;top:8px;left:12px;z-index:5;pointer-events:none;">
           <span id="tactics-home-label" class="td-team-label-name">홈팀</span>
@@ -1572,7 +1572,7 @@
   css/lineup/lineup-manual.css     — 수동 입력 모달 + 그리드 모드, 전술판 선수 이름 모달
   css/player/player-menu.css       — 선수 컨텍스트 메뉴, ID 연결 팝업
   css/player/player-search.css     — 선수 검색 후보 선택기
-  css/panels/hth-panel.css         — 상대전적 패널, 캠 작음 패널 모드 버튼
+  css/panels/hth-panel.css         — 상대전적 패널, 대시보드 뷰 패널 모드 버튼
   css/panels/team-fixtures-panel.css — 최근·예정 경기 패널
   css/settings-popup.css           — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치, 확장 섹션)
   css/core/fsm-fonts.css           — FSM 점수판 @font-face (테마 CSS에는 선언하지 않음)
@@ -1618,10 +1618,10 @@
   js/settings/nickname-csv.js      — 닉네임 CSV 가져오기/내보내기 (따옴표·줄바꿈·UTF-8 BOM 처리)
   js/player/player-search.js       — 선수 ID 연결·빈 슬롯 입력 공용 후보 선택기
   js/player/player-id-resolve.js   — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
-  js/lineup/lineup-resize.js       — 캠 큼 라인업/칼럼 드래그 리사이즈 + localStorage 저장
+  js/lineup/lineup-resize.js       — 카메라 뷰 라인업/칼럼 드래그 리사이즈 + localStorage 저장
   js/data/stats-config.js          — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
   js/data/scoreaxis-standings-embed-map.js — ScoreAxis 리그 순위 위젯 embed 코드 맵 (tools/scoreaxis-league-embed-codes.json에서 생성)
-  js/panels/scoreaxis-standings-panel.js   — ScoreAxis 순위표 위젯 패널 (캠 작음 이벤트 영역 + 캠 큼 스탯 순환)
+  js/panels/scoreaxis-standings-panel.js   — ScoreAxis 순위표 위젯 패널 (대시보드 뷰 이벤트 영역 + 카메라 뷰 스탯 순환)
   js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등) + translateEventComment()
   js/core/event-time.js            — 공통 이벤트 시간·구간 판정, 관측 이력, 경계 마커
   js/panels/events-panel.js        — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
@@ -1630,7 +1630,7 @@
   js/panels/hth-panel.js           — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
   js/panels/team-fixtures-panel.js — 양 팀 최근·예정 경기 패널 (팀별 요청 공유, 늦은 응답 폐기)
   js/panels/stats-panel.js         — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
-  js/panels/stat-cycle.js          — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/교체 명단/순위표 + 자동 전환)
+  js/panels/stat-cycle.js          — 카메라 뷰 lp-stat 패널 사이클 (스탯/이벤트/HTH/교체 명단/순위표 + 자동 전환)
   js/tactics/tactics-timeline.js   — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
   js/core/fsm-board.js             — FSM 점수판 (리그별 테마 매핑/적용, 폭·팀명 맞춤, 합계 점수, 승부차기)
   js/core/init.js                  — 초기화, 첫 render, 이벤트 핸들러 등록

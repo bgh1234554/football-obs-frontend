@@ -18,7 +18,7 @@
 |---|---|
 | `variables.css` | `:root` CSS 변수. 팀 컬러(`--home-bg` 등), 점수판 치수(`--board-width`), 폰트, 패널 배경 알파 등. |
 | `board.css` | 점수판 핵심 컴포넌트. `.board`, `.team`, `.logo-box`, `.score`, `.digits`, `.timer`, `.pk-wrap`, `.rc-rail`. 득점자 박스 수동 편집 인터랙션 포함. **모든 선택자는 `.board` 하위에서만 적용** (위젯 오염 방지). |
-| `layout.css` | 전체 레이아웃과 body 화면 배율, `display-viewport` 컨테이너, 전술판 전체화면 내부 래퍼, 스크롤 경계. `board-stage`, `.note-side/.note`, 페이지·테마·About 영역, 위젯 CSS 격리, `.layout-wrap/.lp-col/.lp` 캠 큰/작음 레이아웃. |
+| `layout.css` | 전체 레이아웃과 body 화면 배율, `display-viewport` 컨테이너, 전술판 전체화면 내부 래퍼, 스크롤 경계. `board-stage`, `.note-side/.note`, 페이지·테마·About 영역, 위젯 CSS 격리, `.layout-wrap/.lp-col/.lp` 카메라 뷰/대시보드 뷰 레이아웃. |
 
 ### css/tactics/
 
@@ -39,7 +39,7 @@
 
 | 파일 | 설명 |
 |---|---|
-| `lineup-layout.css` | 라인업 레이아웃과 리사이즈 핸들. 캠 작은 좌우 칼럼 너비·교체/미출전 높이 경계(`.lp-small-bench-height-resize`), 명단 스크롤바, 캠 큰 패널 너비/높이 및 라인업 모서리·축별 핸들. |
+| `lineup-layout.css` | 라인업 레이아웃과 리사이즈 핸들. 대시보드 뷰 좌우 칼럼 너비·교체/미출전 높이 경계(`.lp-small-bench-height-resize`), 명단 스크롤바, 카메라 뷰 패널 너비/높이 및 라인업 모서리·축별 핸들. |
 | `lineup-pitch.css` | 라인업 피치 렌더링. `.dp-lineup-body`, `.dp-lineup-vertical-pitch`, 피치 마킹 SVG, `.dp-lineup-league-wash`, `.dp-lineup-team-chip`, `.dp-lineup-node`, `.dp-node-badge`(평점 뱃지), `.dp-lineup-name`. |
 | `lineup-manual.css` | 수동 입력 모달 + 그리드 모드. `.dp-manual-backdrop/modal/header/footer/body`, `.dp-field`, `.dp-manual-grid`, `.dp-grid-*`, `.sp-radio-cluster`, `.tn-tabs`(전술판 선수 이름 입력 모달). |
 
@@ -127,7 +127,7 @@
 | `lineup-render.js` | 벤치/부상/라인업 패널 HTML 빌더 + 렌더 + 교체명단 사이클 패널 + 전술판 동기화. 진입점: `applyLineupPanels()` |
 | `lineup-name-fit.js` | 이름 pill·팀칩·벤치 텍스트 충돌 보정(`fitLineupNamePills`), 교체/미출전 자동 높이 배분(`balanceBenchInjuryPanelHeights`), 칼럼 ResizeObserver. 화면 사각형을 논리 좌표로 변환해 측정 |
 | `lineup-manual-modal.js` | 수동 입력 모달(그리드 모드 + 라인업/부상자 풀폼 + 교체 명단 고정 행/슬롯 편집). 선발·교체 공통 번호/이름/선수 검색·입력 완료·행 삭제 UI 및 감독/주심 인라인 편집 |
-| `lineup-resize.js` | 캠 큰 라인업 크기·축별 조절, 우측 패널 연결/독립 너비·높이, 캠 작은 좌우 너비·교체/미출전 높이 비율. 포인터 좌표 변환, localStorage 저장, 더블클릭 초기화와 `resetAllLayoutSizes()` |
+| `lineup-resize.js` | 카메라 뷰 라인업 크기·축별 조절, 우측 패널 연결/독립 너비·높이, 대시보드 뷰 좌우 너비·교체/미출전 높이 비율. 포인터 좌표 변환, localStorage 저장, 더블클릭 초기화와 `resetAllLayoutSizes()` |
 
 ### js/panels/
 
@@ -137,8 +137,8 @@
 | `events-panel.js` | 이벤트 타임라인 렌더 (`lp-events-s` 전용). 시간 내림차순, 구간 구분자, 필터 UI |
 | `hth-panel.js` | 상대 전적 패널 렌더. `/api/hth` 호출 → 결과 카드 |
 | `stats-panel.js` | 경기 스탯 패널 (`lp-stat` + `lp-stat-s`). 동적 페이지네이션, 막대 비율, 자동 스와이프 |
-| `stat-cycle.js` | 캠 큰 패널 모드 순환 — 스탯/이벤트/HTH/홈교체/원정교체/경기 정보. 데이터 유무·사용자 포함 설정에 따른 자동 전환과 스크롤. 순위표는 별도 팝업 |
-| `scoreaxis-standings-panel.js` | ScoreAxis 실시간 순위 위젯의 캠 작은 패널 및 공용 팝업. `<iframe srcdoc>` 렌더 |
+| `stat-cycle.js` | 카메라 뷰 패널 모드 순환 — 스탯/이벤트/HTH/홈교체/원정교체/경기 정보. 데이터 유무·사용자 포함 설정에 따른 자동 전환과 스크롤. 순위표는 별도 팝업 |
+| `scoreaxis-standings-panel.js` | ScoreAxis 실시간 순위 위젯의 대시보드 뷰 패널 및 공용 팝업. `<iframe srcdoc>` 렌더 |
 
 ### js/player/
 
@@ -226,7 +226,7 @@ state.lastRunningTickMs     // 새로고침 사이 타이머 drift 보정용 (Da
 
 ## 패널 크기 저장과 자동 높이
 
-캠 큰 우측 너비는 `obs.bigLayout.colWidth.v1`, 개별 패널 크기와 높이 비율은 같은 접두어의 키에 저장한다. 캠 작은 좌우 비율은 `obs.smallLayout.eventsStatRatio.v1`, 교체/미출전 세로 비율은 `obs.smallLayout.benchHeightRatio.v1`이다. 화면 bbox를 그대로 저장해 다음 로드에서 또 확대하지 않도록 논리 크기 또는 비율을 저장한다.
+카메라 뷰 우측 너비는 `obs.bigLayout.colWidth.v1`, 개별 패널 크기와 높이 비율은 같은 접두어의 키에 저장한다. 대시보드 뷰 좌우 비율은 `obs.smallLayout.eventsStatRatio.v1`, 교체/미출전 세로 비율은 `obs.smallLayout.benchHeightRatio.v1`이다. 화면 bbox를 그대로 저장해 다음 로드에서 또 확대하지 않도록 논리 크기 또는 비율을 저장한다.
 
 교체/미출전 높이는 저장값이 없으면 기존 자동 배분을 사용한다. 수동 비율이 있으면 그 비율을 먼저 적용하고 명단 내부 스크롤을 허용한다. 이후 `lpBenchPanelRebalanceInfoSpace()`가 교체 패널 내부 명단/경기 정보 공간만 배분한다. 자동 높이 회수(`reclaimBenchListOverflowHeight`)는 수동 분할을 덮어쓰지 않는다. 경계 더블클릭은 저장값을 제거해 현재 내용에 맞는 자동 높이로 복원한다.
 

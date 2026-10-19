@@ -19,7 +19,7 @@ const shortcutActions = [
   ['themeNext','점수판','다음 점수판','Shift+BracketRight',()=>cycleFsmTheme(1)],
   ...[['noteSizePlus','글자 크기 +1px','Shift+Equal',1],['noteSizeMinus','글자 크기 −1px','Shift+Minus',-1]].map(([id,label,key,delta])=>[id,'득점자 표시',label,key,()=>{state.noteFontSize=Math.max(10,(state.noteFontSize??18)+delta);render();persist();}]),
   ['tabs','화면 이동','탭바 표시 / 숨기기','KeyH',()=>toggleTabsAndPages()],
-  ...['main-big','main-small','theme','schedule','tactics','about'].map((page,i)=>['page'+i,'화면 이동',['캠 큼','캠 작음','테마','일정','전술판','소개'][i]+' 화면','Digit'+(i+1),()=>activatePage(page)]),
+  ...['main-big','main-small','theme','schedule','tactics','about'].map((page,i)=>['page'+i,'화면 이동',['카메라 뷰','대시보드 뷰','테마','일정','전술판','소개'][i]+(i < 2 ? '' : ' 화면'),'Digit'+(i+1),()=>activatePage(page)]),
   ['fixture','화면 이동','경기 ID 입력','Digit7',()=>document.getElementById('open-fixture-overlay')?.click()],
   ['support','화면 이동','후원 페이지 열기','Digit8',()=>window.open('https://www.buymeacoffee.com/bgh1234554','_blank')]
 ];
