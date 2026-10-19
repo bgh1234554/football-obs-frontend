@@ -493,7 +493,7 @@ function applyFsmChromaTheme() {
     if (rule.selectorText && rule.style) {
       const declarations = [];
       Array.from(rule.style).forEach(property => {
-        if (!/^(color|background|border|box-shadow|text-shadow)/.test(property)) return;
+        if (!/^(--|color|background|border|box-shadow|text-shadow)/.test(property)) return;
         const original = rule.style.getPropertyValue(property);
         const converted = chromaSafeGradient(original);
         if (converted !== original) declarations.push(`${property}:${converted}${rule.style.getPropertyPriority(property) ? ' !important' : ''};`);

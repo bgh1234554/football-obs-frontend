@@ -62,6 +62,26 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(boundary.rgba, 'rgba(255, 255, 0, 0.5)', mode);
       assert.equal(boundary.gradient, `linear-gradient(#ffff00, ${boundary.green})`, mode);
       if (mode !== 'off') assert.notEqual(boundary.green, '#00ff00', mode);
+      const grouped = await page.evaluate(() => {
+        const source = 'linear-gradient(to right, rgba(10, 73, 32, 0.6), #00c424)';
+        const converted = chromaSafeGradient(source);
+        const stops = converted.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g).map(parseAnyColor);
+        const separate = 'linear-gradient(#002000, #003000)';
+        return {
+          source, converted, alpha: stops[0].a,
+          lightness: stops.map(c => rgbToHsl(c.r, c.g, c.b).l),
+          safeOnly: chromaSafeGradient(separate), separate,
+          layered: chromaSafeGradient(source + ', ' + separate),
+          ungroupedDark: chromaSafe('rgba(10, 73, 32, 0.6)'),
+        };
+      });
+      assert.equal(grouped.alpha, .6, mode);
+      assert(grouped.lightness[0] < grouped.lightness[1], `Gradient contrast lost: ${mode}`);
+      assert.equal(grouped.safeOnly, grouped.separate, mode);
+      assert.equal(grouped.layered, grouped.converted + ', ' + grouped.separate, mode);
+      assert.equal(grouped.ungroupedDark, 'rgba(10, 73, 32, 0.6)', mode);
+      if (mode === 'off') assert.equal(grouped.converted, grouped.source);
+      else assert.notEqual(grouped.converted.match(/rgba?\([^)]+\)/)[0], grouped.ungroupedDark, mode);
       const values = await page.evaluate(() => {
         /** CSS 색 문자열을 브라우저가 정규화한 rgb() 형식으로 바꾼다. */
         const rgb = value => { const el = document.createElement('span'); el.style.color = value; return el.style.color; };
@@ -87,8 +107,29 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.evaluate(() => { setSetting('greenscreen', 'on'); render(); fsmBoardRender(); });
     assert.equal(await page.locator('#team-score-left').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(0, 199, 178)');
     await page.locator('#inPkGoalHex').evaluate(el => { el.value = '#2266dd'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    // 테마의 CSS 변수로 지정한 그라데이션에도 같은 보정이 적용되고 OFF에서 복원되어야 합니다.
+    await page.evaluate(() => {
+      setSetting('greenscreen', 'off'); render(); fsmBoardRender();
+      oldlink.sheet.insertRule('#board.fsm-board { --test-chroma-gradient: linear-gradient(#0a4920, #00c424); }', oldlink.sheet.cssRules.length);
+      oldlink.sheet.insertRule('#board.fsm-board .teams-left { background-image: var(--test-chroma-gradient); }', oldlink.sheet.cssRules.length);
+    });
+    const originalGradient = await page.locator('.teams-left').evaluate(node => getComputedStyle(node).backgroundImage);
+    for (const on of [true, false]) {
+      await page.evaluate(on => { setSetting('greenscreen', on ? 'on' : 'off'); render(); fsmBoardRender(); }, on);
+      const gradients = await page.evaluate(original => {
+        const probe = document.createElement('div');
+        probe.style.backgroundImage = chromaSafeGradient(original);
+        document.body.append(probe);
+        const expected = getComputedStyle(probe).backgroundImage;
+        probe.remove();
+        return { actual: getComputedStyle(document.querySelector('.teams-left')).backgroundImage, expected };
+      }, originalGradient);
+      assert.equal(gradients.actual, gradients.expected, `CSS variable gradient: ${on}`);
+      if (on) assert.notEqual(gradients.actual, originalGradient);
+      else assert.equal(gradients.actual, originalGradient);
+    }
     await page.reload();
     assert.equal(await page.evaluate(() => state.colors.pkGoal), '#2266dd');
-    console.log('PASS 5 chroma presets/OFF, strip and fixed-theme colors, PK colors, mint preservation and HEX persistence');
+    console.log('PASS 5 chroma presets/OFF, grouped and CSS-variable gradients, strip/fixed/PK colors, mint preservation and HEX persistence');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
