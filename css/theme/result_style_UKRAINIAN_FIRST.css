@@ -1,0 +1,60 @@
+@import url('./result_style_LIGUE1.css');
+
+.board.fsm-board[data-fsm-theme="ukrainianfirst"] { --ukf-logo-width: 52px; }
+.fsm-board .scoreboard-main { position: relative; height: 48px; isolation: isolate; z-index: 2; }
+.fsm-board .scoreboard-timer { position: relative; z-index: 1; }
+.fsm-board .div-background { background: #00FCA8; border-radius: 12px; z-index: -1; }
+
+/* 작은 원본에서 번진 경계 대신, 위아래 사선이 중앙에서 꺾이는 띠의 윤곽을 벡터로 복원합니다.
+   높이는 점수판에 맞추고 반복 폭은 고정해 팀명이 길어져도 무늬가 늘어나지 않게 합니다. */
+.fsm-board .teams-left, .fsm-board .teams-right {
+    position: static;
+    background-color: #00FCA8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 48'%3E%3Cpath fill='%2300E597' d='M32 0H17L2 24l15 24h15L17 24Z'/%3E%3C/svg%3E");
+    background-size: 56px 48px;
+    background-repeat: repeat-x;
+    background-position: right center;
+    color: #20191B;
+}
+.fsm-board .teams-right {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 48'%3E%3Cpath fill='%2300E597' d='M24 0h15l15 24-15 24H24l15-24Z'/%3E%3C/svg%3E");
+    background-position: left center;
+}
+.fsm-board .team-name { color: #20191B; }
+.fsm-board .text { text-shadow: none; }
+
+#board.fsm-board[data-fsm-theme="ukrainianfirst"] :is(#team-score-left, #team-score-right) {
+    position: relative; margin: 0; width: 54px; height: 48px;
+    background: #00E597; color: #20191B; font-size: 42px; z-index: 2;
+}
+.fsm-board :is(.score-left, .score-right) { margin: 0; transform: none; text-shadow: none; }
+#board.fsm-board[data-fsm-theme="ukrainianfirst"] .score-div {
+    position: relative; width: 86px; height: 48px; padding: 0;
+    background: #00E597; overflow: visible; z-index: 4;
+    display: flex; align-items: center; justify-content: center;
+}
+/* 검은 바탕은 로고 가까이에 두고 팀컬러는 양옆 사선으로만 감쌉니다. */
+.fsm-board .score-div::before {
+    content: ''; position: absolute; width: var(--ukf-logo-width); height: 48px; left: 50%; top: 50%;
+    transform: translate(-50%, -50%); background: #20191B;
+    clip-path: polygon(20% 0, 80% 0, 100% 65%, 50% 100%, 0 65%); z-index: 1;
+}
+.fsm-board .epl-lion { position: relative; width: 44px; height: 44px; padding: 0; object-fit: contain; z-index: 2; }
+.fsm-board .team-color {
+    display: block; position: absolute; left: calc(50% - 33px); top: 0;
+    width: 66px; height: 48px; border: 0; box-shadow: none; z-index: 5;
+    pointer-events: none;
+}
+/* 안쪽 꼭짓점을 검은 오각형의 폭·높이에서 계산해 같은 경계에서 맞닿게 합니다.
+   양쪽 영역을 따로 줄이면 사선이 검은 바탕을 침범하므로 중앙 좌표를 함께 씁니다. */
+.fsm-board #homeColor { clip-path: polygon(20% 0, calc(50% - var(--ukf-logo-width) * .3) 0, calc(50% - var(--ukf-logo-width) / 2) 65%, 50% 100%, 0 65%); }
+.fsm-board #awayColor { clip-path: polygon(calc(50% + var(--ukf-logo-width) * .3) 0, 80% 0, 100% 65%, 50% 100%, calc(50% + var(--ukf-logo-width) / 2) 65%); }
+.fsm-board .team-logo { background: #00FCA8; border: 0; }
+.fsm-board #team-logo-left { border-radius: 12px 0 0 12px; }
+.fsm-board #team-logo-right { border-radius: 0 12px 12px 0; }
+.fsm-board .time { background: #20191B; color: #ffffff; }
+.fsm-board .extra-time { background: #00FFA7; color: #20191B; }
+
+#board.fsm-board[data-fsm-theme="ukrainianfirst"][data-fsm-aggregate="true"] .total-score {
+    min-width: 28px; padding: 0 2px; font-size: 22px; background: #00E597; color: #20191B;
+}

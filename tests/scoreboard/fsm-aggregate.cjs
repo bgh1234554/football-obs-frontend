@@ -16,7 +16,7 @@ const { openPage, settle } = require('../tactics/helpers');
       'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
       'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
       'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
-      'rpl', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
+      'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
       'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
     ]);
     for (const theme of themes) {
@@ -121,7 +121,7 @@ const { openPage, settle } = require('../tactics/helpers');
               belarus: ['rgb(0, 0, 0)', 'rgb(255, 255, 255)']
             }[theme];
             if (expectedColors) m.colors.forEach(colors => assert.deepEqual(colors, expectedColors, context));
-            if (['ligaportugal', 'czech', 'cnl', 'jleague'].includes(theme)) {
+            if (['ligaportugal', 'czech', 'cnl', 'jleague', 'ukrainianfirst'].includes(theme)) {
               const ordered = theme === 'czech' ? m.central : [m.central[1], m.central[0], m.central[2], m.central[4], m.central[3]];
               for (let i = 0; i < ordered.length - 1; i++) assert(ordered[i].right <= ordered[i + 1].right && ordered[i + 1].left <= ordered[i].right + .2, context);
             }
@@ -129,6 +129,11 @@ const { openPage, settle } = require('../tactics/helpers');
               assert(Math.abs(m.radius - m.central.reduce((sum, box) => sum + box.width, 0) / 2) < .1, context);
               assert(m.central[1].fontSize < m.central[0].fontSize, context);
               assert.equal(m.central[1].background, m.central[0].background, context);
+            }
+            if (theme === 'ukrainianfirst') {
+              // 합계 숫자는 경기 점수 바깥에서 더 작게 표시합니다.
+              assert(m.central[1].fontSize < m.central[0].fontSize, context);
+              assert(m.central[3].fontSize < m.central[4].fontSize, context);
             }
             if (theme === 'kleague') {
               assert.equal(m.central[1].transform, m.central[0].transform, context);

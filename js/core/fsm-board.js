@@ -73,6 +73,8 @@ const LEAGUE_THEME_MAP = {
   113: { theme: 'allsvenskan', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/Allsvenskan.svg', type: 'club' },
   283: { theme: 'romanian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RomaniaLigaICup.svg', type: 'club' },
   333: { theme: 'ukrainian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/UkrainianPremierLeague.svg', type: 'club' },
+  334: { theme: 'ukrainianfirst', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/UkrainianFirstLeague.png', type: 'club' },
+  336: { theme: 'ukrainianfirst', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/UkrainianFirstLeague.png', type: 'club' },
   419: { theme: 'azerbaijan', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/AzerbaijanPremierLeague.svg', type: 'club' },
   342: { theme: 'armenian', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ArmenianPremierLeague.svg', type: 'club' },
   327: { theme: 'erovnuli', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ErovnuliLiga.svg', type: 'club' },
@@ -129,7 +131,7 @@ const FSM_THEMES = Object.freeze({
   //기타 유럽 리그 (가능하면 UEFA 남자 국가 계수 순)
   greecesuperleague: '그리스 슈퍼리그', czech: '체코 퍼스트 리그', ekstraklasa: '엑스트라클라사', eliteserien: '엘리트세리엔',
   danish: '덴마크 수페르리가', cypriotfirstdivision: '키프로스 퍼스트 디비전', swisssuperleague: '스위스 슈퍼리그',
-  spfl: 'SPFL', scottishcup: '스코티시 컵', allsvenskan: '알스벤스칸', ukrainian: '우크라이나 프리미어 리그',
+  spfl: 'SPFL', scottishcup: '스코티시 컵', allsvenskan: '알스벤스칸', ukrainian: '우크라이나 프리미어 리그', ukrainianfirst: '우크라이나 퍼스트 리그',
   romanian: '루마니아 리가 I', serbia: '세르비아 수페르리가', azerbaijan: '아제르바이잔 프리미어 리그', armenian: '아르메니아 프리미어 리그',
   erovnuli: '에로브눌리리가', kazakh: '카자흐스탄 프리미어 리그', belarus: '벨라루스 프리미어 리그',
   //유럽 대항전
@@ -154,7 +156,7 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
   'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
   'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
-  'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
+  'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
   'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
   // DFB-포칼은 단판 경기라 합계 점수를 쓰지 않는다(체크해도 표시하지 않음).
 ]);
@@ -672,6 +674,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_UZBEK.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'ukrainianfirst':
+      changeCSS('css/theme/result_style_UKRAINIAN_FIRST.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'ukrainian':
       changeCSS('css/theme/result_style_UKRAINIAN.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -898,6 +904,7 @@ function applyTheme(theme, logoUrl) {
       saudi: ['#273441', '#ffffff'],
       uzbek: ['transparent', '#ffffff'],
       ukrainian: ['#070E25', '#ffffff'],
+      ukrainianfirst: ['#00E597', '#20191B'],
       acgl: ['#E9DFC6', '#48002B'],
       acl2: ['#73BBF6', '#181559'],
       coupedefrance: ['#000121', '#ffffff'],
@@ -1145,7 +1152,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'serieb', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance', 'dfb'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'serieb', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance', 'dfb'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -1320,7 +1327,7 @@ function adjustScoreboardWidth() {
       colorBoard.style.setProperty('--fsm-home-primary-color', teamColors.homeBg);
 
       colorBoard.dataset.fsmColorEdge = ['bundes', 'bundes2', 'serieb', 'laliga', 'laliga2', 'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi', 'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'].includes(theme)
-        ? 'none' : ['czech', 'ekstraklasa'].includes(theme) ? 'strip-top' : ['allsvenskan', 'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'belgian', 'concacafcc', 'armenian', 'cnl', 'uzbek', 'ukrainian', 'ligaportugal', 'coupedefrance'].includes(theme) ? 'chip' : 'strip';
+        ? 'none' : ['czech', 'ekstraklasa'].includes(theme) ? 'strip-top' : ['allsvenskan', 'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'belgian', 'concacafcc', 'armenian', 'cnl', 'uzbek', 'ukrainian', 'ukrainianfirst', 'ligaportugal', 'coupedefrance'].includes(theme) ? 'chip' : 'strip';
     }
     if (theme === 'aleague') {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: '5px solid transparent', borderTop: 'none'});
@@ -1411,7 +1418,7 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .team-color', {background: ''});
       ensureDanishTriangles();
-    } else if(theme == 'allsvenskan' || theme == 'uzbek' || theme == 'ukrainian' || theme == 'concacafcc' || theme == 'coupedefrance' || theme == 'rpl' || theme == 'erovnuli' || theme == 'serbia' || theme == 'kazakh' || theme == 'azerbaijan' || theme == 'belgian' || theme == 'armenian' || theme == 'ligaportugal' || theme == 'cnl') {
+    } else if(theme == 'allsvenskan' || theme == 'uzbek' || theme == 'ukrainian' || theme == 'ukrainianfirst' || theme == 'concacafcc' || theme == 'coupedefrance' || theme == 'rpl' || theme == 'erovnuli' || theme == 'serbia' || theme == 'kazakh' || theme == 'azerbaijan' || theme == 'belgian' || theme == 'armenian' || theme == 'ligaportugal' || theme == 'cnl') {
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', color: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board #homeColor', {background: teamColors.homeBg});
       setFsmStyle('.fsm-board #awayColor', {background: teamColors.awayBg});
@@ -1641,6 +1648,7 @@ function adjustScoreboardWidth() {
     saudi: ['#141722', '#ffffff'],
     uzbek: ['#ffffff', '#000000'],
     ukrainian: ['#0F244F', '#FCD480'],
+    ukrainianfirst: ['#20191B', '#ffffff'],
     acgl: ['#FF784B', '#48002B'],
     acl2: ['#73BBF6', '#181559'],
     coupedefrance: ['#ffffff', '#101B36'],
