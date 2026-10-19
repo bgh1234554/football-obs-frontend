@@ -67,9 +67,13 @@ const { openPage, settle } = require('../tactics/helpers');
         const converted = chromaSafeGradient(source);
         const stops = converted.match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g).map(parseAnyColor);
         const separate = 'linear-gradient(#002000, #003000)';
+        // natural 상한(lCap)을 두 색이 모두 넘어도 같은 비율로 낮춰 명도 순서를 유지해야 한다.
+        const capped = toChromaSafeGradient('linear-gradient(#00c424, #33ff66)', 'natural')
+          .match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g).map(parseAnyColor);
         return {
           source, converted, alpha: stops[0].a,
           lightness: stops.map(c => rgbToHsl(c.r, c.g, c.b).l),
+          cappedLightness: capped.map(c => rgbToHsl(c.r, c.g, c.b).l),
           safeOnly: chromaSafeGradient(separate), separate,
           layered: chromaSafeGradient(source + ', ' + separate),
           ungroupedDark: chromaSafe('rgba(10, 73, 32, 0.6)'),
@@ -77,6 +81,7 @@ const { openPage, settle } = require('../tactics/helpers');
       });
       assert.equal(grouped.alpha, .6, mode);
       assert(grouped.lightness[0] < grouped.lightness[1], `Gradient contrast lost: ${mode}`);
+      assert(grouped.cappedLightness[0] < grouped.cappedLightness[1], `Capped gradient contrast lost: ${JSON.stringify(grouped.cappedLightness)}`);
       assert.equal(grouped.safeOnly, grouped.separate, mode);
       assert.equal(grouped.layered, grouped.converted + ', ' + grouped.separate, mode);
       assert.equal(grouped.ungroupedDark, 'rgba(10, 73, 32, 0.6)', mode);
