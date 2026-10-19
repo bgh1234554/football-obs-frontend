@@ -240,3 +240,15 @@ body.sidebar-open .sidebar-nav {
 .panel-fixture-btn-primary:hover:not(:disabled) { background: rgba(70,170,255,.3); }
 
 body[data-board-position="left"] .float-hamburger { left: auto; right: 8px; }
+/* 점수판이 왼쪽이면 메뉴는 햄버거 버튼이 있는 오른쪽에서 열리고, 후원 버튼은 메뉴에 가리지 않게 왼쪽으로 옮깁니다. */
+body[data-board-position="left"] .sidebar-nav {
+  left: auto;
+  right: 0;
+  border-right: 0;
+  border-left: 1px solid rgba(255,255,255,.12);
+  transform: translateX(100%);
+}
+body[data-board-position="left"].sidebar-open .sidebar-nav { transform: translateX(0); }
+body[data-board-position="left"] #bmc-wbtn { left: 18px !important; right: auto !important; }
+body[data-board-position="left"] #bmc-wbtn + div { left: 102px !important; right: auto !important; transform-origin: left bottom !important; }
+body[data-board-position="left"] #bmc-iframe { left: 18px !important; right: auto !important; transform-origin: left bottom !important; }
