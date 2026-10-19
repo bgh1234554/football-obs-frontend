@@ -907,6 +907,8 @@
 .ev-spotlight[hidden] { display: none; }
 .ev-spotlight .ev-list { overflow: visible; padding: 0; margin: 0; }
 .ev-spotlight .ev-row { cursor: default; }
+.ev-spotlight .ev-period-marker { min-height: 40px; padding-block: 8px; }
+.ev-spotlight:has(.ev-period-marker)::after { inset: 0; border-left: 1px solid #A9A9A9; border-radius: 6px; }
 /* 밝은 배경화면 위에서도 경계가 보이도록 왼쪽 색 막대 쪽만 빼고 1px 테두리를 두른다.
    행의 새 이벤트 빛 효과(box-shadow)와 겹치지 않게 테두리는 위에 덮는 가상 요소로 그린다. */
 .ev-spotlight::after {

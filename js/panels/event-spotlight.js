@@ -1,7 +1,7 @@
 /**
  * 신규 이벤트 표시 (설정 eventSpotlight: off/board/bottom, eventSpotlightScale).
  *
- * 폴링으로 같은 경기에 새 이벤트가 들어오면(fixture.js가 evSpotlightMarkNewEvents 호출),
+ * 폴링으로 같은 경기에 새 이벤트가 들어오거나 실제 경기 구간이 끝나면,
  * 이벤트 패널에 새로 생긴 행(.ev-row)을 복제해 점수판 아래 또는 화면 가운데 하단에 잠깐 띄운다.
  * 캠 큰 메뉴 패널 자동 전환을 꺼 둬도 새 이벤트를 화면에서 알 수 있게 하기 위한 기능.
  *
@@ -17,6 +17,7 @@
   const SPOTLIGHT_BOARD_GAP = 6; // 점수판 아래 위치에서 점수판과의 간격(px)
   let seenFixtureId = '';
   let seenKeys = null;     // 마지막 렌더에서 본 이벤트 키(data-ev-key)
+  let seenMarkerKeys = new Set(); // 같은 경기에서 이미 확인한 구간은 재조회로 다시 알리지 않는다.
   let pendingNew = false;  // fixture.js가 "새 이벤트 수신"을 알린 뒤 다음 렌더에서만 표시
   const queue = [];
   let showing = false;
@@ -143,15 +144,22 @@
 
   /** events-panel.js: 이벤트 패널을 다시 그린 직후 호출. 이전에 본 키와 비교해 새 행만 고른다. */
   window.evSpotlightAfterRender = (fixtureId, containers) => {
-    const source = Array.from(containers).find(container => container.querySelector('.ev-row[data-ev-key]')) || containers[0];
-    const rows = source ? [...source.querySelectorAll('.ev-list > .ev-row[data-ev-key]:not(.ev-period-marker)')] : [];
+    const source = Array.from(containers).find(container => container.querySelector('.ev-row[data-ev-key], .ev-period-marker')) || containers[0];
+    const allRows = source ? [...source.querySelectorAll('.ev-list > .ev-row')] : [];
+    const rows = allRows.filter(row => row.dataset.evKey && !row.classList.contains('ev-period-marker'));
+    const markers = allRows.filter(row => row.dataset.evMarkerKey);
     const keys = new Set(rows.map(row => row.dataset.evKey));
     // 다른 경기로 바뀌면 이전 경기의 대기 중·표시 중인 이벤트를 치운다.
-    if (seenFixtureId && fixtureId !== seenFixtureId) reset();
+    if (fixtureId !== seenFixtureId) { reset(); seenMarkerKeys = new Set(); }
     const sameFixture = fixtureId && fixtureId === seenFixtureId && seenKeys;
-    const fresh = sameFixture && pendingNew && enabled() ? rows.filter(row => !seenKeys.has(row.dataset.evKey)) : [];
+    const freshEvents = sameFixture && pendingNew && enabled() ? rows.filter(row => !seenKeys.has(row.dataset.evKey)) : [];
+    // 첫 조회의 과거 구간이나 건너뛴 중간 구간을 뒤늦게 나열하지 않는다.
+    const latestMarker = markers[0];
+    const freshMarker = sameFixture && enabled() && latestMarker && !seenMarkerKeys.has(latestMarker.dataset.evMarkerKey) ? latestMarker : null;
+    const fresh = allRows.filter(row => freshEvents.includes(row) || row === freshMarker);
     seenFixtureId = fixtureId;
     seenKeys = keys;
+    markers.forEach(row => seenMarkerKeys.add(row.dataset.evMarkerKey));
     pendingNew = false;
     if (fresh.length) enqueue(fresh);
   };
