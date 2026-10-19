@@ -103,6 +103,7 @@ const LEAGUE_THEME_MAP = {
   98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   253: { theme: 'mls', logoUrl: null, type: 'club' },
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
+  1168: { theme: 'fifaintercontinental', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/FIFAIntercontinentalCup.png', type: 'club' },
   1:   { theme: 'wc26', logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2026FIFAWorldCup_white.svg', type: 'national' }
   // 리그 추가 시 여기에만 한 줄 추가
 };
@@ -138,7 +139,7 @@ const FSM_THEMES = Object.freeze({
   //아프리카
   cafcl: 'CAF 챔피언스리그', cafcc: 'CAF 컨페더레이션 컵',
   //오세아니아 + 세계
-  wc26: '월드컵'
+  wc26: '월드컵', fifaintercontinental: 'FIFA 인터컨티넨탈 컵'
 });
 
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
@@ -770,6 +771,10 @@ function applyTheme(theme, logoUrl) {
       changeCSS('css/theme/result_style_CARABAO.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
+    case 'fifaintercontinental':
+      changeCSS('css/theme/result_style_FIFA_INTERCONTINENTAL.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
     case 'dfb':
       changeCSS('css/theme/result_style_DFB.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
@@ -1219,18 +1224,19 @@ function adjustScoreboardWidth() {
 }
 
 
-  /** 로고의 확대·이동과 독립된 카라바오 전용 원형 마스크를 현재 테마와 맞춘다. */
+  /** 로고의 확대·이동과 독립된 EFL컵 계열 원형 마스크를 현재 테마와 맞춘다. */
   function syncFsmLogoClip() {
     document.querySelectorAll('.fsm-board .team-logo').forEach(box => {
       const wrapper = box.querySelector('.carabao-logo-clip');
-      if (_currentTheme === 'carabao' && !wrapper) {
+      const usesRoundLogo = ['carabao', 'fifaintercontinental'].includes(_currentTheme);
+      if (usesRoundLogo && !wrapper) {
         const img = box.querySelector('img');
         if (!img) return;
         const clip = document.createElement('div');
         clip.className = 'carabao-logo-clip';
         box.append(clip);
         clip.append(img);
-      } else if (_currentTheme !== 'carabao' && wrapper) {
+      } else if (!usesRoundLogo && wrapper) {
         wrapper.replaceWith(...wrapper.childNodes);
       }
     });
@@ -1538,6 +1544,7 @@ function adjustScoreboardWidth() {
     coppaitalia: ['#661729', '#ffffff'],
     facup: ['#ED1C24', '#ffffff'],
     carabao: ['#008F5E', '#ffffff'],
+    fifaintercontinental: ['#2A3146', '#BD9137'],
     // 코리아컵 승부차기 띠
     korcup: ['#00125E', '#ffffff'],
     // DFB-포칼 승부차기 띠는 팀명 칸과 같은 배경/글자색

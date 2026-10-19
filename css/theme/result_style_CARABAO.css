@@ -138,7 +138,7 @@
 .fsm-board #team-logo-left .carabao-logo-clip { left: 3px; }
 .fsm-board #team-logo-right .carabao-logo-clip { right: 3px; }
 
-.board.fsm-board[data-fsm-theme="carabao"] .team-logo img {
+.board.fsm-board:is([data-fsm-theme="carabao"], [data-fsm-theme="fifaintercontinental"]) .team-logo img {
     position: absolute;
     top: 50%;
     left: 50%;
