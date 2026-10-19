@@ -1297,6 +1297,8 @@ function adjustScoreboardWidth() {
         setFsmStyle(`.fsm-board #${side}Name`, {color: ink});
       });
     } else if(theme == 'unl') {
+      // 팀 엠블럼의 흰 채움과 비동기 분석 결과가 반투명 장식에 남지 않게 합니다.
+      document.querySelectorAll('.fsm-board .team-logo img').forEach(img => LogoTrim.reset(img));
       // 네이션스리그 — 팀 컬러는 로고 칸(마름모) 배경으로만 표시하고 팀명 칸 아래 줄은 쓰지 않는다
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
       setFsmStyle('.fsm-board .team-logo img', {outline: 'none'});
