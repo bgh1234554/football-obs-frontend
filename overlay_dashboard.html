@@ -753,7 +753,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">URL</span>
-              <span class="sp-label-sub">이미지 주소를 넣습니다. 배경은 URL → 파일 첨부 → 팀 컬러 → 배경 색 순으로 우선 적용합니다.</span>
+              <span class="sp-label-sub">이미지 주소를 넣습니다. 배경은 URL → 파일 첨부 → 기본 배경 → 팀 컬러 → 배경 색 순으로 우선 적용합니다.</span>
             </div>
             <div class="sp-bg-input-cluster">
               <input type="text" class="sp-text-input" data-settings-text="bgImageUrl" placeholder="https://example.com/bg.jpg" />
@@ -772,13 +772,28 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
+              <span class="sp-label-main">기본 배경</span>
+              <span class="sp-label-sub">중계 화면에 사용할 배경 이미지를 고릅니다.</span>
+            </div>
+            <select class="sp-select" data-settings-select="bgPreset" aria-label="기본 배경">
+              <option value="off">사용 안 함</option>
+              <option value="stadium">야간 경기장</option>
+              <option value="abstract">네이비·민트</option>
+              <option value="emerald">에메랄드 피치</option>
+              <option value="charcoal">차콜 그래픽</option>
+              <option value="burgundy">버건디 라이트</option>
+            </select>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
               <span class="sp-label-main">팀 컬러 배경</span>
-              <span class="sp-label-sub">URL·첨부 이미지가 없으면 홈·원정 팀 배경색으로 그라데이션을 표시합니다. 끄면 배경 색을 사용합니다.</span>
+              <span class="sp-label-sub">URL·첨부 이미지·기본 배경을 사용하지 않을 때 적용합니다. 무드는 어두운 바탕에 팀 색을 은은하게 더합니다.</span>
             </div>
             <select class="sp-select" data-settings-select="bgTeamDirection" aria-label="팀 컬러 배경">
               <option value="off">OFF</option>
               <option value="horizontal">좌우</option>
               <option value="vertical">상하</option>
+              <option value="mood">무드</option>
             </select>
           </div>
           <div class="sp-row">

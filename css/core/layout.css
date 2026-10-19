@@ -69,7 +69,7 @@
       z-index: -1;
       background-color: var(--page-bg, var(--bg-ui));
       background-image: var(--bg-image, none);
-      background-size: 100% 100%;
+      background-size: var(--bg-image-size, 100% 100%);
       background-position: center;
       background-repeat: no-repeat;
       pointer-events: none;
@@ -269,7 +269,7 @@
     #page-tactics:fullscreen {
       background-color: var(--page-bg, var(--bg-ui));
       background-image: var(--bg-image, none);
-      background-size: 100% 100%;
+      background-size: var(--bg-image-size, 100% 100%);
       background-position: center;
       background-repeat: no-repeat;
       background-attachment: fixed;

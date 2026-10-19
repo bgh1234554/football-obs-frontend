@@ -120,6 +120,7 @@ const SETTINGS_DEFAULTS = {
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
   bgTeamDirection: 'off',
+  bgPreset:      'stadium',
   bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
   matchInfoLabelColor: '#60A5FA', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
   matchInfoLabelColorRev: 1, // 이전 주황 기본값을 1회만 새 기본색으로 이전.
@@ -402,7 +403,8 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 ]);
 
 function isValidSetting(category, value) {
-  if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical'].includes(value);
+  if (category === 'bgPreset') return ['off', 'stadium', 'abstract', 'emerald', 'charcoal', 'burgundy'].includes(value);
+  if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical', 'mood'].includes(value);
   if (RATING_COLOR_KEYS.has(category) || Object.hasOwn(NOTE_COLOR_VARS, category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgImageUrl') return typeof value === 'string';     // 빈 문자열 허용 (= 배경 없음)
@@ -501,6 +503,12 @@ function loadSettings() {
     if (parsed.bgTeamColors === 'on' || parsed.bgTeamColors === 'off') {
       parsed.bgTeamDirection = parsed.bgTeamColors === 'on'
         ? (parsed.bgTeamDirection === 'vertical' ? 'vertical' : 'horizontal') : 'off';
+      normalizedSettings = true;
+    }
+    // 기본 배경에 있던 팀 컬러 무드를 팀 컬러 배경의 스타일로 이전합니다.
+    if (parsed.bgPreset === 'team') {
+      parsed.bgPreset = 'off';
+      parsed.bgTeamDirection = 'mood';
       normalizedSettings = true;
     }
 
@@ -683,6 +691,7 @@ function applySettingSideEffects(category) {
   }
   // Iter 5-7: 배경 색/이미지 변경 → 즉시 :root CSS 변수 갱신.
   if (category === 'bgColor'
+    || category === 'bgPreset'
     || category === 'bgTeamDirection'
     || category === 'panelColor'
     || category === 'bgAlpha'
@@ -924,6 +933,7 @@ function applyLayoutSettings() {
 function commitBackgroundColor(value, recommendGreenscreen = true) {
   if (!setSetting('bgColor', value)) return false;
   if (!recommendGreenscreen || getSetting('greenscreen') === 'on' || getSetting('bgTeamDirection') !== 'off'
+    || getSetting('bgPreset') !== 'off'
     || String(getSetting('bgImageUrl') || '').trim()
     || String(getSetting('bgImageData') || '').trim()
     || Number(getSetting('bgAlpha')) >= 100) return true;
@@ -940,20 +950,45 @@ function commitBackgroundColor(value, recommendGreenscreen = true) {
 /**
  * 배경 색 + 배경 이미지를 :root에 CSS 변수로 반영.
  * - bgColor: greenscreen ON이어도 그대로 유지 (크로마키용 단색 배경 보호)
- * - 설정 표시 순서대로 URL → 파일 첨부 → 팀 컬러 → 배경 색 우선 적용
+ * - 설정 표시 순서대로 URL → 파일 첨부 → 기본 배경 → 팀 컬러 → 배경 색 우선 적용
  */
 function applyPageBackground() {
   const root = document.documentElement;
   const bgColor = getSetting('bgColor') || '#111827';
   const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl') || '');
   const data = String(getSetting('bgImageData') || '').trim();
-  const imgSrc = url || data;
+  const preset = getSetting('bgPreset');
+  const presetPath = {
+    stadium: 'resources/backgrounds/stadium-night.webp',
+    abstract: 'resources/backgrounds/navy-mint.webp',
+    emerald: 'resources/backgrounds/emerald-pitch.webp',
+    charcoal: 'resources/backgrounds/charcoal-graphic.webp',
+    burgundy: 'resources/backgrounds/burgundy-light.webp'
+  }[preset];
+  // CSS 변수 안의 상대 URL이 스타일시트 폴더 기준으로 해석되지 않도록 문서 기준 절대 주소로 만듭니다.
+  const presetImage = presetPath ? new URL(presetPath, document.baseURI).href : '';
+  const imgSrc = url || data || presetImage;
+  // 기존 첨부 이미지의 표시 방식은 유지하고, 기본 배경 이미지만 화면 비율에 맞춰 자릅니다.
+  root.style.setProperty('--bg-image-size', !url && !data && presetImage ? 'cover' : '100% 100%');
 
   root.style.setProperty('--bg-ui', bgColor);
   const bgOpacity = (100 - clampPercent(getSetting('bgAlpha'), SETTINGS_DEFAULTS.bgAlpha)) / 100;
   const bgRgb = [1, 3, 5].map(start => parseInt(bgColor.slice(start, start + 2), 16));
   root.style.setProperty('--page-bg', `rgba(${bgRgb.join(', ')}, ${bgOpacity})`);
-  if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
+  if (!imgSrc && getSetting('bgTeamDirection') === 'mood') {
+    const moodColor = value => {
+      const rgb = parseAnyColor(chromaSafe(value));
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${.4 * bgOpacity})`;
+    };
+    // 밝은 팀 컬러도 가장자리의 은은한 빛으로만 쓰고 가운데는 어둡게 유지합니다.
+    root.style.setProperty('--page-bg', 'transparent');
+    root.style.setProperty('--bg-image', [
+      `linear-gradient(to bottom, rgba(6, 14, 26, ${.15 * bgOpacity}), rgba(6, 14, 26, ${.75 * bgOpacity}))`,
+      `radial-gradient(ellipse at 0% 25%, ${moodColor(state.colors.homeBg)}, transparent 65%)`,
+      `radial-gradient(ellipse at 100% 75%, ${moodColor(state.colors.awayBg)}, transparent 65%)`,
+      `linear-gradient(rgba(9, 19, 33, ${bgOpacity}), rgba(9, 19, 33, ${bgOpacity}))`
+    ].join(', '));
+  } else if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
     const color = value => {
       const rgb = parseAnyColor(chromaSafe(value));
       return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${bgOpacity})`;

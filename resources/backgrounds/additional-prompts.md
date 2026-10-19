@@ -1,0 +1,16 @@
+# 추가 배경 생성 프롬프트
+
+내장 ImageGen으로 생성한 이미지를 WebP로 압축했습니다.
+
+## 에메랄드 피치
+
+Create one finished full-bleed 16:9 landscape background artwork asset for a football live broadcast dashboard, highest available landscape resolution. Theme: EMERALD PITCH. A premium editorial abstract football pitch at night, not a photo stadium. Deep almost-black forest green #071B17 base, faint emerald and desaturated sage illumination confined to left and right outer edges and bottom corners. A large precise partial football center-circle arc and pitch touchlines are barely visible as fine architectural linework toward the bottom, oblique aerial perspective, restrained matte grass texture and extremely subtle alternating field bands. Middle 75 percent and top center remain very dark, empty, low contrast, because scoreboards and player names will overlay this. Sophisticated sports broadcast graphics, quiet and atmospheric rather than flashy. No focal object, no balls, no players, no logos, no text, numbers, watermarks, UI, frames, badges or mockups. Avoid strong white markings, bright green luminous glow, centered circle, neon grids. Distinctly green-black, not blue or mint.
+
+## 차콜 그래픽
+
+Create a finished 16:9 landscape full bleed background image asset for a professional football broadcast dashboard, highest available landscape resolution. Theme: CHARCOAL GRAPHITE. A refined monochrome sports editorial composition of broad matte graphite architectural facets and very subtle curved embossed contours inspired by a football's panel seams, occupying only outer corners. Deep neutral charcoal black #111315, softly layered dark gray #24282C, tiny restrained silver highlights along a few edges at extreme corners. The surface has a delicate paper-like micrograin, premium and understated. Middle 80 percent and top center must be calm dark near-flat negative space for white football player names, score and stats. Keep overall contrast low and neutrally gray, no navy, no teal, no green, no colorful glows. No recognizable ball object, no stadium, no text, numbers, logos, badges, UI, watermarks, frame, player, trophy or mockup. Avoid busy carbon fiber grids, excessive sci-fi lines, glossy metallic shine. This is only background art, full canvas, not a page design.
+
+## 버건디 라이트
+
+Create a finished premium 16:9 full-bleed landscape background asset for a football broadcast overlay dashboard, highest available resolution. Theme: BURGUNDY LIGHT. A dark sports broadcast editorial background in almost-black wine #180C14 and midnight plum, with a few broad fluid fabric-like translucent burgundy sweeps along the lower left and extreme upper right. Dim warm coral light grazes only the very outer folds. A barely visible subtle stadium-architecture arc at the outer edge can suggest live football, but no recognizable central subject. Elegant matte texture, deliberate smooth gradients, understated rich maroon colors, no blue or green. The middle 80 percent and top middle must remain very dark and quiet for white score and player-name overlays; no bright ribbons across the central space. Distinct from geometric navy/mint and black graphite designs: warm, soft, flowing, atmospheric. No typography, logos, numbers, badges, football ball, players, trophy, watermarks, UI, frames or mockups. Only the background artwork.
+
