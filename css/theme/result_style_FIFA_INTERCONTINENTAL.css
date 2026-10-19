@@ -1,0 +1,29 @@
+@import url('./result_style_CARABAO.css');
+
+/* EFL컵의 원형 팀 로고 구조를 유지하고 팀컬러는 팀명 아래 가로줄로 표시합니다. */
+.fsm-board :is(.teams-left, .teams-right, .team-score) {
+    background: #BD9137;
+    color: #141026;
+}
+.fsm-board .team-name { color: #141026; }
+.fsm-board .team-logo { width: 48px; padding: 0; background: #BD9137; border: none; }
+.fsm-board :is(#team-logo-left, #team-logo-right) { --carabao-logo-color: #BD9137; }
+.fsm-board .team-logo::before { border: none; }
+.fsm-board .carabao-logo-clip { top: 0; width: 48px; height: 48px; }
+.fsm-board #team-logo-left .carabao-logo-clip { left: 0; }
+.fsm-board #team-logo-right .carabao-logo-clip { right: 0; }
+/* 원에 내접하는 정사각형의 한 변은 지름의 1/√2입니다. */
+.board.fsm-board[data-fsm-theme="fifaintercontinental"] .team-logo img { --carabao-logo-size: calc(48px * 0.7071067812); }
+.fsm-board .score-div { position: relative; overflow: visible; background: #18222F; color: #141026; }
+/* 소수 배율에서 칸 경계의 반 픽셀 틈이 생겨도 같은 바탕색이 이어지게 합니다. */
+.fsm-board .team-score { box-shadow: -2px 0 0 #BD9137, 2px 0 0 #BD9137; }
+.fsm-board .score-div { z-index: 2; box-shadow: -2px 0 0 #18222F, 2px 0 0 #18222F; }
+/* 로고의 비율을 유지하면서 점수판 위아래로 조금씩 돌출시킵니다. */
+.fsm-board .epl-lion {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 60px; height: 60px; object-fit: contain;
+}
+.fsm-board .scoreboard-timer { color: #141026; }
+.fsm-board .time { background: #D3C296; color: #141026; }
+.fsm-board .extra-time { background: #2A3146; color: #BD9137; }
+.fsm-board .pso-main { background: #2A3146; color: #BD9137; }

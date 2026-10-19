@@ -11,7 +11,7 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 
 
 
-for(const theme of ['default','pl','cl','eflchampionship','seriea']){
+for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))){
  await page.evaluate(theme=>{applyTheme(theme,null);state.half='2H';state.seconds=5400;state.running=false;setManualExtra(3);fsmBoardRender();},theme);
  await page.waitForTimeout(600);
  await page.evaluate(()=>fsmBoardRender());
@@ -51,7 +51,13 @@ for(const theme of ['default','pl','cl','eflchampionship','seriea']){
  console.log('PASS extra editor',theme);
 }
 await page.mouse.click(0,0);await page.keyboard.press('BracketRight');assert.equal(await page.evaluate(()=>state.extra),5);
-await page.locator('#clock').dblclick();assert(await page.locator('#clockEditor').isVisible());await page.locator('#ceMin').fill('12');await page.locator('#ceSec').fill('34');await page.locator('#ceConfirm').click();assert.equal(await page.evaluate(()=>Math.floor(state.seconds)),754);await page.evaluate(()=>pauseClockTimer());
+await page.locator('#clock').dblclick();assert(await page.locator('#clockEditor').isVisible());await page.locator('#ceMin').fill('12');
+// 화살표 버튼을 건너뛰고 분 → 초 → 확인 순서로 이동하며 역방향도 같아야 합니다.
+await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'ceSec');
+await page.locator('#ceSec').fill('34');await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'ceConfirm');
+await page.keyboard.press('Shift+Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'ceSec');
+await page.keyboard.press('Shift+Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'ceMin');
+await page.locator('#ceConfirm').click();assert.equal(await page.evaluate(()=>Math.floor(state.seconds)),754);await page.evaluate(()=>pauseClockTimer());
 for(let i=0;i<7;i++)await page.keyboard.press('BracketLeft');assert.equal(await page.evaluate(()=>state.extra),0);assert.equal(await page.evaluate(()=>state.extraShown),false);
 await page.locator('#settingsGearBtn').evaluate(e=>e.click());await page.locator('[data-sp-tab="general"]').click();await page.locator('#shortcutManageBtn').click();
 assert.deepEqual(await page.evaluate(()=>shortcutActions.slice(1,8).map(a=>a[0])),['clock0','clock45','clock90','clock105','extra','extraMinus','extraPlus']);

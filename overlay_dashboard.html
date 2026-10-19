@@ -4,6 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>OBS Football Dashboard</title>
+  <!-- og:image는 크롤러가 상대 경로를 못 읽는 경우가 있어 절대 URL 사용 -->
+  <meta name="description" content="OBS 방송용 축구 점수판 오버레이 대시보드. 실시간 점수, 득점자, 라인업, 이벤트, 경기 스탯을 불러오고 대회별 점수판 디자인을 선택할 수 있습니다." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OBS Football Dashboard" />
+  <meta property="og:title" content="OBS Football Dashboard" />
+  <meta property="og:description" content="OBS 방송용 축구 점수판 오버레이 대시보드. 실시간 점수, 득점자, 라인업, 이벤트, 경기 스탯을 불러오고 대회별 점수판 디자인을 선택할 수 있습니다." />
+  <meta property="og:url" content="https://football-obs-frontend.vercel.app/" />
+  <meta property="og:image" content="https://football-obs-frontend.vercel.app/icons/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="OBS Football Dashboard" />
+  <meta name="twitter:description" content="OBS 방송용 축구 점수판 오버레이 대시보드. 실시간 점수, 득점자, 라인업, 이벤트, 경기 스탯을 불러오고 대회별 점수판 디자인을 선택할 수 있습니다." />
+  <meta name="twitter:image" content="https://football-obs-frontend.vercel.app/icons/og-image.png" />
   <!-- Favicons: 어두운 UI 배경(--bg-ui) 위 축구공 + 홈/원정 기본 컬러(--home-bg/--away-bg) 점수판 바 -->
   <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png" />
@@ -110,15 +125,15 @@
             <span class="extra-time" id="extra">+ 0</span>
       <div class="clock-editor" id="clockEditor" style="position:absolute">
         <div class="ce-unit">
-          <button class="ce-arrow" id="ceMinUp">▲</button>
+          <button class="ce-arrow" id="ceMinUp" tabindex="-1">▲</button>
           <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
-          <button class="ce-arrow" id="ceMinDown">▼</button>
+          <button class="ce-arrow" id="ceMinDown" tabindex="-1">▼</button>
         </div>
         <div class="ce-colon" id="ceColon" title="시간 프리셋 보기">:</div>
         <div class="ce-unit">
-          <button class="ce-arrow" id="ceSecUp">▲</button>
+          <button class="ce-arrow" id="ceSecUp" tabindex="-1">▲</button>
           <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
-          <button class="ce-arrow" id="ceSecDown">▼</button>
+          <button class="ce-arrow" id="ceSecDown" tabindex="-1">▼</button>
         </div>
         <button class="ce-confirm" id="ceConfirm">✓</button>
         <div class="ce-presets" id="cePresets">

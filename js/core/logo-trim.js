@@ -515,5 +515,12 @@ const LogoTrim = (() => {
   }
 
   window.logoTrimClearCache = clearCache;
-  return { render, clearCache, getCachedBounds };
+  /** 장식 이미지로 교체할 때 이전 로고의 보정과 진행 중인 분석 적용을 함께 해제한다. */
+  function reset(img) {
+    if (!img) return;
+    elements.delete(img);
+    clearLayout(img);
+  }
+
+  return { render, reset, clearCache, getCachedBounds };
 })();

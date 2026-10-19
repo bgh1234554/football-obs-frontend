@@ -56,11 +56,27 @@ const { openPage, settle } = require('../tactics/helpers');
       }
       console.log('PASS trim fit and center', theme);
     }
+    // 장식으로 바뀌는 테마에는 이전 엠블럼의 내부 채움과 여백 보정이 남지 않아야 한다.
+    await page.evaluate(() => {
+      const ring = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><path fill="black" fill-rule="evenodd" d="M10 10h60v60H10zM20 20v40h40V20z"/></svg>');
+      state.homeLogo = state.awayLogo = ring;
+      render();
+    });
+    await page.waitForFunction(() => ['homeLogo', 'awayLogo'].every(id => document.getElementById(id).classList.contains('logo-filled')));
     await page.evaluate(() => { applyTheme('unl', null); });
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => { render(); fsmBoardRender(); });
     await settle(page);
+    for (const id of ['homeLogo', 'awayLogo']) {
+      const decoration = await page.locator('#' + id).evaluate(img => ({
+        filled: img.classList.contains('logo-filled'), trimmed: img.classList.contains('logo-trimmed'),
+        background: img.style.backgroundImage,
+      }));
+      assert.deepEqual(decoration, { filled: false, trimmed: false, background: '' });
+    }
     await page.locator('.scoreboard-main').screenshot({ path: path.join(screenshotDir, 'fsm-unl-logo-trim.png') });
+    await page.evaluate(() => applyTheme('default', null));
+    await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => {
       state.homeLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="blue"/></svg>');
       render();

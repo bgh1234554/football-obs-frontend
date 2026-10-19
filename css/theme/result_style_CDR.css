@@ -57,50 +57,26 @@
     z-index: 1;
 }
 
-/* 빨간 점수 칸의 바깥 아래 모서리는 둥글게 그리되, 깎인 자리는 바로 바깥 칸(합계 칸, 없으면 팀명 칸) 모양으로 채운다.
-   border-radius로 깎으면 그 자리가 비어 점수판 뒤 배경이 보였다(2026-10-17). 모서리 25px 칸에서 원 안은 빨강,
-   원 바깥은 아래 --cdr-corner-* 층(팀명 칸이면 팀명 칸 색 + 아래 5px 팀 컬러 띠와 그 위 1px 경계선까지 이어 그림).
-   채움 층은 24px로 1px 작게 둔다 — 원 바깥은 바깥 아래 모서리 근처뿐이라 충분하고, 같은 25px로 두면 칸 경계가
-   반 픽셀에 걸릴 때 빨간 영역 안에 채움 층 가장자리가 가는 선으로 비쳤다. */
-.fsm-board {
-    --cdr-corner-left: linear-gradient(#231C35, #231C35);
-    --cdr-corner-right: linear-gradient(#231C35, #231C35);
+/* 점수 칸을 실제 모서리로 깎아 다른 테마에서 서서히 둥글어지게 한다.
+   뒤쪽 팀 패널과 합계 칸을 연장하므로 곡선 안쪽으로 화면 배경이 비치지 않는다. */
+.fsm-board :is(.teams-left, .teams-right) { position: relative; }
+.fsm-board :is(.teams-left, .teams-right)::after {
+    content: ''; position: absolute; top: 0; bottom: -5px; width: 26px;
+    background: inherit; border-bottom: inherit; box-shadow: inherit;
+    pointer-events: none;
 }
-.fsm-board[data-fsm-color-edge="strip"] {
-    --cdr-corner-left: linear-gradient(to top, var(--fsm-home-primary-color) 5px, var(--fsm-home-number-color) 5px 6px, #231C35 6px);
-    --cdr-corner-right: linear-gradient(to top, var(--fsm-away-primary-color) 5px, var(--fsm-away-number-color) 5px 6px, #231C35 6px);
-}
-.fsm-board[data-fsm-aggregate="true"] {
-    --cdr-corner-left: linear-gradient(var(--fsm-aggregate-background), var(--fsm-aggregate-background));
-    --cdr-corner-right: linear-gradient(var(--fsm-aggregate-background), var(--fsm-aggregate-background));
-}
-
-.fsm-board #team-score-left {
-    background:
-        radial-gradient(circle at 100% 0, #FE0B32 24.5px, transparent 25px) left bottom / 25px 25px no-repeat,
-        var(--cdr-corner-left) left bottom / 24px 24px no-repeat,
-        #FE0B32;
-}
-
-.fsm-board #team-score-right {
-    background:
-        radial-gradient(circle at 0 0, #FE0B32 24.5px, transparent 25px) right bottom / 25px 25px no-repeat,
-        var(--cdr-corner-right) right bottom / 24px 24px no-repeat,
-        #FE0B32;
-}
-
-/* 합계 칸과 빨간 점수 칸의 경계가 배율(80% 등)에 따라 화면 픽셀 중간에 걸리면 두 칸이 그 픽셀을 반씩만 덮어
-   뒤 배경이 세로선으로 비쳤다. 점수 칸 바깥으로 합계 칸 색을 2px 더 칠해 둔다(합계 칸이 위에 그려져 평소엔 가려짐). */
-/* 점수 칸과 가운데 칸(빨간색끼리)의 경계도 배율(88% 등)에 따라 뒤 배경이 세로선으로 비쳐, 점수 칸 안쪽으로도 같은 빨강을
-   2px 덧칠한다(점수 칸이 가운데 칸 위에 그려져 덧칠은 가운데 칸 빨간 바탕 위에만 놓임). */
-.fsm-board #team-score-left { box-shadow: 2px 0 0 #FE0B32; }
-.fsm-board #team-score-right { box-shadow: -2px 0 0 #FE0B32; }
-.fsm-board[data-fsm-aggregate="true"] #team-score-left { box-shadow: -2px 0 0 var(--fsm-aggregate-background), 2px 0 0 #FE0B32; }
-.fsm-board[data-fsm-aggregate="true"] #team-score-right { box-shadow: 2px 0 0 var(--fsm-aggregate-background), -2px 0 0 #FE0B32; }
-/* 합계 칸 바깥쪽(팀명 칸과 흰 합계 칸 경계)도 배율에 따라 뒤 배경이 세로선으로 비쳐, 팀명 칸 색을 합계 칸 아래로 2px 더 칠한다.
-   합계 칸이 위에 그려져 덧칠은 가려지고 팀명 칸 아래 팀 컬러 띠도 덮지 않는다. 띠 위 1px 경계선(strip)은 그대로 둔다. */
-#board.fsm-board[data-fsm-aggregate="true"] #homeCard { box-shadow: inset 0 -1px 0 var(--fsm-number-color), 2px 0 0 #231C35; }
-#board.fsm-board[data-fsm-aggregate="true"] #awayCard { box-shadow: inset 0 -1px 0 var(--fsm-number-color), -2px 0 0 #231C35; }
+.fsm-board .teams-left::after { left: 100%; }
+.fsm-board .teams-right::after { right: 100%; }
+.fsm-board .team-score { position: relative; z-index: 4; }
+.fsm-board #team-score-left { border-bottom-left-radius: 25px; box-shadow: 2px 0 0 #FE0B32; }
+.fsm-board #team-score-right { border-bottom-right-radius: 25px; box-shadow: -2px 0 0 #FE0B32; }
+/* 그림자는 합계 폭 계산에 쓰이는 scrollWidth를 늘리지 않고 곡선 뒤까지 배경을 잇습니다. */
+.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { box-shadow: 26px 0 0 var(--fsm-aggregate-background); }
+.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { box-shadow: -26px 0 0 var(--fsm-aggregate-background); }
+/* 합계 칸이 점수판 중앙의 바깥 끝이 되므로 점수 칸과 같은 아래 바깥 곡선으로 마감합니다. 곡선 뒤는 팀 패널 연장부가 채웁니다.
+   border-radius는 위 그림자에도 적용되어 점수 칸 곡선 아래에 틈이 생기므로, 그림자까지 포함한 영역을 잘라 바깥 모서리만 둥글게 합니다. */
+.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { clip-path: inset(0 -26px 0 0 round 0 0 0 25px); }
+.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { clip-path: inset(0 0 0 -26px round 0 0 25px 0); }
 
 .fsm-board .score {
     text-shadow: 0px 0px 5px rgba(0, 0, 0, 0.25);
@@ -197,6 +173,7 @@
     position: absolute;
     margin-left: 0px;
     transition: 0.9s ease-in-out;
+    border-bottom-left-radius: 15px;
     border-bottom-right-radius: 15px;
 }
 

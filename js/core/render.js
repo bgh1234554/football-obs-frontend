@@ -433,6 +433,8 @@
     renderRedCards();
     syncScoreCol();
     for (const side of ['home', 'away']) {
+      // 네이션스리그는 팀 엠블럼 대신 전용 장식을 표시하므로 로고 분석을 적용하지 않습니다.
+      if (el[`${side}Logo`]?.closest('.fsm-board')?.dataset.fsmTheme === 'unl') continue;
       LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
         ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
           chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
