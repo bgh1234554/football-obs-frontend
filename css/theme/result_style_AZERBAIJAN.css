@@ -1,0 +1,81 @@
+@import url('./result_style_CNL.css');
+
+/* 점수 마름모꼴, 팀컬러 꺾쇠, 타이머 사다리꼴은 같은 기울기(높이 1px당 가로 이동)를 씁니다.
+   실제 모양과 폭은 fsm-board.js의 syncAzerbaijanGeometry가 중앙 칸 폭에 맞춰 계산합니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] { --az-slope: .65; --az-band: 5px; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
+/* 점수 칸을 제외한 점수판 전체는 위에서 아래로 같은 그라데이션 한 장을 공유합니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] .div-background {
+    left: 0; top: 0; background: linear-gradient(to bottom, #134B83, #1E83BE); border-radius: 8px; z-index: -1;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] :is(.teams-left, .teams-right) { background: transparent; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] .team-name { color: #ffffff; }
+/* 팀 로고 칸은 다른 점수판과 같은 밝은 배경을 쓰고 점수판 양 끝만 둥글게 마감합니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] #team-logo-left { border-radius: 8px 0 0 8px; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] #team-logo-right { border-radius: 0 8px 8px 0; }
+
+/* 홈·원정 점수는 각각 좌우 꼭짓점이 둥근 마름모꼴 칸에 넣고, 리그 로고는 그 사이 그라데이션 위에 둡니다.
+   합계를 켜면 같은 쪽 합계 숫자까지 한 칸으로 감쌉니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] .scoreboard-main::before,
+.board.fsm-board[data-fsm-theme="azerbaijan"] .scoreboard-main::after {
+    content: ''; position: absolute; top: 0; height: 48px; z-index: 1; pointer-events: none;
+    width: var(--az-score-width, 50px); background: #235883; clip-path: var(--az-score-clip, none);
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] .scoreboard-main::before { left: calc(50% - var(--az-half, 80px)); }
+.board.fsm-board[data-fsm-theme="azerbaijan"] .scoreboard-main::after { right: calc(50% - var(--az-half, 80px)); }
+.board.fsm-board[data-fsm-theme="azerbaijan"] :is(#team-score-left, #team-score-right, .score-div) {
+    position: relative; margin: 0; background: transparent; color: #ffffff; z-index: 2;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] :is(#team-score-left, #team-score-right) { width: 62px; }
+/* 로고 양옆에 점수 칸과 떨어지는 여백을 둡니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] .score-div {
+    width: 72px; height: 48px; padding: 0; display: flex; align-items: center; justify-content: center;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] .epl-lion { width: 52px; height: 40px; padding: 0; object-fit: contain; }
+
+/* 팀컬러는 육각형 바깥 꺾쇠로 감쌉니다. 원정은 홈 모양을 좌우 반전합니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] .team-color {
+    display: block; position: absolute; top: 0; height: 48px; z-index: 4; box-shadow: none; border: 0;
+    width: var(--az-color-width, 19px); left: calc(50% - var(--az-half, 80px) - var(--az-band));
+    background: transparent !important;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] #awayColor {
+    left: auto; right: calc(50% - var(--az-half, 80px) - var(--az-band)); transform: scaleX(-1);
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] .az-chevron { display: block; width: 100%; height: 100%; overflow: visible; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] .az-chevron path {
+    fill: var(--fsm-primary-color); stroke: var(--fsm-number-color); stroke-width: 1px;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] #homeColor { --fsm-primary-color: var(--fsm-home-primary-color); --fsm-number-color: var(--fsm-home-number-color); }
+.board.fsm-board[data-fsm-theme="azerbaijan"] #awayColor { --fsm-primary-color: var(--fsm-away-primary-color); --fsm-number-color: var(--fsm-away-number-color); }
+
+/* 타이머 윗변을 점수판 아랫변에 붙이고, 양옆 사선은 팀컬러 꺾쇠의 바깥 아래 선을 그대로 잇습니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] .scoreboard-timer { margin-top: -12px; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] :is(.time, .extra-time) {
+    background: transparent; color: #ffffff; border-radius: 0; isolation: isolate;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] .time { width: var(--az-timer-width, 150px); }
+.board.fsm-board[data-fsm-theme="azerbaijan"] :is(.time, .extra-time)::before {
+    content: ''; position: absolute; top: 0; bottom: 0; z-index: -1; pointer-events: none;
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] .time::before {
+    left: 0; right: 0; background: #235883;
+    clip-path: polygon(0 0, 100% 0, calc(100% - var(--az-timer-inset, 16px)) 100%, var(--az-timer-inset, 16px) 100%);
+}
+/* 추가시간은 타이머 오른쪽 사선에 붙은 평행사변형입니다. 글자는 보이는 도형의 가운데에 둡니다. */
+.board.fsm-board[data-fsm-theme="azerbaijan"] .extra-time {
+    width: 56px; box-sizing: border-box; padding-left: 0; padding-right: var(--az-timer-inset, 16px);
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] .extra-time::before {
+    left: calc(-1 * var(--az-timer-inset, 16px)); right: 0; background: #186BAC;
+    clip-path: polygon(var(--az-timer-inset, 16px) 0, 100% 0, calc(100% - var(--az-timer-inset, 16px)) 100%, 0 100%);
+}
+.board.fsm-board[data-fsm-theme="azerbaijan"] #extra.hidden::before { display: none; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] .pso-main { background: #235883; }
+
+.board.fsm-board[data-fsm-theme="azerbaijan"] .div-rc { top: -15px; z-index: 3; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] #rcHome { left: 100px; right: auto; }
+.board.fsm-board[data-fsm-theme="azerbaijan"] #rcAway { right: 100px; left: auto; }
+/* 합계 숫자는 좁아지는 바깥 꼭짓점을 피해 점수판 안쪽으로 옮깁니다. */
+#board.fsm-board[data-fsm-theme="azerbaijan"][data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) { padding: 0 0 0 10px; }
+#board.fsm-board[data-fsm-theme="azerbaijan"][data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) { padding: 0 10px 0 0; }

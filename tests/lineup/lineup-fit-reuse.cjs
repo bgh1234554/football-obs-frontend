@@ -32,6 +32,27 @@ const fixtureFiles = ['juveparma.json', 'womensleague.json'];
         await page.evaluate(id => fetchAndApplyFixtureData(String(id)), fixtureId);
         await page.waitForTimeout(2500);
 
+        // 같은 경기 폴링(silent 갱신)으로 라인업을 다시 그려도, 맞추기 전 기본 폭의 라벨이 화면에 그려지면 안 된다.
+        // (2026-10-17) 피팅 예약이 두 프레임 뒤로 통합되며 폴링 15초마다 라벨이 한 프레임 2줄로 줄었다 펴졌다.
+        // 그리기가 끝난 뒤(rAF 다음 메시지 태스크) 상태만 비교해 실제로 화면에 나온 프레임을 센다.
+        const pollFlicker = await page.evaluate(async id => {
+          const snap = () => [...document.querySelectorAll('.page.active [data-dp-role="lineup"] .dp-lineup-name')]
+            .map(n => { const r = n.getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}|${getComputedStyle(n).fontSize}`; }).join(';');
+          const before = snap();
+          let painted = 0, unfitted = 0, on = true;
+          const channel = new MessageChannel();
+          channel.port1.onmessage = () => { painted++; if (snap() !== before) unfitted++; if (on) requestAnimationFrame(loop); };
+          const loop = () => channel.port2.postMessage(0);
+          requestAnimationFrame(loop);
+          await fetchAndApplyFixtureData(String(id), { silent: true });
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          on = false;
+          return { painted, unfitted, sameAfter: snap() === before };
+        }, fixtureId);
+        assert(pollFlicker.painted > 10, `${file} ${pageName}: frames were sampled`);
+        assert.equal(pollFlicker.unfitted, 0, `${file} ${pageName}: unfitted lineup names were painted during a silent poll ${JSON.stringify(pollFlicker)}`);
+        assert(pollFlicker.sameAfter, `${file} ${pageName}: silent poll changed the fitted lineup names`);
+
         const result = await page.evaluate(async () => {
           const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
           const frames = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))));

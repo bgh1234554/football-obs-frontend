@@ -66,9 +66,8 @@
 
     const gamesList = document.getElementById('games-list');
     if (gamesList) {
-      const w = document.createElement('api-sports-widget');
-      w.setAttribute('data-type', 'games');
-      gamesList.appendChild(w);
+      _scheduleMountGamesWidget(gamesList);
+      _scheduleBindGamesHomeButton(gamesList);
     }
 
     const standingsContent = document.getElementById('standings-content');
@@ -77,6 +76,33 @@
       w.setAttribute('data-type', 'standings');
       standingsContent.appendChild(w);
     }
+  }
+
+  /** Games 칸에 날짜별 경기 위젯을 새로 넣는다. 기존 내용(리그 위젯 등)은 지운다. */
+  function _scheduleMountGamesWidget(gamesList) {
+    const w = document.createElement('api-sports-widget');
+    w.setAttribute('data-type', 'games');
+    gamesList.replaceChildren(w);
+  }
+
+  // --- Games 칸 "날짜별 경기" 버튼 ---
+  // Leagues에서 리그를 고르면 위젯이 data-target-league(#games-list)의 내용을 리그 위젯
+  // (data-type="league")으로 바꿔 끼우고, 원래 날짜별 목록으로 돌아가는 버튼은 위젯에 없다.
+  // 같은 DOM을 다시 붙이면 재초기화가 안 되지만, 새 games 위젯 요소를 넣으면 config 위젯
+  // 설정을 그대로 받아 오늘 날짜 목록부터 다시 그린다(실측). 리그 위젯이 떠 있을 때만 버튼을 보인다.
+  function _scheduleBindGamesHomeButton(gamesList) {
+    const btn = document.getElementById('games-home-btn');
+    if (!btn) return;
+    const sync = () => {
+      const type = gamesList.querySelector(':scope > api-sports-widget')?.getAttribute('data-type');
+      btn.hidden = !type || type === 'games';
+    };
+    new MutationObserver(sync).observe(gamesList, { childList: true });
+    btn.addEventListener('click', () => {
+      _scheduleMountGamesWidget(gamesList);
+      gamesList.scrollTop = 0;
+    });
+    sync();
   }
   const tabsEl = document.getElementById('tabsBar');
   const pagesEl = document.querySelector('.pages');

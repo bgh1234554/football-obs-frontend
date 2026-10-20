@@ -1,0 +1,13 @@
+@import url('./result_style_RPL.css');
+
+/* 세르비아 수페르리가: RPL과 같은 배치(세로 팀컬러 칩, 로고 위치)에 색만 바꾼다. */
+.board.fsm-board[data-fsm-theme="serbia"] { --rpl-edge-color: #050505; }
+.fsm-board .teams-left, .fsm-board .teams-right { background: #050505; color: #ffffff; }
+.fsm-board .team-name { color: #ffffff; }
+.fsm-board .team-score { color: #050505; background: #00BADD; }
+.fsm-board .score-div { color: #050505; background: #00BADD; }
+/* 리그 로고 칸은 로고 원본 비율(277.12805 x 360)과 같은 너비로 맞추고, 높이는 RPL(72px)보다 2px 줄인다. */
+.fsm-board .score-div { padding: 0; }
+.fsm-board .epl-lion { width: calc(70px * 277.12805 / 360); height: 70px; }
+.fsm-board .time { color: #381F4B; background: #ffffff; }
+.fsm-board .extra-time { color: #5BB4FF; background: #3F016F; }

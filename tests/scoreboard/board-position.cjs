@@ -125,6 +125,19 @@ const root = path.resolve(__dirname, '../..');
     await page.reload();
     await page.waitForFunction(()=>document.body.dataset.boardPosition==='left');
     assert.equal(await page.inputValue('#boardPosition'),'left');
+    // 설정 창 버튼도 같은 값을 표시하고, 메뉴는 햄버거 버튼이 있는 쪽에서 열립니다.
+    const menuSide=await page.evaluate(async()=>{
+      const active=()=>[...document.querySelectorAll('[data-board-position-value]')].filter(b=>b.classList.contains('is-active')).map(b=>b.dataset.boardPositionValue);
+      const before=active();document.getElementById('tabsBar').click();await new Promise(r=>setTimeout(r,400));
+      const nav=document.getElementById('sidebarNav').getBoundingClientRect(),button=document.getElementById('tabsBar').getBoundingClientRect();
+      document.getElementById('sidebarClose').click();
+      document.querySelector('[data-board-position-value="center"]').click();
+      return {before,after:active(),select:document.getElementById('boardPosition').value,navRight:nav.right,buttonRight:button.right,width:innerWidth};
+    });
+    assert.deepEqual(menuSide.before,['left']);
+    assert(Math.abs(menuSide.navRight-menuSide.width)<1&&menuSide.buttonRight>menuSide.width/2,JSON.stringify(menuSide));
+    assert.deepEqual([menuSide.after,menuSide.select],[['center'],'center']);
+    await page.evaluate(()=>document.querySelector('[data-board-position-value="left"]').click());
     await page.evaluate(()=>{state.noteEnabled=true;state.notes={home:"12' Home scorer",away:"65' Away scorer"};render();fsmBoardRender();});
     await page.waitForTimeout(300);
     await page.screenshot({path:'screenshots/board-position-left.png'});

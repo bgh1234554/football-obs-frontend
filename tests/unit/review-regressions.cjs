@@ -2,6 +2,24 @@
 const path=require('node:path');
 /** 저장소 루트 기준 경로의 파일 내용을 읽는다. */
 const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
+// 누적 퇴장 추정은 카드 종류만 바꾸며, 사유와 API 원본은 그대로 보존한다.
+{
+ const api={window:{},document:{addEventListener(){},querySelectorAll(){return[];}},localStorage:{getItem(){return null;}}};
+ vm.runInNewContext(read('js/panels/events-panel.js'),api);
+ const yellow={type:'Card',detail:'Yellow Card',playerId:1,elapsed:30,comments:'Dissent'};
+ const red={type:'Card',detail:'Red Card',playerId:1,elapsed:70};
+ for(const comments of [null,'Foul','Violent conduct']){
+  const events=[yellow,{...red,comments}];const original=JSON.stringify(events);
+  const result=api.evProcess(events).find(event=>event.elapsed===70);
+  assert.equal(api.evLabelKo(result),'경고 누적 퇴장');
+  assert.equal(api.evStyle(result).icon,'cumulative-red');
+  assert.equal(result.comments,comments);assert.equal(JSON.stringify(events),original);
+ }
+ for(const events of [[red],[yellow,{...red,_evEdited:true}],[{...yellow,playerId:0},{...red,playerId:0}]]){
+  assert.equal(api.evLabelKo(api.evProcess(events)[0]),'퇴장');
+ }
+ assert.equal(api.evLabelKo(api.evProcess([{...red,detail:'Second Yellow Card',_evEdited:true}])[0]),'경고 누적 퇴장');
+}
 /** 파일 p에서 function name( 부터 end 문자열 직전까지의 소스를 잘라낸다. */
 const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function '+name+'('),s.indexOf(end,s.indexOf('function '+name+'(')));};
 // 저장 용량 초과 시 직렬화 크기가 큰 로고부터 제외하고, 양쪽 제외는 마지막에 시도합니다.

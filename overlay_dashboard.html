@@ -4,6 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>OBS Football Dashboard</title>
+  <!-- og:image는 크롤러가 상대 경로를 못 읽는 경우가 있어 절대 URL 사용 -->
+  <meta name="description" content="OBS 방송용 축구 점수판 오버레이 대시보드. 실시간 점수, 득점자, 라인업, 이벤트, 경기 스탯을 불러오고 대회별 점수판 디자인을 선택할 수 있습니다." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OBS Football Dashboard" />
+  <meta property="og:title" content="OBS Football Dashboard" />
+  <meta property="og:description" content="OBS 방송용 축구 점수판 오버레이 대시보드. 실시간 점수, 득점자, 라인업, 이벤트, 경기 스탯을 불러오고 대회별 점수판 디자인을 선택할 수 있습니다." />
+  <meta property="og:url" content="https://football-obs-frontend.vercel.app/" />
+  <meta property="og:image" content="https://football-obs-frontend.vercel.app/icons/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="OBS Football Dashboard" />
+  <meta name="twitter:description" content="OBS 방송용 축구 점수판 오버레이 대시보드. 실시간 점수, 득점자, 라인업, 이벤트, 경기 스탯을 불러오고 대회별 점수판 디자인을 선택할 수 있습니다." />
+  <meta name="twitter:image" content="https://football-obs-frontend.vercel.app/icons/og-image.png" />
   <!-- Favicons: 어두운 UI 배경(--bg-ui) 위 축구공 + 홈/원정 기본 컬러(--home-bg/--away-bg) 점수판 바 -->
   <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png" />
@@ -110,15 +125,15 @@
             <span class="extra-time" id="extra">+ 0</span>
       <div class="clock-editor" id="clockEditor" style="position:absolute">
         <div class="ce-unit">
-          <button class="ce-arrow" id="ceMinUp">▲</button>
+          <button class="ce-arrow" id="ceMinUp" tabindex="-1">▲</button>
           <input class="ce-num" id="ceMin" type="number" min="0" max="999" value="0" />
-          <button class="ce-arrow" id="ceMinDown">▼</button>
+          <button class="ce-arrow" id="ceMinDown" tabindex="-1">▼</button>
         </div>
         <div class="ce-colon" id="ceColon" title="시간 프리셋 보기">:</div>
         <div class="ce-unit">
-          <button class="ce-arrow" id="ceSecUp">▲</button>
+          <button class="ce-arrow" id="ceSecUp" tabindex="-1">▲</button>
           <input class="ce-num" id="ceSec" type="number" min="0" max="59" value="0" />
-          <button class="ce-arrow" id="ceSecDown">▼</button>
+          <button class="ce-arrow" id="ceSecDown" tabindex="-1">▼</button>
         </div>
         <button class="ce-confirm" id="ceConfirm">✓</button>
         <div class="ce-presets" id="cePresets">
@@ -385,7 +400,7 @@
               <span class="sp-label-sub">선발 이름 크기입니다. 기본 12px.</span>
             </div>
             <div class="sp-slider-cluster">
-              <input type="range" min="9" max="16" step="1" data-settings-slider="lineupNameSize" />
+              <input type="range" min="9" max="20" step="1" data-settings-slider="lineupNameSize" />
               <span class="sp-slider-value">12px</span>
             </div>
           </div>
@@ -654,10 +669,22 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
-          <div class="sp-section-title">이벤트/스탯 표시</div>
+          <div class="sp-section-title">점수판</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">이벤트 글씨 크기</span>
+              <span class="sp-label-main">점수판 위치</span>
+              <span class="sp-label-sub">화면 상단 점수판의 위치를 조정할 수 있습니다. 테마 탭에서도 설정이 가능합니다.</span>
+            </div>
+            <div class="sp-radio-cluster">
+              <button type="button" class="sp-radio-btn" data-board-position-value="left">좌</button>
+              <button type="button" class="sp-radio-btn" data-board-position-value="center">가운데</button>
+              <button type="button" class="sp-radio-btn" data-board-position-value="right">우</button>
+            </div>
+          </div>
+          <div class="sp-section-title">글씨 크기 조정</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">이벤트 패널 글씨 크기</span>
               <span class="sp-label-sub">기본 15px.</span>
             </div>
             <div class="sp-slider-cluster">
@@ -667,7 +694,7 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">교체/미출전 선수 명단 글씨 크기</span>
+              <span class="sp-label-main">교체/미출전 선수 명단 패널 글씨 크기</span>
               <span class="sp-label-sub">기본 13px.</span>
             </div>
             <div class="sp-slider-cluster">
@@ -677,7 +704,7 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">경기 스탯 글씨 크기</span>
+              <span class="sp-label-main">경기 스탯 패널 글씨 크기</span>
               <span class="sp-label-sub">기본 12px. 크기 비율만큼 아래 막대 굵기도 같이 조정됩니다.</span>
             </div>
             <div class="sp-slider-cluster">
@@ -700,7 +727,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">신규 이벤트 표시 크기</span>
-              <!-- <span class="sp-label-sub">100%는 이벤트 패널 너비의 1.25배입니다. 위는 아래로, 아래는 위로 커집니다.</span> -->
+              <span class="sp-label-sub">화면에 애니메이션으로 나오는 신규 이벤트의 위치를 조정합니다.</span>
             </div>
             <div class="sp-slider-cluster">
               <input type="range" min="100" max="250" step="5" data-settings-slider="eventSpotlightScale" />
@@ -1050,7 +1077,7 @@
           <!-- 교체 명단 — 새로고침 버튼은 lineup-render.js의 setPanelTitle(leftActionsHtml)이 동적으로 .dp-title 안에 삽입 -->
           <div class="lp lp-bench">
             <div class="dp-panel" id="benchPanel">
-              <div class="dp-title">교체 명단</div>
+              <div class="dp-title" data-panel-font="benchInjuryNameSize" role="button" tabindex="0" title="클릭하여 글자 크기 조절">교체 명단</div>
               <div class="dp-split">
                 <div class="dp-col" data-bench-side="home">
                   <div class="dp-side-header"><span class="dp-side-name">HOME</span><button class="dp-side-edit-btn" data-manual="bench" data-side="home">수정</button></div>
@@ -1081,7 +1108,7 @@
           <!-- 부상 정보 -->
           <div class="lp lp-injury">
             <div class="dp-panel" id="injuryPanel">
-              <div class="dp-title">부상 정보</div>
+              <div class="dp-title" data-panel-font="benchInjuryNameSize" role="button" tabindex="0" title="클릭하여 글자 크기 조절">부상 정보</div>
               <div class="dp-split">
                 <div class="dp-col" data-injury-side="home">
                   <div class="dp-side-header"><span class="dp-side-name">HOME</span><button class="dp-side-edit-btn" data-manual="injury" data-side="home">수정</button></div>
@@ -1209,7 +1236,7 @@
   <div class="page-wrap">
     <div class="widgetGrid">
       <div class="panel"><div class="panelHeader"><div>Leagues</div><div class="hint">국가별 리그 선택</div></div><div class="panelBody" id="widget-leagues-body"></div></div>
-      <div class="panel"><div class="panelHeader"><div>Games</div><div class="hint">날짜별 리그 일정/경기 결과 확인</div></div><div class="panelBody" id="games-list"></div></div>
+      <div class="panel"><div class="panelHeader"><div class="games-header-title"><div>Games</div><button id="games-home-btn" class="panel-fixture-btn games-home-btn" type="button" hidden title="리그 화면을 닫고 날짜별 경기 목록으로 돌아갑니다"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>날짜별 경기</button></div><div class="hint">날짜별 리그 일정/경기 결과 확인</div></div><div class="panelBody" id="games-list"></div></div>
       <div class="panel"><div class="panelHeader"><div style="display:flex;align-items:center;gap:10px;"><div>Details</div><div class="hint">경기 클릭 후 상세 정보, 순위, 경기 ID 확인</div></div><div class="panel-fixture-tools"><div class="fixture-inline fixture-inline-compact" data-fixture-inline-wrap style="display:none"><span class="fixture-inline-label">선택 경기</span><span data-selected-fixture-id class="fixture-inline-id" title="클릭해서 복사">-</span></div><button id="panel-fixture-load-btn" class="panel-fixture-btn panel-fixture-btn-primary" disabled title="선택된 경기를 바로 메인 화면에 불러옵니다">경기 불러오기</button><button class="panel-fixture-btn" title="경기 ID를 직접 입력해 특정 경기를 불러옵니다" onclick="openOverlay()">경기 ID 입력</button></div></div><div class="panelBody" id="game-content"></div></div>
       <div class="panel"><div class="panelHeader"><div>Standings</div><div class="hint">경기 클릭 시 자동으로 해당 리그의 순위가 표시됩니다</div></div><div class="panelBody"><div id="standings-content"></div><div id="team-content"></div></div></div>
     </div>
@@ -1531,47 +1558,84 @@
 <script src="js/sidebar/sidebar.js"></script>
 <script src="js/core/popout.js"></script>
 <!--
-  css/main.css                    — 전체 스타일 (CSS 변수, 점수판, 탭, 전술판, 위젯 격리)
-  css/hamburger-nav.css           — 햄버거 사이드바 네비게이션 스타일
-  css/detail-panels.css           — /detail 페이지 벤치/부상/라인업 그리드 패널 (.dp- 접두어 격리)
-  css/settings-popup.css          — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치)
+  [CSS] 로드 순서대로
+  css/core/variables.css           — :root CSS 변수 전체 (폰트, 패널 배경, 팀 컬러, 점수판 크기 등)
+  css/core/board.css               — 기본 점수판 핵심 (.board, .team, .score, .timer, .pk-wrap 등)
+  css/core/layout.css              — 전체 레이아웃 기반 (리셋, board-stage, 득점자 박스, 탭, 페이지, 패널, 위젯 격리, 마크다운)
+  css/tactics/tactics-timeline.css — 전술판 타임라인 + 이벤트 패널
+  css/panels/events-panel.css      — 이벤트 패널 문자중계 타임라인
+  css/panels/stats-panel.css       — 경기 스탯 패널, 교체명단 사이클, 순위표 위젯
+  css/hamburger-nav.css            — 햄버거 사이드바 네비게이션 (플로팅 버튼, 사이드바, 후원 위젯 위치)
+  css/panels/bench-injury.css      — 벤치/부상 패널 공통 (.dp-*)
+  css/lineup/lineup-layout.css     — 라인업 레이아웃 보정 + 리사이즈 핸들
+  css/lineup/lineup-pitch.css      — 라인업 피치 렌더링 (마킹, 팀칩, 선수 노드, 이름)
+  css/lineup/lineup-manual.css     — 수동 입력 모달 + 그리드 모드, 전술판 선수 이름 모달
+  css/player/player-menu.css       — 선수 컨텍스트 메뉴, ID 연결 팝업
+  css/player/player-search.css     — 선수 검색 후보 선택기
+  css/panels/hth-panel.css         — 상대전적 패널, 캠 작음 패널 모드 버튼
+  css/panels/team-fixtures-panel.css — 최근·예정 경기 패널
+  css/settings-popup.css           — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치, 확장 섹션)
+  css/core/fsm-fonts.css           — FSM 점수판 @font-face (테마 CSS에는 선언하지 않음)
+  css/core/fsm-board.css           — FSM 점수판 공통 규칙 (테마 공용 정렬, 합계 점수, 승부차기, 팀컬러 띠)
+  css/theme/result_style_*.css     — FSM 리그별 테마 (fsm-board.js applyTheme이 교체, 기본은 default)
+  css/core/event-icons.css         — 이벤트 아이콘 이미지 자르기
 
-  js/core/utils.js                 — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등)
+  [JS] 로드 순서대로 (전역 스코프 공유)
+  js/core/popout-early.js          — 팝업 분리 창 조기 감지 (head 맨 앞에서 동기 실행)
+  js/core/display-scale.js         — 화면 크기별 표시 배율 CSS 변수 (전술판 전체화면 배율 포함)
+  js/core/utils.js                 — 공통 유틸 ($, setCSS, fmtClock, clampNum, downloadBlob 등) + 팀 컬러 함수 + 그린스크린 색 변환
+  js/core/event-icons.js           — 이벤트 아이콘 이미지 정의 (원본을 렌더 시 잘라서 사용)
   js/core/state.js                 — 전역 state 객체, DOM el 참조, LocalStorage 저장/복원
-  js/core/render.js                — 점수판 렌더링, 득점자 레이아웃, 배율, PK, setMatchHalf
+  js/core/logo-fill-exceptions.js  — 로고 내부 투명 영역 자동 채우기 제외 URL 목록
+  js/core/logo-trim-analysis.js    — 로고 픽셀 분석 공용 함수 (메인 스레드와 워커 공용)
+  js/core/logo-trim.js             — 점수판 홈·원정 로고 바깥 투명 여백 자동 보정
+  js/core/scoreboard-logo-contrast.js — 로고가 카드 배경에 묻힐 때 대비 보정
+  js/core/team-nicknames.js        — 팀 닉네임 저장/편집 (팀 ID 기준, 표시 시점에만 덮어씀)
+  js/core/render.js                — 점수판 렌더링, 득점자 레이아웃, 배율, 점수판 위치, PK, setMatchHalf
   js/core/timer.js                 — 경기 시간 인터벌, 인라인 시간 편집기 (시계 더블클릭)
+  js/core/fixture-poll-policy.js   — 경기 상태별 다음 자동 조회 대기 시간 계산
+  js/core/fixture.js               — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch + state 매핑
+  js/core/api.js                   — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead)
   js/theme/theme.js                — 템플릿 관리, 색상/폰트 바인딩, 수동 모드
   js/core/router.js                — 탭/페이지 전환, path-based URL 동기화
   js/core/schedule-resize.js       — 일정 확인 탭 4칼럼(Leagues/Games/Details/Standings) 너비 드래그 리사이즈 + 더블클릭 시 인접 2칼럼만 기본 비율 복원
-  js/core/fixture.js               — 위젯 연동, 경기 ID 추출/입력, 백엔드 fetch + state 매핑
-  js/core/api.js                   — 백엔드 fetch 함수 (fetchFixture, fetchPlayerStats, fetchHeadToHead)
-  js/core/keyboard.js              — 전역 키보드 단축키 (Space/R/[/]/H/1~8/q/w/a/s 등)
+  js/core/keyboard.js              — 전역 키보드 단축키 정의와 실행 (Space/R/[/]/H/1~8/q/w/a/s 등)
   js/tactics/tactics.js            — 전술판 (토큰, 드래그, 포메이션, 드로잉, SVG, Undo/Redo)
   js/tactics/tactics-manual-names.js — 경기 ID 미연동 시 전술판 포지션별 선수 이름 수동 입력 모달 (홈/원정 탭). 경기 ID 로딩 시 자동 소멸
   js/data/injury-reason.js         — 부상 사유 한글화 (INJURY_REASON_KO 매핑) + isSuspension/isOffRoster 판별(선수단 미등록은 부상/징계와 별도 카테고리, 빨간 X 아이콘)
-  js/settings/settings-popup.js    — 설정 팝업 + 토글 상태(lineup/scorer/roster/lineupNode) localStorage
+  js/settings/settings-popup.js    — 설정 팝업 + 토글 상태 localStorage + 'settings:change' 이벤트
+  js/settings/shortcut-settings.js — 설정 팝업 내부 단축키 관리 화면
+  js/lineup/lineup-events.js       — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼
   js/lineup/lineup-manual-store.js — 공통 유틸(dpEscape/clonePlayers 등) + lineupPanelState + fixture 단위 수동 override localStorage CRUD
   js/lineup/lineup-data.js         — buildEffectiveFixtureData(API+수동override 합성) + 그리드/포메이션/색상 변환 헬퍼
+  js/lineup/lineup-formation-match.js — 포메이션 변경 시 슬롯 역할/좌우/좌표 기준 선수 배치 매칭
   js/lineup/lineup-render.js       — /detail 라인업/벤치/부상 패널 HTML 빌더 + 렌더 + 교체명단 사이클 패널 + 전술판 동기화 + applyLineupPanels(외부 진입점)
   js/lineup/lineup-name-fit.js     — 라인업 이름 pill/팀칩/벤치 하단 텍스트 충돌 보정(fitLineupNamePills 등 픽셀 단위 후처리)
   js/lineup/lineup-manual-modal.js — 수동 입력 모달(그리드 모드 + 라인업/벤치/부상자 풀폼) + 감독/주심 인라인 편집
   js/player/player-menu-stat-labels.js — 경기별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
   js/player/player-menu-szn-labels.js  — 시즌별 스탯 한글 레이블 매핑 (사용자 직접 편집용)
-  js/lineup/lineup-events.js       — 라인업 노드/벤치 행에 골/카드/교체/평점 표시 헬퍼
-  js/lineup/lineup-resize.js       — 캠 큼 라인업 패널 높이 핸들 드래그 리사이즈 + localStorage 저장
+  js/player/player-menu.js         — 선수 컨텍스트 메뉴 (닉네임/경기스탯/시즌스탯 팝업 + ID 입력 인라인 폼)
+  js/settings/nickname-csv.js      — 닉네임 CSV 가져오기/내보내기 (따옴표·줄바꿈·UTF-8 BOM 처리)
+  js/player/player-search.js       — 선수 ID 연결·빈 슬롯 입력 공용 후보 선택기
+  js/player/player-id-resolve.js   — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
+  js/lineup/lineup-resize.js       — 캠 큼 라인업/칼럼 드래그 리사이즈 + localStorage 저장
   js/data/stats-config.js          — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
-  js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등 33종) + translateEventComment()
+  js/data/scoreaxis-standings-embed-map.js — ScoreAxis 리그 순위 위젯 embed 코드 맵 (tools/scoreaxis-league-embed-codes.json에서 생성)
+  js/panels/scoreaxis-standings-panel.js   — ScoreAxis 순위표 위젯 패널 (캠 작음 이벤트 영역 + 캠 큼 스탯 순환)
+  js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등) + translateEventComment()
   js/core/event-time.js            — 공통 이벤트 시간·구간 판정, 관측 이력, 경계 마커
   js/panels/events-panel.js        — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
-  js/panels/event-hide.js          — 잘못된 이벤트 X 숨기기 (내용 서명 기준) + 숨긴 이벤트 관리 팝업
+  js/panels/event-spotlight.js     — 신규 이벤트 화면 표시 (설정 eventSpotlight: off/board/bottom)
+  js/panels/event-hide.js          — 잘못된 이벤트 숨기기/수정 (내용 서명 기준) + 숨긴 이벤트 관리 팝업
   js/panels/hth-panel.js           — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
+  js/panels/team-fixtures-panel.js — 양 팀 최근·예정 경기 패널 (팀별 요청 공유, 늦은 응답 폐기)
   js/panels/stats-panel.js         — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
-  js/panels/stat-cycle.js          — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/홈교체/원정교체 + 자동 전환)
+  js/panels/stat-cycle.js          — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/교체 명단/순위표 + 자동 전환)
   js/tactics/tactics-timeline.js   — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
-  js/player/player-menu.js         — 선수 컨텍스트 메뉴 (닉네임/경기스탯/시즌스탯 팝업 + ID 입력 인라인 폼)
-  js/player/player-id-resolve.js   — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
-  js/core/init.js                  — 초기화, 첫 render, 이벤트 핸들러 등록 (마지막 로드)
+  js/core/fsm-board.js             — FSM 점수판 (리그별 테마 매핑/적용, 폭·팀명 맞춤, 합계 점수, 승부차기)
+  js/core/init.js                  — 초기화, 첫 render, 이벤트 핸들러 등록
   js/sidebar/sidebar.js            — 햄버거 사이드바 제어 (open/close, 미러 토글, Tab/Esc 단축키)
+  js/core/popout.js                — 입력창/설정 새 창 분리 (popoutModals 설정)
 -->
 </body>
 </html>

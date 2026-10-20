@@ -1,3 +1,4 @@
+require('../tactics/helpers');
 // 초안 실행: node tests/events/event-time-controls.cjs tools/event-timing-draft
 // 현재 코드 실행: node tests/events/event-time-controls.cjs
 const assert = require('node:assert/strict');
@@ -186,7 +187,243 @@ const fixture = {
     });
     assert.equal(slider.time, 46);
     assert.equal(slider.label, '46′');
+    // 누락된 실축자·승부차기 키커와 VAR도 실제 행 메뉴에서 수정할 수 있다.
+    const editableFixture = structuredClone(fixture);
+    editableFixture.matchInfo.fixtureId = 1583655;
+    editableFixture.matchInfo.status = 'PEN';
+    editableFixture.matchInfo.elapsed = 120;
+    editableFixture.matchInfo.awayPenaltyScore = 1;
+    editableFixture.events = [
+      { ...added, elapsed: 60, extra: null, type: 'Goal', detail: 'Missed Penalty', playerId: null, playerName: null },
+      { ...sub, elapsed: 70 },
+      { ...next, elapsed: 80, detail: 'Red Card' },
+      { ...added, elapsed: 90, extra: null, type: 'Goal', detail: 'Missed Penalty', playerId: null, playerName: null },
+      { ...added, elapsed: 120, extra: null, type: 'Goal', detail: 'Penalty', comments: 'Penalty Shootout', playerId: null, playerName: null },
+      { ...added, elapsed: 121, extra: null, type: 'Goal', detail: 'Missed Penalty', comments: 'Penalty Shootout', playerId: null, playerName: null },
+      { ...added, elapsed: 85, extra: null, type: 'Var', detail: 'Goal cancelled - Offside', playerId: null, playerName: null },
+    ];
+    await poll(editableFixture);
+    const openEvent = async elapsed => {
+      const row = page.locator('[data-events-panel]:visible .ev-row').filter({ has: page.locator('.ev-time', { hasText: `${elapsed}'` }) });
+      await row.first().click();
+      await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+      await page.locator('.ev-edit-modal').waitFor();
+    };
+    const modal = page.locator('.ev-edit-modal');
+    const pickReason = async value => {
+      await modal.locator('.ev-edit-reason-toggle').click();
+      await modal.locator(`.ev-edit-reason-option[data-value="${value}"]`).click();
+    };
+    await openEvent(60);
+    assert.match(await modal.textContent(), /Out/);
+    assert(!/In/.test(await modal.textContent()), 'future substitute is unavailable');
+    await modal.getByRole('button', { name: '취소', exact: true }).click();
+    for (const elapsed of [90, 120, 121]) {
+      await openEvent(elapsed);
+      const text = await modal.textContent();
+      assert.match(text, /In/);
+      assert(!/\bOut\b|\bNext\b/.test(text), 'substituted and dismissed players are unavailable');
+      await modal.locator('.ev-subst-picker-item').filter({ hasText: /In/ }).click();
+      await modal.getByRole('button', { name: '확인', exact: true }).click();
+      assert.equal(await page.evaluate(elapsed => window._eventsLastData.events.find(ev => ev.elapsed === elapsed).playerId, elapsed), 13);
+    }
+    await openEvent(120);
+    await modal.getByRole('button', { name: '실축', exact: true }).click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => {
+      const ev = window._eventsLastData.events.find(ev => ev.elapsed === 120);
+      return [ev.detail, ev.comments, evHideGoalCredits([ev]).penAway];
+    }), ['Missed Penalty', 'Penalty Shootout', 0]);
+    assert.deepEqual(await page.evaluate(() => {
+      const mi = window._eventsLastData.matchInfo;
+      return [mi.homeScore, mi.awayScore, mi.awayPenaltyScore];
+    }), [2, 2, 0]);
+    await openEvent(120);
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.matchInfo.awayPenaltyScore), 1);
+    await openEvent(85);
+    await modal.getByRole('button', { name: 'PK 선언', exact: true }).click();
+    await modal.locator('.ev-subst-picker-item').filter({ hasText: /In/ }).click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    await poll(editableFixture);
+    assert.deepEqual(await page.evaluate(() => {
+      const ev = window._eventsLastData.events.find(ev => ev.type === 'Var');
+      return [ev.detail, ev.playerId];
+    }), ['Penalty confirmed - Offside', 13]);
+    await openEvent(85);
+    await modal.locator('.ev-subst-picker-name').getByText('없음', { exact: true }).click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').playerId), null);
+    await openEvent(85);
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').detail), 'Goal cancelled - Offside');
+    // 인식된 판정을 일반 VAR로 바꿔도 덧붙은 사유는 남는다.
+    await openEvent(85);
+    assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), 'Offside');
+    await modal.getByRole('button', { name: 'VAR', exact: true }).click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').detail), 'Offside');
+    await openEvent(85);
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
+    editableFixture.events.find(ev => ev.type === 'Var').detail = 'Card upgrade';
+    await poll(editableFixture);
+    assert.equal(await page.evaluate(() => translateEventVarDetail('CARD UPGRADE')), '카드 변경');
+    await openEvent(85);
+    assert.equal(await modal.locator('.ev-edit-var-reason-row .is-active').textContent(), '카드 변경');
+    assert.deepEqual(await modal.locator('.ev-edit-var-reason-row > button').allTextContents(), ['카드 변경', 'VAR']);
+    assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), '');
+    assert(await modal.locator('.ev-edit-types button').evaluateAll(buttons => buttons.every(button => button.scrollWidth <= button.clientWidth)), 'decision labels must fit without clipping');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').detail), 'Card upgrade');
+    await openEvent(85);
+    await modal.getByRole('button', { name: 'VAR', exact: true }).click();
+    await pickReason('');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.deepEqual(await page.evaluate(() => {
+      const ev = window._eventsLastData.events.find(ev => ev.type === 'Var');
+      return [ev.detail, evLabelKo(ev)];
+    }), ['VAR', 'VAR']);
+    editableFixture.events.find(ev => ev.type === 'Var').detail = 'Unknown review';
+    await poll(editableFixture);
+    await openEvent(85);
+    assert.equal(await modal.locator('.ev-edit-var-reason-row .is-active').textContent(), 'VAR');
+    assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), 'Unknown review');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var').detail), 'Unknown review');
+    for (const [detail, label] of [['Card upheld', '카드 판정 유지'], ['Card upgrade', '카드 변경'], ['Card upgrade confirmed', '카드 변경'], ['Card reviewed', '카드 판정 검토 완료']]) {
+      const varEvent = editableFixture.events.find(ev => ev.type === 'Var');
+      varEvent.detail = detail;
+      varEvent.comments = 'Violent conduct';
+      await poll(editableFixture);
+      const row = page.locator('[data-events-panel]:visible .ev-row').filter({ has: page.locator('.ev-time', { hasText: "85'" }) }).first();
+      const upgrade = /^Card upgrade/.test(detail);
+      assert.equal(await row.locator('.ev-label').textContent(), upgrade ? 'VAR 카드 변경' : 'VAR');
+      assert.equal(await row.locator('.ev-icon-var-red').count(), 0);
+      assert.equal(await row.evaluate(row => row.classList.contains('ev-bar-orange')), upgrade);
+      assert.equal(await row.locator('.ev-comment').textContent(), `${label} · 폭력 행위`);
+      await openEvent(85);
+      assert.equal(await modal.locator('.ev-edit-var-reason-row .is-active').textContent(), upgrade ? '카드 변경' : 'VAR');
+      assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), upgrade ? '' : detail);
+      await modal.getByRole('button', { name: '취소', exact: true }).click();
+    }
+    // VAR detail과 카드 comments를 별개로 수정하고 폴링에도 유지한다.
+    const cardFixture = structuredClone(fixture);
+    cardFixture.matchInfo.fixtureId = 1583656;
+    cardFixture.events = [
+      { ...added, elapsed: 45, extra: null, type: 'Var', detail: 'Card upgrade confirmed', comments: null },
+      { ...added, elapsed: 63, extra: null, comments: 'Dissent' },
+      { ...added, elapsed: 90, extra: 2, detail: 'Red Card', comments: null },
+    ];
+    await poll(cardFixture);
+    const cumulativeRow = page.locator('[data-events-panel]:visible .ev-row').filter({ hasText: 'Added' }).filter({ hasText: '경고 누적 퇴장' }).first();
+    assert(await cumulativeRow.isVisible());
+    assert.equal(await cumulativeRow.locator('.ev-label').textContent(), '경고 누적 퇴장');
+    assert.equal(await cumulativeRow.locator('.ev-icon-cumulative-red').count(), 1);
+    assert.equal(await cumulativeRow.locator('.ev-comment').count(), 0, 'cumulative dismissal is a card type, not a foul reason');
+    await cumulativeRow.click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    assert.equal(await modal.locator('.ev-edit-types .is-active').textContent(), '경고 누적 퇴장');
+    await modal.locator('.ev-edit-reason-toggle').click();
+    assert(!await modal.getByRole('option', { name: '경고 누적 퇴장', exact: true }).count());
+    await modal.locator('.ev-edit-reason-option[data-value="Foul"]').click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    await poll(cardFixture);
+    const cumulativeEvent = await page.evaluate(() => window._eventsLastData.events.find(ev => ev.playerId === 11 && ev.detail === 'Second Yellow Card'));
+    assert.equal(cumulativeEvent.comments, 'Foul');
+    assert.equal(await cumulativeRow.locator('.ev-comment').textContent(), '파울');
+    assert.equal(await cumulativeRow.locator('.ev-icon-cumulative-red').count(), 1);
+    // 원본과 값이 같은 Red Card라도 직접 퇴장으로 고친 기록은 남아 다시 누적으로 분류되지 않는다.
+    await cumulativeRow.click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    await modal.getByRole('button', { name: '퇴장', exact: true }).click();
+    await pickReason('');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    await poll(cardFixture);
+    const directRedRow = page.locator('[data-events-panel]:visible .ev-row').filter({ has: page.locator('.ev-time', { hasText: "90+2'" }) }).first();
+    assert.equal(await directRedRow.locator('.ev-label').textContent(), '퇴장');
+    assert.equal(await directRedRow.locator('.ev-icon-cumulative-red').count(), 0);
+    await directRedRow.click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    assert.equal(await modal.locator('.ev-edit-types .is-active').textContent(), '퇴장');
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
+    assert.equal(await directRedRow.locator('.ev-label').textContent(), '경고 누적 퇴장');
+    const cardReviewRow = page.locator('[data-events-panel]:visible .ev-row').filter({ hasText: '카드 변경' }).first();
+    assert.equal(await cardReviewRow.locator('.ev-label').textContent(), 'VAR 카드 변경');
+    assert.equal(await cardReviewRow.locator('.ev-comment').textContent(), '카드 변경');
+    assert(await cardReviewRow.locator('.ev-comment').isVisible());
+    await cardReviewRow.click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    assert.equal(await modal.locator('.ev-edit-var-reason-row .is-active').textContent(), '카드 변경');
+    assert.equal(await modal.locator('.ev-edit-var-types > button').count(), 4);
+    assert(await modal.locator('.ev-edit-var-types > button').evaluateAll(buttons => {
+      const boxes = buttons.map(button => button.getBoundingClientRect());
+      return boxes.every(box => box.top === boxes[0].top)
+        && buttons.every(button => button.scrollWidth <= button.clientWidth);
+    }), 'four decisions share the first row');
+    assert(await modal.locator('.ev-edit-var-reason-row').evaluate(row => {
+      const button = row.querySelector('button').getBoundingClientRect();
+      const select = row.querySelector('.ev-edit-reason-toggle').getBoundingClientRect();
+      return button.right <= select.left && Math.abs(button.top - select.top) < 1;
+    }), 'VAR button sits beside the reason dropdown');
+    assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), '');
+    assert(await modal.locator('.ev-edit-reason-toggle').isDisabled());
+    await modal.getByRole('button', { name: 'VAR', exact: true }).click();
+    await modal.locator('.ev-edit-reason-toggle').click();
+    const reasonLabels = await modal.getByRole('option').allTextContents();
+    assert.equal(reasonLabels.length, new Set(reasonLabels).size, 'identical Korean reasons appear only once');
+    assert.equal(reasonLabels.filter(label => label === '카드 변경').length, 0);
+    await modal.locator('.ev-edit-reason-toggle').press('Escape');
+    assert(await modal.isVisible(), 'Escape closes only the open reason menu');
+    await pickReason('Card upheld');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.locator('[data-events-panel]:visible .ev-comment').filter({ hasText: '카드 판정 유지' }).count(), 1);
+    await page.locator('[data-events-panel]:visible .ev-row').filter({ hasText: '카드 판정 유지' }).click();
+    await page.getByRole('button', { name: '정보 수정', exact: true }).click();
+    await pickReason('');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.type === 'Var' && ev.elapsed === 45).detail), 'VAR');
+    await openEvent(63);
+    assert.equal(await modal.locator('.ev-edit-reason').getAttribute('data-value'), 'Dissent');
+    await modal.locator('.ev-edit-reason-toggle').click();
+    assert(await modal.locator('.ev-edit-reason-menu').evaluate(menu => menu.scrollHeight > menu.clientHeight), 'card reasons scroll within the menu');
+    const cardLabels = await modal.getByRole('option').allTextContents();
+    assert(!cardLabels.includes('카드 판정 유지') && !cardLabels.includes('카드 판정 검토 완료'), 'VAR details never enter card comments');
+    assert.deepEqual(cardLabels.slice(0, 2), ['없음', '파울']);
+    assert(await modal.locator('.ev-edit-reason-menu').evaluate(menu => {
+      const style = getComputedStyle(menu);
+      const listStyle = getComputedStyle(document.querySelector('.ev-edit-modal .ev-subst-picker-list'));
+      return style.scrollbarWidth === listStyle.scrollbarWidth
+        && style.scrollbarColor === listStyle.scrollbarColor && style.colorScheme === listStyle.colorScheme;
+    }), 'reason scrollbar matches the existing player list');
+    assert.equal(cardLabels.length, new Set(cardLabels).size);
+    assert(await modal.evaluate(modal => {
+      const trigger = getComputedStyle(modal.querySelector('.ev-edit-reason-toggle'));
+      const segment = getComputedStyle(modal.querySelector('.ev-edit-seg-btn'));
+      const option = getComputedStyle(modal.querySelector('.ev-edit-reason-option'));
+      return trigger.fontFamily === segment.fontFamily && trigger.fontSize === segment.fontSize
+        && option.fontFamily === trigger.fontFamily && option.fontSize === trigger.fontSize;
+    }), 'reason menus use the existing UI font');
+    await modal.locator('.ev-edit-reason-option[data-value="Violent conduct"]').click();
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    await poll(cardFixture);
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.elapsed === 63).comments), 'Violent conduct');
+    await openEvent(63);
+    await pickReason('');
+    await modal.getByRole('button', { name: '확인', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.elapsed === 63).comments), null);
+    await openEvent(63);
+    await modal.getByRole('button', { name: '초기화', exact: true }).click();
+    assert.equal(await page.evaluate(() => window._eventsLastData.events.find(ev => ev.elapsed === 63).comments), 'Dissent');
+    // 카드 변경 VAR만 있으면 실제 퇴장으로 집계하지 않는다.
+    const reviewOnlyFixture = structuredClone(cardFixture);
+    reviewOnlyFixture.matchInfo.fixtureId = 1583657;
+    reviewOnlyFixture.events = reviewOnlyFixture.events.filter(event => event.type === 'Var');
+    await poll(reviewOnlyFixture);
+    const reviewOnlyRow = page.locator('.lp-events-s [data-events-panel] .ev-row:not(.ev-period-marker)').first();
+    assert.equal(await reviewOnlyRow.locator('.ev-label').textContent(), 'VAR 카드 변경');
+    assert.equal(await reviewOnlyRow.locator('.football-icon-var-card-change').count(), 1);
+    assert.deepEqual(await page.evaluate(() => [state.redHome, state.redAway]), [0, 0]);
     assert.deepEqual(errors, []);
-    console.log('PASS: shared period/lineup/candidate decisions, modal preview/cancel/save/auto, polling/reload, fixture isolation, edit preservation, stale cleanup, all boundaries, shootouts, added-time stops and real slider.');
+    console.log('PASS: shared periods, lineup candidates, modal controls, polling/reload, fixture isolation, boundaries, real slider, missed penalties, shootout kickers/results/scores, VAR decisions/optional player/reset.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

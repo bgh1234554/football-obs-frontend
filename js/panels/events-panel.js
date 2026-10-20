@@ -32,6 +32,7 @@ const EVENTS_PANEL_FILTER_ORDER = [
   'cumulative-red',
   'subst',
   'var',
+  'var-card-upgrade',
   'var-goal-cancel',
   'var-penalty-cancel',
   'var-goal-confirm',
@@ -135,12 +136,17 @@ function evParseVarDetail(detail) {
   if (normalizedHead === 'penalty confirmed') {
     return { key: 'penalty-confirm', displayDetail: 'Penalty confirmed', displayComment: reason };
   }
-  return { key: '', displayDetail: raw, displayComment: '' };
+  return { key: '', displayDetail: head, displayComment: reason };
 }
 
 /** VAR detail에서 4종 필터 키만 빠르게 꺼내는 헬퍼. evParseVarDetail의 1-필드 shortcut. */
 function evVarDetailKey(detail) {
   return evParseVarDetail(detail).key;
+}
+
+/** 카드 판정 변경은 실제 퇴장을 뜻하지 않는다. 퇴장은 별도의 Card 이벤트로 판단한다. */
+function evIsVarCardUpgrade(ev) {
+  return evTypeIs(ev, 'Var') && /^card upgrade(?: confirmed)?$/i.test(evParseVarDetail(ev.detail).displayDetail);
 }
 
 // ─── 교체 선수 수동 연동 저장소 ───────────────────────────────────────────────
@@ -511,6 +517,7 @@ function evFormatTime(ev) {
 
 /** detail/type 한글 라벨. 라벨은 색상 막대 옆 짧은 종류 표시용. */
 function evLabelKo(ev) {
+  if (evIsVarCardUpgrade(ev)) return 'VAR 카드 변경';
   const detail = ev._displayDetail || ev.detail || '';
   const varDetailKey = evTypeIs(ev, 'Var') ? evVarDetailKey(detail) : '';
   if (varDetailKey === 'goal-cancel') return 'VAR 골 취소';
@@ -540,6 +547,7 @@ function evLabelKo(ev) {
 
 /** 이벤트 종류 → { color, icon } 매핑. CSS에서 ev-bar-{color}, ev-icon-{icon} 스타일 사용. */
 function evStyle(ev) {
+  if (evIsVarCardUpgrade(ev)) return { color: 'orange', icon: 'var-card-change' };
   const detail = ev._displayDetail || ev.detail || '';
   const varDetailKey = evTypeIs(ev, 'Var') ? evVarDetailKey(detail) : '';
   if (varDetailKey === 'goal-cancel' || varDetailKey === 'penalty-cancel') {
@@ -571,6 +579,7 @@ function evStyle(ev) {
 
 /** 이벤트를 필터 UI에서 다룰 카테고리 키로 정규화. */
 function evFilterKey(ev) {
+  if (evIsVarCardUpgrade(ev)) return 'var-card-upgrade';
   const detail = ev._displayDetail || ev.detail || '';
   const varDetailKey = evTypeIs(ev, 'Var') ? evVarDetailKey(detail) : '';
 
@@ -705,8 +714,8 @@ function evMainText(ev) {
  *
  * 알고리즘:
  *   1. 시간 오름차순 정렬해서 옐로우 카드 카운트를 선수별로 집계
- *   2. Red Card 이벤트가 들어왔는데 그 선수가 이전에 옐로우를 받았으면 _isCumulativeRed = true 마킹
- *   3. comments가 비어있으면 "경고 누적 퇴장"으로 자동 채움
+ *   2. 이전 경고가 있는 선수의 Red Card는 누적 퇴장으로 추정한다. 직접 퇴장으로 수동 수정한 값은 유지한다.
+ *   3. 카드 종류와 아이콘만 바꾸고 comments는 파울 사유 그대로 유지한다.
  *   4. 표시용으로 다시 시간 내림차순 정렬해서 반환
  */
 function evProcess(rawEvents) {
@@ -736,12 +745,6 @@ function evProcess(rawEvents) {
       index += 1;
     }
 
-    const sameMomentYellowPlayers = new Set(
-      group
-        .filter(({ ev }) => evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card') && ev.playerId != null)
-        .map(({ ev }) => String(ev.playerId))
-    );
-
     group.forEach(({ ev }) => {
       const out = { ...ev };
       if (evTypeIs(out, 'Var')) {
@@ -755,23 +758,23 @@ function evProcess(rawEvents) {
       const isYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card');
       const isRed = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Red Card');
       const isSecondYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Second Yellow Card');
-      const playerKey = ev.playerId == null ? '' : String(ev.playerId);
+      const playerKey = Number(ev.playerId) > 0 ? String(ev.playerId) : '';
       const priorYellowCount = playerKey ? (yellows.get(playerKey) || 0) : 0;
 
       if (
         isSecondYellow
-        || (isRed && playerKey && sameMomentYellowPlayers.has(playerKey) && priorYellowCount > 0)
+        || (isRed && playerKey && priorYellowCount > 0 && !ev._evEdited)
       ) {
         out._isCumulativeRed = true;
         out._displayDetail = 'Red Card';
-        if (!out.comments) out.comments = '경고 누적 퇴장';
+        // 사유는 이 퇴장 이벤트의 comments를 그대로 쓴다. 이전 경고의 사유를 가져오거나 새로 채우지 않는다.
       }
 
       processed.push(out);
     });
 
     group.forEach(({ ev }) => {
-      if (ev.playerId == null) return;
+      if (!(Number(ev.playerId) > 0)) return;
       if (evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card')) {
         const playerKey = String(ev.playerId);
         yellows.set(playerKey, (yellows.get(playerKey) || 0) + 1);
@@ -978,6 +981,7 @@ function evCreateRow(ev, fixtureData, renderKey = '', timeContext) {
   const style = evStyle(ev);
   const row = document.createElement('div');
   row.className = `ev-row ev-bar-${style.color}`;
+  row.style.setProperty('--ev-ui-scale', String(evGetBaseFontSize() / EVENTS_PANEL_FONT_DEFAULT));
   if (renderKey) row.dataset.evKey = renderKey;
   if (evTypeIs(ev, 'subst')) row.classList.add('ev-row-subst');
 
@@ -1018,9 +1022,14 @@ function evCreateRow(ev, fixtureData, renderKey = '', timeContext) {
   //   기타  : 단일 라인 = playerName.
   // 코멘트(ev.comments)는 별도 flex 아이템이 아닌, 첫 라인의 인라인 자식으로 붙여 선수 이름 바로 옆에 위치.
   const rawComment = String(ev._displayComment || ev.comments || '').trim();
-  const translatedComment = (rawComment && window.translateEventComment)
-    ? window.translateEventComment(rawComment)
-    : rawComment;
+  // 별도 라벨이 없는 VAR도 detail을 표시한다. 새 원문은 공통 번역 매핑만 추가하면 된다.
+  const varDetail = evTypeIs(ev, 'Var') ? evParseVarDetail(ev.detail) : null;
+  const genericVar = varDetail && !varDetail.key;
+  const detailComment = genericVar && !/^var$/i.test(varDetail.displayDetail) ? varDetail.displayDetail : '';
+  const commentParts = genericVar ? [detailComment, varDetail.displayComment, rawComment] : [rawComment];
+  const translatedComment = [...new Set(commentParts.filter(Boolean).map(comment =>
+    genericVar && comment === detailComment && window.translateEventVarDetail ? window.translateEventVarDetail(comment)
+      : window.translateEventComment ? window.translateEventComment(comment) : comment))].join(' · ');
 
   function appendName(parent, name) {
     const nameEl = document.createElement('span');
@@ -1229,6 +1238,7 @@ function evCreateTitleBar(filterOptions, container) {
   const title = document.createElement('div');
   title.className = 'ev-title';
   title.textContent = '이벤트';
+  bindPanelFontTitle(title, 'eventNameSize');
   titleBar.appendChild(title);
 
   titleBar.appendChild(evCreateFilterUi(filterOptions));

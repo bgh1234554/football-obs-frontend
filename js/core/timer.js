@@ -175,6 +175,18 @@
   cePresets?.addEventListener('mouseleave', ceScheduleHidePresets);
 
   /**
+   * 시계 숫자의 숨김 상태를 색상 전환 없이 바로 바꾼다. FSM 테마 전환용 color 전환(.9s)이 그대로 적용되면
+   * 배경이 투명한 편집기(가상 요소로 시계 도형을 그리는 테마) 아래에서 원래 숫자가 서서히 사라졌다 나타난다.
+   * @param {boolean} editing 편집 중이면 true
+   */
+  function setClockEditingInstantly(editing) {
+    clockEl.style.transition = 'none';
+    clockEl.classList.toggle('is-editing', editing);
+    void clockEl.offsetWidth;
+    clockEl.style.transition = '';
+  }
+
+  /**
    * 시계 더블클릭 시 인라인 편집기를 열고, 확인/취소/외부클릭을 처리하는 편집 세션을 시작.
    * 편집 중에는 타이머가 정지되고, 확인 후 입력된 시각으로 재개됨.
    */
@@ -212,7 +224,7 @@
         clockEditor.style.setProperty('--clock-padding-top', style.paddingTop);
         clockEditor.style.setProperty('--clock-padding-bottom', style.paddingBottom);
       }
-      clockEl.classList.add('is-editing');
+      setClockEditingInstantly(true);
     } else {
       clockEl.style.display = 'none';
     }
@@ -238,7 +250,7 @@
     function closeClockEditor() {
       clockEditor.classList.remove('active');
       clockEl.style.display = '';
-      clockEl.classList.remove('is-editing');
+      setClockEditingInstantly(false);
       ceHidePresetsNow();
     }
 

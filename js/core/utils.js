@@ -521,13 +521,16 @@
    *
    * @param {string} input  hex/rgb/rgba 색상 문자열
    * @param {string=} forcedIntensity  카테고리별 강제 강도 (예: 'strong' 마젠타 고정). 미지정 시 사용자 설정.
+   * @param {number|null=} gradientLightnessScale 그라데이션의 초록을 함께 변환할 때 사용하는 공통 명도 배율.
    */
-  function toChromaSafeColor(input, forcedIntensity) {
+  function toChromaSafeColor(input, forcedIntensity, gradientLightnessScale = null) {
     if (!input) return input;
     const rgb = parseAnyColor(input);
     if (!rgb) return input;
     const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    if (!isChromaKeyGreen(rgb)) return input;
+    // 같은 초록 그라데이션의 어두운 색도 함께 이동하되 노랑·무채색은 유지합니다.
+    const groupedGreen = gradientLightnessScale !== null && h > 60 && h <= 170 && s >= 0.18;
+    if (!isChromaKeyGreen(rgb) && !groupedGreen) return input;
 
     const intensity = forcedIntensity && CHROMA_SAFE_PRESETS[forcedIntensity]
       ? forcedIntensity
@@ -539,6 +542,7 @@
     const newH = preset.start + t * (preset.end - preset.start);
     const newS = Math.max(0, Math.min(1, s * preset.sScale));
     let newL = Math.max(0, Math.min(1, l + preset.lDelta));
+    if (gradientLightnessScale !== null) newL *= gradientLightnessScale;
     // lCap이 지정되면 그 값을 절대 상한으로 사용 — 'natural'에서 항상 매우 어둡게 강제.
     if (typeof preset.lCap === 'number') newL = Math.min(newL, preset.lCap);
     const out = hslToRgb(newH, newS, newL);
@@ -548,13 +552,41 @@
   }
 
   /**
-   * linear-gradient(...) 같은 CSS 함수 문자열 안의 색상 토큰을 모두 toChromaSafeColor로 변환.
-   * 피치 톤 background처럼 그라디언트인 경우에도 그린 변환이 작동하게 한다.
-   * forcedIntensity를 주면 그라디언트 안의 모든 색에 동일 강도 적용.
+   * 각 그라데이션 안에 보정 대상이 있으면 같은 초록 계열의 색을 함께 변환합니다.
+   * 여러 배경 레이어는 독립적으로 판단하며, 노랑·무채색과 투명도는 유지합니다.
    */
   function toChromaSafeGradient(input, forcedIntensity) {
     if (!input || typeof input !== 'string') return input;
-    return input.replace(/#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g, match => toChromaSafeColor(match, forcedIntensity));
+    const colorPattern = /#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)/g;
+    const gradients = [];
+    const gradientPattern = /(?:repeating-)?(?:linear|radial|conic)-gradient\(/gi;
+    const preset = CHROMA_SAFE_PRESETS[forcedIntensity] || CHROMA_SAFE_PRESETS[getGreenscreenIntensity()];
+    let match;
+    while ((match = gradientPattern.exec(input))) {
+      let end = gradientPattern.lastIndex, depth = 1;
+      // rgb()/var()의 괄호를 포함하므로 그라데이션 함수의 닫는 위치까지 추적합니다.
+      for (; end < input.length && depth; end++) {
+        if (input[end] === '(') depth++;
+        else if (input[end] === ')') depth--;
+      }
+      if (depth) break;
+      const colors = (input.slice(match.index, end).match(colorPattern) || []).map(parseAnyColor).filter(Boolean);
+      if (colors.some(color => color.a > 0 && isChromaKeyGreen(color))) {
+        const lightness = colors.filter(color => {
+          const { h, s } = rgbToHsl(color.r, color.g, color.b);
+          return color.a > 0 && h > 60 && h <= 170 && s >= 0.18;
+        }).map(color => rgbToHsl(color.r, color.g, color.b).l);
+        // 어두운 초록 프리셋도 밝은 색을 개별 상한으로 잘라 평평해지지 않게 같은 비율로 낮춥니다.
+        const maxLightness = Math.max(...lightness);
+        const scale = typeof preset.lCap === 'number' && maxLightness > 0 ? Math.min(1, preset.lCap / maxLightness) : 1;
+        gradients.push({ start: match.index, end, scale });
+      }
+      gradientPattern.lastIndex = end;
+    }
+    return input.replace(colorPattern, (color, offset) => {
+      const gradient = gradients.find(range => offset >= range.start && offset < range.end);
+      return toChromaSafeColor(color, forcedIntensity, gradient ? gradient.scale : null);
+    });
   }
 
   /** 그린스크린 모드가 켜져 있는지 — settings-popup.js의 getSetting을 사용. 없으면 false. */

@@ -833,7 +833,7 @@ function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
       <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
       <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
       <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
-      <div class="dp-lineup-marking dp-lineup-marking-midline"></div>
+      <div class="dp-lineup-marking dp-lineup-marking-midline"${panelFontTitleAttrs('lineupNameSize')}></div>
       <div class="dp-lineup-marking dp-lineup-marking-center-circle"></div>
       <div class="dp-lineup-marking dp-lineup-marking-bottom-box"></div>
       <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
@@ -887,7 +887,7 @@ function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
         <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
         <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
         <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
-        <div class="dp-lineup-marking dp-lineup-marking-midline"></div>
+        <div class="dp-lineup-marking dp-lineup-marking-midline"${panelFontTitleAttrs('lineupNameSize')}></div>
         <div class="dp-lineup-marking dp-lineup-marking-center-circle"></div>
         <div class="dp-lineup-marking dp-lineup-marking-bottom-box"></div>
         <div class="dp-lineup-marking dp-lineup-marking-bottom-goal"></div>
@@ -1216,7 +1216,7 @@ function renderInjuryCyclePanel(effectiveData, rawData) {
   window._lpStatInjuryCount = home.length + away.length;
   let changed = false;
   document.querySelectorAll('.lp-stat [data-injury-cycle-panel]').forEach(panel => {
-    const html = `<div class="st-title-bar">미출전 선수 명단</div><div class="ic-body">${['home', 'away'].map(side => {
+    const html = `<div class="st-title-bar"${panelFontTitleAttrs('benchInjuryNameSize')}>미출전 선수 명단</div><div class="ic-body">${['home', 'away'].map(side => {
       const list = side === 'home' ? home : away;
       const provided = Array.isArray(rawData?.[`${side}Injuries`]) || Array.isArray(effectiveData?.[`${side}Injuries`]);
       return `<section class="ic-team" data-injury-side="${side}"><div class="dp-side-header"><span class="dp-side-name"></span></div><div class="ic-list">${buildInjuryListHtml(list, provided, { inlineReason: true })}</div></section>`;
@@ -1242,12 +1242,12 @@ function renderInjuryCyclePanel(effectiveData, rawData) {
 /** lp-stat 교체명단 사이클 패널 HTML 빌드. 선수 없으면 빈 상태 표시. */
 function buildBenchCyclePanelHtml(players, teamName, accentColor, side) {
   const accentStyle = accentColor ? ` style="--dp-team-accent:${dpEscape(accentColor)}"` : '';
-  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span>&nbsp;교체 명단</div>`;
+  const title = `<div class="st-title-bar bc-cycle-title"${accentStyle}${panelFontTitleAttrs('benchInjuryNameSize')}><span${teamNicknameLabelAttrs(side)}>${dpEscape(teamName)}</span>&nbsp;<span class="panel-font-title-text">교체 명단</span></div>`;
   if (!players || !players.length) {
     return `${title}<div class="st-empty">교체 선수 없음</div>`;
   }
   // 모든 선수를 단일 리스트로 — CSS columns + JS 오버플로 감지가 2열 전환을 처리
-  return `${title}<div class="bc-body">${players.map(p => lpBuildRosterRowHtml(p, 'bench', side)).join('')}</div>`;
+  return `${title}<div class="bc-body" data-bench-side="${dpEscape(side)}">${players.map(p => lpBuildRosterRowHtml(p, 'bench', side)).join('')}</div>`;
 }
 
 /**
@@ -1798,6 +1798,8 @@ function syncTacticsBoard(effectiveData, options = {}) {
  * 5) 벤치/부상/라인업 그리드 + 전술판 4개 패널 동시 갱신.
  * 6) 화면 폭 보정 예약에서 최종 배치 후 이름·벤치 하단 피팅과 높이 균형을 맞춘다.
  *    options.colorsOnly(팀 컬러만 바뀜)이고 라인업 DOM을 유지했으면 같은 크기의 패널은 이름 피팅을 생략한다.
+ *    options.awaitWidthLock(새 경기로 캠 큼 폭 잠금을 푼 경우)이면 폭이 다시 잠긴 뒤(두 프레임) 맞추고,
+ *    그 외에는 다음 프레임 그리기 전에 맞춘다.
  */
 function rerenderLineupPanels(options = {}) {
   if (!lineupPanelState.lastFixture) {
@@ -1847,7 +1849,9 @@ function rerenderLineupPanels(options = {}) {
 
   // 3) 화면 폭 보정과 렌더 후 피팅을 같은 예약으로 합친다.
   // 먼저 최종 폭을 잠근 뒤 활성 패널을 맞추며, 숨은 패널은 페이지 활성화 때 맞춘다.
-  scheduleLineupViewportFit();
+  // 새 경기라 캠 큼 폭 잠금을 풀었을 때만 두 프레임을 기다리고, 같은 경기 갱신(폴링 등)은 다음 프레임 그리기 전에
+  // 맞춰 덜 맞춘 라벨이 화면에 보이지 않게 한다(scheduleLineupViewportFit 참고).
+  scheduleLineupViewportFit({ nextFrame: !options.awaitWidthLock });
 }
 
 /** 외부에서 fixture 데이터를 넘겨 상세 패널 전체를 적용할 때 쓰는 공개 진입점. */
@@ -1878,7 +1882,7 @@ function applyLineupPanels(fixtureData) {
   // API가 라인업 없이 playerStats만 준 경우 선발/교체 명단을 추정해 채운 객체로 보관 (lineup-data.js).
   lineupPanelState.lastFixture = inferLineupsFromPlayerStats(fixtureData);
   if (typeof tacticsSyncManualNamesButtonState === 'function') tacticsSyncManualNamesButtonState();
-  rerenderLineupPanels();
+  rerenderLineupPanels({ awaitWidthLock: incomingId !== currentId });
 }
 
 /** fixture가 비워졌을 때 상세 패널과 전술판을 모두 기본 상태로 되돌린다. */

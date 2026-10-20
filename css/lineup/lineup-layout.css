@@ -184,6 +184,7 @@ body.no-fan-reaction .layout-small .lp-cam-chat {
     .lp-width-locked가 붙으면 aspect-ratio를 해제하고 높이만 변화시킨다. */
   flex: 0 0 auto;
   height: calc(100% * var(--lp-lineup-scale, 1));
+  max-height: 100%;
   aspect-ratio: 62 / 105;
   align-self: flex-end;
   position: relative;
@@ -599,7 +600,8 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
 /* 자유 리사이즈가 걸린 라인업 패널은 내부 피치도 패널 자체를 기준으로 따라오게 한다.
    예전에는 패널만 커지고 피치는 원래 62:105 비율에 묶여 있어,
    남는 영역이 배경색처럼 보이고 팀 칩/포메이션 버튼도 안쪽으로 밀려 보였다. */
-.layout-big .lp-lineup.has-edge-override .dp-lineup-vertical-pitch {
+.layout-big .lp-lineup.has-edge-override .dp-lineup-vertical-pitch,
+.layout-big .lp-lineup.lp-width-locked .dp-lineup-vertical-pitch {
   width: 100%;
   height: 100%;
   max-width: none;
@@ -609,10 +611,12 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
 }
 
 /* split 모드도 두 피치가 남는 높이를 함께 흡수하도록 맞춘다. */
-.layout-big .lp-lineup.has-edge-override .dp-lineup-pitch.is-split {
+.layout-big .lp-lineup.has-edge-override .dp-lineup-pitch.is-split,
+.layout-big .lp-lineup.lp-width-locked .dp-lineup-pitch.is-split {
   align-items: stretch;
 }
-.layout-big .lp-lineup.has-edge-override .dp-lineup-vertical-pitch.is-split {
+.layout-big .lp-lineup.has-edge-override .dp-lineup-vertical-pitch.is-split,
+.layout-big .lp-lineup.lp-width-locked .dp-lineup-vertical-pitch.is-split {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;

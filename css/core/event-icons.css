@@ -21,13 +21,13 @@
 .greenscreen-mode .football-icon-confirm-chroma { display: inline; }
 .football-icon-unknown { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
 
-.ev-icon > .football-icon { width: 14px; height: 14px; }
-.ev-icon > .football-icon-subst { width: 16px; height: 16px; }
-.ev-icon > .football-icon-pk-goal, .ev-icon > .football-icon-pk-miss { width: 21px; }
+.ev-icon > .football-icon { width: calc(14px * var(--ev-ui-scale, 1)); height: calc(14px * var(--ev-ui-scale, 1)); }
+.ev-icon > .football-icon-subst { width: calc(16px * var(--ev-ui-scale, 1)); height: calc(16px * var(--ev-ui-scale, 1)); }
+.ev-icon > .football-icon-pk-goal, .ev-icon > .football-icon-pk-miss { width: calc(21px * var(--ev-ui-scale, 1)); }
 .ev-icon > .football-icon-var, .ev-icon > .football-icon-var-confirm,
-.ev-icon > .football-icon-var-cancel { width: 21px; }
-.ev-icon > .football-icon-yellow-card, .ev-icon > .football-icon-red-card { width: 8px; height: 11px; }
-.ev-icon > .football-icon-cumulative-red { width: 9px; height: 12px; }
+.ev-icon > .football-icon-var-cancel, .ev-icon > .football-icon-var-card-change { width: calc(21px * var(--ev-ui-scale, 1)); }
+.ev-icon > .football-icon-yellow-card, .ev-icon > .football-icon-red-card { width: calc(8px * var(--ev-ui-scale, 1)); height: calc(11px * var(--ev-ui-scale, 1)); }
+.ev-icon > .football-icon-cumulative-red { width: calc(9px * var(--ev-ui-scale, 1)); height: calc(12px * var(--ev-ui-scale, 1)); }
 
 .dp-card > .football-icon, .dp-node-assist > .football-icon,
 .dp-node-goal > .football-icon, .dp-node-goal-entry > .football-icon { display: block; width: 100%; height: 100%; }

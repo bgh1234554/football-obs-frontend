@@ -9,6 +9,7 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
  await page.evaluate(theme=>applyTheme(theme,null),theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);
  await page.evaluate(()=>{state.half='2H';state.seconds=123;state.running=false;render();fsmBoardRender();});await page.waitForTimeout(100);
  const before=await page.locator('#board').boundingBox();
+ const stageHeight=await page.locator('#boardStageWrap').evaluate(e=>e.getBoundingClientRect().height);
  await page.locator('#clock').dblclick();
  assert(await page.locator('#clockEditor').isVisible());
  const accent=await page.evaluate(()=>{const e=document.createElement('span');e.style.color='var(--control-accent)';document.body.append(e);const color=getComputedStyle(e).color;e.remove();return color;});
@@ -20,6 +21,9 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
  const styles=await page.locator('#clock').evaluate(e=>({display:getComputedStyle(e).display,background:getComputedStyle(e).backgroundColor,editorBackground:getComputedStyle(document.querySelector('#clockEditor')).backgroundColor,margin:getComputedStyle(document.querySelector('#clockEditor')).marginTop}));
  assert.notEqual(styles.display,'none');assert.equal(styles.background,styles.editorBackground);assert.equal(styles.margin,'0px');
  await page.locator('#ceColon').hover();assert(await page.locator('#cePresets').isVisible());
+ // 프리셋을 연 채 배율을 다시 적용해도 아래 패널을 밀어내지 않아야 한다.
+ await page.evaluate(()=>applyBoardScale(state.boardScale || 100));
+ assert.equal(await page.locator('#boardStageWrap').evaluate(e=>e.getBoundingClientRect().height),stageHeight,`${theme}: timer menu must not grow board area`);
  if(['eliteserien','danish'].includes(theme))assert.equal(await page.locator('#cePresets').evaluate(n=>getComputedStyle(n).backgroundColor),theme==='danish'?'rgb(189, 229, 94)':'rgb(251, 248, 253)');
  if(theme==='result_style_CL.css'){fs.mkdirSync(path.join(root,'screenshots','fsm-clock-editor'),{recursive:true});await page.screenshot({path:path.join(root,'screenshots','fsm-clock-editor','cl-editing.png')});}
  await page.locator('.ce-preset-btn[data-min="45"]').click();

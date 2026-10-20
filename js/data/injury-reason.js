@@ -43,6 +43,7 @@
     'Arm Injury':        '팔 부상',
     'Wrist Injury':      '손목 부상',
     'Hand Injury':       '손 부상',
+    'Broken Hand':       '손 골절',
     'Hip Injury':        '엉덩이 부상',
     'Broken cheekbone':  '광대뼈 골절',
     'Head Injury':       '머리 부상',

@@ -9,7 +9,7 @@ const { openPage, settle } = require('../tactics/helpers');
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
     page.on('pageerror', error => errors.push(error.message));
-    for (const theme of ['cl', 'default', 'pl']) {
+    for (const theme of ['cl', 'default']) {
       await page.evaluate(theme => applyTheme(theme, null), theme);
       await page.waitForFunction(() => !pendingThemeLink);
       await page.evaluate(() => {
@@ -60,13 +60,10 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(result.pressed, 'true');
       assert.equal(result.summary, '합계 5 : 4');
       assert.equal(result.saved?.aggHomeBase, 2, `${theme}: persisted`);
-      assert.equal(result.noticeShown, theme === 'pl', `${theme}: unsupported notice only on unsupported theme`);
-      if (theme === 'pl') assert.equal(result.unsupported, true, 'pl: unsupported notice');
-      else {
-        assert.equal(result.unsupported, false);
-        assert.equal(result.totalVisible, true, `${theme}: aggregate shown`);
-        assert.deepEqual(result.totals, ['5', '4'], `${theme}: totals`);
-      }
+      assert.equal(result.noticeShown, false, `${theme}: no unsupported notice`);
+      assert.equal(result.unsupported, false);
+      assert.equal(result.totalVisible, true, `${theme}: aggregate shown`);
+      assert.deepEqual(result.totals, ['5', '4'], `${theme}: totals`);
 
       // 패널은 점수 영역 가운데 아래에 열리고 화면 밖으로 나가지 않는다.
       const geometry = await page.evaluate(() => {
@@ -97,6 +94,40 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await panel.isHidden(), true, `${theme}: outside click closes`);
       console.log('PASS', theme, 'aggregate quick controls');
     }
+    // 합계 점수를 표시하지 않는 점수판(DFB-포칼 등)은 점수를 눌러도(마우스·키보드) 메뉴가 열리지 않고,
+    // 점수 칸이 버튼처럼 보이지 않는다. 합계 표시를 켜 둬도 점수판에 나타나지 않는다.
+    for (const theme of ['pl', 'dfb']) {
+      await page.evaluate(theme => { state.aggEnabled = true; applyTheme(theme, null); }, theme);
+      await page.waitForFunction(() => !pendingThemeLink);
+      await page.evaluate(() => { render(); fsmBoardRender(); });
+      await settle(page);
+      const panel = page.locator('#boardAggControls');
+      await page.locator('#team-score-left').click({ force: true });
+      await page.locator('.score-div').click({ force: true });
+      await page.locator('#team-score-left').focus().catch(() => {});
+      await page.keyboard.press('Enter');
+      await settle(page);
+      const blocked = await page.evaluate(() => ({
+        cursor: getComputedStyle(document.getElementById('team-score-left')).cursor,
+        role: document.getElementById('team-score-left').getAttribute('role'),
+        tabIndex: document.getElementById('team-score-left').getAttribute('tabindex'),
+        totalShown: [...document.querySelectorAll('.fsm-board .total-score')].some(node => getComputedStyle(node).display !== 'none')
+      }));
+      assert.equal(await panel.isHidden(), true, `${theme}: aggregate menu stays closed ${JSON.stringify(blocked)}`);
+      assert.notEqual(blocked.cursor, 'pointer', `${theme}: score not shown as clickable`);
+      assert.equal(blocked.role, null, `${theme}: score has no button role`);
+      assert.equal(blocked.tabIndex, null, `${theme}: score not focusable`);
+      assert.equal(blocked.totalShown, false, `${theme}: aggregate hidden even when enabled`);
+      console.log('PASS', theme, 'aggregate menu blocked on unsupported board');
+    }
+    // 지원하는 점수판으로 돌아오면 다시 열린다.
+    await page.evaluate(() => applyTheme('cl', null));
+    await page.waitForFunction(() => !pendingThemeLink);
+    await page.evaluate(() => { render(); fsmBoardRender(); });
+    await settle(page);
+    await page.locator('#team-score-left').click();
+    await settle(page);
+    assert.equal(await page.locator('#boardAggControls').isVisible(), true, 'cl: menu opens again after leaving unsupported board');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

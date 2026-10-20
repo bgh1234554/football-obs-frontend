@@ -325,6 +325,7 @@
     }
     if(el.noteOn) el.noteOn.checked = !!state.noteEnabled;
     if ($('boardPosition')) $('boardPosition').value = state.boardPosition || 'center';
+    syncBoardPositionButtons();
     if(el.inNoteStroke) el.inNoteStroke.value = state.colors.noteStroke;
     if(el.inNoteText) el.inNoteText.value = state.colors.noteText;
 
@@ -433,6 +434,8 @@
     renderRedCards();
     syncScoreCol();
     for (const side of ['home', 'away']) {
+      // 네이션스리그는 팀 엠블럼 대신 전용 장식을 표시하므로 로고 분석을 적용하지 않습니다.
+      if (el[`${side}Logo`]?.closest('.fsm-board')?.dataset.fsmTheme === 'unl') continue;
       LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
         ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
           chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
@@ -932,7 +935,8 @@
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
     // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
-    const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden])')];
+    // 타이머 편집기와 프리셋 목록도 아래 패널 위에 겹치므로 높이 측정에서 제외한다.
+    const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden]), #clockEditor.active')];
     quickMenus.forEach(menu => { menu.style.display = 'none'; });
     const naturalH = boardStageInner.scrollHeight;
     quickMenus.forEach(menu => { menu.style.display = ''; });
@@ -967,7 +971,13 @@
     const stage = $('boardStageInner'), wrap = $('boardStageWrap'), board = $('board');
     if (!stage || !wrap || !board || !board.offsetWidth) return;
     const position = ['left', 'right'].includes(state.boardPosition) ? state.boardPosition : 'center';
-    document.body.dataset.boardPosition = position;
+    if (document.body.dataset.boardPosition !== position) {
+      // 닫힌 메뉴가 반대편으로 옮겨질 때 화면을 가로질러 미끄러지지 않도록 이번 변경만 전환 효과를 끕니다.
+      const nav = $('sidebarNav');
+      if (nav) nav.style.transition = 'none';
+      document.body.dataset.boardPosition = position;
+      if (nav) { void nav.offsetWidth; nav.style.transition = ''; }
+    }
     const bounds = wrap.getBoundingClientRect();
     const surfaceScale = bounds.width / wrap.offsetWidth || 1;
     const previous = Number(stage.dataset.positionShift || 0) * surfaceScale;
@@ -1047,10 +1057,26 @@
     stage.dataset.positionShiftY = shiftY;
     return shiftY;
   }
-  $('boardPosition')?.addEventListener('change', event => {
-    state.boardPosition = event.target.value;
+  /** 설정 창 패널/스탯 탭의 점수판 위치 버튼을 현재 값으로 표시합니다. */
+  function syncBoardPositionButtons() {
+    const position = state.boardPosition || 'center';
+    if ($('boardPosition')) $('boardPosition').value = position;
+    document.querySelectorAll('[data-board-position-value]').forEach(btn => {
+      const active = btn.dataset.boardPositionValue === position;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+  }
+  /** 테마 메뉴 선택 상자와 설정 창 버튼이 같은 점수판 위치 상태를 바꿉니다. */
+  function setBoardPosition(value) {
+    state.boardPosition = value;
+    syncBoardPositionButtons();
     syncBoardPosition();
     persist();
+  }
+  $('boardPosition')?.addEventListener('change', event => setBoardPosition(event.target.value));
+  document.querySelectorAll('[data-board-position-value]').forEach(btn => {
+    btn.addEventListener('click', () => setBoardPosition(btn.dataset.boardPositionValue));
   });
   let noteResizeFrame = null;
   window.addEventListener('resize', () => {

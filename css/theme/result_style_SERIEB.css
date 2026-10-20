@@ -1,0 +1,46 @@
+@import url('./result_style_SERIEA.css');
+
+/* 세리에 A의 기본 구조에 리그앙의 직선형 점수 배치를 적용한다. */
+#board.fsm-board[data-fsm-theme="serieb"] {
+  --serieb-home-background: linear-gradient(to top right, #0A4920, #246731);
+  --serieb-away-background: linear-gradient(to top right, #2F5D27, #317C20);
+}
+.fsm-board .div-background {
+  background: linear-gradient(to bottom right, #EFF6F0, #E2E4E6);
+}
+.fsm-board :is(.teams-left, .teams-right) { position: relative; color: #ffffff; }
+.fsm-board .teams-left { background: var(--serieb-home-background); }
+.fsm-board .teams-right { background: var(--serieb-away-background); }
+.fsm-board .team-name { color: #ffffff; }
+.fsm-board :is(.team-score, .score-div) {
+  height: 48px; background: transparent; color: #346C46; transform: none;
+}
+.fsm-board .team-score { width: 50px; position: relative; }
+/* 참고 중계 화면처럼 숫자는 굵은 실제 글꼴을 사용하고 칸 안에서 크게 표시한다. */
+.fsm-board .team-score { font-family: 'NanumGothic'; font-size: 40px; font-weight: 700; }
+.fsm-board :is(.score-left, .score-right) { text-shadow: none; }
+#board.fsm-board[data-fsm-theme="serieb"] .total-score { font-size: 24px; }
+.fsm-board :is(#team-score-left, #team-score-right, .score-left, .score-right) { margin: 0; }
+/* 40px 나눔 숫자의 획 중심은 합계점수 글꼴보다 2px 높으므로 메인 점수만 내려 맞춘다. */
+.fsm-board :is(.score-left, .score-right) { transform: translateY(2px); line-height: 1; }
+.fsm-board .score-div {
+  position: relative; width: calc(68px * 807.6 / 1167.2); padding: 0; box-sizing: border-box;
+  display: flex; justify-content: center; align-items: center; overflow: visible; z-index: 3;
+}
+.fsm-board .divider { display: none; }
+/* 러시아 프리미어리그처럼 로고 원형 배경 없이 위아래로 돌출시킨다. */
+.fsm-board .epl-lion {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 100%; height: 68px; padding: 0; object-fit: contain; background: transparent;
+}
+.fsm-board .team-logo { background: transparent; border-color: transparent; }
+.fsm-board .team-color { display: block; position: absolute; top: 0; width: 8px; height: 48px; }
+.fsm-board #homeColor { right: var(--fsm-score-overlap, 0px); }
+.fsm-board #awayColor { left: var(--fsm-score-overlap, 0px); }
+.fsm-board .scoreboard-timer { width: 180px; color: #346C46; }
+.fsm-board .time { background: #D6D3D6; color: #346C46; }
+.fsm-board .extra-time { background: #F06503; color: #ffffff; }
+#board.fsm-board[data-fsm-theme="serieb"] .pso-main {
+  background-image: var(--serieb-home-background); color: #ffffff;
+}
+.fsm-board .div-rc { z-index: 3; }
