@@ -192,8 +192,7 @@ function lpBuildNodeBadgesHtml(events) {
 }
 
 /** 노드 평점 박스 HTML — bottom-center 위치 (CSS로 처리). 토글은 body class로 숨김 처리. */
-function lpBuildNodeRatingHtml(playerId) {
-  const rating = lpGetPlayerRating(playerId);
+function lpBuildNodeRatingHtml(playerId, rating = lpGetPlayerRating(playerId)) {
   if (rating == null) return '';
   const color = typeof lpRatingColor === 'function' ? lpRatingColor(rating) : '#666';
   return `<span class="dp-node-rating" style="background:${color}">${rating.toFixed(1)}</span>`;
@@ -649,7 +648,7 @@ function buildLineupNameLabelHtml(player, name, nameClass, title = '') {
 
 /** 선수 1명의 원/아바타 + 이름 라벨 HTML 쌍. 포메이션 그리드 노드와 OUT 배지 열(buildOutScorerColumnHtml)이 공유.
  * extraClass는 CSS 타겟팅용 마커만 붙인다(크기/위치는 그리드 노드와 완전히 동일하게 유지). */
-function buildLineupNodePairHtml(player, effectiveData, side, position, extraClass = '') {
+function buildLineupNodePairHtml(player, effectiveData, side, position, extraClass = '', preview = null) {
   const nodeMode = getActiveLineupNodeMode();
   const colors = getLineupSideColors(effectiveData, side);
   const name = pickName(player, 'lineup', { preserveSurnameBreaks: true }) || player.name || '';
@@ -664,10 +663,10 @@ function buildLineupNodePairHtml(player, effectiveData, side, position, extraCla
     : `<span class="dp-lineup-circle">${dpEscape(player.number ?? '')}</span>`;
 
   // Iter 5-3: 이벤트/평점 lookup
-  const events = lpGetPlayerEventsForPlayer(player, side);
+  const events = preview ? preview.events : lpGetPlayerEventsForPlayer(player, side);
   const isSentOff = !!(events?.red);
   const badgesHtml = lpBuildNodeBadgesHtml(events);
-  const ratingHtml = lpBuildNodeRatingHtml(player.playerId);
+  const ratingHtml = preview ? lpBuildNodeRatingHtml(player.playerId, preview.rating) : lpBuildNodeRatingHtml(player.playerId);
   const extraClassSuffix = extraClass ? ` ${extraClass}` : '';
   const nodeClass = `dp-lineup-node is-${side}${extraClassSuffix}${isSentOff ? ' is-sent-off' : ''}`;
   const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;

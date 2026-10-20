@@ -1452,6 +1452,9 @@
       .join('\n');
   }
 
+  // 설정 예시도 운영 화면과 같은 득점 시간·이벤트 표기 규칙을 사용합니다.
+  window.buildScorerPreviewText = (events, side = 'home') => buildScorers(events, side);
+
   /** Red Card + Second Yellow Card 합산 */
   function countRedCards(events, side){
     return events.filter(e =>

@@ -637,6 +637,7 @@ function syncSettingUi(category) {
   syncColorUi(category);
   syncTextUi(category);
   syncSelectUi(category);
+  syncGroupedSettingExamples();
 }
 
 /** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */
@@ -1908,6 +1909,7 @@ function openSettingsPopup() {
   if (typeof closeSidebar === 'function') closeSidebar();
   const backdrop = document.getElementById('settingsBackdrop');
   if (backdrop) backdrop.classList.add('open');
+  syncAllSettingsUi();
   syncSettingsTabSectionHeights();
 }
 
@@ -1941,17 +1943,301 @@ function getSwitchSides(category) {
   return { off: 'short', on: 'long' };
 }
 
-/**
- * 토글 스위치(checkbox) UI 동기화.
- * 1) input.checked는 value === on 여부.
- * 2) cluster 안의 좌/우 텍스트 라벨도 is-active 토글해 시각적으로 어느 쪽인지 표시.
- */
+// 관련 설정을 같은 컴포넌트 예시에 반영합니다.
+function syncGroupedSettingExamples() {
+  const section = document.querySelector('[data-sp-tab-section="names"]');
+  if (!section) return;
+  const group = (key, categories) => {
+    let box = section.querySelector(`[data-example-group="${key}"]`);
+    if (!box) {
+      const rows = categories.map(cat => section.querySelector(`input[data-settings-cat="${cat}"]`).closest('.sp-row'));
+      box = document.createElement('div');
+      box.className = 'sp-example-group';
+      box.dataset.exampleGroup = key;
+      rows[0].before(box);
+      const controls = document.createElement('div');
+      controls.className = 'sp-example-controls';
+      box.append(controls);
+      rows.forEach(row => controls.append(row));
+      const preview = document.createElement('div');
+      preview.className = 'sp-setting-example';
+      box.append(preview);
+    }
+    return box.querySelector('.sp-setting-example');
+  };
+  const lineup = group('lineup', ['lineup', 'lineupHideInitial']);
+  renderSettingsLiveExample(lineup, 'lineup');
+  const notes = group('notes', ['noteShowPenaltyMisses', 'noteShowRedCards']);
+  renderSettingsLiveExample(notes, 'notes');
+  const cameraSection = document.querySelector('[data-sp-tab-section="lineup"]');
+  let camera = cameraSection.querySelector('[data-example-group="camera"]');
+  if (!camera) {
+    camera = document.createElement('div');
+    camera.className = 'sp-example-group';
+    camera.dataset.exampleGroup = 'camera';
+    const controls = document.createElement('div');
+    controls.className = 'sp-example-controls';
+    const categories = ['lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers'];
+    const rows = categories.map(cat => cameraSection.querySelector(`input[data-settings-cat="${cat}"]`).closest('.sp-row'));
+    rows[0].before(camera);
+    rows.forEach(row => controls.append(row));
+    const preview = document.createElement('div');
+    preview.className = 'sp-setting-example';
+    camera.append(controls, preview);
+  }
+  renderSettingsLiveExample(camera.querySelector('.sp-setting-example'), 'camera');
+}
+
+// 별도 문서에서 운영 화면의 CSS와 렌더 함수를 재사용하여 설정 창의 스타일 간섭을 막습니다.
+function renderSettingsLiveExample(container, category) {
+  if (typeof buildLineupNodePairHtml !== 'function' || typeof evCreateRow !== 'function') return;
+  const loadedBoard = category === 'teamName' && !!lineupPanelState.lastFixture?.matchInfo?.fixtureId;
+  if (category === 'teamName' && !loadedBoard) {
+    container.classList.add('sp-preview-empty');
+    container.textContent = '경기를 불러오면 점수판 예시가 표시됩니다.';
+    container.dataset.renderSignature = '';
+    return;
+  }
+  container.classList.remove('sp-preview-empty');
+  const boardTheme = loadedBoard ? document.querySelector('#fsm-theme-link')?.href : 'fallback-default';
+  const nodeKeys = ['lineup', 'lineupHideInitial', 'lineupNode', 'lineupShowNumber', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime'];
+  const keys = {
+    lineup: nodeKeys,
+    camera: nodeKeys,
+    scorer: ['scorer'],
+    roster: ['roster', 'benchInjuryNameSize'],
+    event: ['event', 'eventNameSize'],
+    notes: ['scorer', 'noteShowPenaltyMisses', 'noteShowRedCards', 'noteOwnGoalColor', 'notePenaltyMissColor', 'noteRedCardColor'],
+  }[category] || [];
+  // 무관한 설정 변경으로 iframe과 높이 측정이 다시 시작되지 않게 합니다.
+  const signature = category === 'teamName'
+    ? JSON.stringify([category, boardTheme, loadedBoard ? document.querySelector('#board')?.outerHTML : getSetting('teamName')])
+    : JSON.stringify([category, ...keys.map(key => getSetting(key)), getSetting('uiMode'), ['lineup', 'camera'].includes(category) ? state?.colors : null]);
+  if (container.dataset.renderSignature === signature) return;
+  container.dataset.renderSignature = signature;
+  let frame = container.querySelector('iframe');
+  if (!frame) {
+    container.replaceChildren();
+    frame = document.createElement('iframe');
+    frame.className = 'sp-live-example';
+    frame.title = '실제 표시 예시';
+    frame.tabIndex = -1;
+    container.append(frame);
+    // 숨겨진 탭이 열릴 때도 내부 콘텐츠 높이를 다시 측정합니다.
+    const observer = new ResizeObserver(() => frame._fitSettingsPreview?.());
+    observer.observe(frame);
+  }
+  const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(el => el.outerHTML).join('');
+  const vars = getComputedStyle(document.documentElement);
+  const properties = [...vars].filter(key => key.startsWith('--')).map(key => `${key}:${vars.getPropertyValue(key)}`).join(';')
+    + ';--lp-name-base-size:12px';
+  const player = { name: 'M. 살라', nameKoLong: '모하메드 살라', number: 11, photoUrl: 'resources/imgs/settings-preview-salah.png' };
+  const nodeCategories = ['lineup', 'camera'];
+  const node = nodeCategories.includes(category);
+  let content = '';
+  if (node) {
+    const events = { goals: [{ time: { elapsed: 23 } }], assists: [{ time: { elapsed: 45 } }], yellow: { time: { elapsed: 38 } }, subIn: { time: { elapsed: 72 } } };
+    const pair = buildLineupNodePairHtml(player, null, 'home', { left: 50, top: 38 }, '', { events, rating: 8.2 });
+    const pitchHeight = category === 'lineup' ? 90 : 110;
+    content = `${category === 'camera' ? '<div class="preview-heading">라인업</div>' : ''}<div class="lp-lineup"><div class="dp-lineup-pitch ${getSetting('lineup') === 'long' ? 'dp-mode-long' : ''}" style="position:relative;height:${pitchHeight}px">${pair.circle}${pair.name}</div></div>`;
+  } else if (category === 'roster') {
+    content = `<div class="lp-lineup"><div class="dp-list">${lpBuildRosterRowHtml(player, 'bench', 'home')}</div></div>`;
+  } else if (category === 'event') {
+    const goal = evCreateRow({ type: 'Goal', detail: 'Normal Goal', elapsed: 23, playerName: 'Kh. 크바라츠헬리아', playerNameKoLong: '흐비차 크바라츠헬리아' }, { matchInfo: {} });
+    const substitution = evCreateRow({ type: 'subst', elapsed: 72, assistName: 'F. 토레스', assistNameKoLong: '페란 토레스', playerName: 'O. 뎀벨레', playerNameKoLong: '우스만 뎀벨레' }, { matchInfo: {} });
+    // 예시는 선수 선택을 수정하지 않으므로 편집 버튼과 점선 밑줄을 제거합니다.
+    substitution.querySelectorAll('.ev-subst-name-editable').forEach(button => {
+      const name = document.createElement('span');
+      name.className = 'ev-text-name';
+      name.textContent = button.textContent;
+      button.replaceWith(name);
+    });
+    content = `<div class="preview-events">${goal.outerHTML}${substitution.outerHTML}</div>`;
+  } else if (category === 'teamName') {
+    const source = document.querySelector('#board');
+    if (source) {
+      const board = source.cloneNode(true);
+      board.classList.remove('fsm-starting');
+      content = `<div class="preview-board-stage">${board.outerHTML}</div>`;
+    }
+  } else content = '<div class="note away"></div>';
+  const classes = document.body.className.split(/\s+/).filter(name => !name.startsWith('no-lineup-'));
+  for (const [key, suffix] of [['lineupShowGoals', 'goals'], ['lineupShowCards', 'cards'], ['lineupShowRating', 'rating'], ['lineupShowSubTime', 'subtime']]) {
+    if (getSetting(key) !== 'on') classes.push(`no-lineup-${suffix}`);
+  }
+  const noteVars = Object.entries(NOTE_COLOR_VARS).map(([key, name]) => `${name}:${getSetting(key)}`).join(';');
+  const updatePreview = async () => {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    await doc.fonts.ready;
+    if (frame.contentDocument !== doc) return;
+    if (category === 'camera') {
+      const fit = () => {
+        const surface = doc.querySelector('.layout-big');
+        surface.style.transform = 'none';
+        const parts = [...surface.querySelectorAll('.dp-lineup-node, .dp-lineup-name-wrap, .dp-lineup-name, .dp-lineup-name-text, .dp-node-badge, .dp-node-rating')]
+          .filter(el => el.getClientRects().length && getComputedStyle(el).display !== 'none')
+          .map(el => el.getBoundingClientRect());
+        const heading = surface.querySelector('.preview-heading');
+        if (heading) {
+          const range = doc.createRange();
+          range.selectNodeContents(heading);
+          parts.push(range.getBoundingClientRect());
+        }
+        if (!parts.length || !parts.some(rect => rect.width > 0)) return;
+        const left = Math.min(...parts.map(rect => rect.left));
+        const right = Math.max(...parts.map(rect => rect.right));
+        const top = Math.min(...parts.map(rect => rect.top));
+        const bottom = Math.max(...parts.map(rect => rect.bottom));
+        // 사진·배지·이름표를 같은 비율로 확대하고 실제 내용만 너비에 맞춥니다.
+        const scale = Math.min(1.4, (doc.body.clientWidth - 24) / (right - left));
+        const x = (doc.body.clientWidth - (right - left) * scale) / 2 - left * scale;
+        surface.style.transformOrigin = 'top left';
+        surface.style.transform = `translate(${x}px, ${-top * scale}px) scale(${scale})`;
+        frame.style.height = `${Math.ceil((bottom - top) * scale) + 8}px`;
+      };
+      frame._fitSettingsPreview = fit;
+      fit();
+    }
+    const board = doc.querySelector('.preview-board-stage .fsm-board');
+    if (board) {
+      const fit = () => {
+        const stage = board.parentElement;
+        // 로고·카드·추가시간처럼 본체 밖으로 나온 자식까지 실제 표시 경계에 포함합니다.
+        board.style.transform = 'none';
+        const rects = [...board.querySelectorAll('.scoreboard-main, .scoreboard-main *, .scoreboard-timer, .scoreboard-timer *, .pso-status, .pso-status *')]
+          .filter(el => {
+            const css = getComputedStyle(el);
+            return el.getClientRects().length && css.display !== 'none' && css.visibility !== 'hidden' && Number(css.opacity) > 0;
+          })
+          .map(el => el.getBoundingClientRect())
+          .filter(rect => rect.width > 0 && rect.height > 0);
+        if (!stage.clientWidth || !rects.length || !rects.some(rect => rect.width > 0)) return;
+        const left = Math.min(...rects.map(rect => rect.left));
+        const right = Math.max(...rects.map(rect => rect.right));
+        const top = Math.min(...rects.map(rect => rect.top)) - 2;
+        const bottom = Math.max(...rects.map(rect => rect.bottom)) + 2;
+        const scale = Math.min(1, stage.clientWidth / (right - left));
+        board.style.transform = `translate(${-left * scale}px, ${-top * scale}px) scale(${scale})`;
+        const height = Math.ceil((bottom - top) * scale);
+        stage.style.height = `${height}px`;
+        frame.style.height = `${height + 2}px`;
+
+      };
+      fit();
+      frame._fitSettingsPreview = fit;
+      frame.contentWindow.addEventListener('resize', fit);
+      board.querySelectorAll('img').forEach(img => img.addEventListener('load', fit, { once: true }));
+    }
+    const events = doc.querySelector('.preview-events');
+    if (events) {
+      const fit = () => {
+        evRefitPanelRows(events);
+        frame.style.height = `${Math.ceil(events.getBoundingClientRect().height) + 4}px`;
+      };
+      fit();
+      frame._fitSettingsPreview = fit;
+      frame.contentWindow.addEventListener('resize', fit);
+    }
+    const note = doc.querySelector('.note');
+    let noteLines = [];
+    if (note && window.renderScorerPreview) {
+      const notePlayer = category === 'notes' ? { name: 'O. 뎀벨레', nameKoLong: '우스만 뎀벨레' } : player;
+      const events = [{ side: 'home', type: 'Goal', detail: 'Normal Goal', elapsed: 23, playerName: notePlayer.name, playerNameKoLong: notePlayer.nameKoLong }];
+      if (category === 'notes') events.push(
+        { side: 'home', type: 'Goal', detail: 'Own Goal', elapsed: 38, playerName: '마르키뉴스', playerNameKoLong: '마르키뉴스' },
+        { side: 'home', type: 'Goal', detail: 'Missed Penalty', elapsed: 56, playerName: 'M. 아클리우슈', playerNameKoLong: '마그네스 아클리우슈' },
+        { side: 'home', type: 'Card', detail: 'Red Card', elapsed: 72, playerName: 'A. 하키미', playerNameKoLong: '아슈라프 하키미' }
+      );
+      noteLines = window.buildScorerPreviewText(events).split('\n');
+      window.renderScorerPreview(note, noteLines);
+    }
+    // 행 안의 텍스트를 문서 상단에 붙여 iframe 자체의 빈 높이도 없앱니다.
+    const target = note || (category === 'roster' ? doc.querySelector('.dp-item') : null);
+    if (target) {
+      const fit = () => {
+        if (note) window.renderScorerPreview(note, noteLines);
+        if (category === 'notes') return;
+        const surface = doc.querySelector('.layout-big');
+        surface.style.transform = 'none';
+        const rect = target.getBoundingClientRect();
+        if (!rect.height) return;
+        surface.style.transform = `translateY(${-rect.top}px)`;
+        frame.style.height = `${Math.ceil(rect.height)}px`;
+      };
+      frame._fitSettingsPreview = fit;
+      fit();
+    }
+  };
+  if (frame.dataset.initialized === 'true' && frame.contentDocument?.querySelector('.layout-big')) {
+    const doc = frame.contentDocument;
+    if (category === 'teamName') {
+      const href = boardTheme;
+      const current = doc.getElementById('fsm-theme-link') || doc.querySelector('link[href*="/theme/result_style_"]');
+      if (current && current.href !== href) {
+        // 새 테마가 준비될 때까지 기존 점수판을 유지해 글자와 배경 테마가 섞이지 않게 합니다.
+        const pending = doc.querySelector('link[data-preview-theme-pending]');
+        if (pending?.href === href) return;
+        pending?.remove();
+        const next = doc.createElement('link');
+        next.rel = 'stylesheet';
+        next.href = href;
+        next.media = 'not all';
+        next.dataset.previewThemePending = '';
+        next.onload = () => {
+          if (!next.isConnected) return;
+          current.replaceWith(next);
+          next.id = 'fsm-theme-link';
+          next.media = 'all';
+          delete next.dataset.previewThemePending;
+          container.dataset.renderSignature = '';
+          renderSettingsLiveExample(container, category);
+        };
+        doc.head.append(next);
+        return;
+      }
+    }
+    doc.documentElement.style.cssText = `${properties};${noteVars}`;
+    doc.body.style.cssText = noteVars;
+    doc.body.className = classes.join(' ');
+    doc.querySelector('.layout-big').style.transform = 'none';
+    doc.querySelector('.layout-big').innerHTML = content;
+    updatePreview();
+    return;
+  }
+  frame.onload = () => {
+    frame.dataset.initialized = 'true';
+    updatePreview();
+  };
+  frame.style.height = node ? (category === 'lineup' ? '90px' : '130px') : category === 'notes' ? '92px' : ['roster', 'scorer'].includes(category) ? '34px' : category === 'event' ? '58px' : '90px';
+  frame.srcdoc = `<!doctype html><html class="preview-${category}" style="${properties};${noteVars}"><head><base href="${document.baseURI}">${styles}<style>html,body{margin:0!important;padding:0!important;min-width:0!important;min-height:0!important;width:100%!important;height:auto!important;background:transparent!important;overflow:hidden!important;zoom:1!important;transform:none!important}body{display:block;pointer-events:none}body::before{display:none!important}.layout-big{display:block!important;min-height:0!important;height:auto!important;background:transparent!important}.lp-lineup{width:100%!important;height:110px!important;min-height:0!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;aspect-ratio:auto!important}.preview-heading{font-size:10px;color:var(--muted);text-align:center;padding:8px 0 0}.note{position:relative!important;inset:auto!important;transform:none!important;font-size:12px!important;text-align:center!important;padding:8px 4px!important}.preview-notes,.preview-notes body{height:100%!important}.preview-notes .layout-big{height:100%!important;display:flex!important;align-items:center;justify-content:center}.preview-notes .note{padding:0!important}.ev-row{margin:0}.dp-item{margin:0}.preview-roster .dp-item{width:max-content;max-width:100%;margin-inline:auto}.preview-events{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.preview-events .ev-row{min-width:0}.preview-board-stage{position:relative;width:100%;overflow:hidden}.preview-board-stage .fsm-board{position:absolute!important;inset:0 auto auto 0!important;margin:0!important;transform-origin:top left!important;visibility:visible!important}@media(max-width:480px){.preview-events{grid-template-columns:1fr}}</style></head><body style="${noteVars}" class="${classes.join(' ')}"><div class="layout-big">${content}</div></body></html>`;
+}
+
+function syncSettingExample(input) {
+  const category = input.dataset.settingsCat;
+  const names = ['scorer', 'roster', 'event', 'teamName'];
+  if (!names.includes(category)) return;
+  const row = input.closest('.sp-row');
+  if (!row || !row.closest('[data-sp-tab-section]')) return;
+  row.classList.add('sp-row-with-example');
+  row.classList.toggle('sp-example-below', category === 'event' || category === 'teamName');
+  let example = row.querySelector('.sp-setting-example');
+  if (!example) {
+    example = document.createElement('div');
+    example.className = 'sp-setting-example';
+    row.append(example);
+  }
+  renderSettingsLiveExample(example, category);
+}
+
 function syncSwitchUi(category) {
+  syncGroupedSettingExamples();
   const value = getSetting(category);
   const { off, on } = getSwitchSides(category);
   // 일반 설정과 테마 탭에 있는 같은 옵션을 함께 동기화합니다.
   document.querySelectorAll(`input[data-settings-cat="${category}"]`).forEach(input => {
     input.checked = value === on;
+    syncSettingExample(input);
 
     const cluster = input.closest('.sp-toggle-cluster');
     if (!cluster) return;
@@ -2116,6 +2402,19 @@ function initSettingsTabs() {
  * loadSettings는 모듈 로드 시 즉시 한 번 실행되고, 여기서는 UI만 와이어업한다.
  */
 function initSettingsPopup() {
+  // 경기 갱신과 팀명 설정 변경이 실제 점수판에 반영된 다음 미리보기도 따라갑니다.
+  let previewFrame = 0;
+  const refreshBoardPreview = () => {
+    if (previewFrame || !isSettingsOpen()) return;
+    previewFrame = requestAnimationFrame(() => {
+      previewFrame = 0;
+      const container = document.querySelector('.sp-row:has([data-settings-cat="teamName"]) .sp-setting-example');
+      if (container) renderSettingsLiveExample(container, 'teamName');
+    });
+  };
+  const board = document.querySelector('#board');
+  if (board) new MutationObserver(refreshBoardPreview).observe(board, { subtree: true, childList: true, attributes: true, characterData: true });
+  new MutationObserver(refreshBoardPreview).observe(document.head, { subtree: true, childList: true, attributes: true, attributeFilter: ['href'] });
   document.getElementById('settingsBgPresetOpen')?.addEventListener('click', openBackgroundPicker);
   document.getElementById('settingsBgPresetClear')?.addEventListener('click', () => commitBackgroundImage({ source: 'preset', preset: 'off', src: '' }));
   initSettingsColorEditors();

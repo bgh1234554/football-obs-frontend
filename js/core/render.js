@@ -620,6 +620,22 @@
     return rows.join('');
   }
 
+  // 설정 미리보기에서도 실제 득점자 SVG와 외곽선 배치를 그대로 사용합니다.
+  window.renderScorerPreview = (element, lines) => {
+    element.innerHTML = formatScorers(lines, 1);
+    if (!element.getClientRects().length) return;
+    // 미리보기 폭 안에서 실제 SVG 글자와 외곽선이 잘리지 않도록 함께 맞춥니다.
+    let size = 12;
+    element.style.setProperty('font-size', `${size}px`, 'important');
+    const availableWidth = element.parentElement.clientWidth - 8;
+    const fits = () => [...element.querySelectorAll('.note-line')].every(line => line.getBoundingClientRect().width <= availableWidth);
+    while (size > 8 && !fits()) {
+      size--;
+      element.style.setProperty('font-size', `${size}px`, 'important');
+    }
+    alignNoteSvg(element);
+  };
+
   /**
    * 단일 팀 득점자 텍스트의 폰트 크기와 줄 배치를 자동으로 조정.
    * boardH(보드 높이)를 초과하지 않도록 단계적으로 레이아웃을 최적화하고

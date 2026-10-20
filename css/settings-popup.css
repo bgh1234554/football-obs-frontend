@@ -995,3 +995,42 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 /* 설명이 길어도 오른쪽 선택 버튼(OFF/위/아래 등)이 줄어들어 글자가 세로로 꺾이지 않게 한다. */
 .sp-row > .sp-radio-cluster:not(.sp-radio-cluster-wrap) { flex: 0 0 auto; }
 .sp-row > .sp-radio-cluster:not(.sp-radio-cluster-wrap) .sp-radio-btn { white-space: nowrap; }
+
+/* 제목과 스위치를 모으고 오른쪽에 현재 설정의 예시를 표시합니다. */
+.sp-row.sp-row-with-example {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto var(--sp-example-width, 200px);
+  gap: 12px;
+}
+.sp-setting-example {
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+  box-sizing: border-box;
+}
+.sp-live-example { width: 100%; border: 0; display: block; pointer-events: none; }
+.sp-preview-empty { padding: 6px 0; color: var(--muted); font-size: 11px; }
+.sp-example-group[data-example-group="camera"] > .sp-setting-example { justify-content: center; }
+.sp-example-group[data-example-group="notes"] > .sp-setting-example { align-self: stretch; position: relative; }
+.sp-example-group[data-example-group="notes"] .sp-live-example { position: absolute; inset: 0; height: 100% !important; }
+.sp-row-with-example > .sp-setting-example { align-self: center; }
+.sp-row.sp-example-below { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+.sp-example-below > .sp-setting-example { grid-column: 1 / -1; }
+.sp-example-group { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 12px; }
+.sp-example-controls { min-width: 0; }
+.sp-example-controls .sp-row { gap: 10px; }
+.sp-example-group > .sp-setting-example { margin: 0; gap: 0; }
+.sp-example-controls .sp-rating-color-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .sp-example-group { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .sp-example-group > .sp-setting-example { flex-direction: column; align-items: stretch; }
+}
+@media (max-width: 560px) {
+  .sp-row.sp-row-with-example { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+  .sp-setting-example { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; }
+}
