@@ -2,29 +2,29 @@
 :root { color-scheme: dark; }
 :root[data-ui-mode="light"] {
   color-scheme: light;
-  --ui-ink-rgb: 15, 23, 42;
-  --ui-text: #172033;
-  --ui-surface: #e0e8f1;
-  --ui-surface-rgb: 224, 232, 241;
-  --ui-control-surface: #cddbea;
-  --ui-surface-raised: #e8edf3;
-  --ui-surface-recessed: #d0d9e4;
-  --text: #172033;
-  --muted: #334155;
-  --line: rgba(15, 23, 42, .16);
-  --chip: rgba(15, 23, 42, .06);
-  --panel-ui: #c5d2df;
-  --panel-ui-rgb: 197, 210, 223;
-  --api-widget-surface-rgb: 197, 210, 223;
+  --ui-ink-rgb: 37, 40, 46;
+  --ui-text: #25282e;
+  --ui-surface: #dfe2e6;
+  --ui-surface-rgb: 223, 226, 230;
+  --ui-control-surface: #d5d9df;
+  --ui-surface-raised: #e8eaed;
+  --ui-surface-recessed: #d0d4d9;
+  --text: #25282e;
+  --muted: #464c55;
+  --line: rgba(37, 40, 46, .16);
+  --chip: rgba(37, 40, 46, .06);
+  --panel-ui: #d3d6db;
+  --panel-ui-rgb: 211, 214, 219;
+  --api-widget-surface-rgb: 211, 214, 219;
   --ui-min-text-alpha: .68;
-  --slider-thumb-color: #47688b;
-  --slider-thumb-border: #e8edf3;
-  --slider-thumb-shadow: 0 0 0 1px #8d9caf;
+  --slider-thumb-color: #53677d;
+  --slider-thumb-border: #e8eaed;
+  --slider-thumb-shadow: 0 0 0 1px #939ca8;
   --control-accent: #1e3a8a;
   --control-accent-rgb: 30, 58, 138;
   --control-accent-text: #1e40af;
   --control-accent-on: #ffffff;
-  --panel-header-shade: rgba(15, 23, 42, .06);
+  --panel-header-shade: rgba(37, 40, 46, .06);
 }
 
 /* 정보 패널은 선택한 색의 모드별 표면색에 맞춰 글자와 구분선도 함께 바뀐다. */
@@ -62,15 +62,15 @@
 :root[data-ui-mode="light"] .sidebar-nav { background: var(--ui-surface-recessed); }
 :root[data-ui-mode="light"] :is(.sp-modal, .bg-picker, .pm-popup, .dp-manual-modal) { background: var(--ui-surface-raised); }
 :root[data-ui-mode="light"] :is(.sp-header, .bg-picker-header, .bg-picker-footer, .dp-manual-header, .dp-manual-footer) { background: var(--ui-surface); }
-:root[data-ui-mode="light"] :is(.sp-select, .sp-num-input, .sp-text-input, .sp-color-hex, .sp-color-rgb, .sp-bg-preset-current) { background-color: #e8eff7; }
+:root[data-ui-mode="light"] :is(.sp-select, .sp-num-input, .sp-text-input, .sp-color-hex, .sp-color-rgb, .sp-bg-preset-current) { background-color: #edf0f3; }
 :root[data-ui-mode="light"] .team-color-dialog .pm-nick-input { color: var(--ui-text) !important; }
 :root[data-ui-mode="light"] :is(.ps-side-panel, .ps-result) { color: var(--ui-text); }
 :root[data-ui-mode="light"] :is(.ps-result-text > span, .ps-result-text small, .ps-message, .ps-search-help) { color: var(--muted); }
 :root[data-ui-mode="light"] .float-hamburger span { background: #172033; box-shadow: 0 0 2px #ffffff; }
 :root[data-ui-mode="light"] #themePanel :is(.section-title, .theme-font-advanced summary) { color: #354a68; }
 :root[data-ui-mode="light"] #themePanel small { color: #526176; }
-:root[data-ui-mode="light"] #themePanel :is(.sp-color-code, .theme-color-actions button, .theme-color-reset) { background: #dde6f0; color: #172033; }
-:root[data-ui-mode="light"] #themePanel :is(input[type="text"], .ghost) { background: #cddbea; color: #172033; }
+:root[data-ui-mode="light"] #themePanel :is(.sp-color-code, .theme-color-actions button, .theme-color-reset) { background: var(--ui-surface); color: var(--ui-text); }
+:root[data-ui-mode="light"] #themePanel :is(input[type="text"], .ghost) { background: var(--ui-control-surface); color: var(--ui-text); }
 :root[data-ui-mode="light"] #themePanel .primary { background: #2563eb; color: #ffffff; }
 :root[data-ui-mode="light"] .dp-manual-modal :is(.dp-bench-slot-done, .dp-grid-slot-done, .dp-grid-slot-preview, .dp-grid-result-info strong) { color: var(--ui-text); }
 :root[data-ui-mode="light"] .dp-manual-modal .dp-grid-result-info small { color: var(--muted); }
@@ -91,18 +91,27 @@
 :root[data-info-tone="light"] .ev-label-orange { background: #efdbc8; color: #783a13; }
 :root[data-info-tone="light"] .ev-label-green { background: var(--event-green-label-bg); color: var(--event-green-label-text); }
 :root[data-info-tone="light"] .ev-label-white { background: #dce3ec; color: #334155; }
+/* 배지 자체 표면을 함께 정해 사용자 지정 패널색 위에서도 대비를 유지한다. */
+:root[data-info-tone="dark"] .ev-label-blue { background: #20324d; }
+:root[data-info-tone="dark"] .ev-label-yellow { background: #4b3c18; }
+:root[data-info-tone="dark"] .ev-label-red { background: #4a252c; }
+:root[data-info-tone="dark"] .ev-label-orange { background: #493222; }
+:root[data-info-tone="dark"] .ev-label-green { background: var(--event-dark-green-bg); color: var(--event-dark-green-text); }
+:root[data-info-tone="dark"] .ev-label-white { background: #374151; color: #f0f0f0; }
 :root[data-info-tone="light"] .ev-subst-fix-btn { background: #efdbc8; color: #783a13; border-color: #b88f65; -webkit-text-stroke: 0; }
 :root[data-info-tone="light"] .ev-subst-fix-btn:hover { background: #e2c6aa; }
+:root[data-info-tone="dark"] .ev-subst-fix-btn { background: #4d321e; color: #fed7aa; border-color: #b88f65; }
+:root[data-info-tone="dark"] .ev-subst-fix-btn:hover { background: #604025; }
 :root[data-info-tone="light"] .ev-subst-name-editable:hover { color: #173f80; text-decoration-color: currentColor; -webkit-text-stroke: 0; }
 :root :is(.ev-text-out, .ev-text-assist, .ev-comment) { color: var(--info-secondary-text); }
 :root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) :is(.dp-empty, .st-empty, .hth-empty, .tf-message) { color: #526176; }
 :root .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow { color: var(--info-yellow-text); }
-:root[data-ui-mode="light"][data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow {
-  color: #ffd93d;
-  -webkit-text-stroke: .7px #4a3c00;
-  paint-order: stroke fill;
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow {
+  color: #d9af00;
+  -webkit-text-stroke: 0;
 }
-:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-sub-marker.is-out { color: #7f1d1d; }
+:root .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-sub-marker.is-in { color: var(--roster-in-text); }
+:root .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-sub-marker.is-out { color: var(--roster-out-text); }
 :root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) { --lineup-red-text: #9f2638; }
 :root[data-ui-mode="light"] :is(.ev-row-menu, .ev-edit-reason-menu, .ev-edit-time input) {
   background: var(--ui-surface-raised);
@@ -155,12 +164,12 @@
 :root[data-ui-mode="light"] .md-body .custom-block.tip .custom-block-title { color: #1e40af; }
 :root[data-ui-mode="light"] .md-body .custom-block.info .custom-block-title { color: #5b21b6; }
 :root[data-ui-mode="light"] .md-body .custom-block.danger .custom-block-title { color: #991b1b; }
-:root[data-ui-mode="light"] #themePanel .theme-color-actions button:hover { background: #bdcde0; }
+:root[data-ui-mode="light"] #themePanel .theme-color-actions button:hover { background: var(--ui-surface-recessed); }
 :root[data-ui-mode="light"] :is(.sp-radio-btn.is-active, .ev-subst-picker-confirm) { color: #ffffff; background: #1e40af; }
 :root[data-ui-mode="light"] .sp-action-btn:not(.sp-action-btn-danger) { color: #172d6e; }
 :root[data-ui-mode="light"] :is(.td-alpha-label, .td-tl-current) { color: #334155; }
 :root[data-ui-mode="light"] .md-body code { color: #334155; }
-:root[data-ui-mode="light"] .md-body pre { background: #d8e1eb; }
+:root[data-ui-mode="light"] .md-body pre { background: var(--ui-surface-recessed); }
 :root[data-ui-mode="light"] #about-rendered :is(h2, h3, h4, h5, h6) { color: var(--ui-text); }
 :root[data-info-tone="light"] .mi-label.mi-label-accented { color: var(--info-label-color); -webkit-text-stroke: 0; }
 :root[data-ui-mode="light"] .overlay-card { background: var(--ui-surface-raised); color: var(--ui-text); }
@@ -168,22 +177,29 @@
 :root[data-ui-mode="light"] #fixture-overlay .text-secondary { color: #334155 !important; }
 :root[data-ui-mode="light"] #page-tactics .td-fm-menu button:is(:hover, :focus-visible, [aria-selected="true"]) { color: #ffffff; background: #1e3a8a; }
 :root[data-ui-mode="light"] .dp-grid-slot-apply:not(.is-primary) { color: var(--ui-text); }
-/* ??? ??? ?? ?? IN ?? ???? ??? ????. */
+/* 어두운 패널의 기존 IN 색과 밝은 패널의 지정 색을 분리한다. */
 :root[data-info-tone="dark"] .ev-text-in { color: var(--event-in-text); }
 :root[data-info-tone="light"] .ev-text-in { color: var(--event-in-text); -webkit-text-stroke: 0; }
 :root[data-info-tone="light"] .ev-text-in .ev-text-name { font-weight: 700; }
 :root[data-info-tone="light"] .ev-text-in .ev-comment { -webkit-text-stroke: 0; }
 :root[data-info-tone="light"] .ev-icon .football-icon-subst { width: calc(18px * var(--ev-ui-scale, 1)); height: calc(18px * var(--ev-ui-scale, 1)); stroke-width: 3.5; }
 :root[data-info-tone="light"] .ev-icon .football-icon-in { stroke: var(--event-arrow-in); }
-/* 미출전 상태의 원래 의미색은 유지하고, 밝은 모드에서만 글자 획을 보강한다. */
-:root[data-ui-mode="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason, .dp-icon-injury, .dp-icon-unregistered),
+/* 미출전 상태의 의미색은 유지하고, 글자와 아이콘에 외곽선을 추가하지 않는다. */
+:root[data-info-tone="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason, .dp-icon-injury, .dp-icon-unregistered),
 :root[data-ui-mode="light"] .pm-injury-reason {
-  -webkit-text-stroke: .5px #5b1520;
-  paint-order: stroke fill;
+  -webkit-text-stroke: 0;
 }
-:root[data-ui-mode="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason.is-questionable, .dp-icon-questionable),
+:root[data-info-tone="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason.is-questionable, .dp-icon-questionable),
 :root[data-ui-mode="light"] .pm-injury-reason-questionable {
-  -webkit-text-stroke: .7px #4a3c00;
+  color: #d9af00;
+  -webkit-text-stroke: 0;
 }
 
 :root[data-info-tone="light"] .ev-text-out { color: var(--event-out-text); }
+
+/* 팝업 동작색은 일반 본문색과 구분하고, 활성·호버 상태를 함께 맞춘다. */
+:root[data-ui-mode="light"] :is(.ev-subst-picker-reset, .ev-hide-manage-btn) { color: #8a2430; background: #eed9dc; border-color: #bd858e; }
+:root[data-ui-mode="light"] :is(.ev-subst-picker-reset, .ev-hide-manage-btn):hover:not(:disabled),
+:root[data-ui-mode="light"] :is(.pm-btn.pm-btn-danger, .sp-action-btn-danger, .dp-slot-delete):hover:not(:disabled) { color: #741e28; background: #e5c2c7; }
+:root[data-info-tone="light"] .ev-hide-manage-btn { color: #8a2430; background: #eed9dc; }
+:root[data-ui-mode="light"] :is(.sp-rating-color-item, .sp-rating-color-grid .sp-color-editor) { background: rgba(37, 40, 46, .06); }

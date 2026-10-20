@@ -59,10 +59,13 @@ const { openPage, settle } = require('../tactics/helpers');
       return result;
     });
     assert(injuryModes.dark.length > 0);
-    assert.deepEqual(injuryModes.light.map(item => item.color), injuryModes.dark.map(item => item.color), '미출전 상태의 의미색은 두 모드에서 동일합니다.');
-    assert(injuryModes.light.every(item => item.stroke > 0), '밝은 미출전 명단은 외곽선으로 가독성을 보강합니다.');
-    assert.deepEqual(injuryModes.menus.light.map(item => item.color), injuryModes.menus.dark.map(item => item.color), '선수를 눌러 여는 메뉴도 명단과 같은 상태색을 유지합니다.');
-    assert(injuryModes.menus.light.every(item => item.stroke > 0));
+    assert.equal(injuryModes.light[0].color, injuryModes.dark[0].color, '빨간 부상 의미색은 유지합니다.');
+    assert.equal(injuryModes.light[0].stroke, 0, '빨간 사유에도 외곽선을 추가하지 않습니다.');
+    assert.equal(injuryModes.light.at(-1).stroke, 0, '노란 사유의 외곽선은 제거합니다.');
+    assert.equal(injuryModes.menus.light[0].color, injuryModes.menus.dark[0].color);
+    assert.equal(injuryModes.menus.light[0].stroke, 0);
+    assert.equal(injuryModes.menus.light[1].color, injuryModes.light.at(-1).color, '메뉴와 명단의 노란 사유는 같은 색입니다.');
+    assert.equal(injuryModes.menus.light[1].stroke, 0);
     // 이후 저장·갤러리 검사는 양쪽 모드에 같은 배경을 명시적으로 고른 상태로 진행한다.
     await page.evaluate(() => { setSetting('lightBgPreset', 'ivory-paper'); });
     const openSettings = async () => {
@@ -243,10 +246,34 @@ const { openPage, settle } = require('../tactics/helpers');
     await popup.close();
     await verifyEventPalette(page, fixture);
     await verifyStatsOutlines(page, fixture);
+    await verifyComponentColorPairs(page, fixture);
+    await verifyTransparentPanelText(page, fixture);
     assert.deepEqual(errors, []);
     console.log('PASS UI modes, tonal panel colors, contrast, identity preservation, persistence, gallery preview/apply/cancel');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
+
+/** 모드와 무관하게 투명도를 높여도 정보 패널 글자에 그림자를 추가하지 않는다. */
+async function verifyTransparentPanelText(page, fixture) {
+  await page.evaluate(fixture => {
+    setSetting('popoutModals', 'off'); setSetting('panelColor', '#0b1220');
+    setSetting('bgPreset', 'off'); setSetting('bgTeamDirection', 'off');
+    applyLineupPanels(fixture); applyEventsPanel(fixture, { animate: false }); applyStatsPanel(fixture);
+  }, fixture);
+  for (const mode of ['dark', 'light']) {
+    for (const layout of ['main-small', 'main-big']) {
+      for (const alpha of [25, 70, 85, 100]) {
+        const result = await page.evaluate(({ mode, layout, alpha }) => {
+          setSetting('uiMode', mode); setSetting('panelAlpha', alpha); activatePage(layout);
+          const selector = '#benchPanel .dp-item-name, #benchPanel .dp-side-name, #injuryPanel .dp-item-name, #injuryPanel .dp-side-name, .lp-events-s .ev-text-name, .lp-stat .ev-text-name, .lp-stat-s .st-val';
+          return [...document.querySelectorAll(selector)].map(node => ({ cls: node.className, shadow: getComputedStyle(node).textShadow }));
+        }, { mode, layout, alpha });
+        assert(result.length > 0);
+        assert(result.every(item => item.shadow === 'none'), `${mode}/${layout}/${alpha}: 정보 패널에 글자 그림자를 붙이지 않습니다.`);
+      }
+    }
+  }
+}
 
 /** 실제 행 렌더러로 모든 이벤트 분기의 배지·이름·사유·시간을 검증한다. */
 async function verifyEventPalette(page, fixture) {
@@ -267,35 +294,46 @@ async function verifyEventPalette(page, fixture) {
   for (const mode of ['dark', 'light']) {
     for (const layout of ['main-small', 'main-big']) {
       for (const alpha of [0, 25]) {
-        const result = await page.evaluate(({ mode, layout, alpha, cases, fixture }) => {
-          setSetting('uiMode', mode); setSetting('panelColor', '#0b1220'); setSetting('panelAlpha', alpha);
-          setSetting('bgPreset', 'off'); setSetting('bgTeamDirection', 'off'); setSetting('bgAlpha', 0);
-          activatePage(layout);
-          const panel = document.querySelector(layout === 'main-small' ? '.layout-small .lp-events-s' : '.layout-big .lp-stat');
-          // 카메라 뷰의 통계/이벤트 전환 컨테이너 안에도 같은 이벤트 행을 렌더한다.
-          const host = document.createElement('div'); host.className = 'ev-list'; host.dataset.eventPaletteProbe = '';
-          panel.append(host);
-          const events = cases.map(([type, detail, extra], i) => ({ elapsed: i + 1, extra: null,
-            side: i % 2 ? 'away' : 'home', playerId: 8000 + i, playerName: '선수 이름',
-            type, detail, comments: '판정 사유', ...extra }));
-          events.forEach((event, i) => { const row = evCreateRow(event, fixture); row.dataset.caseIndex = i; host.append(row); });
-          const bad = [];
-          for (const node of host.querySelectorAll('.ev-label, .ev-time, .ev-text-name, .ev-text-in, .ev-text-out, .ev-comment, .ev-text-assist, .ev-subst-fix-btn')) {
-            const style = getComputedStyle(node);
-            const background = teamPanelBackground(node);
-            const contrast = Math.max(teamColorContrastRatio(style.color, background),
-              parseFloat(style.webkitTextStrokeWidth) > 0 ? teamColorContrastRatio(style.webkitTextStrokeColor, background) : 0);
-            if (contrast < 4.5) bad.push({ case: node.closest('.ev-row').dataset.caseIndex, class: node.className,
-              text: node.textContent, color: style.color, background, contrast });
-          }
-          const labels = [...host.querySelectorAll('.ev-label')].map(node => node.textContent);
-          const icons = [...host.querySelectorAll('.ev-icon')].map(node => node.className);
-          host.remove();
-          return { bad, labels, icons };
-        }, { mode, layout, alpha, cases, fixture });
-        assert.equal(result.labels.length, cases.length);
-        assert.equal(result.icons.length, cases.length);
-        failures.push(...result.bad.map(item => ({ mode, layout, alpha, ...item })));
+        for (const panelColor of ['#0b1220', '#ffffff', '#7c2d12', '#0f766e']) {
+          const result = await page.evaluate(({ mode, layout, alpha, cases, fixture, panelColor }) => {
+            setSetting('uiMode', mode); setSetting('panelColor', panelColor); setSetting('panelAlpha', alpha);
+            setSetting('bgPreset', 'off'); setSetting('bgTeamDirection', 'off'); setSetting('bgAlpha', 0);
+            activatePage(layout);
+            const panel = document.querySelector(layout === 'main-small' ? '.layout-small .lp-events-s' : '.layout-big .lp-stat');
+            // 카메라 뷰의 통계/이벤트 전환 컨테이너 안에도 같은 이벤트 행을 렌더한다.
+            const host = document.createElement('div'); host.className = 'ev-list'; host.dataset.eventPaletteProbe = '';
+            panel.append(host);
+            const events = cases.map(([type, detail, extra], i) => ({ elapsed: i + 1, extra: null,
+              side: i % 2 ? 'away' : 'home', playerId: 8000 + i, playerName: '선수 이름',
+              type, detail, comments: '판정 사유', ...extra }));
+            events.forEach((event, i) => { const row = evCreateRow(event, fixture); row.dataset.caseIndex = i; host.append(row); });
+            const bad = [];
+            for (const node of host.querySelectorAll('.ev-label, .ev-time, .ev-text-name, .ev-text-in, .ev-text-out, .ev-comment, .ev-text-assist, .ev-subst-fix-btn')) {
+              const style = getComputedStyle(node);
+              // IN은 사용자가 지정한 의미색을 유지한다. 사유·편집 버튼은 일반 대비 검사에 포함한다.
+              if (node.closest('.ev-text-in') && !node.matches('.ev-comment, .ev-subst-fix-btn')) continue;
+              const background = teamPanelBackground(node);
+              const contrast = Math.max(teamColorContrastRatio(style.color, background),
+                parseFloat(style.webkitTextStrokeWidth) > 0 ? teamColorContrastRatio(style.webkitTextStrokeColor, background) : 0);
+              if (contrast < 4.5) bad.push({ case: node.closest('.ev-row').dataset.caseIndex, class: node.className,
+                text: node.textContent, color: style.color, background, contrast });
+            }
+            const labels = [...host.querySelectorAll('.ev-label')].map(node => node.textContent);
+            const icons = [...host.querySelectorAll('.ev-icon')].map(node => node.className);
+            const inStyles = [...host.querySelectorAll('.ev-text-in')].map(node => ({
+              color: getComputedStyle(node).color,
+              nameColor: node.querySelector('.ev-text-name') ? getComputedStyle(node.querySelector('.ev-text-name')).color : null,
+              stroke: parseFloat(getComputedStyle(node).webkitTextStrokeWidth),
+            }));
+            host.remove();
+            return { bad, labels, icons, inStyles };
+          }, { mode, layout, alpha, cases, fixture, panelColor });
+          assert.equal(result.labels.length, cases.length);
+          assert.equal(result.icons.length, cases.length);
+          assert(result.inStyles.every(item => item.nameColor === null || item.color === item.nameColor), 'IN 문구와 이름은 같은 색을 유지합니다.');
+          assert(result.inStyles.every(item => item.stroke === 0), '지정한 IN 텍스트에 외곽선을 추가하지 않습니다.');
+          failures.push(...result.bad.map(item => ({ mode, layout, alpha, panelColor, ...item })));
+        }
       }
     }
   }
@@ -344,4 +382,98 @@ async function verifyStatsOutlines(page, fixture) {
     assert(result.switched.every(shadow => !shadow.includes('inset')), `${result.mode}: 모드 전환 후 대비가 충분하면 이전 테두리를 제거합니다.`);
     assert(result.transparent.every(shadow => shadow.includes('inset')), '투명 패널도 실제 페이지 단색과 비슷하면 테두리가 필요합니다.');
   }
+}
+
+/** 컴포넌트 자체의 표면색과 글자색은 모드 전환 후에도 함께 읽혀야 한다. */
+async function verifyComponentColorPairs(page, fixture) {
+  const results = [];
+  await page.evaluate(() => setSetting('popoutModals', 'off'));
+  if (await page.locator('body').evaluate(body => body.classList.contains('sidebar-open'))) {
+    await page.locator('#sidebarClose').click();
+  }
+  for (const mode of ['dark', 'light']) {
+    await page.evaluate(({ mode, fixture }) => {
+      setSetting('uiMode', mode); setSetting('panelColor', '#0b1220'); setSetting('panelAlpha', 25);
+      setSetting('bgPreset', 'off'); setSetting('bgTeamDirection', 'off'); activatePage('main-small');
+      fetchTeamFixtures = async id => ({ matches: Array.from({ length: 5 }, (_, i) => ({
+        fixtureId: 200 + i, date: '2025-10-01T12:00:00Z', status: 'FT',
+        homeTeamId: id, awayTeamId: 999, homeTeamName: '홈 팀', awayTeamName: '원정 팀',
+        homeScore: i % 3, awayScore: 1,
+      })) });
+      applyEventsPanel(fixture, { animate: false });
+    }, { mode, fixture });
+    await page.locator('.lp-events-s [data-events-panel] [data-small-panel-mode="fixtures"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.lp-events-s .tf-card').length === 10);
+    const wins = await page.locator('.lp-events-s .tf-win').evaluateAll(nodes => nodes.map(node => ({
+      color: getComputedStyle(node).color, contrast: teamColorContrastRatio(getComputedStyle(node).color, teamPanelBackground(node)),
+    })));
+    assert(wins.length > 0 && wins.every(item => item.contrast >= 4.5), '승리 배지의 글자는 배지 배경과 대비가 충분해야 합니다.');
+    await page.locator('.lp-events-s').screenshot({ path: `screenshots/tests/color-pairs-${mode}-fixtures.png` });
+    await page.locator('.lp-events-s [data-team-fixtures-panel] [data-small-panel-mode="events"]').click();
+    await page.evaluate(() => {
+      const event = { type: 'Card', detail: 'Yellow Card', side: 'home',
+        elapsed: 25, playerId: 123, playerName: '검증 선수', _evEdited: true };
+      event._hideSig = evHideSignature(event);
+      evEditOpen(event);
+    });
+    const reset = page.locator('.ev-subst-picker-reset');
+    assert.equal(await reset.isEnabled(), true);
+    const resetContrast = () => reset.evaluate(node => teamColorContrastRatio(getComputedStyle(node).color, teamPanelBackground(node)));
+    const regular = await resetContrast();
+    await reset.hover(); const hovered = await resetContrast();
+    assert(regular >= 4.5 && hovered >= 4.5, '활성 초기화 버튼은 기본·호버 상태에서 모두 읽혀야 합니다.');
+    await page.locator('.ev-subst-picker-modal').screenshot({ path: `screenshots/tests/color-pairs-${mode}-event-edit.png` });
+    await page.locator('.ev-subst-picker-close').click();
+    await page.evaluate(async () => {
+      fetchPlayerStats = async () => ({ player: { name: '검증 선수' }, statistics: {
+        '2026': [{ league: { name: '리그' }, team: { name: '팀' }, games: { appearences: 10 }, cards: { yellow: 2, yellowred: 1, red: 1 } }],
+      } });
+      await pmShowSeasonStats(123, { name: '검증 선수', number: 9 });
+    });
+    const cards = await page.locator('.pm-card-y, .pm-card-yr, .pm-card-r').evaluateAll(nodes => nodes.map(node => {
+      const style = getComputedStyle(node);
+      // 누적 퇴장 배지는 현재 그라디언트 양 끝과 비교하고 특정 팔레트를 고정하지 않는다.
+      const surfaces = style.backgroundImage.match(/rgba?\([^)]+\)/g) || [teamPanelBackground(node)];
+      return { color: style.color, contrast: Math.min(...surfaces.map(background => teamColorContrastRatio(style.color, background))) };
+    }));
+    assert(cards.length > 0 && cards.every(item => item.contrast >= 4.5), '경고·퇴장 배지의 숫자는 모드 본문색과 별도로 읽혀야 합니다.');
+    await page.locator('.pm-modal').screenshot({ path: `screenshots/tests/color-pairs-${mode}-season.png` });
+    await page.evaluate(() => pmHideAll());
+    results.push({ mode, wins, regular, hovered, cards });
+  }
+  const brightPanel = await page.evaluate(() => {
+    setSetting('uiMode', 'dark'); setSetting('panelColor', '#ffffff'); setSetting('panelAlpha', 0);
+    const host = document.querySelector('#injuryPanel .dp-list');
+    host.innerHTML = buildInjuryListHtml([{ playerId: 987001, name: '부상 선수', reason: 'Muscle Injury', type: 'Missing Fixture' }], true, { inlineReason: true });
+    return { tone: document.documentElement.dataset.infoTone, stroke: parseFloat(getComputedStyle(host.querySelector('.ic-reason')).webkitTextStrokeWidth) };
+  });
+  assert.equal(brightPanel.tone, 'light');
+  assert.equal(brightPanel.stroke, 0, '어두운 UI에서 밝은 패널을 골라도 사유 외곽선을 추가하지 않습니다.');
+  // 외부 네트워크 대신 실제 프레임 생성 경로에 로컬 표를 넣어 모드 동기화를 검사한다.
+  await page.evaluate(fixture => {
+    window._paletteOriginalEmbeds = window.resolveScoreaxisStandingsEmbeds;
+    window.resolveScoreaxisStandingsEmbeds = () => [{ country: '검증', scoreaxisLeagueName: '리그',
+      embedCode: '<div class="scoreaxis-widget" style="height:120px;overflow:auto"><div style="height:500px">순위표</div></div>' }];
+    setSetting('uiMode', 'dark'); setSetting('panelColor', '#0b1220');
+    scoreaxisStandingsShowForFixture(fixture);
+  }, fixture);
+  await page.waitForFunction(() => document.querySelector('.lp-events-s .scoreaxis-standings-frame')?.contentDocument?.getElementById('scoreaxisHostOverrides'));
+  const frameStyles = [];
+  for (const mode of ['dark', 'light']) {
+    await page.evaluate(mode => setSetting('uiMode', mode), mode);
+    await settle(page);
+    frameStyles.push(await page.locator('.lp-events-s .scoreaxis-standings-frame').evaluate(frame => {
+      const doc = frame.contentDocument;
+      const thumb = getComputedStyle(doc.querySelector('.scoreaxis-widget'), '::-webkit-scrollbar-thumb');
+      return { scheme: getComputedStyle(doc.documentElement).colorScheme, thumb: thumb.backgroundColor, border: thumb.borderTopColor };
+    }));
+  }
+  assert.equal(frameStyles[0].scheme, 'dark'); assert.equal(frameStyles[1].scheme, 'light');
+  assert.notEqual(frameStyles[0].thumb, frameStyles[1].thumb, '순위표 프레임의 손잡이도 표면 밝기에 맞춰 바뀌어야 합니다.');
+  assert(frameStyles.every(item => item.border === 'rgba(0, 0, 0, 0)'), '밝은 스크롤바에 고정된 어두운 테두리를 남기지 않습니다.');
+  await page.evaluate(() => {
+    window.resolveScoreaxisStandingsEmbeds = window._paletteOriginalEmbeds;
+    scoreaxisStandingsReset();
+  });
+  fs.writeFileSync('screenshots/tests/component-color-pairs.json', JSON.stringify({ results, brightPanel, frameStyles }, null, 2));
 }

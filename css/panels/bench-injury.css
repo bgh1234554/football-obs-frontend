@@ -170,10 +170,6 @@
   line-height: 1.35;
 }
 
-body.low-panel-alpha #benchPanel :is(.dp-title, .dp-side-name, .dp-item-num, .dp-item-name, .dp-label, .dp-coach-name, .dp-referee-name, .dp-league-name, .dp-venue-name, .dp-kickoff-time),
-body.low-panel-alpha #injuryPanel :is(.dp-title, .dp-side-name, .dp-item-num, .dp-item-name, .dp-label) {
-  text-shadow: var(--low-panel-text-outline);
-}
 
 /* ===== Iter 5-3: 벤치/선발 리스트 행에 카드/교체/골/어시/평점 표시 ===== */
 /* 행 레이아웃: [num] [content (이름/카드/교체/골·어시 — wrap 가능)] [rating(항상 우측)]

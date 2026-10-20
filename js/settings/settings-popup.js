@@ -150,7 +150,7 @@ const SETTINGS_DEFAULTS = {
   ratingColor95:        '#7f1d6d',  // ≥ 9.5
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
-  lightBgColor:   '#bac8d9',
+  lightBgColor:   '#c2c6cc',
   bgTeamDirection: 'off',
   bgPreset:      'stadium',
   lightBgPreset: 'stadium-day',
@@ -212,7 +212,6 @@ const STATS_NAME_SIZE_DEFAULT = 12;
 const STATS_BAR_HEIGHT_DEFAULT = 6;
 const STATS_SWIPE_SEC_MIN = 2.5;
 const STATS_SWIPE_SEC_MAX = 60;
-const HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD = 70;
 
 const LINEUP_SCALE_MIN = 50;
 const LINEUP_SCALE_MAX = 100;
@@ -1050,12 +1049,12 @@ function applyPageBackground() {
     root.style.setProperty('--page-bg', 'transparent');
     root.style.setProperty('--bg-image', [
       lightMood
-        ? `linear-gradient(135deg, rgba(78, 99, 125, ${.08 * bgOpacity}), rgba(78, 99, 125, 0) 45%, rgba(78, 99, 125, ${.04 * bgOpacity}))`
+        ? `linear-gradient(135deg, rgba(90, 96, 104, ${.08 * bgOpacity}), rgba(90, 96, 104, 0) 45%, rgba(90, 96, 104, ${.04 * bgOpacity}))`
         : `linear-gradient(to bottom, rgba(6, 14, 26, ${.15 * bgOpacity}), rgba(6, 14, 26, ${.75 * bgOpacity}))`,
       `radial-gradient(ellipse at 0% 25%, ${moodColor(state.colors.homeBg)}, transparent 65%)`,
       `radial-gradient(ellipse at 100% 75%, ${moodColor(state.colors.awayBg)}, transparent 65%)`,
       lightMood
-        ? `linear-gradient(rgba(186, 200, 217, ${bgOpacity}), rgba(186, 200, 217, ${bgOpacity}))`
+        ? `linear-gradient(rgba(194, 198, 204, ${bgOpacity}), rgba(194, 198, 204, ${bgOpacity}))`
         : `linear-gradient(rgba(9, 19, 33, ${bgOpacity}), rgba(9, 19, 33, ${bgOpacity}))`
     ].join(', '));
   } else if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
@@ -1078,7 +1077,7 @@ function applyPageBackground() {
 /** 선택한 기준색은 보존하고, 밝은 모드에서는 같은 색조의 밝은 표면색을 만든다. */
 function panelSurfaceColor(color, mode = getSetting('uiMode')) {
   if (mode !== 'light') return color;
-  if (String(color).toLowerCase() === SETTINGS_DEFAULTS.panelColor) return '#c5d2df';
+  if (String(color).toLowerCase() === SETTINGS_DEFAULTS.panelColor) return '#d3d6db';
   const rgb = parseAnyColor(color);
   if (!rgb) return color;
   const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
@@ -1093,24 +1092,44 @@ function applyUiMode() {
   const surface = chromaSafe(panelSurfaceColor(getSetting('panelColor')));
   const rgb = parseAnyColor(surface);
   root.style.setProperty('--info-panel-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-  const darkInk = teamColorContrastRatio('#20242a', surface) > teamColorContrastRatio('#ffffff', surface);
+  // 패널 투명도와 페이지 단색까지 적용한 뒤, 행 음영이 있는 영역도 함께 비교한다.
+  const panel = document.querySelector('#benchPanel, .lp-events-s');
+  const shownSurface = panel ? teamPanelBackground(panel) : surface;
+  const shownRgb = parseAnyColor(shownSurface);
+  const rowSurfaces = [shownSurface, ...[0, 255].map(value => {
+    const parts = ['r', 'g', 'b'].map(key => Math.round(shownRgb[key] * .92 + value * .08));
+    return `rgb(${parts.join(', ')})`;
+  })];
+  const contrastOnRows = color => Math.min(...rowSurfaces.map(background => teamColorContrastRatio(color, background)));
+  const darkInk = contrastOnRows('#20242a') > contrastOnRows('#ffffff');
   const preferredText = darkInk ? '#20242a' : '#f0f0f0';
-  const infoText = teamColorContrastRatio(preferredText, surface) >= 4.5 ? preferredText : (darkInk ? '#000000' : '#ffffff');
+  const infoText = contrastOnRows(preferredText) >= 4.5 ? preferredText : (darkInk ? '#000000' : '#ffffff');
   root.dataset.infoTone = darkInk ? 'light' : 'dark';
   root.style.setProperty('--info-ink-rgb', darkInk ? '32, 36, 42' : '255, 255, 255');
   root.style.setProperty('--info-text', infoText);
-  // 원색을 직접 지정한 패널에서도 의미색이 묻히지 않게 실제 표면과 대비를 확인한다.
+  // 의미색의 색조를 유지하면서 실제 행 표면에서 읽히는 명도까지 조절한다.
   const readableInfoColor = color => {
     const safe = chromaSafeText(color);
-    return teamColorContrastRatio(safe, surface) >= 4.5 ? safe : infoText;
+    if (contrastOnRows(safe) >= 4.5) return safe;
+    const value = parseAnyColor(safe);
+    const { h, s, l } = rgbToHsl(value.r, value.g, value.b);
+    for (let step = 1; step <= 20; step++) {
+      const next = hslToRgb(h, s, l + ((darkInk ? 0 : 1) - l) * step / 20);
+      const candidate = chromaSafeText(rgbToHex(next.r, next.g, next.b));
+      if (contrastOnRows(candidate) >= 4.5) return candidate;
+    }
+    return infoText;
   };
   root.style.setProperty('--info-emphasis-text', readableInfoColor(darkInk ? '#124b2c' : '#bbf7d0'));
   root.style.setProperty('--info-secondary-text', readableInfoColor(darkInk ? '#334155' : '#cbd5e1'));
   root.style.setProperty('--info-yellow-text', readableInfoColor(darkInk ? '#6b5900' : '#FFD93D'));
+  root.style.setProperty('--roster-in-text', readableInfoColor(darkInk ? '#17653b' : '#bbf7d0'));
+  root.style.setProperty('--roster-out-text', readableInfoColor(darkInk ? '#7f1d1d' : '#ff8a8a'));
   root.style.setProperty('--event-in-text', darkInk ? chromaSafeText('#22C55E') : chromaSafeText(OVERLAY_CHROMA_COLORS['--overlay-in-text']));
   root.style.setProperty('--event-out-text', readableInfoColor(darkInk ? '#3e4856' : '#cbd5e1'));
-  root.style.setProperty('--event-in-outline', readableInfoColor('#164d2c'));
   root.style.setProperty('--event-arrow-in', chromaSafeText(OVERLAY_CHROMA_COLORS['--overlay-in-text']));
+  root.style.setProperty('--event-dark-green-bg', chromaSafe('#244332'));
+  root.style.setProperty('--event-dark-green-text', chromaSafeText('#bbf7d0'));
   // 배지는 패널과 다른 표면이므로 배지 배경에 대해 글자 대비를 따로 판단한다.
   const eventGreenBackground = chromaSafe('#cfe5d9');
   const eventGreenText = chromaSafeText('#174f36');
@@ -1120,11 +1139,10 @@ function applyUiMode() {
   const label = parseAnyColor(getSetting('matchInfoLabelColor'));
   const labelHsl = rgbToHsl(label.r, label.g, label.b);
   const labelTone = hslToRgb(labelHsl.h, labelHsl.s, Math.min(labelHsl.l, .36));
-  root.style.setProperty('--info-label-color', chromaSafeText(darkInk ? rgbToHex(labelTone.r, labelTone.g, labelTone.b) : getSetting('matchInfoLabelColor')));
+  root.style.setProperty('--info-label-color', readableInfoColor(darkInk ? rgbToHex(labelTone.r, labelTone.g, labelTone.b) : getSetting('matchInfoLabelColor')));
 }
 
 function applyBackgroundSettings() {
-  applyUiMode();
   applyPageBackground();
   const root = document.documentElement;
   const forceOpaquePanels = getSetting('greenscreen') === 'on';
@@ -1136,9 +1154,6 @@ function applyBackgroundSettings() {
   root.style.setProperty('--panel-alpha', String(alpha));
   root.style.setProperty('--api-widget-hover-alpha', String(0.22 * alpha));
   const body = document.body;
-  if (body) {
-    body.classList.toggle('low-panel-alpha', panelTransparencyPct >= HIGH_PANEL_TRANSPARENCY_TEXT_OUTLINE_THRESHOLD);
-  }
 
   // 라인업 투명도 — 라인업 칼럼 배경과 피치 배경/라인 레이어가 이 값을 공유한다.
   const pitchTransparencyPct = forceOpaquePanels ? 0 : clampPercent(getSetting('pitchAlpha'), SETTINGS_DEFAULTS.pitchAlpha);
@@ -1152,6 +1167,7 @@ function applyBackgroundSettings() {
   if (body) {
     body.classList.remove('low-tactics-alpha');
   }
+  applyUiMode();
 }
 
 /**

@@ -362,15 +362,6 @@
     .scoreaxis-standings-popup-body .scoreaxis-standings-frame { min-height: 680px; }
 
 
-    body.low-panel-alpha :is(.lp-events-s [data-events-panel], .lp-stat [data-events-panel], #tactics-events-host [data-events-panel]) :is(.ev-title, .ev-time, .ev-label, .ev-text-name, .ev-text-assist, .ev-comment) {
-      text-shadow: var(--low-panel-text-outline);
-    }
-    body.low-panel-alpha :is(.lp-events-s [data-hth-panel], .lp-stat [data-hth-panel]) :is(.ev-title, .hth-team-name, .hth-score-main, .hth-pk-score, .hth-meta) {
-      text-shadow: var(--low-panel-text-outline);
-    }
-    body.low-panel-alpha :is(.lp-stat [data-stat-panel], .lp-stat-s [data-stat-panel]) :is(.st-title-bar, .st-title, .st-empty, .st-val:not(.is-emphasized)) {
-      text-shadow: var(--low-panel-text-outline);
-    }
     /* 패널 제목 — 교체명단/부상 톤과 동일 (.dp-title 참조).
        색상은 #fff로 고정 — lp-stat 사이클 모드(스탯/이벤트/HTH/교체명단/경기정보/순위표) 전체가
        .st-title-bar 또는 .ev-title(이벤트/HTH/순위표) 둘 중 하나를 공유하므로, 모드를 순환해도
@@ -662,7 +653,4 @@
       text-align: right;
       overflow-wrap: anywhere;
       color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .92));
-    }
-    body.low-panel-alpha .lp-stat [data-match-info-panel] :is(.mi-panel-title, .mi-label, .mi-value) {
-      text-shadow: var(--low-panel-text-outline);
     }
