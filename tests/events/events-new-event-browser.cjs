@@ -75,8 +75,20 @@ const draftRoot = path.resolve(process.argv[2] || root);
       await page.clock.runFor(50);
     }
     const notice = () => page.locator('.ev-spotlight:not([hidden])');
+    let transparencyChecked = false;
     async function expectNotice(text) {
       assert.equal((await notice().innerText()).trim(), text);
+      if (!transparencyChecked) {
+        for (const transparency of [0, 50, 100]) {
+          await page.evaluate(value => setSetting('panelAlpha', value), transparency);
+          const result = await notice().evaluate(host => ({ background: getComputedStyle(host).backgroundColor, textOpacity: getComputedStyle(host.querySelector('.ev-row')).opacity }));
+          const rgba = result.background.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/);
+          assert.equal(rgba ? Number(rgba[1]) : 1, (100 - transparency) / 100);
+          assert.equal(result.textOpacity, '1');
+        }
+        await page.evaluate(() => setSetting('panelAlpha', 25));
+        transparencyChecked = true;
+      }
       await page.clock.runFor(5400);
       assert.equal(await notice().count(), 0);
     }
