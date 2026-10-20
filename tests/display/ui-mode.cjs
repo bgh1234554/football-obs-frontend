@@ -38,10 +38,13 @@ const { openPage, settle } = require('../tactics/helpers');
         { playerId: 987001, name: '부상 선수', number: 1, reason: 'Muscle Injury', type: 'Missing Fixture' },
         { playerId: 987002, name: '의심 선수', number: 2, reason: 'Questionable', type: 'Questionable' }
       ];
-      const result = { menus: {} };
+      const result = { menus: {}, yellowToken: {}, warningName: {} };
       for (const mode of ['dark', 'light']) {
         setSetting('uiMode', mode);
         const list = document.querySelector('#injuryPanel .dp-list');
+        const token = document.createElement('span');
+        token.style.color = 'var(--info-yellow-text)'; list.append(token);
+        result.yellowToken[mode] = getComputedStyle(token).color; token.remove();
         list.innerHTML = buildInjuryListHtml(samples, true, { inlineReason: true });
         lineupPanelState.lastEffectiveData = { ...lineupPanelState.lastEffectiveData, homeInjuries: samples };
         result[mode] = [...list.querySelectorAll('.ic-reason, .dp-icon')].map(node => {
@@ -53,6 +56,9 @@ const { openPage, settle } = require('../tactics/helpers');
           const item = { color: style.color, stroke: parseFloat(style.webkitTextStrokeWidth) };
           pmHideAll(); return item;
         });
+        const warning = document.createElement('span');
+        warning.className = 'dp-item-name is-yellow'; list.append(warning);
+        result.warningName[mode] = getComputedStyle(warning).color; warning.remove();
       }
       setSetting('uiMode', 'dark');
       applyLineupPanels(lineupPanelState.lastFixture);
@@ -66,6 +72,10 @@ const { openPage, settle } = require('../tactics/helpers');
     assert.equal(injuryModes.menus.light[0].stroke, 0);
     assert.equal(injuryModes.menus.light[1].color, injuryModes.light.at(-1).color, '메뉴와 명단의 노란 사유는 같은 색입니다.');
     assert.equal(injuryModes.menus.light[1].stroke, 0);
+    for (const mode of ['dark', 'light']) {
+      assert.equal(injuryModes[mode].at(-1).color, injuryModes.yellowToken[mode], '출전 불확실 사유는 패널의 노란 의미색을 따릅니다.');
+      assert.equal(injuryModes.warningName[mode], injuryModes.yellowToken[mode], '경고 선수 이름도 같은 노란 의미색을 따릅니다.');
+    }
     // 이후 저장·갤러리 검사는 양쪽 모드에 같은 배경을 명시적으로 고른 상태로 진행한다.
     await page.evaluate(() => { setSetting('lightBgPreset', 'ivory-paper'); });
     const openSettings = async () => {

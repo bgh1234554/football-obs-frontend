@@ -107,7 +107,7 @@
 :root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) :is(.dp-empty, .st-empty, .hth-empty, .tf-message) { color: #526176; }
 :root .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow { color: var(--info-yellow-text); }
 :root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow {
-  color: #d9af00;
+  color: var(--info-yellow-text);
   -webkit-text-stroke: 0;
 }
 :root .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-sub-marker.is-in { color: var(--roster-in-text); }
@@ -191,7 +191,7 @@
 }
 :root[data-info-tone="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason.is-questionable, .dp-icon-questionable),
 :root[data-ui-mode="light"] .pm-injury-reason-questionable {
-  color: #d9af00;
+  color: var(--info-yellow-text, #6b5900);
   -webkit-text-stroke: 0;
 }
 

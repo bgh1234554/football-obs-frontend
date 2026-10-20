@@ -56,7 +56,7 @@
       ['guide', '데이터 안내'], ['keys', '단축키'],
       ['scoreboard', '점수판 클릭 조작'],
       ['main', '중계 화면'], ['settings', '설정'], ['theme', '테마'],
-      ['schedule', '일정'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
+      ['schedule', '일정 확인'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
     ];
     const sections = new Map(groups.map(([key, label]) => {
       const panel = document.createElement('section');
