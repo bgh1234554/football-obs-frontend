@@ -94,12 +94,12 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.locator('[data-bg-clear="color"]').click();
     assert.equal(await page.evaluate(() => getSetting('bgColor')), backgrounds.light.color, '단색 초기화는 현재 모드의 기본색으로 돌아갑니다.');
     assert.equal(await page.locator('html').getAttribute('data-ui-mode'), 'light');
-    const fileAlignment = await page.locator('.sp-row:has(#settingsBgImageFile)').evaluate(row => {
+    const fileAlignment = await page.locator('.sp-background-image-row').evaluate(row => {
       const a = row.querySelector('.sp-row-label').getBoundingClientRect();
-      const b = row.querySelector('.sp-bg-input-cluster').getBoundingClientRect();
+      const b = row.querySelector('.sp-bg-preset-control').getBoundingClientRect();
       return Math.abs(a.top + a.height / 2 - b.top - b.height / 2);
     });
-    assert(fileAlignment < 1, '파일 첨부의 입력·지우기는 설명 영역 높이의 가운데에 있어야 합니다.');
+    assert(fileAlignment < 1, '배경 이미지의 현재 선택·변경·해제 버튼은 설명 영역 가운데에 있어야 합니다.');
     const light = await surface();
     assert.notEqual(light.bg, dark.bg);
     assert(light.ratio >= 4.5, '밝은 패널의 일반 이벤트 글자는 충분한 대비가 있어야 합니다.');

@@ -1391,6 +1391,7 @@ function initSettingsColorEditors() {
 
 /** 텍스트 input(<input type="text">) UI 동기화. bgImageUrl 등에 사용. */
 function syncTextUi(category) {
+  if (category === 'bgImageUrl' || category === 'bgImageData') syncBackgroundImageUi();
   const input = document.querySelector(`input[data-settings-text="${category}"]`);
   if (!input) return;
   const value = String(getSetting(category) || '');
@@ -1409,20 +1410,100 @@ function syncSelectUi(category) {
   if (!select) return;
   const value = String(getSetting(category) || '');
   if (select.value !== value) select.value = value;
-  if (category === 'bgPreset') {
-    const name = document.getElementById('settingsBgPresetName');
-    if (name) name.textContent = select.selectedOptions[0]?.textContent || '사용 안 함';
-    const thumb = document.getElementById('settingsBgPresetThumb');
-    if (thumb) {
-      thumb.hidden = !BACKGROUND_PRESET_IMAGES[value];
-      thumb.style.backgroundImage = BACKGROUND_PRESET_IMAGES[value] ? `url("${new URL(BACKGROUND_PRESET_IMAGES[value], document.baseURI).href}")` : 'none';
-    }
-    const clear = document.getElementById('settingsBgPresetClear');
-    if (clear) clear.disabled = value === 'off';
-  }
+  if (category === 'bgPreset') syncBackgroundImageUi();
 }
 
 /** 배경은 적용 전까지 갤러리 안에서만 미리 보고, 취소하면 기존 선택을 유지한다. */
+const BACKGROUND_CUSTOM_INPUTS = `<div class="bg-picker-custom-file">
+  <label for="settingsBgImageFile">내 사진</label>
+  <input type="file" id="settingsBgImageFile" accept="image/*" class="sp-file-input">
+  <p>12MB 이하의 이미지 파일을 선택하세요.</p></div>
+  <div class="bg-picker-custom-url"><label for="backgroundPickerUrl">이미지 URL</label>
+  <input type="url" id="backgroundPickerUrl" class="sp-text-input" placeholder="https://example.com/bg.jpg">
+  <p>주소를 입력하면 위에서 미리 볼 수 있습니다.</p></div>
+  <p class="bg-picker-status" role="status"></p>`;
+
+function currentBackgroundImage() {
+  const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl'));
+  const data = getSetting('bgImageData');
+  const preset = getSetting('bgPreset');
+  if (url) return { source: 'url', src: url, name: '이미지 URL' };
+  if (data) return { source: 'file', src: data, name: '첨부 이미지' };
+  return { source: 'preset', preset,
+    src: BACKGROUND_PRESET_IMAGES[preset] ? new URL(BACKGROUND_PRESET_IMAGES[preset], document.baseURI).href : '',
+    name: document.querySelector(`[data-settings-select="bgPreset"] option[value="${preset}"]`)?.textContent || '사용 안 함' };
+}
+
+function syncBackgroundImageUi() {
+  const current = currentBackgroundImage();
+  const name = document.getElementById('settingsBgPresetName');
+  if (name) name.textContent = current.name;
+  const thumb = document.getElementById('settingsBgPresetThumb');
+  if (thumb) {
+    thumb.hidden = !current.src;
+    thumb.style.backgroundImage = current.src ? `url(${JSON.stringify(current.src)})` : 'none';
+  }
+  const clear = document.getElementById('settingsBgPresetClear');
+  if (clear) clear.disabled = !current.src;
+}
+
+// 선택 중에는 저장하지 않고, 적용할 때 충돌하는 이미지 설정도 한 번에 갱신한다.
+function commitBackgroundImage(draft) {
+  const presetKey = getSetting('uiMode') === 'light' ? 'lightBgPreset' : 'bgPreset';
+  const values = {
+    bgImageUrl: draft.source === 'url' ? draft.src : '',
+    bgImageData: draft.source === 'file' ? draft.src : '',
+    [presetKey]: draft.source === 'preset' ? draft.preset : getSetting('bgPreset')
+  };
+  const previous = { ...settingsState };
+  Object.assign(settingsState, values);
+  if (!saveSettings()) {
+    Object.assign(settingsState, previous);
+    if (typeof showToast === 'function') showToast('배경을 저장하지 못했습니다. 저장 공간을 확인하세요.');
+    return false;
+  }
+  Object.entries(values).forEach(([category, value]) => {
+    syncSettingUi(category); applySettingSideEffects(category);
+    document.dispatchEvent(new CustomEvent('settings:change', { detail: { category, value, mode: value } }));
+  });
+  syncBackgroundImageUi();
+  return true;
+}
+
+function setBackgroundDraftStatus(dialog, message, disabled) {
+  dialog.querySelector('.bg-picker-status').textContent = message;
+  dialog.querySelector('#backgroundPickerApply').disabled = disabled;
+}
+
+function renderBackgroundDraft(dialog) {
+  const draft = dialog._draft;
+  dialog.dataset.selection = draft.preset || '';
+  dialog.querySelectorAll('[data-bg-choice]').forEach(button => button.setAttribute('aria-pressed', String(draft.source === 'preset' && button.dataset.bgChoice === draft.preset)));
+  const image = dialog.querySelector('.bg-picker-preview-image');
+  image.style.backgroundImage = draft.src ? `url(${JSON.stringify(draft.src)})` : 'none';
+  image.querySelector('.bg-picker-preview-empty').textContent = draft.src ? '' : draft.source === 'preset' ? '배경 이미지 사용 안 함' : '이미지 미리보기';
+  image.setAttribute('aria-disabled', String(!draft.src)); image.tabIndex = draft.src ? 0 : -1;
+  dialog.querySelector('.bg-picker-preview-name').textContent = draft.name;
+  setBackgroundDraftStatus(dialog, '', !draft.src && draft.source !== 'preset');
+}
+
+function loadBackgroundDraft(dialog, src) {
+  const request = ++dialog._request;
+  dialog._draft = { source: 'url', src: '', name: '이미지 URL' };
+  renderBackgroundDraft(dialog);
+  if (!src) { setBackgroundDraftStatus(dialog, '이미지 주소를 입력하세요.', true); return; }
+  setBackgroundDraftStatus(dialog, '이미지를 불러오고 있습니다.', true);
+  const image = new Image();
+  image.onload = () => {
+    if (request !== dialog._request || !dialog.open) return;
+    dialog._draft = { source: 'url', src, name: '이미지 URL' }; renderBackgroundDraft(dialog);
+  };
+  image.onerror = () => {
+    if (request === dialog._request && dialog.open) setBackgroundDraftStatus(dialog, '이미지를 불러오지 못했습니다. 주소를 확인하세요.', true);
+  };
+  image.src = src;
+}
+
 function openBackgroundPicker() {
   let dialog = document.getElementById('backgroundPicker');
   const source = document.querySelector('[data-settings-select="bgPreset"]');
@@ -1431,8 +1512,8 @@ function openBackgroundPicker() {
     dialog.id = 'backgroundPicker';
     dialog.className = 'bg-picker';
     dialog.setAttribute('aria-labelledby', 'backgroundPickerTitle');
-    dialog.innerHTML = `<header class="bg-picker-header"><h2 id="backgroundPickerTitle">기본 배경 설정</h2><button type="button" class="sp-close-btn" data-bg-picker-close aria-label="닫기">×</button></header>
-      <div class="bg-picker-body"><div class="bg-picker-preview"><div class="bg-picker-preview-image" role="button" tabindex="0" aria-label="배경 전체화면 미리보기"><span class="bg-picker-preview-empty"></span><button type="button" class="bg-picker-preview-exit" aria-label="전체화면 미리보기 닫기">닫기</button></div><strong class="bg-picker-preview-name"></strong><p>배경을 선택해 미리 본 뒤 적용하세요. 미리보기 이미지를 더블클릭하면 전체화면으로 볼 수 있습니다.</p><p class="bg-picker-priority" hidden>입력한 URL이나 첨부 이미지가 있으면 그 배경이 먼저 표시됩니다.</p></div><div class="bg-picker-list"></div></div>
+    dialog.innerHTML = `<header class="bg-picker-header"><h2 id="backgroundPickerTitle">배경 이미지 설정</h2><button type="button" class="sp-close-btn" data-bg-picker-close aria-label="닫기">×</button></header>
+      <div class="bg-picker-body"><div class="bg-picker-preview"><div class="bg-picker-preview-image" role="button" tabindex="0" aria-label="배경 전체화면 미리보기"><span class="bg-picker-preview-empty"></span><button type="button" class="bg-picker-preview-exit" aria-label="전체화면 미리보기 닫기">닫기</button></div><strong class="bg-picker-preview-name"></strong><p>배경을 선택해 미리 본 뒤 적용하세요. 미리보기 이미지를 더블클릭하면 전체화면으로 볼 수 있습니다.</p></div><div class="bg-picker-list"></div></div>
       <footer class="bg-picker-footer"><button type="button" class="sp-secondary-btn" data-bg-picker-close>취소</button><button type="button" class="sp-secondary-btn" id="backgroundPickerApply">적용</button></footer>`;
     const list = dialog.querySelector('.bg-picker-list');
     const addChoice = option => {
@@ -1448,9 +1529,11 @@ function openBackgroundPicker() {
         button.append(img);
       } else {
         const empty = document.createElement('span');
-        empty.className = 'bg-picker-none'; empty.textContent = '사용 안 함'; button.append(empty);
+        empty.className = 'bg-picker-none'; empty.setAttribute('aria-hidden', 'true');
+        empty.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m7 7 10 10M17 7 7 17"/></svg>';
+        button.append(empty);
       }
-      const name = document.createElement('span'); name.textContent = option.textContent;
+      const name = document.createElement('span'); name.textContent = option.value === 'off' ? '이미지 사용 안 함' : option.textContent;
       button.append(name); button.addEventListener('click', () => previewBackgroundChoice(dialog, option.value));
       list.append(button);
     };
@@ -1460,18 +1543,19 @@ function openBackgroundPicker() {
         [...child.children].forEach(addChoice);
       } else addChoice(child);
     });
+    dialog.querySelector('.bg-picker-footer').prepend(list.querySelector('[data-bg-choice="off"]'));
     dialog.querySelectorAll('[data-bg-picker-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
     dialog.querySelector('#backgroundPickerApply').addEventListener('click', () => {
-      if (setSetting('bgPreset', dialog.dataset.selection)) dialog.close();
+      if (commitBackgroundImage(dialog._draft)) dialog.close();
     });
     const preview = dialog.querySelector('.bg-picker-preview-image');
     const closePreview = () => {
       if (document.fullscreenElement === preview) document.exitFullscreen().catch(() => {});
       dialog.classList.remove('is-preview-fullscreen');
-      preview.focus();
+      if (dialog.open) preview.focus();
     };
     const expandPreview = async () => {
-      if (!BACKGROUND_PRESET_IMAGES[dialog.dataset.selection]) return;
+      if (!dialog._draft?.src) return;
       // 전체화면 API를 제공하지 않는 OBS 환경에서는 같은 창 안의 전체 보기로 대체한다.
       try { await preview.requestFullscreen(); }
       catch { dialog.classList.add('is-preview-fullscreen'); }
@@ -1486,7 +1570,7 @@ function openBackgroundPicker() {
       event.preventDefault(); expandPreview();
     });
     preview.querySelector('.bg-picker-preview-exit').addEventListener('click', event => { event.stopPropagation(); closePreview(); });
-    dialog.addEventListener('close', closePreview);
+    dialog.addEventListener('close', () => { dialog._request++; closePreview(); });
     dialog.addEventListener('keydown', event => {
       // 설정 팝업·분리 창의 Esc 처리까지 전파하지 않고 갤러리만 닫는다.
       event.stopPropagation();
@@ -1497,24 +1581,49 @@ function openBackgroundPicker() {
       }
     });
     dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    const listHost = document.createElement('div');
+    listHost.className = 'bg-picker-sources';
+    list.replaceWith(listHost);
+    listHost.append(list);
+    const inputs = document.createElement('div');
+    inputs.className = 'bg-picker-custom';
+    inputs.innerHTML = BACKGROUND_CUSTOM_INPUTS;
+    dialog.querySelector('.bg-picker-preview').append(inputs);
+    dialog.querySelector('#backgroundPickerUrl').addEventListener('input', event => loadBackgroundDraft(dialog, normalizeBackgroundImageUrl(event.target.value)));
+    dialog.querySelector('#settingsBgImageFile').addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const request = ++dialog._request;
+      if (!/^image\//.test(file.type) || file.size > BG_IMAGE_MAX_BYTES) {
+        setBackgroundDraftStatus(dialog, '12MB 이하의 이미지 파일을 선택하세요.', true); return;
+      }
+      setBackgroundDraftStatus(dialog, '이미지를 준비하고 있습니다.', true);
+      try {
+        const data = await compressBackgroundImage(file);
+        if (request !== dialog._request || !dialog.open) return;
+        dialog._draft = { source: 'file', src: data, name: file.name };
+        renderBackgroundDraft(dialog);
+      } catch {
+        if (request === dialog._request && dialog.open) setBackgroundDraftStatus(dialog, '이미지를 열지 못했습니다. 다른 파일을 선택하세요.', true);
+      }
+    });
     document.getElementById('settingsBackdrop').append(dialog);
   }
-  previewBackgroundChoice(dialog, getSetting('bgPreset'));
-  dialog.querySelector('.bg-picker-priority').hidden = !getSetting('bgImageUrl') && !getSetting('bgImageData');
+  dialog._request = (dialog._request || 0) + 1;
+  dialog._draft = currentBackgroundImage();
+  dialog.querySelector('#backgroundPickerUrl').value = getSetting('bgImageUrl') || '';
+  dialog.querySelector('#settingsBgImageFile').value = '';
+  renderBackgroundDraft(dialog);
   dialog.showModal();
   dialog.querySelector('.bg-picker-list').scrollTop = 0;
 }
 
 function previewBackgroundChoice(dialog, value) {
-  dialog.dataset.selection = value;
-  const choice = dialog.querySelector(`[data-bg-choice="${value}"]`);
-  dialog.querySelectorAll('[data-bg-choice]').forEach(button => button.setAttribute('aria-pressed', String(button === choice)));
-  const image = dialog.querySelector('.bg-picker-preview-image');
-  image.style.backgroundImage = BACKGROUND_PRESET_IMAGES[value] ? `url("${new URL(BACKGROUND_PRESET_IMAGES[value], document.baseURI).href}")` : 'none';
-  image.querySelector('.bg-picker-preview-empty').textContent = value === 'off' ? '기본 배경 사용 안 함' : '';
-  image.setAttribute('aria-disabled', String(value === 'off'));
-  image.tabIndex = value === 'off' ? -1 : 0;
-  dialog.querySelector('.bg-picker-preview-name').textContent = choice?.lastElementChild.textContent || '';
+  dialog._request = (dialog._request || 0) + 1;
+  dialog._draft = { source: 'preset', preset: value,
+    src: BACKGROUND_PRESET_IMAGES[value] ? new URL(BACKGROUND_PRESET_IMAGES[value], document.baseURI).href : '',
+    name: dialog.querySelector(`[data-bg-choice="${value}"]`)?.lastElementChild.textContent || '' };
+  renderBackgroundDraft(dialog);
 }
 
 function getDataUrlByteLength(dataUrl) {
@@ -1974,7 +2083,7 @@ function initSettingsTabs() {
  */
 function initSettingsPopup() {
   document.getElementById('settingsBgPresetOpen')?.addEventListener('click', openBackgroundPicker);
-  document.getElementById('settingsBgPresetClear')?.addEventListener('click', () => setSetting('bgPreset', 'off'));
+  document.getElementById('settingsBgPresetClear')?.addEventListener('click', () => commitBackgroundImage({ source: 'preset', preset: 'off', src: '' }));
   initSettingsColorEditors();
   document.querySelectorAll('[data-note-colors-reset]').forEach(button => {
     button.addEventListener('click', () => Object.keys(NOTE_COLOR_VARS).forEach(category => setSetting(category, SETTINGS_DEFAULTS[category])));
@@ -2174,44 +2283,10 @@ function initSettingsPopup() {
     });
   });
 
-  // 배경 이미지 파일 첨부 (Iter 5-7). 원본은 브라우저에서 압축한 뒤 bgImageData에 저장.
-  const bgFileInput = document.getElementById('settingsBgImageFile');
-  if (bgFileInput) {
-    bgFileInput.addEventListener('change', () => {
-      const file = bgFileInput.files?.[0];
-      if (!file) return;
-      if (!/^image\//.test(file.type)) {
-        if (typeof showToast === 'function') showToast('이미지 파일만 첨부 가능합니다');
-        bgFileInput.value = '';
-        return;
-      }
-      if (file.size > BG_IMAGE_MAX_BYTES) {
-        const mb = (file.size / 1024 / 1024).toFixed(1);
-        if (typeof showToast === 'function') {
-          showToast(`파일이 너무 큽니다 (${mb}MB). 12MB 이하 파일만 첨부할 수 있습니다.`);
-        }
-        bgFileInput.value = '';
-        return;
-      }
-      compressBackgroundImage(file)
-        .then(dataUrl => handleBgImageFileLoad(dataUrl, file))
-        .catch(() => {
-          if (typeof showToast === 'function') {
-            showToast('이미지를 저장 가능한 크기로 압축하지 못했습니다. 더 작은 이미지를 선택하세요.');
-          }
-        });
-    });
-  }
-
-  // 배경 이미지 지우기 버튼 — URL과 file data 각각 분리해서 비움.
   document.querySelectorAll('[data-bg-clear]').forEach(btn => {
     btn.addEventListener('click', () => {
       const kind = btn.dataset.bgClear;
-      if (kind === 'url') setSetting('bgImageUrl', '');
-      else if (kind === 'data') {
-        if (setSetting('bgImageData', '') && bgFileInput) bgFileInput.value = '';
-      }
-      else if (kind === 'color') {
+      if (kind === 'color') {
         // 현재 모드의 기본 단색으로 복귀한다.
         setSetting('bgColor', SETTINGS_DEFAULTS[getSetting('uiMode') === 'light' ? 'lightBgColor' : 'bgColor']);
       }

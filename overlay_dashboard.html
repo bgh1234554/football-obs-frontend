@@ -755,38 +755,15 @@
 
         <div class="sp-section" data-sp-tab-section="background" hidden>
           <div class="sp-section-title">배경</div>
-          <div class="sp-row-label">
-            <span class="sp-label-sub">배경은 URL → 파일 첨부 → 기본 배경 → 팀 컬러 → 배경 색 순으로 우선 적용합니다.</span>
-          </div>
-          <div class="sp-row">
+          <div class="sp-row sp-background-image-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">URL</span>
-              <span class="sp-label-sub">이미지 주소를 넣습니다.</span>
-            </div>
-            <div class="sp-bg-input-cluster">
-              <input type="text" class="sp-text-input" data-settings-text="bgImageUrl" placeholder="https://example.com/bg.jpg" />
-              <button type="button" class="sp-secondary-btn" data-bg-clear="url">지우기</button>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">파일 첨부</span>
-              <span class="sp-label-sub">최대 12MB까지 첨부 가능합니다.<br>큰 이미지는 이미지 URL을 사용하세요.</span>
-            </div>
-            <div class="sp-bg-input-cluster">
-              <input type="file" id="settingsBgImageFile" accept="image/*" class="sp-file-input" />
-              <button type="button" class="sp-secondary-btn" data-bg-clear="data">지우기</button>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">기본 배경</span>
-              <span class="sp-label-sub">중계 화면에 사용할 배경 이미지를 고릅니다.</span>
+              <span class="sp-label-main">배경 이미지</span>
+              <span class="sp-label-sub">기본 배경, 내 사진 또는 이미지 URL을 선택합니다.</span>
             </div>
             <div class="sp-bg-preset-control">
               <div class="sp-bg-preset-current"><span id="settingsBgPresetThumb" aria-hidden="true"></span><span id="settingsBgPresetName"></span></div>
-              <button type="button" class="sp-secondary-btn" id="settingsBgPresetOpen">설정하기</button>
-              <button type="button" class="sp-secondary-btn sp-bg-preset-clear" id="settingsBgPresetClear" aria-label="기본 배경 지우기" title="기본 배경 지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></button>
+              <button type="button" class="sp-secondary-btn" id="settingsBgPresetOpen">변경</button>
+              <button type="button" class="sp-secondary-btn sp-bg-preset-clear" id="settingsBgPresetClear" aria-label="&#48176;&#44221; &#51060;&#48120;&#51648; &#51648;&#50864;&#44592;" title="&#48176;&#44221; &#51060;&#48120;&#51648; &#51648;&#50864;&#44592;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></button>
             </div>
             <select data-settings-select="bgPreset" aria-label="기본 배경" hidden>
               <option value="off">사용 안 함</option>
