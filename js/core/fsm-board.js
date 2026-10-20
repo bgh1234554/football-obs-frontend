@@ -1774,7 +1774,7 @@ function adjustScoreboardWidth() {
       panel.id = 'boardAggControls';
       panel.hidden = true;
       panel.setAttribute('role', 'group');
-      panel.setAttribute('aria-label', '합계 점수 입력');
+      panel.setAttribute('aria-label', '점수 크기·합계 점수 조절');
       const team = (side, label) => `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-agg-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><input type="number" min="0" step="1" inputmode="numeric" data-agg-input="${side}" aria-label="${label}"><button type="button" data-agg-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
       panel.innerHTML = `<button type="button" class="agg-quick-toggle" data-agg-action="toggle" aria-pressed="false"></button><div class="agg-quick-row">${team('home', '홈 기준')}${team('away', '원정 기준')}</div><div class="pso-quick-hint"><span class="agg-quick-total"></span><span>합계 = 기준값 + 현재 점수</span><span class="agg-quick-unsupported">이 점수판은 합계 점수를 표시하지 않습니다</span></div>`;
       board.append(panel);
@@ -1794,7 +1794,7 @@ function adjustScoreboardWidth() {
         commit();
       };
       main.addEventListener('click', event => {
-        // 합계 점수를 표시하지 않는 점수판(DFB-포칼 등)은 점수를 눌러도 메뉴를 열지 않는다.
+        // 합계 표시 지원 여부와 관계없이 숫자 크기는 직접 조절할 수 있습니다.
         if (!event.target.closest(targets) || board.dataset.fsmAggregateMenu !== 'true') return;
         setOpen(panel.hidden);
       });
@@ -1847,15 +1847,20 @@ function adjustScoreboardWidth() {
     const awayTotal = (Number(state.aggAwayBase) || 0) + (Number(state.awayScore) || 0);
     panel.querySelector('.agg-quick-total').textContent = `합계 ${homeTotal} : ${awayTotal}`;
     panel.classList.toggle('is-unsupported', !FSM_AGGREGATE_THEMES.includes(_currentTheme));
-    // 합계 점수를 표시하지 않는 점수판은 점수 칸을 버튼으로 노출하지 않고, 열려 있던 메뉴도 닫는다.
-    const menuEnabled = FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    // 합계 미지원 테마에서는 합계 입력만 숨기고 글자 배율은 유지합니다.
+    const menuEnabled = true;
     board.dataset.fsmAggregateMenu = String(menuEnabled);
+    if (!panel.querySelector('.fsm-scale-control')) panel.prepend(createScoreboardScaleControl('boardScale', '점수판 배율'));
+    panel.querySelector('.agg-quick-toggle').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    panel.querySelector('.agg-quick-row').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    panel.querySelector('.pso-quick-hint').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    syncScoreboardScaleControl(panel, 'boardScale');
     main.querySelectorAll('.team-score, .score-div, .total-score').forEach(node => {
       if (menuEnabled) {
-        node.setAttribute('title', '클릭하여 합계 점수 입력');
+        node.setAttribute('title', '클릭하여 점수판 배율·합계 점수 조절');
         node.tabIndex = 0;
         node.setAttribute('role', 'button');
-        node.setAttribute('aria-label', '합계 점수 입력 열기');
+        node.setAttribute('aria-label', '점수판 배율·합계 점수 조절 열기');
         node.setAttribute('aria-controls', panel.id);
         if (!node.hasAttribute('aria-expanded')) node.setAttribute('aria-expanded', 'false');
       } else {
@@ -1864,6 +1869,7 @@ function adjustScoreboardWidth() {
     });
     if (!menuEnabled) panel.hidden = true;
     if (panel.hidden) return;
+    if (window.fsmScaleDrag?.panel === panel) { window.syncFsmScaleDrag(); return; }
     // 점수 영역 가운데 아래(타이머 아래)에 열고, 좁은 점수 칸에서도 입력이 잘리지 않게 최소 폭을 둡니다.
     const boardRect = board.getBoundingClientRect();
     const scale = boardRect.width / board.offsetWidth || 1;
@@ -1984,6 +1990,72 @@ function syncFsmRedCardExposure(board) {
 }
 
 window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); syncFsmRedCardExposure(document.querySelector('.fsm-board')); revealFsmBoard(); };
+
+/** 기존 테마 탭의 점수판 배율을 클릭 메뉴에도 표시합니다. */
+function syncScoreboardScaleControl(root, key) {
+  const control = root.querySelector(`[data-scale-key="${key}"]`);
+  if (!control) return;
+  const value = Number(state.boardScale) || 75;
+  control.querySelector('input').value = value;
+  control.querySelector('output').textContent = `${value}%`;
+}
+
+/** 클릭 메뉴도 기존 점수판 배율 입력 경로를 사용합니다. */
+function createScoreboardScaleControl(key, label) {
+  const control = document.createElement('div');
+  control.className = 'fsm-scale-control';
+  control.dataset.scaleKey = key;
+  control.innerHTML = `<label><span>${label}</span><output></output></label><div><input type="range" min="50" max="100" step="1" aria-label="${label}"><button type="button">초기화</button></div>`;
+  const update = value => {
+    const source = document.getElementById('boardScaleRange');
+    source.value = value;
+    source.dispatchEvent(new Event('input', { bubbles: true }));
+    if (!window.fsmScaleDrag) syncAggQuickControls(document.querySelector('.fsm-board'));
+  };
+  control.querySelector('input').addEventListener('input', event => update(event.target.value));
+  control.querySelector('input').addEventListener('pointerdown', () => {
+    const panel = control.closest('#boardAggControls');
+    const stage = document.getElementById('boardStageInner');
+    const scale = stage.getBoundingClientRect().width / stage.offsetWidth || 1;
+    window.fsmScaleDrag = {
+      panel, rect: panel?.getBoundingClientRect(),
+      naturalHeight: document.getElementById('boardStageWrap').getBoundingClientRect().height / scale,
+      styles: panel ? ['left', 'top', 'width', 'transform', 'transformOrigin'].map(key => [key, panel.style[key]]) : []
+    };
+  });
+  const finishDrag = () => {
+    const drag = window.fsmScaleDrag;
+    if (!drag) return;
+    window.fsmScaleDrag = null;
+    drag.styles.forEach(([key, value]) => { drag.panel.style[key] = value; });
+    syncAggQuickControls(document.querySelector('.fsm-board'));
+    window.reapplyBoardScale?.();
+    persist();
+  };
+  window.addEventListener('pointerup', finishDrag);
+  control.querySelector('input').addEventListener('pointercancel', finishDrag);
+  control.querySelector('input').addEventListener('lostpointercapture', finishDrag);
+  control.querySelector('input').addEventListener('change', () => persist());
+  control.querySelector('button').addEventListener('click', () => { update(75); persist(); });
+  const wrapper = document.createElement('div');
+  wrapper.append(control);
+  syncScoreboardScaleControl(wrapper, key);
+  return control;
+}
+
+/** 배율을 바꾸는 동안 조작 중인 메뉴는 화면의 같은 위치·크기를 유지합니다. */
+window.syncFsmScaleDrag = () => {
+  const drag = window.fsmScaleDrag;
+  if (!drag?.panel) return;
+  const board = document.querySelector('.fsm-board');
+  const bounds = board.getBoundingClientRect();
+  const scale = bounds.width / board.offsetWidth || 1;
+  Object.assign(drag.panel.style, {
+    left: `${(drag.rect.left - bounds.left) / scale}px`,
+    top: `${(drag.rect.top - bounds.top) / scale}px`,
+    width: `${drag.rect.width}px`, transformOrigin: '0 0', transform: `scale(${1 / scale})`
+  });
+};
 
 if (document.fonts) {
   let fontRenderRaf = 0;

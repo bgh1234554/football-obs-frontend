@@ -961,7 +961,14 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .theme-color-editor .sp-color-code { margin-left: 0 !important; }
 
 .team-color-dialog > button { color: var(--ui-text, #e5e7eb); background: var(--ui-control-surface, #19273e); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1882); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-#scoreboardTeamEditMenu { display: flex; gap: 4px; width: max-content; min-width: 0; }
+#scoreboardTeamEditMenu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 260px; min-width: 0; }
+#scoreboardTeamEditMenu .fsm-scale-control { grid-column: 1 / -1; }
+.fsm-scale-control { padding: 8px; font-size: 13px; color: inherit; }
+.fsm-scale-control label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-weight: 700; }
+.fsm-scale-control > div { display: flex; align-items: center; gap: 8px; }
+.fsm-scale-control input[type="range"] { min-width: 0; flex: 1; width: 140px; accent-color: currentColor; cursor: pointer; }
+.fsm-scale-control button { flex: none; padding: 4px 8px; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+#boardAggControls [hidden] { display: none !important; }
 
 /* ??? ?? ??? ?? ??? ???? ?? ?? ??? ????. */
 .team-color-dialog { position: fixed; inset: auto; margin: 0; padding: 12px; width: max-content; min-width: 0; max-width: calc(100vw - 24px); }

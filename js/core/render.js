@@ -948,16 +948,27 @@
    * @returns {void} boardStageWrap.style.height를 필요할 때만 변경한다.
    */
   function syncBoardStageHeight(){
+    // 대시보드만 드래그 중 주변 패널 높이를 유지합니다.
+    // 카메라 뷰는 기존처럼 점수판 배율에 따라 피치 높이를 즉시 갱신합니다.
+    if (window.fsmScaleDrag && document.getElementById('page-main-small')?.classList.contains('active')) return;
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
     // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
     // 타이머 편집기와 프리셋 목록도 아래 패널 위에 겹치므로 높이 측정에서 제외한다.
     const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden]), #clockEditor.active')];
-    quickMenus.forEach(menu => { menu.style.display = 'none'; });
-    const naturalH = boardStageInner.scrollHeight;
-    quickMenus.forEach(menu => { menu.style.display = ''; });
+    const dragging = window.fsmScaleDrag;
+    if (!dragging) quickMenus.forEach(menu => { menu.style.display = 'none'; });
+    const naturalH = dragging ? dragging.naturalHeight : boardStageInner.scrollHeight;
+    if (!dragging) quickMenus.forEach(menu => { menu.style.display = ''; });
     const height = (naturalH * appliedBoardScale) + 'px';
-    if (boardStageWrap.style.height !== height) boardStageWrap.style.height = height;
+    if (boardStageWrap.style.height !== height) {
+      boardStageWrap.style.height = height;
+      // 피치가 이미 고정 높이이면 부모가 커져도 자체 ResizeObserver는 울리지 않습니다.
+      // 카메라 뷰의 기존 저장 비율 계산을 다시 실행해 줄었던 높이도 복원합니다.
+      if (document.getElementById('page-main-big')?.classList.contains('active')) {
+        window.scheduleLineupViewportFit?.();
+      }
+    }
   }
   /**
    * 사용자가 선택한 백분율 배율에 터치 전술판의 화면 폭 제한을 반영한다.
@@ -977,7 +988,12 @@
     syncBoardStageHeight();
     if(boardScaleLabel) boardScaleLabel.textContent = pct;
     if(boardScaleRange) boardScaleRange.value = pct;
+    document.querySelectorAll('.fsm-scale-control').forEach(control => {
+      control.querySelector('input').value = pct;
+      control.querySelector('output').textContent = `${pct}%`;
+    });
     syncBoardPosition();
+    window.syncFsmScaleDrag?.();
     window.syncBelarusBoundaryPixelGrid?.();
     window.syncEkstraklasaBoundaryPixelGrid?.();
   }
@@ -1129,8 +1145,8 @@
   boardScaleRange?.addEventListener('input', e=>{
     state.boardScale = Number(e.target.value);
     applyBoardScale(state.boardScale);
-    persist();
   });
+  boardScaleRange?.addEventListener('change', () => persist());
 
   $('boardScaleReset')?.addEventListener('click', ()=>{
     state.boardScale = 75;
