@@ -103,6 +103,7 @@
  * 아래 함수별 주석에는 식별 키, 저장 복원, 경기별 회귀 사례와 세부 조건을 추가로 설명한다.
  */
 function evTimeTypeIs(ev, type) { return String(ev?.type || '').toLowerCase() === type.toLowerCase(); }
+/** 사유·상세의 대소문자와 공백·구분자 차이를 무시하고 승부차기로 명시된 이벤트인지 판별한다. */
 function evTimeIsShootout(ev) {
   return [ev?.comments, ev?.detail].some(value => String(value || '').toLowerCase().replace(/[\s_-]+/g, '') === 'penaltyshootout');
 }
@@ -452,6 +453,7 @@ function evTimelineCutoff(position) {
   return Number(position) + 0.000001;
 }
 
+/** 내부 타임라인 위치를 분·추가시간 또는 휴식 구간 이름으로 표시한다. 원본 이벤트는 변경하지 않는다. */
 function evTimelinePositionLabel(position) {
   const minute = Math.floor(Number(position));
   const extra = Math.round((Number(position) - minute) * 100);
@@ -461,16 +463,6 @@ function evTimelinePositionLabel(position) {
   return extra > 0 ? `${minute}+${extra}′` : `${minute}′`;
 }
 
-/**
- * matchInfo/events로부터 각 구간 경계(45/90/105/120)를 실제로 지나 다음 구간이 이어졌는지
- * 판정한다. 구간 마커와 교체 경계 보정이 같은 기준을 사용한다.
- *   - reachedHalftime  : status가 HT 이후로 진행됐으면(HT/2H/ET1/ET2/PSO/FT).
- *   - extraTimePlayed  : 연장 진행 근거가 있거나 다음 구간 전 휴식(BT)에 들어간 경우.
- *   - reachedEt2       : 연장 후반에 도달했거나 연장 진행 근거가 있는 종료/승부차기 상태.
- *   - hadPenalties     : status가 PSO이거나 승부차기 스코어가 존재하는 경우.
- * 승부차기 상태·스코어만으로는 연장전 진행을 증명하지 않는다. 정규시간 뒤 곧바로
- * 승부차기로 가는 대회도 있으므로 연장 상태, 본 시간, 일반 이벤트의 시간을 함께 확인한다.
- */
 /** BT 응답의 elapsed가 0/null이어도 휴식 구간을 판별한다.
  * 이벤트의 본 시간만 사용한다: 90+15는 연장 105분의 근거가 아니다.
  * 연장 진행 근거가 없으면 정규 후반 종료(90분) 휴식으로 본다.
@@ -486,6 +478,16 @@ function evBreakElapsed(matchInfo, events = []) {
   return elapsed > 105 ? 120 : elapsed > 90 ? 105 : 90;
 }
 
+/**
+ * matchInfo/events로부터 각 구간 경계(45/90/105/120)를 실제로 지나 다음 구간이 이어졌는지
+ * 판정한다. 구간 마커와 교체 경계 보정이 같은 기준을 사용한다.
+ *   - reachedHalftime  : status가 HT 이후로 진행됐으면(HT/2H/ET1/ET2/PSO/FT).
+ *   - extraTimePlayed  : 연장 진행 근거가 있거나 다음 구간 전 휴식(BT)에 들어간 경우.
+ *   - reachedEt2       : 연장 후반에 도달했거나 연장 진행 근거가 있는 종료/승부차기 상태.
+ *   - hadPenalties     : status가 PSO이거나 승부차기 스코어가 존재하는 경우.
+ * 승부차기 상태·스코어만으로는 연장전 진행을 증명하지 않는다. 정규시간 뒤 곧바로
+ * 승부차기로 가는 대회도 있으므로 연장 상태, 본 시간, 일반 이벤트의 시간을 함께 확인한다.
+ */
 function evComputePeriodFlags(matchInfo, events = []) {
   const hasShootoutEvents = Array.isArray(events) && events.some(evTimeIsShootout);
   const info = matchInfo || {}; // hasShootoutEvents만으로 통과한 경우 matchInfo가 없을 수 있음

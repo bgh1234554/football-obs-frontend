@@ -27,6 +27,39 @@ const { openPage, settle } = require('../tactics/helpers');
       await page.locator('#team-score-left').click();
       await settle(page);
       assert.equal(await panel.isVisible(), true, `${theme}: opens on score click`);
+      const scoreRange = panel.locator('[data-scale-key="boardScale"] input');
+      await scoreRange.fill('90');
+      await settle(page);
+      assert.equal(await page.evaluate(() => state.boardScale), 90);
+      assert.equal(await page.locator('#boardScaleRange').inputValue(), '90');
+      await page.screenshot({ path: `screenshots/tests/score-scale-${theme}.png` });
+      await panel.locator('.fsm-scale-control button').click();
+      assert.equal(await scoreRange.inputValue(), '75');
+      // 실제 포인터 드래그 중 메뉴가 움직이거나 숨겨져 range 조작이 끊기면 안 됩니다.
+      await page.evaluate(() => { state.manualMode = true; activatePage('main-small'); });
+      await settle(page);
+      const sliderBox = await scoreRange.boundingBox();
+      const menuBox = await panel.boundingBox();
+      const heightBeforeDrag = await wrapHeight();
+      await page.evaluate(() => {
+        window.scaleStorageWrites = 0;
+        window.scaleOriginalSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(...args) { window.scaleStorageWrites++; return window.scaleOriginalSetItem.apply(this, args); };
+      });
+      await page.mouse.move(sliderBox.x + sliderBox.width / 2, sliderBox.y + sliderBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(sliderBox.x + sliderBox.width * .85, sliderBox.y + sliderBox.height / 2, { steps: 12 });
+      const duringDrag = await panel.boundingBox();
+      assert(Math.abs(duringDrag.x - menuBox.x) < 1 && Math.abs(duringDrag.y - menuBox.y) < 1, 'menu stays fixed while dragging');
+      assert(Math.abs(duringDrag.width - menuBox.width) < 1, 'menu keeps its width while dragging');
+      assert(Number(await scoreRange.inputValue()) > 88, 'native range drag reaches the pointer');
+      assert.equal(await wrapHeight(), heightBeforeDrag, 'drag does not resize the surrounding panels');
+      assert.equal(await page.evaluate(() => window.scaleStorageWrites), 0, 'drag does not serialize state on every movement');
+      await page.mouse.up();
+      assert((await wrapHeight()) > heightBeforeDrag, 'final height applied after release');
+      assert(await page.evaluate(() => window.scaleStorageWrites > 0), 'final scale persisted');
+      await page.evaluate(() => { Storage.prototype.setItem = window.scaleOriginalSetItem; });
+      await panel.locator('.fsm-scale-control button').click();
       await page.locator('#team-score-right').click();
       assert.equal(await panel.isHidden(), true, `${theme}: toggles closed`);
       await page.locator('.score-div').click({ force: true });
@@ -94,8 +127,7 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await panel.isHidden(), true, `${theme}: outside click closes`);
       console.log('PASS', theme, 'aggregate quick controls');
     }
-    // 합계 점수를 표시하지 않는 점수판(DFB-포칼 등)은 점수를 눌러도(마우스·키보드) 메뉴가 열리지 않고,
-    // 점수 칸이 버튼처럼 보이지 않는다. 합계 표시를 켜 둬도 점수판에 나타나지 않는다.
+    // 합계 미지원 테마도 크기 조절은 열리지만 합계 입력과 표시는 숨깁니다.
     for (const theme of ['pl', 'dfb']) {
       await page.evaluate(theme => { state.aggEnabled = true; applyTheme(theme, null); }, theme);
       await page.waitForFunction(() => !pendingThemeLink);
@@ -113,21 +145,75 @@ const { openPage, settle } = require('../tactics/helpers');
         tabIndex: document.getElementById('team-score-left').getAttribute('tabindex'),
         totalShown: [...document.querySelectorAll('.fsm-board .total-score')].some(node => getComputedStyle(node).display !== 'none')
       }));
-      assert.equal(await panel.isHidden(), true, `${theme}: aggregate menu stays closed ${JSON.stringify(blocked)}`);
-      assert.notEqual(blocked.cursor, 'pointer', `${theme}: score not shown as clickable`);
-      assert.equal(blocked.role, null, `${theme}: score has no button role`);
-      assert.equal(blocked.tabIndex, null, `${theme}: score not focusable`);
+      assert.equal(await panel.isVisible(), true, `${theme}: size menu available`);
+      assert.equal(await panel.locator('.agg-quick-toggle').isHidden(), true);
+      assert.equal(blocked.role, 'button', `${theme}: size control accessible`);
+      assert.equal(blocked.tabIndex, '0');
       assert.equal(blocked.totalShown, false, `${theme}: aggregate hidden even when enabled`);
-      console.log('PASS', theme, 'aggregate menu blocked on unsupported board');
+      console.log('PASS', theme, 'size controls available without aggregate controls');
+      await page.keyboard.press('Escape');
     }
     // 지원하는 점수판으로 돌아오면 다시 열린다.
     await page.evaluate(() => applyTheme('cl', null));
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => { render(); fsmBoardRender(); });
     await settle(page);
-    await page.locator('#team-score-left').click();
+    await page.mouse.click(1900, 1000);
+    await page.locator('#team-score-left').focus();
+    await page.keyboard.press('Enter');
     await settle(page);
     assert.equal(await page.locator('#boardAggControls').isVisible(), true, 'cl: menu opens again after leaving unsupported board');
+    await page.keyboard.press('Escape');
+    for (const side of ['home', 'away']) {
+      const name = page.locator(`#${side}Card .team-name .text`);
+      const before = await page.locator('#board').evaluate(node => node.getBoundingClientRect().width);
+      await page.locator(`#${side}Card`).click();
+      const menu = page.locator('#scoreboardTeamEditMenu');
+      await menu.locator('input[type="range"]').fill('70');
+      await settle(page);
+      assert(await page.locator('#board').evaluate((node, before) => node.getBoundingClientRect().width < before, before));
+      assert.equal(await page.locator('#boardScaleRange').inputValue(), '70');
+      assert.equal(await menu.locator('output').textContent(), '70%');
+      await page.screenshot({ path: `screenshots/tests/team-scale-${side}.png` });
+      await menu.locator('.fsm-scale-control button').click();
+      assert.equal(await menu.locator('input').inputValue(), '75');
+      await page.keyboard.press('Escape');
+    }
+    // 카메라 뷰는 최적화 전처럼 드래그 도중에도 높이가 변하고 원래 배율에서 복원됩니다.
+    await page.evaluate(() => { activatePage('main-big'); state.boardScale = 50; reapplyBoardScale(); });
+    await page.mouse.click(1900, 1000);
+    await page.locator('#team-score-left').click();
+    const cameraRange = page.locator('#boardAggControls input[type="range"]');
+    const cameraBox = await cameraRange.boundingBox();
+    const cameraHeight = await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight);
+    await page.mouse.move(cameraBox.x + 7, cameraBox.y + cameraBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(cameraBox.x + cameraBox.width - 7, cameraBox.y + cameraBox.height / 2, { steps: 15 });
+    assert((await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight)) > cameraHeight, 'camera height updates during drag');
+    await page.mouse.move(cameraBox.x + 7, cameraBox.y + cameraBox.height / 2, { steps: 15 });
+    await page.mouse.up();
+    assert.equal(await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight), cameraHeight, 'camera height restored at 50%');
+    assert.equal(await page.evaluate(() => {
+      const original = window.addEventListener;
+      let added = 0;
+      window.addEventListener = function(type, ...args) {
+        if (type === 'pointerup') added++;
+        return original.call(this, type, ...args);
+      };
+      try {
+        for (let i = 0; i < 10; i++) createScoreboardScaleControl('boardScale', 'Scale');
+      } finally { window.addEventListener = original; }
+      return added;
+    }), 0, 'recreating controls must not add global pointerup listeners');
+    await page.evaluate(() => {
+      // 패널 없는 팀명 메뉴에서도 종료 후 재배율 적용과 저장이 실행되어야 합니다.
+      state.boardScale = 65;
+      window.fsmScaleDrag = { panel: null, styles: [['left', '0px']] };
+      window.dispatchEvent(new PointerEvent('pointerup'));
+    });
+    assert.equal(await page.evaluate(() => window.fsmScaleDrag), null);
+    assert.equal(await page.locator('#boardScaleRange').inputValue(), '65');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('obs-scoreboard-state-v2')).boardScale), 65);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

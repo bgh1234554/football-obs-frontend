@@ -498,6 +498,7 @@
 /* 합계 점수 빠른 입력: 점수 영역 클릭 시 점수판 아래에 열리며 승부차기 빠른 입력과 같은 모양을 쓴다. */
 .board.fsm-board[data-fsm-aggregate-menu="true"] .scoreboard-main :is(.team-score, .score-div, .total-score) { cursor: pointer; }
 #boardAggControls { z-index: 102; padding: 4px 4px 6px; box-sizing: border-box; }
+#boardAggControls .fsm-scale-control button { height: 28px; padding: 0 8px; font-size: 13px; }
 #boardAggControls .agg-quick-toggle { display: block; width: calc(100% - 4px); }
 #boardAggControls .agg-quick-toggle[aria-pressed="true"] { background: var(--fsm-pso-background); color: var(--fsm-pso-ink); }
 #boardAggControls .agg-quick-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 2px; }

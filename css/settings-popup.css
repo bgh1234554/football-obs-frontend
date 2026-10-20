@@ -961,7 +961,14 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .theme-color-editor .sp-color-code { margin-left: 0 !important; }
 
 .team-color-dialog > button { color: var(--ui-text, #e5e7eb); background: var(--ui-control-surface, #19273e); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1882); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-#scoreboardTeamEditMenu { display: flex; gap: 4px; width: max-content; min-width: 0; }
+#scoreboardTeamEditMenu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 260px; min-width: 0; }
+#scoreboardTeamEditMenu .fsm-scale-control { grid-column: 1 / -1; }
+.fsm-scale-control { padding: 8px; font-size: 13px; color: inherit; }
+.fsm-scale-control label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-weight: 700; }
+.fsm-scale-control > div { display: flex; align-items: center; gap: 8px; }
+.fsm-scale-control input[type="range"] { min-width: 0; flex: 1; width: 140px; accent-color: currentColor; cursor: pointer; }
+.fsm-scale-control button { flex: none; padding: 4px 8px; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+#boardAggControls [hidden] { display: none !important; }
 
 /* ??? ?? ??? ?? ??? ???? ?? ?? ??? ????. */
 .team-color-dialog { position: fixed; inset: auto; margin: 0; padding: 12px; width: max-content; min-width: 0; max-width: calc(100vw - 24px); }
@@ -995,3 +1002,42 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 /* 설명이 길어도 오른쪽 선택 버튼(OFF/위/아래 등)이 줄어들어 글자가 세로로 꺾이지 않게 한다. */
 .sp-row > .sp-radio-cluster:not(.sp-radio-cluster-wrap) { flex: 0 0 auto; }
 .sp-row > .sp-radio-cluster:not(.sp-radio-cluster-wrap) .sp-radio-btn { white-space: nowrap; }
+
+/* 제목과 스위치를 모으고 오른쪽에 현재 설정의 예시를 표시합니다. */
+.sp-row.sp-row-with-example {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto var(--sp-example-width, 200px);
+  gap: 12px;
+}
+.sp-setting-example {
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+  box-sizing: border-box;
+}
+.sp-live-example { width: 100%; border: 0; display: block; pointer-events: none; }
+.sp-preview-empty { padding: 6px 0; color: var(--muted); font-size: 11px; }
+.sp-example-group[data-example-group="camera"] > .sp-setting-example { justify-content: center; }
+.sp-example-group[data-example-group="notes"] > .sp-setting-example { align-self: stretch; position: relative; }
+.sp-example-group[data-example-group="notes"] .sp-live-example { position: absolute; inset: 0; height: 100% !important; }
+.sp-row-with-example > .sp-setting-example { align-self: center; }
+.sp-row.sp-example-below { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+.sp-example-below > .sp-setting-example { grid-column: 1 / -1; }
+.sp-example-group { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 12px; }
+.sp-example-controls { min-width: 0; }
+.sp-example-controls .sp-row { gap: 10px; }
+.sp-example-group > .sp-setting-example { margin: 0; gap: 0; }
+.sp-example-controls .sp-rating-color-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .sp-example-group { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .sp-example-group > .sp-setting-example { flex-direction: column; align-items: stretch; }
+}
+@media (max-width: 560px) {
+  .sp-row.sp-row-with-example { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+  .sp-setting-example { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; }
+}

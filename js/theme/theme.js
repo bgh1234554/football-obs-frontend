@@ -296,6 +296,7 @@
       <button type="button" class="pm-btn" data-team-edit="color">팀컬러 수정</button>
     </div>`;
     const menu = document.getElementById('scoreboardTeamEditMenu');
+    menu.prepend(createScoreboardScaleControl('boardScale', '점수판 배율'));
     pmPositionPopup(menu, x, y);
     menu.querySelector('[data-team-edit="name"]').onclick = () => {
       showTeamNicknameEditor(scoreboardTeamIdentity(side), x, y);
