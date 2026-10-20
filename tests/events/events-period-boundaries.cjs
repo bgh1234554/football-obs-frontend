@@ -187,4 +187,55 @@ for (const elapsed of [0, null, undefined, 90]) {
 assert.equal(context.evBreakElapsed({ status: 'BT', elapsed: 105 }), 105);
 assert.equal(context.evBreakElapsed({ status: 'FT', elapsed: 90 }), null);
 assert.deepEqual(Array.from(evBuildPeriodMarkers({ status: 'BT', elapsed: 0 }, [{ elapsed: 101 }]), m => m.label), ['하프타임', '후반종료', '연장 전반 종료']);
+// 정규시간 직후 승부차기는 연장전 종료 마커를 만들지 않습니다.
+for (const status of ['PSO', 'P', 'PEN']) {
+  const info = { status, elapsed: 90, homePenaltyScore: 0, awayPenaltyScore: 0 };
+  const labels = Array.from(evBuildPeriodMarkers(info, [{ ...shootout, elapsed: 90 }]), m => m.label);
+  assert.deepEqual(labels, status === 'PEN' ? ['하프타임', '후반종료', '풀타임'] : ['하프타임', '후반종료']);
+  assert.deepEqual(Array.from(evActiveBoundaryElapsedSet(info, [shootout])), [45, 90]);
+}
+assert.deepEqual(Array.from(evBuildPeriodMarkers({ status: 'PSO', elapsed: 90 }, [{ elapsed: 90, extra: 20, type: 'Card' }]), m => m.label), ['하프타임', '후반종료']);
+assert.deepEqual(Array.from(evBuildPeriodMarkers({ status: 'PSO', elapsed: 120 }, [shootout]), m => m.label), ['하프타임', '후반종료', '연장 전반 종료', '연장 후반 종료']);
+const penaltyFinish = { status: 'FT', elapsed: 90, homePenaltyScore: 4, awayPenaltyScore: 3 };
+const penaltyMarkers = evBuildPeriodMarkers(penaltyFinish, [shootout]);
+assert.deepEqual(Array.from(penaltyMarkers, m => m.label), ['하프타임', '후반종료', '풀타임']);
+assert.equal(evMergeWithPeriodMarkers([shootout], penaltyMarkers)[0].marker.label, '풀타임');
+// 경기 1639263: FT/120 응답과 달리 일반 이벤트는 90+2, 승부차기는 모두 90분입니다.
+const cupEvents = [{ elapsed: 90, extra: 2, type: 'Card', detail: 'Yellow Card' },
+  { ...shootout, elapsed: 90 }, { ...shootout, elapsed: 90, detail: 'Missed Penalty' }];
+for (const status of ['PSO', 'P', 'PEN', 'FT']) {
+  const info = { fixtureId: 1639263, status, elapsed: 120, homePenaltyScore: 4, awayPenaltyScore: 2 };
+  const labels = Array.from(evBuildPeriodMarkers(info, cupEvents), m => m.label);
+  assert.deepEqual(labels, ['PEN', 'FT'].includes(status) ? ['하프타임', '후반종료', '풀타임'] : ['하프타임', '후반종료']);
+  assert.deepEqual(Array.from(evActiveBoundaryElapsedSet(info, cupEvents)), [45, 90]);
+}
+// 일반 연장 이벤트나 실제 연장 상태가 있으면 90분 승부차기 기록만으로 연장을 지우지 않습니다.
+assert(context.evComputePeriodFlags({ status: 'FT', elapsed: 120 }, [...cupEvents, { elapsed: 108, type: 'Card' }]).extraTimeEvidence);
+assert(context.evComputePeriodFlags({ status: 'ET2', elapsed: 110 }, cupEvents).extraTimeEvidence);
+// 승부차기 표기는 detail/comments와 띄어쓰기 차이를 허용하되 일반 페널티 골과는 구별합니다.
+for (const field of ['detail', 'comments']) {
+  for (const text of ['Penalty Shootout', 'penaltyshootout', ' PENALTY SHOOTOUT ']) {
+    const shot = { elapsed: 90, type: 'Goal', [field]: text };
+    assert(context.evTimeIsShootout(shot));
+    assert(!context.evComputePeriodFlags({ status: 'FT', elapsed: 120 }, [shot]).extraTimeEvidence);
+    assert(context.evComputePeriodFlags({ status: 'FT', elapsed: 90 }, [{ ...shot, elapsed: 120 }]).extraTimeEvidence);
+    assert.deepEqual(Array.from(evBuildPeriodMarkers({ status: 'PSO', elapsed: 90 }, [{ ...shot, elapsed: 120 }]), m => m.label),
+      ['하프타임', '후반종료', '연장 전반 종료', '연장 후반 종료']);
+  }
+}
+assert(!context.evTimeIsShootout({ detail: 'Penalty', type: 'Goal' }));
+// 카라바오컵 응답: 킥마다 91~100분으로 증가해도 일반 경기는 90+4에 끝났습니다.
+const carabaoEvents = [{ elapsed: 90, extra: 4, type: 'Card', detail: 'Yellow Card' },
+  { elapsed: 90, extra: 4, type: 'subst' },
+  ...[91, 92, 93, 94, 94, 95, 96, 96, 97, 98, 98, 99, 100, 100].map(elapsed => ({ ...shootout, elapsed }))];
+for (const status of ['PSO', 'FT']) {
+  for (const raw of [carabaoEvents, carabaoEvents.slice().reverse(), [...carabaoEvents, { ...shootout, elapsed: 121 }]]) {
+    const info = { status, elapsed: 120, homePenaltyScore: 7, awayPenaltyScore: 6 };
+    assert.deepEqual(Array.from(evBuildPeriodMarkers(info, raw), m => m.label),
+      status === 'FT' ? ['하프타임', '후반종료', '풀타임'] : ['하프타임', '후반종료']);
+    assert.deepEqual(Array.from(evActiveBoundaryElapsedSet(info, raw)), [45, 90]);
+  }
+}
+// 실제 연장 후 승부차기도 킥 시각이 121분부터 증가하는 형식을 지원합니다.
+assert(context.evComputePeriodFlags({ status: 'PSO', elapsed: 120 }, [121, 122, 123].map(elapsed => ({ ...shootout, elapsed }))).extraTimeEvidence);
 console.log('PASS: fixture 1583654, conservative defaults, neighbor inference/retraction, reverse/malformed order, clusters, raw/edited events, history priority/migration, reloads, extra time, FT and shootouts.');

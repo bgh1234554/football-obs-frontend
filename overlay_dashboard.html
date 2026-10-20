@@ -39,6 +39,10 @@
   <!-- API-SPORTS 위젯 -->
   <script type="module" crossorigin src="https://widgets.api-sports.io/3.1.0/widgets.js"></script>
 
+  <script>
+    // 첫 화면부터 저장된 모드로 그려 설정 창이 어둡게 번쩍이지 않도록 한다.
+    try { document.documentElement.dataset.uiMode = JSON.parse(localStorage.getItem('obs.settings.v3') || '{}').uiMode === 'light' ? 'light' : 'dark'; } catch { document.documentElement.dataset.uiMode = 'dark'; }
+  </script>
   <link rel="stylesheet" href="css/core/variables.css"/>
   <link rel="stylesheet" href="css/core/board.css"/>
   <link rel="stylesheet" href="css/core/layout.css"/>
@@ -69,6 +73,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.5.1/gsap.min.js"></script>
   <script src="https://code.jquery.com/jquery-4.0.0.min.js" integrity="sha256-OaVG6prZf4v69dPg6PhVattBXkcOWQB62pdZ3ORyrao=" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="css/core/event-icons.css">
+<link rel="stylesheet" href="css/core/appearance.css">
 </head>
 <body>
   <!-- ========== 보드 스테이지 (항상 표시) ========== -->
@@ -141,6 +146,8 @@
           <button class="ce-preset-btn" data-min="45">45:00</button>
           <button class="ce-preset-btn" data-min="90">90:00</button>
           <button class="ce-preset-btn" data-min="105">105:00</button>
+          <div class="ce-presets-title">시간 프리셋</div>
+          <div class="ce-presets-hint" role="note"></div>
         </div>
       </div>
         </div>
@@ -194,8 +201,8 @@
     </div>
     <div class="sidebar-body">
       <!-- 탭 버튼 (수직) -->
-      <button class="tab sidebar-tab active" data-page="main-big">메인(캠 큼) <span class="tab-key">1</span></button>
-      <button class="tab sidebar-tab" data-page="main-small">메인(캠 작음) <span class="tab-key">2</span></button>
+      <button class="tab sidebar-tab active" data-page="main-big">카메라 뷰 <span class="tab-key">1</span></button>
+      <button class="tab sidebar-tab" data-page="main-small">대시보드 뷰 <span class="tab-key">2</span></button>
       <button class="tab sidebar-tab" data-page="theme">테마 <span class="tab-key">3</span></button>
       <button class="tab sidebar-tab" data-page="schedule">일정 확인 <span class="tab-key">4</span></button>
       <button class="tab sidebar-tab" data-page="tactics">전술판 <span class="tab-key">5</span></button>
@@ -406,8 +413,8 @@
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">라인업 분할 (캠 큼)</span>
-              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다. OFF면 캠 작음과 같은 한 피치로 표시합니다.</span>
+              <span class="sp-label-main">라인업 분할 (카메라 뷰)</span>
+              <span class="sp-label-sub">ON이면 홈·원정을 위아래 피치로 나눕니다. OFF면 대시보드 뷰와 같은 한 피치로 표시합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -454,7 +461,7 @@
             </div>
           </div>
 
-          <div class="sp-section-title">캠 큰 화면 라인업 표시</div>
+          <div class="sp-section-title">카메라 뷰 라인업 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">골 / 어시스트 이모티콘</span>
@@ -548,7 +555,7 @@
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">패널 배경 색상</span>
-              <span class="sp-label-sub">이벤트·스탯·명단·팬 반응·경기 정보 패널에 공통 적용됩니다.</span>
+              <span class="sp-label-sub">이벤트·스탯·명단·팬 반응·경기 정보 패널에 공통 적용됩니다. 선택한 기준색은 유지하고 라이트모드에서는 같은 색 계열의 밝은 톤을 사용합니다.</span>
             </div>
             <div class="sp-bg-input-cluster">
               <select class="sp-select" id="panelColorPreset" aria-label="패널 배경 색상 프리셋">
@@ -569,11 +576,11 @@
               <button type="button" class="sp-secondary-btn" id="panelColorResetBtn">초기화</button>
             </div>
           </div>
-          <div class="sp-section-title">캠 큰 메뉴 우측 하단 패널 전환</div>
+          <div class="sp-section-title">카메라 뷰 우측 하단 패널 전환</div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">패널 자동 전환</span>
-              <span class="sp-label-sub">캠 큰 메뉴에서 우측 하단 스탯/이벤트/HTH/교체명단 패널 등을 순서대로 자동 전환합니다.</span>
+              <span class="sp-label-sub">카메라 뷰에서 우측 하단 스탯/이벤트/HTH/교체명단 패널 등을 순서대로 자동 전환합니다.</span>
             </div>
             <div class="sp-toggle-cluster">
               <span class="sp-toggle-side" data-side="off">OFF</span>
@@ -610,7 +617,7 @@
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeBenchAway" checked/><span class="sp-switch-slider"></span></span>
                   <span class="sp-mini-toggle-label">원정 교체</span>
                 </label>
-                <label class="sp-mini-toggle-item" title="캠 큰 메뉴의 양 팀 미출전 선수 명단 표시">
+                <label class="sp-mini-toggle-item" title="카메라 뷰의 양 팀 미출전 선수 명단 표시">
                   <span class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="statCycleModeInjuries" checked/><span class="sp-switch-slider"></span></span>
                   <span class="sp-mini-toggle-label">미출전 선수 명단</span>
                 </label>
@@ -646,15 +653,15 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
-          <div class="sp-section-title">캠 큰 메뉴 패널 구성</div>
+          <div class="sp-section-title">카메라 뷰 패널 구성</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">캠 큰 화면 패널 표시</span>
-              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다. 팬 반응 패널의 경우에는 캠 작음 메뉴에도 적용됩니다</span>
+              <span class="sp-label-main">카메라 뷰 패널 표시</span>
+              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다. 팬 반응 패널의 경우에는 대시보드 뷰에도 적용됩니다</span>
             </div>
             <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap sp-big-panel-toggles">
               <label class="sp-mini-toggle-item"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigLineupVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">라인업</span></label>
-              <label class="sp-mini-toggle-item" title="캠 작은 화면의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
+              <label class="sp-mini-toggle-item" title="대시보드 뷰의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
               <label class="sp-mini-toggle-item" title="스탯·이벤트·상대전적·교체 명단·경기 정보가 표시되는 패널"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigInfoVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">경기 패널</span></label>
             </div>
           </div>
@@ -750,33 +757,61 @@
 
         <div class="sp-section" data-sp-tab-section="background" hidden>
           <div class="sp-section-title">배경</div>
-          <div class="sp-row">
+          <div class="sp-row sp-background-image-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">URL</span>
-              <span class="sp-label-sub">이미지 주소를 넣습니다. 배경은 URL → 파일 첨부 → 팀 컬러 → 배경 색 순으로 우선 적용합니다.</span>
+              <span class="sp-label-main">배경 이미지</span>
+              <span class="sp-label-sub">기본 배경, 내 사진 또는 이미지 URL을 선택합니다.</span>
             </div>
-            <div class="sp-bg-input-cluster">
-              <input type="text" class="sp-text-input" data-settings-text="bgImageUrl" placeholder="https://example.com/bg.jpg" />
-              <button type="button" class="sp-secondary-btn" data-bg-clear="url">지우기</button>
+            <div class="sp-bg-preset-control">
+              <div class="sp-bg-preset-current"><span id="settingsBgPresetThumb" aria-hidden="true"></span><span id="settingsBgPresetName"></span></div>
+              <button type="button" class="sp-secondary-btn" id="settingsBgPresetOpen">변경</button>
+              <button type="button" class="sp-secondary-btn sp-bg-preset-clear" id="settingsBgPresetClear" aria-label="&#48176;&#44221; &#51060;&#48120;&#51648; &#51648;&#50864;&#44592;" title="&#48176;&#44221; &#51060;&#48120;&#51648; &#51648;&#50864;&#44592;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg></button>
             </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">파일 첨부</span>
-              <span class="sp-label-sub">최대 12MB까지 첨부 가능합니다. 큰 이미지는 이미지 URL을 사용하세요.</span>
-            </div>
-            <div class="sp-bg-input-cluster">
-              <input type="file" id="settingsBgImageFile" accept="image/*" class="sp-file-input" />
-              <button type="button" class="sp-secondary-btn" data-bg-clear="data">지우기</button>
-            </div>
+            <select data-settings-select="bgPreset" aria-label="기본 배경" hidden>
+              <option value="off">사용 안 함</option>
+              <optgroup label="어두운 배경">
+                <option value="stadium">야간 경기장</option>
+                <option value="rainy-stadium">비 오는 경기장</option>
+                <option value="abstract">네이비·민트</option>
+                <option value="emerald">에메랄드 피치</option>
+                <option value="charcoal">차콜 그래픽</option>
+                <option value="slate-line">슬레이트 라인</option>
+                <option value="burgundy">버건디 라이트</option>
+                <option value="deep-ocean">딥 오션</option>
+                <option value="copper-black">코퍼 블랙</option>
+                <option value="midnight-purple">미드나이트 퍼플</option>
+                <option value="steel-blue">스틸 블루</option>
+                <option value="forest-mist">포레스트 미스트</option>
+                <option value="red-tunnel">레드 터널</option>
+                <option value="amber-floodlight">앰버 플러드라이트</option>
+                <option value="ink-wave">잉크 웨이브</option>
+                <option value="black-mesh">블랙 메쉬</option>
+              </optgroup>
+              <optgroup label="밝은 배경">
+                <option value="stadium-day">낮 경기장</option>
+                <option value="misty-pitch">안개 낀 피치</option>
+                <option value="ivory-paper">아이보리 페이퍼</option>
+                <option value="warm-stone">웜 스톤</option>
+                <option value="sky-glass">스카이 글라스</option>
+                <option value="sage-studio">세이지 스튜디오</option>
+                <option value="sand-dunes">샌드 웨이브</option>
+                <option value="lavender-haze">라벤더 헤이즈</option>
+                <option value="silver-contour">실버 컨투어</option>
+                <option value="peach-coral">피치 코랄</option>
+                <option value="ice-mint">아이스 민트</option>
+                <option value="blueprint-light">블루프린트</option>
+                <option value="paper-collage">페이퍼 콜라주</option>
+              </optgroup>
+            </select>
           </div>
           <div class="sp-row">
             <div class="sp-row-label">
               <span class="sp-label-main">팀 컬러 배경</span>
-              <span class="sp-label-sub">URL·첨부 이미지가 없으면 홈·원정 팀 배경색으로 그라데이션을 표시합니다. 끄면 배경 색을 사용합니다.</span>
+              <span class="sp-label-sub">URL·첨부 이미지·기본 배경을 사용하지 않을 때 적용합니다. 무드는 어두운 바탕에 팀 색을 은은하게 더합니다.</span>
             </div>
             <select class="sp-select" data-settings-select="bgTeamDirection" aria-label="팀 컬러 배경">
               <option value="off">OFF</option>
+              <option value="mood">무드</option>
               <option value="horizontal">좌우</option>
               <option value="vertical">상하</option>
             </select>
@@ -835,7 +870,17 @@
               <option value="natural">어두운 초록 (키잉 위험)</option>
             </select>
           </div>
-
+          <div class="sp-section-title">앱 테마</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">앱 테마</span>
+              <span class="sp-label-sub">메뉴와 정보 패널의 밝기를 바꿉니다. 선택한 패널 색은 모드에 맞는 밝은 톤으로 표시하며, 배경 이미지는 따로 선택할 수 있습니다.</span>
+            </div>
+            <select class="sp-select" data-settings-select="uiMode" aria-label="화면 모드">
+              <option value="dark">다크모드</option>
+              <option value="light">라이트모드</option>
+            </select>
+          </div>
           <div class="sp-section-title">투명도</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -883,9 +928,9 @@
               <span class="sp-label-sub">불러오기 후 자동으로 열릴 메인 화면입니다.</span>
             </div>
             <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="big">캠 큼</span>
+              <span class="sp-toggle-side" data-side="big">카메라 뷰</span>
               <label class="sp-switch"><input type="checkbox" data-settings-cat="mainPage" /><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="small">캠 작음</span>
+              <span class="sp-toggle-side" data-side="small">대시보드 뷰</span>
             </div>
           </div>
           <div class="sp-row">
@@ -956,7 +1001,7 @@
             <div class="sp-row">
               <div class="sp-row-label">
                 <span class="sp-label-main">패널 크기 초기화</span>
-                <span class="sp-label-sub">드래그로 조정한 패널 크기(캠 큰 우측 패널 높이·너비, 캠 작은 칼럼 비율, 라인업 패널 크기)를 기본값으로 되돌립니다.</span>
+                <span class="sp-label-sub">드래그로 조정한 패널 크기(카메라 뷰 우측 패널 높이·너비, 대시보드 뷰 칼럼 비율, 라인업 패널 크기)를 기본값으로 되돌립니다.</span>
               </div>
               <button type="button" class="sp-secondary-btn sp-secondary-btn-danger" id="layoutResetBtn">초기화</button>
             </div>
@@ -1009,10 +1054,10 @@
   <div id="copy-toast" class="copy-toast">복사했습니다</div>
   <!-- ========== 페이지 영역 ========== -->
   <div class="pages">
-    <!-- MAIN 캠 큰 버전 -->
+    <!-- MAIN 카메라 뷰 버전 -->
     <div id="page-main-big" class="page active">
       <div class="layout-wrap layout-big">
-        <!-- 라인업 (메인 캠 큼) — 메인 캠 작음과 같은 데이터/구조 공유 -->
+        <!-- 라인업 (메인 카메라 뷰) — 메인 대시보드 뷰와 같은 데이터/구조 공유 -->
         <div class="lp lp-lineup">
           <div class="dp-panel" data-dp-role="lineup">
             <div class="dp-title">선발 라인업</div>
@@ -1021,7 +1066,7 @@
         </div>
         <!-- 캠 -->
         <div class="lp lp-cam-big" aria-hidden="true"></div>
-        <!-- 팬 반응 + 경기 스탯 — 캠 큼 페이지의 lp-col은 팬 반응(상)/스탯(하) 두 슬롯으로 분할.
+        <!-- 팬 반응 + 경기 스탯 — 카메라 뷰 페이지의 lp-col은 팬 반응(상)/스탯(하) 두 슬롯으로 분할.
              팬 반응은 dp-panel + dp-title 구조로 경기 스탯과 동일하게 맨 윗줄에 제목 + 구분선. -->
         <div class="lp-col">
           <div class="lp lp-chat-big">
@@ -1049,7 +1094,7 @@
       </div>
     </div>
 
-    <!-- MAIN 캠 작은 버전 -->
+    <!-- MAIN 대시보드 뷰 버전 -->
     <div id="page-main-small" class="page">
       <div class="layout-wrap layout-small">
         <!-- 이벤트 (문자중계 타임라인) + 경기 스탯 — events-panel.js / stats-panel.js가 fixture 데이터로 채움 -->
@@ -1063,7 +1108,7 @@
           <div class="lp lp-stat-s"><div data-stat-panel></div></div>
         </div>
 
-        <!-- 라인업 (메인 캠 작음) — 메인 캠 큼과 같은 데이터/구조 공유 -->
+        <!-- 라인업 (메인 대시보드 뷰) — 메인 카메라 뷰와 같은 데이터/구조 공유 -->
         <div class="lp lp-lineup-s">
           <div class="dp-panel" id="lineupPanel" data-dp-role="lineup">
             <div class="dp-title">선발 라인업</div>
@@ -1093,7 +1138,7 @@
                 <div data-bench-coach="home"><span class="mi-label dp-label">감독</span><span class="dp-coach-name">-</span></div>
                 <div data-bench-coach="away"><span class="mi-label dp-label">감독</span><span class="dp-coach-name">-</span></div>
               </div>
-              <!-- 주심/대회/경기장/킥오프 — 캠 큰 메뉴 경기 정보 패널(mi-row)과 동일한 한 줄씩
+              <!-- 주심/대회/경기장/킥오프 — 카메라 뷰 경기 정보 패널(mi-row)과 동일한 한 줄씩
                    좌측 라벨/우측 값 레이아웃 재사용. 후보명단 쪽 공간이 남으면 이 블록이 flex-grow로
                    그 공간을 흡수(css/panels/bench-injury.css: #benchPanel .dp-bench-info). -->
               <div class="dp-bench-info">
@@ -1124,7 +1169,7 @@
           </div>
         </div>
 
-        <!-- 팬 반응 — 캠 큼 페이지 lp-chat-big과 동일하게 dp-panel + dp-title 구조로 윗줄 제목 + 구분선. -->
+        <!-- 팬 반응 — 카메라 뷰 페이지 lp-chat-big과 동일하게 dp-panel + dp-title 구조로 윗줄 제목 + 구분선. -->
         <div class="lp lp-cam-chat">
           <div class="dp-panel">
             <div class="dp-title">팬 반응</div>
@@ -1269,24 +1314,24 @@
       <span class="td-alpha-value td-token-size-value" data-settings-slider-value="tacticsTokenScale">100%</span>
     </div>
     <!-- 포메이션 선택 묶음 — 세로 화면 전체화면에선 팀 컬러 점이 붙은 필드 카드로 표시(--td-team-accent는 tacticsRenderTokens가 주입) -->
-    <div class="td-fm-pair td-fm-home"><span class="td-fm-tag" style="font-size:11px;color:#64748b;font-weight:700;">HOME</span>
-    <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-2-1-3">4-2-1-3</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-2-1-2">4-1-2-1-2</option><option value="4-1-3-2">4-1-3-2</option></select></div>
+    <div class="td-fm-pair td-fm-home"><span class="td-fm-tag" style="font-size:11px;color:var(--muted,#64748b);font-weight:700;">HOME</span>
+    <select id="tactics-home-fm" onchange="tacticsApplyFm()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-2-1-3">4-2-1-3</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-2-1-2">4-1-2-1-2</option><option value="4-1-3-2">4-1-3-2</option></select></div>
     <div class="td-topbar-sep" style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
     <!-- 포메이션 선택 묶음 — 세로 화면 전체화면에선 팀 컬러 점이 붙은 필드 카드로 표시(--td-team-accent는 tacticsRenderTokens가 주입) -->
-    <div class="td-fm-pair td-fm-away"><span class="td-fm-tag" style="font-size:11px;color:#64748b;font-weight:700;">AWAY</span>
-    <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-2-1-3">4-2-1-3</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-2-1-2">4-1-2-1-2</option><option value="4-1-3-2">4-1-3-2</option></select></div>
+    <div class="td-fm-pair td-fm-away"><span class="td-fm-tag" style="font-size:11px;color:var(--muted,#64748b);font-weight:700;">AWAY</span>
+    <select id="tactics-away-fm" onchange="tacticsApplyFm()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 7px;font-size:12px;"><option value="4-4-2">4-4-2</option><option value="4-3-3">4-3-3</option><option value="4-2-3-1">4-2-3-1</option><option value="4-2-1-3">4-2-1-3</option><option value="4-1-2-3">4-1-2-3</option><option value="3-5-2">3-5-2</option><option value="3-1-4-2">3-1-4-2</option><option value="3-5-1-1">3-5-1-1</option><option value="5-4-1">5-4-1</option><option value="4-5-1">4-5-1</option><option value="3-4-3">3-4-3</option><option value="5-3-2">5-3-2</option><option value="4-1-4-1">4-1-4-1</option><option value="4-4-1-1">4-4-1-1</option><option value="3-4-2-1">3-4-2-1</option><option value="4-3-2-1">4-3-2-1</option><option value="4-2-2-2">4-2-2-2</option><option value="5-2-3">5-2-3</option><option value="3-3-1-3">3-3-1-3</option><option value="3-4-1-2">3-4-1-2</option><option value="4-3-1-2">4-3-1-2</option><option value="4-1-2-1-2">4-1-2-1-2</option><option value="4-1-3-2">4-1-3-2</option></select></div>
     <div class="td-topbar-sep" style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
-    <button id="btn-tactics-manual-names" class="td-topbar-secondary" onclick="handleTacticsNamesBtnClick()" title="경기 ID가 없을 때 포지션별로 선수 이름을 직접 입력합니다." style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 이름 입력</button>
-    <button class="td-btn-reset" onclick="tacticsReset()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 원위치</button>
+    <button id="btn-tactics-manual-names" class="td-topbar-secondary" onclick="handleTacticsNamesBtnClick()" title="경기 ID가 없을 때 포지션별로 선수 이름을 직접 입력합니다." style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 이름 입력</button>
+    <button class="td-btn-reset" onclick="tacticsReset()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">선수 원위치</button>
     <div class="td-topbar-sep" style="width:1px;height:18px;background:rgba(255,255,255,.12);"></div>
     <!-- 되돌리기/다시 실행/전체 지우기 — 그리기 도구 패널(<< 로 접힘) 안이 아니라 상단바에 항상 노출.
          태블릿 등 물리 키보드가 없는 환경에선 Ctrl+Z/Ctrl+Y를 쓸 수 없으므로 버튼이 유일한 접근 경로. -->
-    <button id="td-undo-btn" onclick="tacticsDrawUndo()" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:3px 9px;font-size:15px;line-height:1;cursor:pointer;">↺</button>
-    <button id="td-redo-btn" onclick="tacticsDrawRedo()" title="다시 실행 (Ctrl+Y)" aria-label="다시 실행" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:3px 9px;font-size:15px;line-height:1;cursor:pointer;">↻</button>
-    <button class="td-btn-clear" onclick="tacticsDrawClear()" title="그려진 도형(선/화살표/도형 등)을 전체 지웁니다." style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">전체 지우기</button>
-    <label class="td-topbar-secondary" style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;margin-left:4px;"><input type="checkbox" id="tactics-show-names" checked> 이름 표시</label>
-    <label class="td-topbar-secondary" style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;"><input type="checkbox" id="tactics-show-ball"> 공 표시</label>
-    <label class="td-topbar-secondary" style="display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;cursor:pointer;" title="체크 시 같은 라인에 묶인 선수들이 함께 이동합니다."><input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지</label>
+    <button id="td-undo-btn" onclick="tacticsDrawUndo()" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:3px 9px;font-size:15px;line-height:1;cursor:pointer;">↺</button>
+    <button id="td-redo-btn" onclick="tacticsDrawRedo()" title="다시 실행 (Ctrl+Y)" aria-label="다시 실행" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:3px 9px;font-size:15px;line-height:1;cursor:pointer;">↻</button>
+    <button class="td-btn-clear" onclick="tacticsDrawClear()" title="그려진 도형(선/화살표/도형 등)을 전체 지웁니다." style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;">전체 지우기</button>
+    <label class="td-topbar-secondary" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted,#94a3b8);cursor:pointer;margin-left:4px;"><input type="checkbox" id="tactics-show-names" checked> 이름 표시</label>
+    <label class="td-topbar-secondary" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted,#94a3b8);cursor:pointer;"><input type="checkbox" id="tactics-show-ball"> 공 표시</label>
+    <label class="td-topbar-secondary" style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted,#94a3b8);cursor:pointer;" title="체크 시 같은 라인에 묶인 선수들이 함께 이동합니다."><input type="checkbox" id="tactics-formation-lock" checked="true"> 대형 유지</label>
     <!-- 풀스크린 전용 — 타임라인/이벤트 패널, 그리기 도구 패널을 우측에서 슬라이드로 여는 토글.
          일반 모드에선 두 패널이 항상 인라인으로 보이므로 숨김(css/tactics/tactics-timeline.css). -->
     <div id="td-fullscreen-panel-toggles">
@@ -1298,12 +1343,12 @@
     </div>
     <!-- 전체화면 전용 — 상단바 전체를 접어 피치가 화면을 다 쓰게 함(tacticsSetTopbarHidden). 그 외에는 CSS로 숨김. -->
     <button id="td-topbar-hide-btn" type="button" onclick="tacticsSetTopbarHidden(true)">메뉴 숨기기</button>
-    <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⤢ 전체화면 (\)</button>
+    <button id="btn-tactics-fullscreen" onclick="tacticsToggleFullscreen()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⤢ 전체화면 (\)</button>
     <!-- 피치 가로/세로 전환 — 세로는 홈 골대가 아래, 원정 골대가 위(라인업 포메이션 렌더링과 같은 방향).
          방향은 localStorage에 저장돼 태블릿을 실제로 세로로 돌려도(뷰포트 회전) 그대로 유지된다(js/tactics/tactics.js). -->
-    <button id="btn-tactics-orientation" type="button" onclick="tacticsToggleOrientation()" aria-pressed="false" title="전술판 피치를 가로/세로로 전환합니다." style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⟳ 세로로 보기</button>
+    <button id="btn-tactics-orientation" type="button" onclick="tacticsToggleOrientation()" aria-pressed="false" title="전술판 피치를 가로/세로로 전환합니다." style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">⟳ 세로로 보기</button>
     <!-- 터치 기기 배치 전용 — 전술판 탭 위쪽 점수판(방송용 영역) 보이기/숨기기. 전체화면/마우스 기기에선 CSS로 숨김. -->
-    <button id="btn-tactics-board-toggle" type="button" onclick="tacticsToggleBoardVisible()" aria-pressed="false" title="점수판 숨기기" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">점수판 숨기기</button>
+    <button id="btn-tactics-board-toggle" type="button" onclick="tacticsToggleBoardVisible()" aria-pressed="false" title="점수판 숨기기" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff20;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;">점수판 숨기기</button>
   </div>
   <!-- 상단바를 접었을 때(전체화면)만 보이는 펼치기 버튼 — .tactics-viewport 기준 오른쪽 위 -->
   <button id="td-topbar-show-btn" type="button" onclick="tacticsSetTopbarHidden(false)" aria-label="메뉴 보이기" title="메뉴 보이기"></button>
@@ -1340,7 +1385,7 @@
         <svg id="tactics-draw-layer" style="position:absolute;inset:0;width:100%;height:100%;z-index:20;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
           <defs></defs>
         </svg>
-        <!-- 팀 이름 라벨 — 캠 큰 메뉴 라인업 팀 chip(.dp-lineup-team-main)과 같은 팀 컬러 pill 디자인(팀명 + 포메이션).
+        <!-- 팀 이름 라벨 — 카메라 뷰 라인업 팀 chip(.dp-lineup-team-main)과 같은 팀 컬러 pill 디자인(팀명 + 포메이션).
              색상은 tacticsRenderTokens가 --td-team-accent/--td-team-text로 주입(css/tactics/tactics-timeline.css). -->
         <div class="td-team-label-wrap td-team-label-home" style="position:absolute;top:8px;left:12px;z-index:5;pointer-events:none;">
           <span id="tactics-home-label" class="td-team-label-name">홈팀</span>
@@ -1386,28 +1431,28 @@
     <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
       <!-- 풀스크린 모드 전용 닫기 버튼 — 패널 우상단 absolute 위치. 일반 모드에선 CSS로 숨김. -->
       <button id="td-drawtools-close" type="button" title="그리기 도구 닫기" aria-label="닫기">×</button>
-      <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
+      <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
       <div class="td-drawtools-size-control">
         <label for="tactics-drawtools-scale-slider" class="td-alpha-label">도구 크기</label>
         <span class="td-alpha-value" data-settings-slider-value="tacticsDrawtoolsScale">150%</span>
         <input id="tactics-drawtools-scale-slider" class="td-alpha-slider" type="range" min="100" max="200" step="5" data-settings-slider="tacticsDrawtoolsScale" aria-label="전체화면 그리기 도구 크기" title="손을 놓으면 그리기 도구 크기가 적용됩니다">
       </div>
       <button id="td-tool-select" onclick="tacticsDrawSetTool('select')" style="background:#1e40af;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▶ 선택</button>
-      <button id="td-tool-pencil" onclick="tacticsDrawSetTool('pencil')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✎ 펜</button>
-      <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
-      <button id="td-tool-dashed" onclick="tacticsDrawSetTool('dashed')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅ 점선</button>
-      <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 실선화살표</button>
-      <button id="td-tool-dashed-arrow" onclick="tacticsDrawSetTool('dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅➡ 점선화살표</button>
-      <button id="td-tool-curve-arrow" onclick="tacticsDrawSetTool('curve-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒➡ 곡선실선화살표</button>
-      <button id="td-tool-curve-dashed-arrow" onclick="tacticsDrawSetTool('curve-dashed-arrow')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒┅➡ 곡선점선화살표</button>
-      <button id="td-tool-box" onclick="tacticsDrawSetTool('box')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▢ 박스</button>
-      <button id="td-tool-circle" onclick="tacticsDrawSetTool('circle')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">○ 원</button>
-      <button id="td-tool-polygon" onclick="tacticsDrawSetTool('polygon')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">⬡ 다각형</button>
-      <button id="td-tool-line-connect" onclick="tacticsDrawSetTool('line-connect')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="드래그로 선수를 선택한 뒤 순서대로 직선 연결합니다.">⊨ 라인</button>
-      <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
-      <button id="td-tool-laser" onclick="tacticsDrawSetTool('laser')" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="클릭하지 않고 마우스만 움직여도 됩니다">🔴 레이저</button>
+      <button id="td-tool-pencil" onclick="tacticsDrawSetTool('pencil')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✎ 펜</button>
+      <button id="td-tool-line" onclick="tacticsDrawSetTool('line')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">— 실선</button>
+      <button id="td-tool-dashed" onclick="tacticsDrawSetTool('dashed')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅ 점선</button>
+      <button id="td-tool-arrow" onclick="tacticsDrawSetTool('arrow')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">➡ 실선화살표</button>
+      <button id="td-tool-dashed-arrow" onclick="tacticsDrawSetTool('dashed-arrow')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">┅➡ 점선화살표</button>
+      <button id="td-tool-curve-arrow" onclick="tacticsDrawSetTool('curve-arrow')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒➡ 곡선실선화살표</button>
+      <button id="td-tool-curve-dashed-arrow" onclick="tacticsDrawSetTool('curve-dashed-arrow')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="그린 후 선택모드에서 클릭 → 방향 반전">⌒┅➡ 곡선점선화살표</button>
+      <button id="td-tool-box" onclick="tacticsDrawSetTool('box')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">▢ 박스</button>
+      <button id="td-tool-circle" onclick="tacticsDrawSetTool('circle')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">○ 원</button>
+      <button id="td-tool-polygon" onclick="tacticsDrawSetTool('polygon')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">⬡ 다각형</button>
+      <button id="td-tool-line-connect" onclick="tacticsDrawSetTool('line-connect')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="드래그로 선수를 선택한 뒤 순서대로 직선 연결합니다.">⊨ 라인</button>
+      <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
+      <button id="td-tool-laser" onclick="tacticsDrawSetTool('laser')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="클릭하지 않고 마우스만 움직여도 됩니다">🔴 레이저</button>
       <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
-      <div class="tactics-draw-subtitle" style="font-size:10px;color:#475569;font-weight:600;">색상</div>
+      <div class="tactics-draw-subtitle" style="font-size:10px;color:var(--muted);font-weight:600;">색상</div>
       <div class="tactics-draw-swatches" style="display:flex;flex-wrap:wrap;gap:5px;">
         <button data-clr="#ffffff" onclick="tacticsDrawSetColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;background:#ffffff;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="흰색"></button>
         <button data-clr="#facc15" onclick="tacticsDrawSetColor('#facc15')" style="width:22px;height:22px;border-radius:50%;background:#facc15;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="노랑"></button>
@@ -1421,8 +1466,8 @@
         <button data-clr="#92400e" onclick="tacticsDrawSetColor('#92400e')" style="width:22px;height:22px;border-radius:50%;background:#92400e;border:2px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="갈색"></button>
       </div>
       <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
-      <button onclick="tacticsDrawUndo()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">되돌리기</button>
-      <button onclick="tacticsDrawClear()" style="background:#1e293b;color:#e5e7eb;border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">전체 지우기</button>
+      <button onclick="tacticsDrawUndo()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">되돌리기</button>
+      <button onclick="tacticsDrawClear()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">전체 지우기</button>
     </div>
   </div>
 </div><!-- /tactics-viewport -->
@@ -1572,7 +1617,7 @@
   css/lineup/lineup-manual.css     — 수동 입력 모달 + 그리드 모드, 전술판 선수 이름 모달
   css/player/player-menu.css       — 선수 컨텍스트 메뉴, ID 연결 팝업
   css/player/player-search.css     — 선수 검색 후보 선택기
-  css/panels/hth-panel.css         — 상대전적 패널, 캠 작음 패널 모드 버튼
+  css/panels/hth-panel.css         — 상대전적 패널, 대시보드 뷰 패널 모드 버튼
   css/panels/team-fixtures-panel.css — 최근·예정 경기 패널
   css/settings-popup.css           — 설정 모달 (사이드바 톱니버튼, 백드롭, 토글 스위치, 확장 섹션)
   css/core/fsm-fonts.css           — FSM 점수판 @font-face (테마 CSS에는 선언하지 않음)
@@ -1618,10 +1663,10 @@
   js/settings/nickname-csv.js      — 닉네임 CSV 가져오기/내보내기 (따옴표·줄바꿈·UTF-8 BOM 처리)
   js/player/player-search.js       — 선수 ID 연결·빈 슬롯 입력 공용 후보 선택기
   js/player/player-id-resolve.js   — id=0 선수 ID 연결 (localStorage v2 스토어, override 일괄 적용)
-  js/lineup/lineup-resize.js       — 캠 큼 라인업/칼럼 드래그 리사이즈 + localStorage 저장
+  js/lineup/lineup-resize.js       — 카메라 뷰 라인업/칼럼 드래그 리사이즈 + localStorage 저장
   js/data/stats-config.js          — 경기 스탯 라벨 한글 매핑 + 표시 순서 + 자동 스와이프 간격 (사용자 편집용)
   js/data/scoreaxis-standings-embed-map.js — ScoreAxis 리그 순위 위젯 embed 코드 맵 (tools/scoreaxis-league-embed-codes.json에서 생성)
-  js/panels/scoreaxis-standings-panel.js   — ScoreAxis 순위표 위젯 패널 (캠 작음 이벤트 영역 + 캠 큼 스탯 순환)
+  js/panels/scoreaxis-standings-panel.js   — ScoreAxis 순위표 위젯 패널 (대시보드 뷰 이벤트 영역 + 카메라 뷰 스탯 순환)
   js/panels/event-comments.js      — 이벤트 코멘트 한글 매핑 (Foul/Tripping 등) + translateEventComment()
   js/core/event-time.js            — 공통 이벤트 시간·구간 판정, 관측 이력, 경계 마커
   js/panels/events-panel.js        — 이벤트 타임라인 패널 렌더 (lp-events-s + lp-stat 공용)
@@ -1630,7 +1675,7 @@
   js/panels/hth-panel.js           — 상대전적 패널 렌더 (/api/hth 호출 + lp-stat/lp-events-s 연동)
   js/panels/team-fixtures-panel.js — 양 팀 최근·예정 경기 패널 (팀별 요청 공유, 늦은 응답 폐기)
   js/panels/stats-panel.js         — 경기 스탯 패널 렌더 (lp-stat + lp-stat-s, 페이지네이션 + 자동 스와이프)
-  js/panels/stat-cycle.js          — 캠 큰 lp-stat 패널 사이클 (스탯/이벤트/HTH/교체 명단/순위표 + 자동 전환)
+  js/panels/stat-cycle.js          — 카메라 뷰 lp-stat 패널 사이클 (스탯/이벤트/HTH/교체 명단/순위표 + 자동 전환)
   js/tactics/tactics-timeline.js   — 전술판 타임라인 패널 (교체/퇴장 기반 시간대별 라인업 시뮬레이션)
   js/core/fsm-board.js             — FSM 점수판 (리그별 테마 매핑/적용, 폭·팀명 맞춤, 합계 점수, 승부차기)
   js/core/init.js                  — 초기화, 첫 render, 이벤트 핸들러 등록

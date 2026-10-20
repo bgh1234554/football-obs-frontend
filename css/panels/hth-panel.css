@@ -11,7 +11,7 @@
   height: 100%;
   min-height: 0;
   font-family: var(--font-family);
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
   padding: 4px 8px 6px;
   box-sizing: border-box;
 }
@@ -25,17 +25,17 @@
 .hth-row {
   display: flex;
   align-items: stretch;
-  border-bottom: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.07);
 }
 
 .hth-bar {
   flex: 0 0 4px;
-  background: rgba(255,255,255,.35);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.35);
 }
 .hth-bar-home .hth-bar { background: var(--home-bg, #4d7c0f); }
 .hth-bar-away .hth-bar { background: var(--away-bg, #b91c1c); }
-.hth-bar-draw .hth-bar { background: rgba(255,255,255,.6); }
-.hth-bar-unknown .hth-bar { background: rgba(255,255,255,.18); }
+.hth-bar-draw .hth-bar { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.6); }
+.hth-bar-unknown .hth-bar { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18); }
 
 .hth-content {
   flex: 1;
@@ -104,7 +104,7 @@
 
 .hth-team-name {
   font-size: 12px;
-  color: rgba(255,255,255,.72);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .72));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -132,25 +132,25 @@
   min-width: 18px;
   text-align: center;
 }
-.hth-score-win  { color: #ffffff; }
-.hth-score-draw { color: rgba(255,255,255,.5); }
-.hth-score-loss { color: rgba(255,255,255,.32); }
+.hth-score-win  { color: var(--ui-text, #ffffff); }
+.hth-score-draw { color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5)); }
+.hth-score-loss { color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .32)); }
 
 .hth-score-sep {
-  color: rgba(255,255,255,.35);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .35));
   font-weight: 400;
   padding: 0 3px;
 }
 
 .hth-pk-score {
   font-size: 11px;
-  color: rgba(255,255,255,.5);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
   margin-top: 2px;
   display: flex;
   align-items: center;
   gap: 1px;
 }
-.hth-pk-sep { color: rgba(255,255,255,.3); padding: 0 1px; }
+.hth-pk-sep { color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .3)); padding: 0 1px; }
 
 .hth-meta-row {
   display: flex;
@@ -177,7 +177,7 @@
 }
 .hth-meta {
   font-size: 10px;
-  color: rgba(255,255,255,.42);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .42));
   line-height: 1.3;
   display: block;
   word-break: break-all;
@@ -202,22 +202,22 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
   border-radius: 4px;
-  color: rgba(255,255,255,.64);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .64));
   cursor: pointer;
   transition: background 120ms, border-color 120ms, color 120ms, opacity 120ms;
 }
 .small-panel-mode-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
 .small-panel-mode-btn:hover:not(:disabled) {
-  background: rgba(255,255,255,.18);
-  color: #fff;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
+  color: var(--ui-text, #fff);
 }
 .small-panel-mode-btn.is-active {
-  background: rgba(255,255,255,.18);
-  border-color: rgba(255,255,255,.36);
-  color: #fff;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
+  border-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.36);
+  color: var(--ui-text, #fff);
 }
 .small-panel-mode-btn:disabled {
   opacity: .32;
@@ -233,10 +233,10 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.15);
   border-radius: 4px;
-  color: rgba(255,255,255,.72);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .72));
   cursor: pointer;
   transition: background 120ms;
 }
@@ -244,7 +244,7 @@
 .hth-ev-toggle-btn svg { width: 14px; height: 14px; display: block; flex-shrink: 0; }
 .hth-toggle-btn:hover,
 .hth-ev-toggle-btn:hover {
-  background: rgba(255,255,255,.18);
-  color: #fff;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
+  color: var(--ui-text, #fff);
 }
 

@@ -66,7 +66,7 @@
     const colorInput=$(colorId); if(!colorInput) return;
     const hexInput=document.createElement('input'); hexInput.type='text'; hexInput.id=colorId+'Hex'; hexInput.placeholder='#RRGGBB'; hexInput.style.width='92px'; hexInput.style.marginLeft='6px'; hexInput.value=state.colors[key]||colorInput.value||'#000000';
     // bootstrap 스타일 적용
-    hexInput.style.background='#0b1220'; hexInput.style.color='#e5e7eb'; hexInput.style.border='1px solid #ffffff20'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
+    hexInput.style.background='var(--ui-control-surface, #0b1220)'; hexInput.style.color='var(--ui-text, #e5e7eb)'; hexInput.style.border='1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), .125)'; hexInput.style.borderRadius='10px'; hexInput.style.padding='4px 8px'; hexInput.style.height='36px';
     colorInput.insertAdjacentElement('afterend', hexInput);
     const editor = document.createElement('span');
     editor.className = 'theme-color-editor';

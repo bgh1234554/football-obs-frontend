@@ -1,0 +1,44 @@
+@import url('./result_style_SAUDI.css');
+
+/* 원본에서 글자와 압축 경계를 제외한 중앙 바탕의 대표색입니다. */
+.fsm-board .div-background { background: #1A1E1C; }
+#board.fsm-board[data-fsm-theme="singapore"] :is(#team-score-left, #team-score-right) {
+    position: relative; margin: 0; width: 56px; height: 48px;
+    background: transparent; color: #ffffff; font-size: 46px; z-index: 2;
+}
+#board.fsm-board[data-fsm-theme="singapore"] .score-div {
+    position: relative; width: 70px; height: 48px; background: transparent; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+}
+.fsm-board .epl-lion { width: 58px; height: 44px; padding: 0; object-fit: contain; }
+.fsm-board :is(.score-left, .score-right) { line-height: 1; transform: none; text-shadow: none; }
+
+/* 원본 중앙 114×34px의 적갈색 띠 두 묶음을 낮은 각도로 복원합니다.
+   칸마다 반복하지 않고 한 장으로 깔아 숫자·로고 사이에서도 사선이 이어집니다.
+   압축으로 번진 경계는 무늬로 굳히지 않고 벡터의 안티앨리어싱에 맡깁니다. */
+#board.fsm-board[data-fsm-theme="singapore"] .scoreboard-main::before {
+    content: ''; position: absolute; left: 50%; top: 0;
+    width: 182px; height: 48px; transform: translateX(-50%); z-index: 1; pointer-events: none;
+    background: #1A1E1C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 34' preserveAspectRatio='none'%3E%3Cpath fill='%232B0C10' d='M0 22 63 0h18L0 28ZM43 34 114 0v8L59 34Z'/%3E%3Cpath fill='%23330C13' d='M0 24 70 0h5L0 26ZM48 34 114 2v2L53 34Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+/* 팀명에는 반복 사선이 없습니다. 고유색 위에 넓고 부드러운 좌우·상하 명암만 얹습니다. */
+.fsm-board :is(.teams-left, .teams-right) {
+    background-image:
+        linear-gradient(to bottom, rgb(0 0 0 / 15%), transparent 18%, transparent 75%, rgb(0 0 0 / 12%)),
+        radial-gradient(ellipse at 12% 35%, rgb(255 255 255 / 10%), transparent 65%),
+        linear-gradient(to right, transparent, rgb(0 0 0 / 22%));
+}
+.fsm-board .teams-left { background-color: var(--fsm-home-primary-color); }
+.fsm-board .teams-right { background-color: var(--fsm-away-primary-color); }
+.fsm-board .team-logo { background: #f5f5f5; }
+.fsm-board .teams-left, .fsm-board .teams-right { border-radius: 0; }
+.fsm-board .team-name .text { text-shadow: 0 1px 2px rgb(0 0 0 / 20%); }
+.fsm-board #team-logo-left { border-radius: 14px 0 0 0; }
+.fsm-board #team-logo-right { border-radius: 0 14px 0 0; }
+
+.fsm-board .time { background: #FBFDFB; color: #000000; border-radius: 0 0 22px 22px; font-size: 24px; font-weight: 800; }
+.fsm-board .extra-time { background: #E60E0E; color: #ffffff; border-radius: 0 0 22px 0; }
+#board.fsm-board[data-fsm-theme="singapore"][data-fsm-aggregate="true"] .total-score {
+    min-width: 28px; padding: 0 2px; font-size: 28px; background: #1A1E1C; color: #ffffff;
+}

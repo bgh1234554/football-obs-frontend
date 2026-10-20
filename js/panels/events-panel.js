@@ -101,9 +101,9 @@ function evDetailIs(detail, target) {
   return String(detail || '').trim().toLowerCase() === String(target || '').trim().toLowerCase();
 }
 
-/** comments가 Penalty Shootout이면 elapsed가 잘못 들어와도 승부차기 시점으로 취급. */
+/** 승부차기 분류와 구간 판정은 detail/comments의 같은 표기 규칙을 사용합니다. */
 function evIsPenaltyShootoutEvent(ev) {
-  return String(ev?.comments || '').trim().toLowerCase() === 'penalty shootout';
+  return evTimeIsShootout(ev);
 }
 
 /**
@@ -960,6 +960,7 @@ function evMergeWithPeriodMarkers(eventsDesc, markers, activeBoundaryElapsedSet,
 function evCreateMarkerRow(marker) {
   const row = document.createElement('div');
   row.className = 'ev-row ev-period-marker';
+  row.dataset.evMarkerKey = `${marker.elapsed}:${marker.label}`;
 
   const lineBefore = document.createElement('span');
   lineBefore.className = 'ev-marker-line';

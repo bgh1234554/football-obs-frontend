@@ -1,0 +1,10 @@
+@import url('./result_style_RPL.css');
+
+/* RPL 배치를 유지하고 리그 로고를 점수판 높이 안에 맞춥니다. */
+.board.fsm-board[data-fsm-theme="erovnuli"] { --rpl-edge-color: #362B6D; }
+.fsm-board .teams-left, .fsm-board .teams-right { background: #362B6D; }
+.fsm-board .team-score, .fsm-board .score-div { color: #362B6D; }
+.fsm-board .epl-lion { width: 64px; height: 48px; padding: 4px; box-sizing: border-box; }
+.fsm-board .time { background: #06A6CD; color: #ffffff; }
+.fsm-board .extra-time { background: #EA208C; color: #ffffff; }
+.fsm-board .pso-main { background: #362B6D; color: #ffffff; }

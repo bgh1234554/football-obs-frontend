@@ -204,9 +204,11 @@
       return {
         rgb: styles.getPropertyValue('--info-panel-rgb').trim() || '11, 18, 32',
         alpha: styles.getPropertyValue('--panel-alpha').trim() || '1',
+        text: styles.getPropertyValue('--info-text').trim() || '#f0f0f0',
+        scheme: document.documentElement.dataset.infoTone === 'light' ? 'light' : 'dark',
       };
     } catch (err) {
-      return { rgb: '11, 18, 32', alpha: '1' };
+      return { rgb: '11, 18, 32', alpha: '1', text: '#f0f0f0', scheme: 'dark' };
     }
   }
 
@@ -216,15 +218,19 @@
    * @returns {string} CSS 문자열.
    */
   function buildFrameCss(surface) {
-    return ':root{--scoreaxis-panel-rgb:' + surface.rgb + ';--scoreaxis-panel-alpha:' + surface.alpha + '}'
-      + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:rgba(148,163,184,.5) transparent;}'
+    const light = surface.scheme === 'light';
+    const scrollbar = light ? 'rgba(70,76,85,.5)' : 'rgba(148,163,184,.5)';
+    const scrollbarHover = light ? 'rgba(70,76,85,.75)' : 'rgba(203,213,225,.62)';
+    return ':root{--scoreaxis-panel-rgb:' + surface.rgb + ';--scoreaxis-panel-alpha:' + surface.alpha + ';--scoreaxis-panel-text:' + surface.text + ';color-scheme:' + surface.scheme + '}'
+      + 'html,body{margin:0;padding:0;background:transparent;overflow:hidden;scrollbar-width:thin;scrollbar-color:' + scrollbar + ' transparent;}'
       + '*{box-sizing:border-box;}'
       + '.scoreaxis-widget,.scoreaxis-inner-widget{background-color:rgba(var(--scoreaxis-panel-rgb),var(--scoreaxis-panel-alpha))!important;}'
       + '.scoreaxis-inner-widget table,.scoreaxis-inner-widget thead,.scoreaxis-inner-widget tbody,.scoreaxis-inner-widget tr,.scoreaxis-inner-widget th,.scoreaxis-inner-widget td{background-color:transparent!important;}'
+      + '.scoreaxis-widget,.scoreaxis-inner-widget,.scoreaxis-inner-widget th,.scoreaxis-inner-widget td,.scoreaxis-inner-widget a{color:var(--scoreaxis-panel-text)!important;}'
       + '::-webkit-scrollbar{width:7px;height:7px;}'
       + '::-webkit-scrollbar-track{background:transparent;}'
-      + '::-webkit-scrollbar-thumb{background:rgba(148,163,184,.45);border-radius:999px;border:2px solid #0b1220;}'
-      + '::-webkit-scrollbar-thumb:hover{background:rgba(203,213,225,.62);}';
+      + '::-webkit-scrollbar-thumb{background:' + scrollbar + ';border-radius:999px;border:2px solid transparent;background-clip:padding-box;}'
+      + '::-webkit-scrollbar-thumb:hover{background:' + scrollbarHover + ';background-clip:padding-box;}';
   }
 
   const ROW_DENSITY = '1';

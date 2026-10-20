@@ -103,7 +103,9 @@
  * 아래 함수별 주석에는 식별 키, 저장 복원, 경기별 회귀 사례와 세부 조건을 추가로 설명한다.
  */
 function evTimeTypeIs(ev, type) { return String(ev?.type || '').toLowerCase() === type.toLowerCase(); }
-function evTimeIsShootout(ev) { return String(ev?.comments || '').trim().toLowerCase() === 'penalty shootout'; }
+function evTimeIsShootout(ev) {
+  return [ev?.comments, ev?.detail].some(value => String(value || '').toLowerCase().replace(/[\s_-]+/g, '') === 'penaltyshootout');
+}
 
 // ─── 구간 구분자 (하프타임/후반종료/연장전반종료/연장후반종료/풀타임) ───────────
 // API가 이런 경계를 별도 이벤트로 안 주기 때문에 matchInfo.status/elapsed 전이로
@@ -463,13 +465,11 @@ function evTimelinePositionLabel(position) {
  * matchInfo/events로부터 각 구간 경계(45/90/105/120)를 실제로 지나 다음 구간이 이어졌는지
  * 판정한다. 구간 마커와 교체 경계 보정이 같은 기준을 사용한다.
  *   - reachedHalftime  : status가 HT 이후로 진행됐으면(HT/2H/ET1/ET2/PSO/FT).
- *   - extraTimePlayed  : 연장으로 이어진 경우에만(정규시간 종료 시 FT가 바로 안 왔다는 뜻).
- *   - reachedEt2       : status가 ET2/PSO까지 진행됐거나(=elapsed 106 이상), FT인데
- *                        사후적으로 연장이 있었다고 판단되는 경우.
+ *   - extraTimePlayed  : 연장 진행 근거가 있거나 다음 구간 전 휴식(BT)에 들어간 경우.
+ *   - reachedEt2       : 연장 후반에 도달했거나 연장 진행 근거가 있는 종료/승부차기 상태.
  *   - hadPenalties     : status가 PSO이거나 승부차기 스코어가 존재하는 경우.
- * FT 시점엔 status만으론 연장 여부를 알 수 없어(정규/연장/PK 종료 모두 그냥 "FT") elapsed가
- * 105를 넘었는지/승부차기 스코어가 있는지로 사후 추정한다 — 생방송 중에는 ET1/ET2/PSO 상태를
- * 직접 거치므로 이 추정이 필요 없다.
+ * 승부차기 상태·스코어만으로는 연장전 진행을 증명하지 않는다. 정규시간 뒤 곧바로
+ * 승부차기로 가는 대회도 있으므로 연장 상태, 본 시간, 일반 이벤트의 시간을 함께 확인한다.
  */
 /** BT 응답의 elapsed가 0/null이어도 휴식 구간을 판별한다.
  * 이벤트의 본 시간만 사용한다: 90+15는 연장 105분의 근거가 아니다.
@@ -499,13 +499,27 @@ function evComputePeriodFlags(matchInfo, events = []) {
     || isPenaltyStatus
     || hasShootoutEvents;
 
-  const isLiveExtraTime = status === 'ET1' || status === 'ET2' || isPenaltyStatus;
-  const ftLooksLikeExtraTime = status === 'FT' && (elapsed > 105 || hadPenalties);
-  const extraTimePlayed = isLiveExtraTime || ftLooksLikeExtraTime || hasShootoutEvents || breakElapsed !== null;
-  const reachedEt2 = status === 'ET2' || isPenaltyStatus || ftLooksLikeExtraTime || hasShootoutEvents || breakElapsed >= 105;
-  const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status) || hasShootoutEvents;
+  const eventList = Array.isArray(events) ? events : [];
+  const shootoutEvents = eventList.filter(evTimeIsShootout);
+  const shootoutMinutes = shootoutEvents.map(ev => Number(ev.elapsed)).filter(minute => Number.isFinite(minute) && minute >= 90);
+  const firstShootoutMinute = shootoutMinutes.length ? Math.min(...shootoutMinutes) : null;
+  const extraTimeShootout = firstShootoutMinute !== null && firstShootoutMinute >= 120;
+  const hasExtraTimeEvent = eventList.some(ev => !evTimeIsShootout(ev) && Number(ev?.elapsed) > 90);
+  // 승부차기 종료 응답은 실제 연장 없이도 elapsed=120일 수 있습니다.
+  // 첫 승부차기가 90분대부터 시작하고 일반 연장 이벤트가 없으면 직접 기록된 구간을 우선합니다.
+  // 킥마다 91, 92…로 증가하는 응답도 있으므로 마지막 킥의 분으로 연장 여부를 판단하지 않습니다.
+  const directShootout = firstShootoutMinute !== null && firstShootoutMinute < 120 && !hasExtraTimeEvent;
+  const isLiveExtraTime = status === 'ET1' || status === 'ET2';
+  const extraTimeEvidence = extraTimeShootout || isLiveExtraTime || status === 'AET'
+    || ((status === 'FT' || isPenaltyStatus) && elapsed > 90 && !directShootout)
+    || (!elapsed && hasExtraTimeEvent);
+  // BT 90은 후반 종료 마커를 유지하되 연장 전·후반 종료의 근거로 쓰지 않는다.
+  const extraTimePlayed = extraTimeEvidence || breakElapsed !== null;
+  const reachedEt2 = extraTimeShootout || status === 'ET2' || breakElapsed >= 105
+    || (extraTimeEvidence && (isPenaltyStatus || status === 'FT' || status === 'AET' || elapsed > 105));
+  const reachedHalftime = EV_HALFTIME_REACHED_STATUSES.has(status) || isPenaltyStatus || status === 'AET' || hasShootoutEvents;
 
-  return { status, elapsed, breakElapsed, isPenaltyStatus, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, hasShootoutEvents };
+  return { status, elapsed, breakElapsed, isPenaltyStatus, hadPenalties, extraTimePlayed, extraTimeEvidence, reachedEt2, reachedHalftime, hasShootoutEvents };
 }
 
 /**
@@ -522,22 +536,22 @@ function evActiveBoundaryElapsedSet(matchInfo, events = []) {
   const { reachedHalftime, extraTimePlayed, reachedEt2, hadPenalties, breakElapsed } = evComputePeriodFlags(matchInfo, events);
   const active = new Set();
   if (reachedHalftime) active.add(45);
-  if (extraTimePlayed) active.add(90);
+  if (extraTimePlayed || hadPenalties) active.add(90);
   if (reachedEt2) active.add(105);
-  if (hadPenalties || breakElapsed === 120) active.add(120);
+  if ((hadPenalties && reachedEt2) || breakElapsed === 120) active.add(120);
   return active;
 }
 
 /**
- * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 두 쌍(후반종료/풀타임,
- * 연장후반종료/풀타임)은 그 경기가 연장으로 갔는지에 따라 서로 배타적으로 하나만 나온다.
- *   - 풀타임: 연장 없이 FT로 끝났을 때, 또는 연장에서 승부차기 없이 FT로 끝났을 때.
+ * matchInfo로 지금까지 지나온 구간 구분자 목록을 만든다. 정규·연장 종료에서 다음
+ * 구간이 이어지면 구간 종료를, 경기가 끝나면 풀타임을 넣는다. 승부차기까지 진행한
+ * 경기는 실제 진행한 구간 종료를 유지하고 승부차기 이벤트 다음에 풀타임을 넣는다.
  */
 function evBuildPeriodMarkers(matchInfo, events = []) {
   const hasShootoutEvents = Array.isArray(events) && events.some(evTimeIsShootout);
   if (!matchInfo && !hasShootoutEvents) return [];
 
-  const { status, hadPenalties, extraTimePlayed, reachedEt2, reachedHalftime, isPenaltyStatus, breakElapsed } =
+  const { status, hadPenalties, extraTimePlayed, extraTimeEvidence, reachedEt2, reachedHalftime, isPenaltyStatus, breakElapsed } =
     evComputePeriodFlags(matchInfo, events);
 
   const markers = [];
@@ -553,11 +567,16 @@ function evBuildPeriodMarkers(matchInfo, events = []) {
   if (extraTimePlayed) {
     addMarker('후반종료', 90);
     if (reachedEt2) addMarker('연장 전반 종료', 105);
-    if (isPenaltyStatus || hadPenalties || breakElapsed === 120) addMarker('연장 후반 종료', 120);
-    else if (status === 'FT') addMarker('풀타임', 120);
+    if (((isPenaltyStatus || hadPenalties) && extraTimeEvidence) || breakElapsed === 120) addMarker('연장 후반 종료', 120);
+    else if (status === 'FT' || status === 'AET') addMarker('풀타임', 120);
+  } else if (hadPenalties) {
+    addMarker('후반종료', 90);
   } else if (status === 'FT') {
     addMarker('풀타임', 90);
   }
+
+  // 승부차기까지 끝난 풀타임은 승부차기 이벤트(121분 정렬) 다음에 놓는다.
+  if (hadPenalties && (status === 'FT' || status === 'PEN')) addMarker('풀타임', 122);
 
   return markers;
 }

@@ -55,8 +55,8 @@
       ['start', '시작하기'], ['broadcast', 'OBS 송출 환경'],
       ['guide', '데이터 안내'], ['keys', '단축키'],
       ['scoreboard', '점수판 클릭 조작'],
-      ['main', '메인 화면'], ['settings', '설정'], ['theme', '테마'],
-      ['schedule', '일정'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
+      ['main', '중계 화면'], ['settings', '설정'], ['theme', '테마'],
+      ['schedule', '일정 확인'], ['tactics', '전술판'], ['advanced', '고급'], ['info', '문의 / 기타'],
     ];
     const sections = new Map(groups.map(([key, label]) => {
       const panel = document.createElement('section');
@@ -94,7 +94,7 @@
           : title.startsWith('고급-팁') ? 'advanced' : 'info';
       } else if (featureSection && node.tagName === 'H3') {
         const title = aboutSlug(node.textContent);
-        group = title.startsWith('메인-탭') ? 'main'
+        group = title.startsWith('중계-화면') ? 'main'
           : title.startsWith('설정-팝업') ? 'settings'
           : title.startsWith('테마-탭') ? 'theme'
           : title.startsWith('일정-확인') ? 'schedule' : 'tactics';

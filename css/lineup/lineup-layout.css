@@ -65,14 +65,14 @@ body.lp-small-stats-height-resizing * {
 /* 이벤트·상대전적도 높이가 부족하면 목록 안에 스크롤바를 표시한다. */
 .layout-small .lp-events-s :is([data-events-panel], [data-hth-panel]) .ev-list {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.35) transparent;
+  scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.35) transparent;
 }
 .layout-small .lp-events-s :is([data-events-panel], [data-hth-panel]) .ev-list::-webkit-scrollbar {
   display: block;
   width: 6px;
 }
 .layout-small .lp-events-s :is([data-events-panel], [data-hth-panel]) .ev-list::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.35);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.35);
   border-radius: 3px;
 }
 /* 라인업 컬럼 자체가 62:105 비율을 가지도록 — 타이틀은 라인업 패널에서만 숨겨서
@@ -207,9 +207,9 @@ body.no-fan-reaction .layout-small .lp-cam-chat {
   touch-action: none;
   border-radius: 0 14px 0 6px;
   background: linear-gradient(225deg,
-    rgba(255,255,255,.55) 0%, rgba(255,255,255,.55) 18%,
+    rgba(var(--ui-ink-rgb, 255, 255, 255),.55) 0%, rgba(var(--ui-ink-rgb, 255, 255, 255),.55) 18%,
     transparent 18%, transparent 36%,
-    rgba(255,255,255,.42) 36%, rgba(255,255,255,.42) 50%,
+    rgba(var(--ui-ink-rgb, 255, 255, 255),.42) 36%, rgba(var(--ui-ink-rgb, 255, 255, 255),.42) 50%,
     transparent 50%);
   opacity: .5;
   transition: opacity .12s, background-color .12s;
@@ -399,7 +399,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .04em;
-  color: rgba(255,255,255,.52);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .52));
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -410,15 +410,15 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   padding: 2px 8px;
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255,255,255,.72);
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.16);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .72));
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.07);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.16);
   border-radius: 999px;
   cursor: pointer;
 }
 .dp-side-edit-btn:hover {
-  background: rgba(255,255,255,.14);
-  color: #fff;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
+  color: var(--ui-text, #fff);
 }
 #benchPanel .dp-side-header .dp-side-edit-btn,
 #injuryPanel .dp-side-header .dp-side-edit-btn {
@@ -444,12 +444,12 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
 .dp-referee-name.dp-referee-editable,
 .dp-venue-name.dp-venue-editable {
   cursor: text;
-  border-bottom: 1px dotted rgba(255,255,255,.28);
+  border-bottom: 1px dotted rgba(var(--ui-ink-rgb, 255, 255, 255),.28);
 }
 .dp-coach-name.dp-coach-editable:hover,
 .dp-referee-name.dp-referee-editable:hover,
 .dp-venue-name.dp-venue-editable:hover {
-  border-bottom-color: rgba(255,255,255,.62);
+  border-bottom-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.62);
 }
 .dp-coach-name.dp-coach-editing,
 .dp-referee-name.dp-referee-editing,
@@ -472,13 +472,13 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   border-radius: 6px;
   border: 1px solid rgba(var(--control-accent-rgb),.55);
   background: rgba(15,17,22,.96);
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
   font-size: 11px;
   line-height: 1.3;
   text-align: center;
 }
 .dp-coach-inline-input::placeholder {
-  color: rgba(255,255,255,.42);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .42));
 }
 .dp-coach-inline-input:focus {
   outline: none;
@@ -525,7 +525,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   cursor: nw-resize;
 }
 .lp-big-corner-bl:hover,
-.lp-big-corner-tl:hover { background: rgba(255,255,255,.30); }
+.lp-big-corner-tl:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.30); }
 
 /* ON 모드 공유 너비 핸들 — lp-col 직속 자식, 왼쪽 엣지 전체 */
 .lp-big-col-left-handle {
@@ -552,7 +552,7 @@ body.lp-lineup-resizing { cursor: nesw-resize; user-select: none; }
   cursor: ns-resize;
 }
 .lp-big-col-left-handle:hover,
-.lp-big-edge-left:hover { background: rgba(255,255,255,.18); }
+.lp-big-edge-left:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18); }
 
 /* 캠 작은 메뉴처럼 간격 중앙의 투명한 전체 폭 영역에서 높이를 조절한다. */
 .lp-big-height-resize {
@@ -639,7 +639,7 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
   background: transparent;
   transition: background .15s;
 }
-.lp-lineup-right-edge:hover { background: rgba(255,255,255,.18); }
+.lp-lineup-right-edge:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18); }
 
 /* 위쪽 엣지 — 우상단 대각선 핸들의 조작 영역을 비워 둔다. */
 .lp-lineup-top-edge {
@@ -654,7 +654,7 @@ body.lp-big-col-resizing.lp-big-h-resizing * { cursor: nwse-resize !important; }
   background: transparent;
   transition: background .15s;
 }
-.lp-lineup-top-edge:hover { background: rgba(255,255,255,.18); }
+.lp-lineup-top-edge:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18); }
 
 body.lp-lineup-w-resizing,
 body.lp-lineup-w-resizing * { cursor: ew-resize !important; user-select: none !important; }

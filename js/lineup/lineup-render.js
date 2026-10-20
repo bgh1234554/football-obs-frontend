@@ -109,7 +109,8 @@ function lpBuildRatingHtml(playerId) {
   const rating = lpGetPlayerRating(playerId);
   if (rating == null) return '';
   const color = typeof lpRatingColor === 'function' ? lpRatingColor(rating) : '#666';
-  return `<span class="dp-rating" style="background:${color}">${rating.toFixed(1)}</span>`;
+  const foreground = teamColorContrastRatio('#000000', color) > teamColorContrastRatio('#ffffff', color) ? '#000000' : '#ffffff';
+  return `<span class="dp-rating" style="background:${color};color:${foreground}">${rating.toFixed(1)}</span>`;
 }
 
 /**
@@ -327,7 +328,7 @@ function setCoachElement(el, effectiveData, rawData, side, accentColor) {
       ? teamColorContrastRatio(accentColor, effectiveBg) : 21;
     const accented = contrast < MI_LABEL_MIN_CONTRAST;
     labelEl.classList.toggle('mi-label-accented', accented);
-    if (accented) labelEl.style.setProperty('--mi-label-border-color', MI_LABEL_BORDER_COLOR);
+    if (accented) labelEl.style.setProperty('--mi-label-border-color', miLabelBorderColor());
     else labelEl.style.removeProperty('--mi-label-border-color');
   }
 }
@@ -1370,6 +1371,10 @@ const MI_LABEL_MIN_CONTRAST = 4.5;
 // 테두리(stroke) 색 — 팀 컬러의 보색을 쓰면 팀 컬러에 따라 형광/원색이 튀어나와 눈이 피로할 수
 // 있어, 항상 이 고정된 은은한 화이트로 통일한다(완전한 #ffffff보다 살짝 차분하게).
 const MI_LABEL_BORDER_COLOR = '#e6e6e6';
+/** 밝은 패널에서 흰 팀 컬러 라벨이 사라지지 않게 외곽선의 명도도 맞춘다. */
+function miLabelBorderColor() {
+  return document.documentElement.dataset.infoTone === 'light' ? '#334155' : MI_LABEL_BORDER_COLOR;
+}
 
 /** lp-stat 경기 정보 사이클 패널 HTML 빌드. */
 function buildMatchInfoCyclePanel(effectiveData) {
@@ -1394,7 +1399,7 @@ function buildMatchInfoCyclePanel(effectiveData) {
       const contrast = (typeof teamColorContrastRatio === 'function')
         ? teamColorContrastRatio(accentColor, effectiveBg) : 21;
       if (contrast < MI_LABEL_MIN_CONTRAST) {
-        styleParts.push(`--mi-label-border-color:${MI_LABEL_BORDER_COLOR}`);
+        styleParts.push(`--mi-label-border-color:${miLabelBorderColor()}`);
         labelClass += ' mi-label-accented';
       }
       labelStyle = ` style="${styleParts.join(';')}"`;
@@ -1959,7 +1964,7 @@ document.addEventListener('settings:change', event => {
   // Iter 5-3: subReflect / per-feature 토글이 바뀌면 라인업 재렌더가 필요.
   // 평점 색상 7구간(ratingColor*)도 변경 시 노드 평점 박스 즉시 갱신.
   const re = ['roster', 'lineup', 'lineupNode', 'teamName',
-    'lineupHideInitial', 'lineupShowNumber', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha', 'bgMode',
+    'lineupHideInitial', 'lineupShowNumber', 'uiMode', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha', 'bgMode',
     'subReflect', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime',
     'lineupShowOutScorers', 'splitLineup', 'leagueLogoPos',
     'ratingColorBelow6', 'ratingColor6', 'ratingColor65',

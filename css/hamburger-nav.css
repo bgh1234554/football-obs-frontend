@@ -56,8 +56,8 @@ body.sidebar-open .sidebar-backdrop {
   bottom: 0;
   width: 220px;
   max-width: calc(var(--display-vw, 1vw) * 82);
-  background: #0b1220;
-  border-right: 1px solid rgba(255,255,255,.12);
+  background: var(--ui-surface, #0b1220);
+  border-right: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
   z-index: 100;
   display: flex;
   flex-direction: column;
@@ -76,13 +76,13 @@ body.sidebar-open .sidebar-nav {
   align-items: center;
   gap: 10px;
   padding: 12px 12px 10px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
   flex-shrink: 0;
 }
 .sidebar-close {
   background: transparent;
-  border: 1px solid rgba(255,255,255,.15);
-  color: rgba(255,255,255,.7);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.15);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .7));
   border-radius: 8px;
   width: 28px;
   height: 28px;
@@ -94,11 +94,11 @@ body.sidebar-open .sidebar-nav {
   flex-shrink: 0;
   transition: background .15s;
 }
-.sidebar-close:hover { background: rgba(255,255,255,.1); }
+.sidebar-close:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1); }
 .sidebar-title {
   font-weight: 800;
   font-size: 13px;
-  color: rgba(255,255,255,.7);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .7));
   letter-spacing: .02em;
 }
 
@@ -132,7 +132,7 @@ body.sidebar-open .sidebar-nav {
 /* 사이드바 구분선 */
 .sidebar-divider {
   height: 1px;
-  background: rgba(255,255,255,.08);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
   margin: 5px 0;
 }
 
@@ -141,20 +141,20 @@ body.sidebar-open .sidebar-nav {
   width: 100%;
   text-align: left;
   padding: 12px 16px;
-  border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
   border-radius: 10px;
   background: transparent;
-  color: rgba(255,255,255,.85);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .85));
   cursor: pointer;
   font-weight: 800;
   font-size: 14px;
   transition: background .15s;
 }
-.sidebar-action-btn:hover { background: rgba(255,255,255,.07); }
+.sidebar-action-btn:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.07); }
 
 /* 날짜·시각·결과를 분리해 좁은 메뉴에서도 줄이 어색하게 끊기지 않게 한다. */
-.fixture-poll-card { align-self: stretch; margin-top: 7px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); text-align: left; }
-.fixture-last-polled { display: block; margin-top: 6px; color: #e2e8f0; font-variant-numeric: tabular-nums; }
+.fixture-poll-card { align-self: stretch; margin-top: 7px; padding-top: 10px; border-top: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08); text-align: left; }
+.fixture-last-polled { display: block; margin-top: 6px; color: var(--ui-text, #e2e8f0); font-variant-numeric: tabular-nums; }
 .fixture-poll-date { display: block; color: #94a3b8; font-size: 10px; line-height: 1.5; }
 .fixture-poll-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
 .fixture-poll-clock { font-size: 20px; font-weight: 700; line-height: 1.4; letter-spacing: .02em; white-space: nowrap; }
@@ -172,8 +172,8 @@ body.sidebar-open .sidebar-nav {
 /* 사이드바 내 fixture-inline 래퍼 */
 .sidebar-body .fixture-inline {
   padding: 12px;
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.05);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
   border-radius: 9px;
   display: flex;
   flex-direction: column;
@@ -183,7 +183,7 @@ body.sidebar-open .sidebar-nav {
 }
 .sidebar-body .fixture-inline-label {
   font-size: 10px;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -199,13 +199,13 @@ body.sidebar-open .sidebar-nav {
   line-height: 1.4;
   letter-spacing: .02em;
   font-variant-numeric: tabular-nums;
-  color: #e2e8f0;
+  color: var(--ui-text, #e2e8f0);
   cursor: pointer;
 }
 .sidebar-body .fixture-inline-id:hover { background: transparent; color: #93c5fd; }
 .sidebar-body .fixture-inline-status {
   font-size: 10px;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
 }
 
 /* 사이드바 내 수동 모드 토글 */
@@ -217,10 +217,10 @@ body.sidebar-open .sidebar-nav {
 /* Details 패널 경기ID 버튼 */
 .panel-fixture-btn {
   padding: 4px 10px;
-  border: 1px solid rgba(255,255,255,.2);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.2);
   border-radius: 8px;
   background: transparent;
-  color: rgba(255,255,255,.8);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .8));
   cursor: pointer;
   font-size: 11px;
   font-weight: 800;
@@ -228,7 +228,7 @@ body.sidebar-open .sidebar-nav {
   transition: background .15s;
   flex-shrink: 0;
 }
-.panel-fixture-btn:hover { background: rgba(255,255,255,.09); }
+.panel-fixture-btn:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.09); }
 .panel-fixture-btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
 
 /* Details 패널 "바로 불러오기" — 선택된 경기를 오버레이 없이 즉시 조회하는 강조 버튼 */
@@ -245,7 +245,7 @@ body[data-board-position="left"] .sidebar-nav {
   left: auto;
   right: 0;
   border-right: 0;
-  border-left: 1px solid rgba(255,255,255,.12);
+  border-left: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
   transform: translateX(100%);
 }
 body[data-board-position="left"].sidebar-open .sidebar-nav { transform: translateX(0); }

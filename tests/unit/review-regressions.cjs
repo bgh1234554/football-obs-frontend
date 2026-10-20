@@ -22,6 +22,36 @@ const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
 }
 /** 파일 p에서 function name( 부터 end 문자열 직전까지의 소스를 잘라낸다. */
 const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function '+name+'('),s.indexOf(end,s.indexOf('function '+name+'(')));};
+// 기존 설정에 배경 선택이 없으면 새 기본값을 쓰되, 직접 고른 값과 팀 무드 이전은 유지한다.
+{
+ const source=read('js/settings/settings-popup.js');
+ const start=source.indexOf('const SETTINGS_DEFAULTS =');
+ const defaults=source.slice(start,source.indexOf('\n};',start)+3);
+ const load=extract('js/settings/settings-popup.js','loadSettings','function saveSettings()');
+ for(const key of ['current','legacy']) for(const presets of [null,{}, {bgPreset:'charcoal'}, {lightBgPreset:'sky-glass'}, {bgPreset:'team'}, {bgPreset:'off',lightBgPreset:'off'}, {bgImageUrl:'https://example.com/background.jpg'}, {bgImageData:'data:image/png;base64,example'}, {bgPreset:'stadium',lightBgPreset:'stadium-day'}]){
+  let stored=presets===null?null:{...presets};let current=key==='current'?stored:null,legacy=key==='legacy'?stored:null;
+  const context={SETTINGS_STORAGE_KEY:'current',SETTINGS_LEGACY_STORAGE_KEYS:['legacy'],applyLayoutSettings(){},clampPercent:n=>Number(n),isValidSetting:(category,value)=>value!==undefined,
+   localStorage:{getItem:k=>JSON.stringify(k==='current'?current:legacy),removeItem:k=>{if(k==='legacy')legacy=null;}},getSetting:category=>context.state[category],saveSettings:()=>{current={...context.state};return true;}};
+  vm.runInNewContext(defaults+';globalThis.state={...SETTINGS_DEFAULTS};globalThis.settingsState=state;'+load,context);
+  const fresh={bgPreset:context.state.bgPreset,lightBgPreset:context.state.lightBgPreset};
+  for(let reload=0;reload<2;reload++){
+   vm.runInNewContext('Object.assign(settingsState, SETTINGS_DEFAULTS);loadSettings();',context);
+   assert.equal(context.state.bgPreset,presets===null?fresh.bgPreset:presets.bgPreset==='team'?'off':presets.bgPreset??fresh.bgPreset);
+   assert.equal(context.state.lightBgPreset,presets===null?fresh.lightBgPreset:presets.lightBgPreset??fresh.lightBgPreset);
+   if(presets?.bgPreset==='team')assert.equal(context.state.bgTeamDirection,'mood');
+   for(const category of ['bgImageUrl','bgImageData'])if(presets?.[category])assert.equal(context.state[category],presets[category]);
+  }
+ }
+}
+// 목차 링크와 실제 중계 화면 제목은 같은 slug로 연결되어야 한다.
+{
+ const context={};vm.runInNewContext(extract('js/core/init.js','aboutSlug','function buildAboutTabs('),context);
+ const markdown=read('about.md');
+ const heading=markdown.match(/^### (.*중계 화면.*)$/m)[1];
+ const target=markdown.match(/\[.*중계 화면.*\]\(#([^\)]+)\)/)[1];
+ assert.equal(context.aboutSlug(heading),target);
+ assert.equal(heading.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu,'').replace(/ /g,'-'),target, 'GitHub에서도 같은 목차 앵커를 사용합니다.');
+}
 // 저장 용량 초과 시 직렬화 크기가 큰 로고부터 제외하고, 양쪽 제외는 마지막에 시도합니다.
 const persist=extract('js/core/state.js','persist','  /**');
 for(const larger of ['home','away'])for(const combined of [false,true]){

@@ -660,7 +660,13 @@ function teamPanelBackground(panel) {
   for (let el = panel; el; el = el.parentElement) {
     layers.push(getComputedStyle(el).backgroundColor);
   }
-  let bg = { r: 17, g: 24, b: 39 };
+  // 페이지 바탕은 body::before에 있으므로 일반 부모 배경만 읽으면 항상 어두운 기본색이 섞인다.
+  const rootStyle = getComputedStyle(document.documentElement);
+  let bg = parseAnyColor(rootStyle.getPropertyValue('--bg-ui').trim()) || { r: 17, g: 24, b: 39 };
+  const pageColor = parseAnyColor(getComputedStyle(document.body, '::before').backgroundColor);
+  if (pageColor) {
+    bg = Object.fromEntries(['r', 'g', 'b'].map(k => [k, Math.round(pageColor[k] * pageColor.a + bg[k] * (1 - pageColor.a))]));
+  }
   for (const color of layers.reverse()) {
     const rgb = parseAnyColor(color);
     if (!rgb) continue;

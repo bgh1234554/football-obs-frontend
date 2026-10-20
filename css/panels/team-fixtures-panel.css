@@ -1,10 +1,10 @@
 /* 상대전적 점수·로고와 스탯 페이지 컨트롤을 함께 사용한다. */
 [data-team-fixtures-panel] {
   display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0;
-  padding: 4px 8px 6px; box-sizing: border-box; color: #f0f0f0; font-family: var(--font-family); container-type: size;
+  padding: 4px 8px 6px; box-sizing: border-box; color: var(--ui-text, #f0f0f0); font-family: var(--font-family); container-type: size;
 }
 .tf-body { flex: 1 1 0; min-height: 0; overflow: auto; display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); position: relative; }
-.tf-body::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(255,255,255,.18); pointer-events: none; }
+.tf-body::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18); pointer-events: none; }
 .tf-team { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; min-width: 0; min-height: 0; overflow: hidden; box-sizing: border-box; }
 .tf-content { flex: 1 1 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .tf-content > * { margin-block: auto; flex-shrink: 0; }
@@ -14,7 +14,7 @@
 .tf-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; flex-shrink: 0; }
 .tf-card { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
 .tf-result { width: 100%; padding: 3px 0; border-radius: 4px; font-size: 12px; font-weight: 700; box-sizing: border-box; }
-.tf-win { background: var(--control-accent, #60a5fa); color: #0b1220; }
+.tf-win { background: var(--control-accent, #60a5fa); color: var(--control-accent-on, #0b1220); }
 .tf-draw { background: #6b7280; color: white; }
 .tf-loss { background: #f87171; color: #0b1220; }
 .tf-unknown { background: #374151; color: white; }
@@ -26,10 +26,9 @@
 .tf-score .hth-score-main { font-size: 18px; }
 .tf-score .hth-score { min-width: 12px; }
 .tf-score .hth-score-sep { padding: 0 2px; }
-.tf-date { font-size: 10px; color: rgba(255,255,255,.55); overflow-wrap: anywhere; }
-.tf-message { text-align: center; color: rgba(255,255,255,.55); font-size: 12px; padding: 24px 0; }
+.tf-date { font-size: 10px; color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55)); overflow-wrap: anywhere; }
+.tf-message { text-align: center; color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55)); font-size: 12px; padding: 24px 0; }
 [data-team-fixtures-panel] .st-dot { border: 0; padding: 0; }
-body.low-panel-alpha [data-team-fixtures-panel] { text-shadow: var(--low-panel-text-outline); }
 @container (max-height: 460px) {
   .tf-team { padding: 6px 0; gap: 4px; }
   .tf-card { gap: 1.5px; }

@@ -1,19 +1,19 @@
 /* 검색 결과는 오른쪽으로 펼치고 기존 입력 영역의 높이를 유지한다. */
 .pm-popup.ps-expanded { box-sizing: border-box; width: calc(var(--ps-base-width) + 300px); max-width: calc(var(--display-vw, 1vw) * 100 - 16px); min-width: 0; padding-right: 312px; overflow: auto; }
 .dp-manual-modal.ps-expanded { position: relative; box-sizing: border-box; width: min(1060px, 100%); padding-right: 300px; }
-.ps-side-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: 276px; display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,.13); color: #eee; font: inherit; text-align: left; }
+.ps-side-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: 276px; display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.13); color: #eee; font: inherit; text-align: left; }
 .ps-heading { flex: none; font-size: 12px; font-weight: 700; }
 .ps-results { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 4px; }
-.ps-result { display: flex; flex: none; align-items: center; gap: 7px; width: 100%; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 5px 6px; background: rgba(255,255,255,.04); color: #eee; text-align: left; font: inherit; cursor: pointer; }
-.ps-result:hover { background: rgba(71,126,255,.15); border-color: #5287ee; }
-.ps-result.is-selected { opacity: 1; cursor: default; border-color: #5287ee; }
-.ps-result img, .ps-avatar-empty { width: 28px; height: 28px; object-fit: cover; border-radius: 50%; flex: none; background: rgba(255,255,255,.08); }
+.ps-result { display: flex; flex: none; align-items: center; gap: 7px; width: 100%; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12); border-radius: 6px; padding: 5px 6px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.04); color: #eee; text-align: left; font: inherit; cursor: pointer; }
+.ps-result:hover { background: rgba(var(--control-accent-rgb),.15); border-color: var(--control-accent); }
+.ps-result.is-selected { opacity: 1; cursor: default; border-color: var(--control-accent); }
+.ps-result img, .ps-avatar-empty { width: 28px; height: 28px; object-fit: cover; border-radius: 50%; flex: none; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08); }
 .ps-result-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
 .ps-result-text strong { font-size: 11px; font-weight: 600; overflow-wrap: anywhere; }
 .ps-result-text > span, .ps-result-text small { font-size: 10px; color: #aaa; overflow-wrap: anywhere; }
 .ps-message { font-size: 11px; color: #aaa; padding: 8px 0; }
 .ps-pagination { flex: none; display: flex; align-items: center; justify-content: space-between; font-size: 11px; gap: 6px; }
-.ps-pagination button { padding: 4px 9px; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; background: rgba(255,255,255,.07); color: inherit; font: inherit; cursor: pointer; }
+.ps-pagination button { padding: 4px 9px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18); border-radius: 5px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.07); color: inherit; font: inherit; cursor: pointer; }
 .ps-pagination button:disabled { opacity: .35; cursor: default; }
 .ps-photo-actions { display: flex; gap: 6px; flex: none; }
 .ps-search-help { margin-bottom: 8px; color: #bbb; font-size: 11px; line-height: 1.5; }
@@ -22,15 +22,15 @@
 .ps-result-text strong, .ps-result-text > span, .ps-result-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 검색 영역도 패널의 어두운 배경과 같은 스크롤바를 사용한다. */
-.ps-results, .pm-popup.ps-expanded { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; color-scheme: dark; }
+.ps-results, .pm-popup.ps-expanded { scrollbar-width: thin; scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.25) transparent; color-scheme: dark; }
 .ps-results::-webkit-scrollbar, .pm-popup.ps-expanded::-webkit-scrollbar { width: 6px; height: 6px; }
 .ps-results::-webkit-scrollbar-track, .pm-popup.ps-expanded::-webkit-scrollbar-track { background: transparent; }
-.ps-results::-webkit-scrollbar-thumb, .pm-popup.ps-expanded::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 999px; }
-.ps-results::-webkit-scrollbar-thumb:hover, .pm-popup.ps-expanded::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+.ps-results::-webkit-scrollbar-thumb, .pm-popup.ps-expanded::-webkit-scrollbar-thumb { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25); border-radius: 999px; }
+.ps-results::-webkit-scrollbar-thumb:hover, .pm-popup.ps-expanded::-webkit-scrollbar-thumb:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.4); }
 .ps-results::-webkit-scrollbar-button, .pm-popup.ps-expanded::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 .ps-results::-webkit-scrollbar-corner, .pm-popup.ps-expanded::-webkit-scrollbar-corner { background: transparent; }
 .ps-height-resize { position: absolute; top: 0; left: 12px; right: 12px; height: 9px; cursor: ns-resize; touch-action: none; z-index: 2; }
-.ps-height-resize::after { content: ''; position: absolute; top: 2px; left: calc(50% - 20px); width: 40px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.25); }
-.ps-height-resize:hover::after, .ps-height-resize:focus-visible::after { background: rgba(255,255,255,.6); }
+.ps-height-resize::after { content: ''; position: absolute; top: 2px; left: calc(50% - 20px); width: 40px; height: 3px; border-radius: 3px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25); }
+.ps-height-resize:hover::after, .ps-height-resize:focus-visible::after { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.6); }
 .ps-height-resize-bottom { top: auto; bottom: 0; }
 .ps-height-resize-bottom::after { top: auto; bottom: 2px; }

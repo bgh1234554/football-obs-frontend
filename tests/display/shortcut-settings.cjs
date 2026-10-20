@@ -5,6 +5,12 @@ const root=path.resolve(__dirname,'../..');
 const page=await browser.newPage({viewport:{width:1280,height:720}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!=='http://localhost')return route.abort();const f=path.join(root,u.pathname==='/'?'overlay_dashboard.html':decodeURIComponent(u.pathname));if(!fs.existsSync(f)||fs.statSync(f).isDirectory())return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(f),contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.ttf':'font/ttf','.woff':'font/woff'}[path.extname(f)]||'application/octet-stream'});});
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
+// 화면 이동 안내는 실제 사이드바 메뉴 이름을 그대로 사용한다.
+const pageNames=await page.evaluate(()=>['main-big','main-small','theme','schedule','tactics','about'].map((page,index)=>({
+ menu:document.querySelector(`[data-page="${page}"]`).firstChild.textContent.trim(),
+ shortcut:shortcutActions.find(action=>action[0]==='page'+index)[2].replace(/ 화면$/,'')
+})));
+assert(pageNames.every(item=>item.menu===item.shortcut),JSON.stringify(pageNames));
 // CSS 로드 후 실제 테마 적용이 늦어져도 단축키의 하단 알림은 적용 완료 후 표시한다.
 await page.evaluate(()=>{
   const select=document.getElementById('fsmThemeSelect');select.value='pl';select.dispatchEvent(new Event('change'));

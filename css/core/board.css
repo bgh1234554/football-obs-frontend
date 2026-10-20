@@ -284,39 +284,50 @@
       outline-offset: 2px;
     }
 
-    /* 시간 프리셋 드롭다운 — ":" hover 시 스코어박스(#scorePanel) 너비 그대로 아래에 표시.
-       left/right:0 기준이 되도록 스코어 패널에 position:relative 부여 (rc-rail 등 다른
-       absolute 요소는 .score 하위가 아니라서 영향 없음) */
+    /* 시간 프리셋은 편집기 아래 중앙에 띄우며, 네 버튼과 조작 단축키를 세로로 배치한다. */
     #scorePanel { position: relative; }
     .ce-presets {
       position: absolute;
       top: calc(100% + 4px);
-      left: 0;
-      right: 0;
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      width: 280px;
       display: none;
       flex-direction: column;
-      gap: 3px;
-      padding: 6px;
+      gap: 4px;
+      padding: 8px;
+      box-sizing: border-box;
       background: var(--score-bg);
-      border-radius: var(--score-radius, 14px);
+      color: var(--meta-color);
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: 8px;
       box-shadow: 0 6px 18px rgba(0,0,0,.35);
       z-index: 40;
     }
     .ce-presets.open { display: flex; }
+    .ce-presets-title { padding: 7px 2px 0; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent); font: bold 14px/1.4 sans-serif; text-align: center; }
     .ce-preset-btn {
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.22);
-      border-radius: 8px;
-      color: var(--meta-color);
+      background: transparent;
+      border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+      border-radius: 4px;
+      color: inherit;
       font-size: 20px;
       font-weight: 800;
       letter-spacing: 1px;
       line-height: 1.3;
-      padding: 4px 0;
+      padding: 6px 0;
+      min-height: 34px;
       cursor: pointer;
       transition: background-color .12s;
     }
-    .ce-preset-btn:hover { background: rgba(255,255,255,.22); }
+    .ce-preset-btn:hover, .ce-preset-btn:focus-visible { background: color-mix(in srgb, currentColor 12%, transparent); outline: 2px solid currentColor; outline-offset: -2px; }
+    .ce-preset-btn[aria-pressed="true"] { background: color-mix(in srgb, currentColor 18%, transparent); border-color: currentColor; }
+    .ce-presets-hint { padding: 4px 2px 2px; font: 14px/1.65 sans-serif; }
+    .ce-presets-hint > span { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+    .ce-presets-hint kbd { white-space: nowrap; }
+    .ce-shortcut-keys { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 2px; }
+    .ce-presets-hint kbd { padding: 1px 3px; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); border-radius: 3px; font: inherit; font-weight: bold; }
     .board .half { padding: 2px 8px; border-radius: 999px; background: var(--half-bg); color: var(--half-text); font-weight: 800; }
 
     /* 레드카드 */

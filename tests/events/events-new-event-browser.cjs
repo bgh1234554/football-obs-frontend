@@ -60,6 +60,79 @@ const draftRoot = path.resolve(process.argv[2] || root);
     assert.equal((await snapshot()).held,false);
     assert.deepEqual(errors,[]);
     console.log('PASS: visible top insertion, five-second hold, bottom-to-top scroll, polling continuity, glow through completion and previous-panel return.');
+
+    // 이벤트 개수가 그대로인 상태 변경도 실제 폴링 경로로 알림을 띄워야 합니다.
+    await page.clock.install();
+    const baseFixture = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/1637598-lineup.json'), 'utf8'));
+    let fixtureId = 20261020;
+    async function poll(status, elapsed, penalties = false) {
+      await page.evaluate(async ({ status, elapsed, penalties }) => {
+        Object.assign(window.spotlightFixture.matchInfo, { status, elapsed,
+          homePenaltyScore: penalties ? 4 : null, awayPenaltyScore: penalties ? 3 : null });
+        await fetchAndApplyFixtureData(window.spotlightFixture.matchInfo.fixtureId, { silent: true });
+        clearPolling();
+      }, { status, elapsed, penalties });
+      await page.clock.runFor(50);
+    }
+    const notice = () => page.locator('.ev-spotlight:not([hidden])');
+    async function expectNotice(text) {
+      assert.equal((await notice().innerText()).trim(), text);
+      await page.clock.runFor(5400);
+      assert.equal(await notice().count(), 0);
+    }
+    for (const layout of ['main-big', 'main-small']) {
+      async function start(status, elapsed) {
+        await page.evaluate(async ({ fixture, id, status, elapsed, layout }) => {
+          setSetting('statCycleAuto', 'off'); setSetting('eventSpotlight', 'board');
+          window.spotlightFixture = structuredClone(fixture);
+          Object.assign(window.spotlightFixture.matchInfo, { fixtureId: id, status, elapsed, homePenaltyScore: null, awayPenaltyScore: null });
+          window.spotlightFixture.events = [];
+          fetchFixture = async () => structuredClone(window.spotlightFixture);
+          await fetchAndApplyFixtureData(id, { silent: true }); clearPolling(); activatePage(layout);
+        }, { fixture: baseFixture, id: ++fixtureId, status, elapsed, layout });
+        await page.clock.runFor(50);
+        assert.equal(await notice().count(), 0, '첫 조회는 과거 구간을 알리지 않는다.');
+      }
+      await start('1H', 44);
+      await poll('HT', 45); await expectNotice('하프타임');
+      await poll('HT', 45); assert.equal(await notice().count(), 0, '같은 하프타임을 중복 알리지 않는다.');
+      await poll('2H', 70); assert.equal(await notice().count(), 0);
+      await poll('FT', 90); await expectNotice('풀타임');
+
+      await start('2H', 89);
+      await poll('BT', 90); await expectNotice('후반종료');
+      await poll('PSO', 90, true);
+      assert.equal(await notice().count(), 0, '직행 승부차기는 연장 종료 알림을 만들지 않는다.');
+      assert.equal(await page.locator('.ev-period-marker').filter({ hasText: '연장' }).count(), 0);
+      await poll('FT', 90, true); await expectNotice('풀타임');
+
+      await start('2H', 89);
+      await poll('ET1', 91); await expectNotice('후반종료');
+      await poll('ET2', 106); await expectNotice('연장 전반 종료');
+      await poll('PSO', 120, true); await expectNotice('연장 후반 종료');
+      await poll('FT', 120, true); await expectNotice('풀타임');
+
+      // 90분 고정 기록과 카라바오컵의 91분부터 증가하는 기록 모두 직행으로 처리합니다.
+      for (const startMinute of [90, 91]) {
+        await start('2H', 89);
+        await poll('BT', 90); await expectNotice('후반종료');
+        await page.evaluate(startMinute => {
+          window.spotlightFixture.events = [
+            { elapsed: 90, extra: 2, side: 'away', playerName: 'Card', type: 'Card', detail: 'Yellow Card' },
+            { elapsed: startMinute, extra: null, side: 'home', playerName: 'Penalty', type: 'Goal', detail: 'Penalty', comments: 'Penalty Shootout' },
+            { elapsed: startMinute + 9, extra: null, side: 'away', playerName: 'Last Penalty', type: 'Goal', detail: 'Penalty', comments: 'Penalty Shootout' }
+          ];
+        }, startMinute);
+        await poll('PSO', 120, true);
+        assert.equal(await page.locator('.ev-period-marker').filter({ hasText: '연장' }).count(), 0);
+        assert(!(await notice().innerText()).includes('연장'));
+        await page.evaluate(() => { setSetting('eventSpotlight', 'off'); setSetting('eventSpotlight', 'board'); });
+        await poll('FT', 120, true); await expectNotice('풀타임');
+        assert.equal(await page.locator('.ev-period-marker').filter({ hasText: '연장' }).count(), 0);
+      }
+    }
+    assert.deepEqual(errors, []);
+    console.log('PASS: big/small status-only halftime/fulltime, duplicate suppression, direct shootout without phantom extra time, genuine extra-time endings.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 
