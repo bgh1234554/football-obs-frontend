@@ -1,0 +1,189 @@
+/* 모드별 중립 팔레트. 팀·점수판·평점의 의미색은 각 컴포넌트가 계속 소유한다. */
+:root { color-scheme: dark; }
+:root[data-ui-mode="light"] {
+  color-scheme: light;
+  --ui-ink-rgb: 15, 23, 42;
+  --ui-text: #172033;
+  --ui-surface: #e0e8f1;
+  --ui-surface-rgb: 224, 232, 241;
+  --ui-control-surface: #cddbea;
+  --ui-surface-raised: #e8edf3;
+  --ui-surface-recessed: #d0d9e4;
+  --text: #172033;
+  --muted: #334155;
+  --line: rgba(15, 23, 42, .16);
+  --chip: rgba(15, 23, 42, .06);
+  --panel-ui: #c5d2df;
+  --panel-ui-rgb: 197, 210, 223;
+  --api-widget-surface-rgb: 197, 210, 223;
+  --ui-min-text-alpha: .68;
+  --slider-thumb-color: #47688b;
+  --slider-thumb-border: #e8edf3;
+  --slider-thumb-shadow: 0 0 0 1px #8d9caf;
+  --control-accent: #1e3a8a;
+  --control-accent-rgb: 30, 58, 138;
+  --control-accent-text: #1e40af;
+  --control-accent-on: #ffffff;
+  --panel-header-shade: rgba(15, 23, 42, .06);
+}
+
+/* 정보 패널은 선택한 색의 모드별 표면색에 맞춰 글자와 구분선도 함께 바뀐다. */
+.lp:not(.lp-lineup):not(.lp-lineup-s), #tactics-timeline-panel, .ev-spotlight {
+  --ui-ink-rgb: var(--info-ink-rgb, 255, 255, 255);
+  --ui-text: var(--info-text, #f0f0f0);
+  --text: var(--info-text, #f0f0f0);
+  --muted: var(--info-secondary-text, rgba(var(--info-ink-rgb, 255, 255, 255), .65));
+  --line: rgba(var(--info-ink-rgb, 255, 255, 255), .16);
+  --overlay-in-text: var(--info-emphasis-text);
+  color: var(--info-text, #f0f0f0);
+}
+
+/* 라인업 피치의 독립 색상 설정은 화면 모드와 분리한다. */
+.lp-lineup, .lp-lineup-s, .td-pitch, .td-pitch-wrap {
+  --ui-ink-rgb: 255, 255, 255;
+  --ui-text: #f0f0f0;
+  --ui-min-text-alpha: 0;
+  --lineup-panel-bg: rgba(11, 18, 32, var(--lp-pitch-alpha));
+}
+
+:root[data-ui-mode="light"] :is(.dp-manual-modal, .pm-popup, .ev-filter-popover,
+  .ev-subst-picker-modal, .dp-loading-card, .scoreaxis-standings-popup) {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+:root[data-ui-mode="light"] :is(.sp-modal, .sidebar-nav, .dp-manual-modal, .pm-popup, .bg-picker) {
+  --control-accent: #2563eb;
+  --control-accent-rgb: 37, 99, 235;
+  --control-accent-text: #1d4ed8;
+  --control-accent-on: #ffffff;
+}
+:root[data-ui-mode="light"] :is(.sp-select, .ps-results, .pm-popup.ps-expanded) { color-scheme: light; }
+:root[data-ui-mode="light"] .sp-tab.is-active { color: #1d4ed8; background: #dbeafe; }
+:root[data-ui-mode="light"] .sidebar-nav { background: var(--ui-surface-recessed); }
+:root[data-ui-mode="light"] :is(.sp-modal, .bg-picker, .pm-popup, .dp-manual-modal) { background: var(--ui-surface-raised); }
+:root[data-ui-mode="light"] :is(.sp-header, .bg-picker-header, .bg-picker-footer, .dp-manual-header, .dp-manual-footer) { background: var(--ui-surface); }
+:root[data-ui-mode="light"] :is(.sp-select, .sp-num-input, .sp-text-input, .sp-color-hex, .sp-color-rgb, .sp-bg-preset-current) { background-color: #e8eff7; }
+:root[data-ui-mode="light"] .team-color-dialog .pm-nick-input { color: var(--ui-text) !important; }
+:root[data-ui-mode="light"] :is(.ps-side-panel, .ps-result) { color: var(--ui-text); }
+:root[data-ui-mode="light"] :is(.ps-result-text > span, .ps-result-text small, .ps-message, .ps-search-help) { color: var(--muted); }
+:root[data-ui-mode="light"] .float-hamburger span { background: #172033; box-shadow: 0 0 2px #ffffff; }
+:root[data-ui-mode="light"] #themePanel :is(.section-title, .theme-font-advanced summary) { color: #354a68; }
+:root[data-ui-mode="light"] #themePanel small { color: #526176; }
+:root[data-ui-mode="light"] #themePanel :is(.sp-color-code, .theme-color-actions button, .theme-color-reset) { background: #dde6f0; color: #172033; }
+:root[data-ui-mode="light"] #themePanel :is(input[type="text"], .ghost) { background: #cddbea; color: #172033; }
+:root[data-ui-mode="light"] #themePanel .primary { background: #2563eb; color: #ffffff; }
+:root[data-ui-mode="light"] .dp-manual-modal :is(.dp-bench-slot-done, .dp-grid-slot-done, .dp-grid-slot-preview, .dp-grid-result-info strong) { color: var(--ui-text); }
+:root[data-ui-mode="light"] .dp-manual-modal .dp-grid-result-info small { color: var(--muted); }
+:root[data-ui-mode="light"] :is(.panel-font-popup, .td-fm-menu) { background: var(--ui-surface); color: var(--ui-text); }
+:root[data-ui-mode="light"] .fixture-poll-status[data-status="ok"] { color: #166534; }
+:root[data-ui-mode="light"] .fixture-poll-status[data-status="loading"] { color: #1d4ed8; }
+:root[data-ui-mode="light"] .fixture-poll-status[data-status="error"] { color: #991b1b; }
+
+/* 밝은 표면에서는 밝은 파스텔 이벤트 글씨 대신 같은 의미색의 진한 톤을 쓴다. */
+:root[data-info-tone="light"] :is(.lp:not(.lp-lineup):not(.lp-lineup-s), #tactics-timeline-panel, .ev-spotlight) {
+  --control-accent-text: #1d4ed8;
+  --overlay-label-text: var(--info-emphasis-text);
+  --overlay-in-text: var(--info-emphasis-text);
+}
+:root[data-info-tone="light"] .ev-label-blue { background: #d9e5f5; color: #173f80; }
+:root[data-info-tone="light"] .ev-label-yellow { background: #f3e4ad; color: #665000; }
+:root[data-info-tone="light"] .ev-label-red { background: #f0d1d6; color: #852432; }
+:root[data-info-tone="light"] .ev-label-orange { background: #efdbc8; color: #783a13; }
+:root[data-info-tone="light"] .ev-label-green { background: var(--event-green-label-bg); color: var(--event-green-label-text); }
+:root[data-info-tone="light"] .ev-label-white { background: #dce3ec; color: #334155; }
+:root[data-info-tone="light"] .ev-subst-fix-btn { background: #efdbc8; color: #783a13; border-color: #b88f65; -webkit-text-stroke: 0; }
+:root[data-info-tone="light"] .ev-subst-fix-btn:hover { background: #e2c6aa; }
+:root[data-info-tone="light"] .ev-subst-name-editable:hover { color: #173f80; text-decoration-color: currentColor; -webkit-text-stroke: 0; }
+:root :is(.ev-text-out, .ev-text-assist, .ev-comment) { color: var(--info-secondary-text); }
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) :is(.dp-empty, .st-empty, .hth-empty, .tf-message) { color: #526176; }
+:root .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow { color: var(--info-yellow-text); }
+:root[data-ui-mode="light"][data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-item-name.is-yellow {
+  color: #ffd93d;
+  -webkit-text-stroke: .7px #4a3c00;
+  paint-order: stroke fill;
+}
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) .dp-sub-marker.is-out { color: #7f1d1d; }
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) { --lineup-red-text: #9f2638; }
+:root[data-ui-mode="light"] :is(.ev-row-menu, .ev-edit-reason-menu, .ev-edit-time input) {
+  background: var(--ui-surface-raised);
+  color: var(--ui-text);
+}
+:root[data-ui-mode="light"] :is(.ev-hide-btn, .ev-row-menu-btn.is-danger) { color: #991b1b; }
+:root[data-ui-mode="light"] .ev-hide-btn { background: #f1dce0; }
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) { --mi-label-color: var(--info-label-color); }
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) {
+  --panel-header-shade: rgba(15, 23, 42, .04);
+}
+:root[data-info-tone="light"] .lp:not(.lp-lineup):not(.lp-lineup-s) :is(.dp-item, .ev-text, .st-value, .hth-score) { text-shadow: none; }
+
+/* 일정 위젯의 링크·상태도 밝은 표면용 강조색을 사용한다. */
+:root[data-ui-mode="light"] #page-schedule api-sports-widget {
+  --primary-color: #1e3a8a;
+  --success-color: #14532d;
+  --warning-color: #6b4c00;
+  --danger-color: #991b1b;
+  --away-color: #6b4c00;
+  --light-color: #526176;
+  --text-color-info: #405069;
+}
+:root[data-ui-mode="light"] #page-schedule api-sports-widget .btn-widget.active { color: #ffffff !important; }
+:root[data-ui-mode="light"] .panel-fixture-btn-primary {
+  color: #ffffff;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+:root[data-ui-mode="light"] .panel-fixture-btn-primary:hover:not(:disabled) { background: #1e40af; }
+:root[data-ui-mode="light"] .panel-fixture-btn:disabled {
+  opacity: 1;
+  color: #526176;
+  background: #d0d9e4;
+  border-color: #aab7c8;
+}
+
+/* 선수 상세·설정 보조 창까지 같은 표면과 상태 색을 이어 쓴다. */
+:root[data-ui-mode="light"] :is(.pm-modal, .panel-font-popover, .sp-select option) {
+  background: var(--ui-surface-raised);
+  color: var(--ui-text);
+}
+:root[data-ui-mode="light"] :is(.pm-profile-name, .pm-chip, .sp-nickname-csv-result) { color: var(--ui-text); }
+:root[data-ui-mode="light"] :is(.pm-nick-badge, .md-body a, .about-submenu-link[aria-current="location"]) { color: #1e40af; }
+:root[data-ui-mode="light"] :is(.pm-error, .sp-nickname-clear-btn, .manual-red-val) { color: #991b1b; }
+:root[data-ui-mode="light"] .pm-btn.pm-btn-inline[aria-pressed="true"] { color: #6b5900; }
+:root[data-ui-mode="light"] :is(.pm-btn.pm-btn-primary, .dp-grid-slot-search, .dp-grid-slot-apply.is-primary) { color: #ffffff; background: #1d4ed8; }
+:root[data-ui-mode="light"] :is(.pm-btn.pm-btn-danger, .dp-slot-delete, .sp-action-btn-danger) { color: #991b1b; background: #efcdd2; }
+:root[data-ui-mode="light"] .md-body :is(mark, .custom-block.warning .custom-block-title) { color: #554800; }
+:root[data-ui-mode="light"] .md-body .custom-block.tip .custom-block-title { color: #1e40af; }
+:root[data-ui-mode="light"] .md-body .custom-block.info .custom-block-title { color: #5b21b6; }
+:root[data-ui-mode="light"] .md-body .custom-block.danger .custom-block-title { color: #991b1b; }
+:root[data-ui-mode="light"] #themePanel .theme-color-actions button:hover { background: #bdcde0; }
+:root[data-ui-mode="light"] :is(.sp-radio-btn.is-active, .ev-subst-picker-confirm) { color: #ffffff; background: #1e40af; }
+:root[data-ui-mode="light"] .sp-action-btn:not(.sp-action-btn-danger) { color: #172d6e; }
+:root[data-ui-mode="light"] :is(.td-alpha-label, .td-tl-current) { color: #334155; }
+:root[data-ui-mode="light"] .md-body code { color: #334155; }
+:root[data-ui-mode="light"] .md-body pre { background: #d8e1eb; }
+:root[data-ui-mode="light"] #about-rendered :is(h2, h3, h4, h5, h6) { color: var(--ui-text); }
+:root[data-info-tone="light"] .mi-label.mi-label-accented { color: var(--info-label-color); -webkit-text-stroke: 0; }
+:root[data-ui-mode="light"] .overlay-card { background: var(--ui-surface-raised); color: var(--ui-text); }
+:root[data-ui-mode="light"] #fixture-overlay :is(.btn-outline-light, .btn-outline-secondary) { color: #334155; border-color: #64748b; }
+:root[data-ui-mode="light"] #fixture-overlay .text-secondary { color: #334155 !important; }
+:root[data-ui-mode="light"] #page-tactics .td-fm-menu button:is(:hover, :focus-visible, [aria-selected="true"]) { color: #ffffff; background: #1e3a8a; }
+:root[data-ui-mode="light"] .dp-grid-slot-apply:not(.is-primary) { color: var(--ui-text); }
+/* ??? ??? ?? ?? IN ?? ???? ??? ????. */
+:root[data-info-tone="dark"] .ev-text-in { color: var(--event-in-text); }
+:root[data-info-tone="light"] .ev-text-in { color: var(--event-in-text); -webkit-text-stroke: 0; }
+:root[data-info-tone="light"] .ev-text-in .ev-text-name { font-weight: 700; }
+:root[data-info-tone="light"] .ev-text-in .ev-comment { -webkit-text-stroke: 0; }
+:root[data-info-tone="light"] .ev-icon .football-icon-subst { width: calc(18px * var(--ev-ui-scale, 1)); height: calc(18px * var(--ev-ui-scale, 1)); stroke-width: 3.5; }
+:root[data-info-tone="light"] .ev-icon .football-icon-in { stroke: var(--event-arrow-in); }
+/* 미출전 상태의 원래 의미색은 유지하고, 밝은 모드에서만 글자 획을 보강한다. */
+:root[data-ui-mode="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason, .dp-icon-injury, .dp-icon-unregistered),
+:root[data-ui-mode="light"] .pm-injury-reason {
+  -webkit-text-stroke: .5px #5b1520;
+  paint-order: stroke fill;
+}
+:root[data-ui-mode="light"] :is(#injuryPanel, [data-injury-cycle-panel]) :is(.ic-reason.is-questionable, .dp-icon-questionable),
+:root[data-ui-mode="light"] .pm-injury-reason-questionable {
+  -webkit-text-stroke: .7px #4a3c00;
+}
+
+:root[data-info-tone="light"] .ev-text-out { color: var(--event-out-text); }

@@ -194,12 +194,12 @@
       cursor: pointer;
       font-weight: 700;
     }
-    .tab.active { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.22); }
+    .tab.active { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08); border-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.22); }
     .right-btn {
       border: 1px solid var(--line); background: transparent; color: var(--text);
       border-radius: 12px; padding: 10px 14px; font-weight: 800; cursor: pointer; white-space: nowrap;
     }
-    .right-btn:hover { background: rgba(255,255,255,.06); }
+    .right-btn:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06); }
     /* ========== 수동 모드 토글 스위치 ========== */
     .manual-toggle-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
     .manual-toggle-wrap label { font-weight: 700; font-size: 14px; color: var(--text); cursor: pointer; user-select: none; }
@@ -238,7 +238,7 @@
     .manual-controls-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 24px; margin-top: 8px; }
     .manual-score-row { display: flex; align-items: center; gap: 8px; }
     .manual-score-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 18px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .manual-score-btn:hover { background: rgba(255,255,255,.1); }
+    .manual-score-btn:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1); }
     .manual-score-val { font-size: 22px; font-weight: 900; min-width: 28px; text-align: center; }
     .manual-score-group { display: grid; gap: 8px; }
     .manual-score-group label { font-size: 12px; opacity: .85; }
@@ -249,7 +249,7 @@
     #themePanel #manual-section .theme-pso-row { margin-top: 0; }
     #themePanel .theme-pso-toggle { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     #themePanel .theme-pso-row .manual-pk-buttons { gap: 6px; }
-    #themePanel .theme-pso-row button { padding: 7px 10px; white-space: nowrap; background: #0b1220; color: #e5e7eb; border: 1px solid #ffffff20; border-radius: 10px; cursor: pointer; font-weight: 700; }
+    #themePanel .theme-pso-row button { padding: 7px 10px; white-space: nowrap; background: var(--ui-surface, #0b1220); color: var(--ui-text, #e5e7eb); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1255); border-radius: 10px; cursor: pointer; font-weight: 700; }
     #psoControlHint { font-size: 12px; opacity: .7; }
     /* 수동 모드에서는 PSO 단축키 안내를 버튼 위(점수 라벨과 같은 줄)에 두고, 오른쪽 빈 자리에 퇴장 입력을 놓는다. */
     #themePanel #manual-section .theme-pso-row { display: grid; grid-template-columns: auto auto; align-items: center; gap: 8px 14px; }
@@ -297,10 +297,10 @@
     .panelHeader .hint { color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
     .panelBody {
       flex: 1; padding: 0; overflow: auto; min-height: 0;
-      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent;
+      scrollbar-width: thin; scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.25) transparent;
     }
     .panelBody::-webkit-scrollbar { width: 6px; }
-    .panelBody::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .panelBody::-webkit-scrollbar-thumb { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25); border-radius: 3px; }
     .panelBody::-webkit-scrollbar-track { background: transparent; }
 
     /* ========== 일정 확인 ========== */
@@ -310,11 +310,11 @@
     .fixture-inline-id {
       font-size: 13px; font-weight: 900; color: var(--text);
       padding: 3px 10px; border-radius: 999px;
-      border: 1px solid var(--line); background: rgba(0,0,0,.25);
+      border: 1px solid var(--line); background: var(--panel-header-shade, rgba(0,0,0,.25));
       cursor: pointer; user-select: none; transition: background .15s;
       white-space: nowrap;
     }
-    .fixture-inline-id:hover { background: rgba(255,255,255,.1); }
+    .fixture-inline-id:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1); }
     .fixture-inline-status { font-size: 13px; color: var(--muted); white-space: nowrap; }
     .panel-fixture-tools {
       display: flex; align-items: center; justify-content: flex-end;
@@ -400,13 +400,13 @@
       --success-color: var(--overlay-green, #22c55e);
       --warning-color: #f59e0b;
       --danger-color: #ef4444;
-      --light-color: rgba(255,255,255,.45);
+      --light-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.45);
 
       --home-color: var(--primary-color);
       --away-color: #ffc107;
 
-      --text-color: rgba(255,255,255,.90);
-      --text-color-info: rgba(255,255,255,.50);
+      --text-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.90);
+      --text-color-info: rgba(var(--ui-ink-rgb, 255, 255, 255),.50);
 
       --background-color: rgb(var(--api-widget-surface-rgb));
 
@@ -419,7 +419,7 @@
       --button-text-transform: uppercase;
       --title-text-transform: uppercase;
 
-      --border: 1px solid rgba(255,255,255,.10);
+      --border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.10);
       --game-height: 2.3rem;
       --league-height: 2.35rem;
 
@@ -427,13 +427,13 @@
       --flag-size: 22px;
       --teams-logo-size: 18px;
       --teams-logo-size-xl: 5rem;
-      --hover: rgba(255,255,255,.08);
+      --hover: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
     }
 
     /* 패널 투명도 슬라이더(--panel-alpha) 연동 — 테마 설정값을 알파 가변 버전으로 덮어씀. */
     #page-schedule :where(.panelBody, #games-list, #standings-content, #team-content, #game-content, api-sports-widget.initialized:not([data-type="config"])) {
       --background-color: rgba(var(--api-widget-surface-rgb), var(--panel-alpha)) !important;
-      --hover: rgba(255,255,255, calc(var(--api-widget-hover-alpha) * var(--panel-alpha))) !important;
+      --hover: rgba(var(--ui-ink-rgb, 255, 255, 255), calc(var(--api-widget-hover-alpha) * var(--panel-alpha))) !important;
     }
     .page-wrap {
       display: flex; flex-direction: column; gap: 8px; padding: 8px;
@@ -460,17 +460,17 @@
     #themePanel { flex: none; padding: 10px 14px; gap: 10px; }
     #themePanel .theme-card {
       min-width: 0; padding: 12px 14px;
-      background: rgba(11, 18, 32, .76);
-      border: 1px solid #ffffff16; border-radius: 14px;
+      background: rgba(var(--ui-surface-rgb, 11, 18, 32), .76);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.0863); border-radius: 14px;
     }
     #themePanel .theme-colors-card { position: relative; }
     #themePanel .theme-color-header { min-height: 34px; padding-right: 180px; }
     #themePanel .theme-color-actions { position: absolute; right: 12px; top: 9px; display: flex; align-items: center; gap: 6px; }
     #themePanel .theme-color-actions button:not(.theme-color-reset) {
-      height: 26px; padding: 0 9px; border: 1px solid #ffffff24; border-radius: 7px;
-      background: #19273e; color: #c4d5f3; font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
+      height: 26px; padding: 0 9px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1412); border-radius: 7px;
+      background: var(--ui-control-surface, #19273e); color: #c4d5f3; font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
     }
-    #themePanel .theme-color-actions button:hover { background: #253650; border-color: #ffffff40; }
+    #themePanel .theme-color-actions button:hover { background: #253650; border-color: rgba(var(--ui-ink-rgb, 255, 255, 255), 0.251); }
     #themePanel .theme-color-actions button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
     #themePanel button:disabled { opacity: .4; cursor: default; }
     html.popout-target-theme #themePanel { padding: 10px; }
@@ -504,7 +504,7 @@
     #themePanel .fsm-theme-tour-btn { display: block; box-sizing: border-box; width: 100%; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #themePanel .fsm-theme-tour-btn[aria-pressed="true"] { background: var(--control-accent); border-color: var(--control-accent); color: var(--control-accent-on); }
     #themePanel .theme-card button.ghost {
-      background: #19273e; border: 1px solid #ffffff24;
+      background: var(--ui-control-surface, #19273e); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1412);
     }
     #themePanel .theme-card input[type="color"] {
       width: 42px; height: 30px; cursor: pointer;
@@ -537,7 +537,7 @@
     }
     #themePanel .theme-font-basic { display: flex; align-items: flex-end; gap: 10px; }
     #themePanel .theme-font-basic .pgroup { width: 210px; max-width: calc(100% - 76px); }
-    #themePanel .theme-font-basic #resetFont { height: 36px; padding: 8px 12px; border-radius: 10px; border: 1px solid #ffffff20; background: #0b1220; color: #e5e7eb; cursor: pointer; }
+    #themePanel .theme-font-basic #resetFont { height: 36px; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1255); background: var(--ui-surface, #0b1220); color: var(--ui-text, #e5e7eb); cursor: pointer; }
     #themePanel .theme-font-advanced { margin-top: 10px; }
     #themePanel .theme-font-advanced summary { width: max-content; color: #a8b6cc; font-size: 12px; cursor: pointer; }
     #themePanel .theme-font-advanced[open] summary { margin-bottom: 12px; }
@@ -579,8 +579,8 @@
     .pgroup input[type="number"],
     .pgroup select,
     .pgroup button,
-    .pgroup .file { background: #0b1220; color: #e5e7eb; border: 1px solid #ffffff20; border-radius: 10px; padding: 8px 10px; height: 36px; }
-    .pgroup textarea { background: #0b1220; color: #e5e7eb; border: 1px solid #ffffff20; border-radius: 10px; padding: 8px 10px; min-height: 72px; resize: vertical; }
+    .pgroup .file { background: var(--ui-surface, #0b1220); color: var(--ui-text, #e5e7eb); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1255); border-radius: 10px; padding: 8px 10px; height: 36px; }
+    .pgroup textarea { background: var(--ui-surface, #0b1220); color: var(--ui-text, #e5e7eb); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1255); border-radius: 10px; padding: 8px 10px; min-height: 72px; resize: vertical; }
     .pgroup input[type="color"] { height: 36px; width: 48px; border: none; background: transparent; padding: 0; }
     .pgroup button { cursor: pointer; font-weight: 700; }
     .pgroup button.primary { background: var(--control-accent); color: var(--control-accent-on); border: none; }
@@ -589,7 +589,7 @@
     .theme-file-caption { display: flex; align-items: center; height: 36px; font-size: 12px; opacity: .85; white-space: nowrap; line-height: 1; }
     .template-import-file { min-width: 220px; }
     .pspacer { flex: 1; }
-    .kbd { font-family: var(--font-family); font-size: 12px; background: #111827; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffffff22; }
+    .kbd { font-family: var(--font-family); font-size: 12px; background: var(--ui-surface, #111827); padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1333); }
     .hidden { display: none !important; }
 
     /* 숫자 입력 폭 */
@@ -680,7 +680,7 @@
     .md-body p  { margin: 0 0 12px; }
     .md-body ul, .md-body ol { margin: 0 0 12px 20px; }
     .md-body li { margin-bottom: 4px; }
-    .md-body code { background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 13px; font-family: var(--font-family); }
+    .md-body code { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 13px; font-family: var(--font-family); }
     .md-body pre  { background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px; }
     .md-body pre code { background: none; border: none; padding: 0; }
     .md-body blockquote { border-left: 3px solid var(--muted); margin: 0 0 12px; padding: 4px 0 4px 14px; color: var(--muted); }
@@ -689,7 +689,7 @@
     .md-body strong { font-weight: 800; }
     .md-body table { border-collapse: collapse; width: 100%; margin-bottom: 14px; font-size: 13px; }
     .md-body th, .md-body td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
-    .md-body th { background: rgba(255,255,255,.05); font-weight: 800; }
+    .md-body th { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.05); font-weight: 800; }
 
     /* ── markdown-it-mark — ==형광펜 강조== */
     .md-body mark {
@@ -701,7 +701,7 @@
 
     /* ── markdown-it-abbr — 약어 hover 툴팁 (대시보드 다크 테마용) */
     .md-body abbr[title] {
-      text-decoration: underline dotted rgba(255, 255, 255, .35);
+      text-decoration: underline dotted rgba(var(--ui-ink-rgb, 255, 255, 255), .35);
       text-underline-offset: 3px;
       cursor: help;
     }
@@ -712,7 +712,7 @@
       padding: 12px 16px 12px 18px;
       border-radius: 8px;
       border-left: 4px solid;
-      background: rgba(255, 255, 255, .04);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255), .04);
     }
     .md-body .custom-block > p { margin: 0; }
     .md-body .custom-block > p + p { margin-top: 8px; }
@@ -767,7 +767,7 @@
 
     /* API 데이터 파섹션 */
     .api-section {
-      background: rgba(255,255,255,.03); border: 1px solid var(--line);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.03); border: 1px solid var(--line);
       border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px;
     }
     .api-data-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -794,7 +794,7 @@
     }
     .lp {
       background: var(--panel-bg);
-      border: 1px dashed rgba(255,255,255,.18);
+      border: 1px dashed rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
       border-radius: 14px;
       display: flex;
       align-items: center;
@@ -812,8 +812,8 @@
     .lp.lp-bench, .lp.lp-injury, .lp.lp-lineup-s {
       /* dp-panel 상단 여백 8px + dp-title 여백 2+6px, 테두리 1px, 줄 높이 약 16px = 33px */
       background-image: linear-gradient(
-        rgba(0,0,0,.25) 0px,
-        rgba(0,0,0,.25) 33px,
+        var(--panel-header-shade, rgba(0,0,0,.25)) 0px,
+        var(--panel-header-shade, rgba(0,0,0,.25)) 33px,
         transparent 37px
       );
     }
@@ -821,8 +821,8 @@
       /* 구분선 위치 = 상단 여백 4px + 제목 표시줄 33px(테두리 포함) = 37px.
          transparent를 separator에 맞추고 3px 앞에서 fade 시작. */
       background-image: linear-gradient(
-        rgba(0,0,0,.25) 0px,
-        rgba(0,0,0,.25) calc(var(--panel-title-bar-height) + 1px),
+        var(--panel-header-shade, rgba(0,0,0,.25)) 0px,
+        var(--panel-header-shade, rgba(0,0,0,.25)) calc(var(--panel-title-bar-height) + 1px),
         transparent calc(var(--panel-title-bar-height) + 4px)
       );
     }
@@ -906,7 +906,7 @@
        각지게 두고 바깥 모서리만 둥글게(overlay-card와 동일한 패턴). */
     .fixture-search-box {
       border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
-      background: rgba(255,255,255,.02);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.02);
     }
     .fixture-search-box .input-group,
     .fixture-search-box .input-group > .form-control,
@@ -920,10 +920,10 @@
     .fixture-recent-list {
       border-top: 1px solid var(--line);
       overflow-y: auto;
-      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent;
+      scrollbar-width: thin; scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.25) transparent;
     }
     .fixture-recent-list::-webkit-scrollbar { width: 6px; }
-    .fixture-recent-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+    .fixture-recent-list::-webkit-scrollbar-thumb { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25); border-radius: 3px; }
     .fixture-recent-list::-webkit-scrollbar-track { background: transparent; }
     .fixture-recent-empty {
       padding: 10px 12px; color: var(--muted); font-size: 12px; font-weight: 700;
@@ -935,7 +935,7 @@
       font-size: 13px; font-weight: 700; text-align: left; cursor: pointer;
     }
     .fixture-recent-item:last-child { border-bottom: none; }
-    .fixture-recent-item:hover { background: rgba(255,255,255,.06); }
+    .fixture-recent-item:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06); }
     .fixture-recent-item .fixture-recent-id {
       flex: 0 0 auto; color: var(--muted); font-weight: 900; font-variant-numeric: tabular-nums;
     }
@@ -970,7 +970,7 @@
 
 
 /* Compact bottom-docked theme controls; popouts retain a scrollable full window. */
-#themePanel .theme-color-reset { width: 26px !important; height: 26px; padding: 0; border: 1px solid #ffffff24; border-radius: 7px; background: #19273e; color: #c4d5f3; font-size: 20px; line-height: 1; cursor: pointer; }
+#themePanel .theme-color-reset { width: 26px !important; height: 26px; padding: 0; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1412); border-radius: 7px; background: var(--ui-control-surface, #19273e); color: #c4d5f3; font-size: 20px; line-height: 1; cursor: pointer; }
 html.popout-target-theme .pages:has(> #page-theme.active) { flex: 1; margin-top: 0; }
 html.popout-target-theme #themePanel .theme-colors-card > .prow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); }
@@ -1017,25 +1017,25 @@ html.popout-target-theme #themePanel .theme-notes-card > .prow { display: grid; 
   :is(.pgroup select, .sp-select)::picker(select) {
     max-height: min(360px, 60dvh);
     overflow-y: auto;
-    background: #0b1220;
-    color: #e5e7eb;
-    border: 1px solid #ffffff20;
+    background: var(--ui-surface, #0b1220);
+    color: var(--ui-text, #e5e7eb);
+    border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1255);
     border-radius: 10px;
     padding: 4px;
     box-shadow: 0 8px 24px #00000055;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,.25) transparent;
+    scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.25) transparent;
   }
   :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar { width: 6px; }
   :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-track { background: transparent; }
-  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
-  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-thumb { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25); border-radius: 3px; }
+  :is(.pgroup select, .sp-select)::picker(select)::-webkit-scrollbar-thumb:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.4); }
   :is(.pgroup select, .sp-select) option {
     min-height: 32px;
     padding: 6px 10px;
     border-radius: 6px;
-    background: #0b1220;
-    color: #e5e7eb;
+    background: var(--ui-surface, #0b1220);
+    color: var(--ui-text, #e5e7eb);
   }
   :is(.pgroup select, .sp-select) option:is(:hover, :focus-visible, :checked) {
     background: var(--control-accent);

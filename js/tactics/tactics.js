@@ -1537,7 +1537,10 @@
     tdTool = t;
     ['select','pencil','arrow','dashed-arrow','line','dashed','box','circle','polygon','line-connect','curve-arrow','curve-dashed-arrow','eraser','laser'].forEach(n => {
       const b = document.getElementById('td-tool-' + n);
-      if (b) b.style.background = n === t ? '#1e40af' : '#1e293b';
+      if (b) {
+        b.style.background = n === t ? '#1e40af' : 'var(--ui-control-surface, #1e293b)';
+        b.style.color = n === t ? '#ffffff' : 'var(--ui-text, #e5e7eb)';
+      }
     });
     const layer = document.getElementById('tactics-draw-layer');
     if (layer) layer.style.pointerEvents = (t === 'select') ? 'none' : 'all';
@@ -1569,8 +1572,8 @@
     const sel = document.querySelector(`[data-clr="${c}"]`);
     if (sel) {
       sel.textContent = '✓';
-      sel.style.color = '#fff';
-      sel.style.textShadow = '0 0 3px rgba(0,0,0,0.9),0 0 3px rgba(0,0,0,0.9)';
+      sel.style.color = teamColorContrastRatio('#000000', c) > teamColorContrastRatio('#ffffff', c) ? '#000000' : '#ffffff';
+      sel.style.textShadow = 'none';
       sel.style.border = '2px solid rgba(255,255,255,0.95)';
       sel.style.boxShadow = '0 0 0 2px rgba(0,0,0,0.65)';
     }

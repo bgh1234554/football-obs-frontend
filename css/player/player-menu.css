@@ -4,7 +4,7 @@
 
 /* 클릭 가능 표시 — 피치 노드/이름랩은 기본이 pointer-events:none이므로 auto로 override */
 .dp-item[data-player-id] { cursor: pointer; }
-.dp-item[data-player-id]:hover { background: rgba(255,255,255,.06); border-radius: 4px; }
+.dp-item[data-player-id]:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06); border-radius: 4px; }
 
 .dp-lineup-node[data-player-id],
 .dp-lineup-name-wrap[data-player-id] {
@@ -26,12 +26,12 @@
   min-width: 220px;
   max-width: 280px;
   background: rgba(18, 18, 32, 0.97);
-  border: 1px solid rgba(255,255,255,.18);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
   border-radius: 10px;
   padding: 10px 12px 12px;
   box-shadow: 0 6px 24px rgba(0,0,0,.65);
   backdrop-filter: blur(6px);
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
   font-family: var(--font-family, sans-serif);
   font-size: 13px;
   animation: pm-fadein .12s ease;
@@ -44,13 +44,13 @@
   right: 8px;
   background: none;
   border: none;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
   font-size: 14px;
   cursor: pointer;
   padding: 2px 4px;
   line-height: 1;
 }
-.pm-close:hover { color: #fff; }
+.pm-close:hover { color: var(--ui-text, #fff); }
 
 .pm-info {
   display: flex;
@@ -62,7 +62,7 @@
 
 .pm-num {
   font-weight: 700;
-  color: rgba(255,255,255,.5);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
   margin-right: 4px;
 }
 
@@ -72,8 +72,8 @@
   height: 40px;
   border-radius: 50%;
   overflow: hidden;
-  background: rgba(255,255,255,.12);
-  border: 2px solid rgba(255,255,255,.25);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+  border: 2px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,12 +85,12 @@
   display: block;
 }
 .pm-avatar-empty {
-  background: rgba(255,255,255,.1);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
 }
 .pm-avatar-num {
   font-weight: 800;
   font-size: 14px;
-  color: rgba(255,255,255,.6);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .6));
 }
 
 .pm-info-text { min-width: 0; }
@@ -105,7 +105,7 @@
 
 .pm-subname {
   font-size: 11px;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -133,7 +133,7 @@
 
 .pm-pos {
   font-size: 11px;
-  color: rgba(255,255,255,.5);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
   margin-top: 1px;
 }
 
@@ -147,17 +147,17 @@
   padding: 5px 4px;
   font-size: 12px;
   font-family: inherit;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
   border-radius: 6px;
-  color: #e2e8f0;
+  color: var(--ui-text, #e2e8f0);
   cursor: pointer;
   transition: background .12s, border-color .12s;
   white-space: nowrap;
 }
 .pm-btn:hover:not(:disabled) {
-  background: rgba(255,255,255,.16);
-  border-color: rgba(255,255,255,.28);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.16);
+  border-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.28);
 }
 .pm-btn:disabled {
   opacity: .35;
@@ -166,7 +166,7 @@
 .pm-btn.pm-btn-primary {
   background: rgba(37,99,235,.7);
   border-color: #3b82f6;
-  color: #fff;
+  color: var(--ui-text, #fff);
 }
 .pm-btn.pm-btn-primary:hover { background: rgba(59,130,246,.85); }
 .pm-btn.pm-btn-danger {
@@ -211,17 +211,17 @@
   font-weight: 700;
   font-size: 13px;
   margin-bottom: 8px;
-  color: rgba(255,255,255,.75);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .75));
 }
 
 .pm-nick-input {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.2);
   border-radius: 6px;
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
   font-size: 13px;
   font-family: inherit;
   outline: none;
@@ -248,7 +248,7 @@
 
 .pm-modal {
   background: rgba(18, 18, 35, 0.99);
-  border: 1px solid rgba(255,255,255,.16);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.16);
   border-radius: 12px;
   width: 520px;
   max-width: calc(calc(var(--display-vw, 1vw) * 100) - 32px);
@@ -258,7 +258,7 @@
   flex-direction: column;
   box-shadow: 0 8px 40px rgba(0,0,0,.75);
   font-family: var(--font-family, sans-serif);
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
   font-size: 13px;
 }
 /* 닉네임 목록 모달 — 내용 길이에 따라 너비 유동, 높이도 내용에 맞게 */
@@ -281,7 +281,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 10px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
   flex: 0 0 auto;
 }
 
@@ -297,33 +297,33 @@
 .pm-modal-close {
   background: none;
   border: none;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
   font-size: 15px;
   cursor: pointer;
   padding: 2px 4px;
   flex: 0 0 auto;
 }
-.pm-modal-close:hover { color: #fff; }
+.pm-modal-close:hover { color: var(--ui-text, #fff); }
 
 .pm-modal-body {
   overflow-y: auto;
   flex: 1 1 0;
   padding: 10px 14px 14px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.2) transparent;
+  scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.2) transparent;
 }
 .pm-modal-body::-webkit-scrollbar { width: 5px; }
-.pm-modal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+.pm-modal-body::-webkit-scrollbar-thumb { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.2); border-radius: 3px; }
 
 /* ── 경기 스탯 테이블 ── */
 .pm-stat-table {
   width: 100%;
   border-collapse: collapse;
 }
-.pm-stat-table tr + tr td { border-top: 1px solid rgba(255,255,255,.07); }
+.pm-stat-table tr + tr td { border-top: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.07); }
 .pm-st-label {
   padding: 5px 4px 5px 0;
-  color: rgba(255,255,255,.55);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55));
   white-space: nowrap;
   width: 55%;
 }
@@ -343,16 +343,16 @@
 }
 
 .pm-nav-btn {
-  background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
   border-radius: 5px;
-  color: #e2e8f0;
+  color: var(--ui-text, #e2e8f0);
   font-size: 11px;
   padding: 3px 8px;
   cursor: pointer;
   transition: background .1s;
 }
-.pm-nav-btn:hover:not(:disabled) { background: rgba(255,255,255,.2); }
+.pm-nav-btn:hover:not(:disabled) { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.2); }
 .pm-nav-btn:disabled { opacity: .3; cursor: default; }
 
 .pm-szn-key {
@@ -371,14 +371,14 @@
 }
 .pm-szn-table th {
   padding: 4px 6px;
-  color: rgba(255,255,255,.5);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
   font-weight: 600;
-  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
   text-align: center;
 }
 .pm-szn-table td {
   padding: 5px 6px;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
 }
 .pm-szn-table tr:last-child td { border-bottom: none; }
 
@@ -420,8 +420,8 @@
 .pm-nick-list-table { width: 100%; }
 .pm-nick-list-table th { text-align: center; }
 .pm-nick-list-table td { text-align: center; }
-.pm-nick-list-name { padding: 6px 16px; color: rgba(255,255,255,.6); white-space: nowrap; }
-.pm-nick-list-id { padding: 6px 10px; color: rgba(255,255,255,.72); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pm-nick-list-name { padding: 6px 16px; color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .6)); white-space: nowrap; }
+.pm-nick-list-id { padding: 6px 10px; color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .72)); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pm-nick-list-nick { padding: 6px 16px; font-weight: 700; white-space: nowrap; }
 .pm-nick-list-action { padding: 4px 8px 4px 0; text-align: center; white-space: nowrap; }
 .pm-nick-del { padding: 3px 10px; font-size: 11px; white-space: nowrap; }
@@ -444,14 +444,14 @@
 .pm-szn-profile {
   flex: 0 0 auto;
   padding: 12px 16px 10px;
-  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
 }
 
 .pm-szn-nav-fixed {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
 }
 
 .pm-szn-scroll {
@@ -471,7 +471,7 @@
   border-radius: 50%;
   overflow: hidden;
   flex: 0 0 auto;
-  background: rgba(255,255,255,.1);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
 }
 .pm-avatar-lg img {
   width: 100%;
@@ -479,7 +479,7 @@
   object-fit: cover;
 }
 .pm-avatar-lg.pm-avatar-empty {
-  border: 2px solid rgba(255,255,255,.2);
+  border: 2px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.2);
 }
 
 .pm-profile-wrap {
@@ -503,7 +503,7 @@
 
 .pm-profile-sub {
   font-size: 12px;
-  color: rgba(255,255,255,.5);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
 }
 
 .pm-profile-chips {
@@ -513,7 +513,7 @@
 }
 
 .pm-chip {
-  background: rgba(255,255,255,.12);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
   border-radius: 4px;
   padding: 2px 7px;
   font-size: 11px;
@@ -522,7 +522,7 @@
 
 .pm-profile-birth {
   font-size: 11px;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
 }
 
 /* ── 시즌 스탯 표 그룹 헤더 ── */
@@ -535,14 +535,14 @@
 }
 
 .pm-th-group-row th {
-  background: rgba(255,255,255,.05);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.05);
 }
 
 .pm-th-group-cell {
   text-align: center;
-  border-bottom: 1px solid rgba(255,255,255,.12);
-  border-left: 1px solid rgba(255,255,255,.08);
-  color: rgba(255,255,255,.7) !important;
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+  border-left: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .7)) !important;
   font-size: 11px;
   padding: 4px 8px;
 }
@@ -565,8 +565,8 @@
 
 /* 모든 셀에 명시적 배경 — sticky 셀 뒤로 scrolled content가 비치는 렌더링 버그 방지 */
 .pm-szn-table-full td,
-.pm-szn-table-full thead th { background-color: rgb(18, 18, 35); }
-.pm-szn-table-full .pm-th-group-row th { background-color: rgb(26, 26, 46); }
+.pm-szn-table-full thead th { background-color: var(--ui-surface-raised, rgb(18, 18, 35)); }
+.pm-szn-table-full .pm-th-group-row th { background-color: var(--ui-surface, rgb(26, 26, 46)); }
 
 /* ── 평점 배지 ── */
 .pm-rating-badge {
@@ -596,7 +596,7 @@
 .pm-card-yr {
   display: inline-block;
   background: linear-gradient(90deg, #f59e0b 50%, #ef4444 50%);
-  color: #fff;
+  color: var(--ui-text, #fff);
   border-radius: 3px;
   font-size: 11px;
   font-weight: 700;
@@ -607,7 +607,7 @@
 .pm-card-r {
   display: inline-block;
   background: #ef4444;
-  color: #fff;
+  color: var(--ui-text, #fff);
   border-radius: 3px;
   font-size: 11px;
   font-weight: 700;
@@ -618,7 +618,7 @@
 .pm-loading, .pm-error, .pm-empty {
   padding: 20px 0;
   text-align: center;
-  color: rgba(255,255,255,.45);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
   font-size: 13px;
 }
 .pm-error { color: #f87171; }

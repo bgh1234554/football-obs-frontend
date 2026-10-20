@@ -25,10 +25,10 @@
   display: flex;
   flex-direction: column;
   background: #181a20;
-  border: 1px solid rgba(255,255,255,.14);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
   border-radius: 16px;
   box-shadow: 0 28px 70px rgba(0,0,0,.58);
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
 }
 .dp-manual-header,
 .dp-manual-footer {
@@ -40,7 +40,7 @@
   padding: 14px 16px;
 }
 .dp-manual-header {
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
 }
 .dp-manual-title {
   font-size: 15px;
@@ -49,7 +49,7 @@
 .dp-manual-meta {
   margin-top: 4px;
   font-size: 11px;
-  color: rgba(255,255,255,.46);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .46));
 }
 .dp-manual-close {
   width: 28px;
@@ -57,13 +57,13 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: rgba(255,255,255,.65);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .65));
   font-size: 18px;
   cursor: pointer;
 }
 .dp-manual-close:hover {
-  background: rgba(255,255,255,.08);
-  color: #fff;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  color: var(--ui-text, #fff);
 }
 .dp-manual-body {
   flex: 1 1 auto;
@@ -72,13 +72,13 @@
   padding: 14px 16px 18px;
   /* 다른 패널(.dp-list/.sp-body 등)과 동일한 얇은 스크롤바로 통일 */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.25) transparent;
+  scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.25) transparent;
 }
 .dp-manual-body::-webkit-scrollbar { width: 6px; }
-.dp-manual-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+.dp-manual-body::-webkit-scrollbar-thumb { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25); border-radius: 3px; }
 .dp-manual-body::-webkit-scrollbar-track { background: transparent; }
 .dp-manual-footer {
-  border-top: 1px solid rgba(255,255,255,.08);
+  border-top: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
 }
 .dp-manual-footer-actions {
   display: flex;
@@ -108,14 +108,14 @@
   color: var(--control-accent-on);
 }
 .dp-manual-secondary {
-  border: 1px solid rgba(255,255,255,.16);
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.78);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.16);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .78));
 }
 .dp-manual-primary:hover { filter: brightness(1.05); }
 .dp-manual-secondary:hover {
-  background: rgba(255,255,255,.12);
-  color: #fff;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+  color: var(--ui-text, #fff);
 }
 .dp-form-grid,
 .dp-form-stack {
@@ -134,7 +134,7 @@
 .dp-field-label {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255,255,255,.55);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55));
 }
 .dp-input,
 .dp-select {
@@ -142,9 +142,9 @@
   box-sizing: border-box;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: #0f1116;
-  color: #f0f0f0;
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
+  background: var(--ui-surface, #0f1116);
+  color: var(--ui-text, #f0f0f0);
   font-size: 12px;
 }
 .dp-input:focus,
@@ -179,7 +179,7 @@
 }
 .dp-manual-header-row {
   padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255,255,255,.1);
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
   margin-bottom: 2px;
 }
 .dp-manual-formation-field {
@@ -230,8 +230,8 @@
   width: 14px;
   height: 18px;
   border-radius: 2px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
 }
 .dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-yellow {
   background: #FFD93D;
@@ -248,7 +248,7 @@
   text-align: center;
   font-size: 11px;
   font-weight: 800;
-  color: rgba(255,255,255,.4);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .4));
 }
 .dp-manual-stat-check input[type="checkbox"]:checked + .dp-manual-card-swatch.is-captain {
   background: #FFD400;
@@ -263,13 +263,13 @@
 .dp-slot-label {
   font-size: 11px;
   font-weight: 800;
-  color: rgba(255,255,255,.62);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .62));
   text-align: center;
 }
 .dp-manual-help {
   margin-bottom: 10px;
   font-size: 11px;
-  color: rgba(255,255,255,.48);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .48));
   line-height: 1.45;
 }
 
@@ -284,9 +284,9 @@
   flex: 1;
   padding: 7px 0;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.04);
-  color: rgba(255,255,255,.6);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.04);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .6));
   font-size: 12px;
   font-weight: 800;
   letter-spacing: .04em;
@@ -295,7 +295,7 @@
 .tn-tab.active {
   background: rgba(var(--control-accent-rgb),.16);
   border-color: rgba(var(--control-accent-rgb),.55);
-  color: #fff;
+  color: var(--ui-text, #fff);
 }
 .tn-team-row {
   display: flex;
@@ -323,7 +323,7 @@
 .tn-swatch-label {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255,255,255,.5);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
   white-space: nowrap;
 }
 .tn-swatch {
@@ -332,7 +332,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.28);
+  border: 2px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.28);
   box-shadow: 0 1px 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25);
   cursor: pointer;
   transition: border-color .15s ease, transform .1s ease;
@@ -369,14 +369,14 @@
   gap: 10px;
   align-items: center;
   padding: 6px 10px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.04);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
   border-radius: 8px;
   cursor: grab;
   user-select: none;
   transition: background .12s, border-color .12s, transform .12s;
 }
-.dp-grid-row:hover { background: rgba(255,255,255,.08); }
+.dp-grid-row:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08); }
 .dp-grid-row.is-dragging { opacity: .35; cursor: grabbing; }
 .dp-grid-row.is-drop-target {
   background: rgba(var(--control-accent-rgb),.18);
@@ -385,7 +385,7 @@
 }
 .dp-grid-handle {
   cursor: grab;
-  color: rgba(255,255,255,.55);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55));
   font-size: 16px;
   line-height: 1;
   text-align: center;
@@ -395,7 +395,7 @@
 .dp-grid-slot-label {
   font-size: 11px;
   font-weight: 800;
-  color: rgba(255,255,255,.62);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .62));
   text-align: center;
 }
 .dp-grid-photo {
@@ -404,29 +404,29 @@
   border-radius: 50%;
   background-size: cover;
   background-position: center;
-  background-color: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.12);
+  background-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
 }
 .dp-grid-photo-empty {
-  background-color: rgba(255,255,255,.04);
+  background-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.04);
   background-image: none;
 }
 .dp-grid-num {
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255,255,255,.78);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .78));
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .dp-grid-name {
   font-size: 13px;
-  color: #f0f0f0;
+  color: var(--ui-text, #f0f0f0);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .dp-grid-name.dp-grid-empty {
-  color: rgba(255,255,255,.32);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .32));
   font-style: italic;
 }
 /* API가 이름 없이 내려준 선수용 인라인 입력 (buildGridRowHtml) — .dp-input 기본 스타일을
@@ -516,7 +516,7 @@
   display: inline-flex;
   align-items: stretch;
   border-radius: 999px;
-  background: rgba(255,255,255,.06);
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
   padding: 2px;
   gap: 2px;
 }
@@ -524,7 +524,7 @@
   appearance: none;
   border: 0;
   background: transparent;
-  color: rgba(255,255,255,.65);
+  color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .65));
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
@@ -533,10 +533,10 @@
   transition: background .12s, color .12s;
   font-family: inherit;
 }
-.sp-radio-btn:hover { color: #fff; }
+.sp-radio-btn:hover { color: var(--ui-text, #fff); }
 .sp-radio-btn.is-active {
   background: #2563eb;
-  color: #fff;
+  color: var(--ui-text, #fff);
   box-shadow: 0 1px 4px rgba(37,99,235,.4);
 }
 
@@ -549,20 +549,20 @@
 .dp-grid-slot-input[data-field="playerId"] { appearance: textfield; -moz-appearance: textfield; }
 .dp-grid-slot-input[data-field="playerId"]::-webkit-inner-spin-button,
 .dp-grid-slot-input[data-field="playerId"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.dp-grid-slot-search, .dp-grid-slot-apply { height: 30px; padding: 4px 8px; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #eee; font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.dp-grid-slot-search, .dp-grid-slot-apply { height: 30px; padding: 4px 8px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18); border-radius: 6px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.07); color: #eee; font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; }
 .dp-grid-slot-search, .dp-grid-slot-apply.is-primary { background: #1d4bb5; border-color: #5287ee; }
 .dp-grid-slot-preview { display: flex; align-items: center; gap: 6px; margin-top: 6px; min-width: 0; font-size: 11px; color: #bbb; white-space: normal; }
 .dp-grid-result-photo { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex: none; }
 .dp-grid-result-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .dp-grid-result-info strong { color: #eee; font-weight: 600; }
 .dp-grid-result-info small { font-size: 10px; color: #999; }
-.dp-grid-slot-edit { border: 0; border-radius: 4px; background: rgba(255,255,255,.1); color: inherit; cursor: pointer; padding: 3px 8px; }
+.dp-grid-slot-edit { border: 0; border-radius: 4px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1); color: inherit; cursor: pointer; padding: 3px 8px; }
 
 #manualBenchRows { display: flex; flex-direction: column; gap: 4px; }
 .dp-grid-row.dp-bench-row { grid-template-columns: 30px 30px 36px minmax(0, 1fr); cursor: default; }
 .dp-bench-row.has-slot-input .dp-grid-name { grid-column: 3 / -1; }
 .dp-bench-row .dp-grid-slot-fields { grid-template-columns: 44px minmax(80px, 1fr) 110px 52px 30px 30px; }
-.dp-bench-slot-done, .dp-grid-slot-done, .dp-slot-delete { height: 30px; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #eee; cursor: pointer; }
+.dp-bench-slot-done, .dp-grid-slot-done, .dp-slot-delete { height: 30px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18); border-radius: 6px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.07); color: #eee; cursor: pointer; }
 .dp-slot-delete { color: #ff8b8b; background: rgba(220,53,69,.18); border-color: rgba(255,90,105,.45); font-size: 18px; }
 .dp-slot-delete:hover { background: rgba(220,53,69,.35); border-color: #ff5a69; }
 .dp-bench-row:not(.has-slot-input) .dp-grid-name { display: flex; align-items: center; gap: 6px; }

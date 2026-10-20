@@ -489,7 +489,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
 <button class="pm-close" id="pmIdBack" aria-label="뒤로가기" style="left:10px;right:auto">&#8592;</button>
 <div class="pm-nick-wrap">
   <div class="pm-nick-title">선수 검색 및 연결</div>
-  <div style="font-size:11px;color:#8af;margin-bottom:6px">
+  <div style="font-size:11px;color:var(--ui-text,#8af);margin-bottom:6px">
     원본 데이터의 선수 ID: ${pmEsc(String(currentApiId))}${existing ? ` &nbsp;·&nbsp; 연결한 ID: ${pmEsc(String(existing.playerId))}` : ''}${autoLinkedAltId ? ` &nbsp;·&nbsp; 자동 연결한 ID: ${pmEsc(autoLinkedAltId)}` : ''}
   </div>
   <div class="ps-search-help">선수 ID 또는 영문 이름으로 검색하세요.<br>이름은 공백 포함 4글자 이상 입력하세요. 예: Saka</div>
@@ -500,7 +500,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
       style="flex:1;min-width:0"/>
     <button class="pm-btn pm-btn-primary" id="pmIdFetch" style="white-space:nowrap;padding:4px 8px">검색</button>
   </div>
-  <div id="pmIdPreview" style="margin-top:6px;min-height:20px;font-size:11px;color:#aaa">
+  <div id="pmIdPreview" style="margin-top:6px;min-height:20px;font-size:11px;color:var(--ui-text,#aaa)">
     ${existing ? `연결됨${existing.name ? ' - ' + pmEsc(existing.name) : ''} · 다른 선수를 선택하고 저장하면 변경됩니다.` : '검색 결과에서 선수를 선택한 뒤 저장하세요.'}
   </div>
   <div class="pm-nick-btns">
@@ -942,7 +942,9 @@ function _pmRatingHtml(r) {
     n >= 6.0 ? getSetting('ratingColor6')  :
                getSetting('ratingColorBelow6')
   ) : null;
-  const bg = color ? ` style="background:#${pmEsc(color.replace(/^#/, ''))}"` : '';
+  const foreground = color && typeof teamColorContrastRatio === 'function'
+    ? (teamColorContrastRatio('#000000', color) > teamColorContrastRatio('#ffffff', color) ? '#000000' : '#ffffff') : '#ffffff';
+  const bg = color ? ` style="background:#${pmEsc(color.replace(/^#/, ''))};color:${foreground}"` : '';
   return `<span class="pm-rating-badge"${bg}>${n.toFixed(1)}</span>`;
 }
 

@@ -24,7 +24,37 @@ const OVERLAY_CHROMA_COLORS = {
   '--overlay-timeline-glyph': '#4ade80',
 };
 
+// 유효성 검사와 실제 배경 적용이 같은 이미지 목록을 사용합니다.
+const BACKGROUND_PRESET_IMAGES = {
+  "stadium": "resources/backgrounds/dark/stadium-night.webp",
+  "abstract": "resources/backgrounds/dark/navy-mint.webp",
+  "emerald": "resources/backgrounds/dark/emerald-pitch.webp",
+  "charcoal": "resources/backgrounds/dark/charcoal-graphic.webp",
+  "burgundy": "resources/backgrounds/dark/burgundy-light.webp",
+  "stadium-day": "resources/backgrounds/light/stadium-day.webp",
+  "ivory-paper": "resources/backgrounds/light/ivory-paper.webp",
+  "sky-glass": "resources/backgrounds/light/sky-glass.webp",
+  "sage-studio": "resources/backgrounds/light/sage-studio.webp",
+  "sand-dunes": "resources/backgrounds/light/sand-dunes.webp",
+  "lavender-haze": "resources/backgrounds/light/lavender-haze.webp",
+  "silver-contour": "resources/backgrounds/light/silver-contour.webp",
+  "deep-ocean": "resources/backgrounds/dark/deep-ocean.webp",
+  "copper-black": "resources/backgrounds/dark/copper-black.webp",
+  "midnight-purple": "resources/backgrounds/dark/midnight-purple.webp",
+  "steel-blue": "resources/backgrounds/dark/steel-blue.webp",
+  "forest-mist": "resources/backgrounds/dark/forest-mist.webp",
+  "peach-coral": "resources/backgrounds/light/peach-coral.webp",
+  "ice-mint": "resources/backgrounds/light/ice-mint.webp",
+  "blueprint-light": "resources/backgrounds/light/blueprint-light.webp",
+  "paper-collage": "resources/backgrounds/light/paper-collage.webp",
+  "red-tunnel": "resources/backgrounds/dark/red-tunnel.webp",
+  "amber-floodlight": "resources/backgrounds/dark/amber-floodlight.webp",
+  "ink-wave": "resources/backgrounds/dark/ink-wave.webp",
+  "black-mesh": "resources/backgrounds/dark/black-mesh.webp"
+};
+
 const SETTINGS_DEFAULTS = {
+  uiMode: 'dark',
   teamName: 'long',   // 라인업 chip + 벤치/부상 컬럼 헤더의 팀명 표시 (default 풀네임)
   lineup: 'short',
   scorer: 'long',
@@ -44,6 +74,7 @@ const SETTINGS_DEFAULTS = {
   leagueLogoPos: 'center',
   // 크로마키 대응용 라인업 피치 톤 프리셋.
   lineupPitchTone: 'black',
+  lightLineupPitchTone: 'green',
   // 'logo' = matchInfo.homeTeamLogo (default. 클럽=팀 로고, 국대=국기)
   // 'fa'   = matchInfo.homeTeamFaUrl (협회 로고. URL 없으면 logo로 자동 폴백 — fixture.js)
   teamLogo: 'logo',
@@ -119,8 +150,10 @@ const SETTINGS_DEFAULTS = {
   ratingColor95:        '#7f1d6d',  // ≥ 9.5
   // 배경 (Iter 5-7). 설정 팝업 '배경' 탭에서 조정. 테마 탭의 uiBg 옵션은 여기로 이전됨.
   bgColor:        '#111827', // 점수판 외곽 배경색 (테마 탭 uiBg에서 이전)
+  lightBgColor:   '#bac8d9',
   bgTeamDirection: 'off',
   bgPreset:      'stadium',
+  lightBgPreset: 'stadium-day',
   bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
   matchInfoLabelColor: '#60A5FA', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
   matchInfoLabelColorRev: 1, // 이전 주황 기본값을 1회만 새 기본색으로 이전.
@@ -129,6 +162,7 @@ const SETTINGS_DEFAULTS = {
   bgImageData:    '',        // 파일 첨부 압축 base64 데이터 URL
   // 패널 투명도 (0~100). 0=불투명, 100=완전 투명. CSS에는 반전된 opacity alpha로 적용.
   panelAlpha:     25,
+  lightPanelAlpha: 25,
   // 라인업 투명도 (0~100). 라인업 칼럼 배경 + 피치 배경/라인을 함께 조정.
   // 선수 노드/이름은 CSS에서 별도 레이어로 유지한다.
   pitchAlpha:     25,
@@ -403,17 +437,18 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 ]);
 
 function isValidSetting(category, value) {
-  if (category === 'bgPreset') return ['off', 'stadium', 'abstract', 'emerald', 'charcoal', 'burgundy'].includes(value);
+  if (category === 'uiMode') return ['dark', 'light'].includes(value);
+  if (category === 'bgPreset' || category === 'lightBgPreset') return value === 'off' || Object.hasOwn(BACKGROUND_PRESET_IMAGES, value);
   if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical', 'mood'].includes(value);
   if (RATING_COLOR_KEYS.has(category) || Object.hasOwn(NOTE_COLOR_VARS, category)) return typeof value === 'string' && HEX_COLOR_RE.test(value);
-  if (category === 'bgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
+  if (category === 'bgColor' || category === 'lightBgColor' || category === 'matchInfoLabelColor' || category === 'panelColor') return typeof value === 'string' && HEX_COLOR_RE.test(value);
   if (category === 'bgImageUrl') return typeof value === 'string';     // 빈 문자열 허용 (= 배경 없음)
   if (category === 'bgImageData') return typeof value === 'string';    // 빈 문자열 또는 data URL
   if (category === 'lineupNode') return value === 'number' || value === 'photo';
   if (category === 'teamLogo') return value === 'logo' || value === 'fa';
   if (category === 'mainPage') return value === 'big' || value === 'small';
   if (category === 'leagueLogoPos') return value === 'center' || value === 'left' || value === 'right';
-  if (category === 'lineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
+  if (category === 'lineupPitchTone' || category === 'lightLineupPitchTone') return LINEUP_PITCH_TONES.includes(value);
   if (category === 'statCycleAuto') return value === 'on' || value === 'off';
   if (category === 'statsAutoSwipe') return value === 'on' || value === 'off';
   if (category === 'greenscreenIntensity') return ['strong','purple','moderate','mild','natural'].includes(value);
@@ -459,7 +494,7 @@ function isValidSetting(category, value) {
   if (category === 'tacticsDrawtoolsScale') {
     return Number.isFinite(value) && value >= TACTICS_DRAWTOOLS_SCALE_MIN && value <= TACTICS_DRAWTOOLS_SCALE_MAX;
   }
-  if (category === 'bgAlpha' || category === 'panelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
+  if (category === 'bgAlpha' || category === 'panelAlpha' || category === 'lightPanelAlpha' || category === 'pitchAlpha' || category === 'tacticsAlpha') {
     return Number.isFinite(value) && value >= 0 && value <= 100;
   }
   return value === 'short' || value === 'long';
@@ -587,6 +622,9 @@ function saveSettings() {
 }
 
 function syncSettingUi(category) {
+  category = ({ lightBgColor: 'bgColor', lightBgPreset: 'bgPreset' }[category] || category);
+  if (category === 'lightPanelAlpha') category = 'panelAlpha';
+  if (category === 'lightLineupPitchTone') category = 'lineupPitchTone';
   syncSwitchUi(category);
   syncSliderUi(category);
   syncNumberUi(category);
@@ -598,6 +636,19 @@ function syncSettingUi(category) {
 
 /** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */
 function getSetting(category) {
+  if (settingsState.uiMode === 'light' && ['bgColor', 'bgPreset'].includes(category)) {
+    const lightCategory = category === 'bgColor' ? 'lightBgColor' : 'lightBgPreset';
+    // 처음 전환할 때 직접 고른 배경은 이어 받고, 기본값만 밝은 모드 기본으로 바꾼다.
+    return settingsState[lightCategory] ?? (settingsState[category] && settingsState[category] !== SETTINGS_DEFAULTS[category]
+      ? settingsState[category] : SETTINGS_DEFAULTS[lightCategory]);
+  }
+  if (category === 'panelAlpha' && settingsState.uiMode === 'light') return settingsState.lightPanelAlpha ?? SETTINGS_DEFAULTS.lightPanelAlpha;
+  if (category === 'lineupPitchTone' && settingsState.uiMode === 'light') {
+    // 기존에 고른 색은 유지하고, 기본 피치만 라이트모드의 초록색으로 시작한다.
+    return settingsState.lightLineupPitchTone
+      ?? (settingsState.lineupPitchTone && settingsState.lineupPitchTone !== SETTINGS_DEFAULTS.lineupPitchTone
+        ? settingsState.lineupPitchTone : SETTINGS_DEFAULTS.lightLineupPitchTone);
+  }
   return settingsState[category] ?? SETTINGS_DEFAULTS[category];
 }
 
@@ -639,19 +690,22 @@ function setSetting(category, value) {
     }
     return false;
   }
-  if (settingsState[category] === value) {
+  // 모드별 투명도와 피치 선택은 다른 모드의 저장값을 덮어쓰지 않는다.
+  const storageCategory = getSetting('uiMode') === 'light'
+    ? ({ panelAlpha: 'lightPanelAlpha', lineupPitchTone: 'lightLineupPitchTone', bgColor: 'lightBgColor', bgPreset: 'lightBgPreset' }[category] || category) : category;
+  if (settingsState[storageCategory] === value) {
     if (category === 'statCycleAuto' && value === 'on' && getSetting('statsAutoSwipe') !== 'on') {
       return setSetting('statsAutoSwipe', 'on');
     }
     return true;
   }
 
-  const hadOwnValue = Object.prototype.hasOwnProperty.call(settingsState, category);
-  const prevValue = settingsState[category];
-  settingsState[category] = value;
+  const hadOwnValue = Object.prototype.hasOwnProperty.call(settingsState, storageCategory);
+  const prevValue = settingsState[storageCategory];
+  settingsState[storageCategory] = value;
   if (!saveSettings()) {
-    if (hadOwnValue) settingsState[category] = prevValue;
-    else delete settingsState[category];
+    if (hadOwnValue) settingsState[storageCategory] = prevValue;
+    else delete settingsState[storageCategory];
     syncSettingUi(category);
     if (typeof showToast === 'function') {
       showToast('설정을 저장하지 못했습니다. 저장 공간을 확인하세요.');
@@ -678,6 +732,17 @@ function setSetting(category, value) {
  * 자체는 메인 창에 동기화돼도 실제 화면(CSS 변수·재렌더)엔 반영되지 않는 문제가 있었다.
  */
 function applySettingSideEffects(category) {
+  category = ({ lightBgColor: 'bgColor', lightBgPreset: 'bgPreset' }[category] || category);
+  if (category === 'lightPanelAlpha') category = 'panelAlpha';
+  if (category === 'lightLineupPitchTone') category = 'lineupPitchTone';
+  if (category === 'uiMode') {
+    applyLayoutSettings();
+    syncSliderUi('panelAlpha');
+    syncRadioUi('lineupPitchTone');
+    syncSettingUi('bgColor');
+    syncSettingUi('bgPreset');
+    document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
+  }
   if (Object.hasOwn(NOTE_COLOR_VARS, category)) applyLayoutSettings();
   if (category === 'matchInfoLabelColor') applyLayoutSettings();
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
@@ -958,13 +1023,7 @@ function applyPageBackground() {
   const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl') || '');
   const data = String(getSetting('bgImageData') || '').trim();
   const preset = getSetting('bgPreset');
-  const presetPath = {
-    stadium: 'resources/backgrounds/stadium-night.webp',
-    abstract: 'resources/backgrounds/navy-mint.webp',
-    emerald: 'resources/backgrounds/emerald-pitch.webp',
-    charcoal: 'resources/backgrounds/charcoal-graphic.webp',
-    burgundy: 'resources/backgrounds/burgundy-light.webp'
-  }[preset];
+  const presetPath = BACKGROUND_PRESET_IMAGES[preset];
   // CSS 변수 안의 상대 URL이 스타일시트 폴더 기준으로 해석되지 않도록 문서 기준 절대 주소로 만듭니다.
   const presetImage = presetPath ? new URL(presetPath, document.baseURI).href : '';
   const imgSrc = url || data || presetImage;
@@ -976,17 +1035,28 @@ function applyPageBackground() {
   const bgRgb = [1, 3, 5].map(start => parseInt(bgColor.slice(start, start + 2), 16));
   root.style.setProperty('--page-bg', `rgba(${bgRgb.join(', ')}, ${bgOpacity})`);
   if (!imgSrc && getSetting('bgTeamDirection') === 'mood') {
+    const lightMood = getSetting('uiMode') === 'light';
     const moodColor = value => {
-      const rgb = parseAnyColor(chromaSafe(value));
-      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${.4 * bgOpacity})`;
+      let rgb = parseAnyColor(chromaSafe(value));
+      if (lightMood) {
+        // 흰색·검정 팀도 바탕을 날려 버리지 않게 밝기 범위를 맞추고 색조만 은은하게 남긴다.
+        const { h, s } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        const tone = hslToRgb(h, Math.min(s, .6), .65);
+        rgb = parseAnyColor(chromaSafe(rgbToHex(tone.r, tone.g, tone.b)));
+      }
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(lightMood ? .35 : .4) * bgOpacity})`;
     };
-    // 밝은 팀 컬러도 가장자리의 은은한 빛으로만 쓰고 가운데는 어둡게 유지합니다.
+    // 팀 색은 가장자리에 두고 중앙은 모드별 바탕색으로 차분하게 유지합니다.
     root.style.setProperty('--page-bg', 'transparent');
     root.style.setProperty('--bg-image', [
-      `linear-gradient(to bottom, rgba(6, 14, 26, ${.15 * bgOpacity}), rgba(6, 14, 26, ${.75 * bgOpacity}))`,
+      lightMood
+        ? `linear-gradient(135deg, rgba(78, 99, 125, ${.08 * bgOpacity}), rgba(78, 99, 125, 0) 45%, rgba(78, 99, 125, ${.04 * bgOpacity}))`
+        : `linear-gradient(to bottom, rgba(6, 14, 26, ${.15 * bgOpacity}), rgba(6, 14, 26, ${.75 * bgOpacity}))`,
       `radial-gradient(ellipse at 0% 25%, ${moodColor(state.colors.homeBg)}, transparent 65%)`,
       `radial-gradient(ellipse at 100% 75%, ${moodColor(state.colors.awayBg)}, transparent 65%)`,
-      `linear-gradient(rgba(9, 19, 33, ${bgOpacity}), rgba(9, 19, 33, ${bgOpacity}))`
+      lightMood
+        ? `linear-gradient(rgba(186, 200, 217, ${bgOpacity}), rgba(186, 200, 217, ${bgOpacity}))`
+        : `linear-gradient(rgba(9, 19, 33, ${bgOpacity}), rgba(9, 19, 33, ${bgOpacity}))`
     ].join(', '));
   } else if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
     const color = value => {
@@ -1005,11 +1075,58 @@ function applyPageBackground() {
   }
 }
 
+/** 선택한 기준색은 보존하고, 밝은 모드에서는 같은 색조의 밝은 표면색을 만든다. */
+function panelSurfaceColor(color, mode = getSetting('uiMode')) {
+  if (mode !== 'light') return color;
+  if (String(color).toLowerCase() === SETTINGS_DEFAULTS.panelColor) return '#c5d2df';
+  const rgb = parseAnyColor(color);
+  if (!rgb) return color;
+  const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const surface = hslToRgb(h, Math.min(s * .5, .35), Math.max(.79, .85 - l * .06));
+  return rgbToHex(surface.r, surface.g, surface.b);
+}
+
+/** 메뉴 팔레트와 정보 패널 팔레트를 따로 적용해 팀색·점수판·피치 색은 유지한다. */
+function applyUiMode() {
+  const root = document.documentElement;
+  root.dataset.uiMode = getSetting('uiMode');
+  const surface = chromaSafe(panelSurfaceColor(getSetting('panelColor')));
+  const rgb = parseAnyColor(surface);
+  root.style.setProperty('--info-panel-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+  const darkInk = teamColorContrastRatio('#20242a', surface) > teamColorContrastRatio('#ffffff', surface);
+  const preferredText = darkInk ? '#20242a' : '#f0f0f0';
+  const infoText = teamColorContrastRatio(preferredText, surface) >= 4.5 ? preferredText : (darkInk ? '#000000' : '#ffffff');
+  root.dataset.infoTone = darkInk ? 'light' : 'dark';
+  root.style.setProperty('--info-ink-rgb', darkInk ? '32, 36, 42' : '255, 255, 255');
+  root.style.setProperty('--info-text', infoText);
+  // 원색을 직접 지정한 패널에서도 의미색이 묻히지 않게 실제 표면과 대비를 확인한다.
+  const readableInfoColor = color => {
+    const safe = chromaSafeText(color);
+    return teamColorContrastRatio(safe, surface) >= 4.5 ? safe : infoText;
+  };
+  root.style.setProperty('--info-emphasis-text', readableInfoColor(darkInk ? '#124b2c' : '#bbf7d0'));
+  root.style.setProperty('--info-secondary-text', readableInfoColor(darkInk ? '#334155' : '#cbd5e1'));
+  root.style.setProperty('--info-yellow-text', readableInfoColor(darkInk ? '#6b5900' : '#FFD93D'));
+  root.style.setProperty('--event-in-text', darkInk ? chromaSafeText('#22C55E') : chromaSafeText(OVERLAY_CHROMA_COLORS['--overlay-in-text']));
+  root.style.setProperty('--event-out-text', readableInfoColor(darkInk ? '#3e4856' : '#cbd5e1'));
+  root.style.setProperty('--event-in-outline', readableInfoColor('#164d2c'));
+  root.style.setProperty('--event-arrow-in', chromaSafeText(OVERLAY_CHROMA_COLORS['--overlay-in-text']));
+  // 배지는 패널과 다른 표면이므로 배지 배경에 대해 글자 대비를 따로 판단한다.
+  const eventGreenBackground = chromaSafe('#cfe5d9');
+  const eventGreenText = chromaSafeText('#174f36');
+  root.style.setProperty('--event-green-label-bg', eventGreenBackground);
+  root.style.setProperty('--event-green-label-text', teamColorContrastRatio(eventGreenText, eventGreenBackground) >= 4.5
+    ? eventGreenText : teamColorReadableText(eventGreenBackground));
+  const label = parseAnyColor(getSetting('matchInfoLabelColor'));
+  const labelHsl = rgbToHsl(label.r, label.g, label.b);
+  const labelTone = hslToRgb(labelHsl.h, labelHsl.s, Math.min(labelHsl.l, .36));
+  root.style.setProperty('--info-label-color', chromaSafeText(darkInk ? rgbToHex(labelTone.r, labelTone.g, labelTone.b) : getSetting('matchInfoLabelColor')));
+}
+
 function applyBackgroundSettings() {
+  applyUiMode();
   applyPageBackground();
   const root = document.documentElement;
-  const panelRgb = parseAnyColor(chromaSafe(getSetting('panelColor')));
-  root.style.setProperty('--info-panel-rgb', `${panelRgb.r}, ${panelRgb.g}, ${panelRgb.b}`);
   const forceOpaquePanels = getSetting('greenscreen') === 'on';
 
   // 패널 투명도 — UI는 0=불투명, 100=완전 투명. CSS alpha에는 반전된 opacity를 넣는다.
@@ -1276,6 +1393,112 @@ function syncSelectUi(category) {
   if (!select) return;
   const value = String(getSetting(category) || '');
   if (select.value !== value) select.value = value;
+  if (category === 'bgPreset') {
+    const name = document.getElementById('settingsBgPresetName');
+    if (name) name.textContent = select.selectedOptions[0]?.textContent || '사용 안 함';
+    const thumb = document.getElementById('settingsBgPresetThumb');
+    if (thumb) {
+      thumb.hidden = !BACKGROUND_PRESET_IMAGES[value];
+      thumb.style.backgroundImage = BACKGROUND_PRESET_IMAGES[value] ? `url("${new URL(BACKGROUND_PRESET_IMAGES[value], document.baseURI).href}")` : 'none';
+    }
+    const clear = document.getElementById('settingsBgPresetClear');
+    if (clear) clear.disabled = value === 'off';
+  }
+}
+
+/** 배경은 적용 전까지 갤러리 안에서만 미리 보고, 취소하면 기존 선택을 유지한다. */
+function openBackgroundPicker() {
+  let dialog = document.getElementById('backgroundPicker');
+  const source = document.querySelector('[data-settings-select="bgPreset"]');
+  if (!dialog) {
+    dialog = document.createElement('dialog');
+    dialog.id = 'backgroundPicker';
+    dialog.className = 'bg-picker';
+    dialog.setAttribute('aria-labelledby', 'backgroundPickerTitle');
+    dialog.innerHTML = `<header class="bg-picker-header"><h2 id="backgroundPickerTitle">기본 배경 설정</h2><button type="button" class="sp-close-btn" data-bg-picker-close aria-label="닫기">×</button></header>
+      <div class="bg-picker-body"><div class="bg-picker-preview"><div class="bg-picker-preview-image" role="button" tabindex="0" aria-label="배경 전체화면 미리보기"><span class="bg-picker-preview-empty"></span><button type="button" class="bg-picker-preview-exit" aria-label="전체화면 미리보기 닫기">닫기</button></div><strong class="bg-picker-preview-name"></strong><p>배경을 선택해 미리 본 뒤 적용하세요. 미리보기 이미지를 더블클릭하면 전체화면으로 볼 수 있습니다.</p><p class="bg-picker-priority" hidden>입력한 URL이나 첨부 이미지가 있으면 그 배경이 먼저 표시됩니다.</p></div><div class="bg-picker-list"></div></div>
+      <footer class="bg-picker-footer"><button type="button" class="sp-secondary-btn" data-bg-picker-close>취소</button><button type="button" class="sp-secondary-btn" id="backgroundPickerApply">적용</button></footer>`;
+    const list = dialog.querySelector('.bg-picker-list');
+    const addChoice = option => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'bg-picker-choice';
+      button.dataset.bgChoice = option.value;
+      button.setAttribute('aria-pressed', 'false');
+      if (BACKGROUND_PRESET_IMAGES[option.value]) {
+        const img = document.createElement('img');
+        img.src = new URL(BACKGROUND_PRESET_IMAGES[option.value], document.baseURI).href;
+        img.alt = ''; img.loading = 'lazy';
+        button.append(img);
+      } else {
+        const empty = document.createElement('span');
+        empty.className = 'bg-picker-none'; empty.textContent = '사용 안 함'; button.append(empty);
+      }
+      const name = document.createElement('span'); name.textContent = option.textContent;
+      button.append(name); button.addEventListener('click', () => previewBackgroundChoice(dialog, option.value));
+      list.append(button);
+    };
+    [...source.children].forEach(child => {
+      if (child.tagName === 'OPTGROUP') {
+        const heading = document.createElement('h3'); heading.textContent = child.label; list.append(heading);
+        [...child.children].forEach(addChoice);
+      } else addChoice(child);
+    });
+    dialog.querySelectorAll('[data-bg-picker-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
+    dialog.querySelector('#backgroundPickerApply').addEventListener('click', () => {
+      if (setSetting('bgPreset', dialog.dataset.selection)) dialog.close();
+    });
+    const preview = dialog.querySelector('.bg-picker-preview-image');
+    const closePreview = () => {
+      if (document.fullscreenElement === preview) document.exitFullscreen().catch(() => {});
+      dialog.classList.remove('is-preview-fullscreen');
+      preview.focus();
+    };
+    const expandPreview = async () => {
+      if (!BACKGROUND_PRESET_IMAGES[dialog.dataset.selection]) return;
+      // 전체화면 API를 제공하지 않는 OBS 환경에서는 같은 창 안의 전체 보기로 대체한다.
+      try { await preview.requestFullscreen(); }
+      catch { dialog.classList.add('is-preview-fullscreen'); }
+    };
+    preview.addEventListener('dblclick', event => {
+      if (event.target.closest('.bg-picker-preview-exit')) return;
+      if (document.fullscreenElement === preview || dialog.classList.contains('is-preview-fullscreen')) closePreview();
+      else expandPreview();
+    });
+    preview.addEventListener('keydown', event => {
+      if (event.target !== preview || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault(); expandPreview();
+    });
+    preview.querySelector('.bg-picker-preview-exit').addEventListener('click', event => { event.stopPropagation(); closePreview(); });
+    dialog.addEventListener('close', closePreview);
+    dialog.addEventListener('keydown', event => {
+      // 설정 팝업·분리 창의 Esc 처리까지 전파하지 않고 갤러리만 닫는다.
+      event.stopPropagation();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (document.fullscreenElement === preview || dialog.classList.contains('is-preview-fullscreen')) closePreview();
+        else dialog.close();
+      }
+    });
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    document.getElementById('settingsBackdrop').append(dialog);
+  }
+  previewBackgroundChoice(dialog, getSetting('bgPreset'));
+  dialog.querySelector('.bg-picker-priority').hidden = !getSetting('bgImageUrl') && !getSetting('bgImageData');
+  dialog.showModal();
+  dialog.querySelector('.bg-picker-list').scrollTop = 0;
+}
+
+function previewBackgroundChoice(dialog, value) {
+  dialog.dataset.selection = value;
+  const choice = dialog.querySelector(`[data-bg-choice="${value}"]`);
+  dialog.querySelectorAll('[data-bg-choice]').forEach(button => button.setAttribute('aria-pressed', String(button === choice)));
+  const image = dialog.querySelector('.bg-picker-preview-image');
+  image.style.backgroundImage = BACKGROUND_PRESET_IMAGES[value] ? `url("${new URL(BACKGROUND_PRESET_IMAGES[value], document.baseURI).href}")` : 'none';
+  image.querySelector('.bg-picker-preview-empty').textContent = value === 'off' ? '기본 배경 사용 안 함' : '';
+  image.setAttribute('aria-disabled', String(value === 'off'));
+  image.tabIndex = value === 'off' ? -1 : 0;
+  dialog.querySelector('.bg-picker-preview-name').textContent = choice?.lastElementChild.textContent || '';
 }
 
 function getDataUrlByteLength(dataUrl) {
@@ -1531,6 +1754,7 @@ function openSettingsPopup() {
 
 /** 설정 팝업 닫기. 백드롭의 .open 제거만 하면 CSS transition으로 사라짐. */
 function closeSettingsPopup() {
+  document.getElementById('backgroundPicker')?.close();
   const backdrop = document.getElementById('settingsBackdrop');
   if (backdrop) backdrop.classList.remove('open');
 }
@@ -1733,6 +1957,8 @@ function initSettingsTabs() {
  * loadSettings는 모듈 로드 시 즉시 한 번 실행되고, 여기서는 UI만 와이어업한다.
  */
 function initSettingsPopup() {
+  document.getElementById('settingsBgPresetOpen')?.addEventListener('click', openBackgroundPicker);
+  document.getElementById('settingsBgPresetClear')?.addEventListener('click', () => setSetting('bgPreset', 'off'));
   initSettingsColorEditors();
   document.querySelectorAll('[data-note-colors-reset]').forEach(button => {
     button.addEventListener('click', () => Object.keys(NOTE_COLOR_VARS).forEach(category => setSetting(category, SETTINGS_DEFAULTS[category])));
@@ -1970,8 +2196,8 @@ function initSettingsPopup() {
         if (setSetting('bgImageData', '') && bgFileInput) bgFileInput.value = '';
       }
       else if (kind === 'color') {
-        // 단색 배경 초기화 — 기본값(#111827)으로 복귀.
-        setSetting('bgColor', SETTINGS_DEFAULTS.bgColor);
+        // 현재 모드의 기본 단색으로 복귀한다.
+        setSetting('bgColor', SETTINGS_DEFAULTS[getSetting('uiMode') === 'light' ? 'lightBgColor' : 'bgColor']);
       }
     });
   });
@@ -2045,5 +2271,6 @@ function initSettingsPopup() {
 // 복원할 때 getSetting('teamLogo') 등을 참조하기 때문에, 그 호출 이전에 settingsState가
 // 준비돼있어야 저장된 값(예: 협회 로고 토글 상태)이 반영된다.
 loadSettings();
+applyUiMode();
 
 document.addEventListener('DOMContentLoaded', initSettingsPopup);

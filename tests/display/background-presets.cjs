@@ -20,11 +20,20 @@ const { openPage, settle } = require('../tactics/helpers');
       await page.locator('#settingsGearBtn').evaluate(button => button.click());
       await page.locator('[data-sp-tab="background"]').click();
     };
+    const choosePreset = async preset => {
+      await page.locator('#settingsBgPresetOpen').click();
+      await page.locator(`[data-bg-choice="${preset}"]`).click();
+      await page.locator('#backgroundPickerApply').click();
+    };
+    const presets = await page.locator('[data-settings-select="bgPreset"] option').evaluateAll(options => options.map(option => option.value).filter(value => value !== 'off'));
+    assert(presets.length > 0);
+    assert.equal(new Set(presets).size, presets.length);
+    assert.deepEqual([...presets].sort(), await page.evaluate(() => Object.keys(BACKGROUND_PRESET_IMAGES).sort()));
     for (const layout of ['main-big', 'main-small']) {
       await page.evaluate(layout => activatePage(layout), layout);
-      for (const preset of ['stadium', 'abstract', 'emerald', 'charcoal', 'burgundy']) {
+      for (const preset of presets) {
         await openSettings();
-        await page.locator('[data-settings-select="bgPreset"]').selectOption(preset);
+        await choosePreset(preset);
         assert.equal(await page.evaluate(() => getSetting('bgPreset')), preset);
         await page.locator('#settingsCloseBtn').click();
         await settle(page);
@@ -41,7 +50,7 @@ const { openPage, settle } = require('../tactics/helpers');
         await page.screenshot({ path: `screenshots/tests/background-${preset}-${layout}.png` });
       }
       await openSettings();
-      await page.locator('[data-settings-select="bgPreset"]').selectOption('off');
+      await choosePreset('off');
       await page.locator('[data-settings-select="bgTeamDirection"]').selectOption('mood');
       await page.locator('#settingsCloseBtn').click();
       assert((await background()).includes('radial-gradient'));

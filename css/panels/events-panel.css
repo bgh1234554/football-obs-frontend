@@ -13,7 +13,7 @@
       flex-direction: column;
       padding: 4px 8px 6px;
       box-sizing: border-box;
-      color: #f0f0f0;
+      color: var(--ui-text, #f0f0f0);
       font-family: var(--font-family);
       overflow: hidden;
     }
@@ -29,7 +29,7 @@
       box-sizing: border-box;
       /* 전체 높이를 유지하면서 패널 상단 여백 4px까지 포함해 중앙 정렬. */
       padding: 3px 0 7px;
-      border-bottom: 1px solid rgba(255,255,255,.12);
+      border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
       margin-bottom: 6px;
       z-index: 4;
     }
@@ -44,7 +44,7 @@
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.04em;
-      color: #fff; /* .st-title-bar와 동일 흰색 — lp-stat 사이클 모드 간 제목 색 통일 (2026-08 피드백) */
+      color: var(--ui-text, #fff); /* .st-title-bar와 동일 흰색 — lp-stat 사이클 모드 간 제목 색 통일 (2026-08 피드백) */
       pointer-events: none;
       position: relative;
       z-index: 1;
@@ -61,10 +61,10 @@
       align-items: center;
       gap: 6px;
       min-height: var(--panel-title-control-size);
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
       border-radius: 999px;
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.82);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .82));
       padding: 4px 8px;
       font: inherit;
       font-size: 10px;
@@ -74,16 +74,16 @@
       transition: background .16s ease, border-color .16s ease, color .16s ease;
     }
     .ev-filter-btn:hover:not(:disabled) {
-      background: rgba(255,255,255,.11);
-      border-color: rgba(255,255,255,.22);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.11);
+      border-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.22);
     }
     .ev-filter-btn:disabled {
       opacity: .45;
       cursor: default;
     }
     .ev-filter-btn.is-open {
-      background: rgba(255,255,255,.12);
-      border-color: rgba(255,255,255,.24);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+      border-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.24);
     }
     .ev-filter-btn.is-active {
       color: var(--control-accent-text);
@@ -102,7 +102,7 @@
       min-width: 24px;
       padding: 2px 5px;
       border-radius: 999px;
-      background: rgba(255,255,255,.12);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
       color: inherit;
       font-size: 9px;
       font-weight: 800;
@@ -114,7 +114,7 @@
       right: 0;
       width: 196px;
       padding: 10px;
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
       border-radius: 10px;
       background: rgba(11,16,27,.96);
       box-shadow: 0 14px 28px rgba(0,0,0,.34);
@@ -131,7 +131,7 @@
     .ev-filter-heading-text {
       font-size: 11px;
       font-weight: 800;
-      color: rgba(255,255,255,.84);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .84));
     }
     .ev-filter-reset {
       border: 0;
@@ -144,7 +144,7 @@
       cursor: pointer;
     }
     .ev-filter-reset:disabled {
-      color: rgba(255,255,255,.34);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .34));
       cursor: default;
     }
     .ev-filter-options {
@@ -160,7 +160,7 @@
       align-items: center;
       gap: 8px;
       min-width: 0;
-      color: #f0f0f0;
+      color: var(--ui-text, #f0f0f0);
       font-size: 12px;
       cursor: pointer;
     }
@@ -174,14 +174,14 @@
       width: 8px;
       height: 8px;
       border-radius: 999px;
-      background: rgba(255,255,255,.55);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.55);
     }
     .ev-filter-swatch-blue { background: #3b82f6; }
     .ev-filter-swatch-yellow { background: #f5c518; }
     .ev-filter-swatch-red { background: #ef4444; }
     .ev-filter-swatch-green { background: var(--overlay-green, #22c55e); }
     .ev-filter-swatch-orange { background: #f97316; }
-    .ev-filter-swatch-white { background: rgba(255,255,255,.92); }
+    .ev-filter-swatch-white { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.92); }
     .ev-filter-option-text {
       flex: 1 1 auto;
       min-width: 0;
@@ -191,7 +191,7 @@
     }
     .ev-filter-count {
       flex: 0 0 auto;
-      color: rgba(255,255,255,.45);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
       font-size: 10px;
       font-variant-numeric: tabular-nums;
     }
@@ -231,7 +231,7 @@
     }
     .ev-subst-picker-modal {
       background: #1e1e2a;
-      border: 1px solid rgba(255,255,255,.14);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.14);
       border-radius: 10px;
       width: 320px;
       max-width: calc(calc(var(--display-vw, 1vw) * 100) - 32px);
@@ -246,24 +246,24 @@
       align-items: center;
       justify-content: space-between;
       padding: 12px 14px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.09);
+      border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.09);
     }
     .ev-subst-picker-title {
       font-size: 13px;
       font-weight: 700;
-      color: rgba(255,255,255,.9);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .9));
     }
     .ev-subst-picker-close {
       background: none;
       border: none;
-      color: rgba(255,255,255,.5);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
       font-size: 14px;
       cursor: pointer;
       padding: 2px 4px;
       border-radius: 4px;
       line-height: 1;
     }
-    .ev-subst-picker-close:hover { color: rgba(255,255,255,.9); background: rgba(255,255,255,.08); }
+    .ev-subst-picker-close:hover { color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .9)); background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08); }
     .ev-subst-picker-list {
       flex: 1 1 0;
       min-height: 0;
@@ -277,7 +277,7 @@
     .ev-subst-cluster-cols,
     .ev-edit-reason-menu {
       scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,.25) transparent;
+      scrollbar-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.25) transparent;
       color-scheme: dark;
     }
     .ev-subst-picker-list::-webkit-scrollbar,
@@ -289,19 +289,19 @@
     .ev-subst-picker-list::-webkit-scrollbar-thumb,
     .ev-edit-reason-menu::-webkit-scrollbar-thumb,
     .ev-subst-cluster-cols::-webkit-scrollbar-thumb {
-      background: rgba(255,255,255,.25);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.25);
       border-radius: 999px;
     }
     .ev-subst-picker-list::-webkit-scrollbar-thumb:hover,
     .ev-edit-reason-menu::-webkit-scrollbar-thumb:hover,
-    .ev-subst-cluster-cols::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.4); }
+    .ev-subst-cluster-cols::-webkit-scrollbar-thumb:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.4); }
     .ev-subst-picker-list::-webkit-scrollbar-corner,
     .ev-edit-reason-menu::-webkit-scrollbar-corner,
     .ev-subst-cluster-cols::-webkit-scrollbar-corner { background: transparent; }
     .ev-subst-picker-empty {
       padding: 20px;
       text-align: center;
-      color: rgba(255,255,255,.35);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .35));
       font-size: 12px;
     }
     .ev-subst-picker-item {
@@ -315,7 +315,7 @@
       transition: background .12s ease, border-color .12s ease;
     }
     .ev-subst-picker-item:hover {
-      background: rgba(255,255,255,.07);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.07);
     }
     .ev-subst-picker-item.is-selected {
       background: rgba(var(--control-accent-rgb),.14);
@@ -326,14 +326,14 @@
       text-align: right;
       font-size: 12px;
       font-weight: 700;
-      color: rgba(255,255,255,.5);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .5));
       font-variant-numeric: tabular-nums;
     }
     .ev-subst-picker-name {
       flex: 1 1 auto;
       min-width: 0;
       font-size: 13px;
-      color: rgba(255,255,255,.9);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .9));
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -342,13 +342,13 @@
       flex: 0 0 auto;
       font-size: 10px;
       font-weight: 700;
-      color: rgba(255,255,255,.35);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .35));
     }
     .ev-subst-picker-actions {
       display: flex;
       gap: 8px;
       padding: 10px 14px 12px;
-      border-top: 1px solid rgba(255,255,255,.09);
+      border-top: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.09);
     }
     .ev-subst-picker-confirm {
       flex: 1 1 auto;
@@ -365,16 +365,16 @@
     .ev-subst-picker-confirm:hover { background: rgba(var(--control-accent-rgb),.35); }
     .ev-subst-picker-cancel {
       flex: 0 0 auto;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      color: rgba(255,255,255,.65);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .65));
       font-size: 13px;
       border-radius: 6px;
       padding: 7px 14px;
       cursor: pointer;
       transition: background .14s ease;
     }
-    .ev-subst-picker-cancel:hover { background: rgba(255,255,255,.12); }
+    .ev-subst-picker-cancel:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.12); }
     /* 초기화 — 직접 고른 교체 선수를 지우고 API 원본으로 되돌림(evClearSubstOverride). 고른 적 없으면 비활성. */
     .ev-subst-picker-reset {
       flex: 0 0 auto;
@@ -443,7 +443,7 @@
     .ev-hide-mgr-help {
       padding: 8px 14px 0;
       font-size: 11px;
-      color: rgba(255,255,255,.45);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .45));
     }
     .ev-hide-mgr-modal .ev-subst-picker-list { flex: 1 1 auto; }
     .ev-hide-mgr-item { cursor: default; }
@@ -472,7 +472,7 @@
       min-width: 120px;
       padding: 6px;
       background: rgba(18,18,32,.97);
-      border: 1px solid rgba(255,255,255,.18);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
       border-radius: 8px;
       box-shadow: 0 6px 24px rgba(0,0,0,.65);
     }
@@ -481,13 +481,13 @@
       font: inherit;
       font-size: 12px;
       text-align: left;
-      color: #e2e8f0;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
+      color: var(--ui-text, #e2e8f0);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
       border-radius: 6px;
       cursor: pointer;
     }
-    .ev-row-menu-btn:hover { background: rgba(255,255,255,.14); }
+    .ev-row-menu-btn:hover { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.14); }
     .ev-row-menu-btn.is-danger { color: #fca5a5; border-color: rgba(239,68,68,.35); }
     /* 교체 선수 선택 모달과 같은 틀(헤더 / 선수 목록 / 액션) — 목록이 남는 높이를 채우고 스크롤 */
     .ev-edit-modal { width: 340px; height: clamp(380px, calc(var(--display-vh, 1vh) * 70), 600px); }
@@ -496,7 +496,7 @@
       flex-direction: column;
       gap: 8px;
       padding: 10px 12px 8px;
-      border-bottom: 1px solid rgba(255,255,255,.09);
+      border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.09);
     }
     .ev-edit-seg-rows { display: flex; flex-direction: column; gap: 8px; }
     /* 골 시간 입력 — 정규시간 + 추가시간 두 칸 */
@@ -506,12 +506,12 @@
       padding: 5px 8px;
       font: inherit;
       font-size: 13px;
-      color: #f0f0f0;
+      color: var(--ui-text, #f0f0f0);
       background: #12121c;
-      border: 1px solid rgba(255,255,255,.16);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.16);
       border-radius: 6px;
     }
-    .ev-edit-time-sep { color: rgba(255,255,255,.6); font-weight: 700; }
+    .ev-edit-time-sep { color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .6)); font-weight: 700; }
     .ev-edit-tabs .ev-edit-seg-btn { text-align: left; padding: 6px 8px; }
     /* 연속 교체 묶음 수정 — 교체마다 한 칸씩 가로로 나열(event-hide.js evOpenSubstClusterEditor) */
     .ev-subst-cluster-modal {
@@ -534,14 +534,14 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      border: 1px solid rgba(255,255,255,.1);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
       border-radius: 8px;
       padding: 8px;
     }
     .ev-subst-cluster-head {
       font-size: 12px;
       font-weight: 700;
-      color: rgba(255,255,255,.8);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .8));
     }
     .ev-subst-cluster-col .ev-subst-picker-list { padding: 0; }
     .ev-subst-picker-item.is-taken { opacity: .35; pointer-events: none; }
@@ -554,7 +554,7 @@
     .ev-edit-label {
       font-size: 11px;
       font-weight: 700;
-      color: rgba(255,255,255,.55);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55));
     }
     .ev-edit-seg {
       display: flex;
@@ -570,20 +570,20 @@
     .ev-edit-var-reason-row .ev-edit-reason { flex: 1 1 0; width: 0; }
     .ev-edit-reason { position: relative; min-width: 0; font: inherit; font-size: 12px; }
     .ev-edit-reason-toggle, .ev-edit-reason-option {
-      width: 100%; padding: 7px 8px; border: 1px solid rgba(255,255,255,.12);
-      border-radius: 6px; background: rgba(255,255,255,.06); color: rgba(255,255,255,.85);
+      width: 100%; padding: 7px 8px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+      border-radius: 6px; background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06); color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .85));
       font: inherit; text-align: left; cursor: pointer;
     }
     .ev-edit-reason-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .ev-edit-reason-toggle::after { content: '⌄'; color: rgba(255,255,255,.55); }
+    .ev-edit-reason-toggle::after { content: '⌄'; color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55)); }
     .ev-edit-reason-toggle:disabled { opacity: .5; cursor: default; }
     .ev-edit-reason-menu {
       position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
       max-height: 180px; overflow-y: auto; padding: 4px; border-radius: 6px;
-      border: 1px solid rgba(255,255,255,.15); background: #20202b; box-shadow: 0 6px 18px #0006;
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.15); background: #20202b; box-shadow: 0 6px 18px #0006;
     }
     .ev-edit-reason-option { display: block; border-color: transparent; background: transparent; }
-    .ev-edit-reason-option:hover, .ev-edit-reason-option:focus-visible { background: rgba(255,255,255,.1); }
+    .ev-edit-reason-option:hover, .ev-edit-reason-option:focus-visible { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1); }
     .ev-edit-reason-option[aria-selected="true"] { background: rgba(var(--control-accent-rgb),.18); color: var(--control-accent-text); }
     .ev-edit-seg-btn {
       flex: 1 1 0;
@@ -591,9 +591,9 @@
       padding: 6px 4px;
       font: inherit;
       font-size: 12px;
-      color: rgba(255,255,255,.75);
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .75));
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.06);
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
       border-radius: 6px;
       cursor: pointer;
       overflow: hidden;
@@ -609,8 +609,8 @@
     .ev-period-body { padding: 12px 14px; overflow-y: auto; scrollbar-width: thin; }
     .ev-period-body .ev-hide-mgr-help { padding: 0 0 12px; }
     .ev-period-body .ev-edit-seg-btn { flex: 0 0 auto; padding: 10px; text-align: left; }
-    .ev-period-status { margin-top: 12px; color: rgba(255,255,255,.65); font-size: 12px; line-height: 1.5; }
-    .ev-time:focus-visible { outline: 1px solid rgba(255,255,255,.65); outline-offset: 2px; border-radius: 2px; }
+    .ev-period-status { margin-top: 12px; color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .65)); font-size: 12px; line-height: 1.5; }
+    .ev-time:focus-visible { outline: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.65); outline-offset: 2px; border-radius: 2px; }
 
     .ev-list {
       flex: 1 1 0;
@@ -628,7 +628,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255,255,255,.35);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .35));
       font-size: 12px;
     }
 
@@ -636,7 +636,7 @@
       flex: 0 0 auto;
       display: flex;
       align-items: stretch;
-      background: rgba(255,255,255,.04);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.04);
       border-radius: 6px;
       overflow: hidden;
       min-height: calc(36px * var(--ev-ui-scale, 1));
@@ -647,20 +647,20 @@
        --ev-new-glow 기본값(흰색)은 .ev-bar-* 클래스가 못 붙는 경우를 위한 fallback.
        duration(900ms)은 js/panels/events-panel.js의 EVENTS_PANEL_ROW_GLOW_MS와 반드시 일치. */
     .ev-row.ev-row-new {
-      --ev-new-glow: rgba(255, 255, 255, 0.925);
+      --ev-new-glow: rgba(var(--ui-ink-rgb, 255, 255, 255), 0.925);
 
       background: rgba(59,130,246,.10);
       animation: ev-row-glow 900ms ease-out 1;
     }
     @keyframes ev-row-glow {
       0% {
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 0 var(--ev-new-glow);
+        box-shadow: inset 0 0 0 1px rgba(var(--ui-ink-rgb, 255, 255, 255),.4), 0 0 0 0 var(--ev-new-glow);
       }
       25% {
-        box-shadow: inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px var(--ev-new-glow);
+        box-shadow: inset 0 0 0 2px rgba(var(--ui-ink-rgb, 255, 255, 255),.9), 0 0 16px 3px var(--ev-new-glow);
       }
       100% {
-        box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 0 transparent;
+        box-shadow: inset 0 0 0 1px rgba(var(--ui-ink-rgb, 255, 255, 255),.4), 0 0 0 0 transparent;
       }
     }
     /* 하프타임/후반종료/연장전반종료/연장후반종료/풀타임 구간 구분자 — 양옆 디바이더 라인 +
@@ -676,18 +676,18 @@
     .ev-marker-line {
       flex: 1 1 auto;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+      background: linear-gradient(90deg, transparent, rgba(var(--ui-ink-rgb, 255, 255, 255),.22), transparent);
     }
     .ev-marker-label {
       flex: 0 0 auto;
       font-weight: 800;
       letter-spacing: .04em;
-      color: #fff;
+      color: var(--ui-text, #fff);
       white-space: nowrap;
     }
     .ev-bar {
       flex: 0 0 4px;
-      background: rgba(255,255,255,.6);
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255),.6);
     }
     /* Green overlay colors follow the selected chroma safety preset. */
     .ev-bar-blue   .ev-bar { background: #3b82f6; }
@@ -695,7 +695,7 @@
     .ev-bar-red    .ev-bar { background: #ef4444; }
     .ev-bar-green  .ev-bar { background: var(--overlay-green, #22c55e); }
     .ev-bar-orange .ev-bar { background: #f97316; }
-    .ev-bar-white  .ev-bar { background: rgba(255, 255, 255, 0.925); }
+    .ev-bar-white  .ev-bar { background: rgba(var(--ui-ink-rgb, 255, 255, 255), 0.925); }
     /* Green overlay colors follow the selected chroma safety preset. */
     /* 새 이벤트 글로우 색 — 위 막대 색과 동일하게, 종류별로 --ev-new-glow만 재정의. */
     .ev-row-new.ev-bar-blue   { --ev-new-glow: #3b82f6; }
@@ -703,7 +703,7 @@
     .ev-row-new.ev-bar-red    { --ev-new-glow: #ef4444; }
     .ev-row-new.ev-bar-green  { --ev-new-glow: var(--overlay-green, #22c55e); }
     .ev-row-new.ev-bar-orange { --ev-new-glow: #f97316; }
-    .ev-row-new.ev-bar-white  { --ev-new-glow: rgba(255, 255, 255, 0.925); }
+    .ev-row-new.ev-bar-white  { --ev-new-glow: rgba(var(--ui-ink-rgb, 255, 255, 255), 0.925); }
 
     /* 메인 줄 (단일 flex row): 시간 + 라벨 + 아이콘 + 텍스트 + 인라인 코멘트 + 팀 로고 */
     .ev-main {
@@ -719,7 +719,7 @@
       flex: 0 0 auto;
       font-size: calc(11px * var(--ev-ui-scale, 1));
       font-weight: 800;
-      color: rgba(255,255,255,.65);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .65));
       font-variant-numeric: tabular-nums;
       letter-spacing: .02em;
       min-width: calc(30px * var(--ev-ui-scale, 1));
@@ -741,7 +741,7 @@
     .ev-label-red    { background: rgba(239,68,68,.30);   color: #fecaca; }
     .ev-label-green  { background: var(--overlay-label-bg, rgba(34,197,94,.30)); color: var(--overlay-label-text, #bbf7d0); }
     .ev-label-orange { background: rgba(249,115,22,.30);  color: #fed7aa; }
-    .ev-label-white  { background: rgba(255,255,255,.18); color: #fff; }
+    .ev-label-white  { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.18); color: var(--ui-text, #fff); }
     /* Green overlay colors follow the selected chroma safety preset. */
     .ev-icon {
       flex: 0 0 auto;
@@ -755,7 +755,7 @@
       min-width: 0;
       font-size: var(--ev-name-base-size, 15px);
       font-weight: 700;
-      color: #f0f0f0;
+      color: var(--ui-text, #f0f0f0);
       line-height: 1.25;
       display: -webkit-box;
       -webkit-box-orient: vertical;
@@ -788,7 +788,7 @@
       line-height: 1.25;
     }
     .ev-text-in  { color: var(--overlay-in-text, #7CFC8E); }   /* 들어옴 — 연두 */
-    .ev-text-out { color: rgba(255,255,255,.65); }
+    .ev-text-out { color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .65)); }
     /* Green overlay colors follow the selected chroma safety preset. */
     /* 교체 row는 IN/OUT 2줄 보장하기 위해 더 큰 min-height. */
     .ev-row-subst { min-height: calc(52px * var(--ev-ui-scale, 1)); }
@@ -797,13 +797,13 @@
     .ev-comment {
       font-size: 0.75em;
       font-style: normal;
-      color: rgba(255,255,255,.55);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55));
       font-weight: 600;
       margin-left: 4px;
     }
     .ev-comment::before {
       content: '· ';
-      color: rgba(255,255,255,.35);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .35));
     }
     /* 선수 이름 wrapper — 굵게 강조 (.ev-text 내부에서 강한 폰트로 visual hierarchy). */
     .ev-text-name {
@@ -818,7 +818,7 @@
       font: inherit;
       color: inherit;
       cursor: pointer;
-      text-decoration: underline dotted rgba(255,255,255,.5);
+      text-decoration: underline dotted rgba(var(--ui-ink-rgb, 255, 255, 255),.5);
       text-underline-offset: 2px;
     }
     .ev-subst-name-editable:hover {
@@ -829,7 +829,7 @@
     .ev-text-assist {
       font-size: 0.82em;
       font-weight: 600;
-      color: rgba(255,255,255,.55);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .55));
     }
     /* 골 1줄(어시스트 있음) — 첫 라인 기본 굵기. */
     .ev-text-primary { font-weight: 700; }
@@ -879,7 +879,7 @@
 /* 캠 큰 화면의 새 이벤트 강조는 패널 전환까지 유지한다. */
 .layout-big .lp-stat .ev-row.ev-row-glow-held {
   animation: none;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px var(--ev-new-glow);
+  box-shadow: inset 0 0 0 2px rgba(var(--ui-ink-rgb, 255, 255, 255),.9), 0 0 16px 3px var(--ev-new-glow);
 }
 
 /* 신규 이벤트 화면 중앙 하단 표시 (js/panels/event-spotlight.js).

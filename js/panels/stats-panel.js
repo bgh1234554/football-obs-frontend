@@ -278,16 +278,17 @@ function stCreateRow(row, fixtureData, panelBackground) {
   bar.className = 'st-bar';
   const homeFill = document.createElement('div');
   homeFill.className = 'st-bar-home';
+  const neutralFill = `rgba(${getComputedStyle(document.documentElement).getPropertyValue('--info-ink-rgb').trim() || '255, 255, 255'}, .18)`;
   homeFill.style.width = homePct.toFixed(2) + '%';
-  homeFill.style.background = zeroTotal ? 'rgba(255,255,255,.25)' : homeBg;
+  homeFill.style.background = zeroTotal ? neutralFill : homeBg;
   const awayFill = document.createElement('div');
   awayFill.className = 'st-bar-away';
   awayFill.style.width = awayPct.toFixed(2) + '%';
-  awayFill.style.background = zeroTotal ? 'rgba(255,255,255,.25)' : awayBg;
-  if (!zeroTotal) {
-    teamOutlineLowContrast(homeFill, homeBg, homeText, panelBackground);
-    teamOutlineLowContrast(awayFill, awayBg, awayText, panelBackground);
-  }
+  awayFill.style.background = zeroTotal ? neutralFill : awayBg;
+  // 0:0 중립 막대도 같은 대비 판단을 거쳐, 패널에 묻히면 윤곽을 보강한다.
+  const neutralOutline = teamColorReadableText(panelBackground);
+  teamOutlineLowContrast(homeFill, zeroTotal ? neutralFill : homeBg, zeroTotal ? neutralOutline : homeText, panelBackground);
+  teamOutlineLowContrast(awayFill, zeroTotal ? neutralFill : awayBg, zeroTotal ? neutralOutline : awayText, panelBackground);
   bar.appendChild(homeFill);
   bar.appendChild(awayFill);
 
@@ -683,7 +684,7 @@ function applyStatsPanel(fixtureData) {
 // settings-popup.js가 document에 dispatch함.
 document.addEventListener('settings:change', e => {
   const cat = e.detail?.category;
-  if (['statsAutoSwipe', 'statsAutoSwipeSec', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha', 'bgMode'].includes(cat)) {
+  if (['statsAutoSwipe', 'statsAutoSwipeSec', 'uiMode', 'panelColor', 'panelAlpha', 'lightPanelAlpha', 'bgColor', 'lightBgColor', 'bgAlpha', 'bgMode', 'bgPreset', 'lightBgPreset', 'bgTeamDirection', 'bgImageUrl', 'bgImageData'].includes(cat)) {
     if (statsLastFixtureData != null) applyStatsPanel(statsLastFixtureData);
   }
 });
