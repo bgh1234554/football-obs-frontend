@@ -27,12 +27,16 @@ const OVERLAY_CHROMA_COLORS = {
 // 유효성 검사와 실제 배경 적용이 같은 이미지 목록을 사용합니다.
 const BACKGROUND_PRESET_IMAGES = {
   "stadium": "resources/backgrounds/dark/stadium-night.webp",
+  "rainy-stadium": "resources/backgrounds/dark/rainy-stadium.webp",
   "abstract": "resources/backgrounds/dark/navy-mint.webp",
   "emerald": "resources/backgrounds/dark/emerald-pitch.webp",
   "charcoal": "resources/backgrounds/dark/charcoal-graphic.webp",
+  "slate-line": "resources/backgrounds/dark/slate-line.webp",
   "burgundy": "resources/backgrounds/dark/burgundy-light.webp",
   "stadium-day": "resources/backgrounds/light/stadium-day.webp",
+  "misty-pitch": "resources/backgrounds/light/misty-pitch.webp",
   "ivory-paper": "resources/backgrounds/light/ivory-paper.webp",
+  "warm-stone": "resources/backgrounds/light/warm-stone.webp",
   "sky-glass": "resources/backgrounds/light/sky-glass.webp",
   "sage-studio": "resources/backgrounds/light/sage-studio.webp",
   "sand-dunes": "resources/backgrounds/light/sand-dunes.webp",

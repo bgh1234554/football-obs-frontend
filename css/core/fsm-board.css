@@ -400,7 +400,7 @@
 .fsm-board #clockEditor :is(.ce-arrow, .ce-num, .ce-colon, .ce-preset-btn) {
   color: var(--fsm-clock-color);
 }
-.fsm-board #cePresets { background: var(--fsm-clock-menu-background, var(--fsm-clock-background)); }
+.fsm-board #cePresets { background: var(--fsm-clock-menu-background, var(--fsm-clock-background)); color: var(--fsm-clock-color); }
 .board-stage-inner:has(.fsm-board) > .pk-wrap { display: none; }
 
 /* 레드카드 레일: FSM HTML 바깥에 위치하므로 점수판 상단에 absolute 배치 */

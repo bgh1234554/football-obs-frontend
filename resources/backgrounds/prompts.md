@@ -156,3 +156,27 @@ Create one finished 16:9 full-bleed landscape background artwork for a football 
 파일: `dark/black-mesh.webp`
 
 Create one finished 16:9 full-bleed landscape background artwork for a football live broadcast dashboard, highest available landscape resolution. Only background art, no UI, mockup, panels, words, numbers, logos, badges, watermarks, people, balls or trophies. A calm large central 75 percent and top center are essential to overlay dense match information. All distinctive details stay at outer edges and corners; low spatial frequency, refined restraint, no busy pattern. Do not copy any existing competition identity. Dark neutral black sports equipment material background, extremely fine knitted jersey mesh texture visible only along outer corners with broad soft charcoal folds, center near-flat smooth deep gray-black. Monochrome tactile fabric, subtle side lighting, no repeating high contrast grid, no logos, no actual garment silhouette.
+
+## 슬레이트 라인
+
+파일: `dark/slate-line.webp`
+
+Create one finished 16:9 landscape full-bleed raster background artwork, highest landscape resolution, for an OBS football live dashboard with dense translucent panels and a scoreboard overlaid. Theme SLATE LINE: refined warm-neutral dark slate, matte mineral and fine linen texture, very broad shallow engraved architectural arcs inspired by stadium roof geometry confined to bottom corners and extreme side margins. Center 80 percent and top center remain almost uniform dark desaturated gray #1b2024, no central subject. Lower corners have restrained pewter edge lighting, no blue neon, no emerald, no ribbons, no glossy folds, no carbon-fiber mesh. Subtle texture, low contrast, luxurious tactile sports editorial art, distinct from futuristic graphics. No football object, no logos, people, typography, numbers, diagrams, UI, watermark, border, mockup. One continuous background, not a contact sheet.
+
+## 비 오는 경기장
+
+파일: `dark/rainy-stadium.webp`
+
+Create one finished 16:9 landscape full-bleed photorealistic raster background artwork at highest available landscape resolution for an OBS football dashboard. Theme RAINY MATCH NIGHT. An anonymous empty football stadium seen from the touchline in light evening drizzle, subtle warm-gray floodlight bloom only at distant upper left and right corners, very soft blurred tiers of seating only near lower side edges, wet charcoal field edge with a quiet muted olive reflection along bottom 12 percent. Large center and top-middle 80 percent must be calm dark neutral smoky gray negative space, low contrast and softly focused, perfect behind white text and translucent match panels. Fine rain visible only near outer lights, no sharp rain streaks through center, no dramatic bright focal point. Cinematic understated realism, distinct from the usual blue stadium wallpaper. No identifiable real stadium, advertisements, people, players, balls, trophies, text, logos, watermark, UI, frames or mockup.
+
+## 웜 스톤
+
+파일: `light/warm-stone.webp`
+
+Create one finished 16:9 full-bleed landscape raster background asset, highest available landscape resolution, for an OBS football match dashboard. Theme WARM STONE STUDIO. A restrained modern sports editorial backdrop, warm medium-light limestone gray #c6c1b6 with delicate natural mineral microtexture and softly embossed broad stadium-architecture curves barely visible only along outer corners. Center 80 percent and top center evenly lit calm warm-gray negative space, NOT white or ivory; enough body to support translucent light panels and dark navy text without feeling washed out. Gentle taupe shadows along the bottom, softly diffused daylight, matte tactile quality, minimal quiet architectural finish. This is a flat background artwork, no recognizable room, no pedestal or stage, no glossy ribbons, no metal facets, no focal object, no green/blue glow. No words, numbers, logos, players, football object, trophy, watermark, UI panels, border or mockup. Full canvas subtle surface.
+
+## 안개 낀 피치
+
+파일: `light/misty-pitch.webp`
+
+Create one finished full-bleed 16:9 landscape photorealistic background image, highest landscape resolution, for a football broadcast dashboard. Theme MISTY TRAINING PITCH. Anonymous open football ground on a calm overcast morning, medium-light muted sage gray mist fills center and top 75 percent, desaturated green pitch confined mainly to bottom quarter, soft distant treeline and low anonymous bleachers barely perceptible at extreme lower side margins. Camera at sideline height with a wide atmospheric view. A faint broad touchline sweeps in at one bottom corner only, no central center-circle or distinct center detail. Low contrast, matte, evenly diffused daylight, medium-light gray-green not bright white, no golden sun, no blue glass abstract effect. Lots of quiet central negative space for translucent panels and navy player names, real outdoor football atmosphere without visual clutter. No goalposts in center, no people, balls, equipment, advertisements, logos, text, numbers, watermarks, frames, UI or mockups. Single continuous scene.

@@ -147,6 +147,31 @@
     if (!cePresets) return;
     clearTimeout(_cePresetHideTimer);
     _cePresetHideTimer = null;
+    // 고정된 예시 키 대신 사용자가 지정한 실제 타이머 단축키를 표시한다.
+    const hint = cePresets.querySelector('.ce-presets-hint');
+    if (hint && typeof shortcutActions !== 'undefined') {
+      hint.replaceChildren(...[
+        [['clockToggle'], '시작·정지'], [['clock0', 'clock45'], '0분 / 45분 초기화'],
+        [['clock90', 'clock105'], '90분 / 105분 초기화'],
+        [['extra'], '추가시간 표시·숨기기'],
+        [['extraMinus', 'extraPlus'], '추가시간 −1분 / +1분']
+      ].map(([ids, label]) => {
+        const row = document.createElement('span');
+        const keys = document.createElement('span'); keys.className = 'ce-shortcut-keys';
+        ids.forEach((id, index) => {
+          const action = shortcutActions.find(action => action[0] === id);
+          const key = document.createElement('kbd');
+          key.textContent = shortcutLabel(shortcutBinding(action)).replace(/ \+ /g, '+');
+          key.title = action[2];
+          if (index) keys.append(' / ');
+          keys.append(key);
+        });
+        row.append(label, keys); return row;
+      }));
+    }
+    cePresets.querySelectorAll('.ce-preset-btn').forEach(button => {
+      button.setAttribute('aria-pressed', String(Number(ceMin.value) === Number(button.dataset.min) && Number(ceSec.value) === 0));
+    });
     cePresets.classList.add('open');
     ceStartSafeZoneTracking();
   }
