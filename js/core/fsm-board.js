@@ -95,6 +95,7 @@ const LEAGUE_THEME_MAP = {
   541: { theme: 'recopa', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/RecopaSudamericana.png', type: 'club' },
   11: { theme: 'sudamericana', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CopaSudamericana.svg', type: 'club' },
   13: { theme: 'libertadores', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/CopaLibertadores.svg', type: 'club' },
+  15: { theme: 'cwc', logoUrl: "https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg", type: 'club' }, // FIFA 클럽 월드컵
   188: { theme: 'aleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ALeagueMen.svg', type: 'club' },
   169: { theme: 'chinesesuperleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/ChineseSuperLeague.svg', type: 'club' },
   71: { theme: 'brazilseriea', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/BrazilSerieA.svg', type: 'club' },
@@ -149,7 +150,7 @@ const FSM_THEMES = Object.freeze({
   //아프리카
   cafcl: 'CAF 챔피언스리그', cafcc: 'CAF 컨페더레이션 컵',
   //오세아니아 + 세계
-  wc26: '월드컵', fifaintercontinental: 'FIFA 인터컨티넨탈 컵'
+  wc26: '월드컵', fifaintercontinental: 'FIFA 인터컨티넨탈 컵', cwc: 'FIFA 클럽 월드컵'
 });
 
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
@@ -823,6 +824,10 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'korcup':
       changeCSS('css/theme/result_style_KORCUP.css', theme);
+      setFsmAttr('.epl-lion', 'src', logoUrl);
+      break;
+    case 'cwc':
+      changeCSS('css/theme/result_style_CWC.css', theme);
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     default:
@@ -1664,6 +1669,7 @@ function adjustScoreboardWidth() {
     facup: ['#ED1C24', '#ffffff'],
     carabao: ['#008F5E', '#ffffff'],
     fifaintercontinental: ['#2A3146', '#BD9137'],
+    cwc: ['#FDD469', '#000000'],
     // 코리아컵 승부차기 띠
     korcup: ['#00125E', '#ffffff'],
     // DFB-포칼 승부차기 띠는 팀명 칸과 같은 배경/글자색
