@@ -17,6 +17,7 @@
 | 파일 | 설명 |
 |---|---|
 | `variables.css` | `:root` CSS 변수. 팀 컬러(`--home-bg` 등), 점수판 치수(`--board-width`), 폰트, 패널 배경 알파 등. |
+| `appearance.css` | 라이트·다크모드의 중립 표면·글자·구분선 팔레트와 정보 패널 색조, 메뉴·입력창의 모드별 색상. |
 | `board.css` | 점수판 핵심 컴포넌트. `.board`, `.team`, `.logo-box`, `.score`, `.digits`, `.timer`, `.pk-wrap`, `.rc-rail`. 득점자 박스 수동 편집 인터랙션 포함. **모든 선택자는 `.board` 하위에서만 적용** (위젯 오염 방지). |
 | `layout.css` | 전체 레이아웃과 body 화면 배율, `display-viewport` 컨테이너, 전술판 전체화면 내부 래퍼, 스크롤 경계. `board-stage`, `.note-side/.note`, 페이지·테마·About 영역, 위젯 CSS 격리, `.layout-wrap/.lp-col/.lp` 카메라 뷰/대시보드 뷰 레이아웃. |
 
@@ -113,7 +114,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `settings-popup.js` | 설정 팝업 제어 (탭: 이름/라인업/패널·스탯/배경·OBS/관리) + localStorage 영속화 + `settings:change` 이벤트 |
+| `settings-popup.js` | 설정 팝업 제어 (탭: 이름/라인업/패널·스탯/배경·OBS/관리) + localStorage 영속화 + `settings:change` 이벤트. 화면 모드, 패널 표면색 변환, 배경 갤러리·미리보기·적용과 모드별 무드 배경도 담당. 기본 이미지는 `resources/backgrounds/dark/`·`light/`, 생성 프롬프트는 `resources/backgrounds/prompts.md`에 보관. |
 
 ### js/lineup/
 
