@@ -1448,7 +1448,7 @@
     <div id="tactics-draw-toolbar" style="width:10%;flex-shrink:0;border-left:1px solid rgba(255,255,255,.08);padding:10px 8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;">
       <!-- 풀스크린 모드 전용 닫기 버튼 — 패널 우상단 absolute 위치. 일반 모드에선 CSS로 숨김. -->
       <button id="td-drawtools-close" type="button" title="그리기 도구 닫기" aria-label="닫기">×</button>
-      <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
+      <div class="tactics-draw-title" style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">그리기 도구</div>
       <div class="td-drawtools-size-control">
         <label for="tactics-drawtools-scale-slider" class="td-alpha-label">도구 크기</label>
         <span class="td-alpha-value" data-settings-slider-value="tacticsDrawtoolsScale">150%</span>
@@ -1469,7 +1469,7 @@
       <button id="td-tool-eraser" onclick="tacticsDrawSetTool('eraser')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">✕ 지우개</button>
       <button id="td-tool-laser" onclick="tacticsDrawSetTool('laser')" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;" title="클릭하지 않고 마우스만 움직여도 됩니다">🔴 레이저</button>
       <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
-      <div class="tactics-draw-subtitle" style="font-size:10px;color:#475569;font-weight:600;">색상</div>
+      <div class="tactics-draw-subtitle" style="font-size:10px;color:var(--muted);font-weight:600;">색상</div>
       <div class="tactics-draw-swatches" style="display:flex;flex-wrap:wrap;gap:5px;">
         <button data-clr="#ffffff" onclick="tacticsDrawSetColor('#ffffff')" style="width:22px;height:22px;border-radius:50%;background:#ffffff;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="흰색"></button>
         <button data-clr="#facc15" onclick="tacticsDrawSetColor('#facc15')" style="width:22px;height:22px;border-radius:50%;background:#facc15;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;padding:0;" title="노랑"></button>

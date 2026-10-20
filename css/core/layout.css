@@ -471,7 +471,7 @@
       background: var(--ui-control-surface, #19273e); color: #c4d5f3; font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
     }
     #themePanel .theme-color-actions button:hover { background: #253650; border-color: rgba(var(--ui-ink-rgb, 255, 255, 255), 0.251); }
-    #themePanel .theme-color-actions button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    #themePanel .theme-color-actions button:focus-visible { outline: 2px solid var(--control-accent); outline-offset: 2px; }
     #themePanel button:disabled { opacity: .4; cursor: default; }
     html.popout-target-theme #themePanel { padding: 10px; }
     html.popout-target-theme #themePanel .theme-appearance-grid { grid-template-columns: 1fr 1fr; }
@@ -638,11 +638,11 @@
       font: inherit;
       cursor: pointer;
     }
-    .about-tabs [aria-selected="true"] { background: rgba(96,165,250,.15); color: var(--text); border-color: #60a5fa; }
-    .about-tabs [role="tab"]:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    .about-tabs [aria-selected="true"] { background: rgba(96,165,250,.15); color: var(--text); border-color: var(--control-accent); }
+    .about-tabs [role="tab"]:focus-visible { outline: 2px solid var(--control-accent); outline-offset: 2px; }
     .about-tab-item { position: relative; }
     .about-tabs [role="tab"]::after { content: ' ▾'; font-size: .8em; opacity: .65; }
-    .about-tabs [aria-expanded="true"] { border-color: #60a5fa; color: var(--text); }
+    .about-tabs [aria-expanded="true"] { border-color: var(--control-accent); color: var(--text); }
     .about-submenu {
       display: flex;
       flex-wrap: wrap;
@@ -667,7 +667,7 @@
       cursor: pointer;
     }
     .about-submenu-link:hover, .about-submenu-link:focus-visible { background: rgba(96,165,250,.15); outline: none; }
-    .about-submenu-link[aria-current="location"] { background: rgba(96,165,250,.15); color: #93c5fd; box-shadow: inset 0 -2px #60a5fa; }
+    .about-submenu-link[aria-current="location"] { background: rgba(96,165,250,.15); color: #93c5fd; box-shadow: inset 0 -2px var(--control-accent); }
     .about-tab-panel[hidden] { display: none; }
     .md-body { color: var(--text); line-height: 1.75; font-size: 14px; }
     .md-body h1 { font-size: 24px; font-weight: 900; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
