@@ -2023,18 +2023,8 @@ function createScoreboardScaleControl(key, label) {
       styles: panel ? ['left', 'top', 'width', 'transform', 'transformOrigin'].map(key => [key, panel.style[key]]) : []
     };
   });
-  const finishDrag = () => {
-    const drag = window.fsmScaleDrag;
-    if (!drag) return;
-    window.fsmScaleDrag = null;
-    drag.styles.forEach(([key, value]) => { drag.panel.style[key] = value; });
-    syncAggQuickControls(document.querySelector('.fsm-board'));
-    window.reapplyBoardScale?.();
-    persist();
-  };
-  window.addEventListener('pointerup', finishDrag);
-  control.querySelector('input').addEventListener('pointercancel', finishDrag);
-  control.querySelector('input').addEventListener('lostpointercapture', finishDrag);
+  control.querySelector('input').addEventListener('pointercancel', finishScoreboardScaleDrag);
+  control.querySelector('input').addEventListener('lostpointercapture', finishScoreboardScaleDrag);
   control.querySelector('input').addEventListener('change', () => persist());
   control.querySelector('button').addEventListener('click', () => { update(75); persist(); });
   const wrapper = document.createElement('div');
@@ -2042,6 +2032,18 @@ function createScoreboardScaleControl(key, label) {
   syncScoreboardScaleControl(wrapper, key);
   return control;
 }
+
+/** 메뉴를 다시 열어도 전역 종료 리스너는 하나만 유지합니다. */
+function finishScoreboardScaleDrag() {
+  const drag = window.fsmScaleDrag;
+  if (!drag) return;
+  window.fsmScaleDrag = null;
+  if (drag.panel) drag.styles.forEach(([key, value]) => { drag.panel.style[key] = value; });
+  syncAggQuickControls(document.querySelector('.fsm-board'));
+  window.reapplyBoardScale?.();
+  persist();
+}
+window.addEventListener('pointerup', finishScoreboardScaleDrag);
 
 /** 배율을 바꾸는 동안 조작 중인 메뉴는 화면의 같은 위치·크기를 유지합니다. */
 window.syncFsmScaleDrag = () => {

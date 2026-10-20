@@ -206,6 +206,32 @@ const { openPage } = require('../tactics/helpers');
     await page.setViewportSize({ width: 1280, height: 1000 });
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await page.locator('.sp-modal').screenshot({ path: 'screenshots/tests/settings-loaded-board.png' });
+    for (const category of ['teamName', 'event']) {
+      assert.equal(await page.evaluate(async category => {
+        const container = document.querySelector(`.sp-row:has([data-settings-cat="${category}"]) .sp-setting-example`);
+        const frame = container.querySelector('iframe');
+        const view = frame.contentWindow;
+        const original = view.addEventListener;
+        let added = 0;
+        view.addEventListener = function(type, ...args) {
+          if (type === 'resize') added++;
+          return original.call(this, type, ...args);
+        };
+        try {
+          for (let i = 0; i < 5; i++) {
+            container.dataset.renderSignature = '';
+            renderSettingsLiveExample(container, category);
+            await new Promise(resolve => requestAnimationFrame(resolve));
+          }
+        } finally { view.addEventListener = original; }
+        const fit = frame._fitSettingsPreview;
+        let calls = 0;
+        frame._fitSettingsPreview = () => { calls++; };
+        view.dispatchEvent(new view.Event('resize'));
+        frame._fitSettingsPreview = fit;
+        return added === 0 && calls === 1;
+      }, category), true, `${category}: one resize dispatcher must use the latest fitter`);
+    }
     assert.deepEqual(errors, []);
     console.log('Settings previews: shared renderers, combined toggles, colors and responsive alignment passed.');
   } finally {

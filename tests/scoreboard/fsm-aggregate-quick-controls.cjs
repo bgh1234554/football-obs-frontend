@@ -193,6 +193,27 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.mouse.move(cameraBox.x + 7, cameraBox.y + cameraBox.height / 2, { steps: 15 });
     await page.mouse.up();
     assert.equal(await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight), cameraHeight, 'camera height restored at 50%');
+    assert.equal(await page.evaluate(() => {
+      const original = window.addEventListener;
+      let added = 0;
+      window.addEventListener = function(type, ...args) {
+        if (type === 'pointerup') added++;
+        return original.call(this, type, ...args);
+      };
+      try {
+        for (let i = 0; i < 10; i++) createScoreboardScaleControl('boardScale', 'Scale');
+      } finally { window.addEventListener = original; }
+      return added;
+    }), 0, 'recreating controls must not add global pointerup listeners');
+    await page.evaluate(() => {
+      // 패널 없는 팀명 메뉴에서도 종료 후 재배율 적용과 저장이 실행되어야 합니다.
+      state.boardScale = 65;
+      window.fsmScaleDrag = { panel: null, styles: [['left', '0px']] };
+      window.dispatchEvent(new PointerEvent('pointerup'));
+    });
+    assert.equal(await page.evaluate(() => window.fsmScaleDrag), null);
+    assert.equal(await page.locator('#boardScaleRange').inputValue(), '65');
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('obs-scoreboard-state-v2')).boardScale), 65);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

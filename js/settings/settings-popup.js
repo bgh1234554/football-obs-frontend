@@ -2126,7 +2126,6 @@ function renderSettingsLiveExample(container, category) {
       };
       fit();
       frame._fitSettingsPreview = fit;
-      frame.contentWindow.addEventListener('resize', fit);
       board.querySelectorAll('img').forEach(img => img.addEventListener('load', fit, { once: true }));
     }
     const events = doc.querySelector('.preview-events');
@@ -2137,7 +2136,6 @@ function renderSettingsLiveExample(container, category) {
       };
       fit();
       frame._fitSettingsPreview = fit;
-      frame.contentWindow.addEventListener('resize', fit);
     }
     const note = doc.querySelector('.note');
     let noteLines = [];
@@ -2207,6 +2205,8 @@ function renderSettingsLiveExample(container, category) {
   }
   frame.onload = () => {
     frame.dataset.initialized = 'true';
+    // 내용 갱신 때마다 리스너를 추가하지 않고 최신 피팅 함수로 전달합니다.
+    frame.contentWindow.addEventListener('resize', () => frame._fitSettingsPreview?.());
     updatePreview();
   };
   frame.style.height = node ? (category === 'lineup' ? '90px' : '130px') : category === 'notes' ? '92px' : ['roster', 'scorer'].includes(category) ? '34px' : category === 'event' ? '58px' : '90px';
