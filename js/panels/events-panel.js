@@ -497,6 +497,7 @@ function evOpenSubstPicker(ev, field, fixtureData) {
     overlay.remove();
     document.removeEventListener('keydown', onEsc);
   }
+  /** Escape 입력 시 숨긴 이벤트 관리 창을 닫고 창에 연결된 키보드 리스너를 정리한다. */
   function onEsc(e) {
     if (e.key === 'Escape') closeOverlay();
   }

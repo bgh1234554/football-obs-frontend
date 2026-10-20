@@ -439,6 +439,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'popoutModals',
 ]);
 
+/** 설정 종류별 허용 값·범위를 검사하며, 알 수 없는 값은 저장·복원 대상에서 제외한다. */
 function isValidSetting(category, value) {
   if (category === 'uiMode') return ['dark', 'light'].includes(value);
   if (category === 'bgPreset' || category === 'lightBgPreset') return value === 'off' || Object.hasOwn(BACKGROUND_PRESET_IMAGES, value);
@@ -624,6 +625,7 @@ function saveSettings() {
   }
 }
 
+/** 모드별 저장 키를 공용 키로 정규화한 뒤 해당 설정의 입력·선택 컨트롤을 동기화한다. */
 function syncSettingUi(category) {
   category = ({ lightBgColor: 'bgColor', lightBgPreset: 'bgPreset' }[category] || category);
   if (category === 'lightPanelAlpha') category = 'panelAlpha';
@@ -1146,6 +1148,7 @@ function applyUiMode() {
   root.style.setProperty('--info-label-color', readableInfoColor(darkInk ? rgbToHex(labelTone.r, labelTone.g, labelTone.b) : getSetting('matchInfoLabelColor')));
 }
 
+/** 페이지 배경과 패널 투명도를 적용하고, 실제 합성 배경에 맞춰 패널 의미색을 갱신한다. */
 function applyBackgroundSettings() {
   applyPageBackground();
   const root = document.documentElement;
@@ -1427,6 +1430,11 @@ const BACKGROUND_CUSTOM_INPUTS = `<div class="bg-picker-custom-file">
   <p>주소를 입력하면 위에서 미리 볼 수 있습니다.</p></div>
   <p class="bg-picker-status" role="status"></p>`;
 
+/**
+ * URL → 첨부 이미지 → 현재 모드의 기본 배경 순서로 실제 표시할 이미지를 조회한다.
+ * 저장값은 변경하지 않으며, 미리보기와 설정 행이 공통으로 사용할 출처·주소·이름을 반환한다.
+ * @returns {{source: string, src: string, name: string, preset?: string}} 현재 적용되는 이미지 정보.
+ */
 function currentBackgroundImage() {
   const url = normalizeBackgroundImageUrl(getSetting('bgImageUrl'));
   const data = getSetting('bgImageData');
@@ -1438,6 +1446,7 @@ function currentBackgroundImage() {
     name: document.querySelector(`[data-settings-select="bgPreset"] option[value="${preset}"]`)?.textContent || '사용 안 함' };
 }
 
+/** 실제 적용 이미지의 이름·썸네일과 해제 버튼 상태를 설정 행에 반영한다. */
 function syncBackgroundImageUi() {
   const current = currentBackgroundImage();
   const name = document.getElementById('settingsBgPresetName');
@@ -1451,7 +1460,13 @@ function syncBackgroundImageUi() {
   if (clear) clear.disabled = !current.src;
 }
 
-// 선택 중에는 저장하지 않고, 적용할 때 충돌하는 이미지 설정도 한 번에 갱신한다.
+/**
+ * 선택한 배경을 저장하면서 충돌하는 URL·첨부 이미지 설정을 함께 비운다.
+ * 기본 배경은 현재 모드의 키만 갱신한다. 저장 실패 시 전체 상태를 복구하고,
+ * 성공한 경우에만 입력 UI·페이지 배경을 갱신하고 설정 변경 이벤트를 전달한다.
+ * @param {{source: string, src: string, preset?: string}} draft 적용할 이미지 또는 해제 선택.
+ * @returns {boolean} 저장과 적용이 완료되면 true, 저장 실패 시 false.
+ */
 function commitBackgroundImage(draft) {
   const presetKey = getSetting('uiMode') === 'light' ? 'lightBgPreset' : 'bgPreset';
   const values = {
@@ -1474,11 +1489,13 @@ function commitBackgroundImage(draft) {
   return true;
 }
 
+/** 선택 창의 로딩·오류 안내와 적용 버튼 활성 상태를 함께 변경한다. 저장값은 바꾸지 않는다. */
 function setBackgroundDraftStatus(dialog, message, disabled) {
   dialog.querySelector('.bg-picker-status').textContent = message;
   dialog.querySelector('#backgroundPickerApply').disabled = disabled;
 }
 
+/** 선택 중인 이미지의 미리보기·선택 표시·전체화면 접근 상태를 갱신하고 적용 가능 여부를 반영한다. */
 function renderBackgroundDraft(dialog) {
   const draft = dialog._draft;
   dialog.dataset.selection = draft.preset || '';
@@ -1491,6 +1508,13 @@ function renderBackgroundDraft(dialog) {
   setBackgroundDraftStatus(dialog, '', !draft.src && draft.source !== 'preset');
 }
 
+/**
+ * URL 이미지를 비동기로 확인한 뒤 선택 창의 미리보기에만 반영한다.
+ * 요청 번호와 창의 열림 상태를 확인해 이전 요청·취소된 창의 응답은 무시한다.
+ * 로딩 또는 오류 중에는 적용을 막고, 정상 로딩된 주소만 적용할 수 있도록 한다.
+ * @param {HTMLDialogElement} dialog 배경 선택 창.
+ * @param {string} src 정규화된 이미지 주소. 빈 주소이면 입력 안내만 표시한다.
+ */
 function loadBackgroundDraft(dialog, src) {
   const request = ++dialog._request;
   dialog._draft = { source: 'url', src: '', name: '이미지 URL' };
@@ -1508,6 +1532,11 @@ function loadBackgroundDraft(dialog, src) {
   image.src = src;
 }
 
+/**
+ * 기본 배경 목록과 파일·URL 입력이 있는 선택 창을 생성하거나 다시 연다.
+ * 열 때마다 현재 배경으로 임시 선택을 초기화하고, 적용 전까지 실제 설정은 유지한다.
+ * 파일 압축·전체화면 미리보기·취소 동작을 연결하며 재사용 시 이벤트를 중복 등록하지 않는다.
+ */
 function openBackgroundPicker() {
   let dialog = document.getElementById('backgroundPicker');
   const source = document.querySelector('[data-settings-select="bgPreset"]');
@@ -1622,6 +1651,7 @@ function openBackgroundPicker() {
   dialog.querySelector('.bg-picker-list').scrollTop = 0;
 }
 
+/** 기본 배경을 임시 선택하고 대기 중인 이미지 요청을 무효화한 뒤 미리보기만 갱신한다. */
 function previewBackgroundChoice(dialog, value) {
   dialog._request = (dialog._request || 0) + 1;
   dialog._draft = { source: 'preset', preset: value,

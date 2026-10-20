@@ -50,6 +50,11 @@
       .replace(/^-|-$/g, '');
   }
 
+  /**
+   * 렌더링된 About 제목을 기준으로 본문을 주제별 탭에 나누고 문서 내 이동을 연결한다.
+   * 원본 Markdown은 수정하지 않으며 탭 전환 시 접근성 상태·포커스·스크롤을 맞춘다.
+   * @param {HTMLElement} scrollPane About 본문이 스크롤되는 컨테이너.
+   */
   function buildAboutTabs(scrollPane) {
     const groups = [
       ['start', '시작하기'], ['broadcast', 'OBS 송출 환경'],

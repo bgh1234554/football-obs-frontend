@@ -1113,6 +1113,11 @@ function measureFsmNameInkOffset(font, value, fontSize, renderScale) {
   return offset;
 }
 
+/**
+ * 두 팀 이름과 점수·로고의 실제 표시 경계를 측정해 테마별 점수판 너비를 보정한다.
+ * 허용 너비 안에서 팀명 공간을 먼저 확보하고, 필요한 경우 글꼴 크기와 세로 위치를 맞춘다.
+ * 경기 데이터는 바꾸지 않고 점수판 요소의 크기·스타일만 갱신한다.
+ */
 function adjustScoreboardWidth() {
   const board = document.querySelector('.fsm-board');
   const scoreboard = board?.querySelector('.scoreboard-main');
