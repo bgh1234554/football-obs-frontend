@@ -144,7 +144,7 @@ const FSM_THEMES = Object.freeze({
   //아프리카
   cafcl: 'CAF 챔피언스리그', cafcc: 'CAF 컨페더레이션 컵',
   //오세아니아 + 세계
-  wc26: '월드컵', dfb: 'DFB-포칼', cdr: '코파 델 레이', korcup: '코리아컵'
+  wc26: '월드컵', fifaintercontinental: 'FIFA 인터컨티넨탈 컵', cwc: 'FIFA 클럽 월드컵'
 });
 
 // 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
@@ -1143,7 +1143,7 @@ function adjustScoreboardWidth() {
       (cards[1].getBoundingClientRect().right - awayLogo.left) / scale);
     board.style.setProperty('--fsm-name-reserved-width', `${overlap}px`);
   }
-  if (['russiancup', 'romanian', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance', 'dfb'].includes(_currentTheme)) {
+  if (['russiancup', 'romanian', 'serieb', 'danish', 'ekstraklasa', 'czech', 'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'saudi', 'chinesesuperleague', 'saudikingscup', 'brazilseriea', 'ligaportugal', 'rpl', 'serbia', 'kazakh', 'azerbaijan', 'wc26', 'cypriotfirstdivision', 'eliteserien', 'ligue1', 'ligue2', 'greecesuperleague', 'swisssuperleague', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague', 'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'coppaitalia', 'coupedefrance', 'dfb'].includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
     // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
@@ -1646,6 +1646,7 @@ function adjustScoreboardWidth() {
     facup: ['#ED1C24', '#ffffff'],
     carabao: ['#008F5E', '#ffffff'],
     fifaintercontinental: ['#2A3146', '#BD9137'],
+    cwc: ['#FDD469', '#000000'],
     // 코리아컵 승부차기 띠
     korcup: ['#00125E', '#ffffff'],
     // DFB-포칼 승부차기 띠는 팀명 칸과 같은 배경/글자색

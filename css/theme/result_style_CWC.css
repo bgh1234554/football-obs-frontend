@@ -1,4 +1,7 @@
-.fsm-board { margin:0; padding:0; overflow:hidden; }
+.fsm-board {
+    margin:0; padding:0; overflow:hidden;
+    --cwc-timer-background: linear-gradient(90deg, #B5900E 0%, #FDD469 50%, #B5900E 100%);
+}
 
 .fsm-board .scoreboard-main {
     width: 984px;
@@ -142,7 +145,7 @@
 .fsm-board .time {
     width: 114px;
     height: 100%;
-    background: #FED36C;
+    background: var(--cwc-timer-background);
     position: relative;
     z-index: 1;
     transition: 0.9s ease-in-out;
@@ -172,7 +175,7 @@
     transition: 0.9s ease-in-out;
 }
 
-.fsm-board .pso-main {
+.board.fsm-board .pso-main {
     width: 100%;
     height: 0px;
     transition: 0.9s ease-in-out;
@@ -180,7 +183,8 @@
     display: flex;
     justify-content: center;
     vertical-align: middle;
-    background: white;
+    background: var(--cwc-timer-background);
+    color: black;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
 }
