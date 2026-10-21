@@ -103,6 +103,35 @@ async function roundTrip(page, dpr, base, other) {
   near(back.height, before.height, 'return restores height');
   assert.deepEqual(back.stored, before.stored, 'transition must not rewrite settings');
 }
+async function reloadAfterBoardScale(browser) {
+  const { page } = await openPage(browser, 1);
+  await page.evaluate(() => activatePage('main-big'));
+  await settle(page);
+  await fillLineups(page); await settle(page);
+  const before = await geometry(page);
+  near(before.width / before.height, 94 / 210, 'first split pitch uses its natural aspect ratio', 0.005);
+  await page.locator('#team-score-left').click();
+  const range = page.locator('#boardAggControls input[type="range"]');
+  const box = await range.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * .9, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await page.locator('#boardAggControls .fsm-scale-control button').click();
+  await settle(page);
+  const reset = await geometry(page);
+  near(reset.width, before.width, 'board scale reset preserves lineup width');
+  near(reset.height, before.height, 'board scale reset restores lineup height');
+  await page.reload({ waitUntil: 'load' });
+  await page.evaluate(() => activatePage('main-big'));
+  await settle(page);
+  await fillLineups(page); await settle(page);
+  const restored = await geometry(page);
+  near(restored.width, reset.width, 'reload preserves lineup width after board scale reset');
+  near(restored.height, reset.height, 'reload preserves lineup height after board scale reset');
+  await page.close();
+  console.log('PASS: initial split pitch ratio, board scale reset and reload');
+}
 async function legacy(browser) {
   const { page } = await openPage(browser, 1);
   await page.evaluate(() => activatePage('main-big'));
@@ -159,6 +188,8 @@ async function fullscreenApi(browser) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    await reloadAfterBoardScale(browser);
+    if (process.argv.includes('--reload-only')) return;
     await legacy(browser);
     await fullscreenApi(browser);
     if (process.argv.includes('--legacy-only')) return;

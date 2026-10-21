@@ -948,9 +948,8 @@
    * @returns {void} boardStageWrap.style.height를 필요할 때만 변경한다.
    */
   function syncBoardStageHeight(){
-    // 대시보드만 드래그 중 주변 패널 높이를 유지합니다.
-    // 카메라 뷰는 기존처럼 점수판 배율에 따라 피치 높이를 즉시 갱신합니다.
-    if (window.fsmScaleDrag && document.getElementById('page-main-small')?.classList.contains('active')) return;
+    // 두 뷰 모두 드래그 중에는 주변 패널을 고정하고 종료 시 최종 높이를 적용합니다.
+    if (window.fsmScaleDrag) return;
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
     // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
@@ -970,6 +969,7 @@
       }
     }
   }
+  let boardScaleInputFrame = null;
   /**
    * 사용자가 선택한 백분율 배율에 터치 전술판의 화면 폭 제한을 반영한다.
    * 실제 변환 배율을 저장한 뒤 보드 transform, 래퍼 높이, 슬라이더와 표시값을 맞춘다.
@@ -980,6 +980,11 @@
    * @returns {void} 미리보기 배치 및 배율 컨트롤을 갱신한다.
    */
   function applyBoardScale(pct){
+    // 종료·초기화 시 남은 미리보기가 최종 배율을 다시 덮어쓰지 않게 합니다.
+    if (boardScaleInputFrame !== null) {
+      cancelAnimationFrame(boardScaleInputFrame);
+      boardScaleInputFrame = null;
+    }
     const s = boardScaleFactor(pct);
     appliedBoardScale = s;
     boardStageInner.style.transition = 'none';
@@ -1144,7 +1149,16 @@
   // [이벤트 등록] 배율 슬라이더 및 리셋 버튼
   boardScaleRange?.addEventListener('input', e=>{
     state.boardScale = Number(e.target.value);
-    applyBoardScale(state.boardScale);
+    if (!window.fsmScaleDrag) {
+      applyBoardScale(state.boardScale);
+      return;
+    }
+    // 드래그 입력이 몰려도 프레임마다 최신 배율만 미리보기로 반영합니다.
+    if (boardScaleInputFrame !== null) return;
+    boardScaleInputFrame = requestAnimationFrame(() => {
+      boardScaleInputFrame = null;
+      applyBoardScale(state.boardScale);
+    });
   });
   boardScaleRange?.addEventListener('change', () => persist());
 

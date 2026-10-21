@@ -1455,6 +1455,9 @@ function _lineupClearHeightOverride(panel) {
 /** 마지막으로 직접 조절한 높이와 당시 화면을 원본으로 사용한다. 환산 결과는 원본에 덮어쓰지 않는다. */
 function applyStoredLineupEdgeOverrides() {
   if (document.body.matches('.lp-lineup-resizing, .lp-lineup-w-resizing, .lp-lineup-h-resizing')) return;
+  // 경기 로딩 전 빈 패널은 통합 피치 비율이다. 이때 폭을 고정하면 분리 피치를
+  // 렌더한 뒤에도 넓은 폭이 남으므로 실제 라인업 모드가 정해진 다음 복원한다.
+  if (typeof lineupPanelState === 'undefined' || !lineupPanelState.lastFixture) return;
   document.querySelectorAll('.layout-big .lp-lineup').forEach(panel => {
     if (!panel.getClientRects().length || panel.closest('.layout-wrap').clientHeight <= 0) return;
     const available = _lineupGetMaxHeight(panel);

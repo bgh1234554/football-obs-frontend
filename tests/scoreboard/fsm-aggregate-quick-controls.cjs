@@ -179,20 +179,47 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await menu.locator('input').inputValue(), '75');
       await page.keyboard.press('Escape');
     }
-    // 카메라 뷰는 최적화 전처럼 드래그 도중에도 높이가 변하고 원래 배율에서 복원됩니다.
+    // 카메라 뷰도 드래그 중 주변 배치를 유지하고 놓을 때 최종 높이를 적용합니다.
     await page.evaluate(() => { activatePage('main-big'); state.boardScale = 50; reapplyBoardScale(); });
     await page.mouse.click(1900, 1000);
     await page.locator('#team-score-left').click();
     const cameraRange = page.locator('#boardAggControls input[type="range"]');
     const cameraBox = await cameraRange.boundingBox();
     const cameraHeight = await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight);
+    const cameraBoardWidth = await page.locator('#board').evaluate(node => node.getBoundingClientRect().width);
     await page.mouse.move(cameraBox.x + 7, cameraBox.y + cameraBox.height / 2);
     await page.mouse.down();
     await page.mouse.move(cameraBox.x + cameraBox.width - 7, cameraBox.y + cameraBox.height / 2, { steps: 15 });
-    assert((await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight)) > cameraHeight, 'camera height updates during drag');
-    await page.mouse.move(cameraBox.x + 7, cameraBox.y + cameraBox.height / 2, { steps: 15 });
+    await settle(page);
+    assert.equal(await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight), cameraHeight, 'camera surrounding panels stay fixed during drag');
+    assert((await page.locator('#board').evaluate(node => node.getBoundingClientRect().width)) > cameraBoardWidth, 'camera board previews scale during drag');
     await page.mouse.up();
+    await settle(page);
+    assert((await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight)) > cameraHeight, 'camera final height applied after release');
+    await cameraRange.fill('50');
+    await settle(page);
     assert.equal(await page.locator('#boardStageWrap').evaluate(node => node.offsetHeight), cameraHeight, 'camera height restored at 50%');
+    // 같은 프레임의 입력은 합치고, 프레임 전에 놓아도 마지막 값을 보존합니다.
+    const burst = await page.evaluate(async () => {
+      const range = document.querySelector('#boardAggControls input[type="range"]');
+      range.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      const initial = document.getElementById('boardStageInner').style.transform;
+      for (const value of [55, 60, 65, 70]) {
+        range.value = value;
+        range.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      const deferred = document.getElementById('boardStageInner').style.transform === initial;
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const preview = document.getElementById('boardStageInner').style.transform;
+      range.value = 80;
+      range.dispatchEvent(new Event('input', { bubbles: true }));
+      finishScoreboardScaleDrag();
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      return { deferred, preview, final: document.getElementById('boardStageInner').style.transform };
+    });
+    assert.ok(burst.deferred, 'scale burst waits for the next frame');
+    assert.equal(burst.preview, 'scale(0.7)', 'scale burst previews the latest value');
+    assert.equal(burst.final, 'scale(0.8)', 'release flushes the final value before pending preview');
     assert.equal(await page.evaluate(() => {
       const original = window.addEventListener;
       let added = 0;
