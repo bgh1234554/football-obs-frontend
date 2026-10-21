@@ -22,6 +22,20 @@ const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
 }
 /** 파일 p에서 function name( 부터 end 문자열 직전까지의 소스를 잘라낸다. */
 const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function '+name+'('),s.indexOf(end,s.indexOf('function '+name+'(')));};
+// 실제 선발·백업 명단에 있는 선수의 미등록·차출 정보는 제외하고, 명단 밖 정보는 유지한다.
+{
+ const context={};
+ vm.runInNewContext(read('js/data/injury-reason.js')+'\n'+read('js/lineup/lineup-data.js')+'\n'+extract('js/lineup/lineup-render.js','getInjuryCategoryRank','/** 미출전 선수'),context);
+ for(const side of ['home','away']) for(const reason of ['Off the roster','  OFF THE ROSTER  ','National Team','International duty']){
+  const injuries=[1,2,3,0].map(playerId=>({playerId,reason,type:'Missing Fixture'}));
+  const data={[side+'Lineup']:{startXi:[{playerId:'1'}],substitutes:[{playerId:2}]},[side+'Injuries']:injuries};
+  context.reconcileInjuriesAgainstLineup(data);
+  assert.deepEqual(Array.from(data[side+'Injuries'],p=>p.playerId),[3,0]);
+  const missing={[side+'Injuries']:injuries};
+  context.reconcileInjuriesAgainstLineup(missing);
+  assert.equal(missing[side+'Injuries'],injuries);
+ }
+}
 // 기존 설정에 배경 선택이 없으면 새 기본값을 쓰되, 직접 고른 값과 팀 무드 이전은 유지한다.
 {
  const source=read('js/settings/settings-popup.js');
