@@ -63,7 +63,8 @@
     homeLogoManual: '', awayLogoManual: '',
     radiusMode: 'round',
     boardWidth: 1080,
-    boardScale: 75,
+    boardScale: 85,
+    boardScaleDefault85Migrated: true,
     boardPosition: 'center',
     homeLogoScale: 1, awayLogoScale: 1,
     homeLogoX: 0, homeLogoY: 0,
@@ -235,6 +236,10 @@
       const defaultColors = {...state.colors};
       // running 상태 보존 — 새로고침 사이에도 타이머가 이어지도록 (이전엔 항상 false로 리셋했음)
       if(saved) Object.assign(state, saved);
+      // 이전 기본 배율만 한 번 올리고, 이후 사용자가 다시 고른 75%는 유지한다.
+      const migrateBoardScale = saved && saved.boardScaleDefault85Migrated !== true;
+      if (migrateBoardScale && Number(saved.boardScale) === 75) state.boardScale = 85;
+      state.boardScaleDefault85Migrated = true;
       // 새로고침 사이 경과한 실제 시간을 더해줘서 시계가 끊기지 않게 보정.
       // lastRunningTickMs는 timer.js의 tick()에서 매 틱마다 Date.now()로 갱신 + beforeunload에서 persist.
       if (state.running && state.lastRunningTickMs) {
@@ -278,5 +283,6 @@
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
       state.leagueId = saved?.leagueId ?? null;
       state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;
+      if (migrateBoardScale) persist();
     }catch(e){ console.warn('복원 실패:', e); }
   }

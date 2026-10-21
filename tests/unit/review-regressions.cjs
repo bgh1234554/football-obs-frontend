@@ -2,6 +2,24 @@
 const path=require('node:path');
 /** 저장소 루트 기준 경로의 파일 내용을 읽는다. */
 const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
+// 이전 기본 배율은 한 번만 전환하며, 다른 배율과 전환 후 수동 선택은 보존한다.
+{
+ for(const saved of [null,{boardScale:75},{boardScale:90},{boardScale:75,boardScaleDefault85Migrated:true}]){
+  let stored=JSON.stringify(saved);
+  const load=()=>{
+   const context={console,$:()=>null,clampNum:(v,min,max,fallback)=>Math.min(max,Math.max(min,Number(v)||fallback)),expireStalePkState(){},localStorage:{getItem:()=>stored,setItem:(key,value)=>{stored=value;}}};
+   vm.runInNewContext(read('js/core/state.js')+'\nrestore();globalThis.result=state;',context);
+   return context;
+  };
+  const context=load();
+  assert.equal(context.result.boardScale,saved?.boardScaleDefault85Migrated?75:saved?.boardScale===90?90:85);
+  assert.equal(context.result.boardScaleDefault85Migrated,true);
+  // 사용자가 75%로 되돌려 저장한 뒤 새로고침해도 재전환하지 않는다.
+  context.result.boardScale=75;
+  context.persist();
+  assert.equal(load().result.boardScale,75);
+ }
+}
 // 누적 퇴장 추정은 카드 종류만 바꾸며, 사유와 API 원본은 그대로 보존한다.
 {
  const api={window:{},document:{addEventListener(){},querySelectorAll(){return[];}},localStorage:{getItem(){return null;}}};

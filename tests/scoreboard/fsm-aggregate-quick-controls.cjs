@@ -15,7 +15,7 @@ const { openPage, settle } = require('../tactics/helpers');
       await page.evaluate(() => {
         state.homeName = '올랭피크 리옹'; state.awayName = '크리스탈 팰리스';
         state.homeScore = 3; state.awayScore = 2; state.aggEnabled = false; state.aggHomeBase = 0; state.aggAwayBase = 0;
-        state.boardScale = 75; render(); fsmBoardRender(); reapplyBoardScale();
+        state.boardScale = 85; render(); fsmBoardRender(); reapplyBoardScale();
       });
       await settle(page);
       const panel = page.locator('#boardAggControls');
@@ -32,9 +32,14 @@ const { openPage, settle } = require('../tactics/helpers');
       await settle(page);
       assert.equal(await page.evaluate(() => state.boardScale), 90);
       assert.equal(await page.locator('#boardScaleRange').inputValue(), '90');
+      // 최대 배율도 클릭 메뉴와 테마 탭에 동일하게 반영됩니다.
+      await scoreRange.fill('125');
+      await settle(page);
+      assert.equal(await page.evaluate(() => state.boardScale), 125);
+      assert.equal(await page.locator('#boardScaleRange').inputValue(), '125');
       await page.screenshot({ path: `screenshots/tests/score-scale-${theme}.png` });
       await panel.locator('.fsm-scale-control button').click();
-      assert.equal(await scoreRange.inputValue(), '75');
+      assert.equal(await scoreRange.inputValue(), '85');
       // 실제 포인터 드래그 중 메뉴가 움직이거나 숨겨져 range 조작이 끊기면 안 됩니다.
       await page.evaluate(() => { state.manualMode = true; activatePage('main-small'); });
       await settle(page);
@@ -176,7 +181,7 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await menu.locator('output').textContent(), '70%');
       await page.screenshot({ path: `screenshots/tests/team-scale-${side}.png` });
       await menu.locator('.fsm-scale-control button').click();
-      assert.equal(await menu.locator('input').inputValue(), '75');
+      assert.equal(await menu.locator('input').inputValue(), '85');
       await page.keyboard.press('Escape');
     }
     // 카메라 뷰도 드래그 중 주변 배치를 유지하고 놓을 때 최종 높이를 적용합니다.

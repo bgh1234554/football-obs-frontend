@@ -790,7 +790,7 @@
     if (homeNoteSide) homeNoteSide.style.width = 'max-content';
     if (awayNoteSide) awayNoteSide.style.width = 'max-content';
 
-    const scale = boardScaleFactor(state.boardScale ?? 75);
+    const scale = boardScaleFactor(state.boardScale ?? 85);
     const viewportWidth = $('boardStageWrap').clientWidth;
     const available = Math.max(0, (viewportWidth - 16) / scale - boardEl.offsetWidth - 10);
     const position = state.boardPosition || 'center';
@@ -1126,11 +1126,11 @@
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
   function initBoardScale(){
-    const pct = state.boardScale ?? 75;
+    const pct = state.boardScale ?? 85;
     applyBoardScale(pct);
   }
   // 터치 기기 전술판 배치 전환/탭 이동/화면 회전 시 점수판 배율을 다시 계산하도록 노출
-  window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 75);
+  window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 85);
 
   if (window.ResizeObserver && boardStageInner) {
     new ResizeObserver(entries => {
@@ -1163,7 +1163,7 @@
   boardScaleRange?.addEventListener('change', () => persist());
 
   $('boardScaleReset')?.addEventListener('click', ()=>{
-    state.boardScale = 75;
+    state.boardScale = 85;
     applyBoardScale(75);
     persist();
   });
