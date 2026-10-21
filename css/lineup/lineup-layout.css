@@ -163,16 +163,23 @@ body.lp-small-resizing * {
   justify-content: stretch;
 }
 
-/* 팬 반응 OFF — 캠 큼(.lp-chat-big)/캠 작음(.lp-cam-chat) 둘 다 자리(칼럼 폭·높이)는 그대로
-   두고 완전히 투명하게만 만든다. 다른 컬럼/패널의 크기·분할 비율에 영향을 주지 않기 위해
-   display:none 대신 opacity:0을 사용 — 레이아웃 흐름에서 빠지지 않아 스탯 패널이 그
-   자리를 차지하러 늘어나지 않는다. */
+/* 패널을 꺼도 자리(칼럼 폭·높이)는 유지한다. 카메라 뷰는 opacity로 숨기고,
+   대시보드의 팬 반응은 아래 visibility 규칙으로 경계 손잡이만 남긴다. */
 body.no-fan-reaction .layout-big .lp-chat-big,
 body.no-big-lineup .layout-big .lp-lineup,
-body.no-big-info .layout-big .lp-stat,
-body.no-fan-reaction .layout-small .lp-cam-chat {
+body.no-big-info .layout-big .lp-stat {
   opacity: 0;
   pointer-events: none;
+}
+
+/* 투명한 팬 반응 자리에서도 칼럼 경계의 드래그·더블클릭은 유지한다. */
+body.no-fan-reaction .layout-small .lp-cam-chat {
+  visibility: hidden;
+  pointer-events: none;
+}
+body.no-fan-reaction .layout-small .lp-cam-chat > .lp-small-col-resize-end {
+  visibility: visible;
+  pointer-events: auto;
 }
 
 /* 메인 (캠 큼) 라인업 컬럼 — 피치 비율(62/105)에 맞춰 컬럼 폭 결정.

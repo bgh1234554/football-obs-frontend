@@ -410,13 +410,15 @@
 
     .st-row {
       display: flex;
+      flex: 0 0 auto;
       flex-direction: column;
       gap: 3px;
       padding: 2px 0;
     }
     .st-top {
       display: grid;
-      grid-template-columns: 36px 1fr 36px;
+      /* 큰 글씨와 세 자리·백분율 값도 배경 안에 담고 제목은 남은 폭을 사용한다. */
+      grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
       gap: 8px;
     }
@@ -437,7 +439,10 @@
       color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .85));
       font-variant-numeric: tabular-nums;
       padding: 2px 4px;
-      min-width: 28px;
+      min-width: 36px;
+      width: max-content;
+      box-sizing: border-box;
+      white-space: nowrap;
       border-radius: 999px;
       background: transparent;
     }

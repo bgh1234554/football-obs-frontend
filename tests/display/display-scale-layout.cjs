@@ -271,12 +271,29 @@ async function testResolutionPersistence(page) {
 async function testStatsCapacity(page) {
   await page.evaluate(() => activatePage('main-small'));
   await frames(page);
+  // 팬 반응을 꺼도 같은 경계에서 너비 조절과 초기화를 할 수 있어야 한다.
+  await page.evaluate(() => setSetting('fanReaction', 'off'));
+  await frames(page);
+  const divider = page.locator('.layout-small .lp-small-col-resize-end');
+  const box = await divider.boundingBox();
+  const chatWidth = () => page.locator('.layout-small .lp-cam-chat').evaluate(el => el.getBoundingClientRect().width);
+  const before = await chatWidth();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 - 30, box.y + box.height / 2, { steps: 3 });
+  await page.mouse.up();
+  await frames(page);
+  assert.ok(await chatWidth() > before + 10, 'hidden fan panel boundary remains draggable');
+  await divider.dblclick();
+  await frames(page);
+  assert.equal(await page.evaluate(() => localStorage.getItem('obs.smallLayout.columnWidths.v2')), null, 'hidden fan panel boundary resets widths');
+  await page.evaluate(() => setSetting('fanReaction', 'on'));
   const results = await page.evaluate(() => {
     const original = document.querySelector('.layout-small [data-stat-panel]');
     const panel = original.cloneNode(false);
     original.parentElement.appendChild(panel);
     Object.assign(panel.style, { display: 'flex', flexDirection: 'column', flex: 'none', width: '300px' });
-    const rows = Array.from({ length: 24 }, (_, i) => ({ label: `스탯 ${i}`, homeVal: i, awayVal: 24 - i }));
+    const rows = Array.from({ length: 24 }, (_, i) => ({ label: `스탯 ${i}`, homeVal: i % 2 ? '100%' : 1523, awayVal: i % 2 ? 1234 : '88%' }));
     const results = [];
     try {
       for (const height of [60, 100, 179.5, 180, 300, 480, 800]) {
@@ -296,9 +313,17 @@ async function testStatsCapacity(page) {
             const bg = teamPanelBackground(panel);
             rows.slice(0, count).forEach(row => body.appendChild(stCreateRow(row, null, bg)));
             const fits = body.scrollHeight <= body.clientHeight + 0.5;
+            const contained = [...body.querySelectorAll('.st-val')].every(value => {
+              const range = document.createRange();
+              range.selectNodeContents(value);
+              const text = range.getBoundingClientRect();
+              const badge = value.getBoundingClientRect();
+              const bounds = panel.getBoundingClientRect();
+              return text.left >= badge.left && text.right <= badge.right + 0.5 && badge.left >= bounds.left && badge.right <= bounds.right + 0.5;
+            });
             if (count < rows.length) body.appendChild(stCreateRow(rows[count], null, bg));
             const maximal = count === rows.length || body.scrollHeight > body.clientHeight + 0.5;
-            results.push({ height, font, reserveControls, count, fits, maximal });
+            results.push({ height, font, reserveControls, count, fits, maximal, contained });
           }
         }
       }
@@ -309,6 +334,7 @@ async function testStatsCapacity(page) {
     assert.ok(result.count >= 1, JSON.stringify(result));
     assert.ok(result.fits || result.count === 1, JSON.stringify(result));
     assert.ok(result.maximal, JSON.stringify(result));
+    assert.ok(result.contained, JSON.stringify(result));
   }
 
   // 같은 프레임의 여러 크기 보정 요청은 한 번만 렌더하고 페이지 내용은 유지한다.
@@ -414,6 +440,12 @@ async function testStatsCapacity(page) {
     let baseline, alternateBaseline;
     for (const dpr of [1, 1.25, 1.5, 2]) {
       const { page, errors } = await openPage(browser, dpr);
+      if (process.argv.includes('--stats')) {
+        await testStatsCapacity(page);
+        console.log(`PASS: ${dpr * 100}% stats containment, pagination and hidden fan divider`);
+        await page.close();
+        continue;
+      }
       await fillLineups(page);
       const current = await measure(page);
       assert.equal(current.labels.length, 22, 'both teams render');
