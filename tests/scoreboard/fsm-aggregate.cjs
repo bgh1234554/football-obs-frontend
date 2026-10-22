@@ -15,7 +15,7 @@ const { openPage, settle } = require('../tactics/helpers');
     const supportedThemes = new Set([
       'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
       'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
-      'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
+      'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligamx', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
       'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'singapore', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
       'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
     ]);
@@ -79,6 +79,7 @@ const { openPage, settle } = require('../tactics/helpers');
                 return [style.backgroundColor === 'rgba(0, 0, 0, 0)' && before.content !== 'none' ? before.backgroundColor : style.backgroundColor, style.color];
               }),
               timerColors: (() => { const style = getComputedStyle(document.querySelector('.time')); return [style.backgroundColor, style.color]; })(),
+              teamColors: (() => { const background = getComputedStyle(document.querySelector('#homeCard')); const text = getComputedStyle(document.querySelector('#homeName')); return [background.backgroundColor, text.color]; })(),
               boxes: totals.map((node, i) => {
                 const r = node.getBoundingClientRect(), score = scores[i].getBoundingClientRect();
                 // 기울어진 점수 칸의 사선 끝은 겹칠 수 있지만 숫자 중심은 서로 침범하지 않아야 합니다.
@@ -111,6 +112,7 @@ const { openPage, settle } = require('../tactics/helpers');
             if (theme === 'romanian') assert(m.smallNumbersFit, context);
             assert.deepEqual(m.values, ['3', '4'], context);
             if (theme.startsWith('efl')) m.colors.forEach(colors => assert.deepEqual(colors, m.timerColors, context));
+            if (theme === 'ligamx') m.colors.forEach(colors => assert.deepEqual(colors, m.teamColors, context));
             const expectedColors = {
               ligue1: ['rgb(8, 95, 255)', 'rgb(255, 255, 255)'],
               ligue2: ['rgb(0, 252, 208)', 'rgb(0, 0, 0)'],
