@@ -107,6 +107,27 @@ const { openPage, settle } = require('../tactics/helpers');
       if (mode !== 'off') assert.notEqual(values.pk[1], 'rgb(34, 187, 68)', mode);
       assert.equal(values.saved, '#00c424');
     }
+    // 외곽선도 다른 테마 색상처럼 프리셋을 따르고 모드를 끄면 복원되어야 합니다.
+    await page.evaluate(() => { applyTheme('uecl', null); });
+    await page.waitForFunction(() => !pendingThemeLink);
+    const outline = page.locator('.scoreboard-main');
+    const originalOutline = await outline.evaluate(el => getComputedStyle(el).outlineColor);
+    for (const mode of ['strong', 'purple', 'moderate', 'mild', 'natural', 'off']) {
+      await page.evaluate(mode => {
+        setSetting('greenscreen', mode === 'off' ? 'off' : 'on');
+        if (mode !== 'off') setSetting('greenscreenIntensity', mode);
+        render(); fsmBoardRender();
+      }, mode);
+      await settle(page);
+      const colors = await page.evaluate(original => {
+        const probe = document.createElement('span');
+        probe.style.color = chromaSafe(original);
+        return { actual: getComputedStyle(document.querySelector('.scoreboard-main')).outlineColor, expected: probe.style.color };
+      }, originalOutline);
+      assert.equal(colors.actual, colors.expected, `Theme outline: ${mode}`);
+      if (mode !== 'off') assert.notEqual(colors.actual, originalOutline, mode);
+      else assert.equal(colors.actual, originalOutline);
+    }
     await page.evaluate(() => { applyTheme('fnl', null); });
     await page.waitForFunction(() => !pendingThemeLink);
     await page.evaluate(() => { setSetting('greenscreen', 'on'); render(); fsmBoardRender(); });
