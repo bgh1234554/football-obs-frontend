@@ -1218,10 +1218,23 @@ function adjustScoreboardWidth() {
   const aggregateWidth = board.dataset.fsmAggregate === 'true'
     ? Array.from(board.querySelectorAll('.total-score')).reduce((sum, node) => sum + node.offsetWidth, 0)
     : 0;
+  // 중앙 배경을 실제 점수·로고·합계 칸 너비로 이어 배율에 따라 벌어지는 이음새를 막습니다.
+  const centerBackgroundWidth = Array.from(board.querySelectorAll('.team-score, .score-div'))
+    .reduce((sum, node) => sum + node.offsetWidth, aggregateWidth);
+  board.style.setProperty('--fsm-center-background-width', `${centerBackgroundWidth}px`);
   const boardWidth = Math.min(limits.maxBoard + aggregateWidth, requestedBoard, fixedWidth + 2 * limits.maxTeam);
   const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
   cards.forEach(card => { card.style.width = teamWidth + 'px'; });
   scoreboard.style.width = boardWidth + 'px';
+  // 브라우저·점수판 배율이 달라도 합계 이음새의 겹침은 실제 화면 2px로 유지합니다.
+  const paintScale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth;
+  if (paintScale > 0) board.style.setProperty('--fsm-aggregate-join-bleed', `${2 / paintScale / (window.devicePixelRatio || 1)}px`);
+  if (board.dataset.fsmAggregate === 'true') board.querySelectorAll('.total-score').forEach(node => {
+    const paint = getComputedStyle(node);
+    const solid = paint.backgroundImage === 'none' && parseAnyColor(paint.backgroundColor)?.a === 1;
+    node.toggleAttribute('data-fsm-solid-fill', solid);
+    node.style.setProperty('--fsm-aggregate-join-color', paint.backgroundColor);
+  });
   if (_currentTheme === 'cnl') syncCnlGeometry(board);
   if (_currentTheme === 'uzbek') syncCnlGeometry(board, 32);
   if (_currentTheme === 'ukrainian') {

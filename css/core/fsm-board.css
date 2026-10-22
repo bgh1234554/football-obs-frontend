@@ -121,6 +121,42 @@
   justify-content: center;
   align-items: center;
 }
+/* 합계와 일반 점수는 서로 다른 레이어일 수 있으므로 안쪽 배경만 화면 2px씩 겹칩니다.
+   바깥 사선·모서리와 숫자 위치, 기존 장식선은 유지하고 배경만 이어 줍니다. */
+.board.fsm-board[data-fsm-aggregate="true"] .total-score { position: relative; isolation: isolate; }
+.board.fsm-board[data-fsm-aggregate="true"] .total-score::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--fsm-aggregate-join-paint, inherit);
+  z-index: -1;
+  pointer-events: none;
+}
+.board.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft)::after {
+  left: 0; right: calc(-1 * var(--fsm-aggregate-join-bleed, 2px));
+  clip-path: inset(0 0 0 calc(100% - 2 * var(--fsm-aggregate-join-bleed, 2px)));
+}
+.board.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreRight)::after {
+  right: 0; left: calc(-1 * var(--fsm-aggregate-join-bleed, 2px));
+  clip-path: inset(0 calc(100% - 2 * var(--fsm-aggregate-join-bleed, 2px)) 0 0);
+}
+/* 단색은 같은 도형의 그림자로 이어 별도 마스크의 안티앨리어싱 경계도 없앱니다. */
+.board.fsm-board[data-fsm-aggregate="true"] .total-score[data-fsm-solid-fill]::after { content: none; }
+.board.fsm-board[data-fsm-aggregate="true"] .total-score[data-fsm-solid-fill]:where(:has(#totalScoreLeft)) {
+  box-shadow: var(--fsm-aggregate-join-bleed, 2px) 0 0 var(--fsm-aggregate-join-color);
+}
+.board.fsm-board[data-fsm-aggregate="true"] .total-score[data-fsm-solid-fill]:where(:has(#totalScoreRight)) {
+  box-shadow: calc(-1 * var(--fsm-aggregate-join-bleed, 2px)) 0 0 var(--fsm-aggregate-join-color);
+}
+/* 이 세 테마는 접합부에 명시적인 흰 장식선을 두므로 그 선을 배경으로 덮지 않습니다. */
+.board.fsm-board:is([data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="greecesuperleague"]) .total-score::after { content: none; }
+.board.fsm-board[data-fsm-theme="greecesuperleague"] .total-score[data-fsm-solid-fill] { box-shadow: none; }
+/* 가로 그라데이션은 끝 색을 이어 칠해 겹친 구간에서 무늬가 다시 시작하지 않게 합니다. */
+.board.fsm-board[data-fsm-theme="jleague"] .total-score { --fsm-aggregate-join-paint: #0D0D0D; }
+.board.fsm-board[data-fsm-theme="cafcl"] .total-score { --fsm-aggregate-join-paint: #B0902E; }
+.board.fsm-board[data-fsm-theme="cafcc"] .total-score { --fsm-aggregate-join-paint: #787F7E; }
+.board.fsm-board[data-fsm-theme="acgl"] .total-score:has(#totalScoreLeft) { --fsm-aggregate-join-paint: #F4C5A5; }
+.board.fsm-board[data-fsm-theme="acgl"] .total-score:has(#totalScoreRight) { --fsm-aggregate-join-paint: #E9DFC6; }
 /* 팀 영역을 기준으로 배치하는 테마도 EPL처럼 카드 윗부분을 배경 위로 노출한다. */
 .board.fsm-board:is([data-fsm-theme="coupedefrance"], [data-fsm-theme="cnl"], [data-fsm-theme="aleague"], [data-fsm-theme="uzbek"], [data-fsm-theme="ukrainian"], [data-fsm-theme="ukrainianfirst"], [data-fsm-theme="saudi"], [data-fsm-theme="singapore"], [data-fsm-theme="chinesesuperleague"], [data-fsm-theme="saudikingscup"], [data-fsm-theme="brazilseriea"], [data-fsm-theme="allsvenskan"], :is([data-fsm-theme="rpl"], [data-fsm-theme="erovnuli"]), [data-fsm-theme="serbia"], [data-fsm-theme="danish"], [data-fsm-theme="russiancup"], [data-fsm-theme="romanian"], [data-fsm-theme="belgian"], [data-fsm-theme="tff1lig"], [data-fsm-theme="turkishcup"], [data-fsm-theme="libertadores"], [data-fsm-theme="sudamericana"], [data-fsm-theme="recopa"], [data-fsm-theme="cafcl"], [data-fsm-theme="cafcc"], [data-fsm-theme="concacafcc"], [data-fsm-theme="armenian"], [data-fsm-theme="czech"], [data-fsm-theme="ekstraklasa"], [data-fsm-theme="ligaportugal"], [data-fsm-theme="eredivisie"], [data-fsm-theme="mls"], [data-fsm-theme="kleague"], [data-fsm-theme="jleague"], [data-fsm-theme="wc26"]) .div-rc {
   top: -15px;
@@ -239,6 +275,24 @@
   color: #ffffff;
 }
 .fsm-board .jleague-arc, .fsm-board .danish-triangle, .fsm-board .cnl-curve, .fsm-board .russiancup-triangle, .fsm-board .az-chevron { display: none; }
+/* EFL은 부모 띠를 점수 칸과 같은 색으로 채워 소수 픽셀 경계에서도 배경이 이어지게 합니다. */
+.board.fsm-board:is([data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .scoreboard-main {
+  background: #E4E4E4;
+}
+/* 중앙 칸의 실제 너비만 이어 칠해 사선·곡선 바깥의 투명 영역은 유지합니다. */
+.board.fsm-board:is([data-fsm-theme="default"], [data-fsm-theme="cl"], [data-fsm-theme="belarus"], [data-fsm-theme="russiancup"], [data-fsm-theme="kazakh"], [data-fsm-theme="unl"]) .scoreboard-main {
+  background: var(--fsm-center-background) center / var(--fsm-center-background-width) 48px no-repeat var(--fsm-center-base, transparent);
+}
+.board.fsm-board[data-fsm-theme="default"] { --fsm-center-background: linear-gradient(gold, gold); --fsm-center-base: #ececec; }
+.board.fsm-board[data-fsm-theme="cl"] { --fsm-center-background: linear-gradient(#00009c, #00009c); --fsm-center-base: #00008b; }
+.board.fsm-board[data-fsm-theme="belarus"] { --fsm-center-background: linear-gradient(#233434, #233434); }
+.board.fsm-board[data-fsm-theme="russiancup"] { --fsm-center-background: linear-gradient(#ffffff, #ffffff); }
+.board.fsm-board[data-fsm-theme="kazakh"] { --fsm-center-background: linear-gradient(to bottom, #03489D, #023779 50%, #03489D); }
+.board.fsm-board[data-fsm-theme="unl"] { --fsm-center-background: linear-gradient(#48516E, #48516E); }
+/* 체코 점수는 팀 배경 위에 겹치므로 안쪽 합계 칸 아래까지 흰 배경을 잇습니다.
+   바깥 사선은 그대로 두고 최소 40px인 합계 칸 안쪽에서만 겹칩니다. */
+.board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #team-score-left::before { right: -15px; }
+.board.fsm-board[data-fsm-theme="czech"][data-fsm-aggregate="true"] #team-score-right::before { left: -15px; }
 /* 축소 배율에서 별도로 그려지는 배경 사이의 소수 픽셀 이음선을 덮는다.
    실제 칸 너비와 팀명 배치는 바꾸지 않고 중앙 배경만 양옆으로 겹친다. */
 .board.fsm-board:is([data-fsm-theme="er24"], [data-fsm-theme="unl"], [data-fsm-theme="bundes"], [data-fsm-theme="bundes2"]) .score-div {

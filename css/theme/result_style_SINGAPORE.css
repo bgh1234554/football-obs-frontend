@@ -18,8 +18,9 @@
    압축으로 번진 경계는 무늬로 굳히지 않고 벡터의 안티앨리어싱에 맡깁니다. */
 #board.fsm-board[data-fsm-theme="singapore"] .scoreboard-main::before {
     content: ''; position: absolute; left: 50%; top: 0;
-    width: 182px; height: 48px; transform: translateX(-50%); z-index: 1; pointer-events: none;
-    background: #1A1E1C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 34' preserveAspectRatio='none'%3E%3Cpath fill='%232B0C10' d='M0 22 63 0h18L0 28ZM43 34 114 0v8L59 34Z'/%3E%3Cpath fill='%23330C13' d='M0 24 70 0h5L0 26ZM48 34 114 2v2L53 34Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    width: var(--fsm-center-background-width, 182px); height: 48px; transform: translateX(-50%); z-index: 1; pointer-events: none;
+    /* SVG 캔버스만 3배로 넓혀 중앙 182px의 무늬는 늘리지 않고 원래 사선을 양옆으로 연장합니다. */
+    background: #1A1E1C url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-114 0 342 34' preserveAspectRatio='none'%3E%3Cpath fill='%232B0C10' d='M-114 61.809524 63 0h18L-114 67.407407ZM43 34 228 -54.591549 228 -45.890909 59 34Z'/%3E%3Cpath fill='%23330C13' d='M-114 63.085714 70 0h5L-114 65.52ZM48 34 228 -53.272727 228 -52.065574 53 34Z'/%3E%3C/svg%3E") center / 546px 48px no-repeat;
 }
 
 /* 팀명에는 반복 사선이 없습니다. 고유색 위에 넓고 부드러운 좌우·상하 명암만 얹습니다. */
@@ -40,5 +41,5 @@
 .fsm-board .time { background: #FBFDFB; color: #000000; border-radius: 0 0 22px 22px; font-size: 24px; font-weight: 800; }
 .fsm-board .extra-time { background: #E60E0E; color: #ffffff; border-radius: 0 0 22px 0; }
 #board.fsm-board[data-fsm-theme="singapore"][data-fsm-aggregate="true"] .total-score {
-    min-width: 28px; padding: 0 2px; font-size: 28px; background: #1A1E1C; color: #ffffff;
+    min-width: 28px; padding: 0 2px; font-size: 28px; background: transparent; color: #ffffff;
 }

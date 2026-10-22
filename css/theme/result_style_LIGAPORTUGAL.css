@@ -325,10 +325,10 @@
     display: none;
 }
 .board.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreLeft) {
-    box-shadow: inset 1px 0 0 var(--fsm-home-number-color);
+    box-shadow: inset 1px 0 0 var(--fsm-home-number-color), var(--fsm-aggregate-join-bleed, 2px) 0 0 #ffffff;
 }
 .board.fsm-board[data-fsm-aggregate="true"] .total-score:has(#totalScoreRight) {
-    box-shadow: inset -1px 0 0 var(--fsm-away-number-color);
+    box-shadow: inset -1px 0 0 var(--fsm-away-number-color), calc(-1 * var(--fsm-aggregate-join-bleed, 2px)) 0 0 #ffffff;
 }
 .board.fsm-board[data-fsm-theme="ligaportugal"] .team-color {
     box-shadow: inset 0 0 0 1px var(--fsm-number-color);
