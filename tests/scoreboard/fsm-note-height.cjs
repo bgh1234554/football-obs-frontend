@@ -139,6 +139,95 @@ const root = path.resolve(__dirname, '../..');
       finally { text.getBBox = original; note.style.display = ''; }
       alignNoteSvg(note);
     });
+    for (const position of ['center', 'left', 'right']) {
+      for (const content of ['', "9' Player"]) {
+        await page.evaluate(({ position, content }) => {
+          state.manualMode = true; state.noteEnabled = true; state.boardScale = 85;
+          state.boardPosition = position; state.notes = { home: content, away: content };
+          render(); fsmBoardRender(); reapplyBoardScale();
+        }, { position, content });
+        for (const side of ['home', 'away']) {
+          const note = page.locator(`#${side}Note`);
+          const width = await note.evaluate(node => node.getBoundingClientRect().width);
+          for (let repeat = 0; repeat < 2; repeat++) {
+            await note.dblclick();
+            const editor = page.locator('.note-inline-textarea');
+            await editor.fill('unsaved edit');
+            await page.waitForFunction(() => document.activeElement?.matches('.note-inline-textarea'));
+            // 다음 작업으로 등록되는 바깥 클릭 리스너를 기다린 뒤 취소합니다.
+            await page.waitForTimeout(20);
+            await page.mouse.click(5, 600);
+            assert.equal(await editor.count(), 0, 'outside click closes editor');
+            const restored = await note.evaluate(node => node.getBoundingClientRect().width);
+            assert(Math.abs(restored - width) < 1 && restored > 0, 'cancel restores clickable note width');
+            assert.equal(await page.evaluate(side => state.notes[side], side), content, 'cancel preserves saved text');
+          }
+        }
+      }
+    }
+    console.log('PASS note editing reopens after outside cancel on both sides and all positions');
+    for (const manual of [false, true]) {
+      for (const position of ['center', 'left', 'right']) {
+        await page.evaluate(({ manual, position }) => {
+          state.manualMode = manual; state.boardPosition = position;
+          state.notes = { home: "9' Home", away: "12' Away" };
+          state.noteFontSize = 18; state.noteStrokeWidth = 1;
+          render(); fsmBoardRender(); reapplyBoardScale();
+        }, { manual, position });
+        for (const side of ['home', 'away']) {
+          const closedHeight = await page.locator('#boardStageWrap').evaluate(node => node.getBoundingClientRect().height);
+          await page.locator(`#${side}Note`).click();
+          const menu = page.getByRole('group', { name: '득점자 표시 설정', exact: true });
+          assert.equal(await menu.isVisible(), true);
+          assert.equal(await menu.locator('.note-quick-shortcuts .kbd').count(), 2);
+          assert.equal(await menu.locator('.note-edit-shortcuts').count(), manual ? 1 : 0);
+          if (manual) assert.deepEqual(await menu.locator('.note-edit-shortcuts .kbd').allTextContents(), ['Enter', 'Ctrl+Enter', 'Esc']);
+          if (manual) {
+            await page.locator('.note-inline-textarea').fill('draft text');
+            const bounds = await menu.evaluate(node => ({ menu: node.getBoundingClientRect().width, editor: node.parentElement.querySelector('textarea').getBoundingClientRect().width }));
+            assert(Math.abs(bounds.menu - bounds.editor) < 1, 'manual menu matches editor width');
+          }
+          await menu.getByRole('button', { name: '글자 크기 키우기', exact: true }).click();
+          assert.equal(await page.evaluate(() => state.noteFontSize), 19);
+          await menu.getByRole('button', { name: '글자 크기 줄이기', exact: true }).click();
+          assert.equal(await page.evaluate(() => state.noteFontSize), 18);
+          await menu.getByRole('button', { name: '테두리 굵기 키우기', exact: true }).click();
+          assert.equal(await page.evaluate(() => state.noteStrokeWidth), 1.5);
+          await menu.getByRole('button', { name: '테두리 굵기 줄이기', exact: true }).click();
+          assert.equal(await page.evaluate(() => state.noteStrokeWidth), 1);
+          await menu.getByRole('button', { name: '테두리 굵기 키우기', exact: true }).click();
+          await menu.getByRole('button', { name: '테두리 굵기 초기화', exact: true }).click();
+          assert.equal(await page.evaluate(() => state.noteStrokeWidth), 1, 'stroke reset restores default');
+          if (manual) assert.equal(await page.locator('.note-inline-textarea').inputValue(), 'draft text');
+          await page.evaluate(() => syncBoardStageHeight());
+          assert.equal(await page.locator('#boardStageWrap').evaluate(node => node.getBoundingClientRect().height), closedHeight, 'note menu and editor do not grow scoreboard height');
+          const menuBounds = await menu.boundingBox();
+          assert(menuBounds.x >= 0 && menuBounds.x + menuBounds.width <= 1920, 'menu stays within viewport');
+          await page.screenshot({ path: `screenshots/tests/note-menu-${manual ? 'manual' : 'auto'}-${position}-${side}.png` });
+          if (manual) await page.locator('.note-inline-textarea').press('Escape');
+          else await page.keyboard.press('Escape');
+          assert.equal(await menu.count(), 0);
+        }
+      }
+    }
+    await page.evaluate(() => { state.manualMode = false; render(); fsmBoardRender(); });
+    await page.locator('#homeNote').click();
+    await page.getByRole('button', { name: '글자 크기 초기화', exact: true }).click();
+    assert.equal(await page.evaluate(() => state.noteFontSize), 18);
+    await page.getByRole('button', { name: '상세 설정', exact: true }).click();
+    assert.equal(await page.evaluate(() => document.querySelector('.page.active')?.id), 'page-theme');
+    assert.equal(await page.locator('.note-quick-menu').count(), 0);
+    const glow = await page.locator('.theme-notes-card').evaluate(panel => {
+      const animation = panel.getAnimations().find(animation => animation.id === 'note-settings-glow');
+      if (!animation) return false;
+      animation.pause();
+      animation.currentTime = 600;
+      return getComputedStyle(panel).boxShadow !== 'none';
+    });
+    assert(glow, 'details highlights scorer settings panel');
+    await page.screenshot({ path: 'screenshots/tests/note-settings-glow.png' });
+    await page.locator('.theme-notes-card').evaluate(panel => panel.getAnimations().forEach(animation => animation.finish()));
+    console.log('PASS automatic and manual note menus, settings, draft preservation and placement');
     await page.screenshot({ path: 'screenshots/tests/fsm-note-height.png' });
     assert.deepEqual(errors, []);
     console.log('PASS dynamic clock height, hidden timer and automatic relayout');

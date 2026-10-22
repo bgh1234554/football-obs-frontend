@@ -45,6 +45,32 @@
     }
     .note-inline-save { flex: 0 0 auto; margin-top: 2px; }
 
+    .note-side:has(.note:not(:empty)) { cursor: pointer; }
+    .note-side.note-menu-open { z-index: 5; }
+    .note-side.editing .note-inline-editor { position: absolute; top: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
+    .note-inline-editor .note-inline-textarea { box-sizing: border-box; padding-right: 42px; }
+    .note-inline-editor .note-inline-save { position: absolute; right: 6px; top: 4px; }
+    .note-quick-menu {
+      box-sizing: border-box; display: grid; gap: 8px; padding: 10px;
+      background: rgba(18,18,32,.97); color: var(--ui-text, #f0f0f0);
+      border: 1px solid rgba(255,255,255,.18); border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.4); font: 16px/1.5 var(--font-family);
+      white-space: normal; cursor: default;
+    }
+    .note-side > .note-quick-menu { position: absolute; top: calc(100% + 6px); width: max-content; min-width: 280px; }
+    #homeNoteSide > .note-quick-menu { right: 0; }
+    #awayNoteSide > .note-quick-menu { left: 0; }
+    .note-inline-editor > .note-quick-menu { grid-column: 1 / -1; width: 100%; }
+    .note-quick-row { display: flex; align-items: center; gap: 5px; }
+    .note-quick-row > span { margin-right: auto; white-space: nowrap; }
+    .note-quick-menu button { padding: 3px 6px; min-width: 25px; border: 1px solid rgba(255,255,255,.24); border-radius: 5px; background: rgba(255,255,255,.08); color: inherit; font: inherit; cursor: pointer; }
+    .note-quick-menu button:hover { background: rgba(255,255,255,.18); }
+    .note-quick-row output { min-width: 24px; text-align: center; }
+    .note-quick-shortcuts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; font-size: 14px; }
+    .note-quick-menu .kbd { font-size: inherit; }
+    .note-quick-settings { width: 100%; }
+    .note-edit-shortcuts { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.16); font-size: 14px; }
+
     .board {
       display: grid;
       grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);

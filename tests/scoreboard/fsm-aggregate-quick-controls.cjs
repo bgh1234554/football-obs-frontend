@@ -43,6 +43,56 @@ const { openPage, settle } = require('../tactics/helpers');
       // 실제 포인터 드래그 중 메뉴가 움직이거나 숨겨져 range 조작이 끊기면 안 됩니다.
       await page.evaluate(() => { state.manualMode = true; activatePage('main-small'); });
       await settle(page);
+      const scores = panel.locator('.manual-score-quick');
+      assert.equal(await scores.isVisible(), true, 'manual score controls shown');
+      const baseline = await page.evaluate(() => [state.homeScore, state.awayScore]);
+      for (const side of ['home', 'away']) {
+        await scores.locator(`[data-score-action="${side}Plus"]`).click();
+        await settle(page);
+        assert.equal(await scores.locator(`[data-score-value="${side}"]`).textContent(), String(baseline[side === 'home' ? 0 : 1] + 1));
+        await scores.locator(`[data-score-action="${side}Minus"]`).click();
+      }
+      assert.deepEqual(await page.evaluate(() => [state.homeScore, state.awayScore]), baseline);
+      // 승부차기 중에는 일반 점수를 잠그고, 종료하면 다시 조절할 수 있습니다.
+      const previousHalf = await page.evaluate(() => state.half);
+      const psoToggle = scores.getByRole('checkbox', { name: '승부차기 (PSO)' });
+      await psoToggle.check();
+      await settle(page);
+      assert.equal(await page.evaluate(() => state.half), 'PK');
+      assert.equal(await page.locator('#manualPsoMode').isChecked(), true);
+      assert.equal(await page.evaluate(() => state.psoModeForced), true);
+      const hintPosition = await scores.evaluate(node => {
+        const toggle = node.querySelector('.manual-score-pso-toggle').getBoundingClientRect();
+        const hint = node.querySelector('.manual-score-quick-hint').getBoundingClientRect();
+        return toggle.right <= hint.left && toggle.top < hint.bottom && toggle.bottom > hint.top;
+      });
+      assert(hintPosition, 'PSO checkbox sits left of shortcut hints');
+      for (const action of ['homePlus', 'homeMinus', 'awayPlus', 'awayMinus']) {
+        assert.equal(await scores.locator(`[data-score-action="${action}"]`).isDisabled(), true);
+        await scores.locator(`[data-score-action="${action}"]`).dispatchEvent('click');
+      }
+      assert.deepEqual(await page.evaluate(() => [state.homeScore, state.awayScore]), baseline, 'PK blocks even dispatched score clicks');
+      await psoToggle.uncheck();
+      await settle(page);
+      assert.equal(await page.evaluate(() => state.half), previousHalf);
+      assert.equal(await page.locator('#manualPsoMode').isChecked(), false);
+      await page.evaluate(() => document.getElementById('manualPsoMode').click());
+      await settle(page);
+      assert.equal(await psoToggle.isChecked(), true, 'theme toggle syncs back to quick menu');
+      await psoToggle.uncheck();
+      await settle(page);
+      assert.equal(await scores.locator('[data-score-action="homePlus"]').isEnabled(), true);
+      const order = await panel.evaluate(node => {
+        const scale = node.querySelector('.fsm-scale-control').getBoundingClientRect();
+        const scores = node.querySelector('.manual-score-quick').getBoundingClientRect();
+        const aggregate = node.querySelector('.agg-quick-toggle').getBoundingClientRect();
+        return scale.bottom <= scores.top && scores.bottom <= aggregate.top;
+      });
+      assert(order, 'actual scores sit between scale and aggregate');
+      await page.evaluate(() => { state.manualMode = false; render(); fsmBoardRender(); });
+      await settle(page);
+      assert.equal(await scores.isHidden(), true, 'automatic mode hides score controls');
+      await page.evaluate(() => { state.manualMode = true; render(); fsmBoardRender(); });
       const sliderBox = await scoreRange.boundingBox();
       const menuBox = await panel.boundingBox();
       const heightBeforeDrag = await wrapHeight();
@@ -152,6 +202,13 @@ const { openPage, settle } = require('../tactics/helpers');
       }));
       assert.equal(await panel.isVisible(), true, `${theme}: size menu available`);
       assert.equal(await panel.locator('.agg-quick-toggle').isHidden(), true);
+      assert.equal(await panel.locator('[data-agg-input="home"]').isHidden(), true, `${theme}: home aggregate input hidden`);
+      assert.equal(await panel.locator('[data-agg-input="away"]').isHidden(), true, `${theme}: away aggregate input hidden`);
+      for (const action of ['homePlus', 'homeMinus', 'awayPlus', 'awayMinus']) {
+        assert.equal(await panel.locator(`[data-score-action="${action}"]`).isVisible(), true, `${theme}: actual score button visible`);
+      }
+      assert.equal(await panel.getByRole('checkbox', { name: '승부차기 (PSO)' }).isVisible(), true);
+      await page.screenshot({ path: `screenshots/tests/score-manual-${theme}.png` });
       assert.equal(blocked.role, 'button', `${theme}: size control accessible`);
       assert.equal(blocked.tabIndex, '0');
       assert.equal(blocked.totalShown, false, `${theme}: aggregate hidden even when enabled`);

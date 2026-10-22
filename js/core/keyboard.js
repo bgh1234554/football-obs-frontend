@@ -65,6 +65,7 @@ function updateThemeCycleShortcutHint(){
 /** 테마 전환 안내와 전술판 되돌리기·다시 실행 버튼의 툴팁을 함께 갱신합니다. */
 function updateTacticsShortcutHints(){
   updateThemeCycleShortcutHint();
+  if (typeof syncNoteMenus === 'function') syncNoteMenus();
   const hint=document.getElementById('noteSizeShortcutHint');
   if(hint){
     hint.replaceChildren('글자 크기 ');

@@ -545,7 +545,7 @@
 }
 :is(#boardPsoControls, #boardAggControls) button:hover, :is(#boardPsoControls, #boardAggControls) button:focus-visible { background: color-mix(in srgb, var(--fsm-pso-background) 18%, var(--fsm-pso-ink)); outline: 2px solid currentColor; outline-offset: -2px; }
 :is(#boardPsoControls, #boardAggControls) .pso-quick-hint { padding: 4px 6px 0; text-align: center; font-size: 14px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
-#boardPsoControls .kbd { font-size: inherit; padding: 0 2px; background: #111827; color: #fff; }
+:is(#boardPsoControls, #boardAggControls) .kbd { font-size: inherit; padding: 0 2px; background: #111827; color: #fff; }
 :is(#boardPsoControls, #boardAggControls) .pso-quick-hint > span { display: block; white-space: nowrap; }
 #boardPsoControls .pso-quick-middle button { font-size: 20px; }
 
@@ -556,6 +556,7 @@
 #boardAggControls .agg-quick-toggle { display: block; width: calc(100% - 4px); }
 #boardAggControls .agg-quick-toggle[aria-pressed="true"] { background: var(--fsm-pso-background); color: var(--fsm-pso-ink); }
 #boardAggControls .agg-quick-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 2px; }
+#boardAggControls .agg-quick-row[hidden] { display: none; }
 #boardAggControls .agg-quick-team { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
 #boardAggControls .agg-quick-label { padding: 2px 0 0; text-align: center; font-size: 13px; font-weight: bold; }
 #boardAggControls .agg-quick-stepper { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; align-items: center; }
@@ -570,3 +571,16 @@
 #boardAggControls .agg-quick-total { font-weight: bold; }
 #boardAggControls .pso-quick-hint > .agg-quick-unsupported { display: none; opacity: .75; white-space: normal; }
 #boardAggControls.is-unsupported .pso-quick-hint > .agg-quick-unsupported { display: block; }
+
+/* 실제 점수 입력은 배율과 합계 기준값 사이에서 수동 모드에만 표시합니다. */
+#boardAggControls .manual-score-quick { padding-bottom: 6px; }
+#boardAggControls [data-score-action]:disabled { opacity: .4; cursor: default; }
+#boardAggControls .manual-score-quick[hidden] { display: none; }
+#boardAggControls [data-score-value] { text-align: center; font: bold 18px/1 sans-serif; }
+#boardAggControls .manual-score-quick-hint { text-align: center; font-size: 13px; line-height: 1.6; }
+#boardAggControls .manual-score-quick-hint > span { display: block; }
+#boardAggControls .manual-score-quick-options { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 6px 4px; }
+#boardAggControls .manual-score-pso-toggle { display: flex; align-items: center; gap: 6px; padding: 8px 0; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+#boardAggControls .manual-score-quick-hint { border-left: 1px solid color-mix(in srgb, currentColor 25%, transparent); padding-left: 14px; }
+#boardAggControls .manual-score-pso-toggle input { appearance: auto; width: 14px; height: 14px; margin: 0; padding: 0; accent-color: currentColor; }
+#boardAggControls .manual-score-pso-notice { text-align: center; font-size: 13px; line-height: 1.6; }

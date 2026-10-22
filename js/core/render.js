@@ -50,6 +50,97 @@
     return { note: el.awayNote, noteSide: el.awayNoteSide };
   }
 
+  let activeNoteMenu = null;
+  function closeNoteMenu() {
+    if (!activeNoteMenu) return;
+    activeNoteMenu.menu.remove();
+    activeNoteMenu.noteSide.classList.remove('note-menu-open');
+    activeNoteMenu = null;
+  }
+
+  /** 편집창과 자동 득점자 박스가 같은 빠른 설정을 사용합니다. */
+  function createNoteMenu() {
+    const menu = document.createElement('div');
+    menu.className = 'note-quick-menu';
+    menu.setAttribute('role', 'group');
+    menu.setAttribute('aria-label', '득점자 표시 설정');
+    menu.innerHTML = `<div class="note-quick-row"><span>글자 크기</span><button type="button" data-note-action="sizeMinus" aria-label="글자 크기 줄이기">−</button><output data-note-size></output><button type="button" data-note-action="sizePlus" aria-label="글자 크기 키우기">+</button><button type="button" data-note-action="reset" aria-label="글자 크기 초기화">↶</button></div><div class="note-quick-shortcuts"></div><div class="note-quick-row"><span>테두리 굵기</span><button type="button" data-note-action="strokeMinus" aria-label="테두리 굵기 줄이기">−</button><output data-note-stroke></output><button type="button" data-note-action="strokePlus" aria-label="테두리 굵기 키우기">+</button><button type="button" data-note-action="resetStroke" aria-label="테두리 굵기 초기화">↶</button></div><button type="button" data-note-action="settings" class="note-quick-settings">상세 설정</button>`;
+    if (state.manualMode) {
+      const editingHint = document.createElement('div');
+      editingHint.className = 'note-edit-shortcuts';
+      editingHint.innerHTML = `<span><span class="kbd">Enter</span> 줄바꿈</span><span><span class="kbd">Ctrl+Enter</span> 또는 ✓ 저장</span><span><span class="kbd">Esc</span> 또는 바깥 클릭 취소</span>`;
+      menu.append(editingHint);
+    }
+    menu.addEventListener('dblclick', event => event.stopPropagation());
+    menu.addEventListener('click', event => {
+      event.stopPropagation();
+      const action = event.target.closest('[data-note-action]')?.dataset.noteAction;
+      if (!action) return;
+      if (action === 'settings') {
+        closeNoteMenu();
+        closeNoteEditor();
+        activatePage('theme');
+        const panel = document.querySelector('.theme-notes-card');
+        if (panel) {
+          panel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          // 반복해서 열어도 강조가 겹치지 않게 다시 시작하고, 완료 후 원래 스타일로 돌아갑니다.
+          panel.getAnimations().filter(animation => animation.id === 'note-settings-glow').forEach(animation => animation.cancel());
+          const glow = panel.animate([
+            { boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 0 rgba(255,255,255,0)', offset: 0 },
+            { boxShadow: 'inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px rgba(255,255,255,.8)', offset: .2 },
+            { boxShadow: 'inset 0 0 0 2px rgba(255,255,255,.9), 0 0 16px 3px rgba(255,255,255,.8)', offset: .65 },
+            { boxShadow: getComputedStyle(panel).boxShadow, offset: 1 }
+          ], { duration: 3000, easing: 'ease-out' });
+          glow.id = 'note-settings-glow';
+        }
+        return;
+      }
+      if (action === 'reset') state.noteFontSize = 18;
+      if (action === 'resetStroke') state.noteStrokeWidth = 1;
+      if (action.startsWith('size')) state.noteFontSize = Math.max(10, (state.noteFontSize ?? 18) + (action === 'sizePlus' ? 1 : -1));
+      if (action.startsWith('stroke')) state.noteStrokeWidth = clampNum((state.noteStrokeWidth ?? 1) + (action === 'strokePlus' ? .5 : -.5), 0, 10, 1);
+      render(); persist();
+    });
+    return menu;
+  }
+
+  function syncNoteMenus() {
+    if (activeNoteMenu && (state.manualMode || !state.noteEnabled)) closeNoteMenu();
+    document.querySelectorAll('.note-quick-menu').forEach(menu => {
+      menu.querySelector('[data-note-size]').textContent = state.noteFontSize ?? 18;
+      menu.querySelector('[data-note-stroke]').textContent = state.noteStrokeWidth ?? 1;
+      const hint = menu.querySelector('.note-quick-shortcuts');
+      hint.replaceChildren(...['noteSizePlus', 'noteSizeMinus'].map((id, index) => {
+        const item = document.createElement('span');
+        const key = document.createElement('span');
+        key.className = 'kbd';
+        key.textContent = shortcutLabel(shortcutBinding(shortcutActions.find(action => action[0] === id)));
+        item.append(index ? '줄이기 ' : '키우기 ', key);
+        return item;
+      }));
+    });
+    positionNoteMenus();
+  }
+
+  /** 좌우 끝의 텍스트에서 열어도 편집창과 메뉴가 화면 안에 남도록 보정합니다. */
+  function positionNoteMenus() {
+    const targets = [activeNoteMenu?.menu, activeNoteEditor?.editorWrap].filter(Boolean);
+    targets.forEach(node => {
+      node.style.translate = 'none';
+      const rect = node.getBoundingClientRect();
+      const scale = rect.width / node.offsetWidth || 1;
+      const shift = Math.max(8 - rect.left, Math.min(0, document.documentElement.clientWidth - 8 - rect.right));
+      node.style.translate = `${shift / scale}px 0`;
+    });
+  }
+
+  document.addEventListener('mousedown', event => {
+    if (activeNoteMenu && !activeNoteMenu.noteSide.contains(event.target)) closeNoteMenu();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeNoteMenu();
+  });
+
   /**
    * 현재 활성 득점자 인라인 편집기를 닫는다.
    *
@@ -74,6 +165,8 @@
       noteSide.style.width = '';
     }
     activeNoteEditor = null;
+    // 편집용 고정 너비를 해제했으므로 캐시를 비워 원래 클릭 영역까지 복원합니다.
+    noteLayoutStamp = null;
 
     if (save) {
       state.notes = state.notes || { home: '', away: '' };
@@ -88,7 +181,7 @@
   }
 
   /**
-   * 득점자 텍스트 박스를 더블클릭 시 호출 — 그 자리에 textarea + ✓ 버튼 인라인 편집기 띄움.
+   * 득점자 텍스트 박스를 클릭하면 textarea와 확인 버튼, 표시 설정 메뉴를 함께 엽니다.
    *
    * 1) 편집 가능 모드 가드(수동 + noteEnabled). 같은 side 재오픈은 focus만 다시.
    * 2) 다른 side가 열려있으면 save하며 닫고 새 편집기 열기.
@@ -99,6 +192,7 @@
    */
   function openNoteEditor(side) {
     if (!canEditNotesInline()) return;
+    closeNoteMenu();
 
     const { note, noteSide } = getNoteTargets(side);
     if (!note || !noteSide) return;
@@ -110,7 +204,7 @@
     }
     if (activeNoteEditor) closeNoteEditor({ save: true });
 
-    const lockedWidth = Math.max(Math.ceil(getDisplayLayoutRect(noteSide).width || 0), 220);
+    const lockedWidth = Math.max(Math.ceil(getDisplayLayoutRect(noteSide).width || 0), 280);
     const editorWrap = document.createElement('div');
     const textarea = document.createElement('textarea');
     const confirmBtn = document.createElement('button');
@@ -125,11 +219,12 @@
     confirmBtn.textContent = '✓';
     confirmBtn.setAttribute('aria-label', '득점자 저장');
 
-    editorWrap.append(textarea, confirmBtn);
+    editorWrap.append(textarea, confirmBtn, createNoteMenu());
     note.style.display = 'none';
     noteSide.classList.add('editing');
     noteSide.style.width = `${lockedWidth}px`;
     noteSide.appendChild(editorWrap);
+    syncNoteMenus();
 
     const onOutsideClick = event => {
       if (!activeNoteEditor || activeNoteEditor.side !== side) return;
@@ -142,6 +237,7 @@
     };
 
     activeNoteEditor = { side, note, noteSide, editorWrap, textarea, cleanup };
+    positionNoteMenus();
 
     confirmBtn.addEventListener('click', () => closeNoteEditor({ save: true }));
     textarea.addEventListener('keydown', event => {
@@ -163,8 +259,20 @@
     });
   }
 
-  el.homeNoteSide?.addEventListener('dblclick', () => openNoteEditor('home'));
-  el.awayNoteSide?.addEventListener('dblclick', () => openNoteEditor('away'));
+  ['home', 'away'].forEach(side => {
+    getNoteTargets(side).noteSide?.addEventListener('click', event => {
+      if (event.target.closest('button, input, textarea, .note-quick-menu') || !state.noteEnabled) return;
+      if (state.manualMode) { openNoteEditor(side); return; }
+      const { noteSide } = getNoteTargets(side);
+      if (activeNoteMenu?.noteSide === noteSide) { closeNoteMenu(); return; }
+      closeNoteMenu();
+      const menu = createNoteMenu();
+      noteSide.append(menu);
+      noteSide.classList.add('note-menu-open');
+      activeNoteMenu = { menu, noteSide };
+      syncNoteMenus();
+    });
+  });
 
   /** state.pk[team] 배열에서 'G'(득점) 개수 카운트. PK 점수판 표시용. */
   function countPkGoals(arr) {
@@ -317,11 +425,11 @@
     if(el.awayNoteSide) el.awayNoteSide.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
     if(el.homeNote) {
       el.homeNote.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
-      el.homeNote.title = (state.manualMode && state.noteEnabled) ? '더블클릭해서 홈 득점자 편집' : '';
+      el.homeNote.title = state.noteEnabled ? (state.manualMode ? '클릭해서 홈 득점자 편집' : '클릭해서 득점자 표시 설정') : '';
     }
     if(el.awayNote) {
       el.awayNote.classList.toggle('manual-editable', !!state.manualMode && !!state.noteEnabled);
-      el.awayNote.title = (state.manualMode && state.noteEnabled) ? '더블클릭해서 원정 득점자 편집' : '';
+      el.awayNote.title = state.noteEnabled ? (state.manualMode ? '클릭해서 원정 득점자 편집' : '클릭해서 득점자 표시 설정') : '';
     }
     if(el.noteOn) el.noteOn.checked = !!state.noteEnabled;
     if ($('boardPosition')) $('boardPosition').value = state.boardPosition || 'center';
@@ -333,6 +441,7 @@
     autoLayoutNotes();
 
     // 7. 로고 정렬 모드 및 보드 테두리 클래스 적용
+    syncNoteMenus();
     const boardEl = $('board');
     boardEl.classList.remove('align-outer','align-inner','align-hybrid');
     boardEl.classList.add(`align-${state.logoAlign}`);
@@ -867,6 +976,7 @@
     if (homeNoteSide) homeNoteSide.style.top = noteTop;
     if (awayNoteSide) awayNoteSide.style.top = noteTop;
     syncBoardPosition();
+    positionNoteMenus();
   }
 
   // 점수판 크기 감지(init.js ResizeObserver) 진입점.
@@ -940,7 +1050,7 @@
   let appliedBoardScale = 1;
   /**
    * 보드의 자연 높이에 마지막으로 적용한 배율을 곱해 래퍼의 높이를 동기화한다.
-   * 합계·승부차기 빠른 입력 메뉴는 본문 아래에 겹쳐 표시되므로 측정 중 잠시 숨긴다.
+   * 빠른 입력 메뉴와 득점자 편집창은 본문 위에 겹쳐 표시되므로 측정 중 잠시 숨긴다.
    * 메뉴를 scrollHeight에 포함하면 메뉴를 열기만 해도 아래 패널이 밀려난다.
    * 높이가 같으면 인라인 스타일을 다시 쓰지 않는다. 배율·슬라이더·위치 전체를
    * 재적용하지 않으므로 ResizeObserver에서 애니메이션의 중간 높이를 반영할 때도 사용한다.
@@ -953,8 +1063,8 @@
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
     // scrollHeight에 들어가지 않도록 잠깐 숨기고 잰다. 안 그러면 메뉴를 열 때마다 아래 패널이 밀려난다.
-    // 타이머 편집기와 프리셋 목록도 아래 패널 위에 겹치므로 높이 측정에서 제외한다.
-    const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden]), #clockEditor.active')];
+    // 타이머와 득점자 편집창, 표시 설정 메뉴도 아래 패널 위에 겹치므로 높이 측정에서 제외한다.
+    const quickMenus = [...boardStageInner.querySelectorAll('#boardAggControls:not([hidden]), #boardPsoControls:not([hidden]), #clockEditor.active, .note-inline-editor, .note-quick-menu')];
     const dragging = window.fsmScaleDrag;
     if (!dragging) quickMenus.forEach(menu => { menu.style.display = 'none'; });
     const naturalH = dragging ? dragging.naturalHeight : boardStageInner.scrollHeight;

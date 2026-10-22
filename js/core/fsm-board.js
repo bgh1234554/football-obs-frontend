@@ -1797,6 +1797,25 @@ function adjustScoreboardWidth() {
       panel.setAttribute('aria-label', '점수 크기·합계 점수 조절');
       const team = (side, label) => `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-agg-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><input type="number" min="0" step="1" inputmode="numeric" data-agg-input="${side}" aria-label="${label}"><button type="button" data-agg-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
       panel.innerHTML = `<button type="button" class="agg-quick-toggle" data-agg-action="toggle" aria-pressed="false"></button><div class="agg-quick-row">${team('home', '홈 기준')}${team('away', '원정 기준')}</div><div class="pso-quick-hint"><span class="agg-quick-total"></span><span>합계 = 기준값 + 현재 점수</span><span class="agg-quick-unsupported">이 점수판은 합계 점수를 표시하지 않습니다</span></div>`;
+      const scores = document.createElement('div');
+      scores.className = 'manual-score-quick';
+      scores.innerHTML = `<div class="agg-quick-row">${['home', 'away'].map(side => {
+        const label = side === 'home' ? '홈 점수' : '원정 점수';
+        return `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-score-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><output data-score-value="${side}"></output><button type="button" data-score-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
+      }).join('')}</div><div class="manual-score-quick-options"><label class="manual-score-pso-toggle"><input type="checkbox" aria-label="승부차기 (PSO)">PSO</label><div class="manual-score-quick-hint"></div></div><div class="manual-score-pso-notice" hidden>승부차기 중에는 일반 점수 변경 불가</div>`;
+      panel.prepend(scores);
+      // 테마 탭의 전환 경로를 공유해 이전 경기 구간과 승부차기 설정을 함께 유지합니다.
+      scores.querySelector('.manual-score-pso-toggle input').addEventListener('change', event => {
+        if (!state.manualMode) return;
+        const toggle = document.getElementById('manualPsoMode');
+        if (toggle && toggle.checked !== event.target.checked) toggle.click();
+      });
+      // 일반 점수 버튼은 기존 수동 입력과 같은 경로로 반영합니다.
+      scores.addEventListener('click', event => {
+        const action = event.target.closest('[data-score-action]')?.dataset.scoreAction;
+        if (!state.manualMode || state.half === 'PK' || !action) return;
+        document.getElementById(`manual${action[0].toUpperCase()}${action.slice(1)}`)?.click();
+      });
       board.append(panel);
       const targets = '.team-score, .score-div, .total-score';
       /** 클릭·Esc·바깥 클릭이 같은 닫힘 상태를 사용합니다. */
@@ -1872,8 +1891,31 @@ function adjustScoreboardWidth() {
     board.dataset.fsmAggregateMenu = String(menuEnabled);
     if (!panel.querySelector('.fsm-scale-control')) panel.prepend(createScoreboardScaleControl('boardScale', '점수판 배율'));
     panel.querySelector('.agg-quick-toggle').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
-    panel.querySelector('.agg-quick-row').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    panel.querySelector(':scope > .agg-quick-row').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
     panel.querySelector('.pso-quick-hint').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
+    const scores = panel.querySelector('.manual-score-quick');
+    scores.hidden = !state.manualMode;
+    scores.querySelector('.manual-score-pso-toggle input').checked = state.half === 'PK';
+    scores.querySelector('.manual-score-pso-notice').hidden = state.half !== 'PK';
+    scores.querySelectorAll('[data-score-action]').forEach(button => {
+      button.disabled = state.half === 'PK';
+    });
+    scores.querySelectorAll('[data-score-value]').forEach(output => {
+      output.textContent = state[output.dataset.scoreValue + 'Score'] ?? 0;
+    });
+    const hint = scores.querySelector('.manual-score-quick-hint');
+    hint.replaceChildren(...['home', 'away'].map(side => {
+      const line = document.createElement('span');
+      const keys = ['Plus', 'Minus'].map(change => shortcutLabel(shortcutBinding(shortcutActions.find(action => action[0] === side + change))));
+      const keycaps = keys.map(key => {
+        const cap = document.createElement('span');
+        cap.className = 'kbd';
+        cap.textContent = key;
+        return cap;
+      });
+      line.append(`${side === 'home' ? '홈' : '원정'} ${state.half === 'PK' ? '성공 / 실패' : '+ / −'}: `, keycaps[0], ' / ', keycaps[1]);
+      return line;
+    }));
     syncScoreboardScaleControl(panel, 'boardScale');
     main.querySelectorAll('.team-score, .score-div, .total-score').forEach(node => {
       if (menuEnabled) {
