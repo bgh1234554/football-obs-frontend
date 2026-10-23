@@ -17,7 +17,7 @@ const { openPage, settle } = require('../tactics/helpers');
       'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
       'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligamx', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
       'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'singapore', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
-      'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
+      'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'concacafcentral', 'concacafcaribbean', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
     ]);
     for (const theme of themes) {
       await page.evaluate(theme => {
