@@ -5,6 +5,24 @@ const page=await browser.newPage({viewport:{width:1280,height:720}});const error
 await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!=='http://localhost')return route.abort();const f=path.join(root,u.pathname==='/'?'overlay_dashboard.html':decodeURIComponent(u.pathname));if(!fs.existsSync(f)||fs.statSync(f).isDirectory())return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(f),contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.ttf':'font/ttf','.woff':'font/woff'}[path.extname(f)]||'application/octet-stream'});});
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
+// 같은 URL을 유지해야 수동 조회 결과가 브라우저 캐시에도 덮어써진다.
+const refreshRequests=[];
+await page.route('https://football-obs-backend.onrender.com/api/fixtures/987654321',async route=>{
+ const request=route.request();
+ const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'x-force-refresh'};
+ if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});
+ refreshRequests.push({url:request.url(),refresh:request.headers()['x-force-refresh']||null});
+ return route.fulfill({status:200,headers,contentType:'application/json',body:'{}'});
+});
+await page.evaluate(async()=>{
+ await fetchFixture(987654321);
+ await fetchFixture(987654321,{cache:'reload'});
+ await fetchFixture(987654321);
+});
+assert.deepEqual(refreshRequests.map(r=>r.refresh),[null,'true',null]);
+assert.equal(new Set(refreshRequests.map(r=>r.url)).size,1);
+console.log('PASS manual refresh sends backend cache bypass while normal polling keeps the same URL without bypass');
+
 
 
 

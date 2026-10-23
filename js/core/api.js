@@ -159,7 +159,7 @@
 
         // cache: 'reload'면 브라우저 캐시 읽기를 무시하고 서버에서 새로 받아오되, 받아온 응답은 캐시에 저장됨
         // (강제 새로고침 전용 — 일반 폴링/수동 로드는 옵션 없이 기본 캐시 동작 유지)
-        res = await fetch(`${API_BASE}${path}`, { signal: controller.signal, cache: options.cache });
+        res = await fetch(`${API_BASE}${path}`, { signal: controller.signal, cache: options.cache, headers: options.headers });
 
         // 응답 헤더와 본문을 모두 받은 뒤에만 타임아웃을 해제한다.
         text = await res.text();
@@ -241,7 +241,11 @@
   //   silent: true면 429 재시도 이벤트를 UI가 무시할 수 있도록 detail.silent=true로 전파
   // ---------------------------------------------------------------------------
   async function fetchFixture(fixtureId, options = {}) {
-    return await apiFetch(`/api/fixtures/${encodeURIComponent(fixtureId)}`, options);
+    // 브라우저 캐시와 함께 백엔드 캐시도 우회하고, 같은 URL의 새 응답을 캐시에 저장한다.
+    const requestOptions = options.cache === 'reload'
+      ? { ...options, headers: { ...options.headers, 'X-Force-Refresh': 'true' } }
+      : options;
+    return await apiFetch(`/api/fixtures/${encodeURIComponent(fixtureId)}`, requestOptions);
   }
 
   // ---------------------------------------------------------------------------
