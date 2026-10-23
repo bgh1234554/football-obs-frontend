@@ -266,7 +266,7 @@ function lpAggregatePlayerEvents(events) {
         if (!e.yellow) e.yellow = { time }; // 두 번째 옐로만 와도 첫번째 옐로가 있었음을 함의 → 노란 표시
         e.red = { time, isCumulative: true };
       } else if (detail === 'Red Card') {
-        const hadYellow = (yellowCount.get(playerKey) || 0) > 0;
+        const hadYellow = (yellowCount.get(playerKey) || 0) >= 2;
         e.red = { time, isCumulative: hadYellow };
       }
       return;

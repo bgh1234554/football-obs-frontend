@@ -312,6 +312,7 @@ const fixture = {
     cardFixture.events = [
       { ...added, elapsed: 45, extra: null, type: 'Var', detail: 'Card upgrade confirmed', comments: null },
       { ...added, elapsed: 63, extra: null, comments: 'Dissent' },
+      { ...added, elapsed: 90, extra: 2, detail: 'Yellow Card', comments: 'Foul' },
       { ...added, elapsed: 90, extra: 2, detail: 'Red Card', comments: null },
     ];
     await poll(cardFixture);

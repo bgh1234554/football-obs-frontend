@@ -715,7 +715,7 @@ function evMainText(ev) {
  *
  * 알고리즘:
  *   1. 시간 오름차순 정렬해서 옐로우 카드 카운트를 선수별로 집계
- *   2. 이전 경고가 있는 선수의 Red Card는 누적 퇴장으로 추정한다. 직접 퇴장으로 수동 수정한 값은 유지한다.
+ *   2. 같은 시각까지 경고 두 장이 확인된 선수의 Red Card를 누적 퇴장으로 분류한다. 직접 퇴장으로 수동 수정한 값은 유지한다.
  *   3. 카드 종류와 아이콘만 바꾸고 comments는 파울 사유 그대로 유지한다.
  *   4. 표시용으로 다시 시간 내림차순 정렬해서 반환
  */
@@ -756,15 +756,21 @@ function evProcess(rawEvents) {
         }
       }
 
-      const isYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Yellow Card');
       const isRed = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Red Card');
       const isSecondYellow = evTypeIs(ev, 'Card') && evDetailIs(ev.detail, 'Second Yellow Card');
       const playerKey = Number(ev.playerId) > 0 ? String(ev.playerId) : '';
       const priorYellowCount = playerKey ? (yellows.get(playerKey) || 0) : 0;
 
+      // 같은 시각의 두 번째 경고는 API 배열에서 퇴장보다 뒤에 올 수도 있다.
+      const sameMomentYellowCount = playerKey ? group.filter(({ ev: candidate }) => (
+        String(candidate.playerId) === playerKey
+        && evTypeIs(candidate, 'Card')
+        && evDetailIs(candidate.detail, 'Yellow Card')
+      )).length : 0;
+
       if (
         isSecondYellow
-        || (isRed && playerKey && priorYellowCount > 0 && !ev._evEdited)
+        || (isRed && playerKey && priorYellowCount + sameMomentYellowCount >= 2 && !ev._evEdited)
       ) {
         out._isCumulativeRed = true;
         out._displayDetail = 'Red Card';

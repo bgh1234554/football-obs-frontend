@@ -27,14 +27,18 @@ const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
  const yellow={type:'Card',detail:'Yellow Card',playerId:1,elapsed:30,comments:'Dissent'};
  const red={type:'Card',detail:'Red Card',playerId:1,elapsed:70};
  for(const comments of [null,'Foul','Violent conduct']){
-  const events=[yellow,{...red,comments}];const original=JSON.stringify(events);
+  const events=[yellow,{...yellow,elapsed:70},{...red,comments}];const original=JSON.stringify(events);
   const result=api.evProcess(events).find(event=>event.elapsed===70);
   assert.equal(api.evLabelKo(result),'경고 누적 퇴장');
   assert.equal(api.evStyle(result).icon,'cumulative-red');
   assert.equal(result.comments,comments);assert.equal(JSON.stringify(events),original);
  }
- for(const events of [[red],[yellow,{...red,_evEdited:true}],[{...yellow,playerId:0},{...red,playerId:0}]]){
+ for(const events of [[yellow,red],[red],[yellow,{...red,_evEdited:true}],[{...yellow,playerId:0},{...red,playerId:0}]]){
   assert.equal(api.evLabelKo(api.evProcess(events)[0]),'퇴장');
+ }
+ for (const events of [[yellow,red,{...yellow,elapsed:70}], [yellow,{...yellow,elapsed:60},red]]) {
+  const result=api.evProcess(events);
+  assert.equal(api.evLabelKo(result[0]),'경고 누적 퇴장');
  }
  assert.equal(api.evLabelKo(api.evProcess([{...red,detail:'Second Yellow Card',_evEdited:true}])[0]),'경고 누적 퇴장');
 }
@@ -97,6 +101,14 @@ const demote=extract('js/player/player-menu.js','demotePromotedNickname','window
 for(const suppressed of [false,true]){const writes=[];const promoted={'42':suppressed?'!deleted':'n:Player'};const c={PLAYER_NICKNAME_SUPPRESSED:'!deleted',PLAYER_NICKNAME_KEY:'nick',readPromotedNicknames:()=>promoted,writePromotedNicknames:m=>writes.push({...m}),localStorage:{getItem:()=>'{"42":"Nick"}',setItem:(k,v)=>writes.push(JSON.parse(v))}};vm.runInNewContext(demote+';demotePromotedNickname(42)',c);assert.equal(writes.length,suppressed?0:2);if(suppressed)assert.equal(promoted['42'],'!deleted');}
 // ID가 0인 자책골은 득점자의 팀으로 집계하고, 숫자 ID 키는 유지합니다.
 const c={window:{}};vm.runInNewContext(read('js/lineup/lineup-events.js'),c);
+// 경고 한 장 뒤 직접 퇴장과 경고 두 장 뒤 누적 퇴장은 라인업에서도 구분한다.
+for (const count of [1,2]) {
+ const cards=Array.from({length:count},(_,i)=>({type:'Card',detail:'Yellow Card',playerId:367637,side:'home',elapsed:66+i}));
+ cards.push({type:'Card',detail:'Red Card',playerId:367637,side:'home',elapsed:77});
+ const info=Array.from(c.lpAggregatePlayerEvents(cards).values())[0];
+ assert.equal(info.red.isCumulative,count===2);
+ assert.equal(c.lpCardKind(info),count===2?'cumulative':'red');
+}
 for(const side of ['home','away']){const other=side==='home'?'away':'home';const name='Player';const events=[{type:'Goal',detail:'Own Goal',side,playerId:0,playerName:name},{type:'Goal',detail:'Normal Goal',side,playerId:0,playerName:name},{type:'Goal',detail:'Own Goal',side,playerId:42,playerName:name}];const m=c.window.lpAggregatePlayerEvents(events);assert.equal(m.get(c.window.lpEventPersonKey(0,other,name)).ownGoals.length,1);assert.equal(m.get(c.window.lpEventPersonKey(0,side,name)).goals.length,1);assert.equal(m.get('42').ownGoals.length,1);}
 // 저장 예산 이내의 로고 파일은 FileReader로 읽은 원본 데이터 URL을 유지합니다.
 const logo=extract('js/theme/theme.js','readLogoFile','  // [이벤트 등록]');
