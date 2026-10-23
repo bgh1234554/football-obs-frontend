@@ -68,6 +68,7 @@ const SETTINGS_DEFAULTS = {
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
+  lineupNameSizeFullscreen: null, // 대시보드 전체화면에서 직접 조정한 값. null이면 기본값을 따른다.
                       // long 모드(풀네임)는 CSS에서 0.875× 비율 유지.
   // 라인업 분할 (캠 큼 전용) — ON시 양 팀을 한 피치에 합쳐서 그리지 않고
   // 위(홈)/아래(원정) 두 개의 풀 피치로 분리. OFF면 캠 작음과 같은 combined 피치를 사용.
@@ -108,6 +109,7 @@ const SETTINGS_DEFAULTS = {
   eventNameSize: 15,
   // 교체 명단 / 미출전 선수 명단 (.dp-item) 글자 크기 (px). 설정 팝업 슬라이더로 조정.
   benchInjuryNameSize: 13,
+  benchInjuryNameSizeFullscreen: null,
   // 경기 스탯 패널 (.st-title/.st-val) 글자 크기 (px). 막대 굵기(.st-bar height)가
   // 기본값(12px) 대비 이 값의 비율만큼 함께 굵어진다 (statBarHeight = 6px * size/12).
   statsNameSize: 12,
@@ -341,6 +343,22 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // 현재 설정값을 보관하는 단일 객체. loadSettings()가 localStorage에서 채우고,
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
+const DASHBOARD_FULLSCREEN_FONT_DEFAULTS = { lineupNameSize: 16, benchInjuryNameSize: 14 };
+
+function isDashboardFullscreen() {
+  // F11은 fullscreenElement를 설정하지 않으므로 실제 화면 높이도 확인한다.
+  return !!document.querySelector('#page-main-small.active') && (
+    !!document.fullscreenElement || (screen.height > 0 && Math.abs(window.innerHeight - screen.height) <= 2)
+  );
+}
+
+function resetPanelFontSetting(category) {
+  if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
+    setSetting(category, DASHBOARD_FULLSCREEN_FONT_DEFAULTS[category]);
+  } else {
+    setSetting(category, SETTINGS_DEFAULTS[category]);
+  }
+}
 
 function normalizeBackgroundImageUrl(input) {
   const raw = String(input || '').trim();
@@ -441,6 +459,9 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 
 /** 설정 종류별 허용 값·범위를 검사하며, 알 수 없는 값은 저장·복원 대상에서 제외한다. */
 function isValidSetting(category, value) {
+  if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_FONT_DEFAULTS) {
+    return value === null || isValidSetting(category.slice(0, -10), value);
+  }
   if (category === 'uiMode') return ['dark', 'light'].includes(value);
   if (category === 'bgPreset' || category === 'lightBgPreset') return value === 'off' || Object.hasOwn(BACKGROUND_PRESET_IMAGES, value);
   if (category === 'bgTeamDirection') return ['off', 'horizontal', 'vertical', 'mood'].includes(value);
@@ -642,6 +663,10 @@ function syncSettingUi(category) {
 
 /** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */
 function getSetting(category) {
+  if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
+    return settingsState[`${category}Fullscreen`]
+      ?? (settingsState[category] !== SETTINGS_DEFAULTS[category] ? settingsState[category] : DASHBOARD_FULLSCREEN_FONT_DEFAULTS[category]);
+  }
   if (settingsState.uiMode === 'light' && ['bgColor', 'bgPreset'].includes(category)) {
     const lightCategory = category === 'bgColor' ? 'lightBgColor' : 'lightBgPreset';
     // 처음 전환할 때 직접 고른 배경은 이어 받고, 기본값만 밝은 모드 기본으로 바꾼다.
@@ -682,6 +707,17 @@ function getLineupNodeMode() {
  * 5) 'settings:change' 이벤트로 외부 모듈(events-panel/stats-panel/lineup-panel)에 통지.
  */
 function setSetting(category, value) {
+  if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
+    const key = `${category}Fullscreen`;
+    if (value !== null && !isValidSetting(category, value)) return false;
+    const previous = settingsState[key];
+    settingsState[key] = value;
+    if (!saveSettings()) { settingsState[key] = previous; return false; }
+    syncSettingUi(category);
+    applySettingSideEffects(category);
+    emitSettingsChange(category);
+    return true;
+  }
   if (!(category in SETTINGS_DEFAULTS)) return false;
   if (!isValidSetting(category, value)) return false;
   if (category === 'statsAutoSwipe' && value !== 'on' && getSetting('statCycleAuto') === 'on') {
@@ -1274,7 +1310,7 @@ function openPanelFontPopup(title, clickPoint = null) {
   reset.type = 'button';
   reset.className = 'panel-font-reset';
   reset.textContent = '초기화';
-  reset.addEventListener('click', () => setSetting(category, SETTINGS_DEFAULTS[category]));
+  reset.addEventListener('click', () => { resetPanelFontSetting(category); syncPanelFontPopup(); });
   input.addEventListener('input', () => { setSetting(category, Number(input.value)); syncPanelFontPopup(); });
   cluster.append(input, value);
   if (category === 'lineupNameSize') {
@@ -1324,6 +1360,17 @@ document.addEventListener('settings:change', syncPanelFontPopup);
 document.addEventListener('page:activated', closePanelFontPopup);
 document.addEventListener('fullscreenchange', closePanelFontPopup);
 window.addEventListener('resize', closePanelFontPopup);
+// 화면 모드가 바뀌면 저장값은 유지하고 현재 화면의 기본값과 입력 UI만 다시 적용한다.
+function syncDashboardFontContext() {
+  applyLayoutSettings();
+  Object.keys(DASHBOARD_FULLSCREEN_FONT_DEFAULTS).forEach(category => {
+    syncSettingUi(category);
+    emitSettingsChange(category);
+  });
+}
+window.addEventListener('resize', syncDashboardFontContext);
+document.addEventListener('fullscreenchange', syncDashboardFontContext);
+document.addEventListener('page:activated', syncDashboardFontContext);
 
 /** 숫자 input(<input type="number">) UI 동기화. statsAutoSwipeSec처럼 0.5 step 허용 카테고리에 사용. */
 function syncNumberUi(category) {

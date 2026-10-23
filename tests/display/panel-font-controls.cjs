@@ -28,6 +28,52 @@ const root = path.resolve(__dirname, '../..');
     const slider = popup.getByRole('slider', { name: '글자 크기' });
     const change = async value => slider.evaluate((input, value) => { input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true })); }, value);
     const close = async () => page.mouse.click(page.viewportSize().width - 6, 8);
+    // 대시보드 전체화면 기본값과 직접 조정한 값은 일반 화면과 분리해서 저장한다.
+    await page.evaluate(() => document.documentElement.requestFullscreen());
+    await settle(page);
+    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [16, 14]);
+    await page.locator('#benchPanel [data-panel-font]').first().click();
+    await change(18);
+    await popup.locator('.panel-font-reset').click();
+    assert.equal(await page.evaluate(() => getSetting('benchInjuryNameSize')), 14);
+    await close();
+    await page.evaluate(() => { setSetting('lineupNameSize', 19); setSetting('benchInjuryNameSize', 17); });
+    await page.reload();
+    await settle(page);
+    await page.evaluate(() => activatePage('main-small'));
+    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [19, 17]);
+    await page.evaluate(() => { resetSettingsToDefaults(); clearPolling(); });
+    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [16, 14]);
+    await page.evaluate(() => document.fullscreenElement ? document.exitFullscreen() : undefined);
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.evaluate(() => {
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight + 100 });
+      window.dispatchEvent(new Event('resize'));
+    });
+    await settle(page);
+    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [12, 13]);
+    await page.evaluate(() => {
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight });
+      window.dispatchEvent(new Event('resize'));
+    });
+    assert.deepEqual(await page.evaluate(() => ['--lp-name-base-size', '--dp-item-name-size'].map(key => document.documentElement.style.getPropertyValue(key))), ['16px', '14px']);
+    await page.evaluate(() => {
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight + 100 });
+      setSetting('lineupNameSize', 18);
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight });
+    });
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 18);
+    await page.evaluate(() => {
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight + 100 });
+      resetSettingsToDefaults();
+      window.dispatchEvent(new Event('resize'));
+    });
+    await page.evaluate(async data => {
+      setSetting('statCycleAuto', 'off');
+      fetchFixture = async () => structuredClone(data);
+      await fetchAndApplyFixtureData(data.matchInfo.fixtureId, { silent: true });
+      clearPolling(); activatePage('main-small');
+    }, data);
     // 선수명 크기와 라벨·아이콘의 배율이 함께 바뀌어야 한다.
     const eventMetrics = () => page.locator('.lp-events-s .ev-row:has(.ev-icon)').first().evaluate(row => {
       const font = selector => parseFloat(getComputedStyle(row.querySelector(selector)).fontSize);
