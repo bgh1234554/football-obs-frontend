@@ -5,6 +5,6 @@ tests
 # Repository configuration
 .gitignore
 
-# Repository documentation (about.md is loaded by the app)
+# Repository documentation (guide/about.md and its images are loaded by the app)
 README.md
 CHANGELOG.md

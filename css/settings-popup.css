@@ -422,13 +422,18 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 }
 .panel-font-popover .sp-slider-cluster { flex: 1 1 auto; min-width: 0; }
 .panel-font-popover .sp-slider-cluster input[type="range"] { width: 140px; min-width: 50px; flex: 1 1 auto; }
-.panel-font-popover[data-category="lineupNameSize"] {
+.panel-font-popover.has-name-settings {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  width: 360px;
+  width: 260px;
+  gap: 8px;
 }
 .panel-font-popover :is(.panel-font-heading, .sp-row) { grid-column: 1 / -1; }
 .panel-font-heading { font-weight: 700; }
+.quick-setting-row { gap: 8px; padding: 5px 0; }
+.quick-setting-row .sp-label-main { font-size: 12px; white-space: nowrap; }
+.quick-setting-row .sp-toggle-cluster { gap: 5px; }
+.quick-setting-row .sp-toggle-side { font-size: 10px; }
 .panel-font-reset {
   flex: 0 0 auto;
   padding: 5px 8px;
@@ -970,6 +975,9 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .team-color-dialog > button { color: var(--ui-text, #e5e7eb); background: var(--ui-control-surface, #19273e); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1882); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
 #scoreboardTeamEditMenu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 260px; min-width: 0; }
 #scoreboardTeamEditMenu .fsm-scale-control { grid-column: 1 / -1; }
+#scoreboardTeamEditMenu .quick-setting-row { grid-column: 1 / -1; gap: 6px; padding-inline: 8px; }
+#scoreboardTeamEditMenu .quick-setting-row .sp-label-main { font-size: 12px; }
+#scoreboardTeamEditMenu .quick-setting-row .sp-toggle-cluster { gap: 4px; }
 .fsm-scale-control { padding: 8px; font-size: 13px; color: inherit; }
 .fsm-scale-control label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-weight: 700; }
 .fsm-scale-control > div { display: flex; align-items: center; gap: 8px; }

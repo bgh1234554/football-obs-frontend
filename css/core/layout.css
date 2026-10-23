@@ -678,6 +678,10 @@
     .md-body h6 { font-size: 12px; font-weight: 700; margin: 12px 0 4px; color: var(--muted); }
     #about-rendered :is(h2, h3, h4, h5, h6) { color: var(--control-accent); }
     .md-body p  { margin: 0 0 12px; }
+    .md-body img[src*="/guide/images/"] { display: block; max-width: 100%; height: auto; margin: 12px 0 18px; border: 1px solid var(--line); border-radius: 8px; }
+    .md-body img.guide-panel-icon { display: inline-block; width: 18px; height: 18px; margin: 0 0 0 5px; vertical-align: -3px; border: 0; border-radius: 0; }
+    .md-body .guide-panel-pair { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+    .md-body .guide-panel-pair img { margin-block: 0; }
     .md-body ul, .md-body ol { margin: 0 0 12px 20px; }
     .md-body li { margin-bottom: 4px; }
     .md-body code { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 13px; font-family: var(--font-family); }

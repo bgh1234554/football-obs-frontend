@@ -1209,6 +1209,29 @@ function bindPanelFontTitle(title, category) {
   title.title = '클릭하여 글자 크기 조절';
 }
 let panelFontPopup = null;
+/** 빠른 메뉴에서도 설정창과 같은 토글·저장·동기화를 사용합니다. */
+function createQuickSettingRow(category, compact = false) {
+  const source = document.querySelector(`#settingsBackdrop input[data-settings-cat="${category}"]`).closest('.sp-row');
+  const row = document.createElement('div');
+  row.className = 'sp-row quick-setting-row';
+  row.append(source.querySelector('.sp-row-label').cloneNode(true), source.querySelector('.sp-toggle-cluster').cloneNode(true));
+  if (compact) row.querySelector('.sp-label-sub')?.remove();
+  const input = row.querySelector('input');
+  input.setAttribute('aria-label', row.querySelector('.sp-label-main').textContent);
+  if (compact) {
+    input.closest('.sp-switch').classList.add('sp-switch-mini');
+    row.querySelector('.sp-label-main').textContent = {
+      lineup: '이름 풀네임 표기', lineupHideInitial: '이니셜 제거', roster: '이름 풀네임 표기',
+      event: '이름 풀네임 표기', scorer: '득점자 풀네임', teamName: '팀 이름 풀네임',
+    }[category] || row.querySelector('.sp-label-main').textContent;
+  }
+  input.checked = getSetting(category) === getSwitchSides(category).on;
+  input.addEventListener('change', () => {
+    const { off, on } = getSwitchSides(category);
+    setSetting(category, input.checked ? on : off);
+  });
+  return row;
+}
 function closePanelFontPopup() {
   const recalculate = panelFontPopup?.dataset.rebalance === 'small-bench'
     && Number(panelFontPopup.dataset.initialValue) !== Number(getSetting('benchInjuryNameSize'));
@@ -1261,23 +1284,13 @@ function openPanelFontPopup(title, clickPoint = null) {
     popup.append(heading);
   }
   popup.append(cluster, reset);
-  if (category === 'lineupNameSize') {
-    // 설정창과 같은 항목을 재사용하고, 값도 기존 설정 경로로 함께 저장합니다.
-    ['lineup', 'lineupHideInitial'].forEach(setting => {
-      const sourceRow = document.querySelector(`input[data-settings-cat="${setting}"]`).closest('.sp-row');
-      const row = document.createElement('div');
-      row.className = 'sp-row';
-      row.append(sourceRow.querySelector('.sp-row-label').cloneNode(true), sourceRow.querySelector('.sp-toggle-cluster').cloneNode(true));
-      row.querySelector('input').addEventListener('change', event => {
-        const { off, on } = getSwitchSides(setting);
-        setSetting(setting, event.target.checked ? on : off);
-      });
-      popup.append(row);
-    });
-  }
+  const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial']
+    : category === 'benchInjuryNameSize' ? ['roster'] : category === 'eventNameSize' ? ['event'] : [];
+  if (nameSettings.length) popup.classList.add('has-name-settings');
+  nameSettings.forEach(setting => popup.append(createQuickSettingRow(setting, true)));
   (document.fullscreenElement || document.body).append(popup);
   panelFontPopup = popup;
-  if (category === 'lineupNameSize') ['lineup', 'lineupHideInitial'].forEach(syncSwitchUi);
+  nameSettings.forEach(syncSwitchUi);
   syncPanelFontPopup();
   const rect = title.getBoundingClientRect();
   // 긴 경기장 외곽선은 아래 끝이 아니라 실제 누른 지점 옆에 메뉴를 엽니다.

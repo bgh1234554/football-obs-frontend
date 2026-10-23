@@ -181,6 +181,15 @@ const root = path.resolve(__dirname, '../..');
           assert.equal(await menu.isVisible(), true);
           assert.equal(await menu.locator('.note-quick-shortcuts .kbd').count(), 2);
           assert.equal(await menu.locator('.note-edit-shortcuts').count(), manual ? 1 : 0);
+          const fullName = menu.locator('input[data-settings-cat="scorer"]');
+          assert.equal(await fullName.count(), manual ? 0 : 1);
+          if (!manual) {
+            const before = await fullName.isChecked();
+            await fullName.locator('..').click();
+            assert.equal(await page.locator('#settingsBackdrop input[data-settings-cat="scorer"]').isChecked(), !before);
+            await page.evaluate(before => setSetting('scorer', before ? 'long' : 'short'), before);
+            assert.equal(await fullName.isChecked(), before);
+          }
           if (manual) assert.deepEqual(await menu.locator('.note-edit-shortcuts .kbd').allTextContents(), ['Enter', 'Ctrl+Enter', 'Esc']);
           if (manual) {
             await page.locator('.note-inline-textarea').fill('draft text');

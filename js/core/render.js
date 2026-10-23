@@ -65,6 +65,7 @@
     menu.setAttribute('role', 'group');
     menu.setAttribute('aria-label', '득점자 표시 설정');
     menu.innerHTML = `<div class="note-quick-row"><span>글자 크기</span><button type="button" data-note-action="sizeMinus" aria-label="글자 크기 줄이기">−</button><output data-note-size></output><button type="button" data-note-action="sizePlus" aria-label="글자 크기 키우기">+</button><button type="button" data-note-action="reset" aria-label="글자 크기 초기화">↶</button></div><div class="note-quick-shortcuts"></div><div class="note-quick-row"><span>테두리 굵기</span><button type="button" data-note-action="strokeMinus" aria-label="테두리 굵기 줄이기">−</button><output data-note-stroke></output><button type="button" data-note-action="strokePlus" aria-label="테두리 굵기 키우기">+</button><button type="button" data-note-action="resetStroke" aria-label="테두리 굵기 초기화">↶</button></div><button type="button" data-note-action="settings" class="note-quick-settings">상세 설정</button>`;
+    if (!state.manualMode) menu.append(createQuickSettingRow('scorer', true));
     if (state.manualMode) {
       const editingHint = document.createElement('div');
       editingHint.className = 'note-edit-shortcuts';
@@ -107,6 +108,7 @@
   function syncNoteMenus() {
     if (activeNoteMenu && (state.manualMode || !state.noteEnabled)) closeNoteMenu();
     document.querySelectorAll('.note-quick-menu').forEach(menu => {
+      if (menu.querySelector('[data-settings-cat="scorer"]')) syncSwitchUi('scorer');
       menu.querySelector('[data-note-size]').textContent = state.noteFontSize ?? 18;
       menu.querySelector('[data-note-stroke]').textContent = state.noteStrokeWidth ?? 1;
       const hint = menu.querySelector('.note-quick-shortcuts');

@@ -53,6 +53,16 @@ const root = path.resolve(__dirname, '../..');
     ]) {
       await page.locator(selector).click();
       assert(await popup.isVisible(), selector);
+      const nameSetting = category === 'benchInjuryNameSize' ? 'roster' : category === 'eventNameSize' ? 'event' : null;
+      if (nameSetting) {
+        assert.equal(await popup.locator('.sp-label-sub').count(), 0);
+        const toggle = popup.locator(`input[data-settings-cat="${nameSetting}"]`);
+        const before = await toggle.isChecked();
+        await toggle.locator('..').click();
+        assert.equal(await page.locator(`#settingsBackdrop input[data-settings-cat="${nameSetting}"]`).isChecked(), !before);
+        await page.evaluate(({ category, before }) => setSetting(category, before ? getSwitchSides(category).on : getSwitchSides(category).off), { category: nameSetting, before });
+        assert.equal(await toggle.isChecked(), before);
+      }
       const range = page.locator(`input[data-settings-slider="${category}"]`);
       assert.equal(await slider.getAttribute('min'), await range.getAttribute('min'));
       assert.equal(await slider.getAttribute('max'), await range.getAttribute('max'));
@@ -85,6 +95,7 @@ const root = path.resolve(__dirname, '../..');
     await smallLine.click({ position: { x: 10, y: 1 } });
     assert.equal(await slider.getAttribute('max'), '20');
     assert.equal(await popup.locator('.panel-font-heading').textContent(), '선발 라인업 이름 크기');
+    assert.equal(await popup.locator('.sp-label-sub').count(), 0);
     for (const category of ['lineup', 'lineupHideInitial']) {
       const toggle = popup.locator(`input[data-settings-cat="${category}"]`);
       const setting = page.locator(`#settingsBackdrop input[data-settings-cat="${category}"]`);

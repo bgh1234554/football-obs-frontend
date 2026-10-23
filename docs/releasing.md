@@ -7,7 +7,7 @@ football-obs-frontend의 새 버전을 출시할 때 따르는 절차입니다. 
 | 문서 | 독자 | 내용 |
 | --- | --- | --- |
 | [README.md](../README.md) | GitHub 저장소를 처음 방문한 사람 | 프로젝트 소개, 빠른 시작, OBS 사용법, 링크 |
-| [about.md](../about.md) | 대시보드 사용자 | 탭별 기능, 설정, 단축키. 앱의 About 탭에 그대로 표시됨 |
+| [about.md](../guide/about.md) | 대시보드 사용자 | 탭별 기능, 설정, 단축키. 앱의 About 탭에 그대로 표시됨 |
 | [CHANGELOG.md](../CHANGELOG.md) | 업데이트 내용을 확인하려는 사용자 | 버전별 변경 내용 |
 | GitHub Release | 출시 소식을 보는 사용자 | 한 버전의 출시 안내. CHANGELOG의 해당 버전을 바탕으로 작성 |
 
@@ -187,7 +187,7 @@ git push origin v1.1.0
 
 ### 사용 안내
 - 바로 사용하기: https://football-obs-frontend.vercel.app
-- 사용 안내: https://github.com/bgh1234554/football-obs-frontend/blob/v1.1.0/about.md
+- 사용 안내: https://github.com/bgh1234554/football-obs-frontend/blob/v1.1.0/guide/about.md
 - 전체 변경 이력: https://github.com/bgh1234554/football-obs-frontend/blob/v1.1.0/CHANGELOG.md
 ```
 

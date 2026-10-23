@@ -231,6 +231,13 @@ const { openPage, settle } = require('../tactics/helpers');
       const before = await page.locator('#board').evaluate(node => node.getBoundingClientRect().width);
       await page.locator(`#${side}Card`).click();
       const menu = page.locator('#scoreboardTeamEditMenu');
+      const menuWidth = await menu.evaluate(node => node.offsetWidth);
+      const fullName = menu.locator('input[data-settings-cat="teamName"]');
+      const fullNameBefore = await fullName.isChecked();
+      await fullName.locator('..').click();
+      assert.equal(await page.locator('#settingsBackdrop input[data-settings-cat="teamName"]').isChecked(), !fullNameBefore);
+      assert.equal(await menu.evaluate(node => node.offsetWidth), menuWidth, 'name toggle keeps the team menu width');
+      await page.evaluate(before => setSetting('teamName', before ? 'long' : 'short'), fullNameBefore);
       await menu.locator('input[type="range"]').fill('70');
       await settle(page);
       assert(await page.locator('#board').evaluate((node, before) => node.getBoundingClientRect().width < before, before));
@@ -238,7 +245,7 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await menu.locator('output').textContent(), '70%');
       await page.screenshot({ path: `screenshots/tests/team-scale-${side}.png` });
       await menu.locator('.fsm-scale-control button').click();
-      assert.equal(await menu.locator('input').inputValue(), '85');
+      assert.equal(await menu.locator('input[type="range"]').inputValue(), '85');
       await page.keyboard.press('Escape');
     }
     // 카메라 뷰도 드래그 중 주변 배치를 유지하고 놓을 때 최종 높이를 적용합니다.

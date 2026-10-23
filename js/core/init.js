@@ -289,7 +289,8 @@
       return;
     }
     try {
-      const res = await fetch(appAssetPath('about.md'));
+      const guideUrl = new URL(appAssetPath('guide/about.md'), window.location.href);
+      const res = await fetch(guideUrl);
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
 
@@ -330,6 +331,12 @@
       // 5) 마크다운 → HTML → DOMPurify 정화 (custom-block 클래스 등은 ALLOWED_ATTR로 보존).
       const rawHtml = md.render(text);
       aboutEl.innerHTML = window.DOMPurify.sanitize(rawHtml);
+      // 문서와 함께 둔 상대 경로 이미지는 SPA 화면 주소가 아닌 안내서 위치를 기준으로 읽습니다.
+      aboutEl.querySelectorAll('img[src]').forEach(image => {
+        image.src = new URL(image.getAttribute('src'), guideUrl).href;
+        image.loading = 'lazy';
+        image.decoding = 'async';
+      });
 
       // 3) 내부 앵커(#section) 클릭은 hash routing과 충돌하지 않게 직접 가로채 scroll.
       const pageAbout = document.getElementById('page-about');

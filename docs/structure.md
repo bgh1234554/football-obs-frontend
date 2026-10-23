@@ -4,7 +4,7 @@
 
 `overlay_dashboard.html` — HTML 셸과 메뉴/설정/전술판 마크업. 주요 CSS/JS는 외부 파일로 분리하며 일부 인라인 스타일·이벤트 연결이 남아 있다.
 
-`about.md`는 사용자용 안내서다. `js/core/init.js`에서 불러와 Markdown을 렌더링하고 DOMPurify로 정제한 뒤 About 탭에 표시한다. 이 구조 문서는 현재 브랜치의 실제 파일을 기준으로 한다.
+`guide/about.md`는 사용자용 안내서다. `js/core/init.js`에서 불러와 Markdown을 렌더링하고 DOMPurify로 정제한 뒤 About 탭에 표시한다. 이 구조 문서는 현재 브랜치의 실제 파일을 기준으로 한다.
 
 ---
 

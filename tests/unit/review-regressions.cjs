@@ -82,7 +82,12 @@ const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function 
 // 목차 링크와 실제 중계 화면 제목은 같은 slug로 연결되어야 한다.
 {
  const context={};vm.runInNewContext(extract('js/core/init.js','aboutSlug','function buildAboutTabs('),context);
- const markdown=read('about.md');
+ const markdown=read('guide/about.md');
+ // 안내서의 상대 경로 이미지는 같은 배포 폴더 안에 실제로 있어야 합니다.
+ const guideRoot=path.resolve(__dirname,'../../guide');
+ for(const [,image] of markdown.matchAll(/(?:\]\(|src=")(images\/[^)" ]+)/g)) {
+  assert(fs.existsSync(path.join(guideRoot,image)), `missing guide image: ${image}`);
+ }
  const heading=markdown.match(/^### (.*중계 화면.*)$/m)[1];
  const target=markdown.match(/\[.*중계 화면.*\]\(#([^\)]+)\)/)[1];
  assert.equal(context.aboutSlug(heading),target);

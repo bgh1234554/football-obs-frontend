@@ -297,6 +297,8 @@
     </div>`;
     const menu = document.getElementById('scoreboardTeamEditMenu');
     menu.prepend(createScoreboardScaleControl('boardScale', '점수판 배율'));
+    menu.querySelector('.fsm-scale-control').after(createQuickSettingRow('teamName', true));
+    syncSwitchUi('teamName');
     pmPositionPopup(menu, x, y);
     menu.querySelector('[data-team-edit="name"]').onclick = () => {
       showTeamNicknameEditor(scoreboardTeamIdentity(side), x, y);
