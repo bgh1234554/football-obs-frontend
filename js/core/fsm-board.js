@@ -1,4 +1,4 @@
-﻿/** selector에 맞는 노드(index를 주면 그 하나만)에 인라인 스타일 객체를 적용한다. */
+/** selector에 맞는 노드(index를 주면 그 하나만)에 인라인 스타일 객체를 적용한다. */
 function setFsmStyle(selector, styles, index) {
   const nodes = document.querySelectorAll(selector);
   (index == null ? Array.from(nodes) : [nodes[index]]).filter(Boolean).forEach(node => Object.assign(node.style, styles));
@@ -113,6 +113,7 @@ const LEAGUE_THEME_MAP = {
   99: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   98: { theme: 'jleague', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/JLeague.svg', type: 'club' },
   253: { theme: 'mls', logoUrl: null, type: 'club' },
+  772: { theme: 'mls', logoUrl: null, type: 'club' }, // 리그스컵
   262: { theme: 'ligamx', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/LigaMX.svg', type: 'club' },
   1166:{ theme: 'cwc25',   logoUrl: 'https://indvel.github.io/utils/fsm/logos/Cups/2025FIFACWC.svg', type: 'club' },
   1168: { theme: 'fifaintercontinental', logoUrl: 'https://bgh1234554.github.io/football-obs-logo-cdn/leagues/FIFAIntercontinentalCup.png', type: 'club' },
