@@ -242,9 +242,12 @@
   // ---------------------------------------------------------------------------
   async function fetchFixture(fixtureId, options = {}) {
     // 브라우저 캐시와 함께 백엔드 캐시도 우회하고, 같은 URL의 새 응답을 캐시에 저장한다.
-    const requestOptions = options.cache === 'reload'
-      ? { ...options, headers: { ...options.headers, 'X-Force-Refresh': 'true' } }
-      : options;
+    let requestOptions = options;
+    if (options.cache === 'reload') {
+      const headers = new Headers(options.headers);
+      headers.set('X-Force-Refresh', 'true');
+      requestOptions = { ...options, headers };
+    }
     return await apiFetch(`/api/fixtures/${encodeURIComponent(fixtureId)}`, requestOptions);
   }
 

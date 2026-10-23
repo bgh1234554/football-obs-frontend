@@ -9,9 +9,9 @@ await page.goto('http://localhost/');await page.addStyleTag({content:'* { transi
 const refreshRequests=[];
 await page.route('https://football-obs-backend.onrender.com/api/fixtures/987654321',async route=>{
  const request=route.request();
- const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'x-force-refresh'};
+ const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'x-force-refresh,x-caller'};
  if(request.method()==='OPTIONS')return route.fulfill({status:204,headers});
- refreshRequests.push({url:request.url(),refresh:request.headers()['x-force-refresh']||null});
+ refreshRequests.push({url:request.url(),refresh:request.headers()['x-force-refresh']||null,caller:request.headers()['x-caller']||null});
  return route.fulfill({status:200,headers,contentType:'application/json',body:'{}'});
 });
 await page.evaluate(async()=>{
@@ -22,6 +22,17 @@ await page.evaluate(async()=>{
 assert.deepEqual(refreshRequests.map(r=>r.refresh),[null,'true',null]);
 assert.equal(new Set(refreshRequests.map(r=>r.url)).size,1);
 console.log('PASS manual refresh sends backend cache bypass while normal polling keeps the same URL without bypass');
+
+const callerHeaders=await page.evaluate(async()=>{
+ const headers=new Headers({'X-Caller':'preserved','X-Force-Refresh':'false'});
+ await fetchFixture(987654321,{cache:'reload',headers});
+ await fetchFixture(987654321,{cache:'reload',headers:[['X-Caller','tuple']]});
+ await fetchFixture(987654321,{cache:'reload',headers:{'X-Caller':'object'}});
+ return {caller:headers.get('X-Caller'),refresh:headers.get('X-Force-Refresh')};
+});
+assert.deepEqual(refreshRequests.slice(3).map(r=>[r.caller,r.refresh]),[['preserved','true'],['tuple','true'],['object','true']]);
+assert.deepEqual(callerHeaders,{caller:'preserved',refresh:'false'});
+console.log('PASS forced refresh preserves supported caller headers without mutating them');
 
 
 
