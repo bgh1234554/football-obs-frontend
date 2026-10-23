@@ -1,0 +1,75 @@
+@import url('./result_style_CNL.css');
+
+#board.fsm-board[data-fsm-theme="thirdliga"] {
+    --thirdliga-logo-diameter: 90px;
+    --thirdliga-center-width: 100px;
+    /* 세로 중앙에서 팀컬러 띠의 안쪽 끝과 초록색 원의 바깥쪽 끝 사이에 숫자를 맞춥니다. */
+    --thirdliga-score-offset: calc((var(--thirdliga-logo-diameter) / 2 - var(--thirdliga-center-width) / 2) / 2);
+}
+
+/* CNL의 원형 팀컬러와 합계 배치를 유지하고 3. 리가 색상을 적용합니다. */
+#board.fsm-board[data-fsm-theme="thirdliga"] :is(.div-background, .teams-left, .teams-right, #team-score-left, #team-score-right, .score-div, .total-score) {
+    background: #000000;
+    color: #ffffff;
+}
+/* 확대된 로고 바로 바깥을 감싸되 초록색 원호는 띠 안에서만 보입니다. */
+#board.fsm-board[data-fsm-theme="thirdliga"] .score-div::before {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: var(--thirdliga-logo-diameter);
+    height: var(--thirdliga-logo-diameter);
+    box-sizing: border-box;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    border: 4px solid #1CAF82;
+    border-radius: 50%;
+    clip-path: inset(21px 0);
+    pointer-events: none;
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] .score-div {
+    width: var(--thirdliga-center-width);
+    overflow: visible;
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] :is(.score-left, .score-right, .total) {
+    position: relative;
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] :is(.score-left, #totalScoreLeft) {
+    left: calc(0px - var(--thirdliga-score-offset));
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] :is(.score-right, #totalScoreRight) {
+    left: var(--thirdliga-score-offset);
+}
+/* 로고를 띠의 세로 중앙에 맞춰 위아래로 키웁니다. */
+#board.fsm-board[data-fsm-theme="thirdliga"] .epl-lion {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 78px;
+    height: 78px;
+    padding: 0;
+    max-width: none;
+    transform: translate(-50%, -50%);
+}
+/* 분데스리가와 같은 흰 바탕의 직사각형 팀 로고 칸을 사용합니다. */
+#board.fsm-board[data-fsm-theme="thirdliga"] :is(#team-logo-left, #team-logo-right) {
+    background: whitesmoke;
+    border: 2px solid whitesmoke;
+    clip-path: none;
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] .scoreboard-main::before,
+#board.fsm-board[data-fsm-theme="thirdliga"] .scoreboard-main::after {
+    display: none;
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] :is(.time, .pso-main) {
+    background: #1CAF82;
+    color: #ffffff;
+}
+/* 돌출된 로고가 기존 위치의 타이머보다 위에 그려지도록 합니다. */
+#board.fsm-board[data-fsm-theme="thirdliga"] .scoreboard-main {
+    z-index: 3;
+}
+#board.fsm-board[data-fsm-theme="thirdliga"] .extra-time {
+    background: #000000;
+    color: #ffffff;
+}

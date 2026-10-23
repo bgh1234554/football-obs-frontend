@@ -62,7 +62,7 @@ const root = path.resolve(__dirname, '../..');
             node.firstElementChild?.classList.contains('football-icon-red-card'), node.firstElementChild?.getAttribute('preserveAspectRatio')];
         }));
         assert(shapes.every(shape => JSON.stringify(shape) === JSON.stringify(['none', '0px', 'rgba(0, 0, 0, 0)', 1, true, 'none'])), `${theme}: ${JSON.stringify(shapes)}`);
-        if (theme === 'cnl') {
+        if (['cnl', 'thirdliga'].includes(theme)) {
           const anchors = await page.evaluate(() => {
             const main = document.querySelector('.scoreboard-main').getBoundingClientRect();
             const home = document.getElementById('rcHome').getBoundingClientRect();

@@ -285,66 +285,66 @@
 }
 
 
-.board.fsm-board[data-fsm-theme="cnl"] .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
-.board.fsm-board[data-fsm-theme="cnl"] .div-background {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .scoreboard-main { position: relative; height: 48px; isolation: isolate; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .div-background {
     background: linear-gradient(#004DFF, #0080FF); z-index: -1;
 
 }
-.board.fsm-board[data-fsm-theme="cnl"] :is(.teams-left, .teams-right) {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) :is(.teams-left, .teams-right) {
     background: linear-gradient(#004DFF, #0080FF);
 }
-.board.fsm-board[data-fsm-theme="cnl"] .team-name { color: #fff; }
-.board.fsm-board[data-fsm-theme="cnl"] :is(#team-score-left, #team-score-right) { background: linear-gradient(#00AEFF, #0177FF); color: #fff; }
-.board.fsm-board[data-fsm-theme="cnl"] .score-div {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .team-name { color: #fff; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) :is(#team-score-left, #team-score-right) { background: linear-gradient(#00AEFF, #0177FF); color: #fff; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .score-div {
     width: 64px; background: linear-gradient(#00AEFF, #0177FF); position: relative; z-index: 3;
 }
 
-.board.fsm-board[data-fsm-theme="cnl"] .score-div::before {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .score-div::before {
     content: ''; position: absolute; inset: 0; background: #f5f5f5;
     clip-path: circle(32px at 50% 50%); z-index: -1;
 }
-.board.fsm-board[data-fsm-theme="cnl"] .epl-lion { padding: 3px 10px; object-fit: contain; }
-.board.fsm-board[data-fsm-theme="cnl"] .team-logo {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .epl-lion { padding: 3px 10px; object-fit: contain; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .team-logo {
     width: 80px; border: 0; background: transparent; z-index: 2;
     overflow: hidden;
 }
- .board.fsm-board[data-fsm-theme="cnl"] #team-logo-left { clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%); }
-.board.fsm-board[data-fsm-theme="cnl"] #team-logo-right { clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
+ .board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) #team-logo-left { clip-path: polygon(0 0, 100% 0, 84% 100%, 0 100%); }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) #team-logo-right { clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
 
-.board.fsm-board[data-fsm-theme="cnl"] .team-logo > img {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .team-logo > img {
     /* 크기는 공통 로고 맞춤 규칙을 사용해 투명 여백과 원본 비율을 보존한다. */
     object-fit: contain;
 }
-.board.fsm-board[data-fsm-theme="cnl"] .scoreboard-main::before,
-.board.fsm-board[data-fsm-theme="cnl"] .scoreboard-main::after {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .scoreboard-main::before,
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .scoreboard-main::after {
     content: ''; position: absolute; top: 0; height: 48px; width: 2px;
     background: white; transform: skewX(-15deg); z-index: 3; pointer-events: none;
     box-shadow: 0 0 3px 1px white, 0 0 8px 3px #b9f5ff;
 }
-.board.fsm-board[data-fsm-theme="cnl"] .scoreboard-main::before { left: 72.571429px; }
-.board.fsm-board[data-fsm-theme="cnl"] .scoreboard-main::after { right: 72.571429px; }
-.board.fsm-board[data-fsm-theme="cnl"] .team-color {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .scoreboard-main::before { left: 72.571429px; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .scoreboard-main::after { right: 72.571429px; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .team-color {
     display: block; position: absolute; top: 0; left: calc(50% - var(--cnl-color-offset)); width: 16px; height: 48px;
     z-index: 4; box-shadow: none; border: 0;
 }
-.board.fsm-board[data-fsm-theme="cnl"] #awayColor { left: auto; right: calc(50% - var(--cnl-color-offset)); transform: scaleX(-1); }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) #awayColor { left: auto; right: calc(50% - var(--cnl-color-offset)); transform: scaleX(-1); }
 .fsm-board .cnl-curve { display: none; }
-.board.fsm-board[data-fsm-theme="cnl"] .cnl-curve { display: block; width: 16px; height: 48px; }
-.board.fsm-board[data-fsm-theme="cnl"] .cnl-curve path {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .cnl-curve { display: block; width: 16px; height: 48px; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .cnl-curve path {
     fill: var(--fsm-primary-color);
     stroke: var(--fsm-number-color);
     stroke-width: 1px;
 }
-.board.fsm-board[data-fsm-theme="cnl"] :is(#homeColor, #awayColor) { background: transparent !important; }
-.board.fsm-board[data-fsm-theme="cnl"] .time {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) :is(#homeColor, #awayColor) { background: transparent !important; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .time {
     background: radial-gradient(ellipse at 50% 0, #031F98, #000350);
     color: white; border-radius: 0 0 8px 8px;
 }
-.board.fsm-board[data-fsm-theme="cnl"] .extra-time { background: white; color: #05012D; border-radius: 0 0 6px 6px; }
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) .extra-time { background: white; color: #05012D; border-radius: 0 0 6px 6px; }
 
-.board.fsm-board[data-fsm-theme="cnl"] #team-score-left {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) #team-score-left {
     clip-path: circle(var(--cnl-radius) at var(--cnl-radius) 24px);
 }
-.board.fsm-board[data-fsm-theme="cnl"] #team-score-right {
+.board.fsm-board:is([data-fsm-theme="cnl"], [data-fsm-theme="thirdliga"]) #team-score-right {
     clip-path: circle(var(--cnl-radius) at calc(50px - var(--cnl-radius)) 24px);
 }
