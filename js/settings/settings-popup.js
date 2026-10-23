@@ -1224,7 +1224,7 @@ function syncPanelFontPopup() {
   panelFontPopup.querySelector('input').value = String(value);
   panelFontPopup.querySelector('output').textContent = `${value}px`;
 }
-function openPanelFontPopup(title) {
+function openPanelFontPopup(title, clickPoint = null) {
   const category = title.dataset.panelFont;
   if (!PANEL_FONT_SETTINGS.includes(category)) return;
   const source = document.querySelector(`input[data-settings-slider="${category}"]`);
@@ -1254,12 +1254,37 @@ function openPanelFontPopup(title) {
   reset.addEventListener('click', () => setSetting(category, SETTINGS_DEFAULTS[category]));
   input.addEventListener('input', () => { setSetting(category, Number(input.value)); syncPanelFontPopup(); });
   cluster.append(input, value);
+  if (category === 'lineupNameSize') {
+    const heading = document.createElement('div');
+    heading.className = 'panel-font-heading';
+    heading.textContent = '선발 라인업 이름 크기';
+    popup.append(heading);
+  }
   popup.append(cluster, reset);
+  if (category === 'lineupNameSize') {
+    // 설정창과 같은 항목을 재사용하고, 값도 기존 설정 경로로 함께 저장합니다.
+    ['lineup', 'lineupHideInitial'].forEach(setting => {
+      const sourceRow = document.querySelector(`input[data-settings-cat="${setting}"]`).closest('.sp-row');
+      const row = document.createElement('div');
+      row.className = 'sp-row';
+      row.append(sourceRow.querySelector('.sp-row-label').cloneNode(true), sourceRow.querySelector('.sp-toggle-cluster').cloneNode(true));
+      row.querySelector('input').addEventListener('change', event => {
+        const { off, on } = getSwitchSides(setting);
+        setSetting(setting, event.target.checked ? on : off);
+      });
+      popup.append(row);
+    });
+  }
   (document.fullscreenElement || document.body).append(popup);
   panelFontPopup = popup;
+  if (category === 'lineupNameSize') ['lineup', 'lineupHideInitial'].forEach(syncSwitchUi);
   syncPanelFontPopup();
   const rect = title.getBoundingClientRect();
-  const point = typeof toDisplayLayoutPoint === 'function' ? toDisplayLayoutPoint(rect.left, rect.bottom + 6) : { x: rect.left, y: rect.bottom + 6 };
+  // 긴 경기장 외곽선은 아래 끝이 아니라 실제 누른 지점 옆에 메뉴를 엽니다.
+  const anchor = title.matches('.dp-lineup-touchline')
+    ? (clickPoint || { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+    : { x: rect.left, y: rect.bottom };
+  const point = typeof toDisplayLayoutPoint === 'function' ? toDisplayLayoutPoint(anchor.x, anchor.y + 6) : { x: anchor.x, y: anchor.y + 6 };
   popup.style.left = `${point.x}px`;
   popup.style.top = `${point.y}px`;
   if (typeof pmClampPopupToViewport === 'function') pmClampPopupToViewport(popup);
@@ -1270,7 +1295,7 @@ document.addEventListener('click', event => {
   const title = event.target.closest('[data-panel-font]');
   if (!title) return;
   event.stopPropagation();
-  openPanelFontPopup(title);
+  openPanelFontPopup(title, event.detail ? { x: event.clientX, y: event.clientY } : null);
 });
 document.addEventListener('pointerdown', event => {
   if (panelFontPopup && !panelFontPopup.contains(event.target) && !event.target.closest('[data-panel-font]')) closePanelFontPopup();

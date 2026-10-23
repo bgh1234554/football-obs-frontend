@@ -422,6 +422,13 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 }
 .panel-font-popover .sp-slider-cluster { flex: 1 1 auto; min-width: 0; }
 .panel-font-popover .sp-slider-cluster input[type="range"] { width: 140px; min-width: 50px; flex: 1 1 auto; }
+.panel-font-popover[data-category="lineupNameSize"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 360px;
+}
+.panel-font-popover :is(.panel-font-heading, .sp-row) { grid-column: 1 / -1; }
+.panel-font-heading { font-weight: 700; }
 .panel-font-reset {
   flex: 0 0 auto;
   padding: 5px 8px;

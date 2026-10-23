@@ -134,6 +134,25 @@
 }
 /* 선의 모양은 유지하고 주변 클릭 영역만 넓힌다. 선수 노드의 클릭·드래그는 그대로 우선한다. */
 .dp-lineup-marking-midline[data-panel-font] { pointer-events: auto; }
+/* 선수 노드보다 아래에 클릭 영역을 두어, 터치라인에서도 이름 설정을 열 수 있게 합니다. */
+.dp-lineup-touchline {
+  position: absolute;
+  pointer-events: auto;
+}
+.dp-lineup-touchline:is(.is-left, .is-right) {
+  top: 1.5%;
+  bottom: 1.5%;
+  width: 12px;
+}
+.dp-lineup-touchline.is-left { left: calc(3% - 6px); }
+.dp-lineup-touchline.is-right { right: calc(3% - 6px); }
+.dp-lineup-touchline:is(.is-top, .is-bottom) {
+  left: 3%;
+  right: 3%;
+  height: 12px;
+}
+.dp-lineup-touchline.is-top { top: calc(1.5% - 6px); }
+.dp-lineup-touchline.is-bottom { bottom: calc(1.5% - 6px); }
 .dp-lineup-marking-midline[data-panel-font]::before {
   content: ''; position: absolute; inset: -6px 0;
 }
@@ -209,7 +228,10 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
+  /* 팀명과 설정 버튼 사이의 빈 공간에서는 뒤쪽 외곽선을 누를 수 있습니다. */
+  pointer-events: none;
 }
+.dp-lineup-team-chip > * { pointer-events: auto; }
 .dp-lineup-team-chip.is-home {
   top: 14px;
 }

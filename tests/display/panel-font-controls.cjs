@@ -12,6 +12,7 @@ const root = path.resolve(__dirname, '../..');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const data = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/1637598-lineup.json'), 'utf8'));
+    data.homeLineup.formation = '3-4-3';
     data.events = [{ type: 'Card', detail: 'Yellow Card', elapsed: 10, side: 'home', playerId: 1, playerName: '선수' }];
     data.homeInjuries = [{ playerId: 1, playerName: '부상 선수', reason: 'Injury' }];
     data.awayInjuries = [];
@@ -83,9 +84,36 @@ const root = path.resolve(__dirname, '../..');
     const smallLine = page.locator('.layout-small .dp-lineup-marking-midline');
     await smallLine.click({ position: { x: 10, y: 1 } });
     assert.equal(await slider.getAttribute('max'), '20');
+    assert.equal(await popup.locator('.panel-font-heading').textContent(), '선발 라인업 이름 크기');
+    for (const category of ['lineup', 'lineupHideInitial']) {
+      const toggle = popup.locator(`input[data-settings-cat="${category}"]`);
+      const setting = page.locator(`#settingsBackdrop input[data-settings-cat="${category}"]`);
+      const before = await toggle.isChecked();
+      await toggle.locator('..').click();
+      assert.equal(await setting.isChecked(), !before);
+      await page.evaluate(category => {
+        const { off, on } = getSwitchSides(category);
+        setSetting(category, getSetting(category) === on ? off : on);
+      }, category);
+      assert.equal(await toggle.isChecked(), before);
+    }
     await change(20);
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 20);
     await close();
+    // 하프라인이 선수와 겹쳐도 양쪽 터치라인에서 같은 메뉴를 열 수 있습니다.
+    for (const side of ['left', 'right', 'top', 'bottom']) {
+      const line = page.locator(`.layout-small .dp-lineup-touchline.is-${side}`);
+      const box = await line.boundingBox();
+      const position = ['top', 'bottom'].includes(side) ? { x: box.width / 2, y: 6 } : { x: 6, y: 35 };
+      await line.click({ position });
+      assert(await popup.locator('.sp-row:has(input[data-settings-cat="lineup"])').isVisible());
+      if (['left', 'right'].includes(side)) {
+        const menu = await popup.boundingBox();
+        assert(Math.abs(menu.y - (box.y + position.y)) < 15, 'menu opens near the clicked point on a long boundary');
+      }
+      if (side === 'left') await popup.screenshot({ path: path.join(root, 'screenshots/tests/lineup-name-menu-small.png') });
+      await close();
+    }
     // F11처럼 너비는 같고 높이만 달라져도 네 칼럼이 화면 너비를 모두 채운다.
     await page.setViewportSize({ width: 1920, height: 950 });
     await page.waitForTimeout(350);
@@ -100,9 +128,20 @@ const root = path.resolve(__dirname, '../..');
     const lines = page.locator('.layout-big .dp-lineup-marking-midline');
     assert.equal(await lines.count(), 2);
     for (let i = 0; i < 2; i++) {
-      await lines.nth(i).click({ position: { x: 10, y: 1 } });
+      // 3-4-3에서 하프라인을 덮는 선수는 그대로 누를 수 있게 두고, 키보드 진입도 확인합니다.
+      await lines.nth(i).focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await popup.locator('input[type="checkbox"]').count(), 2);
       await change(19 + i);
       assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 19 + i);
+      await close();
+    }
+    for (const side of ['left', 'right', 'top', 'bottom']) {
+      const line = page.locator(`.layout-big .dp-lineup-touchline.is-${side}`).first();
+      const box = await line.boundingBox();
+      await line.click({ position: ['top', 'bottom'].includes(side) ? { x: box.width / 2, y: 6 } : { x: 6, y: 35 } });
+      assert(await popup.isVisible());
+      if (side === 'left') await popup.screenshot({ path: path.join(root, 'screenshots/tests/lineup-name-menu-big.png') });
       await close();
     }
     // 분할을 끈 큰 캠에서도 같은 하프라인 편집기를 사용한다.
@@ -125,7 +164,7 @@ const root = path.resolve(__dirname, '../..');
     }
     await page.evaluate(() => document.documentElement.requestFullscreen());
     await settle(page);
-    await lines.first().click({ position: { x: 10, y: 1 } });
+    await page.locator('.layout-big .dp-lineup-touchline.is-right').first().click({ position: { x: 6, y: 35 } });
     await change(20);
     assert.equal(await popup.evaluate(node => node.parentElement === document.fullscreenElement), true);
     await page.evaluate(() => document.exitFullscreen());

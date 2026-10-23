@@ -824,12 +824,18 @@ function buildLineupPitchLeagueWashHtml(effectiveData, rawData) {
 }
 
 // Iter 5-X: 분할 모드 한 팀 풀 피치 마크업. 마킹/리그 로고/팀 chip은 combined와 공유.
+function buildLineupNameTouchlinesHtml() {
+  return Object.entries({ left: '왼쪽', right: '오른쪽', top: '위쪽', bottom: '아래쪽' })
+    .map(([side, label]) => `<div class="dp-lineup-touchline is-${side}"${panelFontTitleAttrs('lineupNameSize')} aria-label="선발 라인업 이름 설정 (${label} 외곽선)"></div>`).join('');
+}
+
 function buildSingleSidePitchHtml(side, effectiveData, rawData, options = {}) {
   const lineup = effectiveData?.[`${side}Lineup`];
   const nodes = buildVerticalPitchNodesHtml(lineup, effectiveData, side, 'split', options);
   return `<div class="dp-lineup-vertical-pitch is-split is-${side}">
     ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
     <div class="dp-lineup-markings">
+      ${buildLineupNameTouchlinesHtml()}
       <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
       <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
       <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
@@ -884,6 +890,7 @@ function buildLineupPitchModeHtml(effectiveData, rawData, options = {}) {
     <div class="dp-lineup-vertical-pitch">
       ${buildLineupPitchLeagueWashHtml(effectiveData, rawData)}
       <div class="dp-lineup-markings">
+        ${buildLineupNameTouchlinesHtml()}
         <div class="dp-lineup-marking dp-lineup-marking-top-box"></div>
         <div class="dp-lineup-marking dp-lineup-marking-top-goal"></div>
         <div class="dp-lineup-marking dp-lineup-marking-top-arc"></div>
