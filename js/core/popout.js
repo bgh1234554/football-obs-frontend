@@ -161,6 +161,7 @@ function syncScoreboardStateFromStorage(newValue) {
       'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
       'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
       'teamColorOverride', 'teamColorOverrideFixtureId',
+      'homeLogoUpload', 'awayLogoUpload',
     ]);
 
     // 3) 추가시간 — extraManualOverride가 켜져 있으면(수동으로 조작함) 수동 모드 여부와
@@ -190,6 +191,7 @@ function syncScoreboardStateFromStorage(newValue) {
     // 진행 중인 이벤트 시퀀스라 오래된 값으로 되돌리면 진행 상황이 깨진다).
 
     if (changed) {
+      if (typeof reapplyFixtureLogos === 'function') reapplyFixtureLogos();
       if (state.fsmTheme !== previousFsmTheme || (!state.leagueThemeUpdateSilent && (
         state.leagueId !== previousLeagueId || state.leagueLogoUrl !== previousLeagueLogoUrl
         || state.leagueThemeApplyVersion !== previousLeagueThemeApplyVersion))) {

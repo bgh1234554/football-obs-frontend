@@ -10,6 +10,71 @@ const { openPage, settle } = require('../tactics/helpers');
   const screenshotDir = mkdtempSync(path.join(tmpdir(), "fsm-logo-trim-"));
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', uaPlatform: 'Windows', viewport: { width: 1920, height: 1080 } });
+    for (const existingManual of ['', 'custom-home']) {
+      const transition = await page.evaluate(existingManual => {
+        state.manualMode = false;
+        state.homeLogo = 'current-home'; state.awayLogo = 'current-away';
+        state.homeLogoManual = existingManual; state.awayLogoManual = '';
+        const originalConfirm = window.confirm;
+        window.confirm = () => true;
+        try { el.manualModeToggle.checked = true; toggleManualMode(); }
+        finally { window.confirm = originalConfirm; }
+        const saved = JSON.parse(localStorage.getItem(SKEY));
+        return { logos: [state.homeLogo, state.awayLogo], manual: [saved.homeLogoManual, saved.awayLogoManual] };
+      }, existingManual);
+      const expected = [existingManual || 'current-home', 'current-away'];
+      assert.deepEqual(transition.logos, expected, 'manual transition preserves current logos and explicit manual choices');
+      assert.deepEqual(transition.manual, expected, 'inherited logos survive state restoration');
+    }
+    // 빈 슬롯에서도 양쪽 로고를 교체하고, 자동 갱신과 경기 전환의 범위를 확인합니다.
+    for (const manual of [true, false]) {
+      await page.evaluate(manual => {
+        state.manualMode = manual;
+        state.homeLogo = state.awayLogo = '';
+        state.homeLogoUpload = state.awayLogoUpload = '';
+        _lastFixtureData = { matchInfo: { fixtureId: 123, homeTeamLogo: '', awayTeamLogo: '' }, events: [] };
+        render();
+      }, manual);
+      for (const [side, slot] of [['home', 'left'], ['away', 'right']]) {
+        let chooserCount = 0;
+        const onChooser = () => chooserCount++;
+        page.on('filechooser', onChooser);
+        await page.locator(`#team-logo-${slot}`).click();
+        assert.equal(await page.locator('#scoreboardLogoMenu').isVisible(), true);
+        assert.equal(chooserCount, 0, 'logo click opens only the menu');
+        await page.keyboard.press('Escape');
+        assert.equal(await page.locator('#scoreboardLogoMenu').count(), 0);
+        await page.locator(`#team-logo-${slot}`).focus();
+        await page.keyboard.press('Enter');
+        const chooser = page.waitForEvent('filechooser');
+        await page.locator('[data-logo-action="upload"]').click();
+        await (await chooser).setFiles({ name: `${side}.svg`, mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="35" fill="red"/></svg>') });
+        page.off('filechooser', onChooser);
+        await page.waitForFunction(side => state[side + 'Logo'].startsWith('data:image/'), side);
+        assert.equal(await page.evaluate(side => document.getElementById(side + 'Logo').getAttribute('src') === state[side + 'Logo'], side), true);
+        assert.equal(await page.evaluate(side => {
+          const saved = JSON.parse(localStorage.getItem(SKEY));
+          return state.manualMode ? saved[side + 'LogoManual'] === state[side + 'Logo'] : saved[side + 'LogoUpload'].url === state[side + 'Logo'];
+        }, side), true);
+      }
+      if (!manual) {
+        assert.equal(await page.evaluate(() => {
+          reapplyFixtureLogos();
+          return ['home', 'away'].every(side => state[side + 'Logo'] === state[side + 'LogoUpload'].url);
+        }), true, 'same-fixture refresh preserves uploads');
+        await page.locator('#team-logo-left').click();
+        await page.locator('[data-logo-action="restore"]').click();
+        assert.equal(await page.evaluate(() => state.homeLogo), '', 'restore only the clicked side');
+        assert(await page.evaluate(() => state.awayLogo.startsWith('data:image/')));
+        assert.equal(await page.evaluate(() => {
+          const next = { matchInfo: { fixtureId: 124, homeTeamLogo: 'next-home', awayTeamLogo: 'next-away' }, events: [] };
+          applyFixtureToState(next, { resetRunning: false });
+          return state.homeLogo === 'next-home' && state.awayLogo === 'next-away';
+        }), true, 'another fixture uses its own logos');
+      }
+      console.log('PASS scoreboard logo upload, persistence and scope:', manual ? 'manual' : 'automatic');
+    }
+    await page.evaluate(() => { state.manualMode = false; state.homeLogoUpload = state.awayLogoUpload = ''; });
     await page.evaluate(() => {
       // 전용 원형 슬롯이 있는 테마는 바깥 팀 칸 전체를 채우는 디자인이 아니다.
       window.logoTrimTestFrame = img => {

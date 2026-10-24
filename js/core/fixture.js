@@ -495,6 +495,8 @@
    *   'fa'            : matchInfo.homeTeamFaUrl (협회 로고). null이면 'logo'로 자동 폴백.
    */
   function resolveTeamLogoUrl(matchInfo, side) {
+    const override = state[side + 'LogoUpload'];
+    if (override?.url && override.fixtureId === String(matchInfo?.fixtureId ?? '')) return override.url;
     const useFa = typeof getSetting === 'function' && getSetting('teamLogo') === 'fa';
     const faKey = side === 'home' ? 'homeTeamFaUrl' : 'awayTeamFaUrl';
     const logoKey = side === 'home' ? 'homeTeamLogo' : 'awayTeamLogo';
@@ -1185,8 +1187,8 @@
     if (m.awayScore != null) state.awayScore = m.awayScore;
 
     // 로고 — 설정의 teamLogo('logo'|'fa')에 따라 기본 로고/협회 로고 중 선택. 협회 URL 없으면 기본으로 자동 폴백.
-    if ('homeTeamLogo' in m || 'homeTeamFaUrl' in m) state.homeLogo = resolveTeamLogoUrl(m, 'home');
-    if ('awayTeamLogo' in m || 'awayTeamFaUrl' in m) state.awayLogo = resolveTeamLogoUrl(m, 'away');
+    state.homeLogo = resolveTeamLogoUrl(m, 'home');
+    state.awayLogo = resolveTeamLogoUrl(m, 'away');
 
     // 팀 컬러 — 수동 매핑 > API 색상 > CSS 기본색 순서. 로고 팔레트는 render 후 비동기로 보정한다.
     state.colors = state.colors || {};
@@ -1635,6 +1637,11 @@
   function getLastFixtureId() {
     const fixtureId = String(_lastFixtureData?.matchInfo?.fixtureId ?? '').trim();
     return fixtureId || null;
+  }
+
+  function reapplyFixtureLogos() {
+    if (state.manualMode || !_lastFixtureData?.matchInfo) return;
+    for (const side of ['home', 'away']) state[side + 'Logo'] = resolveTeamLogoUrl(_lastFixtureData.matchInfo, side);
   }
 
   /**

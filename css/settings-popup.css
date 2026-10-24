@@ -973,6 +973,8 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .theme-color-editor .sp-color-code { margin-left: 0 !important; }
 
 .team-color-dialog > button { color: var(--ui-text, #e5e7eb); background: var(--ui-control-surface, #19273e); border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1882); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+#scoreboardLogoMenu { display: flex; gap: 3px; width: max-content; min-width: 0; padding: 5px; border-radius: 7px; }
+#scoreboardLogoMenu .pm-btn { padding: 4px 8px; font-size: 12px; line-height: 1.4; }
 #scoreboardTeamEditMenu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 260px; min-width: 0; }
 #scoreboardTeamEditMenu .fsm-scale-control { grid-column: 1 / -1; }
 #scoreboardTeamEditMenu .quick-setting-row { grid-column: 1 / -1; gap: 6px; padding-inline: 8px; }

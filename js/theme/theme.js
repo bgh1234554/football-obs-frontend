@@ -275,9 +275,9 @@
         logoBox.setAttribute('role', 'button');
         logoBox.setAttribute('aria-label', side === 'home' ? '홈 팀컬러 편집' : '원정 팀컬러 편집');
       } else {
-        logoBox.removeAttribute('tabindex');
-        logoBox.removeAttribute('role');
-        logoBox.removeAttribute('aria-label');
+        logoBox.tabIndex = 0;
+        logoBox.setAttribute('role', 'button');
+        logoBox.setAttribute('aria-label', side === 'home' ? '홈 로고 설정' : '원정 로고 설정');
       }
     };
     new MutationObserver(syncLogoColorButton).observe(document.getElementById('board'), { attributes: true, attributeFilter: ['data-fsm-theme'] });
@@ -395,12 +395,16 @@
     el.manualSection.classList.toggle('visible', turningOn);
     // 5. ON 시 현재 state 값을 입력 필드에 미리 채워 넣음
     if(turningOn){
+      // 수동 로고가 없으면 현재 경기 로고를 이어 받아 전환과 새로고침 때 유지합니다.
+      state.homeLogoManual = state.homeLogoManual || state.homeLogo || '';
+      state.awayLogoManual = state.awayLogoManual || state.awayLogo || '';
       state.homeLogo = state.homeLogoManual || '';
       state.awayLogo = state.awayLogoManual || '';
       syncManualInputs();
     }else{
       state.homeLogo = '';
       state.awayLogo = '';
+      reapplyFixtureLogos();
     }
     render();
     persist();
@@ -498,6 +502,70 @@
     const r = new FileReader();
     r.onload = ()=> cb(r.result);
     r.readAsDataURL(file);
+  }
+  // [이벤트 등록] 자동 경기의 교체 로고는 경기별로 보관하여 수동 로고와 섞이지 않게 합니다.
+  for (const [side, id] of [['home', 'team-logo-left'], ['away', 'team-logo-right']]) {
+    const box = document.getElementById(id);
+    if (!box) continue;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.hidden = true;
+    input.id = side + 'ScoreboardLogoUpload';
+    document.body.append(input);
+    let target;
+    const upload = () => {
+      target = { manual: !!state.manualMode, fixtureId: String(getLastFixtureId() ?? '') };
+      input.value = '';
+      input.click();
+    };
+    box.setAttribute('role', 'button');
+    box.tabIndex = 0;
+    box.style.cursor = 'pointer';
+    box.title = `${side === 'home' ? '홈' : '원정'} 로고 설정`;
+    box.setAttribute('aria-label', box.title);
+    const restore = () => {
+      if (state.manualMode) clearManualLogo(side);
+      else {
+        state[side + 'LogoUpload'] = '';
+        state[side + 'Logo'] = '';
+        reapplyFixtureLogos();
+        render(); persist();
+      }
+    };
+    const open = () => {
+      // 네이션스리그의 로고 칸은 기존 팀컬러 편집 기능을 유지합니다.
+      if (document.getElementById('board')?.dataset.fsmTheme === 'unl') return;
+      pmHideAll();
+      pmContainer().innerHTML = `<div class="pm-popup" id="scoreboardLogoMenu" role="dialog" aria-label="${box.title}">
+        <button type="button" class="pm-btn" data-logo-action="upload">업로드</button>
+        <button type="button" class="pm-btn" data-logo-action="restore">원래 로고</button>
+      </div>`;
+      const menu = document.getElementById('scoreboardLogoMenu');
+      const bounds = box.getBoundingClientRect();
+      pmPositionPopup(menu, bounds.left, bounds.bottom);
+      menu.querySelector('[data-logo-action="upload"]').onclick = () => { pmHideAll(); upload(); };
+      menu.querySelector('[data-logo-action="restore"]').onclick = () => { pmHideAll(); restore(); };
+      menu.querySelector('button').focus();
+    };
+    box.addEventListener('click', e => { e.stopPropagation(); open(); });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); open(); }
+    });
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      const selected = target;
+      readLogoFile(file, url => {
+        // 파일을 읽는 동안 경기나 모드가 바뀌면 이전 업로드를 적용하지 않습니다.
+        if (selected.manual !== !!state.manualMode || (!selected.manual && selected.fixtureId !== String(getLastFixtureId() ?? ''))) return;
+        if (selected.manual) state[side + 'LogoManual'] = url;
+        else state[side + 'LogoUpload'] = { fixtureId: selected.fixtureId, url };
+        state[side + 'Logo'] = url;
+        syncManualInputs();
+        render(); persist();
+      });
+    });
   }
   // [이벤트 등록] 수동 모드 — 로고 파일 업로드 (파일 선택 시 URL 입력란 초기화)
   function clearManualLogo(side){
