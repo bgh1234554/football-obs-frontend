@@ -1657,6 +1657,13 @@ function resetLineupWidthOnly(event, panel) {
   event.stopPropagation();
   _lineupEdgeClear(LINEUP_EDGE_W_KEY);
   _lineupClearWidthOverride(panel);
+  // 높이를 줄인 뒤에도 너비 초기화는 기본 피치 크기를 기준으로 한다.
+  // 현재 높이에 비율을 곱하면 줄어든 너비로 돌아가므로 높이와 독립해서 복원한다.
+  const defaultWidth = Math.min(_lineupGetMaxWidth(panel),
+    _lineupGetMaxHeight(panel) * _lineupResetScalePct(panel) / 100 * _lineupNaturalAspectRatio(panel));
+  panel.dataset.lineupWindowWidth = String(defaultWidth);
+  panel.style.width = `${defaultWidth}px`;
+  if (panel.classList.contains('has-h-frozen-width')) panel.dataset.lineupFrozenWidth = `${defaultWidth}px`;
   requestAnimationFrame(() => window.fitLineupNamePills?.());
 }
 
@@ -1682,6 +1689,7 @@ function resetLineupAllSizes(event, panel) {
   const resetScalePct = _lineupResetScalePct(panel);
   if (typeof setSetting === 'function') setSetting('lineupScale', resetScalePct);
   else document.documentElement.style.setProperty('--lp-lineup-scale', String(resetScalePct / 100));
+  if (typeof resetCameraFullscreenPitchFont === 'function') resetCameraFullscreenPitchFont();
   requestAnimationFrame(() => window.fitLineupNamePills?.());
 }
 

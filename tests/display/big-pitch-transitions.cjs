@@ -182,6 +182,31 @@ async function fullscreenApi(browser) {
   const returned = await viewport(page, 1, 960);
   near(returned.width, edited.width, 'Fullscreen API return width');
   near(returned.fraction, edited.fraction, 'Fullscreen API edit is normalized on return', 0.003);
+  // 전체화면 진입만으로 이름 크기를 바꾸지 않고, 대각선 초기화 이후에만 분리한다.
+  for (const split of ['on', 'off']) {
+    await page.evaluate(() => { cameraFullscreenPitchFontActive = false; });
+    await page.evaluate(split => { setSetting('splitLineup', split); setSetting('lineupNameSize', 15); }, split);
+    await settle(page);
+    await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
+    await page.locator('.layout-big .lp-lineup-resize').dblclick(); await settle(page);
+    const resetPitch = await check(page);
+    await drag(page, 'lp-lineup-top-edge', 100);
+    const narrowedPitch = await drag(page, 'lp-lineup-right-edge', 0, -60);
+    await page.locator('.layout-big .lp-lineup-right-edge').dblclick(); await settle(page);
+    const widthOnlyReset = await check(page);
+    near(widthOnlyReset.width, resetPitch.width, 'fullscreen width reset restores default width after height reduction');
+    near(widthOnlyReset.height, narrowedPitch.height, 'fullscreen width reset preserves adjusted height');
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 14);
+    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '14px');
+    await page.evaluate(() => setSetting('lineupNameSize', 17));
+    await page.evaluate(() => document.exitFullscreen()); await settle(page);
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
+    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '15px');
+    await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 17);
+    await page.evaluate(() => document.exitFullscreen()); await settle(page);
+  }
   await page.close();
   console.log('PASS: real Fullscreen API entry, edit and return');
 }

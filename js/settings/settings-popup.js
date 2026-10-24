@@ -69,6 +69,7 @@ const SETTINGS_DEFAULTS = {
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
   lineupNameSizeFullscreen: null, // 대시보드 전체화면에서 직접 조정한 값. null이면 기본값을 따른다.
+  lineupNameSizeCameraFullscreen: null,
                       // long 모드(풀네임)는 CSS에서 0.875× 비율 유지.
   // 라인업 분할 (캠 큼 전용) — ON시 양 팀을 한 피치에 합쳐서 그리지 않고
   // 위(홈)/아래(원정) 두 개의 풀 피치로 분리. OFF면 캠 작음과 같은 combined 피치를 사용.
@@ -344,6 +345,20 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
 const DASHBOARD_FULLSCREEN_FONT_DEFAULTS = { lineupNameSize: 16, benchInjuryNameSize: 14 };
+let cameraFullscreenPitchFontActive = false;
+
+function isCameraFullscreenPitchFont() {
+  return cameraFullscreenPitchFontActive && !!document.querySelector('#page-main-big.active')
+    && (document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches);
+}
+
+/** 전체화면에서 피치를 초기화한 경우에만 확대된 피치용 선수명 크기를 사용한다. */
+function resetCameraFullscreenPitchFont() {
+  if (!document.querySelector('#page-main-big.active')
+    || !(document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches)) return;
+  cameraFullscreenPitchFontActive = true;
+  setSetting('lineupNameSize', 14);
+}
 
 function isDashboardFullscreen() {
   // F11은 fullscreenElement를 설정하지 않으므로 실제 화면 높이도 확인한다.
@@ -353,6 +368,10 @@ function isDashboardFullscreen() {
 }
 
 function resetPanelFontSetting(category) {
+  if (category === 'lineupNameSize' && isCameraFullscreenPitchFont()) {
+    setSetting(category, 14);
+    return;
+  }
   if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
     setSetting(category, DASHBOARD_FULLSCREEN_FONT_DEFAULTS[category]);
   } else {
@@ -459,6 +478,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 
 /** 설정 종류별 허용 값·범위를 검사하며, 알 수 없는 값은 저장·복원 대상에서 제외한다. */
 function isValidSetting(category, value) {
+  if (category === 'lineupNameSizeCameraFullscreen') return value === null || isValidSetting('lineupNameSize', value);
   if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_FONT_DEFAULTS) {
     return value === null || isValidSetting(category.slice(0, -10), value);
   }
@@ -663,6 +683,7 @@ function syncSettingUi(category) {
 
 /** settingsState에 값이 없으면 default fallback. 외부 모듈은 이 함수만 통해 값 조회. */
 function getSetting(category) {
+  if (category === 'lineupNameSize' && isCameraFullscreenPitchFont()) return settingsState.lineupNameSizeCameraFullscreen ?? 14;
   if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
     return settingsState[`${category}Fullscreen`]
       ?? (settingsState[category] !== SETTINGS_DEFAULTS[category] ? settingsState[category] : DASHBOARD_FULLSCREEN_FONT_DEFAULTS[category]);
@@ -707,6 +728,16 @@ function getLineupNodeMode() {
  * 5) 'settings:change' 이벤트로 외부 모듈(events-panel/stats-panel/lineup-panel)에 통지.
  */
 function setSetting(category, value) {
+  if (category === 'lineupNameSize' && isCameraFullscreenPitchFont()) {
+    if (!isValidSetting(category, value)) return false;
+    const previous = settingsState.lineupNameSizeCameraFullscreen;
+    settingsState.lineupNameSizeCameraFullscreen = value;
+    if (!saveSettings()) { settingsState.lineupNameSizeCameraFullscreen = previous; return false; }
+    syncSettingUi(category);
+    applySettingSideEffects(category);
+    emitSettingsChange(category);
+    return true;
+  }
   if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
     const key = `${category}Fullscreen`;
     if (value !== null && !isValidSetting(category, value)) return false;
@@ -1371,6 +1402,7 @@ function syncDashboardFontContext() {
 window.addEventListener('resize', syncDashboardFontContext);
 document.addEventListener('fullscreenchange', syncDashboardFontContext);
 document.addEventListener('page:activated', syncDashboardFontContext);
+window.matchMedia('(display-mode: fullscreen)').addEventListener('change', syncDashboardFontContext);
 
 /** 숫자 input(<input type="number">) UI 동기화. statsAutoSwipeSec처럼 0.5 step 허용 카테고리에 사용. */
 function syncNumberUi(category) {
