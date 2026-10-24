@@ -296,3 +296,39 @@
 .fsm-board .total-score {
     display: none;
 }
+/* 코파 이탈리아처럼 합계 칸만 바깥에 추가하고 중앙 점수 배치를 유지합니다. */
+#board.fsm-board[data-fsm-theme="seriea"][data-fsm-aggregate="true"] #team-score-left {
+    margin-right: -30px;
+}
+
+#board.fsm-board[data-fsm-theme="seriea"][data-fsm-aggregate="true"] #team-score-right {
+    margin-left: -30px;
+}
+
+#board.fsm-board[data-fsm-theme="seriea"][data-fsm-aggregate="true"] .teams-right {
+    position: relative;
+}
+
+/* 원정 합계 칸의 아래 사선 끝까지 기존 가로 팀컬러 띠만 연장합니다. */
+#board.fsm-board[data-fsm-theme="seriea"][data-fsm-aggregate="true"] .teams-right::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    bottom: -5px;
+    width: 6px;
+    height: 6px;
+    background: var(--fsm-away-primary-color);
+    box-shadow: inset 0 1px var(--fsm-away-number-color);
+    pointer-events: none;
+}
+
+/* 중앙 로고는 돌출된 모양을 유지하되 본체 높이를 늘리지 않습니다. */
+#board.fsm-board[data-fsm-theme="seriea"][data-fsm-aggregate="true"] .score-div {
+    box-sizing: border-box;
+    width: 80px;
+    height: 48px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

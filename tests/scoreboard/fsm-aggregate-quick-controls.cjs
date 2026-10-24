@@ -9,7 +9,7 @@ const { openPage, settle } = require('../tactics/helpers');
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 1080 } });
     page.on('pageerror', error => errors.push(error.message));
-    for (const theme of ['cl', 'default']) {
+    for (const theme of ['cl', 'default', 'seriea', 'coppaitalia']) {
       await page.evaluate(theme => applyTheme(theme, null), theme);
       await page.waitForFunction(() => !pendingThemeLink);
       await page.evaluate(() => {

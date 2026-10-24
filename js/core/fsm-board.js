@@ -165,7 +165,7 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
   'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligamx', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
   'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'thirdliga', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'singapore', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
-  'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'concacafcentral', 'concacafcaribbean', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
+  'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'concacafcentral', 'concacafcaribbean', 'facup', 'carabao', 'seriea', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
   // DFB-포칼은 단판 경기라 합계 점수를 쓰지 않는다(체크해도 표시하지 않음).
 ]);
 
@@ -1008,6 +1008,7 @@ function applyTheme(theme, logoUrl) {
       acgl: ['#E9DFC6', '#48002B'],
       acl2: ['#73BBF6', '#181559'],
       coupedefrance: ['#000121', '#ffffff'],
+      seriea: ['#ffffff', '#2A235B'],
       coppaitalia: ['#661729', '#ffffff'],
       facup: ['#ED1C24', '#ffffff'],
       carabao: ['#008F5E', '#ffffff'],

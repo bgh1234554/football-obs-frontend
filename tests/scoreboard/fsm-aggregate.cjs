@@ -17,7 +17,7 @@ const { openPage, settle } = require('../tactics/helpers');
       'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
       'bundes', 'bundes2', 'eliteserien', 'ligue1', 'ligamx', 'ligue2', 'serieb', 'greecesuperleague', 'swisssuperleague', 'ligaportugal', 'eredivisie',
       'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan', 'fnl', 'fnl2a', 'czech', 'romanian', 'belarus', 'kleague', 'jleague', 'unl', 'cnl', 'thirdliga', 'aleague', 'uzbek', 'ukrainian', 'ukrainianfirst', 'saudi', 'singapore', 'chinesesuperleague', 'saudikingscup', 'brazilseriea',
-      'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'concacafcentral', 'concacafcaribbean', 'facup', 'carabao', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
+      'libertadores', 'sudamericana', 'recopa', 'cafcl', 'cafcc', 'concacafcc', 'concacafcentral', 'concacafcaribbean', 'facup', 'carabao', 'seriea', 'coppaitalia', 'coupedefrance', 'cdr', 'korcup'
     ]);
     for (const theme of themes) {
       await page.evaluate(theme => {
@@ -111,7 +111,7 @@ const { openPage, settle } = require('../tactics/helpers');
             }
             if (theme === 'romanian') assert(m.smallNumbersFit, context);
             assert.deepEqual(m.values, ['3', '4'], context);
-            if (theme.startsWith('efl')) m.colors.forEach(colors => assert.deepEqual(colors, m.timerColors, context));
+            if (theme.startsWith('efl') || theme === 'seriea') m.colors.forEach(colors => assert.deepEqual(colors, m.timerColors, context));
             if (theme === 'ligamx') m.colors.forEach(colors => assert.deepEqual(colors, m.teamColors, context));
             const expectedColors = {
               ligue1: ['rgb(8, 95, 255)', 'rgb(255, 255, 255)'],
