@@ -184,7 +184,7 @@ async function fullscreenApi(browser) {
   near(returned.fraction, edited.fraction, 'Fullscreen API edit is normalized on return', 0.003);
   // 전체화면 진입만으로 이름 크기를 바꾸지 않고, 대각선 초기화 이후에만 분리한다.
   for (const split of ['on', 'off']) {
-    await page.evaluate(() => { cameraFullscreenPitchFontActive = false; });
+    await page.locator('.layout-big .lp-lineup-resize').dblclick(); await settle(page);
     await page.evaluate(split => { setSetting('splitLineup', split); setSetting('lineupNameSize', 15); }, split);
     await settle(page);
     await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
@@ -205,6 +205,16 @@ async function fullscreenApi(browser) {
     assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '15px');
     await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 17);
+    await page.evaluate(() => document.exitFullscreen()); await settle(page);
+    // 일반 화면에서 초기화한 피치에는 이전 전체화면 폰트 상태가 따라오면 안 된다.
+    await page.locator('.layout-big .lp-lineup-resize').dblclick(); await settle(page);
+    const regularReset = await check(page);
+    await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
+    const regularEntered = await check(page);
+    near(regularEntered.width, regularReset.width, 'regular reset keeps pitch width on fullscreen entry');
+    near(regularEntered.height, regularReset.height, 'regular reset keeps pitch height on fullscreen entry');
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
+    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '15px');
     await page.evaluate(() => document.exitFullscreen()); await settle(page);
   }
   await page.close();

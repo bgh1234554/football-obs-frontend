@@ -354,8 +354,13 @@ function isCameraFullscreenPitchFont() {
 
 /** 전체화면에서 피치를 초기화한 경우에만 확대된 피치용 선수명 크기를 사용한다. */
 function resetCameraFullscreenPitchFont() {
-  if (!document.querySelector('#page-main-big.active')
-    || !(document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches)) return;
+  if (!document.querySelector('#page-main-big.active')) return;
+  if (!(document.fullscreenElement || window.matchMedia('(display-mode: fullscreen)').matches)) {
+    // 일반 화면에서 피치를 다시 초기화하면 이전 확대 피치용 폰트 상태도 해제한다.
+    cameraFullscreenPitchFontActive = false;
+    syncDashboardFontContext();
+    return;
+  }
   cameraFullscreenPitchFontActive = true;
   setSetting('lineupNameSize', 14);
 }
