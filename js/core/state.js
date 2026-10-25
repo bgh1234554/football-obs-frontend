@@ -269,8 +269,9 @@
       if(!state.homeLogoManual && legacyHomeManual && state.homeLogo) state.homeLogoManual = state.homeLogo;
       if(!state.awayLogoManual && legacyAwayManual && state.awayLogo) state.awayLogoManual = state.awayLogo;
       if(state.manualMode){
-        state.homeLogo = state.homeLogoManual || '';
-        state.awayLogo = state.awayLogoManual || '';
+        // 자동 경기에서 이어 받은 표시 로고도 수동 모드의 새로고침에서는 유지합니다.
+        state.homeLogo = state.homeLogoManual || state.homeLogo || '';
+        state.awayLogo = state.awayLogoManual || state.awayLogo || '';
       }else{
         if(legacyHomeManual && !('homeLogoManual' in (saved || {}))) state.homeLogo = '';
         if(legacyAwayManual && !('awayLogoManual' in (saved || {}))) state.awayLogo = '';

@@ -24,7 +24,21 @@ const { openPage, settle } = require('../tactics/helpers');
       }, existingManual);
       const expected = [existingManual || 'current-home', 'current-away'];
       assert.deepEqual(transition.logos, expected, 'manual transition preserves current logos and explicit manual choices');
-      assert.deepEqual(transition.manual, expected, 'inherited logos survive state restoration');
+      assert.deepEqual(transition.manual, [existingManual, ''], 'inherited logos remain separate from explicit manual choices');
+      await page.reload(); await settle(page);
+      assert.deepEqual(await page.evaluate(() => [state.homeLogo, state.awayLogo]), expected, 'manual display logos survive reload');
+      const nextLogos = await page.evaluate(() => {
+        const originalConfirm = window.confirm;
+        window.confirm = () => true;
+        try {
+          el.manualModeToggle.checked = false; toggleManualMode();
+          const next = { matchInfo: { fixtureId: 456, homeTeamLogo: 'next-home', awayTeamLogo: 'next-away' }, events: [] };
+          applyFixtureToState(next, { resetRunning: false });
+          el.manualModeToggle.checked = true; toggleManualMode();
+          return [state.homeLogo, state.awayLogo];
+        } finally { window.confirm = originalConfirm; }
+      });
+      assert.deepEqual(nextLogos, [existingManual || 'next-home', 'next-away'], 'next fixture inherits its own logos while preserving explicit choices');
     }
     // 빈 슬롯에서도 양쪽 로고를 교체하고, 자동 갱신과 경기 전환의 범위를 확인합니다.
     for (const manual of [true, false]) {
@@ -74,16 +88,25 @@ const { openPage, settle } = require('../tactics/helpers');
       }
       console.log('PASS scoreboard logo upload, persistence and scope:', manual ? 'manual' : 'automatic');
     }
+    if (process.argv.includes('--controls-only')) return;
     await page.evaluate(() => { state.manualMode = false; state.homeLogoUpload = state.awayLogoUpload = ''; });
     await page.evaluate(() => {
-      // 전용 원형 슬롯이 있는 테마는 바깥 팀 칸 전체를 채우는 디자인이 아니다.
+      // 공유 테마 변수명이나 calc() 표현식을 추측하지 않고 실제 CSS의 가로·세로 한계를 잰다.
       window.logoTrimTestFrame = img => {
-        const style = getComputedStyle(img);
-        const theme = img.closest('.fsm-board').dataset.fsmTheme;
-        const size = parseFloat(style.getPropertyValue(`--${theme}-logo-size`));
-        const box = getComputedStyle(img.parentElement);
-        return Number.isFinite(size) ? [size, size]
-          : [parseFloat(box.getPropertyValue('--fsm-logo-width')), parseFloat(box.getPropertyValue('--fsm-logo-height'))];
+        const original = img.getAttribute('style');
+        try {
+          img.style.setProperty('--logo-fit-width', '1');
+          img.style.setProperty('--logo-fit-height', '1');
+          // 반대 축의 제한을 풀어 각 축에 허용된 최대 크기를 구한다.
+          img.style.setProperty('--logo-fit-aspect', '1000000');
+          const width = parseFloat(getComputedStyle(img).width);
+          img.style.setProperty('--logo-fit-aspect', '0.000001');
+          const height = parseFloat(getComputedStyle(img).height);
+          return [width, height];
+        } finally {
+          if (original === null) img.removeAttribute('style');
+          else img.setAttribute('style', original);
+        }
       };
       const logo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect x="40" y="15" width="80" height="40" fill="blue"/></svg>');
       state.homeLogo = logo; state.awayLogo = logo;

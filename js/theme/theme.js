@@ -395,11 +395,9 @@
     el.manualSection.classList.toggle('visible', turningOn);
     // 5. ON 시 현재 state 값을 입력 필드에 미리 채워 넣음
     if(turningOn){
-      // 수동 로고가 없으면 현재 경기 로고를 이어 받아 전환과 새로고침 때 유지합니다.
-      state.homeLogoManual = state.homeLogoManual || state.homeLogo || '';
-      state.awayLogoManual = state.awayLogoManual || state.awayLogo || '';
-      state.homeLogo = state.homeLogoManual || '';
-      state.awayLogo = state.awayLogoManual || '';
+      // 현재 경기 로고는 표시값으로만 이어 받고, 직접 지정한 수동 로고와 구분합니다.
+      state.homeLogo = state.homeLogoManual || state.homeLogo || '';
+      state.awayLogo = state.awayLogoManual || state.awayLogo || '';
       syncManualInputs();
     }else{
       state.homeLogo = '';
