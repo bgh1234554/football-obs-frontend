@@ -97,6 +97,7 @@ function _lpStatPageCount() {
 /** lp-stat 안의 이벤트/상대전적 패널 스크롤 컨테이너 */
 function _lpEventsScrollEl(mode = 'events') {
   let panelSelector = '[data-events-panel]';
+  if (mode === 'fixtures') panelSelector = '[data-team-fixtures-panel]';
   if (mode === 'hth') panelSelector = '[data-hth-panel]';
   if (mode === 'bench_home') panelSelector = '[data-bench-home-panel]';
   if (mode === 'bench_away') panelSelector = '[data-bench-away-panel]';
@@ -106,11 +107,12 @@ function _lpEventsScrollEl(mode = 'events') {
   if (mode === 'bench_home' || mode === 'bench_away') return panel?.querySelector('.bc-body') || null;
   if (mode === 'match_info') return panel?.querySelector('.mi-body') || null;
   if (mode === 'injuries') return panel?.querySelector('.ic-body') || null;
+  if (mode === 'fixtures') return panel?.querySelector('.tf-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
 /** 현재 모드가 자동 스크롤 대상인지 판단한다. 교체 명단은 패널이 스크롤 필요 상태일 때만 포함한다. */
 function _lpModeUsesPanelAutoScroll(mode) {
-  if (mode === 'events' || mode === 'hth') return true;
+  if (mode === 'events' || mode === 'hth' || mode === 'fixtures') return true;
   if (mode === 'bench_home' || mode === 'bench_away') {
     const attr = mode === 'bench_home' ? 'data-bench-home-panel' : 'data-bench-away-panel';
     return document.querySelector(`.lp-stat [${attr}]`)
@@ -183,8 +185,17 @@ function _lpCancelEventsScrollByUser() {
   if (!_lpModeUsesPanelAutoScroll(_lpStatCycle.mode)) return;
   _lpStopEventsScroll();
   if (_lpIsCycleAutoOn()) {
-    _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), _lpGetIntervalMs());
+    _lpAuto.timer = setTimeout(() => _lpAdvanceAfterPanelScroll(), _lpGetIntervalMs());
   }
+}
+
+/** 최근→다음 5경기를 모두 보여 준 뒤 다음 패널로 이동한다. */
+function _lpAdvanceAfterPanelScroll() {
+  if (_lpStatCycle.mode === 'fixtures') {
+    if (_lpStatCycle.fixturesPage === 0) { window.lpStatShowTeamFixturesPage(1); return; }
+    if (_lpAutoCycleModes().length < 2) { window.lpStatShowTeamFixturesPage(0); return; }
+  }
+  lpStatAutoAdvance();
 }
 
 /** 이벤트 패널에 wheel/touch/스크롤바드래그/키보드/scroll 리스너를 걸어 사용자 개입 시 _lpCancelEventsScrollByUser 호출. */
@@ -228,9 +239,9 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
   _lpStopEventsScroll();
   let el = _lpEventsScrollEl(mode);
   const syncElement = () => { el = _lpAuto.scrollEl || el; };
-  const scrollDown = mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info' || mode === 'injuries';
+  const scrollDown = mode === 'fixtures' || mode === 'standings' || mode === 'bench_home' || mode === 'bench_away' || mode === 'match_info' || mode === 'injuries';
   if (!el) {
-    _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
+    _lpAuto.scrollTimer = setTimeout(() => _lpAdvanceAfterPanelScroll(), intervalMs);
     return;
   }
   _lpAuto.scrollEl = el;
@@ -288,14 +299,14 @@ function _lpStartEventsScroll(intervalMs, mode = 'events', _retryCount = 0, opti
       _lpClearEventsScrollListeners();
       // 스크롤할 내용 자체가 없는 경우 — 고정 유지 시간이 있으면(새 이벤트 강조 표시) 그만큼은
       // 최소한 보장하고 그 위에 슬라이드 시간을 더한다.
-      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), totalDwellMs);
+      _lpAuto.scrollTimer = setTimeout(() => _lpAdvanceAfterPanelScroll(), totalDwellMs);
       return;
     }
 
     const finishAtEnd = () => {
       syncElement();
       _lpSetEventsScrollTop(el, endTop);
-      _lpAuto.scrollTimer = setTimeout(() => lpStatAutoAdvance(), waitAfter);
+      _lpAuto.scrollTimer = setTimeout(() => _lpAdvanceAfterPanelScroll(), waitAfter);
     };
 
     // 4) 경과 시간 비율로 위치를 이동한다. 끝에 도달하면 마지막 대기 시간을 거쳐 다음 패널로 전환한다.
@@ -475,11 +486,7 @@ function _lpAutoStart() {
     const generation = _lpAuto.generation;
     lpStatEnsureModeReady(mode).then(() => {
       if (generation === _lpAuto.generation && _lpStatCycle.mode === mode && _lpIsCycleAutoOn() && !_lpStatCycle.paused && !_lpAuto.timer) {
-        _lpAuto.timer = setTimeout(() => {
-          if (_lpStatCycle.fixturesPage === 0) window.lpStatShowTeamFixturesPage(1);
-          else if (_lpAutoCycleModes().length < 2) window.lpStatShowTeamFixturesPage(0);
-          else lpStatAutoAdvance();
-        }, intervalMs);
+        _lpStartEventsScroll(intervalMs, mode);
       }
     });
   } else if (mode === 'injuries') {

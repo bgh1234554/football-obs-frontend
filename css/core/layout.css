@@ -855,6 +855,22 @@
     .layout-big .lp-stat    { flex: 1; }
     /* 팬 반응(채팅 placeholder) — 다른 lp 패널들과 동일한 dashed border + 라벨 톤 유지.
        기본 .lp 스타일을 그대로 사용해서 시각적 일관성 확보 (별도 override X). */
+    .fan-reaction-close {
+      position: absolute; top: 7px; right: 7px; z-index: 50;
+      width: 24px; height: 24px; padding: 0;
+      display: grid; place-items: center;
+      border: 1px solid rgba(248, 113, 113, .3); border-radius: 7px;
+      background: rgba(248, 113, 113, .08);
+      color: #f87171; cursor: pointer;
+      opacity: 0; pointer-events: none;
+      transition: opacity 120ms ease, background 120ms ease, border-color 120ms ease;
+    }
+    :is(.lp-chat-big, .lp-cam-chat):is(:hover, :focus-within) .fan-reaction-close {
+      opacity: 1; pointer-events: auto;
+    }
+    .fan-reaction-close svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    .fan-reaction-close:hover { background: rgba(248, 113, 113, .2); border-color: rgba(248, 113, 113, .65); }
+    .fan-reaction-close:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
     /* 캠/채팅 컬럼 — 캠 큼 페이지에서는 OBS 위에 실제 캠 영상을 합성하므로 점선 테두리 + 라벨을 항상 숨김.
        컬럼 자리(flex 폭)는 유지해 다른 컬럼 비율 영향 X. */
     .layout-big .lp-cam-big {

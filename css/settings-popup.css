@@ -448,6 +448,20 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .ev-title-bar .ev-title[data-panel-font] { pointer-events: auto; }
 [data-panel-font]:focus-visible { outline: 1px solid var(--control-accent-text); outline-offset: 2px; }
 
+.sp-slider-reset {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), .18);
+  border-radius: 5px;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255), .06);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sp-slider-reset:hover:not(:disabled) { background: rgba(var(--ui-ink-rgb, 255, 255, 255), .14); }
+.sp-slider-reset:disabled { opacity: .45; cursor: default; }
+#settingsBackdrop .sp-slider-cluster input[type="range"] { width: 140px; }
+
 .sp-slider-cluster {
   display: inline-flex;
   align-items: center;

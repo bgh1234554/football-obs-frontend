@@ -1140,7 +1140,7 @@ const injuryReasonFitQueued = new WeakSet();
 const injuryReasonFitWidths = new WeakMap();
 let injuryReasonFitObserver = null;
 
-/** 이름은 유지하고 사유만 최소 8px까지 축소한다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
+/** 이름은 유지하고 사유의 최소 크기도 명단 글씨에 비례시킨다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
 function fitInjuryReasons(panel) {
   panel?.querySelectorAll('.has-inline-reason .dp-item-name').forEach(label => {
     const reason = label.querySelector('.ic-reason');
@@ -1148,7 +1148,9 @@ function fitInjuryReasons(panel) {
     label.classList.remove('ic-reason-wrap', 'ic-reason-newline');
     reason.style.removeProperty('font-size');
     const base = parseFloat(getComputedStyle(reason).fontSize);
-    const minimum = Math.min(8, base);
+    // 기본 명단 13px에서의 하한 8px 비율을 큰 글씨에서도 유지한다.
+    const nameSize = parseFloat(getComputedStyle(label).fontSize);
+    const minimum = Math.min(nameSize * 8 / 13, base);
     // 선수 이름 때문에 이미 필요한 줄 수는 그대로 유지한다.
     label.classList.add('ic-reason-wrap');
     const previousDisplay = reason.style.display;
@@ -1420,7 +1422,7 @@ function buildMatchInfoCyclePanel(effectiveData) {
   // DOM에 삽입된 뒤 setCoachElement/setRefereeElement(벤치 패널과 동일한 함수)가 API 유무에 따라
   // 텍스트 + 더블클릭 편집 가능 여부(dataset.apiMissing)까지 함께 채워야 캠 큰 화면에서도
   // 캠 작음 화면(벤치 패널 하단)과 똑같이 더블클릭으로 감독/주심을 직접 입력할 수 있다.
-  return `<div class="st-title-bar mi-panel-title">경기 정보</div>
+  return `<div class="st-title-bar mi-panel-title"${panelFontTitleAttrs('matchInfoNameSize')}>경기 정보</div>
 <div class="mi-body">
   <div class="mi-section">
     <div class="mi-row" data-mi-coach="home"><span class="mi-label" style="--mi-label-color:${dpEscape(homeAccent)}">홈 감독</span><span class="mi-value dp-coach-name">-</span></div>

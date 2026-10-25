@@ -52,6 +52,30 @@ assert.equal(fire(run('_lpAuto.timer')),10000,'user scroll restores ordinary tim
 start(30);run('lpStatTogglePause()');assert.equal(frames.size,0);assert.equal(timers.size,0);
 for(const invalid of [0,-1,NaN,Infinity]) assert.equal(Object.keys(context._lpEventScrollOptions(invalid)).length,0);
 run('_lpStatCycle.paused=false');
+// 최근·예정 경기에도 같은 대기/스크롤/끝 대기를 적용하고 두 페이지를 순서대로 넘긴다.
+const showFixtures = context.lpStatShowTeamFixturesPage;
+const selectedPages = [];
+context.lpStatShowTeamFixturesPage = index => selectedPages.push(index);
+run("_lpAutoClear(); _lpStatCycle.mode='fixtures'; _lpStatCycle.fixturesPage=0;");
+now=0; advanced=0;
+run("_lpStartEventsScroll(10000,'fixtures')"); frame(); frame();
+assert.equal(list.scrollTop,0);
+assert.equal(fire(run('_lpAuto.scrollTimer')),1000);
+now=3250; frame(); assert.equal(list.scrollTop,500);
+now=6500; frame(); assert.equal(list.scrollTop,1000);
+assert.equal(selectedPages.length,0,'do not change page before the end hold');
+assert.equal(fire(run('_lpAuto.scrollTimer')),2500);
+assert.deepEqual(selectedPages,[1],'recent scroll completes before upcoming page');
+run('_lpStatCycle.fixturesPage=1; _lpAdvanceAfterPanelScroll()');
+assert.equal(advanced,1,'upcoming scroll completes before the next panel');
+run("_lpAutoCycleModes=()=>['fixtures']; _lpAdvanceAfterPanelScroll()");
+assert.deepEqual(selectedPages,[1,0],'a fixtures-only cycle returns to recent');
+run("_lpAutoClear(); _lpStartEventsScroll(10000,'fixtures')"); frame(); frame();
+listeners.get('wheel')(); assert.equal(frames.size,0,'manual fixture scrolling interrupts animation');
+assert.equal(fire(run('_lpAuto.timer')),10000);
+assert.deepEqual(selectedPages,[1,0,0],'manual interruption retains fixture page order');
+run('_lpAutoClear()');
+context.lpStatShowTeamFixturesPage=showFixtures;
 // 실제 자동 전환 함수로 이전 패널 복귀를 검사한다.
 context.lpStatAutoAdvance=originalAdvance;
 run(" lpStatAvailableModes=()=>['stats','events','hth','fixtures']; _lpAutoCycleModes=()=>['stats','events','hth','fixtures']; _lpEnsureModeReadyUnlessAutoHandled=()=>{}; lpStatUpdateVisibility=()=>{};");

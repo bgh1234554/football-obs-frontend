@@ -104,8 +104,11 @@
       const rows = dataRows[periods[viewPage]] || [];
       const bar = node('div', 'ev-title-bar');
       if (!isBig) bar.append(window.createSmallPanelModeButtons('fixtures', fixture));
-      bar.append(node('div', 'ev-title', titles[viewPage]));
+      const title = node('div', 'ev-title', titles[viewPage]);
+      bindPanelFontTitle(title, 'teamFixturesNameSize');
+      bar.append(title);
       const body = node('div', 'tf-body');
+      body.dataset.period = periods[viewPage];
       ['home', 'away'].forEach((side, index) => {
         const section = node('section', 'tf-team');
         const header = node('div', 'dp-side-header');
@@ -160,12 +163,19 @@
       const next = node('button', 'st-arrow', '›');
       next.type = 'button'; next.title = '다음 페이지'; next.onclick = () => select(1 - viewPage);
       controls.append(prev, dots, next);
-      container.replaceChildren(bar, body, controls);
+      // 같은 페이지를 다시 그릴 때 자동 스크롤 대상과 사용자 위치를 유지한다.
+      const previousBody = container.querySelector('.tf-body');
+      if (previousBody?.dataset.period === body.dataset.period) {
+        previousBody.replaceChildren(...body.children);
+        container.replaceChildren(bar, previousBody, controls);
+      } else {
+        container.replaceChildren(bar, body, controls);
+      }
     });
     requestAnimationFrame(alignCardRows);
   }
 
-  /** 긴 이름과 승부차기가 있어도 같은 팀 카드들의 점수·날짜 시작선을 맞춘다. 넘치는 이름은 폰트를 줄이고 3줄로 자른다. */
+  /** 긴 이름과 승부차기가 있어도 점수·날짜 시작선을 맞추고, 커진 내용은 팀별 영역에서 스크롤한다. */
   function alignCardRows() {
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(panel => {
       if (!panel.offsetWidth) return;
@@ -176,10 +186,11 @@
         label.style.minHeight = '0';
         label.textContent = isLongName('teamName') ? label.dataset.longName : label.dataset.shortName;
         const initialSize = parseFloat(getComputedStyle(label).fontSize);
-        /** 카드 이름은 3줄 이내, 팀 헤더는 한 줄 폭 안에 들어가는지. */
+        // 카드 이름은 지정한 크기로 모두 표시한다. 늘어난 높이는 스크롤 영역이 수용한다.
+        if (isCard) { label.style.minHeight = ''; return; }
+        /** 팀 헤더가 한 줄 폭 안에 들어가는지 확인한다. */
         const fits = () => {
           const css = getComputedStyle(label);
-          if (isCard) return label.offsetHeight <= Math.ceil(parseFloat(css.lineHeight) * 3) + 1;
           // 말줄임된 flex 텍스트는 scrollWidth가 같을 수 있어 실제 글자 폭을 잰다.
           const range = document.createRange();
           range.selectNodeContents(label);
@@ -189,7 +200,7 @@
         };
         /** 원래 글자 크기부터 다시 측정해 긴 이름·단축명 모두 같은 기준으로 맞춥니다. */
         const shrink = () => {
-          for (let size = initialSize; size >= 9; size -= 0.5) {
+          for (let size = initialSize; size >= initialSize * 0.8; size -= 0.5) {
             label.style.fontSize = `${size}px`;
             if (fits()) return true;
           }
@@ -197,7 +208,7 @@
         };
         if (!shrink()) {
           label.textContent = label.dataset.shortName;
-          if (!shrink() && isCard) label.classList.add('tf-name-clamped');
+          shrink();
         }
         label.style.minHeight = '';
       });
@@ -210,6 +221,14 @@
           cells.forEach(cell => { cell.style.minHeight = `${height}px`; });
         });
       }
+      // 두 팀의 공간은 같은 높이로 유지하고 넘치는 전체 본문만 한 번 스크롤한다.
+      const minimum = Math.max(0, ...[...panel.querySelectorAll('.tf-team')].map(team => {
+        const style = getComputedStyle(team);
+        return team.querySelector('.dp-side-header').offsetHeight
+          + (team.querySelector('.tf-content')?.firstElementChild?.offsetHeight || 0)
+          + parseFloat(style.rowGap) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      }));
+      panel.style.setProperty('--tf-team-min-height', `${Math.ceil(minimum)}px`);
     });
   }
   document.addEventListener('DOMContentLoaded', () => {

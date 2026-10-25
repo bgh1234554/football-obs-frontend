@@ -37,7 +37,7 @@ const { openPage } = require('../tactics/helpers');
       el.style.height = '400px';
       el.style.flex = '0 0 400px';
     });
-    assert.equal(await panel.locator('.tf-body').evaluate(el => el.scrollHeight <= el.clientHeight + 1), true);
+    assert.equal(await panel.locator('.tf-body').evaluate(el => getComputedStyle(el).overflowY === 'auto' && el.clientHeight > 0), true);
     const checkHalves = async locator => {
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const geometry = await locator.locator('.tf-team').evaluateAll(teams => teams.map(team => {
@@ -78,17 +78,90 @@ const { openPage } = require('../tactics/helpers');
     assert.equal(await bigPanel.locator('.tf-result').count(), 0);
     await checkHalves(bigPanel);
     await page.screenshot({ path: 'screenshots/tests/team-fixtures-big-preview.png' });
+    // 확대해도 두 뷰의 5경기와 이전/다음 페이지 조작을 모두 유지한다.
+    for (const view of ['main-big', 'main-small']) {
+      await page.evaluate(view => {
+        activatePage(view);
+        if (view === 'main-big') lpStatShowTeamFixturesPage(0);
+        else teamFixturesShow(testFixture);
+      }, view);
+      const current = view === 'main-big' ? bigPanel : panel;
+      await page.waitForFunction(selector => document.querySelectorAll(`${selector} .tf-card`).length === 10,
+        view === 'main-big' ? '.lp-stat' : '.lp-events-s');
+      await current.locator('.ev-title').click();
+      const popup = page.locator('.panel-font-popover');
+      assert.equal(await popup.getAttribute('data-category'), 'teamFixturesNameSize');
+      await popup.locator('input').evaluate(input => {
+        input.value = '21'; input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await page.keyboard.press('Escape');
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.equal(await page.locator('input[data-settings-slider="teamFixturesNameSize"]').inputValue(), '21');
+      await checkHalves(current);
+      const cards = await current.locator('.tf-card').evaluateAll(cards => cards.map(card => {
+        const name = card.querySelector('.tf-opponent');
+        const score = card.querySelector('.tf-score');
+        return { font: parseFloat(getComputedStyle(name).fontSize),
+          nameBottom: name.getBoundingClientRect().bottom, scoreTop: score.getBoundingClientRect().top,
+          reachable: card.offsetLeft + card.offsetWidth <= card.closest('.tf-content').scrollWidth + 1 };
+      }));
+      for (const card of cards) {
+        assert(card.font > 13, JSON.stringify(card));
+        assert(card.nameBottom <= card.scoreTop + 1, JSON.stringify(card));
+        assert(card.reachable, JSON.stringify(card));
+      }
+      await current.getByTitle('다음 페이지', { exact: true }).click();
+      await page.waitForFunction(selector => document.querySelector(`${selector} .ev-title`)?.textContent === '다음 5경기',
+        view === 'main-big' ? '.lp-stat [data-team-fixtures-panel]' : '.lp-events-s [data-team-fixtures-panel]');
+      await page.waitForFunction(selector => document.querySelectorAll(`${selector} .tf-card`).length === 10,
+        view === 'main-big' ? '.lp-stat' : '.lp-events-s');
+      assert.equal(await current.locator('.tf-card').count(), 10);
+      assert(await current.locator('.tf-content').evaluateAll(areas => areas.every(area => getComputedStyle(area).overflow === 'visible')),
+        'team sections must not create independent scroll areas');
+      await page.screenshot({ path: `screenshots/tests/team-fixtures-font-${view}.png` });
+      const scrolling = await current.locator('.tf-body').evaluateAll(areas => areas.map(area => {
+        area.scrollTop = area.scrollHeight;
+        area.scrollLeft = area.scrollWidth;
+        return { top: area.scrollTop, left: area.scrollLeft,
+          total: area.scrollHeight, height: area.clientHeight,
+          width: area.clientWidth, totalWidth: area.scrollWidth };
+      }));
+      for (const area of scrolling) {
+        assert(area.height > 0);
+        if (area.total > area.height + 1) assert(area.top > 0, JSON.stringify(area));
+        if (area.totalWidth > area.width + 1) assert(area.left > 0, JSON.stringify(area));
+      }
+      await current.locator('.ev-title').click();
+      await popup.locator('.panel-font-reset').click();
+      await page.keyboard.press('Escape');
+      await current.getByTitle('이전 페이지', { exact: true }).click();
+    }
+    await page.evaluate(() => { activatePage('main-big'); lpStatShowTeamFixturesPage(1); });
     await page.evaluate(() => lpStatCycleNext());
     assert.equal(await bigPanel.isVisible(), false);
     await page.evaluate(() => {
+      setSetting('teamFixturesNameSize', 21);
       setSetting('statCycleModeHth', 'off');
       setSetting('statsAutoSwipeSec', 2.5);
       setSetting('statCycleAuto', 'on');
       lpStatShowTeamFixturesPage(0);
     });
+    await page.waitForFunction(() => {
+      const body = document.querySelector('.lp-stat .tf-body');
+      return _lpStatCycle.fixturesPage === 0 && body.scrollHeight > body.clientHeight && body.scrollTop > 5;
+    });
+    assert(await page.evaluate(() => {
+      const body = _lpAuto.scrollEl;
+      document.dispatchEvent(new Event('theme:colors-changed'));
+      return body.isConnected && body === document.querySelector('.lp-stat .tf-body');
+    }), 'rerender preserves the running scroll target');
+    await page.waitForFunction(() => {
+      const body = document.querySelector('.lp-stat .tf-body');
+      return _lpStatCycle.fixturesPage === 0 && body.scrollTop >= body.scrollHeight - body.clientHeight - 1;
+    });
     await page.waitForFunction(() => _lpStatCycle.mode === 'fixtures' && _lpStatCycle.fixturesPage === 1, null, { timeout: 6000 });
     assert.equal(await bigPanel.locator('.ev-title').innerText(), '다음 5경기');
-    await page.evaluate(() => { setSetting('statCycleAuto', 'off'); setSetting('statCycleModeHth', 'on'); });
+    await page.evaluate(() => { setSetting('statCycleAuto', 'off'); setSetting('statCycleModeHth', 'on'); setSetting('teamFixturesNameSize', 11); });
     await page.evaluate(() => activatePage('main-small'));
     assert.equal(await panel.locator('.tf-result').count(), 10);
     await page.evaluate(() => { applyEventsPanel(testFixture, { animate: false }); scoreaxisStandingsUpdateSmallVisibility(); });

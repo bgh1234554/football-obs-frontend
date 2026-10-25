@@ -369,6 +369,7 @@ function hthCreateTitleBar(container) {
 
   const title = document.createElement('div');
   title.className = 'ev-title';
+  bindPanelFontTitle(title, 'hthNameSize');
   title.textContent = '상대 전적';
   titleBar.appendChild(title);
 
@@ -380,12 +381,25 @@ function hthCheckMetaWrap() {
     const left = row.querySelector('.hth-meta-left');
     const right = row.querySelector('.hth-meta-right');
     if (!left || !right) return;
+    row.classList.remove('hth-meta-row-wrapped');
     const wrapped = right.getBoundingClientRect().top > left.getBoundingClientRect().bottom - 2;
     row.classList.toggle('hth-meta-row-wrapped', wrapped);
   });
 }
 window.addEventListener('resize', () => {
   if (_hthState.mode === 'hth') hthCheckMetaWrap();
+});
+// 패널을 드래그해 폭을 바꾸는 경우에도 현재 글씨 크기로 메타 행을 다시 배치한다.
+document.addEventListener('DOMContentLoaded', () => {
+  const widths = new WeakMap();
+  const observer = new ResizeObserver(entries => {
+    if (entries.some(entry => {
+      const changed = widths.get(entry.target) !== entry.contentRect.width;
+      widths.set(entry.target, entry.contentRect.width);
+      return changed;
+    })) requestAnimationFrame(hthCheckMetaWrap);
+  });
+  document.querySelectorAll('[data-hth-panel]').forEach(panel => observer.observe(panel));
 });
 
 /** 모든 [data-hth-panel]에 HTH 데이터 렌더링 */
@@ -591,6 +605,7 @@ function hthRerenderColors() {
 }
 document.addEventListener('team-nicknames:change', hthRerenderColors);
 document.addEventListener('settings:change', e => {
+  if (e.detail?.category === 'hthNameSize') requestAnimationFrame(hthCheckMetaWrap);
   if (!['teamLogo', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha'].includes(e.detail?.category)) return;
   hthRerenderColors();
 });

@@ -400,7 +400,7 @@ function stCreateControlsProbe() {
   return controls;
 }
 
-/** 데이터 유무와 관계없이 제목·9줄·페이지 버튼의 실제 높이로 기본 패널 크기를 구한다. */
+/** 기본 글씨 크기의 제목·9줄·페이지 버튼 높이로 초기화 크기를 구한다. */
 function stDefaultPanelHeight(panel) {
   const probe = document.createElement('div');
   probe.className = panel.className;
@@ -408,6 +408,9 @@ function stDefaultPanelHeight(panel) {
     position: 'absolute', visibility: 'hidden', pointerEvents: 'none',
     width: `${panel.clientWidth || 300}px`, height: 'auto', flex: 'none',
   });
+  // 사용자 글씨 크기는 내부 표시 개수에만 반영하고 초기화 높이는 기존 기본값으로 유지한다.
+  probe.style.setProperty('--st-name-base-size', '12px');
+  probe.style.setProperty('--st-bar-height', '6px');
   const body = document.createElement('div');
   body.setAttribute('data-stat-panel', '');
   body.style.height = 'auto';

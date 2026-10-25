@@ -1689,7 +1689,6 @@ function resetLineupAllSizes(event, panel) {
   const resetScalePct = _lineupResetScalePct(panel);
   if (typeof setSetting === 'function') setSetting('lineupScale', resetScalePct);
   else document.documentElement.style.setProperty('--lp-lineup-scale', String(resetScalePct / 100));
-  if (typeof resetCameraFullscreenPitchFont === 'function') resetCameraFullscreenPitchFont();
   requestAnimationFrame(() => window.fitLineupNamePills?.());
 }
 

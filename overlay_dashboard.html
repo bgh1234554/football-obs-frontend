@@ -408,7 +408,7 @@
               <span class="sp-label-sub">선발 이름 크기입니다. 기본 12px.</span>
             </div>
             <div class="sp-slider-cluster">
-              <input type="range" min="9" max="20" step="1" data-settings-slider="lineupNameSize" />
+              <input type="range" min="9" max="23" step="1" data-settings-slider="lineupNameSize" />
               <span class="sp-slider-value">12px</span>
             </div>
           </div>
@@ -552,29 +552,88 @@
         </div>
 
         <div class="sp-section" data-sp-tab-section="events" hidden>
-          <div class="sp-section-title">패널 색상</div>
+          <div class="sp-section-title">글씨 크기 조정</div>
           <div class="sp-row">
             <div class="sp-row-label">
-              <span class="sp-label-main">패널 배경 색상</span>
-              <span class="sp-label-sub">이벤트·스탯·명단·팬 반응·경기 정보 패널에 공통 적용됩니다. 선택한 기준색은 유지하고 라이트모드에서는 같은 색 계열의 밝은 톤을 사용합니다.</span>
+              <span class="sp-label-main">경기 스탯 패널 글씨 크기</span>
+              <span class="sp-label-sub">카메라 뷰 기본 16px, 대시보드 뷰 기본 12px. 크기 비율만큼 아래 막대 굵기도 같이 조정됩니다.</span>
             </div>
-            <div class="sp-bg-input-cluster">
-              <select class="sp-select" id="panelColorPreset" aria-label="패널 배경 색상 프리셋">
-                <option value="#0b1220">기본</option>
-                <option value="#111111">검정</option>
-                <option value="#263445">회색</option>
-                <option value="#202329">차콜</option>
-                <option value="#18243b">네이비</option>
-                <option value="#17382b">초록</option>
-                <option value="#102a56">파랑</option>
-                <option value="#431f2a">빨강</option>
-                <option value="#302044">보라</option>
-                <option value="#153b3b">민트</option>
-                <option value="#382a23">갈색</option>
-                <option value="custom">커스텀</option>
-              </select>
-              <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="panelColor" aria-label="정보 패널 배경 색상" /></label>
-              <button type="button" class="sp-secondary-btn" id="panelColorResetBtn">초기화</button>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="21" step="1" data-settings-slider="statsNameSize" />
+              <span class="sp-slider-value">12px</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">이벤트 패널 글씨 크기</span>
+              <span class="sp-label-sub">기본 15px.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="25" step="1" data-settings-slider="eventNameSize" />
+              <span class="sp-slider-value">15px</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">교체/미출전 선수 명단 패널 글씨 크기</span>
+              <span class="sp-label-sub">기본 13px.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="21" step="1" data-settings-slider="benchInjuryNameSize" />
+              <span class="sp-slider-value">13px</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">카메라뷰 경기 정보 패널 글씨 크기</span>
+              <span class="sp-label-sub">카메라 뷰에서만 조정됩니다. 기본 16px.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="21" step="1" data-settings-slider="matchInfoNameSize" />
+              <span class="sp-slider-value">16px</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">상대전적 패널 글씨 크기</span>
+              <span class="sp-label-sub">기본 12px. 점수와 경기 세부 정보도 함께 조정됩니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="21" step="1" data-settings-slider="hthNameSize" />
+              <span class="sp-slider-value">12px</span>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">최근/다음 5경기 패널 글씨 크기</span>
+              <span class="sp-label-sub">기본 11px. 점수와 날짜도 함께 조정됩니다.</span>
+            </div>
+            <div class="sp-slider-cluster">
+              <input type="range" min="10" max="21" step="1" data-settings-slider="teamFixturesNameSize" />
+              <span class="sp-slider-value">11px</span>
+            </div>
+          </div>
+          <div class="sp-section-title">카메라 뷰 패널 구성</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">카메라 뷰 패널 표시</span>
+              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다. 팬 반응 패널의 경우에는 대시보드 뷰에도 적용됩니다</span>
+            </div>
+            <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap sp-big-panel-toggles">
+              <label class="sp-mini-toggle-item"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigLineupVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">라인업</span></label>
+              <label class="sp-mini-toggle-item" title="대시보드 뷰의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
+              <label class="sp-mini-toggle-item" title="스탯·이벤트·상대전적·교체 명단·경기 정보가 표시되는 패널"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigInfoVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">경기 패널</span></label>
+            </div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">팬 반응·스탯 패널 연결</span>
+              <span class="sp-label-sub">ON이면 두 패널이 칼럼을 꽉 채워 함께 리사이즈됩니다. OFF면 각각 독립.</span>
+            </div>
+            <div class="sp-toggle-cluster">
+              <span class="sp-toggle-side" data-side="off">OFF</span>
+              <label class="sp-switch"><input type="checkbox" data-settings-cat="bigPanelLinked" checked/><span class="sp-switch-slider"></span></label>
+              <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
           <div class="sp-section-title">카메라 뷰 우측 하단 패널 전환</div>
@@ -654,72 +713,6 @@
               <span class="sp-toggle-side" data-side="on">ON</span>
             </div>
           </div>
-          <div class="sp-section-title">카메라 뷰 패널 구성</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">카메라 뷰 패널 표시</span>
-              <span class="sp-label-sub">패널을 꺼도 배치와 크기는 유지됩니다. 팬 반응 패널의 경우에는 대시보드 뷰에도 적용됩니다</span>
-            </div>
-            <div class="sp-manual-reset-toggles sp-manual-reset-toggles-nowrap sp-big-panel-toggles">
-              <label class="sp-mini-toggle-item"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigLineupVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">라인업</span></label>
-              <label class="sp-mini-toggle-item" title="대시보드 뷰의 팬 반응에도 적용됩니다."><span class="sp-switch"><input type="checkbox" data-settings-cat="fanReaction" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">팬 반응</span></label>
-              <label class="sp-mini-toggle-item" title="스탯·이벤트·상대전적·교체 명단·경기 정보가 표시되는 패널"><span class="sp-switch"><input type="checkbox" data-settings-cat="bigInfoVisible" checked/><span class="sp-switch-slider"></span></span><span class="sp-mini-toggle-label">경기 패널</span></label>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">팬 반응·스탯 패널 연결</span>
-              <span class="sp-label-sub">ON이면 두 패널이 칼럼을 꽉 채워 함께 리사이즈됩니다. OFF면 각각 독립.</span>
-            </div>
-            <div class="sp-toggle-cluster">
-              <span class="sp-toggle-side" data-side="off">OFF</span>
-              <label class="sp-switch"><input type="checkbox" data-settings-cat="bigPanelLinked" checked/><span class="sp-switch-slider"></span></label>
-              <span class="sp-toggle-side" data-side="on">ON</span>
-            </div>
-          </div>
-          <div class="sp-section-title">점수판</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">점수판 위치</span>
-              <span class="sp-label-sub">화면 상단 점수판의 위치를 조정할 수 있습니다. 테마 탭에서도 설정이 가능합니다.</span>
-            </div>
-            <div class="sp-radio-cluster">
-              <button type="button" class="sp-radio-btn" data-board-position-value="left">좌</button>
-              <button type="button" class="sp-radio-btn" data-board-position-value="center">가운데</button>
-              <button type="button" class="sp-radio-btn" data-board-position-value="right">우</button>
-            </div>
-          </div>
-          <div class="sp-section-title">글씨 크기 조정</div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">이벤트 패널 글씨 크기</span>
-              <span class="sp-label-sub">기본 15px.</span>
-            </div>
-            <div class="sp-slider-cluster">
-              <input type="range" min="10" max="22" step="1" data-settings-slider="eventNameSize" />
-              <span class="sp-slider-value">15px</span>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">교체/미출전 선수 명단 패널 글씨 크기</span>
-              <span class="sp-label-sub">기본 13px.</span>
-            </div>
-            <div class="sp-slider-cluster">
-              <input type="range" min="10" max="18" step="1" data-settings-slider="benchInjuryNameSize" />
-              <span class="sp-slider-value">13px</span>
-            </div>
-          </div>
-          <div class="sp-row">
-            <div class="sp-row-label">
-              <span class="sp-label-main">경기 스탯 패널 글씨 크기</span>
-              <span class="sp-label-sub">기본 12px. 크기 비율만큼 아래 막대 굵기도 같이 조정됩니다.</span>
-            </div>
-            <div class="sp-slider-cluster">
-              <input type="range" min="10" max="18" step="1" data-settings-slider="statsNameSize" />
-              <span class="sp-slider-value">12px</span>
-            </div>
-          </div>
           <div class="sp-section-title">신규 이벤트 표시</div>
           <div class="sp-row">
             <div class="sp-row-label">
@@ -740,6 +733,43 @@
             <div class="sp-slider-cluster">
               <input type="range" min="100" max="250" step="5" data-settings-slider="eventSpotlightScale" />
               <span class="sp-slider-value">100%</span>
+            </div>
+          </div>
+          <div class="sp-section-title">점수판</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">점수판 위치</span>
+              <span class="sp-label-sub">화면 상단 점수판의 위치를 조정할 수 있습니다. 테마 탭에서도 설정이 가능합니다.</span>
+            </div>
+            <div class="sp-radio-cluster">
+              <button type="button" class="sp-radio-btn" data-board-position-value="left">좌</button>
+              <button type="button" class="sp-radio-btn" data-board-position-value="center">가운데</button>
+              <button type="button" class="sp-radio-btn" data-board-position-value="right">우</button>
+            </div>
+          </div>
+          <div class="sp-section-title">패널 색상</div>
+          <div class="sp-row">
+            <div class="sp-row-label">
+              <span class="sp-label-main">패널 배경 색상</span>
+              <span class="sp-label-sub">이벤트·스탯·명단·팬 반응·경기 정보 패널에 공통 적용됩니다. 선택한 기준색은 유지하고 라이트모드에서는 같은 색 계열의 밝은 톤을 사용합니다.</span>
+            </div>
+            <div class="sp-bg-input-cluster">
+              <select class="sp-select" id="panelColorPreset" aria-label="패널 배경 색상 프리셋">
+                <option value="#0b1220">기본</option>
+                <option value="#111111">검정</option>
+                <option value="#263445">회색</option>
+                <option value="#202329">차콜</option>
+                <option value="#18243b">네이비</option>
+                <option value="#17382b">초록</option>
+                <option value="#102a56">파랑</option>
+                <option value="#431f2a">빨강</option>
+                <option value="#302044">보라</option>
+                <option value="#153b3b">민트</option>
+                <option value="#382a23">갈색</option>
+                <option value="custom">커스텀</option>
+              </select>
+              <label class="sp-rating-color-item"><span>색상</span><input type="color" data-settings-color="panelColor" aria-label="정보 패널 배경 색상" /></label>
+              <button type="button" class="sp-secondary-btn" id="panelColorResetBtn">초기화</button>
             </div>
           </div>
           <div class="sp-section-title">경기 정보</div>
@@ -1071,6 +1101,7 @@
              팬 반응은 dp-panel + dp-title 구조로 경기 스탯과 동일하게 맨 윗줄에 제목 + 구분선. -->
         <div class="lp-col">
           <div class="lp lp-chat-big">
+            <button class="fan-reaction-close" type="button" aria-label="팬 반응 패널 숨기기" title="팬 반응 패널 숨기기"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6M11 5l-6 6"/></svg></button>
             <div class="dp-panel">
               <div class="dp-title">팬 반응</div>
             </div>
@@ -1172,6 +1203,7 @@
 
         <!-- 팬 반응 — 카메라 뷰 페이지 lp-chat-big과 동일하게 dp-panel + dp-title 구조로 윗줄 제목 + 구분선. -->
         <div class="lp lp-cam-chat">
+          <button class="fan-reaction-close" type="button" aria-label="팬 반응 패널 숨기기" title="팬 반응 패널 숨기기"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 5 6 6M11 5l-6 6"/></svg></button>
           <div class="dp-panel">
             <div class="dp-title">팬 반응</div>
           </div>
@@ -1306,7 +1338,7 @@
     </div>
     <div class="td-name-size-control td-topbar-secondary" title="전술판 선수 이름 라벨 크기">
       <label for="tactics-name-size-slider" class="td-alpha-label">라벨 크기</label>
-      <input id="tactics-name-size-slider" class="td-alpha-slider td-name-size-slider" type="range" min="7" max="18" step="1" data-settings-slider="tacticsNameSize" aria-label="전술판 선수 이름 라벨 크기">
+      <input id="tactics-name-size-slider" class="td-alpha-slider td-name-size-slider" type="range" min="7" max="21" step="1" data-settings-slider="tacticsNameSize" aria-label="전술판 선수 이름 라벨 크기">
       <span class="td-alpha-value td-name-size-value" data-settings-slider-value="tacticsNameSize">12px</span>
     </div>
     <div class="td-token-size-control td-topbar-secondary" title="전술판 선수 바둑알 크기 (태블릿 등 작은 화면에서 축소 권장)">

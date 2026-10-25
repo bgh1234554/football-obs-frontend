@@ -182,7 +182,7 @@ async function fullscreenApi(browser) {
   const returned = await viewport(page, 1, 960);
   near(returned.width, edited.width, 'Fullscreen API return width');
   near(returned.fraction, edited.fraction, 'Fullscreen API edit is normalized on return', 0.003);
-  // 전체화면 진입만으로 이름 크기를 바꾸지 않고, 대각선 초기화 이후에만 분리한다.
+  // 피치 초기화와 전체화면 전환은 사용자가 설정한 이름 크기를 보존한다.
   for (const split of ['on', 'off']) {
     await page.locator('.layout-big .lp-lineup-resize').dblclick(); await settle(page);
     await page.evaluate(split => { setSetting('splitLineup', split); setSetting('lineupNameSize', 15); }, split);
@@ -191,20 +191,20 @@ async function fullscreenApi(browser) {
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
     await page.locator('.layout-big .lp-lineup-resize').dblclick(); await settle(page);
     const resetPitch = await check(page);
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
     await drag(page, 'lp-lineup-top-edge', 100);
     const narrowedPitch = await drag(page, 'lp-lineup-right-edge', 0, -60);
     await page.locator('.layout-big .lp-lineup-right-edge').dblclick(); await settle(page);
     const widthOnlyReset = await check(page);
     near(widthOnlyReset.width, resetPitch.width, 'fullscreen width reset restores default width after height reduction');
     near(widthOnlyReset.height, narrowedPitch.height, 'fullscreen width reset preserves adjusted height');
-    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 14);
-    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '14px');
-    await page.evaluate(() => setSetting('lineupNameSize', 17));
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
+    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '15px');
     await page.evaluate(() => document.exitFullscreen()); await settle(page);
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
     assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '15px');
     await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
-    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 17);
+    assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
     await page.evaluate(() => document.exitFullscreen()); await settle(page);
     // 일반 화면에서 초기화한 피치에는 이전 전체화면 폰트 상태가 따라오면 안 된다.
     await page.locator('.layout-big .lp-lineup-resize').dblclick(); await settle(page);
