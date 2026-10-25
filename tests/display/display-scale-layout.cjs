@@ -434,12 +434,54 @@ async function testStatsCapacity(page) {
   });
 }
 
+async function testSpotlightPosition(page) {
+  for (const view of ['main-big', 'main-small']) {
+    for (const mode of ['board', 'bottom']) {
+      await page.evaluate(view => activatePage(view), view);
+      await page.waitForTimeout(350);
+      await page.evaluate(({ view, mode }) => {
+        setSetting('eventSpotlight', 'off');
+        setSetting('eventSpotlight', mode);
+        const source = document.createElement('div');
+        source.innerHTML = '<div class="ev-list"><div class="ev-row" data-ev-key="first">First event</div></div>';
+        const id = `${view}-${mode}-${performance.now()}`;
+        evSpotlightAfterRender(id, [source]);
+        source.firstElementChild.insertAdjacentHTML('afterbegin', '<div class="ev-row" data-ev-key="second">New event</div>');
+        evSpotlightMarkNewEvents();
+        evSpotlightAfterRender(id, [source]);
+      }, { view, mode });
+      await page.waitForTimeout(380);
+      const metrics = await page.evaluate(mode => {
+        const host = document.querySelector('.ev-spotlight').getBoundingClientRect();
+        const board = document.getElementById('board').getBoundingClientRect();
+        const page = document.querySelector('.page.active');
+        const column = page.querySelector(page.id === 'page-main-big' ? '.lp-stat' : '.lp-events-s').getBoundingClientRect();
+        const bottom = Math.max(...[...page.querySelectorAll('.layout-wrap .lp')].filter(el => el.offsetHeight).map(el => el.getBoundingClientRect().bottom));
+        return { center: (host.left + host.right) / 2,
+          expected: mode === 'board' ? (board.left + board.right) / 2 : innerWidth / 2,
+          width: host.width, expectedWidth: column.width * 1.25,
+          bottom: host.bottom, expectedBottom: bottom };
+      }, mode);
+      near(metrics.center, metrics.expected, `${view} ${mode} spotlight center`);
+      near(metrics.width, metrics.expectedWidth, `${view} ${mode} spotlight width`);
+      if (mode === 'bottom') near(metrics.bottom, metrics.expectedBottom, `${view} spotlight bottom`);
+    }
+  }
+  await page.evaluate(() => setSetting('eventSpotlight', 'off'));
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     let baseline, alternateBaseline;
     for (const dpr of [1, 1.25, 1.5, 2]) {
       const { page, errors } = await openPage(browser, dpr);
+      if (process.argv.includes('--spotlight')) {
+        await testSpotlightPosition(page);
+        console.log(`PASS: ${dpr * 100}% spotlight coordinates in both views and positions`);
+        await page.close();
+        continue;
+      }
       if (process.argv.includes('--stats')) {
         await testStatsCapacity(page);
         console.log(`PASS: ${dpr * 100}% stats containment, pagination and hidden fan divider`);
@@ -447,6 +489,7 @@ async function testStatsCapacity(page) {
         continue;
       }
       await fillLineups(page);
+      await testSpotlightPosition(page);
       const current = await measure(page);
       assert.equal(current.labels.length, 22, 'both teams render');
       near(current.body.width, 1920, 'physical width');

@@ -61,30 +61,39 @@
     return host;
   }
 
+  // body의 화면 배율이 다시 적용되므로 DOMRect를 먼저 레이아웃 좌표로 되돌린다.
+  const layoutRect = element => typeof getDisplayLayoutRect === 'function'
+    ? getDisplayLayoutRect(element) : element.getBoundingClientRect();
+
   /** 기본 너비·배율·아랫변 위치를 현재 레이아웃에 맞춘다. */
   function place(target) {
     const { layout, column } = target;
     // 패널 영역: 그 페이지의 패널(.lp)들이 차지하는 세로 범위(캠 작음은 이벤트 칼럼이 위쪽 절반뿐이라 전체 패널 기준으로 잰다).
-    const panels = [...layout.querySelectorAll('.lp')].filter(node => node.offsetHeight).map(node => node.getBoundingClientRect());
-    const panelBottom = Math.max(...panels.map(rect => rect.bottom), column.getBoundingClientRect().bottom);
+    const panels = [...layout.querySelectorAll('.lp')].filter(node => node.offsetHeight).map(layoutRect);
+    const columnRect = layoutRect(column);
+    const viewport = typeof toDisplayLayoutPoint === 'function'
+      ? toDisplayLayoutPoint(window.innerWidth, window.innerHeight)
+      : { x: window.innerWidth, y: window.innerHeight };
+    const panelBottom = Math.max(...panels.map(rect => rect.bottom), columnRect.bottom);
     // 설정 100%는 이벤트 패널 칼럼 너비의 1.25배(SPOTLIGHT_BASE_SCALE). 칼럼 너비 그대로는 화면에서 너무 작았다.
     const scale = SPOTLIGHT_BASE_SCALE * Math.max(100, Math.min(250, Number(getSetting('eventSpotlightScale')) || 100)) / 100;
-    host.style.width = `${column.getBoundingClientRect().width}px`;
+    host.style.width = `${columnRect.width}px`;
     host.classList.toggle('is-board', mode() === 'board');
     if (mode() === 'board') {
       // 위: 윗변을 패널 윗선(그 페이지 .lp들의 맨 위)에 맞춰 양옆 패널과 한 줄로 잇고 아래로 커진다.
       // 점수판 배율을 키워 점수판이 패널 윗선보다 내려오면 점수판(시계 포함) 밑으로 물러나 점수판을 가리지 않는다.
       // body에 붙은 고정 레이어라 점수판 영역 높이 계산(캠 작음 패널 배치)에는 들어가지 않는다.
-      const board = document.getElementById('board')?.getBoundingClientRect();
-      const panelTop = Math.min(...panels.map(rect => rect.top), column.getBoundingClientRect().top);
+      const boardElement = document.getElementById('board');
+      const board = boardElement ? layoutRect(boardElement) : null;
+      const panelTop = Math.min(...panels.map(rect => rect.top), columnRect.top);
       host.style.bottom = '';
       host.style.top = `${Math.max(panelTop, board ? board.bottom + SPOTLIGHT_BOARD_GAP : 0)}px`;
-      host.style.left = `${board ? (board.left + board.right) / 2 : window.innerWidth / 2}px`;
+      host.style.left = `${board ? (board.left + board.right) / 2 : viewport.x / 2}px`;
     } else {
       // 하단: 화면 가운데에서 아랫변을 패널 하단선(그 페이지에서 가장 아래 있는 패널)에 고정하고 위로 커진다.
       host.style.top = '';
       host.style.left = '';
-      host.style.bottom = `${Math.max(0, window.innerHeight - panelBottom)}px`;
+      host.style.bottom = `${Math.max(0, viewport.y - panelBottom)}px`;
     }
     host.style.setProperty('--ev-spotlight-scale', String(scale));
   }
@@ -101,7 +110,7 @@
     list.append(row);
     host.replaceChildren(list);
     host.hidden = false;
-    host.style.width = `${target.column.getBoundingClientRect().width}px`;
+    host.style.width = `${layoutRect(target.column).width}px`;
     // 패널과 같은 글자 맞춤을 복제 행에도 적용한 뒤(행 높이 확정) 위치를 잡는다. 아직 투명 상태라 보이지 않는다.
     window.evRefitPanelRows?.(host);
     place(target);
