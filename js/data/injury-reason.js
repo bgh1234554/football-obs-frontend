@@ -46,6 +46,7 @@
     'Broken Hand':       '손 골절',
     'Hip Injury':        '엉덩이 부상',
     'Broken cheekbone':  '광대뼈 골절',
+    'Broken jawbone':    '턱뼈 골절',
     'Head Injury':       '머리 부상',
     'Ribs Injury':       '갈비뼈 부상',
     'Collarbone injury': '쇄골뼈 부상',
