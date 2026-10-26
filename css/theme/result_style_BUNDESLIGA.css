@@ -282,18 +282,3 @@
     height: 48px;
     display: none;
 }
-
-/* 점수 칸은 팀명과 같은 색을 쓰고, 좌우에만 글자색 구분선을 둡니다. */
-.board.fsm-board:is([data-fsm-theme="bundes"], [data-fsm-theme="bundes2"]) .team-score {
-    box-sizing: border-box;
-    border-inline: 2px solid currentColor;
-    border-block: 0;
-}
-.board.fsm-board:is([data-fsm-theme="bundes"], [data-fsm-theme="bundes2"]) #team-score-left {
-    background: var(--fsm-home-primary-color);
-    color: var(--fsm-bundes-home-ink);
-}
-.board.fsm-board:is([data-fsm-theme="bundes"], [data-fsm-theme="bundes2"]) #team-score-right {
-    background: var(--fsm-away-primary-color);
-    color: var(--fsm-bundes-away-ink);
-}

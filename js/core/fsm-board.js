@@ -1468,7 +1468,6 @@ function adjustScoreboardWidth() {
       ['home', 'away'].forEach(side => {
         const bg = teamColors[`${side}Bg`];
         const ink = getColorContract(bg);
-        colorBoard?.style.setProperty(`--fsm-bundes-${side}-ink`, ink);
         setFsmStyle(`.fsm-board .teams-${side === 'home' ? 'left' : 'right'}`, {background: bg, color: ink, borderBottom: 'none', borderTop: 'none'});
         setFsmStyle(`.fsm-board #${side}Name`, {color: ink});
       });
