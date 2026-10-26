@@ -375,6 +375,67 @@ const root = path.resolve(__dirname, '../..');
       }
       await page.screenshot({ path: `screenshots/tests/panel-font-${mode}.png` });
       if (mode === 'hth') {
+        const fallback = await page.evaluate(() => {
+          const list = document.querySelector('.layout-big .hth-list');
+          const row = hthCreateRow({
+            homeTeamName: '아주 긴 홈팀 정식 전체 이름 테스트', awayTeamName: '아주 긴 원정팀 정식 전체 이름 테스트',
+            homeTeamId: 901, awayTeamId: 902,
+            homeScore: 10, awayScore: 11
+          }, { matchInfo: { homeTeamId: 902, awayTeamId: 901, homeTeamNameShort: '원정', awayTeamNameShort: '홈팀' } });
+          list.append(row);
+          row.style.width = '300px';
+          hthCheckMetaWrap();
+          const narrow = [...row.querySelectorAll('.hth-team-name')].map(el => el.textContent);
+          row.style.width = '1200px';
+          hthCheckMetaWrap();
+          const restored = [...row.querySelectorAll('.hth-team-name')].every(el => el.textContent === el.dataset.longName);
+          row.style.width = '300px';
+          row.querySelectorAll('.hth-team-name').forEach(el => { el.dataset.shortName = el.dataset.longName; });
+          hthCheckMetaWrap();
+          const capped = [...row.querySelectorAll('.hth-team-name')].every(el => {
+            const range = document.createRange(); range.selectNodeContents(el);
+            return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size <= 3
+              && el.textContent === el.dataset.longName;
+          });
+          row.remove();
+          return { narrow, restored, capped };
+        });
+        assert.deepEqual(fallback.narrow, ['홈팀', '원정']);
+        assert(fallback.restored, '넓어진 패널은 풀네임을 복원해야 한다');
+        assert(fallback.capped, '단축명도 길면 풀네임을 최대 세 줄로 축소해야 한다');
+        const cycleButton = page.locator('.layout-big .lp-stat-cycle-btn').first();
+        await cycleButton.hover();
+        const choices = page.locator('.lp-stat-mode-choices');
+        await page.waitForTimeout(200);
+        assert.equal(await choices.count(), 0, '0.5초 전에 목록이 나타나면 안 된다');
+        await choices.waitFor({ state: 'visible' });
+        const centerX = async locator => locator.evaluate(el => { const r = el.getBoundingClientRect(); return r.left + r.width / 2; });
+        const iconCenters = [await centerX(cycleButton.locator('svg')), await centerX(choices.locator('svg').first())];
+        assert(Math.abs(iconCenters[0] - iconCenters[1]) < 1, JSON.stringify(iconCenters));
+        assert(await choices.locator('button').count() > 1);
+        const modeOrder = ['stats', 'events', 'bench_home', 'bench_away', 'injuries', 'hth', 'fixtures', 'match_info'];
+        const availableModes = await page.evaluate(() => lpStatAvailableModes());
+        assert.deepEqual(availableModes, modeOrder.filter(mode => availableModes.includes(mode)));
+        assert.deepEqual(await page.locator('.sp-panel-mode-toggles input').evaluateAll(inputs => inputs.map(input => input.dataset.settingsCat)),
+          ['statCycleModeStats', 'statCycleModeEvents', 'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeInjuries', 'statCycleModeHth', 'statCycleModeTeamFixtures', 'statCycleModeMatchInfo']);
+        assert.equal(await choices.evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
+        await page.screenshot({ path: 'screenshots/tests/panel-mode-hover.png' });
+        await choices.getByRole('button', { name: '이벤트', exact: true }).click();
+        assert.equal(await page.evaluate(() => _lpStatCycle.mode), 'events');
+        assert.equal(await choices.count(), 0);
+        await page.evaluate(() => { _lpStatCycle.mode = 'hth'; lpStatUpdateVisibility(); });
+        await page.mouse.move(900, 20);
+        await page.waitForTimeout(250);
+        const originalZoom = await page.evaluate(() => { const value = document.documentElement.style.zoom; document.documentElement.style.zoom = '1.25'; return value; });
+        await page.mouse.move(1, 1);
+        await settle(page);
+        await cycleButton.evaluate(btn => lpStatShowModeChoices(btn));
+        await choices.waitFor({ state: 'visible' });
+        const scaledCenters = [await centerX(cycleButton.locator('svg')), await centerX(choices.locator('svg').first())];
+        assert(Math.abs(scaledCenters[0] - scaledCenters[1]) < 1, JSON.stringify(scaledCenters));
+        await page.mouse.move(900, 20);
+        await page.waitForTimeout(250);
+        await page.evaluate(value => { document.documentElement.style.zoom = value; }, originalZoom);
         const widths = await page.evaluate(() => {
           const list = document.querySelector('.layout-big .hth-list');
           const row = hthCreateRow({
@@ -498,6 +559,51 @@ const root = path.resolve(__dirname, '../..');
       await page.evaluate(() => closeSettingsPopup());
       assert.equal(await page.evaluate(() => getSetting('fanReaction')), 'on');
     }
-    console.log('PASS panel font controls, proportional injury reasons, fixed stats reset heights and match info/head-to-head font settings');
+    // 큰 명단 글씨에서도 긴 이름·IN/OUT 배지가 다음 선수와 겹치거나 열 사이에서 분리되지 않는다.
+    await page.evaluate(() => { activatePage('main-big'); setSetting('roster', 'long'); _lpStatCycle.mode = 'bench_home'; lpStatUpdateVisibility(); });
+    for (const size of [16, 21]) {
+      for (const width of [250, 340, 500]) {
+        const layout = await page.evaluate(({ size, width }) => {
+          setSetting('benchInjuryNameSize', size);
+          const panel = document.querySelector('.layout-big .lp-stat');
+          applyBigColWidth(panel.closest('.layout-big'), width);
+          panel.style.width = `${width}px`; panel.style.height = '420px'; panel.style.flex = '0 0 420px';
+          const players = Array.from({ length: 16 }, (_, i) => ({ playerId: 99000 + i, number: i + 1,
+            name: i === 0 ? 'R. 로프터스-치크' : `선수 ${i}`, nameKoLong: i === 0 ? '루벤 로프터스치크' : '곤살루 아주 긴 선수 이름' }));
+          lineupPanelState.context = {
+            eventsByPlayer: new Map(players.map(p => [lpEventPersonKey(p.playerId, 'home', p.name), { subIn: { time: { elapsed: 73 } }, subOut: { time: { elapsed: 90, extra: 1 } } }])),
+            ratingByPlayer: new Map(players.map(p => [String(p.playerId), 7])), captainSet: new Set()
+          };
+          const host = panel.querySelector('[data-bench-home-panel]');
+          host.innerHTML = buildBenchCyclePanelHtml(players, '긴 이름 테스트', '#60a5fa', 'home');
+          lpBenchCycleRebalance(host);
+          const body = host.querySelector('.bc-body');
+          const rows = [...body.querySelectorAll('.dp-item')];
+          const conflicts = [];
+          for (const row of rows) {
+            const r = row.getBoundingClientRect();
+            for (const item of row.querySelectorAll('.dp-item-name, .dp-sub-marker, .dp-rating')) {
+              for (const rect of item.getClientRects()) if (rect.bottom > r.bottom + 1 || rect.top < r.top - 1) conflicts.push('row height');
+            }
+            const name = row.querySelector('.dp-item-name');
+            for (const marker of row.querySelectorAll('.dp-sub-marker')) {
+              const a = name.getBoundingClientRect(), b = marker.getBoundingClientRect();
+              if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) conflicts.push('name/marker overlap');
+            }
+          }
+          const first = rows[0].querySelector('.dp-item-name');
+          return { conflicts, scroll: body.classList.contains('bc-scroll-mode'),
+            hiddenHeight: first.scrollHeight - first.clientHeight, breaks: first.querySelectorAll('wbr').length,
+            text: first.textContent, overflow: body.scrollWidth - body.clientWidth };
+        }, { size, width });
+        assert.deepEqual(layout.conflicts, [], JSON.stringify({ size, width, layout }));
+        assert.equal(layout.text, '루벤 로프터스치크');
+        assert.equal(layout.breaks, 1);
+        assert(layout.hiddenHeight <= 1 && layout.overflow <= 1, JSON.stringify({ size, width, layout }));
+        if (size === 21 && width === 250) assert(layout.scroll);
+      }
+    }
+    await page.screenshot({ path: 'screenshots/tests/bench-large-font-rows.png' });
+    console.log('PASS panel font controls, proportional injury reasons, fixed stats reset heights, new font settings and multiline roster rows');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

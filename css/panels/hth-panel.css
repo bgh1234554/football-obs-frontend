@@ -127,7 +127,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: calc(70px * var(--hth-ui-scale, 1));
+  /* 점수와 승부차기 표시에 필요한 폭만 쓰고 나머지는 양쪽 팀명에 배분한다. */
+  min-width: 0;
 }
 
 .hth-score-main {

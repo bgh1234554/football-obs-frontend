@@ -113,6 +113,14 @@ function lpBuildRatingHtml(playerId) {
   return `<span class="dp-rating" style="background:${color};color:${foreground}">${rating.toFixed(1)}</span>`;
 }
 
+/** 명단에서도 피치 이름 라벨의 성 경계를 공유하되 필요한 경우에만 줄바꿈한다. */
+function lpBuildRosterNameHtml(player, category) {
+  const selected = pickName(player, category, { preserveSurnameBreaks: true });
+  const raw = getLineupNameWithSurnameBreaks(player, selected);
+  return raw.split(/(?<=[가-힣])-(?=[가-힣])/)
+    .map(part => dpEscape(part).replace(/-(?=\p{L})/gu, '-<wbr>')).join('<wbr>');
+}
+
 /**
  * 벤치/선발-리스트 공통 행 HTML.
  * kind: 'bench' (교체명단 행) | 'starter' (선발 리스트 모드 행)
@@ -143,7 +151,7 @@ function lpBuildRosterRowHtml(player, kind, side) {
   return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
-      <span class="${nameClass}"${title}>${captainHtml}${dpEscape(pickName(player, kind === 'bench' ? 'roster' : 'lineup'))}</span>
+      <span class="${nameClass}"${title}>${captainHtml}${lpBuildRosterNameHtml(player, kind === 'bench' ? 'roster' : 'lineup')}</span>
       ${cardsHtml}
       ${subHtml}
       ${goalsAssistsHtml}

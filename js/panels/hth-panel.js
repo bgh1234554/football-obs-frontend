@@ -218,6 +218,12 @@ function hthResolveLogoUrl(teamId, fallbackLogo, fixtureData) {
 
 /** HTH 경기 한 줄 row DOM 생성 */
 function hthCreateRow(match, fixtureData, panelBackground) {
+  // 상대전적 API에 없는 단축명은 현재 경기의 같은 팀 ID에서 가져온다.
+  const shortName = side => {
+    const info = fixtureData?.matchInfo || {};
+    const sameSide = ['home', 'away'].find(key => Number(info[`${key}TeamId`]) > 0 && Number(info[`${key}TeamId`]) === Number(match[`${side}TeamId`]));
+    return teamNicknameDisplay(match, side, match[`${side}TeamNameShort`] || (sameSide && info[`${sameSide}TeamNameShort`]) || match[`${side}TeamName`] || '');
+  };
   const winner = hthGetWinner(match);
   const colorSide = hthGetColorSide(match, fixtureData);
 
@@ -260,6 +266,8 @@ function hthCreateRow(match, fixtureData, panelBackground) {
   const homeNameEl = document.createElement('span');
   homeNameEl.className = 'hth-team-name';
   homeNameEl.textContent = teamNicknameDisplay(match, 'home', match.homeTeamName || '');
+  homeNameEl.dataset.longName = homeNameEl.textContent;
+  homeNameEl.dataset.shortName = shortName('home');
   bindTeamNicknameLabel(homeNameEl, match, 'home');
   homeSide.appendChild(homeNameEl);
 
@@ -312,6 +320,8 @@ function hthCreateRow(match, fixtureData, panelBackground) {
   const awayNameEl = document.createElement('span');
   awayNameEl.className = 'hth-team-name';
   awayNameEl.textContent = teamNicknameDisplay(match, 'away', match.awayTeamName || '');
+  awayNameEl.dataset.longName = awayNameEl.textContent;
+  awayNameEl.dataset.shortName = shortName('away');
   bindTeamNicknameLabel(awayNameEl, match, 'away');
   awaySide.appendChild(awayNameEl);
   const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
@@ -377,6 +387,27 @@ function hthCreateTitleBar(container) {
 }
 /** 메타 행 wrap 감지 → .hth-meta-row-wrapped 토글 */
 function hthCheckMetaWrap() {
+  // 현재 폭과 글씨 크기로 풀네임을 다시 측정해 세 줄 이상일 때만 단축명을 사용한다.
+  document.querySelectorAll('[data-hth-panel] .hth-team-name[data-long-name]').forEach(label => {
+    label.style.fontSize = '';
+    label.textContent = label.dataset.longName;
+    if (!label.getClientRects().length || !label.clientWidth) return;
+    const lineCount = () => {
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
+    };
+    if (lineCount() >= 3) {
+      label.textContent = label.dataset.shortName;
+      if (lineCount() >= 3) label.textContent = label.dataset.longName;
+    }
+    // 단축명도 세 줄 이상이면 풀네임을 쓰고 네 줄부터만 글씨를 줄인다.
+    let size = parseFloat(getComputedStyle(label).fontSize);
+    while (lineCount() > 3 && size > 1) {
+      size = Math.max(1, size - 0.5);
+      label.style.fontSize = `${size}px`;
+    }
+  });
   document.querySelectorAll('[data-hth-panel] .hth-meta-row').forEach(row => {
     const left = row.querySelector('.hth-meta-left');
     const right = row.querySelector('.hth-meta-right');

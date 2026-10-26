@@ -553,11 +553,11 @@ function lpStatAvailableModes() {
   const hasBenchAway = !!(window._lpStatBenchData?.away);
   const hasMatchInfo = !!(window._lpStatMatchInfoAvailable);
   if (hasEvents) modes.push('events');
-  if (hasHth) modes.push('hth');
-  if (window.hthCanLoadForFixture?.(window._eventsLastData)) modes.push('fixtures');
   if (hasBenchHome) modes.push('bench_home');
   if (hasBenchAway) modes.push('bench_away');
   if (window._lpStatInjuryCount > 0 && (typeof getSetting !== 'function' || getSetting('statCycleModeInjuries') !== 'off')) modes.push('injuries');
+  if (hasHth) modes.push('hth');
+  if (window.hthCanLoadForFixture?.(window._eventsLastData)) modes.push('fixtures');
   if (hasMatchInfo) modes.push('match_info');
   return modes;
 }
@@ -689,8 +689,81 @@ function lpStatUpdateBtn() {
       btn.innerHTML = icon;
       btn.title = label + (autoOn ? ' (자동 전환 중)' : '');
       btn.classList.toggle('is-auto', autoOn);
+      if (!btn.dataset.hoverModesBound) {
+        btn.dataset.hoverModesBound = '1';
+        let hoverTimer;
+        const cancelHover = () => { clearTimeout(hoverTimer); };
+        btn.addEventListener('pointerenter', () => {
+          cancelHover();
+          hoverTimer = setTimeout(() => {
+            if (btn.isConnected && btn.matches(':hover')) lpStatShowModeChoices(btn);
+          }, 500);
+        });
+        btn.addEventListener('pointerleave', cancelHover);
+        btn.addEventListener('pointerdown', cancelHover);
+        btn.addEventListener('click', cancelHover);
+      }
     }
   });
+}
+
+/** 패널 바깥으로 잘리지 않도록 최상위 레이어에 배경 없는 전환 목록을 표시한다. */
+function lpStatShowModeChoices(anchor) {
+  anchor.setAttribute('aria-label', anchor.title || '패널 전환');
+  anchor.title = '';
+  document.querySelector('.lp-stat-mode-choices')?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'lp-stat-mode-choices';
+  menu.setAttribute('popover', 'manual');
+  for (const mode of lpStatAvailableModes()) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const icon = document.createElement('span');
+    icon.className = 'lp-stat-mode-choice-icon';
+    icon.innerHTML = _STAT_CYCLE_ICONS[mode] || _STAT_CYCLE_ICONS.stats;
+    button.append(icon);
+    const label = document.createElement('span');
+    label.textContent = _STAT_CYCLE_LABELS[mode] || mode;
+    button.append(label);
+    button.addEventListener('click', () => {
+      menu.remove();
+      window.evClearBigHeldGlow?.();
+      _lpNewEventReturn = null;
+      _lpAuto.pendingNewEventHoldMs = null;
+      _lpStatCycle.fixturesPage = 0;
+      _lpAutoClear();
+      if (mode === 'stats' && _lpStatCycle.mode !== 'stats') window.stResetAllPanelPages?.();
+      _lpStatCycle.mode = mode;
+      lpStatUpdateVisibility();
+      _lpEnsureModeReadyUnlessAutoHandled(mode);
+    });
+    menu.append(button);
+  }
+  document.body.append(menu);
+  menu.showPopover();
+  const rect = anchor.getBoundingClientRect();
+  const bounds = menu.getBoundingClientRect();
+  // offsetWidth는 정수로 반올림되므로 긴 화면 좌표에 곱하면 수 px 오차가 누적된다.
+  const measure = document.createElement('span');
+  measure.style.cssText = 'position:absolute;width:100px;height:1px;pointer-events:none';
+  menu.append(measure);
+  const scale = measure.getBoundingClientRect().width / 100 || 1;
+  measure.remove();
+  menu.style.left = `${Math.max(0, Math.min(rect.left, innerWidth - bounds.width)) / scale}px`;
+  menu.style.top = `${Math.max(0, rect.top - bounds.height) / scale}px`;
+  const anchorIcon = anchor.querySelector('svg')?.getBoundingClientRect() || rect;
+  const menuIcon = menu.querySelector('svg')?.getBoundingClientRect();
+  if (menuIcon) {
+    const shift = (anchorIcon.left + anchorIcon.width / 2) - (menuIcon.left + menuIcon.width / 2);
+    menu.style.left = `${(menu.getBoundingClientRect().left + shift) / scale}px`;
+  }
+  menu.classList.add('is-open');
+  let timer;
+  const scheduleClose = () => { timer = setTimeout(() => menu.remove(), 180); };
+  anchor.addEventListener('pointerleave', scheduleClose, { once: true });
+  menu.addEventListener('pointerenter', () => clearTimeout(timer));
+  menu.addEventListener('pointerleave', scheduleClose);
+  menu.addEventListener('keydown', event => { if (event.key === 'Escape') menu.remove(); });
 }
 
 /** 자동 전환(statCycleAuto) ON일 때만 보이는 일시정지 버튼 상태 갱신. */
@@ -751,6 +824,7 @@ function lpStatTogglePause() {
 
 /** 수동으로 다음 가용 패널로 전환한다. 기존 자동 작업을 정리하고 새 모드의 데이터와 순환을 준비한다. */
 function lpStatCycleNext() {
+  document.querySelector('.lp-stat-mode-choices')?.remove();
   window.evClearBigHeldGlow?.();
   _lpNewEventReturn = null;
   _lpAuto.pendingNewEventHoldMs = null;

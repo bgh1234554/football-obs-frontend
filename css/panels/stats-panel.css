@@ -198,6 +198,8 @@
       min-height: 0;
       overflow: hidden;
     }
+    /* 이름과 배지는 하나의 행으로 함께 이동하고, 여러 줄의 실제 높이를 모두 확보한다. */
+    .lp-stat .bc-body .dp-item { break-inside: avoid-column; }
     /* 2열 모드: CSS columns — auto로 왼쪽을 끝까지 채우고 넘치는 만큼만 오른쪽으로.
        balance를 쓰면 보기엔 균등해도 굳이 안 옮겨도 될 줄까지 오른쪽으로 끌고 가서
        원래 1열에 둘 수 있던 줄까지 불필요하게 재배치되는 단점이 있다. */
@@ -228,16 +230,14 @@
     .lp-stat .bc-body.bc-scroll-mode::-webkit-scrollbar-track {
       background: transparent;
     }
-    /* 이름은 1줄로 끝나면 1줄 높이만, 너무 길면 2줄로 wrap (말줄임표로 정보 손실 없음).
-       -webkit-line-clamp는 1줄로 끝나도 항상 2줄 높이를 강제 예약해버려(약 39px) 1열에 들어갈
-       인원도 불필요하게 2열로 쪼개지는 문제가 있었다 — display:block + max-height로 대체해
-       실제 줄 수에 맞게만 높이가 늘어나게 한다. */
+    /* 이름이 여러 줄이 되면 배지까지 포함한 높이를 쓰고, 공간이 부족하면 스크롤로 전환한다. */
     .lp-stat .bc-body .dp-item-name {
       display: block;
       white-space: normal;
       overflow-wrap: anywhere;
-      max-height: calc(1.5em * 2);
-      overflow: hidden;
+      line-height: inherit;
+      max-height: none;
+      overflow: visible;
     }
 
     .lp-stat [data-stat-panel],
@@ -660,4 +660,53 @@
       text-align: right;
       overflow-wrap: anywhere;
       color: rgba(var(--ui-ink-rgb, 255, 255, 255),max(var(--ui-min-text-alpha, 0), .92));
+    }
+    .lp-stat-mode-choices {
+      position: fixed;
+      inset: auto;
+      margin: 0;
+      padding: 0 0 6px;
+      border: 0;
+      background: transparent;
+      color: var(--ui-text, #fff);
+      overflow: visible;
+    }
+    .lp-stat-mode-choices button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      padding: 3px 0;
+      background: transparent;
+      color: inherit;
+      font: 12px var(--font-family);
+      cursor: pointer;
+      text-shadow: 0 1px 3px #000;
+    }
+    .lp-stat-mode-choices button:hover { color: var(--ui-accent, #60a5fa); }
+    .lp-stat-mode-choice-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: var(--panel-title-control-size);
+      height: var(--panel-title-control-size);
+      padding: 4px;
+      border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), .15);
+      border-radius: 4px;
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255), .1);
+      color: rgba(var(--ui-ink-rgb, 255, 255, 255), max(var(--ui-min-text-alpha, 0), .72));
+    }
+    .lp-stat-mode-choices button:hover .lp-stat-mode-choice-icon {
+      background: rgba(var(--ui-ink-rgb, 255, 255, 255), .18);
+      color: var(--ui-text, #fff);
+    }
+    .lp-stat-mode-choices svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .lp-stat-mode-choices.is-open { animation: lp-stat-mode-appear 180ms ease-out both; }
+    @keyframes lp-stat-mode-appear {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .lp-stat-mode-choices.is-open { animation: none; }
     }
