@@ -1180,11 +1180,10 @@ function evGetBaseFontSize() {
  * 일반 이벤트는 단일 .ev-text가 line-clamp: 2.
  * 코멘트(.ev-comment)는 텍스트 폰트 -2px로 동기화.
  */
-function evFitText(row) {
+function evFitText(row, baseSize = evGetBaseFontSize()) {
   const main = row.querySelector('.ev-main');
   if (!main) return;
   const isSubst = row.classList.contains('ev-row-subst');
-  const baseSize = evGetBaseFontSize();
   const linePerSlot = 2; // 한 슬롯(.ev-text 또는 .ev-text-line)당 허용 줄수
 
   const textTargets = isSubst
@@ -1214,9 +1213,9 @@ function evFitText(row) {
 }
 
 /** 패널이 실제로 보이는 시점에 row 텍스트 피팅을 다시 계산한다. */
-function evRefitPanelRows(container) {
+function evRefitPanelRows(container, baseSize = evGetBaseFontSize()) {
   if (!container) return;
-  container.querySelectorAll('.ev-row').forEach(evFitText);
+  container.querySelectorAll('.ev-row').forEach(row => evFitText(row, baseSize));
 }
 
 /** 현재 fixture 데이터로 이벤트 패널을 즉시 다시 그린다. */

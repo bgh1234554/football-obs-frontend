@@ -102,6 +102,7 @@ const root = path.resolve(__dirname, '../..');
       const nameSetting = category === 'benchInjuryNameSize' ? 'roster' : category === 'eventNameSize' ? 'event' : null;
       if (nameSetting) {
         assert.equal(await popup.locator('.sp-label-sub').count(), 0);
+
         const toggle = popup.locator(`input[data-settings-cat="${nameSetting}"]`);
         const before = await toggle.isChecked();
         await toggle.locator('..').click();
@@ -140,7 +141,45 @@ const root = path.resolve(__dirname, '../..');
     const smallLine = page.locator('.layout-small .dp-lineup-marking-midline');
     await smallLine.click({ position: { x: 10, y: 1 } });
     assert.equal(Number(await slider.getAttribute('max')), await page.evaluate(() => LINEUP_NAME_SIZE_MAX));
-    assert.equal(await popup.locator('.panel-font-heading').textContent(), '선발 라인업 이름 크기');
+    assert.equal(await popup.locator('.panel-font-heading').first().textContent(), '선발 라인업 이름 크기');
+    // 바둑알과 아이콘은 아래 끝을 고정하고 모두 같은 배율로 바뀐다.
+    const tokenSlider = popup.getByRole('slider', { name: '선발 라인업 선수 크기' });
+    assert.equal(await tokenSlider.getAttribute('min'), '75');
+    assert.equal(await tokenSlider.getAttribute('max'), '125');
+    const geometry = () => page.evaluate(() => [...document.querySelectorAll('.layout-small .dp-lineup-node')].map(node => {
+      const r = node.getBoundingClientRect();
+      return { bottom: r.bottom, width: r.width, scale: getComputedStyle(node).getPropertyValue('--lp-token-scale') };
+    }));
+    const originalTokens = await geometry();
+    await tokenSlider.evaluate(input => { input.value = '75'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+    await settle(page);
+    const smallTokens = await geometry();
+    smallTokens.forEach((node, i) => {
+      assert(Math.abs(node.bottom - originalTokens[i].bottom) < 0.1);
+      assert(Math.abs(node.width / originalTokens[i].width - 0.75) < 0.01);
+    });
+    await tokenSlider.evaluate(input => { input.value = '125'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+    await settle(page);
+    assert(await page.evaluate(() => Number(getSetting('lineupTokenScale')) <= Math.floor(lpGetTokenScaleLimit() * 100 + 0.01)));
+    assert.equal(new Set((await geometry()).map(node => node.scale)).size, 1);
+    // 경계 가까이 있는 선수 하나가 전체 확대 한도를 결정한다.
+    const clipping = await page.evaluate(() => {
+      const node = document.querySelector('.layout-small .dp-lineup-node');
+      const top = node.style.top;
+      node.style.top = '5px';
+      setSetting('lineupTokenScale', 125);
+      const scale = Number(getComputedStyle(node).getPropertyValue('--lp-token-scale'));
+      const geometry = lpTokenGeometry();
+      const inside = geometry.every(a => a.parts.every(p => a.x + p.left * scale >= a.bounds.left - 0.01
+        && a.x + p.right * scale <= a.bounds.right + 0.01
+        && a.bottom + p.top * scale >= a.bounds.top - 0.01
+        && a.bottom + p.bottom * scale <= a.bounds.bottom + 0.01));
+      node.style.top = top;
+      setSetting('lineupTokenScale', 100);
+      return { scale, inside };
+    });
+    assert(clipping.scale < 1 && clipping.inside, 'all tokens and icons stop before any clipping boundary');
+    await page.evaluate(() => setSetting('lineupTokenScale', 100));
     assert.equal(await popup.locator('.sp-label-sub').count(), 0);
     for (const category of ['lineup', 'lineupHideInitial']) {
       const toggle = popup.locator(`input[data-settings-cat="${category}"]`);

@@ -87,6 +87,10 @@
       background: var(--panel-bg);
       overflow: hidden;
     }
+    /* 일반 배치는 시간·종류·아이콘·로고를 제외해도 이름을 읽을 폭을 확보한다. */
+    #page-tactics:not(:fullscreen):not(.td-touch-layout) #tactics-timeline-panel {
+      min-width: calc(340px * max(1, var(--tactics-event-scale, 1)) + 24px);
+    }
     /* 타임라인 박스 (전술판 전용) — 제목 + 이벤트 칩 + 슬라이더를 카드 형태로 묶음 */
     #tactics-timeline-bar {
       flex: 0 0 auto;

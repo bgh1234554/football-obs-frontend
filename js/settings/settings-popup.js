@@ -67,6 +67,7 @@ const SETTINGS_DEFAULTS = {
   lineupHideInitial: 'off',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
+  lineupTokenScale: 100, // 선발 바둑알과 부착 아이콘의 공통 배율(%).
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
   lineupNameSizeFullscreen: null, // 대시보드 전체화면에서 직접 조정한 값. null이면 기본값을 따른다.
                       // long 모드(풀네임)는 CSS에서 0.875× 비율 유지.
@@ -461,6 +462,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 
 /** 설정 종류별 허용 값·범위를 검사하며, 알 수 없는 값은 저장·복원 대상에서 제외한다. */
 function isValidSetting(category, value) {
+  if (category === 'lineupTokenScale') return Number.isFinite(value) && value >= 75 && value <= 125;
   if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_FONT_DEFAULTS) {
     return value === null || isValidSetting(category.slice(0, -10), value);
   }
@@ -743,6 +745,10 @@ function setSetting(category, value) {
     return false;
   }
   // 모드별 투명도와 피치 선택은 다른 모드의 저장값을 덮어쓰지 않는다.
+  if (category === 'lineupTokenScale' && typeof lpGetTokenScaleLimit === 'function') {
+    value = Math.min(value, Math.max(75, Math.floor(lpGetTokenScaleLimit() * 100 + 0.001)));
+    requestAnimationFrame(() => syncSliderUi(category));
+  }
   const storageCategory = getSetting('uiMode') === 'light'
     ? ({ panelAlpha: 'lightPanelAlpha', lineupPitchTone: 'lightLineupPitchTone', bgColor: 'lightBgColor', bgPreset: 'lightBgPreset' }[category] || category) : category;
   if (settingsState[storageCategory] === value) {
@@ -797,6 +803,8 @@ function applySettingSideEffects(category) {
   }
   if (Object.hasOwn(NOTE_COLOR_VARS, category)) applyLayoutSettings();
   if (category === 'matchInfoLabelColor' || ['matchInfoNameSize', 'hthNameSize', 'teamFixturesNameSize'].includes(category)) applyLayoutSettings();
+  if (category === 'eventNameSize') applyLayoutSettings();
+  if (category === 'lineupTokenScale') window.lpUpdateTokenScale?.();
   if (category === 'lineupScale' || category === 'lineupNameSize' || category === 'lineupPitchTone' || category === 'tacticsNameSize' || category === 'tacticsTokenScale' || category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale' || category === 'tacticsFullscreenAlign' || category === 'benchInjuryNameSize' || category === 'statsNameSize') applyLayoutSettings();
   // Iter 5-3: per-feature 토글이 바뀌면 body 클래스 갱신을 위해 applyLayoutSettings 호출.
   if (category === 'fanReaction'
@@ -963,6 +971,7 @@ function applyLayoutSettings() {
   root.style.setProperty('--st-name-base-size', `${statsSize}px`);
   root.style.setProperty('--st-bar-height', `${statsBarHeight}px`);
   root.style.setProperty('--td-name-size', `${tacticsNameSize}px`);
+  root.style.setProperty('--tactics-event-scale', String(eventSize / 15));
   root.style.setProperty('--td-token-scale', String(tacticsTokenScale));
   root.style.setProperty('--td-topbar-scale', String(
     Math.max(TACTICS_TOPBAR_SCALE_MIN, Math.min(TACTICS_TOPBAR_SCALE_MAX,
@@ -1293,6 +1302,7 @@ function closePanelFontPopup() {
 }
 function syncPanelFontPopup() {
   if (!panelFontPopup) return;
+  panelFontPopup._syncToken?.();
   const category = panelFontPopup.dataset.category;
   const value = Number(getSetting(category));
   panelFontPopup.querySelector('input').value = String(value);
@@ -1338,6 +1348,29 @@ function openPanelFontPopup(title, clickPoint = null) {
   const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial']
     : category === 'benchInjuryNameSize' ? ['roster'] : category === 'eventNameSize' ? ['event'] : [];
   if (nameSettings.length) popup.classList.add('has-name-settings');
+  if (category === 'lineupNameSize') {
+    const row = document.querySelector('[data-settings-slider="lineupTokenScale"]').closest('.sp-row').cloneNode(true);
+    row.querySelector('.sp-label-sub')?.remove();
+    row.querySelector('[data-settings-slider-reset]')?.remove();
+    const tokenInput = row.querySelector('input');
+    const tokenValue = row.querySelector('.sp-slider-value');
+    const sync = () => {
+      tokenInput.value = getSetting('lineupTokenScale');
+      tokenValue.textContent = `${tokenInput.value}%`;
+    };
+    tokenInput.setAttribute('aria-label', '선발 라인업 선수 크기');
+    tokenInput.addEventListener('input', () => { setSetting('lineupTokenScale', Number(tokenInput.value)); sync(); });
+    const tokenReset = document.createElement('button');
+    tokenReset.className = 'panel-font-reset';
+    tokenReset.textContent = '초기화';
+    tokenReset.addEventListener('click', () => { setSetting('lineupTokenScale', 100); sync(); });
+    const tokenHeading = document.createElement('div');
+    tokenHeading.className = 'panel-font-heading';
+    tokenHeading.textContent = row.querySelector('.sp-label-main').textContent;
+    popup.append(tokenHeading, row.querySelector('.sp-slider-cluster'), tokenReset);
+    popup._syncToken = sync;
+    sync();
+  }
   nameSettings.forEach(setting => popup.append(createQuickSettingRow(setting, true)));
   (document.fullscreenElement || document.body).append(popup);
   panelFontPopup = popup;

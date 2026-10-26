@@ -225,6 +225,8 @@ async function testResolutionPersistence(page) {
     });
     for (let reload = 0; reload < 3; reload++) {
       await page.reload({ waitUntil: 'load' });
+      await testTacticsEvents(page, dpr);
+      await page.evaluate(() => { setSetting('eventNameSize', 15); activatePage('main-big'); });
       await fillLineups(page);
       const current = await read();
       assert.equal(current.saved, stored.saved, 'resolution/reload never rescales saved width');
@@ -434,6 +436,49 @@ async function testStatsCapacity(page) {
   });
 }
 
+async function testSpotlightFontIndependence(page) {
+  for (const view of ['main-big', 'main-small']) {
+    for (const type of ['Goal', 'subst', 'marker']) {
+      let baseline;
+      for (const size of [12, 25]) {
+        await page.evaluate(({ view, type, size }) => {
+          activatePage(view); setSetting('eventSpotlight', 'off'); setSetting('eventSpotlight', 'board');
+          setSetting('eventSpotlightScale', 100); setSetting('eventNameSize', size);
+        }, { view, type, size });
+        await frames(page); await page.waitForTimeout(350);
+        await page.evaluate(({ view, type, size }) => {
+          const source = document.createElement('div');
+          source.innerHTML = '<div class="ev-list"></div>';
+          const id = `${view}-${type}-${size}`;
+          evSpotlightAfterRender(id, [source]);
+          const row = type === 'marker' ? evCreateMarkerRow({ elapsed: 45, label: '하프타임' })
+            : evCreateRow({ type, detail: type === 'Goal' ? 'Normal Goal' : 'Substitution', side: 'home', elapsed: 21,
+                playerName: '모하메드 살라', assistName: '알렉산데르 이삭' }, { matchInfo: { fixtureId: id, status: '1H', elapsed: 21 } }, id);
+          source.firstChild.append(row);
+          evRefitPanelRows(source);
+          evSpotlightMarkNewEvents(); evSpotlightAfterRender(id, [source]);
+        }, { view, type, size });
+        await frames(page); await page.waitForTimeout(350);
+        const metrics = await page.evaluate(() => {
+          const host = document.querySelector('.ev-spotlight');
+          const rect = host.getBoundingClientRect();
+          return { width: rect.width, height: rect.height,
+            fonts: [...host.querySelectorAll('.ev-text, .ev-text-line, .ev-time, .ev-marker-label')].map(el => getComputedStyle(el).fontSize),
+            icons: [...host.querySelectorAll('.football-icon')].map(el => el.getBoundingClientRect().width) };
+        });
+        if (baseline) assert.deepEqual(metrics, baseline, `${view} ${type}: spotlight size is independent of panel px`);
+        else baseline = metrics;
+        await page.evaluate(() => setSetting('eventSpotlightScale', 150));
+        await frames(page); await page.waitForTimeout(350);
+        const scaled = await page.locator('.ev-spotlight').boundingBox();
+        near(scaled.width, metrics.width * 1.5, 'spotlight percentage scales its own content');
+        near(scaled.height, metrics.height * 1.5, 'spotlight percentage scales font and icons together');
+      }
+    }
+  }
+  await page.evaluate(() => { setSetting('eventSpotlight', 'off'); setSetting('eventSpotlightScale', 100); setSetting('eventNameSize', 15); });
+}
+
 async function testSpotlightPosition(page) {
   for (const view of ['main-big', 'main-small']) {
     for (const mode of ['board', 'bottom']) {
@@ -470,13 +515,57 @@ async function testSpotlightPosition(page) {
   await page.evaluate(() => setSetting('eventSpotlight', 'off'));
 }
 
+async function testTacticsEvents(page, dpr) {
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/1637598-lineup.json'), 'utf8'));
+  data.matchInfo.status = '1H';
+  data.events = [
+    { elapsed: 21, side: 'home', playerName: '알렉산데르 이삭', assistName: '모하메드 살라', type: 'Goal', detail: 'Normal Goal' },
+    { elapsed: 17, side: 'home', playerName: '파스칼 그로스', type: 'Goal', detail: 'Own Goal' },
+    { elapsed: 45, extra: 3, side: 'away', playerName: '모리바 이샤쿠', type: 'Card', detail: 'Yellow Card' },
+    { elapsed: 6, side: 'away', playerName: '크리스티아누 호날두', assistName: '브루누 페르난드스', type: 'subst', detail: 'Substitution' }
+  ];
+  await page.evaluate(data => {
+    clearPolling(); activatePage('tactics');
+    applyLineupPanels(data); applyTacticsTimeline(data); applyEventsPanel(data, { animate: false });
+  }, data);
+  for (const size of [15, 25]) {
+    await page.evaluate(size => setSetting('eventNameSize', size), size);
+    await frames(page); await frames(page);
+    const result = await page.evaluate(() => {
+      const panel = document.querySelector('#tactics-timeline-panel');
+      const pitch = document.querySelector('#tactics-pitch-wrap').getBoundingClientRect();
+      const toolbar = document.querySelector('#tactics-draw-toolbar').getBoundingClientRect();
+      const bounds = panel.getBoundingClientRect();
+      return {
+        ordered: pitch.right <= bounds.left + 1 && bounds.right <= toolbar.left + 1,
+        rows: [...panel.querySelectorAll('.ev-text-line, .ev-text:not(.ev-text-stack)')].map(el => ({ width: el.clientWidth, font: parseFloat(getComputedStyle(el).fontSize), height: el.clientHeight, scroll: el.scrollHeight }))
+      };
+    });
+    assert(result.ordered, 'pitch, timeline and drawing tools must remain separate');
+    assert(result.rows.length >= 5);
+    result.rows.forEach(row => {
+      assert(row.width / row.font >= 8, 'player text retains room for several characters');
+      assert(row.height <= row.font * 2.6, 'each player slot stays within two lines');
+      assert(row.scroll <= row.height + 1, 'player text is not clipped');
+    });
+  }
+  await page.screenshot({ path: path.join(root, `screenshots/tests/tactics-events-scale-${dpr}.png`) });
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     let baseline, alternateBaseline;
     for (const dpr of [1, 1.25, 1.5, 2]) {
       const { page, errors } = await openPage(browser, dpr);
+      if (process.argv.includes('--tactics')) {
+        await testTacticsEvents(page, dpr);
+        console.log(`PASS: ${dpr * 100}% tactics event text and panel containment`);
+        await page.close();
+        continue;
+      }
       if (process.argv.includes('--spotlight')) {
+        await testSpotlightFontIndependence(page);
         await testSpotlightPosition(page);
         console.log(`PASS: ${dpr * 100}% spotlight coordinates in both views and positions`);
         await page.close();
@@ -489,7 +578,9 @@ async function testSpotlightPosition(page) {
         continue;
       }
       await fillLineups(page);
+      await testSpotlightFontIndependence(page);
       await testSpotlightPosition(page);
+      await page.evaluate(() => activatePage('main-big'));
       const current = await measure(page);
       assert.equal(current.labels.length, 22, 'both teams render');
       near(current.body.width, 1920, 'physical width');

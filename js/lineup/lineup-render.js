@@ -1993,3 +1993,81 @@ document.addEventListener('settings:change', event => {
   if (!re.includes(event.detail?.category)) return;
   rerenderLineupPanels();
 });
+
+// 원의 아래 끝을 고정한 채 모든 선수와 부착 아이콘에 같은 배율을 적용한다.
+function lpTokenGeometry() {
+  return [...document.querySelectorAll('.dp-lineup-node')].filter(node => node.getClientRects().length && !node.closest('#settingsBackdrop')).map(node => {
+    const rect = node.getBoundingClientRect();
+    const scale = Number(getComputedStyle(node).getPropertyValue('--lp-token-scale')) || 1;
+    const x = rect.left + rect.width / 2;
+    const bounds = { left: -Infinity, right: Infinity, top: -Infinity, bottom: Infinity };
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      const style = getComputedStyle(parent);
+      const clip = parent.getBoundingClientRect();
+      if (/hidden|clip|auto|scroll/.test(style.overflowX)) {
+        bounds.left = Math.max(bounds.left, clip.left);
+        bounds.right = Math.min(bounds.right, clip.right);
+      }
+      if (/hidden|clip|auto|scroll/.test(style.overflowY)) {
+        bounds.top = Math.max(bounds.top, clip.top);
+        bounds.bottom = Math.min(bounds.bottom, clip.bottom);
+      }
+    }
+    const parts = [...node.querySelectorAll('.dp-lineup-circle, .dp-lineup-avatar, .dp-node-badge, .dp-node-rating')]
+      .filter(part => part.getClientRects().length).map(part => {
+        const r = part.getBoundingClientRect();
+        return { left: (r.left - x) / scale, right: (r.right - x) / scale,
+          top: (r.top - rect.bottom) / scale, bottom: (r.bottom - rect.bottom) / scale };
+      });
+    return { x, bottom: rect.bottom, radius: rect.width / scale / 2, height: rect.height / scale, bounds, parts };
+  }).filter(item => item.radius > 0);
+}
+function lpGetTokenScaleLimit() {
+  const nodes = lpTokenGeometry();
+  const fits = scale => nodes.every((a, i) => {
+    // 부착 아이콘까지 조상 요소의 잘림 영역 안에 남아 있어야 한다.
+    const inside = a.parts.every(part => a.x + part.left * scale >= a.bounds.left - 0.001
+      && a.x + part.right * scale <= a.bounds.right + 0.001
+      && a.bottom + part.top * scale >= a.bounds.top - 0.001
+      && a.bottom + part.bottom * scale <= a.bounds.bottom + 0.001);
+    return inside && nodes.slice(i + 1).every(b => {
+      const dy = (a.bottom - a.height * scale / 2) - (b.bottom - b.height * scale / 2);
+      return Math.hypot(a.x - b.x, dy) + 0.001 >= (a.radius + b.radius) * scale;
+    });
+  });
+  if (fits(1.25)) return 1.25;
+  let low = 0, high = 1.25;
+  for (let i = 0; i < 24; i++) {
+    const mid = (low + high) / 2;
+    if (fits(mid)) low = mid; else high = mid;
+  }
+  return low;
+}
+window.lpUpdateTokenScale = function () {
+  const requested = Number(getSetting('lineupTokenScale')) / 100 || 1;
+  const scale = Math.min(requested, lpGetTokenScaleLimit());
+  document.documentElement.style.setProperty('--lp-token-scale', String(scale));
+};
+// 재렌더·분할 전환·창 크기 변경 뒤 실제 좌표로 겹침 한도를 다시 계산한다.
+let lpTokenScaleFrame = 0;
+const lpTokenObserved = new WeakSet();
+const lpTokenResize = new ResizeObserver(() => lpScheduleTokenScale());
+function lpScheduleTokenScale() {
+  if (lpTokenScaleFrame) return;
+  lpTokenScaleFrame = requestAnimationFrame(() => {
+    lpTokenScaleFrame = 0;
+    document.querySelectorAll('.dp-lineup-node').forEach(node => {
+      if (!lpTokenObserved.has(node.parentElement)) {
+        lpTokenObserved.add(node.parentElement);
+        lpTokenResize.observe(node.parentElement);
+      }
+    });
+    window.lpUpdateTokenScale();
+  });
+}
+new MutationObserver(records => {
+  if (records.some(record => record.target.closest?.('.lp-lineup, .lp-lineup-s') || [...record.addedNodes].some(node => node.nodeType === 1 && (node.matches('.dp-lineup-node') || node.querySelector('.dp-lineup-node'))))) lpScheduleTokenScale();
+}).observe(document.body, { childList: true, subtree: true });
+window.addEventListener('resize', lpScheduleTokenScale);
+document.addEventListener('settings:change', lpScheduleTokenScale);
+lpScheduleTokenScale();

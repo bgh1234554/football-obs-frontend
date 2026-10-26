@@ -335,6 +335,7 @@
   document.addEventListener('page:activated', tacticsApplyTouchLayout);
   document.addEventListener('settings:change', (e) => {
     if (e.detail?.category === 'tacticsTouchLayout') tacticsApplyTouchLayout();
+    if (e.detail?.category === 'eventNameSize') requestAnimationFrame(tacticsSyncPitchLayout);
   });
   window.addEventListener('resize', () => {
     if (document.body.classList.contains('td-touch-board') && typeof window.reapplyBoardScale === 'function') {
@@ -411,7 +412,9 @@
     // 터치 기기 배치도 전체화면과 같이 패널이 오버레이라 예약 폭 0 (tdIsOverlayPanelMode)
     const overlayPanels = tdIsOverlayPanelMode();
     const toolbarWidth = (toolbar && !overlayPanels) ? toolbar.offsetWidth : 0;
-    const reservedPanelWidth = overlayPanels ? 0 : 240;
+    const timelinePanel = document.getElementById('tactics-timeline-panel');
+    // 이벤트 글씨 크기에 따라 달라지는 CSS 최소 폭을 피치 계산에도 그대로 반영한다.
+    const reservedPanelWidth = overlayPanels ? 0 : (parseFloat(getComputedStyle(timelinePanel).minWidth) || 364);
     const maxPitchWidth = Math.max(0, main.clientWidth - toolbarWidth - reservedPanelWidth - padLeft - padRight);
     const pitchWidthByHeight = availableHeight * (105 / 68);
     const naturalHorizontalWidth = maxPitchWidth > 0 ? Math.min(pitchWidthByHeight, maxPitchWidth) : pitchWidthByHeight;

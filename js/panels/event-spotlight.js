@@ -13,6 +13,7 @@
 (() => {
   const SHOW_MS = 5000;   // 한 이벤트를 보여 주는 시간 (캠 큰 패널 새 이벤트 유지 시간과 같음)
   const FADE_MS = 320;
+  const SPOTLIGHT_FONT_SIZE = 15; // 패널 글씨 크기와 분리한 알림 전용 기준 크기
   const SPOTLIGHT_BASE_SCALE = 1.25; // 설정 100%일 때의 실제 배율(이벤트 패널 칼럼 너비 기준)
   const SPOTLIGHT_BOARD_GAP = 6; // 점수판 아래 위치에서 점수판과의 간격(px)
   let seenFixtureId = '';
@@ -55,6 +56,8 @@
     if (host) return host;
     host = document.createElement('div');
     host.className = 'ev-spotlight';
+    host.style.setProperty('--ev-name-base-size', `${SPOTLIGHT_FONT_SIZE}px`);
+    host.style.setProperty('--ev-ui-scale', '1');
     host.setAttribute('aria-live', 'polite');
     host.hidden = true;
     document.body.append(host);
@@ -112,7 +115,7 @@
     host.hidden = false;
     host.style.width = `${layoutRect(target.column).width}px`;
     // 패널과 같은 글자 맞춤을 복제 행에도 적용한 뒤(행 높이 확정) 위치를 잡는다. 아직 투명 상태라 보이지 않는다.
-    window.evRefitPanelRows?.(host);
+    window.evRefitPanelRows?.(host, SPOTLIGHT_FONT_SIZE);
     place(target);
     requestAnimationFrame(() => {
       host.classList.add('is-visible');
@@ -139,6 +142,7 @@
       const clone = source.cloneNode(true);
       clone.classList.remove('ev-row-new', 'ev-row-glow-held', 'is-editable', 'has-hide-btn');
       clone.removeAttribute('style');
+      clone.querySelectorAll('.ev-marker-label').forEach(label => { label.style.fontSize = `${SPOTLIGHT_FONT_SIZE}px`; });
       clone.querySelectorAll('.ev-hide-btn, .ev-row-menu, button').forEach(node => {
         if (node.matches('.ev-hide-btn, .ev-row-menu')) node.remove();
         else node.setAttribute('tabindex', '-1');

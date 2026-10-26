@@ -319,7 +319,8 @@
    (홈/원정 양쪽 같은 규칙). 이전엔 동일 노드 내 flex column 구조라 인접 팀 원에 가려짐. */
 .dp-lineup-node {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--lp-token-scale, 1));
+  transform-origin: center bottom;
   display: inline-flex;
   align-items: center;
   justify-content: center;
