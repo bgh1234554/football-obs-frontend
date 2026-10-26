@@ -1,0 +1,46 @@
+/* 피치 안쪽으로 펼쳐지는 벤치 명단. 회전된 피치의 바깥 레이어에서 화면 방향을 유지한다. */
+#tactics-pitch-wrap { position: relative; }
+#tactics-pitch .td-team-label-wrap { pointer-events: auto !important; cursor: pointer; z-index: 90 !important; }
+#tactics-pitch .td-team-label-wrap:focus-visible { outline: 2px solid #60a5fa; outline-offset: 3px; }
+#tactics-pitch .td-team-label-wrap[aria-expanded="true"] { box-shadow: 0 0 0 2px rgba(255,255,255,.7), 0 2px 8px #0008; }
+#tactics-bench-layer { position: absolute; z-index: 60; pointer-events: none; }
+.td-bench-tray {
+  position: absolute; top: 44px; bottom: 8px; width: clamp(120px, 13%, 180px); max-width: 32%;
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 10px;
+  background: rgba(11,18,32,.94); box-shadow: 0 4px 18px #0006;
+  color: var(--ui-text, #fff); font-family: var(--font-family);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform 180ms ease, opacity 180ms ease, visibility 180ms;
+}
+.td-bench-tray.is-home { left: 8px; transform: translateX(-110%); }
+.td-bench-tray.is-away { right: 8px; transform: translateX(110%); }
+.td-bench-tray.is-open { transform: translate(0); opacity: 1; visibility: visible; pointer-events: auto; }
+.td-bench-tray.is-dragging-outside { opacity: 0; pointer-events: none; }
+.td-bench-tray.is-home.is-dragging-outside { transform: translateX(-110%); }
+.td-bench-tray.is-away.is-dragging-outside { transform: translateX(110%); }
+.td-bench-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 9px; font-size: 11px; font-weight: 700; flex: 0 0 auto; border-bottom: 1px solid #ffffff20; }
+.td-bench-header button { display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 5px; background: #ffffff12; color: inherit; cursor: pointer; line-height: 1; }
+.td-bench-actions { display: flex; align-items: center; gap: 3px; }
+.td-bench-header button:hover:not(:disabled) { background: #ffffff25; }
+.td-bench-header button:disabled { opacity: .35; cursor: default; }
+.td-bench-header button svg { display: block; width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.td-bench-list { display: flex; flex-direction: column; align-items: center; gap: 16px; min-height: 0; flex: 1; overflow: auto; padding: 14px 8px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) rgba(255,255,255,.04); }
+.td-bench-list::-webkit-scrollbar { display: block; width: 6px; height: 6px; }
+.td-bench-list::-webkit-scrollbar-track { background: rgba(255,255,255,.04); border-radius: 999px; }
+.td-bench-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 999px; }
+.td-bench-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.42); }
+.td-bench-list p { font-size: 11px; text-align: center; color: var(--muted, #94a3b8); }
+.td-bench-token { position: relative; display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; max-width: 100%; user-select: none; touch-action: none; cursor: grab; }
+.td-bench-token .tactics-name-badge { max-width: 100%; white-space: normal !important; overflow-wrap: anywhere; text-align: center; word-break: keep-all; }
+.td-bench-ghost { position: absolute; z-index: 120; transform: translate(-50%, -50%); pointer-events: none; cursor: grabbing; max-width: none; }
+.td-bench-drop-target > :first-child { outline: 3px solid #60a5fa; outline-offset: 4px; box-shadow: 0 0 18px #60a5fa !important; }
+#tactics-bench-layer.is-vertical .td-bench-tray { left: 8px; right: 8px; width: auto; max-width: none; height: auto; bottom: auto; top: auto; }
+#tactics-bench-layer.is-vertical .td-bench-tray.is-home { bottom: 40px; transform: translateY(110%); }
+#tactics-bench-layer.is-vertical .td-bench-tray.is-away { top: 40px; transform: translateY(-110%); }
+#tactics-bench-layer.is-vertical .td-bench-tray.is-open { transform: translate(0); }
+#tactics-bench-layer.is-vertical .td-bench-tray.is-home.is-dragging-outside { transform: translateY(110%); }
+#tactics-bench-layer.is-vertical .td-bench-tray.is-away.is-dragging-outside { transform: translateY(-110%); }
+#tactics-bench-layer.is-vertical .td-bench-list { flex: 0 0 auto; flex-direction: row; align-items: flex-start; gap: 18px; overflow-x: auto; overflow-y: hidden; }
+#tactics-bench-layer.is-vertical .td-bench-token { width: 90px; }
+@media (prefers-reduced-motion: reduce) { .td-bench-tray { transition: none; } }

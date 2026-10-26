@@ -730,6 +730,7 @@
 
     // 9. 드래그 이벤트 재등록 및 다각형 glow 복원
     tacticsDragSetup();
+    window.tacticsBenchRender?.();
     // 다각형 glow 복원 (토큰 재생성 후)
     if (typeof tdApplyGlows === 'function') tdApplyGlows();
   }
@@ -1261,6 +1262,7 @@
 
   /** 전술판 전체 초기화 — 공 위치 중앙으로 리셋, undo/redo 스택 초기화, 드로잉 초기화, 라인업 재렌더 */
   function tacticsReset() {
+    window.tacticsBenchReset?.();
     tacticsState.ballPosition = { x: 50, y: 50 };
     tdHistory = [];
     tdFuture = [];
@@ -2430,7 +2432,7 @@
   // [이벤트 등록] 피치 pointerdown — select 모드에서 빈 공간 클릭 시 선택 rect 시작
   document.getElementById('tactics-pitch')?.addEventListener('pointerdown', e => {
     if (tdTool !== 'select') return;
-    if (e.target.closest('.tactics-token, .tactics-ball-token')) return;
+    if (e.target.closest('.tactics-token, .tactics-ball-token, .td-team-label-wrap')) return;
     tdSelecting = true;
     tdSelStart = tdGetPt(e);
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -2486,7 +2488,7 @@
   // [이벤트 등록] 피치 click — select 모드에서 곡선 화살표 클릭 시 방향 반전
   document.getElementById('tactics-pitch')?.addEventListener('click', e => {
     if (tdTool !== 'select') return;
-    if (e.target.closest('.tactics-token, .tactics-ball-token')) return;
+    if (e.target.closest('.tactics-token, .tactics-ball-token, .td-team-label-wrap')) return;
     const pt = tdGetPt(e);
     const idx = tdHitTestCurve(pt.x, pt.y);
     if (idx >= 0) tdFlipCurve(idx);

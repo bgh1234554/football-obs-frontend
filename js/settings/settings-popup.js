@@ -1238,7 +1238,7 @@ function syncSliderUi(category) {
   const forceOpaquePanel = isPanelTransparency && getSetting('greenscreen') === 'on';
   const value = forceOpaquePanel ? 0 : Number(getSetting(category));
   if (isPanelTransparency) input.disabled = forceOpaquePanel;
-  const reset = input.closest('.sp-slider-cluster')?.querySelector('[data-settings-slider-reset]');
+  const reset = input.parentElement?.querySelector('[data-settings-slider-reset]');
   if (reset) reset.disabled = input.disabled;
   if (input.value !== String(value)) input.value = String(value);
   const label = input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
@@ -2599,19 +2599,24 @@ function initSettingsPopup() {
   document.querySelectorAll('input[data-settings-slider]').forEach(input => {
     const category = input.dataset.settingsSlider;
     // 설정창에서는 각 슬라이더의 항목만 기본값으로 되돌린다.
-    if (input.closest('#settingsBackdrop')) {
+    if (input.closest('#settingsBackdrop, #tactics-topbar')) {
+      const isTactics = !!input.closest('#tactics-topbar');
       const reset = document.createElement('button');
       reset.type = 'button';
-      reset.className = 'sp-slider-reset';
+      reset.className = isTactics ? 'td-slider-reset' : 'sp-slider-reset';
       reset.dataset.settingsSliderReset = category;
-      reset.textContent = '초기화';
-      const label = input.closest('.sp-row')?.querySelector('.sp-label-main')?.textContent || category;
+      if (isTactics) {
+        reset.innerHTML = '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 5.5A5 5 0 1 1 3 10M3 2v4h4"/></svg>';
+      } else reset.textContent = '초기화';
+      const label = input.closest('.sp-row')?.querySelector('.sp-label-main')?.textContent
+        || input.parentElement.querySelector('.td-alpha-label')?.textContent || category;
       reset.setAttribute('aria-label', `${label} 초기화`);
+      reset.title = `${label} 초기화`;
       reset.addEventListener('click', () => {
         if (PANEL_FONT_SETTINGS.includes(category)) resetPanelFontSetting(category);
         else setSetting(category, SETTINGS_DEFAULTS[category]);
       });
-      input.closest('.sp-slider-cluster').append(reset);
+      input.parentElement.append(reset);
     }
     syncSliderUi(category);
     if (category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale') {

@@ -58,6 +58,49 @@ const fixture = require('../fixtures/1637598-lineup.json');
     assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
     await trigger.click();
     await page.screenshot({ path: 'screenshots/tests/tactics-formation-menu.png' });
+    await page.keyboard.press('Escape');
+    // 강제 터치 배치와 실제 터치 입력 모두에서 메뉴는 세로 목록이고 컨트롤끼리 겹치지 않는다.
+    for (const { width, height, touch } of [
+      { width: 1920, height: 1080, touch: false },
+      { width: 1366, height: 768, touch: false },
+      { width: 1024, height: 768, touch: true },
+      { width: 768, height: 1024, touch: true },
+      { width: 844, height: 390, touch: true },
+      { width: 390, height: 844, touch: true }
+    ]) {
+      const preview = await openPage(browser, { dpr: 1, platform: touch ? 'Linux armv8l' : 'Win32',
+        touch, viewport: { width, height } });
+      try {
+        await preview.evaluate(() => { activatePage('tactics'); setSetting('tacticsTouchLayout', 'on'); });
+        for (const side of ['home', 'away']) {
+          await preview.locator(`.td-fm-${side} .td-fm-trigger`).click();
+          const menu = preview.locator(`#tactics-${side}-fm-menu`);
+          const geometry = await menu.evaluate(menu => {
+            const box = menu.getBoundingClientRect();
+            const buttons = [...menu.querySelectorAll('button')].map(button => button.getBoundingClientRect());
+            return { left: box.left, right: box.right, viewport: innerWidth,
+              horizontalOverflow: menu.scrollWidth - menu.clientWidth,
+              list: buttons.slice(0, 3).map(button => ({ left: button.left, top: button.top, bottom: button.bottom })) };
+          });
+          assert(geometry.left >= -1 && geometry.right <= geometry.viewport + 1, JSON.stringify({ width, height, side, geometry }));
+          assert(geometry.horizontalOverflow <= 1);
+          assert(geometry.list[1].top >= geometry.list[0].bottom - 1 && geometry.list[2].top >= geometry.list[1].bottom - 1);
+          await menu.locator('[data-value="5-4-1"]').click();
+          assert.equal(await preview.locator(`#tactics-${side}-fm`).inputValue(), '5-4-1');
+        }
+        await preview.locator('#td-topbar-more-btn').click();
+        const sliders = await preview.locator('#tactics-topbar .td-topbar-secondary .td-alpha-slider').evaluateAll(inputs => inputs.map(input => {
+          const rect = input.getBoundingClientRect(), parent = input.parentElement.getBoundingClientRect();
+          const reset = input.parentElement.querySelector('.td-slider-reset').getBoundingClientRect();
+          return { width: rect.width, left: parent.left, right: parent.right, resetRight: reset.right, viewport: innerWidth };
+        }));
+        for (const slider of sliders) {
+          assert(slider.width >= 65, JSON.stringify({ width, height, slider }));
+          assert(slider.left >= -1 && slider.right <= slider.viewport + 1 && slider.resetRight <= slider.right + 1);
+        }
+        await preview.screenshot({ path: `screenshots/tests/tactics-touch-${width}x${height}.png` });
+      } finally { await preview.close(); }
+    }
     console.log('tactics-poll-positions: passed');
   } finally {
     await browser.close();

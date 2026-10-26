@@ -150,6 +150,7 @@ function ttBuildFixtureAtTime(targetElapsed) {
 
   return {
     ...fx,
+    _tacticsTimelineAt: targetElapsed,
     homeLineup: ttReconstructLineupAtTime(fx.homeLineup, homeEvents, targetElapsed),
     awayLineup: ttReconstructLineupAtTime(fx.awayLineup, awayEvents, targetElapsed),
   };

@@ -1721,6 +1721,7 @@ function buildTacticsPlayers(lineup) {
     // Iter 5-8: tactics-timeline.js의 빈 자리 마커는 토큰 렌더 X (퇴장 선수의 빈 자리).
     if (player?._emptySlot) return;
     players[slot.originalIndex] = {
+      _benchKey: typeof tacticsBenchPlayerKey === 'function' ? tacticsBenchPlayerKey(player) : '',
       number: player.number ?? '',
       nameKo: pickName(player, 'lineup') || player.name || '',
       photoUrl: player.photoUrl || '',
@@ -1737,19 +1738,23 @@ function buildTacticsPlayers(lineup) {
  * 한쪽이라도 부족하면 null — 전술판은 기본 포메이션으로 대기.
  */
 function buildTacticsPayload(effectiveData) {
+  if (typeof tacticsBenchApplyFixture === 'function') effectiveData = tacticsBenchApplyFixture(effectiveData);
   if (!hasValidFormation(effectiveData?.homeLineup) || !hasValidFormation(effectiveData?.awayLineup)) return null;
   if (!hasStartXi(effectiveData?.homeLineup) || !hasStartXi(effectiveData?.awayLineup)) return null;
 
   return {
+    fixtureId: effectiveData.matchInfo?.fixtureId,
     home: {
       teamName: getTeamName(effectiveData, 'home'),
       formation: effectiveData.homeLineup.formation,
       players: buildTacticsPlayers(effectiveData.homeLineup),
+      bench: effectiveData.homeLineup.substitutes || [],
     },
     away: {
       teamName: getTeamName(effectiveData, 'away'),
       formation: effectiveData.awayLineup.formation,
       players: buildTacticsPlayers(effectiveData.awayLineup),
+      bench: effectiveData.awayLineup.substitutes || [],
     },
   };
 }

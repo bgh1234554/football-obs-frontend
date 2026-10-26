@@ -3,6 +3,7 @@
        풀스크린 모드: position:fixed로 우측에 슬라이드 인 (.is-open 토글). */
     #tactics-topbar {
       background: var(--panel-bg);
+      gap: 6px !important;
     }
     .td-topbar-size-control {
       display: none;
@@ -22,9 +23,15 @@
     #tactics-topbar .td-alpha-control,
     #tactics-topbar .td-name-size-control {
       flex-wrap: nowrap;
+      gap: 4px;
+      padding-left: 0;
     }
+    #tactics-topbar .td-alpha-slider { width: 84px; margin: 0; }
+    #tactics-topbar :is(.td-name-size-slider, .td-token-size-slider) { width: 72px; }
+    #tactics-topbar .td-alpha-value { min-width: 0; width: 4ch; text-align: left; }
     .td-alpha-control,
-    .td-name-size-control {
+    .td-name-size-control,
+    .td-token-size-control {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -33,7 +40,7 @@
       padding-left: 8px;
     }
     .td-alpha-control {
-      margin-left: auto;
+      margin-left: 0;
     }
     .td-name-size-control {
       padding-left: 0;
@@ -54,6 +61,8 @@
     }
     /* 선수 바둑알 크기 슬라이더 (태블릿 등 작은 화면 대응) — 라벨 크기 컨트롤과 동일 스타일 */
     .td-token-size-control {
+      order: 98;
+      margin-left: auto;
       padding-left: 0;
     }
     .td-token-size-slider {
@@ -406,6 +415,16 @@
       padding-right: 8px !important;
       overflow: visible;
     }
+    #tactics-topbar .td-slider-reset {
+      display: grid; place-items: center; flex: 0 0 22px;
+      width: 22px; height: 22px; padding: 3px;
+      border: 1px solid rgba(255, 255, 255, .16); border-radius: 5px;
+      background: var(--ui-control-surface, #1e293b);
+      color: var(--ui-text, #cbd5e1); cursor: pointer;
+    }
+    #tactics-topbar .td-slider-reset svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    #tactics-topbar .td-slider-reset:hover:not(:disabled) { color: #60a5fa; border-color: #60a5fa; }
+    #tactics-topbar .td-slider-reset:disabled { opacity: .4; cursor: default; }
     #page-tactics:is(:fullscreen, .td-touch-layout) .td-topbar-size-control {
       display: inline-flex;
       flex: 0 1 auto;
@@ -413,6 +432,9 @@
       padding-left: 4px;
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-control {
+      margin-left: 0;
+    }
+    #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-token-size-control {
       margin-left: 0;
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-control,
@@ -424,13 +446,13 @@
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-control { padding-left: 4px; }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-alpha-slider {
-      width: 60px;
+      width: 48px;
       min-width: 32px;
       flex: 0 1 auto;
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-name-size-slider,
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-topbar .td-token-size-slider {
-      width: 52px;
+      width: 44px;
     }
     #page-tactics:is(:fullscreen, .td-touch-layout) #tactics-timeline-panel.is-open {
       transform: translateX(0);
@@ -794,6 +816,30 @@
       background: var(--ui-control-surface, #1e293b);
       color: var(--ui-text, #e2e8f0);
     }
+    /* 커스텀 포메이션 버튼도 기존 select처럼 카드의 남은 폭 안에서만 표시한다. */
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-trigger {
+      display: block;
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 100%;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      font-size: 12px !important;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-fm-trigger::after { margin-left: 4px; }
+    #page-tactics.td-touch-topbar #tactics-topbar .td-slider-reset {
+      display: grid;
+      min-height: 24px;
+      width: 24px;
+      height: 24px;
+      padding: 0 !important;
+      flex: 0 0 24px;
+    }
     /* 1줄: 정사각 아이콘 버튼 */
     #page-tactics.td-touch-topbar #tactics-topbar #td-undo-btn,
     #page-tactics.td-touch-topbar #tactics-topbar #td-redo-btn,
@@ -883,7 +929,7 @@
       grid-column: span 20;
       display: grid !important;
       /* 더보기 펼침 줄도 주 버튼과 같은 두께(34px) — 라벨 / 슬라이더 / 값을 한 줄에 */
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
       align-items: center;
       gap: 8px !important;
       min-height: 34px;
@@ -964,7 +1010,7 @@
         align-items: stretch;
         row-gap: 6px !important;
       }
-      #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair { flex: 0 0 150px; }
+      #page-tactics.td-touch-topbar #tactics-topbar .td-fm-pair { flex: 0 0 180px; }
       #page-tactics.td-touch-topbar #tactics-topbar #td-fullscreen-panel-toggles { order: 3; flex: 0 0 340px; }
       #page-tactics.td-touch-topbar #tactics-topbar .td-btn-reset { order: 4; flex: 0 0 auto; padding: 0 14px !important; }
       #page-tactics.td-touch-topbar #tactics-topbar .td-btn-clear { order: 5; flex: 0 0 auto; padding: 0 14px !important; }
@@ -990,7 +1036,7 @@
       #page-tactics.td-touch-topbar #tactics-topbar .td-alpha-control,
       #page-tactics.td-touch-topbar #tactics-topbar .td-name-size-control,
       #page-tactics.td-touch-topbar #tactics-topbar .td-token-size-control {
-        flex: 0 0 200px;
+        flex: 0 0 320px;
       }
       #page-tactics.td-touch-topbar #tactics-topbar label.td-topbar-secondary { flex: 0 0 auto; padding: 0 16px; }
       #page-tactics.td-touch-topbar #tactics-topbar #btn-tactics-manual-names { flex: 0 0 auto; padding: 0 16px !important; }
@@ -1249,11 +1295,14 @@
 #page-tactics .td-fm-trigger::after { content: '⌄'; margin-left: 8px; color: #94a3b8; }
 #page-tactics .td-fm-menu {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
-  min-width: 140px; max-height: min(320px, 50vh); overflow-y: auto;
+  display: flex; flex-direction: column; width: max(140px, 100%);
+  min-width: 140px; max-height: min(320px, 50vh); overflow-y: auto; overflow-x: hidden;
+  white-space: normal;
   overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #64748b #151e2d;
   padding: 4px; border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255), 0.1255); border-radius: 9px;
   background: var(--ui-control-surface, #151e2d); box-shadow: 0 8px 24px #0008;
 }
+#page-tactics .td-fm-home .td-fm-menu { left: 0; right: auto; }
 #page-tactics .td-fm-menu[hidden] { display: none; }
 #page-tactics .td-fm-menu::-webkit-scrollbar { width: 6px; }
 #page-tactics .td-fm-menu::-webkit-scrollbar-track { background: var(--ui-control-surface, #151e2d); }
@@ -1265,6 +1314,20 @@
 }
 #page-tactics .td-fm-menu button:is(:hover, :focus-visible) { background: #334155; outline: none; }
 #page-tactics .td-fm-menu button[aria-selected="true"] { background: #334155; color: var(--ui-text, #fff); }
+#page-tactics.td-touch-topbar #tactics-topbar .td-fm-menu button {
+  display: flex; flex: 0 0 auto; justify-content: flex-start;
+  width: 100%; padding: 7px 10px !important;
+  border: 0 !important; border-radius: 5px !important;
+  background: transparent !important;
+}
+#page-tactics.td-touch-topbar #tactics-topbar .td-fm-menu button:is(:hover, :focus-visible, [aria-selected="true"]) {
+  background: #334155 !important;
+}
+@media (orientation: portrait) and (max-width: 600px) {
+  #page-tactics.td-touch-topbar #tactics-topbar :is(.td-alpha-control, .td-name-size-control, .td-token-size-control) {
+    grid-column: span 60;
+  }
+}
 #page-tactics.td-touch-topbar #tactics-topbar .td-fm-trigger {
   width: 100%; padding: 0; border: none; background: transparent;
   color: #f8fafc; font-size: 15px; font-weight: 800; text-align: left;
