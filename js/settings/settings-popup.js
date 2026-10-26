@@ -67,6 +67,7 @@ const SETTINGS_DEFAULTS = {
   lineupHideInitial: 'off',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
+  lineupTokenScaleFullscreen: null, // 대시보드 전체화면의 선수 아이콘 크기는 별도로 저장한다.
   lineupTokenScale: 100, // 선발 바둑알과 부착 아이콘의 공통 배율(%).
   lineupNameSize: 12, // 라인업 노드 이름 글자 크기 (px). 설정 팝업 슬라이더로 조정.
   lineupNameSizeFullscreen: null, // 대시보드 전체화면에서 직접 조정한 값. null이면 기본값을 따른다.
@@ -347,7 +348,7 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // 현재 설정값을 보관하는 단일 객체. loadSettings()가 localStorage에서 채우고,
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
-const DASHBOARD_FULLSCREEN_FONT_DEFAULTS = { lineupNameSize: 16, benchInjuryNameSize: 14 };
+const DASHBOARD_FULLSCREEN_DEFAULTS = { lineupNameSize: 16, benchInjuryNameSize: 14, lineupTokenScale: 115 };
 function isDashboardFullscreen() {
   // F11은 fullscreenElement를 설정하지 않으므로 실제 화면 높이도 확인한다.
   return !!document.querySelector('#page-main-small.active') && (
@@ -356,8 +357,8 @@ function isDashboardFullscreen() {
 }
 
 function resetPanelFontSetting(category) {
-  if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
-    setSetting(category, DASHBOARD_FULLSCREEN_FONT_DEFAULTS[category]);
+  if (category in DASHBOARD_FULLSCREEN_DEFAULTS && isDashboardFullscreen()) {
+    setSetting(category, DASHBOARD_FULLSCREEN_DEFAULTS[category]);
   } else {
     setSetting(category, SETTINGS_DEFAULTS[category]);
   }
@@ -463,7 +464,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 /** 설정 종류별 허용 값·범위를 검사하며, 알 수 없는 값은 저장·복원 대상에서 제외한다. */
 function isValidSetting(category, value) {
   if (category === 'lineupTokenScale') return Number.isFinite(value) && value >= 75 && value <= 125;
-  if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_FONT_DEFAULTS) {
+  if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_DEFAULTS) {
     return value === null || isValidSetting(category.slice(0, -10), value);
   }
   if (category === 'uiMode') return ['dark', 'light'].includes(value);
@@ -675,9 +676,9 @@ function getSetting(category) {
     const size = settingsState[category] ?? SETTINGS_DEFAULTS[category];
     return size === SETTINGS_DEFAULTS[category] ? 16 : size;
   }
-  if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
+  if (category in DASHBOARD_FULLSCREEN_DEFAULTS && isDashboardFullscreen()) {
     return settingsState[`${category}Fullscreen`]
-      ?? (settingsState[category] !== SETTINGS_DEFAULTS[category] ? settingsState[category] : DASHBOARD_FULLSCREEN_FONT_DEFAULTS[category]);
+      ?? (category !== 'lineupTokenScale' && settingsState[category] !== SETTINGS_DEFAULTS[category] ? settingsState[category] : DASHBOARD_FULLSCREEN_DEFAULTS[category]);
   }
   if (settingsState.uiMode === 'light' && ['bgColor', 'bgPreset'].includes(category)) {
     const lightCategory = category === 'bgColor' ? 'lightBgColor' : 'lightBgPreset';
@@ -719,7 +720,11 @@ function getLineupNodeMode() {
  * 5) 'settings:change' 이벤트로 외부 모듈(events-panel/stats-panel/lineup-panel)에 통지.
  */
 function setSetting(category, value) {
-  if (category in DASHBOARD_FULLSCREEN_FONT_DEFAULTS && isDashboardFullscreen()) {
+  if (category === 'lineupTokenScale' && typeof lpGetTokenScaleLimit === 'function') {
+    value = Math.min(value, Math.max(75, Math.floor(lpGetTokenScaleLimit() * 100 + 0.001)));
+    requestAnimationFrame(() => syncSliderUi(category));
+  }
+  if (category in DASHBOARD_FULLSCREEN_DEFAULTS && isDashboardFullscreen()) {
     const key = `${category}Fullscreen`;
     if (value !== null && !isValidSetting(category, value)) return false;
     const previous = settingsState[key];
@@ -745,10 +750,6 @@ function setSetting(category, value) {
     return false;
   }
   // 모드별 투명도와 피치 선택은 다른 모드의 저장값을 덮어쓰지 않는다.
-  if (category === 'lineupTokenScale' && typeof lpGetTokenScaleLimit === 'function') {
-    value = Math.min(value, Math.max(75, Math.floor(lpGetTokenScaleLimit() * 100 + 0.001)));
-    requestAnimationFrame(() => syncSliderUi(category));
-  }
   const storageCategory = getSetting('uiMode') === 'light'
     ? ({ panelAlpha: 'lightPanelAlpha', lineupPitchTone: 'lightLineupPitchTone', bgColor: 'lightBgColor', bgPreset: 'lightBgPreset' }[category] || category) : category;
   if (settingsState[storageCategory] === value) {
@@ -1363,7 +1364,7 @@ function openPanelFontPopup(title, clickPoint = null) {
     const tokenReset = document.createElement('button');
     tokenReset.className = 'panel-font-reset';
     tokenReset.textContent = '초기화';
-    tokenReset.addEventListener('click', () => { setSetting('lineupTokenScale', 100); sync(); });
+    tokenReset.addEventListener('click', () => { resetPanelFontSetting('lineupTokenScale'); sync(); });
     const tokenHeading = document.createElement('div');
     tokenHeading.className = 'panel-font-heading';
     tokenHeading.textContent = row.querySelector('.sp-label-main').textContent;
@@ -1411,7 +1412,7 @@ window.addEventListener('resize', closePanelFontPopup);
 // 화면 모드가 바뀌면 저장값은 유지하고 현재 화면의 기본값과 입력 UI만 다시 적용한다.
 function syncDashboardFontContext() {
   applyLayoutSettings();
-  [...Object.keys(DASHBOARD_FULLSCREEN_FONT_DEFAULTS), 'statsNameSize'].forEach(category => {
+  [...Object.keys(DASHBOARD_FULLSCREEN_DEFAULTS), 'statsNameSize'].forEach(category => {
     syncSettingUi(category);
     emitSettingsChange(category);
   });
@@ -2646,7 +2647,7 @@ function initSettingsPopup() {
       reset.setAttribute('aria-label', `${label} 초기화`);
       reset.title = `${label} 초기화`;
       reset.addEventListener('click', () => {
-        if (PANEL_FONT_SETTINGS.includes(category)) resetPanelFontSetting(category);
+        if (PANEL_FONT_SETTINGS.includes(category) || category === 'lineupTokenScale') resetPanelFontSetting(category);
         else setSetting(category, SETTINGS_DEFAULTS[category]);
       });
       input.parentElement.append(reset);

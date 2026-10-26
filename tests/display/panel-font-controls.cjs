@@ -32,6 +32,8 @@ const root = path.resolve(__dirname, '../..');
     await page.evaluate(() => document.documentElement.requestFullscreen());
     await settle(page);
     assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [16, 14]);
+    assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 115);
+    await page.evaluate(() => setSetting('lineupTokenScale', 90));
     await page.locator('#benchPanel [data-panel-font]').first().click();
     await change(18);
     await popup.locator('.panel-font-reset').click();
@@ -42,6 +44,7 @@ const root = path.resolve(__dirname, '../..');
     await settle(page);
     await page.evaluate(() => activatePage('main-small'));
     assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [19, 17]);
+    assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 90);
     await page.evaluate(() => { resetSettingsToDefaults(); clearPolling(); });
     assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [16, 14]);
     await page.evaluate(() => document.fullscreenElement ? document.exitFullscreen() : undefined);
@@ -52,6 +55,9 @@ const root = path.resolve(__dirname, '../..');
     });
     await settle(page);
     assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [12, 13]);
+    assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 100);
+    await page.evaluate(() => setSetting('lineupTokenScale', 85));
+
     await page.evaluate(() => {
       Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight });
       window.dispatchEvent(new Event('resize'));
@@ -63,6 +69,20 @@ const root = path.resolve(__dirname, '../..');
       Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight });
     });
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 18);
+    assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 115);
+    await page.evaluate(() => {
+      setSetting('lineupTokenScale', 90);
+      resetPanelFontSetting('lineupTokenScale');
+    });
+    assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 115);
+    await page.evaluate(() => {
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight + 100 });
+    });
+    assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 85);
+    await page.evaluate(() => {
+      Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight });
+      setSetting('lineupTokenScale', 100);
+    });
     await page.evaluate(() => {
       Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight + 100 });
       resetSettingsToDefaults();
