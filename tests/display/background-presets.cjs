@@ -123,6 +123,40 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.evaluate(() => setSetting('bgTeamDirection', 'off'));
     assert.equal(await background(), 'none');
 
+    // 배경 종류와 모드에 관계없이 전체 배경에 같은 투명도를 적용합니다.
+    for (const mode of ['dark', 'light']) {
+      for (const source of ['solid', 'horizontal', 'vertical', 'mood', 'preset', 'file', 'url']) {
+        await page.evaluate(({ mode, source, pixel }) => {
+          setSetting('uiMode', mode);
+          setSetting('bgImageUrl', source === 'url' ? pixel : '');
+          setSetting('bgImageData', source === 'file' ? pixel : '');
+          setSetting('bgPreset', source === 'preset' ? 'stadium' : 'off');
+          setSetting('bgTeamDirection', ['horizontal', 'vertical', 'mood'].includes(source) ? source : 'off');
+        }, { mode, source, pixel });
+        for (const transparency of [0, 50, 100]) {
+          await page.evaluate(value => setSetting('bgAlpha', value), transparency);
+          const painted = await page.evaluate(() => {
+            const layer = getComputedStyle(document.body, '::before');
+            return { opacity: Number(layer.opacity), bodyOpacity: getComputedStyle(document.body).opacity };
+          });
+          assert.equal(painted.opacity, 1 - transparency / 100, `${mode}/${source}: 전체 배경 투명도`);
+          assert.equal(painted.bodyOpacity, '1', '배경 투명도는 콘텐츠에 영향을 주지 않습니다.');
+        }
+      }
+    }
+    await page.evaluate(() => {
+      setSetting('bgAlpha', 50);
+      activatePage('tactics');
+    });
+    await page.locator('#page-tactics').evaluate(el => el.requestFullscreen());
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('#page-tactics'), '::before').opacity), '0.5', '전술판 전체화면도 배경 투명도를 유지합니다.');
+    await page.evaluate(async () => {
+      await document.exitFullscreen();
+      setSetting('uiMode', 'dark'); setSetting('bgAlpha', 0);
+      setSetting('bgImageUrl', ''); setSetting('bgImageData', '');
+      activatePage('main-big');
+    });
+
     await page.evaluate(() => setSetting('bgPreset', 'abstract'));
     await page.reload();
     assert.equal(await page.evaluate(() => getSetting('bgPreset')), 'abstract');

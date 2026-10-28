@@ -165,7 +165,7 @@ const SETTINGS_DEFAULTS = {
   bgTeamDirection: 'off',
   bgPreset:      'stadium',
   lightBgPreset: 'stadium-day',
-  bgAlpha:        0,         // 단색 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
+  bgAlpha:        0,         // 전체 배경 투명도. 100이면 OBS 브라우저 소스의 뒤가 보인다.
   matchInfoLabelColor: '#60A5FA', // 경기 정보의 주심/대회/경기장/킥오프 항목명.
   matchInfoLabelColorRev: 1, // 이전 주황 기본값을 1회만 새 기본색으로 이전.
   panelColor: '#0b1220',
@@ -1097,8 +1097,9 @@ function applyPageBackground() {
 
   root.style.setProperty('--bg-ui', bgColor);
   const bgOpacity = (100 - clampPercent(getSetting('bgAlpha'), SETTINGS_DEFAULTS.bgAlpha)) / 100;
-  const bgRgb = [1, 3, 5].map(start => parseInt(bgColor.slice(start, start + 2), 16));
-  root.style.setProperty('--page-bg', `rgba(${bgRgb.join(', ')}, ${bgOpacity})`);
+  // 배경을 먼저 합성한 뒤 전체 레이어에 투명도를 한 번만 적용합니다.
+  root.style.setProperty('--page-bg-opacity', String(bgOpacity));
+  root.style.setProperty('--page-bg', bgColor);
   if (!imgSrc && getSetting('bgTeamDirection') === 'mood') {
     const lightMood = getSetting('uiMode') === 'light';
     const moodColor = value => {
@@ -1109,24 +1110,24 @@ function applyPageBackground() {
         const tone = hslToRgb(h, Math.min(s, .6), .65);
         rgb = parseAnyColor(chromaSafe(rgbToHex(tone.r, tone.g, tone.b)));
       }
-      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${(lightMood ? .35 : .4) * bgOpacity})`;
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${lightMood ? .35 : .4})`;
     };
     // 팀 색은 가장자리에 두고 중앙은 모드별 바탕색으로 차분하게 유지합니다.
     root.style.setProperty('--page-bg', 'transparent');
     root.style.setProperty('--bg-image', [
       lightMood
-        ? `linear-gradient(135deg, rgba(90, 96, 104, ${.08 * bgOpacity}), rgba(90, 96, 104, 0) 45%, rgba(90, 96, 104, ${.04 * bgOpacity}))`
-        : `linear-gradient(to bottom, rgba(6, 14, 26, ${.15 * bgOpacity}), rgba(6, 14, 26, ${.75 * bgOpacity}))`,
+        ? `linear-gradient(135deg, rgba(90, 96, 104, .08), rgba(90, 96, 104, 0) 45%, rgba(90, 96, 104, .04))`
+        : `linear-gradient(to bottom, rgba(6, 14, 26, .15), rgba(6, 14, 26, .75))`,
       `radial-gradient(ellipse at 0% 25%, ${moodColor(state.colors.homeBg)}, transparent 65%)`,
       `radial-gradient(ellipse at 100% 75%, ${moodColor(state.colors.awayBg)}, transparent 65%)`,
       lightMood
-        ? `linear-gradient(rgba(194, 198, 204, ${bgOpacity}), rgba(194, 198, 204, ${bgOpacity}))`
-        : `linear-gradient(rgba(9, 19, 33, ${bgOpacity}), rgba(9, 19, 33, ${bgOpacity}))`
+        ? `linear-gradient(rgba(194, 198, 204, 1), rgba(194, 198, 204, 1))`
+        : `linear-gradient(rgba(9, 19, 33, 1), rgba(9, 19, 33, 1))`
     ].join(', '));
   } else if (!imgSrc && getSetting('bgTeamDirection') !== 'off') {
     const color = value => {
       const rgb = parseAnyColor(chromaSafe(value));
-      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${bgOpacity})`;
+      return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`;
     };
     const direction = getSetting('bgTeamDirection') === 'vertical' ? 'to bottom' : 'to right';
     root.style.setProperty('--page-bg', 'transparent');

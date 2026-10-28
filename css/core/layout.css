@@ -62,7 +62,8 @@
       color: var(--text);
       font-family: var(--font-family);
     }
-    body::before {
+    body::before,
+    #page-tactics:fullscreen::before {
       content: "";
       position: fixed;
       inset: 0;
@@ -72,6 +73,7 @@
       background-size: var(--bg-image-size, 100% 100%);
       background-position: center;
       background-repeat: no-repeat;
+      opacity: var(--page-bg-opacity, 1);
       pointer-events: none;
     }
 
@@ -267,12 +269,8 @@
     #page-tactics.active { display: flex; flex-direction: column; }
     /* 전술판 전체화면 — :fullscreen 상태에서 배경 보정 */
     #page-tactics:fullscreen {
-      background-color: var(--page-bg, var(--bg-ui));
-      background-image: var(--bg-image, none);
-      background-size: var(--bg-image-size, 100% 100%);
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
+      background: transparent;
+      isolation: isolate;
     }
     #page-tactics::backdrop { background: transparent; }
     body:has(#page-tactics:fullscreen)::before { display: none; }
