@@ -1238,6 +1238,39 @@ function applyBackgroundSettings() {
   applyUiMode();
 }
 
+/** 투명도 슬라이더의 가벼운 미리보기와 설정 확정을 분리한다. */
+function bindTransparencySlider(input, category, label) {
+  // 드래그 중에는 CSS만 갱신하고, 저장·대비 계산·패널 재렌더는 조작 종료 시 한 번 실행한다.
+  input.addEventListener('input', () => {
+    if (getSetting('greenscreen') === 'on') return;
+    const value = clampPercent(Number(input.value), SETTINGS_DEFAULTS[category]);
+    const alpha = (100 - value) / 100;
+    const root = document.documentElement;
+    const variable = { panelAlpha: '--panel-alpha', pitchAlpha: '--lp-pitch-alpha', tacticsAlpha: '--td-pitch-alpha' }[category];
+    root.style.setProperty(variable, String(alpha));
+    if (category === 'panelAlpha') root.style.setProperty('--api-widget-hover-alpha', String(.22 * alpha));
+    if (label) label.textContent = `${value}%`;
+  });
+  input.addEventListener('change', () => {
+    const value = Number(input.value);
+    const unchanged = Number(getSetting(category)) === value;
+    const saved = getSetting('greenscreen') !== 'on' && setSetting(category, value);
+    // 원래 값으로 돌아오거나 저장에 실패한 경우에도 미리보기 상태를 확정값으로 복구한다.
+    if (!saved || unchanged) applyBackgroundSettings();
+    syncSliderUi(category);
+    syncPanelFontPopup();
+  });
+}
+
+/** 아직 확정하지 않은 미리보기도 기본값으로 되돌린다. */
+function resetTransparencySetting(category) {
+  const value = SETTINGS_DEFAULTS[category];
+  if (Number(getSetting(category)) === value) applyBackgroundSettings();
+  setSetting(category, value);
+  syncSliderUi(category);
+  syncPanelFontPopup();
+}
+
 /**
  * 슬라이더 UI 동기화 + 옆에 붙은 .sp-slider-value 라벨도 같이 갱신.
  * lineupNameSize / eventNameSize / benchInjuryNameSize / statsNameSize는 px 단위, 그 외(lineupScale 등)는 % 단위로 표시.
@@ -1262,13 +1295,13 @@ function syncSliderUi(category) {
 /** 패널 제목의 빠른 글자 크기 편집도 설정 창과 같은 저장·적용 경로를 사용한다. */
 const PANEL_FONT_SETTINGS = ['lineupNameSize', 'eventNameSize', 'benchInjuryNameSize', 'statsNameSize', 'matchInfoNameSize', 'hthNameSize', 'teamFixturesNameSize'];
 function panelFontTitleAttrs(category) {
-  return ` data-panel-font="${category}" role="button" tabindex="0" title="클릭하여 글자 크기 조절"`;
+  return ` data-panel-font="${category}" role="button" tabindex="0" title="클릭하여 글자 크기·투명도 조절"`;
 }
 function bindPanelFontTitle(title, category) {
   title.dataset.panelFont = category;
   title.setAttribute('role', 'button');
   title.tabIndex = 0;
-  title.title = '클릭하여 글자 크기 조절';
+  title.title = '클릭하여 글자 크기·투명도 조절';
 }
 let panelFontPopup = null;
 /** 빠른 메뉴에서도 설정창과 같은 토글·저장·동기화를 사용합니다. */
@@ -1305,6 +1338,7 @@ function closePanelFontPopup() {
 function syncPanelFontPopup() {
   if (!panelFontPopup) return;
   panelFontPopup._syncToken?.();
+  panelFontPopup._syncTransparency?.();
   const category = panelFontPopup.dataset.category;
   const value = Number(getSetting(category));
   panelFontPopup.querySelector('input').value = String(value);
@@ -1340,12 +1374,11 @@ function openPanelFontPopup(title, clickPoint = null) {
   reset.addEventListener('click', () => { resetPanelFontSetting(category); syncPanelFontPopup(); });
   input.addEventListener('input', () => { setSetting(category, Number(input.value)); syncPanelFontPopup(); });
   cluster.append(input, value);
-  if (category === 'lineupNameSize') {
-    const heading = document.createElement('div');
-    heading.className = 'panel-font-heading';
-    heading.textContent = '선발 라인업 이름 크기';
-    popup.append(heading);
-  }
+  const heading = document.createElement('div');
+  heading.className = 'panel-font-heading';
+  heading.textContent = category === 'lineupNameSize' ? '선발 라인업 이름 크기'
+    : ['benchInjuryNameSize', 'eventNameSize'].includes(category) ? '이름 크기' : '글자 크기';
+  popup.append(heading);
   popup.append(cluster, reset);
   const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial']
     : category === 'benchInjuryNameSize' ? ['roster'] : category === 'eventNameSize' ? ['event'] : [];
@@ -1373,6 +1406,36 @@ function openPanelFontPopup(title, clickPoint = null) {
     popup._syncToken = sync;
     sync();
   }
+  // 빠른 메뉴의 투명도도 설정 창과 같은 저장값과 그린스크린 제한을 따른다.
+  const transparencyCategory = category === 'lineupNameSize' ? 'pitchAlpha' : 'panelAlpha';
+  const transparencyLabel = category === 'lineupNameSize' ? '라인업 투명도' : '패널 투명도';
+  const transparencySource = document.querySelector(`#settingsBackdrop input[data-settings-slider="${transparencyCategory}"]`);
+  const transparencyInput = transparencySource.cloneNode(true);
+  transparencyInput.removeAttribute('data-settings-slider');
+  transparencyInput.setAttribute('aria-label', transparencyLabel);
+  const transparencyHeading = document.createElement('div');
+  transparencyHeading.className = 'panel-font-heading';
+  transparencyHeading.textContent = transparencyLabel;
+  const transparencyCluster = document.createElement('label');
+  transparencyCluster.className = 'sp-slider-cluster';
+  const transparencyValue = document.createElement('output');
+  transparencyValue.className = 'sp-slider-value';
+  const transparencyReset = document.createElement('button');
+  transparencyReset.type = 'button';
+  transparencyReset.className = 'panel-font-reset';
+  transparencyReset.textContent = '초기화';
+  transparencyReset.setAttribute('aria-label', `${transparencyLabel} 초기화`);
+  popup._syncTransparency = () => {
+    const disabled = getSetting('greenscreen') === 'on';
+    transparencyInput.disabled = transparencyReset.disabled = disabled;
+    transparencyInput.value = disabled ? 0 : getSetting(transparencyCategory);
+    transparencyValue.textContent = `${transparencyInput.value}%`;
+  };
+  bindTransparencySlider(transparencyInput, transparencyCategory, transparencyValue);
+  transparencyReset.addEventListener('click', () => resetTransparencySetting(transparencyCategory));
+  transparencyCluster.append(transparencyInput, transparencyValue);
+  popup.classList.add('has-name-settings');
+  popup.append(transparencyHeading, transparencyCluster, transparencyReset);
   nameSettings.forEach(setting => popup.append(createQuickSettingRow(setting, true)));
   (document.fullscreenElement || document.body).append(popup);
   panelFontPopup = popup;
@@ -2687,11 +2750,16 @@ function initSettingsPopup() {
       reset.title = `${label} 초기화`;
       reset.addEventListener('click', () => {
         if (PANEL_FONT_SETTINGS.includes(category) || category === 'lineupTokenScale') resetPanelFontSetting(category);
+        else if (['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].includes(category)) resetTransparencySetting(category);
         else setSetting(category, SETTINGS_DEFAULTS[category]);
       });
       input.parentElement.append(reset);
     }
     syncSliderUi(category);
+    if (['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].includes(category)) {
+      bindTransparencySlider(input, category, input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value'));
+      return;
+    }
     if (category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale') {
       // 드래그 중 UI가 확대되면 슬라이더 위치도 이동하므로 놓을 때만 적용한다.
       input.addEventListener('input', () => {

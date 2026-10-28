@@ -36,7 +36,39 @@ const root = path.resolve(__dirname, '../..');
     await page.evaluate(() => setSetting('lineupTokenScale', 90));
     await page.locator('#benchPanel [data-panel-font]').first().click();
     await change(18);
-    await popup.locator('.panel-font-reset').click();
+    const panelTransparency = popup.getByRole('slider', { name: '패널 투명도', exact: true });
+    // 연속 드래그 중에는 저장/재렌더 신호 없이 배경만 미리 보고, 놓을 때 한 번 확정한다.
+    const drag = await panelTransparency.evaluate(input => {
+      const before = getSetting('panelAlpha');
+      let changes = 0;
+      const listener = event => { if (event.detail.category === 'panelAlpha') changes++; };
+      document.addEventListener('settings:change', listener);
+      for (const value of [10, 30, 50, 70, 80]) {
+        input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      const preview = { saved: getSetting('panelAlpha'), changes, alpha: document.documentElement.style.getPropertyValue('--panel-alpha') };
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      document.removeEventListener('settings:change', listener);
+      return { before, preview, changes, saved: getSetting('panelAlpha') };
+    });
+    assert.equal(drag.preview.saved, drag.before);
+    assert.equal(drag.preview.changes, 0);
+    assert.equal(drag.preview.alpha, '0.2');
+    assert.equal(drag.changes, 1);
+    assert.equal(drag.saved, 80);
+    await panelTransparency.fill('65');
+    assert.equal(await page.evaluate(() => getSetting('panelAlpha')), 65);
+    assert.equal(await page.locator('#settingsBackdrop [data-settings-slider="panelAlpha"]').inputValue(), '65');
+    assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--panel-alpha')), '0.35');
+    await page.evaluate(() => setSetting('panelAlpha', 40));
+    assert.equal(await panelTransparency.inputValue(), '40');
+    await popup.getByRole('button', { name: '패널 투명도 초기화', exact: true }).click();
+    assert.equal(await page.evaluate(() => getSetting('panelAlpha') === SETTINGS_DEFAULTS.panelAlpha), true);
+    await page.evaluate(() => setSetting('greenscreen', 'on'));
+    assert.equal(await panelTransparency.isDisabled(), true);
+    await page.evaluate(() => setSetting('greenscreen', 'off'));
+    await popup.locator('.panel-font-reset').first().click();
     assert.equal(await page.evaluate(() => getSetting('benchInjuryNameSize')), 14);
     await close();
     await page.evaluate(() => { setSetting('lineupNameSize', 19); setSetting('benchInjuryNameSize', 17); });
@@ -137,7 +169,7 @@ const root = path.resolve(__dirname, '../..');
       await slider.focus();
       await page.keyboard.press('ArrowRight');
       assert.equal(await range.inputValue(), String(before + 1));
-      assert.equal(await popup.locator('output').textContent(), `${before + 1}px`);
+      assert.equal(await popup.locator('output').first().textContent(), `${before + 1}px`);
       await popup.getByRole('button', { name: '초기화', exact: true }).click();
       assert.equal(await slider.inputValue(), String(await page.evaluate(category => SETTINGS_DEFAULTS[category], category)));
       await close();
@@ -223,6 +255,15 @@ const root = path.resolve(__dirname, '../..');
       const position = ['top', 'bottom'].includes(side) ? { x: box.width / 2, y: 6 } : { x: 6, y: 35 };
       await line.click({ position });
       assert(await popup.locator('.sp-row:has(input[data-settings-cat="lineup"])').isVisible());
+      const transparency = popup.getByRole('slider', { name: '라인업 투명도', exact: true });
+      await transparency.fill('70');
+      assert.equal(await page.evaluate(() => getSetting('pitchAlpha')), 70);
+      assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-pitch-alpha')), '0.3');
+      assert.equal(await page.locator('#settingsBackdrop [data-settings-slider="pitchAlpha"]').inputValue(), '70');
+      await page.evaluate(() => setSetting('pitchAlpha', 35));
+      assert.equal(await transparency.inputValue(), '35');
+      await popup.getByRole('button', { name: '라인업 투명도 초기화', exact: true }).click();
+      assert.equal(await page.evaluate(() => getSetting('pitchAlpha') === SETTINGS_DEFAULTS.pitchAlpha), true);
       if (['left', 'right'].includes(side)) {
         const menu = await popup.boundingBox();
         assert(Math.abs(menu.y - (box.y + position.y)) < 15, 'menu opens near the clicked point on a long boundary');
@@ -528,7 +569,7 @@ const root = path.resolve(__dirname, '../..');
         assert(scroll.top > 0 && scroll.total > scroll.height, JSON.stringify(scroll));
       }
       await heading.click();
-      await popup.locator('.panel-font-reset').click();
+      await popup.locator('.panel-font-reset').first().click();
       await close();
       await page.locator(`input[data-settings-slider="${category}"]`).evaluate(input => {
         input.value = '19'; input.dispatchEvent(new Event('input', { bubbles: true }));
