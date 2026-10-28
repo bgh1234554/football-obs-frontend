@@ -2701,6 +2701,11 @@ function initSettingsSearch() {
   const input = document.getElementById('settingsSearchInput');
   const clear = () => { input.value = ''; filterSettings(''); };
   toggle.addEventListener('click', () => {
+    // 검색 결과 수와 무관하게 검색을 열기 전의 창 높이를 유지한다.
+    if (bar.hidden) {
+      const modal = document.querySelector('.sp-modal');
+      modal.style.setProperty('--sp-search-modal-height', getComputedStyle(modal).height);
+    }
     bar.hidden = !bar.hidden;
     toggle.setAttribute('aria-expanded', String(!bar.hidden));
     if (bar.hidden) clear(); else { syncSettingsTabSectionHeights(); input.focus(); }

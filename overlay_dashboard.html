@@ -257,7 +257,10 @@
           <button class="sp-search-toggle" id="settingsSearchToggle" type="button" aria-label="설정 검색" aria-expanded="false" aria-controls="settingsSearchBar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
         </div>
         <div id="settingsSearchBar" class="sp-search-bar" hidden>
-          <input id="settingsSearchInput" type="search" aria-label="설정 검색어" placeholder="설정 검색 (예: 폰트, 사이즈, 알림음)" autocomplete="off">
+          <div class="sp-search-field">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+            <input id="settingsSearchInput" type="search" aria-label="설정 검색어" placeholder="설정 검색 (예: 폰트, 사이즈, 알림음)" autocomplete="off">
+          </div>
           <button id="settingsSearchClear" type="button" class="sp-secondary-btn">지우기</button>
         </div>
         <div id="settingsSearchStatus" class="sp-search-status" role="status" hidden></div>

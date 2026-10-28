@@ -98,7 +98,63 @@ async function checkScoreBackgroundJoins(browser) {
  }
 }
 
-(async()=>{const browser=await chromium.launch();try{const page=await openPage(browser,{dpr:1,platform:'Win32',viewport:{width:1920,height:1080}});await checkScoreBackgroundJoins(browser);await checkAggregateScoreJoins(browser);const themes=await page.evaluate(()=>Object.keys(FSM_THEMES));for(const theme of themes){await page.evaluate(theme=>{state.homeName='Home Team';state.awayName='Away Team';state.homeScore=10;state.awayScore=2;applyTheme(theme,null);render();},theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);for(const scale of [60,75,100,125,150]){await page.evaluate(scale=>{state.boardScale=scale;render();fsmBoardRender();},scale);await settle(page);const m=await page.evaluate(()=>{const rect=sel=>{const r=document.querySelector(sel).getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height}};return {scores:[rect('#team-score-left'),rect('#team-score-right')],center:rect('.score-div'),card:rect('.teams-left')};});if(theme==='pl'||theme==='seriea'||theme==='dfb'){/* 가운데 로고가 점수판 위아래로 나오는 디자인(DFB-포칼 트로피 포함) */assert(m.center.height>m.card.height);}else{for(const r of [...m.scores,m.center]){assert(Math.abs(r.top-m.card.top)<.1,JSON.stringify({theme,scale,m}));assert(Math.abs(r.bottom-m.card.bottom)<.1,JSON.stringify({theme,scale,m}));}}}if(['kleague','seriea'].includes(theme)){
+// 같은 색의 로고·팀명 칸은 소수 배율에서도 접합부에 세로선이 없어야 합니다.
+async function checkLogoBackgroundJoins(browser) {
+ for (const dpr of [1, 1.25, 2]) {
+  const page = await openPage(browser, {dpr, platform:'Win32', viewport:{width:1920,height:1080}});
+  try {
+   await page.addStyleTag({content:'#board :is(img,.team-name) {visibility:hidden!important}'});
+   await page.evaluate(() => {
+    state.homeName='Fulham'; state.awayName='Palace';
+    state.colors.homeBg='#000000'; state.colors.awayBg='#234b91';
+    state.noteEnabled=true; state.notes={home:'',away:'37 test'};
+    applyTheme('carabao',null); render();
+   });
+   await page.waitForFunction(() => !pendingThemeLink);
+   const scales = dpr === 1 ? Array.from({length:76},(_,i)=>50+i) : [50,67,75,80,85,90,100,110,125];
+   for (const mode of ['normal','aggregate','pso']) for (const scale of scales) for (const position of (scale===85?['left','center','right']:['center'])) {
+    await page.evaluate(({mode,scale,position}) => {
+     state.aggEnabled=mode==='aggregate'; state.aggHomeBase=3; state.aggAwayBase=2;
+     state.half=mode==='pso'?'PK':'2H'; state.pk.home=['G','M']; state.pk.away=['G'];
+     state.boardScale=scale; state.boardPosition=position; render(); fsmBoardRender();
+    },{mode,scale,position});
+    await settle(page);
+    const geometry=await page.evaluate(() => {
+     const pairs=[['#team-logo-left','#homeCard'],['#awayCard','#team-logo-right']].map(([a,b])=>{
+      const l=document.querySelector(a),r=document.querySelector(b),x=l.getBoundingClientRect(),y=r.getBoundingClientRect();
+      return {x:(x.right+y.left)/2,top:Math.max(x.top,y.top),height:Math.min(x.bottom,y.bottom)-Math.max(x.top,y.top),
+       gap:y.left-x.right,color:getComputedStyle(l).backgroundColor.match(/\d+/g).slice(0,3).map(Number),same:getComputedStyle(l).backgroundColor===getComputedStyle(r).backgroundColor};
+     });
+     const x=Math.floor(pairs[0].x)-3,y=Math.floor(pairs[0].top);
+     return {pairs,clip:{x,y,width:Math.ceil(pairs[1].x)-x+3,height:Math.ceil(pairs[0].height)+1}};
+    });
+    const png=await page.screenshot({clip:geometry.clip});
+    const deviations=await page.evaluate(async({png,g,dpr})=>{
+     const img=new Image();img.src='data:image/png;base64,'+png;await img.decode();
+     const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
+     const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0);const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+     return g.pairs.map(pair=>{
+      let max=0;
+      for(let y=Math.ceil((pair.top-g.clip.y+pair.height*.2)*dpr);y<Math.floor((pair.top-g.clip.y+pair.height*.8)*dpr);y++) {
+       for(let x=Math.floor((pair.x-g.clip.x)*dpr)-1;x<=Math.ceil((pair.x-g.clip.x)*dpr);x++) {
+        const at=(y*canvas.width+x)*4;
+        max=Math.max(max,...pair.color.map((value,k)=>Math.abs(value-data[at+k])));
+       }
+      }
+      return max;
+     });
+    },{png:png.toString('base64'),g:geometry,dpr});
+    geometry.pairs.forEach((pair,index)=>{
+     assert(pair.same && Math.abs(pair.gap)<.1,JSON.stringify({mode,scale,position,dpr,pair}));
+     assert(deviations[index]<=3,JSON.stringify({mode,scale,position,dpr,side:index,deviation:deviations[index]}));
+    });
+   }
+   console.log('PASS continuous logo/team background DPR',dpr);
+  } finally {await page.close();}
+ }
+}
+
+(async()=>{const browser=await chromium.launch();try{const page=await openPage(browser,{dpr:1,platform:'Win32',viewport:{width:1920,height:1080}});await checkLogoBackgroundJoins(browser);await checkScoreBackgroundJoins(browser);await checkAggregateScoreJoins(browser);const themes=await page.evaluate(()=>Object.keys(FSM_THEMES));for(const theme of themes){await page.evaluate(theme=>{state.homeName='Home Team';state.awayName='Away Team';state.homeScore=10;state.awayScore=2;applyTheme(theme,null);render();},theme);await page.waitForFunction(()=>!pendingThemeLink);await page.evaluate(()=>document.fonts.ready);for(const scale of [60,75,100,125,150]){await page.evaluate(scale=>{state.boardScale=scale;render();fsmBoardRender();},scale);await settle(page);const m=await page.evaluate(()=>{const rect=sel=>{const r=document.querySelector(sel).getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height}};return {scores:[rect('#team-score-left'),rect('#team-score-right')],center:rect('.score-div'),card:rect('.teams-left')};});if(theme==='pl'||theme==='seriea'||theme==='dfb'){/* 가운데 로고가 점수판 위아래로 나오는 디자인(DFB-포칼 트로피 포함) */assert(m.center.height>m.card.height);}else{for(const r of [...m.scores,m.center]){assert(Math.abs(r.top-m.card.top)<.1,JSON.stringify({theme,scale,m}));assert(Math.abs(r.bottom-m.card.bottom)<.1,JSON.stringify({theme,scale,m}));}}}if(['kleague','seriea'].includes(theme)){
 const edges=await page.evaluate(()=>['home','away'].map(side=>{
  const score=document.getElementById(side==='home'?'team-score-left':'team-score-right');
  const box=score.getBoundingClientRect();const scale=box.height/score.offsetHeight;

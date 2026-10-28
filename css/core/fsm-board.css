@@ -290,6 +290,13 @@
   color: #ffffff;
 }
 .fsm-board .jleague-arc, .fsm-board .danish-triangle, .fsm-board .cnl-curve, .fsm-board .russiancup-triangle, .fsm-board .az-chevron { display: none; }
+.board.fsm-board[data-fsm-theme="carabao"] #team-logo-left {
+  /* 원형 외곽은 유지하고 팀명 쪽만 겹쳐 소수 픽셀 접합부를 메웁니다. */
+  box-shadow: 2px 0 var(--carabao-logo-color);
+}
+.board.fsm-board[data-fsm-theme="carabao"] #team-logo-right {
+  box-shadow: -2px 0 var(--carabao-logo-color);
+}
 /* EFL은 부모 띠를 점수 칸과 같은 색으로 채워 소수 픽셀 경계에서도 배경이 이어지게 합니다. */
 .board.fsm-board:is([data-fsm-theme="eflchampionship"], [data-fsm-theme="eflleagueone"], [data-fsm-theme="eflleaguetwo"]) .scoreboard-main {
   background: #E4E4E4;
