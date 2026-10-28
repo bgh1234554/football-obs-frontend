@@ -432,6 +432,8 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .panel-font-heading { font-weight: 700; }
 .quick-setting-row { gap: 8px; padding: 5px 0; }
 .quick-setting-row .sp-label-main { font-size: 12px; white-space: nowrap; }
+.quick-formation-setting .sp-label-main { white-space: normal; word-break: keep-all; }
+.hide-lineup-formation-button [data-formation-edit] { display: none !important; }
 .quick-setting-row .sp-toggle-cluster { gap: 5px; }
 .quick-setting-row .sp-toggle-side { font-size: 10px; }
 .panel-font-reset {

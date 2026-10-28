@@ -247,7 +247,7 @@ function buildTitleActionButton(kind, side) {
   // 라벨에 홈/원정 prefix는 붙이지 않는다.
   if (kind === 'lineup') {
     const label = isGridMode(lineupPanelState.lastFixture, side) ? '포메이션 설정' : '라인업 입력';
-    return `<button class="dp-side-edit-btn" data-manual="lineup" data-side="${side}">${label}</button>`;
+    return `<button class="dp-side-edit-btn" data-manual="lineup" data-side="${side}"${isGridMode(lineupPanelState.lastFixture, side) ? ' data-formation-edit' : ''}>${label}</button>`;
   }
   return `<button class="dp-side-edit-btn" data-manual="${kind}" data-side="${side}">${DETAIL_SIDE_TITLES[side]} 입력</button>`;
 }

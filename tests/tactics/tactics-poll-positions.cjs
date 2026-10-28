@@ -7,6 +7,45 @@ const fixture = require('../fixtures/1637598-lineup.json');
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1280, height: 900 } });
+    await page.evaluate(() => activatePage('tactics'));
+    const swap = page.getByRole('button', { name: '진영 바꾸기', exact: true });
+    const beforeSwap = await page.evaluate(() => {
+      tacticsState.homePositions[0] = { x: 23, y: 37 };
+      tacticsRenderTokens();
+      return structuredClone(tacticsState.homePositions);
+    });
+    await swap.click();
+    assert.deepEqual(await page.evaluate(() => tacticsState.homePositions), beforeSwap.map(p => ({ x: 100 - p.x, y: p.y })));
+    await page.evaluate(() => tacticsApplyFm());
+    assert.equal(await page.evaluate(() => tacticsState.homePositions[0].x), 77, '포메이션 갱신 뒤에도 반전된 수동 좌표 유지');
+    await swap.click();
+    assert.deepEqual(await page.evaluate(() => tacticsState.homePositions), beforeSwap, '두 번 바꾸면 수동 배치 복원');
+    const drawingSwap = await page.evaluate(() => {
+      const drawing = { type: 'arrow', x1: 15, y1: 25, x2: 40, y2: 65, color: '#ffffff' };
+      tdDrawings.push(drawing);
+      tdHistoryPush({ type: 'draw', drawing });
+      tacticsState.ballPosition = { x: 30, y: 45 };
+      tacticsToggleOrientation();
+      tacticsSwapEnds();
+      const mirrored = { drawing: structuredClone(drawing), ball: structuredClone(tacticsState.ballPosition) };
+      tdUndo();
+      const removed = !tdDrawings.includes(drawing);
+      tdRedo();
+      const restored = tdDrawings.includes(drawing);
+      tacticsSwapEnds();
+      tacticsToggleOrientation();
+      const original = structuredClone(drawing);
+      tdUndo();
+      return { mirrored, removed, restored, original };
+    });
+    assert.deepEqual(drawingSwap.mirrored.drawing, { type: 'arrow', x1: 85, y1: 25, x2: 60, y2: 65, color: '#ffffff' });
+    assert.deepEqual(drawingSwap.mirrored.ball, { x: 70, y: 45 });
+    assert(drawingSwap.removed && drawingSwap.restored, '진영 반전 뒤에도 그림 되돌리기/다시 실행 유지');
+    assert.equal(drawingSwap.original.x1, 15);
+    await page.evaluate(() => tacticsToggleFullscreen());
+    await page.waitForFunction(() => !!document.fullscreenElement);
+    assert.equal(await swap.locator('.td-btn-label').isVisible(), false);
+    await page.evaluate(() => document.exitFullscreen());
     const result = await page.evaluate(fixture => {
       fixture.matchInfo.status = '2H';
       fixture.matchInfo.elapsed = 65;
@@ -88,6 +127,12 @@ const fixture = require('../fixtures/1637598-lineup.json');
           await menu.locator('[data-value="5-4-1"]').click();
           assert.equal(await preview.locator(`#tactics-${side}-fm`).inputValue(), '5-4-1');
         }
+        const touchSwap = preview.getByRole('button', { name: '진영 바꾸기', exact: true });
+        assert(await touchSwap.isVisible());
+        assert.equal(await touchSwap.locator('.td-btn-label').isVisible(), false);
+        await touchSwap.click();
+        assert.equal(await touchSwap.getAttribute('aria-pressed'), 'true');
+        await touchSwap.click();
         await preview.locator('#td-topbar-more-btn').click();
         const sliders = await preview.locator('#tactics-topbar .td-topbar-secondary .td-alpha-slider').evaluateAll(inputs => inputs.map(input => {
           const rect = input.getBoundingClientRect(), parent = input.parentElement.getBoundingClientRect();

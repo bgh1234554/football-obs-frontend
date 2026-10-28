@@ -127,6 +127,7 @@
 
   // -- 현재 전술판 상태 (var: render()보다 늦게 선언되므로 호이스팅 필요)
   var tacticsState = {
+    endsSwapped: false,
     homePositions: [],  // [{x, y}, ...]
     awayPositions: [],
     ballPosition: { x: 50, y: 50 },
@@ -618,8 +619,9 @@
     // 2. 포메이션 좌표 계산 (어웨이는 미러링)
     const homeCoords = TACTICS_FM[homeFm] || TACTICS_FM['4-3-3'];
     const awayCoords = tacticsMirror(TACTICS_FM[awayFm] || TACTICS_FM['4-3-3']);
-    const nextHomePositions = homeCoords.map(p => ({ ...p }));
-    const nextAwayPositions = awayCoords.map(p => ({ ...p }));
+    const orient = p => ({ ...p, x: tacticsState.endsSwapped ? 100 - p.x : p.x });
+    const nextHomePositions = homeCoords.map(orient);
+    const nextAwayPositions = awayCoords.map(orient);
     const shouldResetHomePositions = !preservePositions
       || !Array.isArray(tacticsState.homePositions)
       || tacticsState.homePositions.length !== nextHomePositions.length
@@ -1148,6 +1150,36 @@
     tacticsApplyLineup(tacticsState.sourceLineup || TACTICS_MOCK_LINEUP, { preservePositions: true });
   }
 
+  /** 중앙선을 기준으로 현재 배치와 드로잉, 이동 기록을 함께 반사한다. */
+  function tacticsSwapEnds() {
+    const seen = new WeakSet();
+    const reflect = object => {
+      if (!object || typeof object !== 'object' || seen.has(object)) return;
+      seen.add(object);
+      for (const key of Object.keys(object)) {
+        if (['x', 'x1', 'x2', 'cx', 'fromX', 'toX', 'prevCx'].includes(key) && Number.isFinite(object[key])) object[key] = 100 - object[key];
+        else if (key === 'cx_off' && Number.isFinite(object[key])) object[key] = -object[key];
+        else reflect(object[key]);
+      }
+    };
+    [tacticsState.homePositions, tacticsState.awayPositions, tacticsState.ballPosition,
+      tdDrawings, tdHistory, tdFuture, tdLaserStrokes].forEach(reflect);
+    tacticsState.endsSwapped = !tacticsState.endsSwapped;
+    tacticsSyncEndsUi();
+    tacticsRenderTokens();
+    tdRenderAll();
+  }
+
+  function tacticsSyncEndsUi() {
+    const swapped = tacticsState.endsSwapped;
+    const btn = document.getElementById('btn-tactics-swap-ends');
+    if (btn) {
+      tdSetIconButton(btn, '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16l-4-4M20 17H4l4 4M12 4v16"/></svg>', '진영 바꾸기');
+      btn.setAttribute('aria-pressed', String(swapped));
+    }
+    document.getElementById('page-tactics')?.classList.toggle('td-ends-swapped', swapped);
+  }
+
   /** 전술판 전체화면 토글 — requestFullscreen API 사용 */
   function tacticsToggleFullscreen() {
     const page = document.getElementById('page-tactics');
@@ -1172,6 +1204,7 @@
   });
   document.addEventListener('DOMContentLoaded', () => {
     syncTacticsFullscreenButtonLabel();
+    tacticsSyncEndsUi();
     tacticsSyncOrientationUi();
     tacticsSyncPitchLayout();
   });

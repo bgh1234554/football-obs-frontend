@@ -233,6 +233,16 @@ const root = path.resolve(__dirname, '../..');
     assert(clipping.scale < 1 && clipping.inside, 'all tokens and icons stop before any clipping boundary');
     await page.evaluate(() => setSetting('lineupTokenScale', 100));
     assert.equal(await popup.locator('.sp-label-sub').count(), 0);
+    const hideFormation = popup.getByRole('checkbox', { name: '포메이션 설정 버튼', exact: true });
+    assert.equal(await hideFormation.isChecked(), true);
+    assert.equal(await popup.locator('.quick-setting-row').last().getByRole('checkbox').getAttribute('aria-label'), '포메이션 설정 버튼');
+    assert(await page.locator('[data-formation-edit]').count() > 0);
+    await hideFormation.locator('..').click();
+    assert.equal(await page.evaluate(() => getSetting('lineupShowFormationButton')), 'off');
+    assert.equal(await page.locator('[data-formation-edit]').evaluateAll(buttons => buttons.every(button => getComputedStyle(button).display === 'none')), true);
+    await page.evaluate(() => setSetting('lineupShowFormationButton', 'on'));
+    assert.equal(await hideFormation.isChecked(), true);
+    assert.equal(await page.locator('[data-formation-edit]').evaluateAll(buttons => buttons.every(button => getComputedStyle(button).display !== 'none')), true);
     for (const category of ['lineup', 'lineupHideInitial']) {
       const toggle = popup.locator(`input[data-settings-cat="${category}"]`);
       const setting = page.locator(`#settingsBackdrop input[data-settings-cat="${category}"]`);
@@ -288,7 +298,7 @@ const root = path.resolve(__dirname, '../..');
       // 3-4-3에서 하프라인을 덮는 선수는 그대로 누를 수 있게 두고, 키보드 진입도 확인합니다.
       await lines.nth(i).focus();
       await page.keyboard.press('Enter');
-      assert.equal(await popup.locator('input[type="checkbox"]').count(), 2);
+      assert.equal(await popup.locator('input[type="checkbox"]').count(), 3);
       await change(19 + i);
       assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 19 + i);
       await close();

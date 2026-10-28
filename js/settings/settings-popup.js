@@ -65,6 +65,7 @@ const SETTINGS_DEFAULTS = {
   roster: 'long',
   lineupNode: 'photo',
   lineupHideInitial: 'off',
+  lineupShowFormationButton: 'on',
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
   lineupTokenScaleFullscreen: null, // 대시보드 전체화면의 선수 아이콘 크기는 별도로 저장한다.
@@ -451,7 +452,7 @@ const NOTE_COLOR_VARS = { noteOwnGoalColor: '--note-own-goal', notePenaltyMissCo
 // on/off 토글 카테고리 — isValidSetting과 getSwitchSides 양쪽이 같은 목록을 참조해야
 // 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
-  'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial',
+  'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial', 'lineupShowFormationButton',
   'bigLineupVisible', 'bigInfoVisible',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
   'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
@@ -567,6 +568,11 @@ function loadSettings() {
     const shouldMigrateAlphaTransparency =
       parsed.alphaTransparencyMode !== SETTINGS_DEFAULTS.alphaTransparencyMode;
     let normalizedSettings = false;
+    // 이전 숨기기 옵션은 의미를 반전해 기존 표시 상태를 유지한다.
+    if (!Object.hasOwn(parsed, 'lineupShowFormationButton') && ['on', 'off'].includes(parsed.lineupHideFormationButton)) {
+      parsed.lineupShowFormationButton = parsed.lineupHideFormationButton === 'on' ? 'off' : 'on';
+      normalizedSettings = true;
+    }
     // 이전 ON/OFF와 방향 설정을 하나의 선택값으로 합친다.
     if (parsed.bgTeamColors === 'on' || parsed.bgTeamColors === 'off') {
       parsed.bgTeamDirection = parsed.bgTeamColors === 'on'
@@ -803,6 +809,7 @@ function applySettingSideEffects(category) {
     document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: category } }));
   }
   if (Object.hasOwn(NOTE_COLOR_VARS, category)) applyLayoutSettings();
+  if (category === 'lineupShowFormationButton') document.body.classList.toggle('hide-lineup-formation-button', getSetting(category) !== 'on');
   if (category === 'matchInfoLabelColor' || ['matchInfoNameSize', 'hthNameSize', 'teamFixturesNameSize'].includes(category)) applyLayoutSettings();
   if (category === 'eventNameSize') applyLayoutSettings();
   if (category === 'lineupTokenScale') window.lpUpdateTokenScale?.();
@@ -1040,6 +1047,7 @@ function applyLayoutSettings() {
       panel.inert = disabled;
     });
     body.classList.toggle('no-fan-reaction', getSetting('fanReaction') !== 'on');
+    body.classList.toggle('hide-lineup-formation-button', getSetting('lineupShowFormationButton') !== 'on');
     body.classList.toggle('no-big-lineup', getSetting('bigLineupVisible') !== 'on');
     body.classList.toggle('no-big-info', getSetting('bigInfoVisible') !== 'on');
     body.classList.toggle('no-lineup-goals',   getSetting('lineupShowGoals')   !== 'on');
@@ -1306,12 +1314,18 @@ function bindPanelFontTitle(title, category) {
 let panelFontPopup = null;
 /** 빠른 메뉴에서도 설정창과 같은 토글·저장·동기화를 사용합니다. */
 function createQuickSettingRow(category, compact = false) {
-  const source = document.querySelector(`#settingsBackdrop input[data-settings-cat="${category}"]`).closest('.sp-row');
+  const sourceCategory = category === 'lineupShowFormationButton' ? 'lineupHideInitial' : category;
+  const source = document.querySelector(`#settingsBackdrop input[data-settings-cat="${sourceCategory}"]`).closest('.sp-row');
   const row = document.createElement('div');
   row.className = 'sp-row quick-setting-row';
   row.append(source.querySelector('.sp-row-label').cloneNode(true), source.querySelector('.sp-toggle-cluster').cloneNode(true));
   if (compact) row.querySelector('.sp-label-sub')?.remove();
   const input = row.querySelector('input');
+  input.dataset.settingsCat = category;
+  if (category === 'lineupShowFormationButton') {
+    row.classList.add('quick-formation-setting');
+    row.querySelector('.sp-label-main').textContent = '포메이션 설정 버튼';
+  }
   input.setAttribute('aria-label', row.querySelector('.sp-label-main').textContent);
   if (compact) {
     input.closest('.sp-switch').classList.add('sp-switch-mini');
@@ -1380,7 +1394,7 @@ function openPanelFontPopup(title, clickPoint = null) {
     : ['benchInjuryNameSize', 'eventNameSize'].includes(category) ? '이름 크기' : '글자 크기';
   popup.append(heading);
   popup.append(cluster, reset);
-  const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial']
+  const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial', 'lineupShowFormationButton']
     : category === 'benchInjuryNameSize' ? ['roster'] : category === 'eventNameSize' ? ['event'] : [];
   if (nameSettings.length) popup.classList.add('has-name-settings');
   if (category === 'lineupNameSize') {
