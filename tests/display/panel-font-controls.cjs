@@ -734,6 +734,24 @@ const root = path.resolve(__dirname, '../..');
         if (size === 21 && width === 250) assert(layout.scroll);
       }
     }
+    const tacticsPreview = await page.evaluate(() => {
+      setSetting('greenscreen', 'off');
+      const input = document.querySelector('[data-settings-slider="tacticsAlpha"]');
+      const saved = getSetting('tacticsAlpha');
+      input.value = saved === 35 ? '40' : '35';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      const result = {
+        value: input.value,
+        label: document.querySelector('[data-settings-slider-value="tacticsAlpha"]').textContent,
+        alpha: document.documentElement.style.getPropertyValue('--td-pitch-alpha'),
+        unchanged: getSetting('tacticsAlpha') === saved
+      };
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return result;
+    });
+    assert.equal(tacticsPreview.label, `${tacticsPreview.value}%`, '전술판 투명도 라벨은 드래그 중 갱신');
+    assert.equal(Number(tacticsPreview.alpha), (100 - Number(tacticsPreview.value)) / 100);
+    assert(tacticsPreview.unchanged, '드래그 미리보기는 설정 저장을 지연');
     await page.screenshot({ path: 'screenshots/tests/bench-large-font-rows.png' });
     console.log('PASS panel font controls, proportional injury reasons, fixed stats reset heights, new font settings and multiline roster rows');
   } finally { await browser.close(); }

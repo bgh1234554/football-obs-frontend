@@ -181,6 +181,20 @@ const { openPage } = require('../tactics/helpers');
     const saved = await page.evaluate(() => getSetting('bgColor'));
     await page.reload();
     assert.equal(await page.evaluate(() => getSetting('bgColor')), saved);
+    assert.deepEqual(await page.evaluate(() => {
+      window.obsstudio = {};
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'showPopover');
+      Object.defineProperty(HTMLElement.prototype, 'showPopover', { configurable: true, value: undefined });
+      const input = document.createElement('input');
+      input.type = 'color';
+      document.body.append(input);
+      try {
+        return [['click', MouseEvent, {}]].map(([type, EventClass, options]) => input.dispatchEvent(new EventClass(type, { bubbles: true, cancelable: true, ...options })));
+      } finally {
+        input.remove();
+        Object.defineProperty(HTMLElement.prototype, 'showPopover', descriptor);
+      }
+    }), [true], 'Missing Popover API preserves native input events');
     assert.deepEqual(errors, []);
     console.log('PASS OBS-only picker, RGB/HSL/HEX, live selection, drag, keyboard, light dismiss and persistence');
   } finally { await browser.close(); }

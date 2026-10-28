@@ -32,6 +32,20 @@ const { openPage } = require('../tactics/helpers');
   assert.equal(await list.isVisible(),false);
   await page.reload();
   assert.equal(await page.evaluate(()=>getSetting('greenscreenIntensity')),'strong');
+  assert.deepEqual(await page.evaluate(() => {
+      window.obsstudio = {};
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'showPopover');
+      Object.defineProperty(HTMLElement.prototype, 'showPopover', { configurable: true, value: undefined });
+      const input = document.createElement('select');
+      input.innerHTML = '<option>Test</option>';
+      document.body.append(input);
+      try {
+        return [['mousedown', MouseEvent, { button: 0 }], ['click', MouseEvent, {}], ['keydown', KeyboardEvent, { key: 'Enter' }]].map(([type, EventClass, options]) => input.dispatchEvent(new EventClass(type, { bubbles: true, cancelable: true, ...options })));
+      } finally {
+        input.remove();
+        Object.defineProperty(HTMLElement.prototype, 'showPopover', descriptor);
+      }
+    }), [true, true, true], 'Missing Popover API preserves native input events');
   assert.deepEqual(errors,[]);
   console.log('PASS OBS-only select, options, mouse, keyboard, dismissal and persistence');
  } finally {await browser.close();}

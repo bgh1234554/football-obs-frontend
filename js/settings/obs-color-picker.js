@@ -159,7 +159,7 @@
   }
   document.addEventListener('click', event => {
     const input = event.target.closest('input[type="color"]');
-    if (!window.obsstudio || !input || input.disabled) return;
+    if (!window.obsstudio || typeof HTMLElement.prototype.showPopover !== 'function' || !input || input.disabled) return;
     event.preventDefault();
     if (!picker) create();
     finishDrag();

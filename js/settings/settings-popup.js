@@ -2884,7 +2884,8 @@ function initSettingsPopup() {
     }
     syncSliderUi(category);
     if (['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].includes(category)) {
-      bindTransparencySlider(input, category, input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value'));
+      bindTransparencySlider(input, category, input.closest('.sp-slider-cluster')?.querySelector('.sp-slider-value')
+        || document.querySelector(`[data-settings-slider-value="${category}"]`));
       return;
     }
     if (category === 'tacticsTopbarScale' || category === 'tacticsDrawtoolsScale') {

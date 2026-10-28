@@ -1,7 +1,7 @@
 // OBS에서 표시되지 않는 네이티브 선택 목록을 문서 내부 목록으로 대체합니다.
 (() => {
   let popup, source;
-  const supported = el => window.obsstudio && el?.matches('select') && !el.disabled && !el.multiple && el.size <= 1;
+  const supported = el => window.obsstudio && typeof HTMLElement.prototype.showPopover === 'function' && el?.matches('select') && !el.disabled && !el.multiple && el.size <= 1;
   function close(focus = true) {
     popup?.hidePopover();
     if (focus && source?.isConnected) source.focus({ preventScroll: true });
