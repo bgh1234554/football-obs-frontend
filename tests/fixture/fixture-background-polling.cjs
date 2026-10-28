@@ -76,7 +76,7 @@ const scheduler=await page.evaluate(async()=>{
   schedulePoll(data);now+=16000;resumeOverduePolling();await Promise.resolve();await Promise.resolve();
   const retry=_pollDueAt===now+15000;
   clearPolling();const finished={matchInfo:{fixtureId:'123',status:'FT'}};_lastFixtureData=finished;
-  schedulePoll(finished);now+=180001;resumeOverduePolling();await Promise.resolve();await Promise.resolve();
+  schedulePoll(finished);now+=360001;resumeOverduePolling();await Promise.resolve();await Promise.resolve();
   const finishedStopped=!_pollWake;
   let finish;_lastFixtureData=data;
   fetchAndApplyFixtureData=()=>{_fetchSeq++;return new Promise(resolve=>{finish=resolve;});};

@@ -6,7 +6,18 @@ const vm = require('node:vm');
 const plan = vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, '../../js/core/fixture-poll-policy.js'), 'utf8') + '\ngetFixturePollingPlan');
 const now = Date.parse('2026-10-10T12:00:00Z');
 const fixture = (status, kickoffAt) => ({ matchInfo: { status, kickoffAt } });
-for (const status of ['1H', 'HT', '2H', 'ET1', 'ET2', 'PSO', 'NS']) assert.equal(plan(fixture(status), {}, now).delay, 15000);
+for (const status of ['1H', 'HT', '2H', 'ET1', 'ET2', 'BT', 'PSO', 'NS']) assert.equal(plan(fixture(status), {}, now).delay, 15000);
+// 후반·연장 종료 사이의 휴식에서도 다음 승부차기 조회가 끊기지 않는다.
+for (const previous of ['2H', 'ET2']) {
+  const tracking = {};
+  for (const status of [previous, 'BT', 'BT', 'PSO']) assert.equal(plan(fixture(status), tracking, now).delay, 15000);
+}
+// 일시적인 종료 상태 뒤 휴식·승부차기로 복귀하면 종료 유예 추적을 해제한다.
+const resumed = {};
+assert.equal(plan(fixture('FT'), resumed, now).delay, 15000);
+assert.equal(plan(fixture('BT'), resumed, now + 60000).delay, 15000);
+assert.equal(resumed.ftFirstDetectedAt, null);
+assert.equal(plan(fixture('PSO'), resumed, now + 75000).delay, 15000);
 for (const status of ['PST', 'CANC', 'SUSP', 'AWD', 'WO', 'UNKNOWN']) assert.equal(plan(fixture(status), {}, now).delay, null);
 assert.equal(plan(fixture('NS', new Date(now + 60000).toISOString()), {}, now).delay, 15000);
 // 경기 전 조회 시작과 주기 전환 경계를 확인한다.
@@ -37,9 +48,15 @@ while (responseAt < kickoff) {
   responseAt = dueAt + 2000;
 }
 assert.equal(plan(fixture('FT', new Date(now - 4 * 3600000).toISOString()), {}, now).delay, null);
-const finished = {};
-assert.equal(plan(fixture('FT'), finished, now).delay, 60000);
-assert.equal(plan(fixture('FT'), finished, now + 180000).delay, null);
+for (const status of ['FT', 'AET', 'PEN']) {
+  const finished = {};
+  for (const [elapsed, delay] of [[0,15000],[15000,15000],[179999,1],[180000,60000],[240000,60000],[359999,1],[360000,null]]) {
+    assert.equal(plan(fixture(status), finished, now + elapsed).delay, delay, `${status} 종료 유예 ${elapsed}ms`);
+  }
+  assert.equal(plan(fixture('PSO'), finished, now + 360001).delay, 15000);
+  assert.equal(finished.ftFirstDetectedAt, null);
+  assert.equal(plan(fixture(status), finished, now + 420000).delay, 15000, '승부차기 종료는 새 유예 기간 적용');
+}
 const interrupted = {};
 assert.equal(plan(fixture('INT'), interrupted, now).delay, 300000);
 assert.equal(plan(fixture('INT'), interrupted, now + 1800000).reason, 'INT');

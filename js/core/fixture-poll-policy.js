@@ -18,13 +18,15 @@ function getFixturePollingPlan(data, tracking, now = Date.now()) {
 
   // 1) 종료 상태: FT(정규 종료), AET(연장 종료), PEN(승부차기 종료).
   // 킥오프로부터 4시간 이상 지난 경기는 최초 로딩만으로 충분하므로 추가 조회하지 않는다.
-  // 그 외에는 종료 상태를 처음 감지한 뒤 3분 동안 1분 간격으로 조회한다.
-  // 종료 직후 뒤늦게 반영되는 경기 스탯·이벤트를 받기 위한 유예 기간이다.
+  // 처음 3분은 승부차기 등으로 상태가 바뀔 가능성에 대비해 15초 간격을 유지한다.
+  // 이후 3분은 늦게 반영되는 스탯·이벤트를 1분 간격으로 확인한 뒤 종료한다.
   if (['FT', 'AET', 'PEN'].includes(status)) {
     if (Number.isFinite(kickoff) && now - kickoff >= 4 * 60 * 60 * 1000) return { delay: null };
     tracking.ftFirstDetectedAt ??= now;
-    if (now - tracking.ftFirstDetectedAt >= 3 * 60 * 1000) return { delay: null };
-    return { delay: 60 * 1000 };
+    const elapsed = now - tracking.ftFirstDetectedAt;
+    if (elapsed >= 6 * 60 * 1000) return { delay: null };
+    if (elapsed < 3 * 60 * 1000) return { delay: Math.min(15000, 3 * 60 * 1000 - elapsed) };
+    return { delay: Math.min(60000, 6 * 60 * 1000 - elapsed) };
   }
 
   // 종료 상태를 벗어나면 종료 추적을 초기화한다.
@@ -65,8 +67,9 @@ function getFixturePollingPlan(data, tracking, now = Date.now()) {
   }
 
   // 6) 진행 중인 전·후반, 하프타임, 연장 전·후반, 승부차기는 15초 간격으로 조회한다.
+  // BT는 정규·연장 종료와 다음 구간 사이의 휴식이므로 승부차기 시작을 놓치지 않게 계속 조회한다.
   // NS도 킥오프 1분 이내이거나 예정 시각이 지났으면 같은 간격으로 시작 여부를 확인한다.
   // 킥오프 시각이 없거나 잘못된 NS 역시 15초 간격을 사용해 조회가 끊기지 않게 한다.
   // 알 수 없는 상태는 불필요한 API 호출을 막기 위해 자동 조회하지 않는다.
-  return { delay: ['1H', 'HT', '2H', 'ET1', 'ET2', 'PSO', 'NS'].includes(status) ? 15000 : null };
+  return { delay: ['1H', 'HT', '2H', 'ET1', 'ET2', 'BT', 'PSO', 'NS'].includes(status) ? 15000 : null };
 }
