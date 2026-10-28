@@ -265,9 +265,9 @@ function hthCreateRow(match, fixtureData, panelBackground) {
   }
   const homeNameEl = document.createElement('span');
   homeNameEl.className = 'hth-team-name';
-  homeNameEl.textContent = teamNicknameDisplay(match, 'home', match.homeTeamName || '');
-  homeNameEl.dataset.longName = homeNameEl.textContent;
+  homeNameEl.dataset.longName = teamNicknameDisplay(match, 'home', match.homeTeamName || match.homeTeamNameShort || '');
   homeNameEl.dataset.shortName = shortName('home');
+  homeNameEl.textContent = getSetting('teamName') === 'long' ? homeNameEl.dataset.longName : homeNameEl.dataset.shortName;
   bindTeamNicknameLabel(homeNameEl, match, 'home');
   homeSide.appendChild(homeNameEl);
 
@@ -319,9 +319,9 @@ function hthCreateRow(match, fixtureData, panelBackground) {
   awaySide.className = 'hth-team-side hth-team-away';
   const awayNameEl = document.createElement('span');
   awayNameEl.className = 'hth-team-name';
-  awayNameEl.textContent = teamNicknameDisplay(match, 'away', match.awayTeamName || '');
-  awayNameEl.dataset.longName = awayNameEl.textContent;
+  awayNameEl.dataset.longName = teamNicknameDisplay(match, 'away', match.awayTeamName || match.awayTeamNameShort || '');
   awayNameEl.dataset.shortName = shortName('away');
+  awayNameEl.textContent = getSetting('teamName') === 'long' ? awayNameEl.dataset.longName : awayNameEl.dataset.shortName;
   bindTeamNicknameLabel(awayNameEl, match, 'away');
   awaySide.appendChild(awayNameEl);
   const awayLogoUrl = hthResolveLogoUrl(match.awayTeamId, match.awayTeamLogo, fixtureData);
@@ -387,17 +387,18 @@ function hthCreateTitleBar(container) {
 }
 /** 메타 행 wrap 감지 → .hth-meta-row-wrapped 토글 */
 function hthCheckMetaWrap() {
-  // 현재 폭과 글씨 크기로 풀네임을 다시 측정해 세 줄 이상일 때만 단축명을 사용한다.
+  // 팀 이름 설정을 우선 적용하고 풀네임 모드에서만 폭에 따라 단축명으로 줄인다.
+  const useLong = getSetting('teamName') === 'long';
   document.querySelectorAll('[data-hth-panel] .hth-team-name[data-long-name]').forEach(label => {
     label.style.fontSize = '';
-    label.textContent = label.dataset.longName;
+    label.textContent = useLong ? label.dataset.longName : label.dataset.shortName;
     if (!label.getClientRects().length || !label.clientWidth) return;
     const lineCount = () => {
       const range = document.createRange();
       range.selectNodeContents(label);
       return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
     };
-    if (lineCount() >= 3) {
+    if (useLong && lineCount() >= 3) {
       label.textContent = label.dataset.shortName;
       if (lineCount() >= 3) label.textContent = label.dataset.longName;
     }
@@ -636,7 +637,7 @@ function hthRerenderColors() {
 }
 document.addEventListener('team-nicknames:change', hthRerenderColors);
 document.addEventListener('settings:change', e => {
-  if (e.detail?.category === 'hthNameSize') requestAnimationFrame(hthCheckMetaWrap);
+  if (['hthNameSize', 'teamName'].includes(e.detail?.category)) requestAnimationFrame(hthCheckMetaWrap);
   if (!['teamLogo', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha'].includes(e.detail?.category)) return;
   hthRerenderColors();
 });

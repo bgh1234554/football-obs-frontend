@@ -506,7 +506,8 @@ const root = path.resolve(__dirname, '../..');
       }
       await page.screenshot({ path: `screenshots/tests/panel-font-${mode}.png` });
       if (mode === 'hth') {
-        const fallback = await page.evaluate(() => {
+        const fallback = await page.evaluate(async () => {
+          setSetting('teamName', 'long');
           const list = document.querySelector('.layout-big .hth-list');
           const row = hthCreateRow({
             homeTeamName: '아주 긴 홈팀 정식 전체 이름 테스트', awayTeamName: '아주 긴 원정팀 정식 전체 이름 테스트',
@@ -520,6 +521,13 @@ const root = path.resolve(__dirname, '../..');
           row.style.width = '1200px';
           hthCheckMetaWrap();
           const restored = [...row.querySelectorAll('.hth-team-name')].every(el => el.textContent === el.dataset.longName);
+          setSetting('teamName', 'short');
+          await new Promise(requestAnimationFrame);
+          const shortMode = [...row.querySelectorAll('.hth-team-name')].map(el => el.textContent);
+          const initialShort = hthCreateRow({ homeTeamName: '정식 홈 이름', homeTeamNameShort: '홈', awayTeamName: '정식 원정 이름' }, {});
+          const shortFallback = [...initialShort.querySelectorAll('.hth-team-name')].map(el => el.textContent);
+          setSetting('teamName', 'long');
+          await new Promise(requestAnimationFrame);
           row.style.width = '300px';
           row.querySelectorAll('.hth-team-name').forEach(el => { el.dataset.shortName = el.dataset.longName; });
           hthCheckMetaWrap();
@@ -529,9 +537,11 @@ const root = path.resolve(__dirname, '../..');
               && el.textContent === el.dataset.longName;
           });
           row.remove();
-          return { narrow, restored, capped };
+          return { narrow, restored, capped, shortMode, shortFallback };
         });
         assert.deepEqual(fallback.narrow, ['홈팀', '원정']);
+        assert.deepEqual(fallback.shortMode, ['홈팀', '원정'], '풀네임 OFF는 넓은 패널에서도 단축명을 사용');
+        assert.deepEqual(fallback.shortFallback, ['홈', '정식 원정 이름'], '단축명이 없으면 원래 이름을 사용');
         assert(fallback.restored, '넓어진 패널은 풀네임을 복원해야 한다');
         assert(fallback.capped, '단축명도 길면 풀네임을 최대 세 줄로 축소해야 한다');
         const cycleButton = page.locator('.layout-big .lp-stat-cycle-btn').first();
