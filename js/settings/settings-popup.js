@@ -68,7 +68,7 @@ const SETTINGS_DEFAULTS = {
   lineupShowFormationButton: 'on',
   boardFlashSound: 'off',
   eventSpotlightSound: 'off',
-  notificationSoundVolume: 35,
+  notificationSoundVolume: 100,
   notificationSoundSet: '1',
   notificationSoundSetRevision: 4,
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
