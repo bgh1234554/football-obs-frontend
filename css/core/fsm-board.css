@@ -599,6 +599,33 @@
 #boardAggControls .agg-quick-toggle[aria-pressed="true"] { background: var(--fsm-pso-background); color: var(--fsm-pso-ink); }
 #boardAggControls .agg-quick-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 2px; }
 #boardAggControls .agg-quick-row[hidden] { display: none; }
+#boardAggControls .board-sound-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid currentColor;
+  font-size: 14px;
+  font-weight: bold;
+}
+#boardAggControls .board-sound-setting > span { padding-left: 6px; }
+#boardAggControls .board-sound-setting .sp-toggle-cluster { padding-right: 6px; }
+#boardAggControls .board-sound-setting .sp-toggle-side { color: inherit; opacity: .6; }
+#boardAggControls .board-sound-setting .sp-toggle-side.is-active { opacity: 1; }
+#boardAggControls .board-sound-setting .sp-switch-slider {
+  background: color-mix(in srgb, var(--fsm-pso-background) 25%, var(--fsm-pso-ink));
+}
+#boardAggControls .board-sound-setting input:checked + .sp-switch-slider {
+  background: var(--fsm-pso-background);
+}
+#boardAggControls .board-sound-setting .sp-switch-slider::before {
+  background: var(--fsm-pso-ink);
+  box-shadow: 0 0 0 1px var(--fsm-pso-background);
+}
+#boardAggControls .board-sound-setting input:focus-visible + .sp-switch-slider {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--fsm-pso-background) 40%, transparent);
+}
 #boardAggControls .agg-quick-team { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
 #boardAggControls .agg-quick-label { padding: 2px 0 0; text-align: center; font-size: 13px; font-weight: bold; }
 #boardAggControls .agg-quick-stepper { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; align-items: center; }

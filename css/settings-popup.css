@@ -799,6 +799,9 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
   border-color: rgba(var(--control-accent-rgb),.55);
   box-shadow: 0 0 0 2px rgba(var(--control-accent-rgb),.18);
 }
+select[data-settings-select="notificationSoundSet"] { min-width: 145px; }
+.sp-row:has([data-settings-select="notificationSoundSet"]) { flex-wrap: wrap; }
+.sp-row:has([data-settings-select="notificationSoundSet"]) .sp-row-label { flex: 1 1 180px; }
 .sp-select option {
   background: #1a1f2c;
   color: var(--ui-text, #f0f0f0);
@@ -808,12 +811,21 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
    sp-body 최상단에 가로로 배치. 클릭 시 data-sp-tab과 일치하는 data-sp-tab-section 만 표시. */
 .sp-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr)) 32px;
   gap: 6px;
   padding: 0 0 6px;
   margin: 0 0 12px;
   border-bottom: none;
 }
+.sp-search-toggle { display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; color: var(--ui-text, #eee); background: transparent; cursor: pointer; }
+.sp-search-toggle[aria-expanded="true"] { background: rgba(var(--control-accent-rgb), .22); }
+.sp-search-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+.sp-search-bar[hidden], .sp-search-status[hidden], .sp-search-hidden { display: none !important; }
+.sp-search-bar input { flex: 1; min-width: 0; padding: 8px 10px; color: var(--ui-text, #eee); background: var(--ui-control-surface, #111827); border: 1px solid rgba(var(--ui-ink-rgb,255,255,255), .2); border-radius: 8px; font: inherit; }
+.sp-search-status { margin-bottom: 10px; font-size: 12px; color: var(--ui-text, #eee); }
+.sp-search-section-label { display: none; }
+.sp-search-active [data-sp-tab-section] { min-height: 0 !important; }
+.sp-search-active .sp-search-section-label { display: block; padding: 10px 0 4px; font-size: 14px; font-weight: bold; color: var(--control-accent-text, #60a5fa); }
 .sp-tab {
   min-width: 0;
   width: 100%;

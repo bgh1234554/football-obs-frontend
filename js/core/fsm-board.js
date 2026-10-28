@@ -1866,6 +1866,16 @@ function adjustScoreboardWidth() {
     });
   }
 
+  /** 점수·득점자 알림음은 설정 창과 같은 저장값을 사용한다. */
+  function syncBoardSoundQuickControls(panel) {
+    const value = typeof getSetting === 'function' ? getSetting('boardFlashSound') : 'off';
+    const input = panel.querySelector('[data-settings-cat="boardFlashSound"]');
+    if (input) input.checked = value === 'on';
+    panel.querySelectorAll('.board-sound-setting [data-side]').forEach(label => {
+      label.classList.toggle('is-active', label.dataset.side === value);
+    });
+  }
+
   /**
    * 점수 영역(경기 점수·합계 칸·구분 칸) 클릭 시 점수판 아래에 합계 점수 빠른 입력을 엽니다.
    * 테마 탭의 '합계 점수 표시'(aggToggle/aggHomeBase/aggAwayBase)와 같은 state 값을 바꾸며,
@@ -1889,6 +1899,18 @@ function adjustScoreboardWidth() {
         return `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-score-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><output data-score-value="${side}"></output><button type="button" data-score-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
       }).join('')}</div><div class="manual-score-quick-options"><label class="manual-score-pso-toggle"><input type="checkbox" aria-label="승부차기 (PSO)">PSO</label><div class="manual-score-quick-hint"></div></div><div class="manual-score-pso-notice" hidden>승부차기 중에는 일반 점수 변경 불가</div>`;
       panel.prepend(scores);
+      const sound = document.createElement('div');
+      sound.className = 'board-sound-setting';
+      sound.setAttribute('role', 'group');
+      sound.setAttribute('aria-label', '점수·득점자 알림음');
+      sound.innerHTML = '<span>알림음</span><div class="sp-toggle-cluster"><span class="sp-toggle-side" data-side="off">OFF</span><label class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="boardFlashSound" aria-label="알림음"><span class="sp-switch-slider"></span></label><span class="sp-toggle-side" data-side="on">ON</span></div>';
+      sound.addEventListener('change', event => {
+        if (event.target.matches('input')) setSetting('boardFlashSound', event.target.checked ? 'on' : 'off');
+      });
+      panel.append(sound);
+      document.addEventListener('settings:change', event => {
+        if (event.detail?.category === 'boardFlashSound') syncBoardSoundQuickControls(panel);
+      });
       // 테마 탭의 전환 경로를 공유해 이전 경기 구간과 승부차기 설정을 함께 유지합니다.
       scores.querySelector('.manual-score-pso-toggle input').addEventListener('change', event => {
         if (!state.manualMode) return;
@@ -1975,6 +1997,7 @@ function adjustScoreboardWidth() {
     const menuEnabled = true;
     board.dataset.fsmAggregateMenu = String(menuEnabled);
     if (!panel.querySelector('.fsm-scale-control')) panel.prepend(createScoreboardScaleControl('boardScale', '점수판 배율'));
+    syncBoardSoundQuickControls(panel);
     panel.querySelector('.agg-quick-toggle').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
     panel.querySelector(':scope > .agg-quick-row').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);
     panel.querySelector('.pso-quick-hint').hidden = !FSM_AGGREGATE_THEMES.includes(_currentTheme);

@@ -338,6 +338,27 @@ const root = path.resolve(__dirname, '../..');
     await settle(page);
     assert.equal(await popup.count(), 0);
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 20);
+    // 신규 이벤트 알림도 클릭 메뉴에서 같은 배율을 조절하고, 알림 종료 뒤에도 메뉴를 유지한다.
+    await page.evaluate(() => {
+      activatePage('main-big'); setSetting('eventSpotlight', 'board');
+      const source = document.createElement('div'); source.innerHTML = '<div class="ev-list"></div>';
+      evSpotlightAfterRender('scale-menu-test', [source]);
+      source.firstChild.append(evCreateRow({ type: 'Goal', detail: 'Normal Goal', side: 'home', playerName: '테스트 선수', elapsed: 88 }, { matchInfo: { status: '2H', elapsed: 88 } }, 'scale-menu-goal'));
+      evSpotlightMarkNewEvents(); evSpotlightAfterRender('scale-menu-test', [source]);
+    });
+    await page.locator('.ev-spotlight.is-visible').click();
+    const spotlightMenu = page.getByRole('dialog', { name: '신규 이벤트 표시 크기', exact: true });
+    const spotlightScale = spotlightMenu.getByRole('slider', { name: '신규 이벤트 표시 크기', exact: true });
+    await spotlightScale.fill('150');
+    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), 150);
+    assert.equal(await page.locator('[data-settings-slider="eventSpotlightScale"]').inputValue(), '150');
+    assert.equal(await spotlightMenu.locator('output').textContent(), '150%');
+    await page.locator('.ev-spotlight').waitFor({ state: 'hidden', timeout: 7000 });
+    assert(await spotlightMenu.isVisible());
+    await spotlightMenu.getByRole('button', { name: '초기화', exact: true }).click();
+    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), 100);
+    await page.keyboard.press('Escape');
+    assert.equal(await spotlightMenu.count(), 0);
     assert.deepEqual(errors, []);
     await page.reload();
     await settle(page);

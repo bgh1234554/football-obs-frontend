@@ -31,6 +31,7 @@
    * 타이머를 취소하지 않으면 다시 켠 뒤 새 표시가 예전 타이머 때문에 일찍 사라지거나 순서가 꼬인다.
    */
   function reset() {
+    window.notificationSounds?.stop('event');
     clearTimeout(hideTimer);
     clearTimeout(fadeTimer);
     hideTimer = fadeTimer = null;
@@ -56,6 +57,15 @@
     if (host) return host;
     host = document.createElement('div');
     host.className = 'ev-spotlight';
+    host.dataset.panelFont = 'eventSpotlightScale';
+    host.tabIndex = 0;
+    host.setAttribute('role', 'button');
+    host.setAttribute('aria-label', '신규 이벤트 표시 크기 조절');
+    host.title = '클릭하여 신규 이벤트 표시 크기 조절';
+    host.addEventListener('click', event => {
+      event.stopPropagation();
+      openPanelFontPopup(host, { x: event.clientX, y: event.clientY });
+    }, true);
     host.style.setProperty('--ev-name-base-size', `${SPOTLIGHT_FONT_SIZE}px`);
     host.style.setProperty('--ev-ui-scale', '1');
     host.setAttribute('aria-live', 'polite');
@@ -125,6 +135,7 @@
     });
     hideTimer = setTimeout(() => {
       hideTimer = null;
+      window.notificationSounds?.stop('event');
       host.classList.remove('is-visible');
       fadeTimer = setTimeout(() => {
         fadeTimer = null;

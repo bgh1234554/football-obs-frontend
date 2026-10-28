@@ -66,6 +66,11 @@ const SETTINGS_DEFAULTS = {
   lineupNode: 'photo',
   lineupHideInitial: 'off',
   lineupShowFormationButton: 'on',
+  boardFlashSound: 'off',
+  eventSpotlightSound: 'off',
+  notificationSoundVolume: 35,
+  notificationSoundSet: '1',
+  notificationSoundSetRevision: 4,
   lineupScale: 100,   // 캠 큼 페이지 라인업 크기 배율 (50~100, %). 비율 그대로.
                       // 설정 팝업 UI에는 노출 안 함 — 라인업 패널 우상단 핸들 드래그로 조정 (lineup-resize.js).
   lineupTokenScaleFullscreen: null, // 대시보드 전체화면의 선수 아이콘 크기는 별도로 저장한다.
@@ -452,6 +457,7 @@ const NOTE_COLOR_VARS = { noteOwnGoalColor: '--note-own-goal', notePenaltyMissCo
 // on/off 토글 카테고리 — isValidSetting과 getSwitchSides 양쪽이 같은 목록을 참조해야
 // 새 토글 추가 시 한쪽만 갱신하고 잊는 사고를 막는다.
 const ON_OFF_TOGGLE_CATEGORIES = new Set([
+  'boardFlashSound', 'eventSpotlightSound',
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial', 'lineupShowFormationButton',
   'bigLineupVisible', 'bigInfoVisible',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
@@ -464,6 +470,9 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
 
 /** 설정 종류별 허용 값·범위를 검사하며, 알 수 없는 값은 저장·복원 대상에서 제외한다. */
 function isValidSetting(category, value) {
+  if (category === 'notificationSoundSet') return typeof value === 'string' && /^(?:[1-9]|10)$/.test(value);
+  if (category === 'notificationSoundSetRevision') return value === 4;
+  if (category === 'notificationSoundVolume') return Number.isFinite(value) && value >= 0 && value <= 100;
   if (category === 'lineupTokenScale') return Number.isFinite(value) && value >= 75 && value <= 125;
   if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_DEFAULTS) {
     return value === null || isValidSetting(category.slice(0, -10), value);
@@ -568,6 +577,22 @@ function loadSettings() {
     const shouldMigrateAlphaTransparency =
       parsed.alphaTransparencyMode !== SETTINGS_DEFAULTS.alphaTransparencyMode;
     let normalizedSettings = false;
+    // 목록 순서대로 번호를 다시 매기되 이전 선택은 같은 음색으로 한 번만 이전한다.
+    if (parsed.notificationSoundSetRevision !== SETTINGS_DEFAULTS.notificationSoundSetRevision) {
+      let previousSet = parsed.notificationSoundSet;
+      if (parsed.notificationSoundSetRevision !== 3) {
+        const previousSets = parsed.notificationSoundSetRevision === 2
+          ? Object.fromEntries(Array.from({ length: 10 }, (_, index) => [String(index + 1), String(index + 1)]))
+          : parsed.notificationSoundSetRevision === 1
+          ? { '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '12': '10' }
+          : { '1': '1', '2': '2', '3': '3', '7': '4', '9': '5', '10': '6', '16': '7', '8': '8', '4': '9' };
+        previousSet = previousSets[previousSet];
+        previousSet = ({ '5': '6', '6': '7', '7': '8', '8': '9', '9': '10', '10': '5' })[previousSet] || previousSet;
+      }
+      parsed.notificationSoundSet = ({ '1': '2', '2': '3', '3': '1' })[previousSet] || previousSet || SETTINGS_DEFAULTS.notificationSoundSet;
+      parsed.notificationSoundSetRevision = SETTINGS_DEFAULTS.notificationSoundSetRevision;
+      normalizedSettings = true;
+    }
     // 이전 숨기기 옵션은 의미를 반전해 기존 표시 상태를 유지한다.
     if (!Object.hasOwn(parsed, 'lineupShowFormationButton') && ['on', 'off'].includes(parsed.lineupHideFormationButton)) {
       parsed.lineupShowFormationButton = parsed.lineupHideFormationButton === 'on' ? 'off' : 'on';
@@ -1356,11 +1381,12 @@ function syncPanelFontPopup() {
   const category = panelFontPopup.dataset.category;
   const value = Number(getSetting(category));
   panelFontPopup.querySelector('input').value = String(value);
-  panelFontPopup.querySelector('output').textContent = `${value}px`;
+  panelFontPopup.querySelector('output').textContent = `${value}${category === 'eventSpotlightScale' ? '%' : 'px'}`;
 }
 function openPanelFontPopup(title, clickPoint = null) {
   const category = title.dataset.panelFont;
-  if (!PANEL_FONT_SETTINGS.includes(category)) return;
+  const isSpotlight = category === 'eventSpotlightScale';
+  if (!PANEL_FONT_SETTINGS.includes(category) && !isSpotlight) return;
   const source = document.querySelector(`input[data-settings-slider="${category}"]`);
   if (!source) return;
   if (panelFontPopup?._anchor === title) { closePanelFontPopup(); return; }
@@ -1372,13 +1398,13 @@ function openPanelFontPopup(title, clickPoint = null) {
   if (title.closest('#benchPanel, #injuryPanel')) popup.dataset.rebalance = 'small-bench';
   popup._anchor = title;
   popup.setAttribute('role', 'dialog');
-  popup.setAttribute('aria-label', '패널 글자 크기');
+  popup.setAttribute('aria-label', isSpotlight ? '신규 이벤트 표시 크기' : '패널 글자 크기');
   const cluster = document.createElement('label');
   cluster.className = 'sp-slider-cluster';
   const input = document.createElement('input');
   input.type = 'range';
   ['min', 'max', 'step'].forEach(attr => input.setAttribute(attr, source.getAttribute(attr)));
-  input.setAttribute('aria-label', '글자 크기');
+  input.setAttribute('aria-label', isSpotlight ? '신규 이벤트 표시 크기' : '글자 크기');
   const value = document.createElement('output');
   value.className = 'sp-slider-value';
   const reset = document.createElement('button');
@@ -1390,7 +1416,7 @@ function openPanelFontPopup(title, clickPoint = null) {
   cluster.append(input, value);
   const heading = document.createElement('div');
   heading.className = 'panel-font-heading';
-  heading.textContent = category === 'lineupNameSize' ? '선발 라인업 이름 크기'
+  heading.textContent = isSpotlight ? '신규 이벤트 표시 크기' : category === 'lineupNameSize' ? '선발 라인업 이름 크기'
     : ['benchInjuryNameSize', 'eventNameSize'].includes(category) ? '이름 크기' : '글자 크기';
   popup.append(heading);
   popup.append(cluster, reset);
@@ -1421,35 +1447,38 @@ function openPanelFontPopup(title, clickPoint = null) {
     sync();
   }
   // 빠른 메뉴의 투명도도 설정 창과 같은 저장값과 그린스크린 제한을 따른다.
-  const transparencyCategory = category === 'lineupNameSize' ? 'pitchAlpha' : 'panelAlpha';
-  const transparencyLabel = category === 'lineupNameSize' ? '라인업 투명도' : '패널 투명도';
-  const transparencySource = document.querySelector(`#settingsBackdrop input[data-settings-slider="${transparencyCategory}"]`);
-  const transparencyInput = transparencySource.cloneNode(true);
-  transparencyInput.removeAttribute('data-settings-slider');
-  transparencyInput.setAttribute('aria-label', transparencyLabel);
-  const transparencyHeading = document.createElement('div');
-  transparencyHeading.className = 'panel-font-heading';
-  transparencyHeading.textContent = transparencyLabel;
-  const transparencyCluster = document.createElement('label');
-  transparencyCluster.className = 'sp-slider-cluster';
-  const transparencyValue = document.createElement('output');
-  transparencyValue.className = 'sp-slider-value';
-  const transparencyReset = document.createElement('button');
-  transparencyReset.type = 'button';
-  transparencyReset.className = 'panel-font-reset';
-  transparencyReset.textContent = '초기화';
-  transparencyReset.setAttribute('aria-label', `${transparencyLabel} 초기화`);
-  popup._syncTransparency = () => {
-    const disabled = getSetting('greenscreen') === 'on';
-    transparencyInput.disabled = transparencyReset.disabled = disabled;
-    transparencyInput.value = disabled ? 0 : getSetting(transparencyCategory);
-    transparencyValue.textContent = `${transparencyInput.value}%`;
-  };
-  bindTransparencySlider(transparencyInput, transparencyCategory, transparencyValue);
-  transparencyReset.addEventListener('click', () => resetTransparencySetting(transparencyCategory));
-  transparencyCluster.append(transparencyInput, transparencyValue);
+  if (!isSpotlight) {
+    const transparencyCategory = category === 'lineupNameSize' ? 'pitchAlpha' : 'panelAlpha';
+    const transparencyLabel = category === 'lineupNameSize' ? '라인업 투명도' : '패널 투명도';
+    const transparencySource = document.querySelector(`#settingsBackdrop input[data-settings-slider="${transparencyCategory}"]`);
+    const transparencyInput = transparencySource.cloneNode(true);
+    transparencyInput.removeAttribute('data-settings-slider');
+    transparencyInput.setAttribute('aria-label', transparencyLabel);
+    const transparencyHeading = document.createElement('div');
+    transparencyHeading.className = 'panel-font-heading';
+    transparencyHeading.textContent = transparencyLabel;
+    const transparencyCluster = document.createElement('label');
+    transparencyCluster.className = 'sp-slider-cluster';
+    const transparencyValue = document.createElement('output');
+    transparencyValue.className = 'sp-slider-value';
+    const transparencyReset = document.createElement('button');
+    transparencyReset.type = 'button';
+    transparencyReset.className = 'panel-font-reset';
+    transparencyReset.textContent = '초기화';
+    transparencyReset.setAttribute('aria-label', `${transparencyLabel} 초기화`);
+    popup._syncTransparency = () => {
+      const disabled = getSetting('greenscreen') === 'on';
+      transparencyInput.disabled = transparencyReset.disabled = disabled;
+      transparencyInput.value = disabled ? 0 : getSetting(transparencyCategory);
+      transparencyValue.textContent = `${transparencyInput.value}%`;
+    };
+    bindTransparencySlider(transparencyInput, transparencyCategory, transparencyValue);
+    transparencyReset.addEventListener('click', () => resetTransparencySetting(transparencyCategory));
+    transparencyCluster.append(transparencyInput, transparencyValue);
+    popup.classList.add('has-name-settings');
+    popup.append(transparencyHeading, transparencyCluster, transparencyReset);
+  }
   popup.classList.add('has-name-settings');
-  popup.append(transparencyHeading, transparencyCluster, transparencyReset);
   nameSettings.forEach(setting => popup.append(createQuickSettingRow(setting, true)));
   (document.fullscreenElement || document.body).append(popup);
   panelFontPopup = popup;
@@ -1457,7 +1486,7 @@ function openPanelFontPopup(title, clickPoint = null) {
   syncPanelFontPopup();
   const rect = title.getBoundingClientRect();
   // 긴 경기장 외곽선은 아래 끝이 아니라 실제 누른 지점 옆에 메뉴를 엽니다.
-  const anchor = title.matches('.dp-lineup-touchline')
+  const anchor = title.matches('.dp-lineup-touchline, .ev-spotlight')
     ? (clickPoint || { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
     : { x: rect.left, y: rect.bottom };
   const point = typeof toDisplayLayoutPoint === 'function' ? toDisplayLayoutPoint(anchor.x, anchor.y + 6) : { x: anchor.x, y: anchor.y + 6 };
@@ -2540,6 +2569,7 @@ const SETTINGS_TAB_KEY = 'obs.settings.activeTab.v1';
  *    한도까지만 채워지고(스크롤 없음), 정말 긴 탭만 그 한도를 넘겨 자체적으로 스크롤된다.
  */
 function syncSettingsTabSectionHeights() {
+  if (document.getElementById('settingsBackdrop')?.classList.contains('sp-search-active')) return;
   const modal = document.querySelector('.sp-modal');
   const header = document.querySelector('.sp-header');
   const tabs = document.querySelector('.sp-tabs');
@@ -2589,10 +2619,12 @@ function syncSettingsTabSectionHeights() {
   const headerHeight = header ? header.offsetHeight : 0;
   const tabsMarginBottom = tabs ? (parseFloat(getComputedStyle(tabs).marginBottom) || 0) : 0;
   const tabsHeight = tabs ? tabs.offsetHeight + tabsMarginBottom : 0;
+  const searchBar = document.getElementById('settingsSearchBar');
+  const searchHeight = searchBar && !searchBar.hidden ? searchBar.offsetHeight + 10 : 0;
   // 서브픽셀 반올림 오차로 1px 안팎 넘치는 것까지 스크롤바를 만들지 않도록 여유분을 조금 둔다.
   const roundingBuffer = 2;
   const availableHeight = modalMaxHeight > 0
-    ? Math.max(0, modalMaxHeight - headerHeight - tabsHeight - bodyPaddingV - roundingBuffer)
+    ? Math.max(0, modalMaxHeight - headerHeight - tabsHeight - searchHeight - bodyPaddingV - roundingBuffer)
     : maxHeight;
   const appliedHeight = Math.min(maxHeight, availableHeight);
 
@@ -2605,7 +2637,87 @@ function syncSettingsTabSectionHeights() {
  * 탭 활성화 — sp-tab 버튼 is-active 상태 + 매칭하는 섹션만 표시.
  * 마지막 활성 탭은 localStorage(SETTINGS_TAB_KEY)에 저장해 다음 진입 시 복원.
  */
+/** 검색어의 띄어쓰기와 대소문자를 정규화하고 자주 쓰는 표현을 같은 뜻으로 찾는다. */
+function settingsSearchTerms(query) {
+  const aliases = { '폰트': ['폰트', '글씨', '글자', '크기'], '사이즈': ['사이즈', '크기'] };
+  return query.trim().toLowerCase().split(/\s+/).filter(Boolean).map(term => aliases[term] || [term]);
+}
+
+/** 기존 입력 요소를 그대로 필터링하므로 검색 결과에서도 저장·초기화 경로를 공유한다. */
+function filterSettings(query) {
+  const backdrop = document.getElementById('settingsBackdrop');
+  const terms = settingsSearchTerms(query);
+  const searching = terms.length > 0;
+  backdrop.classList.toggle('sp-search-active', searching);
+  const matches = text => {
+    const normalized = text.toLowerCase().replace(/\s+/g, '');
+    return terms.every(alternatives => alternatives.some(term => normalized.includes(term)));
+  };
+  let count = 0;
+  const active = document.querySelector('.sp-tab.is-active')?.dataset.spTab || 'names';
+  backdrop.querySelectorAll('.sp-search-hidden').forEach(node => node.classList.remove('sp-search-hidden'));
+  backdrop.querySelectorAll('[data-sp-tab-section]').forEach(section => {
+    if (!searching) { section.hidden = section.dataset.spTabSection !== active; return; }
+    const tab = backdrop.querySelector(`[data-sp-tab="${section.dataset.spTabSection}"]`)?.textContent || '';
+    let label = section.querySelector(':scope > .sp-search-section-label');
+    if (!label) {
+      label = document.createElement('div'); label.className = 'sp-search-section-label';
+      label.textContent = tab; section.prepend(label);
+    }
+    let heading = null;
+    let groupMatches = false;
+    let sectionMatches = false;
+    const finishHeading = () => heading?.classList.toggle('sp-search-hidden', !groupMatches);
+    for (const child of section.children) {
+      if (child === label) continue;
+      if (child.classList.contains('sp-section-title')) {
+        finishHeading(); heading = child; groupMatches = false; continue;
+      }
+      const prefix = `${tab} ${heading?.textContent || ''} `;
+      const rows = child.classList.contains('sp-row') ? [child] : [...child.querySelectorAll('.sp-row')];
+      let visible = false;
+      if (rows.length) rows.forEach(row => {
+        const hit = !row.hidden && matches(prefix + row.textContent);
+        row.classList.toggle('sp-search-hidden', !hit);
+        if (hit) { visible = true; count++; }
+      });
+      else if (!child.hidden) { visible = matches(prefix + child.textContent); if (visible) count++; }
+      child.classList.toggle('sp-search-hidden', !visible);
+      groupMatches ||= visible;
+      sectionMatches ||= visible;
+    }
+    finishHeading();
+    section.hidden = !sectionMatches;
+  });
+  const status = document.getElementById('settingsSearchStatus');
+  status.hidden = !searching;
+  status.textContent = count ? `${count}개 설정을 찾았습니다.` : '검색 결과가 없습니다.';
+  if (!searching) syncSettingsTabSectionHeights();
+}
+
+function initSettingsSearch() {
+  const toggle = document.getElementById('settingsSearchToggle');
+  const bar = document.getElementById('settingsSearchBar');
+  const input = document.getElementById('settingsSearchInput');
+  const clear = () => { input.value = ''; filterSettings(''); };
+  toggle.addEventListener('click', () => {
+    bar.hidden = !bar.hidden;
+    toggle.setAttribute('aria-expanded', String(!bar.hidden));
+    if (bar.hidden) clear(); else { syncSettingsTabSectionHeights(); input.focus(); }
+  });
+  input.addEventListener('input', () => filterSettings(input.value));
+  input.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault(); event.stopPropagation();
+    if (input.value) clear();
+    else { bar.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus(); }
+  });
+  document.getElementById('settingsSearchClear').addEventListener('click', () => { clear(); input.focus(); });
+}
+
 function applySettingsTab(tabName) {
+  const search = document.getElementById('settingsSearchInput');
+  if (search?.value) { search.value = ''; filterSettings(''); }
   document.querySelectorAll('.sp-tab').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.spTab === tabName);
   });
@@ -2623,6 +2735,7 @@ function applySettingsTab(tabName) {
  * 2) 각 탭 버튼에 click 핸들러 등록 → applySettingsTab 호출.
  */
 function initSettingsTabs() {
+  initSettingsSearch();
   const tabButtons = document.querySelectorAll('.sp-tab');
   if (!tabButtons.length) return;
   let initial = 'names';

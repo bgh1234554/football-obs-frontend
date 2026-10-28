@@ -906,7 +906,8 @@
 .ev-spotlight.is-board.is-visible { transform: translateX(-50%) scale(var(--ev-spotlight-scale, 1)) translateY(0); }
 .ev-spotlight[hidden] { display: none; }
 .ev-spotlight .ev-list { overflow: visible; padding: 0; margin: 0; }
-.ev-spotlight .ev-row { cursor: default; }
+.ev-spotlight.is-visible { pointer-events: auto; }
+.ev-spotlight .ev-row { cursor: pointer; }
 .ev-spotlight .ev-period-marker { min-height: 40px; padding-block: 8px; }
 .ev-spotlight:has(.ev-period-marker)::after { inset: 0; border-left: 1px solid #A9A9A9; border-radius: 6px; }
 /* 밝은 배경화면 위에서도 경계가 보이도록 왼쪽 색 막대 쪽만 빼고 1px 테두리를 두른다.

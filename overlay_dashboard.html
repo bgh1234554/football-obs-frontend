@@ -254,7 +254,13 @@
           <button class="sp-tab"            type="button" data-sp-tab="events" role="tab">패널/스탯</button>
           <button class="sp-tab"            type="button" data-sp-tab="background" role="tab">배경/OBS</button>
           <button class="sp-tab"            type="button" data-sp-tab="general" role="tab">관리</button>
+          <button class="sp-search-toggle" id="settingsSearchToggle" type="button" aria-label="설정 검색" aria-expanded="false" aria-controls="settingsSearchBar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
         </div>
+        <div id="settingsSearchBar" class="sp-search-bar" hidden>
+          <input id="settingsSearchInput" type="search" aria-label="설정 검색어" placeholder="설정 검색 (예: 폰트, 사이즈, 알림음)" autocomplete="off">
+          <button id="settingsSearchClear" type="button" class="sp-secondary-btn">지우기</button>
+        </div>
+        <div id="settingsSearchStatus" class="sp-search-status" role="status" hidden></div>
 
         <div class="sp-section" data-sp-tab-section="names">
           <div class="sp-section-title">선수 이름 표시</div>
@@ -745,6 +751,31 @@
               <input type="range" min="100" max="250" step="5" data-settings-slider="eventSpotlightScale" />
               <span class="sp-slider-value">100%</span>
             </div>
+          </div>
+          <div class="sp-section-title">알림음 설정</div>
+          <div class="sp-row">
+            <div class="sp-row-label"><span class="sp-label-main">점수·득점자 깜빡임 알림음</span><span class="sp-label-sub">경기 점수 또는 득점자 텍스트박스 업데이트 시 알림음이 재생됩니다.</span></div>
+            <div class="sp-toggle-cluster"><span class="sp-toggle-side" data-side="off">OFF</span><label class="sp-switch"><input type="checkbox" data-settings-cat="boardFlashSound" /><span class="sp-switch-slider"></span></label><span class="sp-toggle-side" data-side="on">ON</span></div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label"><span class="sp-label-main">신규 이벤트 알림음</span><span class="sp-label-sub">신규 이벤트가 나타날 경우 알림음이 재생됩니다.</span></div>
+            <div class="sp-toggle-cluster"><span class="sp-toggle-side" data-side="off">OFF</span><label class="sp-switch"><input type="checkbox" data-settings-cat="eventSpotlightSound" /><span class="sp-switch-slider"></span></label><span class="sp-toggle-side" data-side="on">ON</span></div>
+          </div>
+          <div class="sp-row">
+            <div class="sp-row-label"><span class="sp-label-main">알림음 볼륨</span><span class="sp-label-sub">세트나 볼륨을 바꾸면 켜진 알림음을 들어볼 수 있습니다.</span></div>
+            <select class="sp-select" data-settings-select="notificationSoundSet" aria-label="알림음 세트">
+              <option value="1">차임</option>
+              <option value="2">글라스</option>
+              <option value="3">디지털</option>
+              <option value="4">아케이드</option>
+              <option value="5">8비트</option>
+              <option value="6">앰비언트</option>
+              <option value="7">리플</option>
+              <option value="8">스타디움 오르간</option>
+              <option value="9">벨</option>
+              <option value="10">휘슬</option>
+            </select>
+            <div class="sp-slider-cluster"><input type="range" min="0" max="100" step="5" data-settings-slider="notificationSoundVolume" aria-label="알림음 볼륨" /><span class="sp-slider-value">35%</span></div>
           </div>
           <div class="sp-section-title">점수판</div>
           <div class="sp-row">
@@ -1615,6 +1646,8 @@
 <script src="js/tactics/tactics-manual-names.js"></script>
 <script src="js/data/injury-reason.js"></script>
 <script src="js/settings/settings-popup.js"></script>
+<script src="js/core/notification-sounds.js"></script>
+<script src="js/core/notification-sound-demo.js"></script>
 <script src="js/settings/obs-color-picker.js"></script>
 <script src="js/settings/obs-select.js"></script>
 <script src="js/settings/shortcut-settings.js"></script>
