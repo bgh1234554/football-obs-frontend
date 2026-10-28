@@ -44,6 +44,31 @@ const { openPage, settle } = require('../tactics/helpers');
         assert.equal(await page.locator('#pirPopup').count(), 0);
       }
     }
+    // 실제 ID 0 선수 클릭 → 검색 → 후보 선택 → 저장 후 경기 전환·새로고침을 확인합니다.
+    await page.route('**/api/players/search**', route => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ players: [{ id: 555001, name: '연결된 선수', fullName: '연결된 선수 전체 이름', photoUrl: '' }], page: 1, totalPages: 1 }),
+    }));
+    await page.evaluate(() => activatePage('main-small'));
+    await page.locator('#benchPanel [data-bench-side="home"] .dp-item[data-player-id="0"] .dp-item-name').click();
+    await page.locator('#pirIdInput').fill('Pavel');
+    await page.locator('#pirFetch').click();
+    await page.locator('.ps-result').first().click();
+    await page.locator('#pirSave').click();
+    const load = async id => page.evaluate(async ({ fixture, id }) => {
+      fetchFixture = async requested => { const next = structuredClone(fixture); next.matchInfo.fixtureId = String(requested); return next; };
+      await fetchAndApplyFixtureData(id, { silent: true }); clearPolling();
+      return {
+        home: lineupPanelState.lastEffectiveData.homeLineup.substitutes[0].playerId,
+        away: lineupPanelState.lastEffectiveData.awayLineup.substitutes[0].playerId,
+      };
+    }, { fixture, id });
+    const id = String(fixture.matchInfo.fixtureId);
+    assert.deepEqual(await load(id), { home: 555001, away: 0 });
+    assert.deepEqual(await load(String(Number(id) + 1)), { home: 0, away: 0 });
+    assert.deepEqual(await load(id), { home: 555001, away: 0 });
+    await page.reload();
+    assert.deepEqual(await load(id), { home: 555001, away: 0 });
     assert.deepEqual(errors, []);
     console.log('PASS: zero-ID bench menu opens by actual clicks in big/small layouts for both sides, including identical names.');
   } finally { await browser.close(); }

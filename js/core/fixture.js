@@ -598,6 +598,7 @@
     if (!data?.matchInfo) return false;
     // 한 팀만 초기화할 때는 상대 팀의 사용자 지정 색상 보호를 유지한다.
     if (!onlySide) {
+      if (state.teamColorsByFixture) delete state.teamColorsByFixture[String(data.matchInfo.fixtureId)];
       state.teamColorOverride = false;
       state.teamColorOverrideFixtureId = null;
     }
@@ -607,6 +608,7 @@
         applyFixtureTeamColorPair(side, getFixtureDefaultTeamColors(side));
       }
     });
+    if (onlySide) saveFixtureTeamColors();
     render();
     persist();
     document.dispatchEvent(new CustomEvent('theme:colors-changed'));
@@ -698,6 +700,7 @@
       }
       if (!changed) return;
 
+      if (onlySide) saveFixtureTeamColors();
       render();
       persist();
       document.dispatchEvent(new CustomEvent('theme:colors-changed', { detail: { key: 'homeBg' } }));
@@ -1163,6 +1166,19 @@
     }
     const m = data?.matchInfo || {};
     const fixtureId = String(m.fixtureId ?? '').trim();
+    const savedTeamColors = state.teamColorsByFixture?.[fixtureId];
+    if (savedTeamColors && typeof savedTeamColors === 'object') {
+      let restored = false;
+      for (const key of ['homeBg', 'homeText', 'awayBg', 'awayText']) {
+        if (!/^#[0-9a-f]{6}$/i.test(savedTeamColors[key])) continue;
+        state.colors[key] = savedTeamColors[key];
+        restored = true;
+      }
+      if (restored) {
+        state.teamColorOverride = true;
+        state.teamColorOverrideFixtureId = fixtureId;
+      }
+    }
     const preserveTeamColors = !!state.teamColorOverride
       && !!fixtureId
       && state.teamColorOverrideFixtureId === fixtureId;

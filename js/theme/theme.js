@@ -47,7 +47,8 @@
       if (syncColorInput && $(id)) $(id).value = updates[key];
       if ($(id + 'Hex')) $(id + 'Hex').value = updates[key];
     });
-    if (!changed) return;
+    if (teamColorChanged) saveFixtureTeamColors();
+    if (!changed && !teamColorChanged) return;
     if (teamColorChanged && typeof applyTeamColors === 'function') applyTeamColors();
     persist();
     render();

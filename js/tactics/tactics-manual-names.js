@@ -102,6 +102,7 @@ function tacticsCommitTeamColor(side, part, value) {
 
   state.teamColorOverride = true;
   state.teamColorOverrideFixtureId = (typeof getLastFixtureId === 'function') ? getLastFixtureId() : null;
+  saveFixtureTeamColors();
 
   if (typeof persist === 'function') persist();
   if (typeof render === 'function') render();

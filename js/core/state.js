@@ -100,6 +100,7 @@
     // applyFixtureToState가 API 컬러로 덮어쓰지 않도록 가드용. localStorage로 영속화돼서 새로고침 후에도 보존.
     teamColorOverride: false,
     teamColorOverrideFixtureId: null,
+    teamColorsByFixture: {},
     noteEnabled: true,
     notes: { home: '', away: '' },
     noteFontSize: 18,
@@ -175,6 +176,18 @@
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [상태 저장/복원] LocalStorage를 통해 state를 영속화하고 새로고침 시 복원
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  /** 현재 수동 팀 컬러를 경기별로 보관해 다른 경기를 거쳐도 복원합니다. */
+  function saveFixtureTeamColors() {
+    const id = String(state.teamColorOverrideFixtureId || '').trim();
+    if (!state.teamColorOverride || !id) return;
+    if (!state.teamColorsByFixture || typeof state.teamColorsByFixture !== 'object' || Array.isArray(state.teamColorsByFixture)) state.teamColorsByFixture = {};
+    const colors = {};
+    for (const key of ['homeBg', 'homeText', 'awayBg', 'awayText']) {
+      if (/^#[0-9a-f]{6}$/i.test(state.colors?.[key])) colors[key] = state.colors[key];
+    }
+    state.teamColorsByFixture[id] = colors;
+  }
 
   /**
    * 현재 state를 LocalStorage에 JSON으로 저장.
@@ -283,6 +296,9 @@
       state.noteStrokeWidth = clampNum(state.noteStrokeWidth, 0, 10, 1);
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
+      if (!state.teamColorsByFixture || typeof state.teamColorsByFixture !== 'object' || Array.isArray(state.teamColorsByFixture)) state.teamColorsByFixture = {};
+      // 기존에 마지막 경기 한 개만 저장했던 사용자 설정도 경기별 저장소로 이어 받습니다.
+      if (!state.teamColorsByFixture[state.teamColorOverrideFixtureId]) saveFixtureTeamColors();
       state.leagueId = saved?.leagueId ?? null;
       state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;
       if (migrateBoardScale) persist();

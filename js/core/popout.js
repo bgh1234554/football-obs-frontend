@@ -160,7 +160,7 @@ function syncScoreboardStateFromStorage(newValue) {
       'leagueThemeUpdateSilent', 'leagueThemeApplyVersion',
       'homeLogoScale', 'awayLogoScale', 'homeLogoX', 'homeLogoY', 'awayLogoX', 'awayLogoY',
       'rcSize', 'rcGap', 'rcTop', 'rcHomeInset', 'rcAwayInset',
-      'teamColorOverride', 'teamColorOverrideFixtureId',
+      'teamColorOverride', 'teamColorOverrideFixtureId', 'teamColorsByFixture',
       'homeLogoUpload', 'awayLogoUpload',
     ]);
 

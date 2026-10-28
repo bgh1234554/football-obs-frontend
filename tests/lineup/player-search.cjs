@@ -357,6 +357,21 @@ const root = path.resolve(__dirname, '../..');
     assert(behavior.error.includes('Provider unavailable'));
     assert.equal(behavior.query, '6789');
     assert.equal(behavior.id, 6789);
+    // ID 0 선수를 검색 결과에서 직접 연결한 저장값은 경기 전환과 새로고침 후에도 복원합니다.
+    const matchedId = 1000 + resizedCount;
+    const reloadZeroPlayer = async fixtureId => page.evaluate(fixtureId => {
+      const lineup = { formation: '4-4-2', startXi: [{ playerId: 0, name: 'API 0', origName: 'API 0', number: 10, grid: '1:1' }], substitutes: [] };
+      applyLineupPanels({ matchInfo: { fixtureId, homeTeamId: 1, awayTeamId: 2, homeTeamName: 'Home', awayTeamName: 'Away' }, homeLineup: structuredClone(lineup), awayLineup: lineup, events: [], playerStats: [], homeInjuries: [], awayInjuries: [] });
+      return {
+        home: lineupPanelState.lastEffectiveData.homeLineup.startXi[0].playerId,
+        away: lineupPanelState.lastEffectiveData.awayLineup.startXi[0].playerId,
+      };
+    }, fixtureId);
+    assert.deepEqual(await reloadZeroPlayer('search-test'), { home: 0, away: matchedId });
+    assert.deepEqual(await reloadZeroPlayer('other-match'), { home: 0, away: 0 });
+    assert.deepEqual(await reloadZeroPlayer('search-test'), { home: 0, away: matchedId });
+    await page.reload();
+    assert.deepEqual(await reloadZeroPlayer('search-test'), { home: 0, away: matchedId });
     assert.deepEqual(errors, []);
     console.log('PASS: ID/name search, height-based pagination, four UIs including bench fixed rows and optional IDs, metadata preservation, API refresh, save/cancel, photo choice and stale responses.');
   } finally { await browser.close(); }

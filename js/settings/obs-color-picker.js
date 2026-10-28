@@ -22,7 +22,7 @@
     const value = '#' + channels.map(c => c.toString(16).padStart(2, '0')).join('');
     picker.style.setProperty('--picker-hue', `hsl(${hue} 100% 50%)`);
     picker.querySelector('.obs-color-point').style.cssText = `left:${saturation * 100}%;top:${(1 - brightness) * 100}%`;
-    picker.querySelector('[data-picker-hue]').value = hue;
+    picker.querySelector('[data-picker-hue]').value = 360 - hue;
     picker.querySelector('[data-picker-hex]').value = value;
     picker.querySelector('.obs-color-sample').style.background = value;
     picker.querySelectorAll('[data-picker-rgb]').forEach((input, index) => { input.value = channels[index]; });
@@ -109,7 +109,7 @@
       paint(); commit();
     });
     const hueInput = picker.querySelector('[data-picker-hue]');
-    hueInput.addEventListener('input', event => { hue = Number(event.target.value); queuePreview(); });
+    hueInput.addEventListener('input', event => { hue = 360 - Number(event.target.value); queuePreview(); });
     hueInput.addEventListener('change', finishDrag);
     hueInput.addEventListener('blur', finishDrag);
     const hexInput = picker.querySelector('[data-picker-hex]');
