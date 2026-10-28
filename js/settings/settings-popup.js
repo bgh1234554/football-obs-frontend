@@ -1452,6 +1452,44 @@ function syncColorUi(category) {
   });
 }
 
+/** 저장이나 전체 렌더 없이 현재 색상에 해당하는 화면 속성만 미리 보여줍니다. */
+function previewSettingsColor(category, value) {
+  if (!HEX_COLOR_RE.test(value)) return;
+  const root = document.documentElement;
+  if (category in NOTE_COLOR_VARS) {
+    root.style.setProperty(NOTE_COLOR_VARS[category], chromaSafe(value));
+  } else if (RATING_COLOR_KEYS.has(category)) {
+    const keys = ['ratingColorBelow6', 'ratingColor6', 'ratingColor65', 'ratingColor7', 'ratingColor8', 'ratingColor9', 'ratingColor95'];
+    document.querySelectorAll('.dp-rating, .dp-node-rating').forEach(node => {
+      const rating = Number(node.textContent);
+      if (!Number.isFinite(rating)) return;
+      const index = [6, 6.5, 7, 8, 9, 9.5].findIndex(limit => rating < limit);
+      if (keys[index < 0 ? 6 : index] !== category) return;
+      const safe = chromaSafe(value);
+      node.style.background = safe;
+      if (node.classList.contains('dp-rating')) {
+        node.style.color = teamColorContrastRatio('#000000', safe) > teamColorContrastRatio('#ffffff', safe) ? '#000000' : '#ffffff';
+      }
+    });
+  } else if (['bgColor', 'panelColor', 'matchInfoLabelColor'].includes(category)) {
+    // 기존 모드별 배경·대비 계산만 재사용하고 저장값은 즉시 원복합니다.
+    const key = category === 'bgColor' && getSetting('uiMode') === 'light' ? 'lightBgColor' : category;
+    const existed = Object.hasOwn(settingsState, key);
+    const previous = settingsState[key];
+    settingsState[key] = value;
+    try {
+      if (category === 'bgColor') applyPageBackground();
+      else {
+        if (category === 'matchInfoLabelColor') root.style.setProperty('--mi-label-color', chromaSafeText(value));
+        applyUiMode();
+      }
+    } finally {
+      if (existed) settingsState[key] = previous;
+      else delete settingsState[key];
+    }
+  }
+}
+
 function initSettingsColorEditors() {
   document.querySelectorAll('input[data-settings-color]').forEach(swatch => {
     const category = swatch.dataset.settingsColor;
@@ -2711,7 +2749,8 @@ function initSettingsPopup() {
   document.querySelectorAll('input[data-settings-color]').forEach(input => {
     const category = input.dataset.settingsColor;
     syncColorUi(category);
-    // input 이벤트는 무시 — 드래그마다 commit하면 patch 재계산 + render 트리거로 lag 발생.
+    input.addEventListener('input', () => previewSettingsColor(category, input.value));
+    // input은 색상 속성만 미리보기하고 change에서 저장·전체 갱신을 확정합니다.
     input.addEventListener('change', () => {
       const v = String(input.value || '').toLowerCase();
       if (HEX_COLOR_RE.test(v)) {
