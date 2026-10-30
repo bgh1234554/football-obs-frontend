@@ -41,6 +41,8 @@
   border: 0;
   isolation: isolate;
 }
+/* 카메라 뷰의 교체·평점 표시는 피치 바깥에서도 보이며 선수 원은 JS에서 경계를 제한한다. */
+.layout-big .dp-lineup-vertical-pitch { overflow: visible; }
 .dp-lineup-vertical-pitch::after {
   content: '';
   position: absolute;
@@ -317,7 +319,8 @@
 /* 전술판 토큰 룩 — 슬롯 좌표(slot.left%, slot.top%)에 원/아바타 중심을 고정.
    이름 라벨은 별도 .dp-lineup-name-wrap으로 분리 렌더 → 모든 이름이 모든 원보다 위 z-index
    (홈/원정 양쪽 같은 규칙). 이전엔 동일 노드 내 flex column 구조라 인접 팀 원에 가려짐. */
-.dp-lineup-node {
+.dp-lineup-node,
+.dp-lineup-sub-layer {
   position: absolute;
   transform: translate(-50%, -50%) scale(var(--lp-token-scale, 1));
   transform-origin: center bottom;
@@ -327,6 +330,9 @@
   z-index: 3;
   pointer-events: none;
 }
+/* 별도 스택에서 모든 선수 원과 이름보다 위에 교체 IN/OUT을 표시한다. */
+.dp-lineup-sub-layer { z-index: 6; }
+.dp-sub-layer-size { visibility: hidden; }
 /* 이름 라벨 별도 컨테이너 — 슬롯 좌표 기준 원 아래(circle radius + gap = 24px)에 위치.
    z-index 4 → 모든 .dp-lineup-node(z-index 3)보다 항상 위. */
 .dp-lineup-name-wrap {
@@ -609,6 +615,13 @@ body.no-lineup-subtime .layout-big .lp-lineup .dp-node-sub-out { display: none; 
 }
 .dp-lineup-name.is-yellow {
   color: #FFD93D;
+}
+/* 카드 이름색이 우선이며 피치 옆 OUT 공격포인트 선수는 렌더 단계에서 제외한다. */
+body.lineup-sub-name-highlight .dp-lineup-name.is-sub-in:not(.is-yellow):not(.is-red) {
+  color: var(--lp-sub-in-name-color, #33C771);
+}
+body.lineup-sub-name-highlight .dp-lineup-name.is-sub-out:not(.is-yellow):not(.is-red) {
+  color: #F4B5B5;
 }
 .dp-lineup-name.is-red {
   color: var(--lineup-red-text);

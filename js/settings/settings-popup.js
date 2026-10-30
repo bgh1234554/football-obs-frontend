@@ -145,6 +145,7 @@ const SETTINGS_DEFAULTS = {
   lineupShowCards: 'on',     // 옐로/레드 카드
   lineupShowRating: 'on',    // 평점 박스
   lineupShowSubTime: 'on',   // 교체 IN 시간(72' 등)
+  lineupSubNameHighlight: 'off', // 교체 선수 이름 강조는 사용자가 켠 경우에만 적용한다.
   lineupShowNumber: 'on',    // 사진 모드에서 이름 라벨 앞 등번호 표시
   // 교체 OUT 된 선수 중 골/도움/자책골을 기록한 선수를 피치 오른쪽에 별도 열로 표시.
   // subReflect=on일 때만 동작(off면 OUT 선수가 이미 그리드에 그대로 남아있어 중복 표시 방지).
@@ -461,7 +462,7 @@ const ON_OFF_TOGGLE_CATEGORIES = new Set([
   'subReflect', 'autoLinkPlayerIdByName', 'fanReaction', 'lineupHideInitial', 'lineupShowFormationButton',
   'bigLineupVisible', 'bigInfoVisible',
   'splitLineup', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating',
-  'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
+  'lineupShowSubTime', 'lineupSubNameHighlight', 'lineupShowNumber', 'lineupShowOutScorers', 'noteShowPenaltyMisses',
   'noteShowRedCards', 'greenscreen', 'bigPanelLinked',
   'statCycleModeStats', 'statCycleModeEvents', 'statCycleModeHth', 'statCycleModeTeamFixtures',
   'statCycleModeBenchHome', 'statCycleModeBenchAway', 'statCycleModeMatchInfo', 'statCycleModeInjuries',
@@ -473,7 +474,7 @@ function isValidSetting(category, value) {
   if (category === 'notificationSoundSet') return typeof value === 'string' && /^(?:[1-9]|10)$/.test(value);
   if (category === 'notificationSoundSetRevision') return value === 4;
   if (category === 'notificationSoundVolume') return Number.isFinite(value) && value >= 0 && value <= 100;
-  if (category === 'lineupTokenScale') return Number.isFinite(value) && value >= 75 && value <= 125;
+  if (category === 'lineupTokenScale') return Number.isFinite(value) && value >= 75 && value <= 150;
   if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_DEFAULTS) {
     return value === null || isValidSetting(category.slice(0, -10), value);
   }
@@ -843,7 +844,7 @@ function applySettingSideEffects(category) {
   if (category === 'fanReaction'
     || category === 'bigLineupVisible' || category === 'bigInfoVisible'
     || category === 'lineupShowGoals' || category === 'lineupShowCards'
-    || category === 'lineupShowRating' || category === 'lineupShowSubTime'
+    || category === 'lineupShowRating' || category === 'lineupShowSubTime' || category === 'lineupSubNameHighlight'
     || category === 'lineupShowNumber') {
     applyLayoutSettings();
   }
@@ -983,6 +984,7 @@ function applyLayoutSettings() {
   const pitchTone = LINEUP_PITCH_TONE_STYLES[getSetting('lineupPitchTone')]
     || LINEUP_PITCH_TONE_STYLES[SETTINGS_DEFAULTS.lineupPitchTone];
   const root = document.documentElement;
+  root.style.setProperty('--lp-sub-in-name-color', isGreenscreenOn() ? '#60a5fa' : '#33c771');
   Object.entries(OVERLAY_CHROMA_COLORS).forEach(([variable, color]) => {
     const isText = variable.endsWith('-text') || variable.endsWith('-glyph');
     const safeColor = variable === '--overlay-in-text' && isGreenscreenOn() && getGreenscreenIntensity() === 'natural'
@@ -1079,6 +1081,7 @@ function applyLayoutSettings() {
     body.classList.toggle('no-lineup-cards',   getSetting('lineupShowCards')   !== 'on');
     body.classList.toggle('no-lineup-rating',  getSetting('lineupShowRating')  !== 'on');
     body.classList.toggle('no-lineup-subtime', getSetting('lineupShowSubTime') !== 'on');
+    body.classList.toggle('lineup-sub-name-highlight', getSetting('lineupSubNameHighlight') === 'on');
     body.classList.toggle('greenscreen-mode',  getSetting('greenscreen') === 'on');
   }
   // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-name-fit.js의 fit 함수)
@@ -1420,7 +1423,7 @@ function openPanelFontPopup(title, clickPoint = null) {
     : ['benchInjuryNameSize', 'eventNameSize'].includes(category) ? '이름 크기' : '글자 크기';
   popup.append(heading);
   popup.append(cluster, reset);
-  const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial', 'lineupShowFormationButton']
+  const nameSettings = category === 'lineupNameSize' ? ['lineup', 'lineupHideInitial', 'lineupSubNameHighlight', 'lineupShowOutScorers', 'lineupShowFormationButton']
     : category === 'benchInjuryNameSize' ? ['roster'] : category === 'eventNameSize' ? ['event'] : [];
   if (nameSettings.length) popup.classList.add('has-name-settings');
   if (category === 'lineupNameSize') {
@@ -2257,7 +2260,7 @@ function syncGroupedSettingExamples() {
     camera.dataset.exampleGroup = 'camera';
     const controls = document.createElement('div');
     controls.className = 'sp-example-controls';
-    const categories = ['lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime', 'lineupShowNumber', 'lineupShowOutScorers'];
+    const categories = ['lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime', 'lineupShowNumber', 'lineupSubNameHighlight', 'lineupShowOutScorers'];
     const rows = categories.map(cat => cameraSection.querySelector(`input[data-settings-cat="${cat}"]`).closest('.sp-row'));
     rows[0].before(camera);
     rows.forEach(row => controls.append(row));
@@ -2280,7 +2283,7 @@ function renderSettingsLiveExample(container, category) {
   }
   container.classList.remove('sp-preview-empty');
   const boardTheme = loadedBoard ? document.querySelector('#fsm-theme-link')?.href : 'fallback-default';
-  const nodeKeys = ['lineup', 'lineupHideInitial', 'lineupNode', 'lineupShowNumber', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime'];
+  const nodeKeys = ['lineup', 'lineupHideInitial', 'lineupNode', 'lineupShowNumber', 'lineupShowGoals', 'lineupShowCards', 'lineupShowRating', 'lineupShowSubTime', 'lineupSubNameHighlight'];
   const keys = {
     lineup: nodeKeys,
     camera: nodeKeys,

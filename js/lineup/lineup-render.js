@@ -165,7 +165,7 @@ function lpBuildRosterRowHtml(player, kind, side) {
  * 항상 모든 badge를 렌더하고, 캠 큼에서의 per-feature 토글은 body class + CSS로 숨김 처리한다.
  * (작은 캠은 항상 모두 표시 — 사용자 요청: 마스터 토글만 적용.)
  */
-function lpBuildNodeBadgesHtml(events) {
+function lpBuildNodeSubBadgesHtml(events) {
   if (!events) return '';
   let html = '';
   const fmt = typeof lpFormatEventTime === 'function' ? lpFormatEventTime : () => '';
@@ -178,6 +178,11 @@ function lpBuildNodeBadgesHtml(events) {
   if (events.subOut) {
     html += `<span class="dp-node-badge dp-node-sub-out${hasBothSubBadges ? ' dp-node-sub-stacked' : ''}" title="교체 OUT">→<span class="dp-node-sub-time">${dpEscape(fmt(events.subOut.time))}</span></span>`;
   }
+  return html;
+}
+function lpBuildNodeBadgesHtml(events, includeSub = true) {
+  if (!events) return '';
+  let html = includeSub ? lpBuildNodeSubBadgesHtml(events) : '';
   // top-right: 어시스트
   if (events.assists?.length) {
     const n = events.assists.length;
@@ -673,15 +678,21 @@ function buildLineupNodePairHtml(player, effectiveData, side, position, extraCla
   // Iter 5-3: 이벤트/평점 lookup
   const events = preview ? preview.events : lpGetPlayerEventsForPlayer(player, side);
   const isSentOff = !!(events?.red);
-  const badgesHtml = lpBuildNodeBadgesHtml(events);
+  const badgesHtml = lpBuildNodeBadgesHtml(events, false);
+  const substitutionsHtml = lpBuildNodeSubBadgesHtml(events);
   const ratingHtml = preview ? lpBuildNodeRatingHtml(player.playerId, preview.rating) : lpBuildNodeRatingHtml(player.playerId);
   const extraClassSuffix = extraClass ? ` ${extraClass}` : '';
   const nodeClass = `dp-lineup-node is-${side}${extraClassSuffix}${isSentOff ? ' is-sent-off' : ''}`;
-  const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}`;
+  // 양쪽 교체 기록이 있으면 최종 OUT 상태를 우선하고, 피치 옆 공격포인트 열은 강조하지 않는다.
+  const substitutionClass = !extraClass.split(/\s+/).includes('dp-lineup-outscorer')
+    ? (events?.subOut ? ' is-sub-out' : events?.subIn ? ' is-sub-in' : '') : '';
+  const nameClass = `dp-lineup-name${isSentOff ? ' is-red' : ''}${typeof lpCardKind === 'function' && lpCardKind(events) === 'yellow' ? ' is-yellow' : ''}${substitutionClass}`;
 
   // SofaScore 방식: 평점은 노드 자식으로, 원 바로 아래에 부착. name-wrap은 그만큼 더 아래로 밀림.
   const _pirAttr = Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : '';
-  const circle = `<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>`;
+  // 교체 표시는 별도 형제 레이어에 둬 인접 선수의 transform 스택 위에서도 보이게 한다.
+  const subLayer = substitutionsHtml ? `<div class="dp-lineup-sub-layer is-${side}${extraClassSuffix}" style="${posStyle}${colorVars}"><span class="${nodeMode === 'photo' && player.photoUrl ? 'dp-lineup-avatar' : 'dp-lineup-circle'} dp-sub-layer-size" aria-hidden="true"></span>${substitutionsHtml}</div>` : '';
+  const circle = `<div class="${nodeClass}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}${colorVars}">${badge}${badgesHtml}${ratingHtml}</div>${subLayer}`;
   const nameHtml = `<div class="dp-lineup-name-wrap is-${side}${extraClassSuffix}" data-player-id="${dpEscape(player.playerId)}"${_pirAttr} style="${posStyle}">${buildLineupNameLabelHtml(player, name, nameClass, title)}</div>`;
   return { circle, name: nameHtml };
 }
@@ -2000,7 +2011,13 @@ function lpTokenGeometry() {
     const rect = node.getBoundingClientRect();
     const scale = Number(getComputedStyle(node).getPropertyValue('--lp-token-scale')) || 1;
     const x = rect.left + rect.width / 2;
+    const cameraPitch = node.closest('.layout-big .dp-lineup-vertical-pitch');
     const bounds = { left: -Infinity, right: Infinity, top: -Infinity, bottom: Infinity };
+    // 카메라 뷰의 부착 표시는 피치 밖으로 나갈 수 있어도 선수 원은 피치 안에 둔다.
+    if (cameraPitch) {
+      const pitch = cameraPitch.getBoundingClientRect();
+      Object.assign(bounds, { left: pitch.left, right: pitch.right, top: pitch.top, bottom: pitch.bottom });
+    }
     for (let parent = node.parentElement; parent; parent = parent.parentElement) {
       const style = getComputedStyle(parent);
       const clip = parent.getBoundingClientRect();
@@ -2013,10 +2030,13 @@ function lpTokenGeometry() {
         bounds.bottom = Math.min(bounds.bottom, clip.bottom);
       }
     }
-    const parts = [...node.querySelectorAll('.dp-lineup-circle, .dp-lineup-avatar, .dp-node-badge, .dp-node-rating')]
+    const subLayer = node.nextElementSibling?.matches('.dp-lineup-sub-layer') ? node.nextElementSibling : null;
+    const parts = [...node.querySelectorAll('.dp-lineup-circle, .dp-lineup-avatar, .dp-node-badge, .dp-node-rating'), ...(subLayer?.querySelectorAll('.dp-node-badge') || [])]
       .filter(part => part.getClientRects().length).map(part => {
         const r = part.getBoundingClientRect();
         return { left: (r.left - x) / scale, right: (r.right - x) / scale,
+          bounds: cameraPitch && part.matches('.dp-node-badge, .dp-node-rating')
+            ? { left: 0, right: document.documentElement.clientWidth, top: 0, bottom: document.documentElement.clientHeight } : bounds,
           top: (r.top - rect.bottom) / scale, bottom: (r.bottom - rect.bottom) / scale };
       });
     return { x, bottom: rect.bottom, radius: rect.width / scale / 2, height: rect.height / scale, bounds, parts };
@@ -2025,18 +2045,18 @@ function lpTokenGeometry() {
 function lpGetTokenScaleLimit() {
   const nodes = lpTokenGeometry();
   const fits = scale => nodes.every((a, i) => {
-    // 부착 아이콘까지 조상 요소의 잘림 영역 안에 남아 있어야 한다.
-    const inside = a.parts.every(part => a.x + part.left * scale >= a.bounds.left - 0.001
-      && a.x + part.right * scale <= a.bounds.right + 0.001
-      && a.bottom + part.top * scale >= a.bounds.top - 0.001
-      && a.bottom + part.bottom * scale <= a.bounds.bottom + 0.001);
+    // 팀 이름 라벨은 자체 피팅에 맡기고 선수 원과 부착 표시만 각 경계로 제한한다.
+    const inside = a.parts.every(part => a.x + part.left * scale >= part.bounds.left - 0.001
+      && a.x + part.right * scale <= part.bounds.right + 0.001
+      && a.bottom + part.top * scale >= part.bounds.top - 0.001
+      && a.bottom + part.bottom * scale <= part.bounds.bottom + 0.001);
     return inside && nodes.slice(i + 1).every(b => {
       const dy = (a.bottom - a.height * scale / 2) - (b.bottom - b.height * scale / 2);
       return Math.hypot(a.x - b.x, dy) + 0.001 >= (a.radius + b.radius) * scale;
     });
   });
-  if (fits(1.25)) return 1.25;
-  let low = 0, high = 1.25;
+  if (fits(1.5)) return 1.5;
+  let low = 0, high = 1.5;
   for (let i = 0; i < 24; i++) {
     const mid = (low + high) / 2;
     if (fits(mid)) low = mid; else high = mid;

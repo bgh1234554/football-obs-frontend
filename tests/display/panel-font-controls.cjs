@@ -24,6 +24,57 @@ const root = path.resolve(__dirname, '../..');
       await fetchAndApplyFixtureData(data.matchInfo.fixtureId, { silent: true });
       clearPolling(); activatePage('main-small');
     }, data);
+    assert.equal(await page.evaluate(() => getSetting('lineupSubNameHighlight')), 'off');
+    const substitutionNames = await page.evaluate(() => {
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const time = { elapsed: 62 };
+      const cases = [
+        { events: { subIn: { time } } }, { events: { subOut: { time } } },
+        { events: { subIn: { time }, subOut: { time } } },
+        { events: { subIn: { time }, yellow: {} } }, { events: { subOut: { time }, red: {} } },
+        { events: { subOut: { time } }, extra: 'dp-lineup-outscorer' }
+      ];
+      host.innerHTML = cases.map(({ events, extra }) => buildLineupNodePairHtml(
+        { playerId: 999, name: '교체 테스트', number: 7 }, {}, 'home', { left: 50, top: 50 }, extra || '', { events, rating: null }
+      ).name).join('');
+      const colors = () => [...host.querySelectorAll('.dp-lineup-name')].map(el => getComputedStyle(el).color);
+      try {
+        const off = colors();
+        setSetting('lineupSubNameHighlight', 'on');
+        const on = colors();
+        const modes = [];
+        setSetting('greenscreen', 'on');
+        for (const intensity of ['strong', 'purple', 'moderate', 'mild', 'natural']) {
+          setSetting('greenscreenIntensity', intensity);
+          modes.push(colors());
+        }
+        setSetting('greenscreen', 'off');
+        const restored = colors();
+        setSetting('lineupSubNameHighlight', 'off');
+        return { off, on, modes, restored, disabled: colors() };
+      } finally { host.remove(); }
+    });
+    assert.equal(substitutionNames.on[0], 'rgb(51, 199, 113)');
+    assert.equal(substitutionNames.on[1], 'rgb(244, 181, 181)');
+    assert.equal(substitutionNames.on[2], substitutionNames.on[1], 'OUT takes priority after IN');
+    for (const index of [3, 4, 5]) assert.equal(substitutionNames.on[index], substitutionNames.off[index], 'cards and OUT contribution column retain their name colors');
+    for (const mode of substitutionNames.modes) {
+      assert.equal(mode[0], 'rgb(96, 165, 250)', 'all chroma presets use the requested blue');
+      assert.equal(mode[1], 'rgb(244, 181, 181)');
+    }
+    assert.deepEqual(substitutionNames.restored, substitutionNames.on);
+    assert.deepEqual(substitutionNames.disabled, substitutionNames.off);
+    await page.evaluate(() => openSettingsPopup());
+    await page.locator('[data-sp-tab="lineup"]').click();
+    const nameHighlight = page.locator('input[data-settings-cat="lineupSubNameHighlight"]');
+    assert.equal(await nameHighlight.isChecked(), false);
+    await nameHighlight.locator('..').click();
+    assert.equal(await page.evaluate(() => getSetting('lineupSubNameHighlight')), 'on');
+    await nameHighlight.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'screenshots/tests/substitution-name-highlight-setting.png' });
+    await nameHighlight.locator('..').click();
+    await page.evaluate(() => closeSettingsPopup());
     const popup = page.getByRole('dialog', { name: '패널 글자 크기' });
     const slider = popup.getByRole('slider', { name: '글자 크기' });
     const change = async value => slider.evaluate((input, value) => { input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true })); }, value);
@@ -197,7 +248,7 @@ const root = path.resolve(__dirname, '../..');
     // 바둑알과 아이콘은 아래 끝을 고정하고 모두 같은 배율로 바뀐다.
     const tokenSlider = popup.getByRole('slider', { name: '선발 라인업 선수 크기' });
     assert.equal(await tokenSlider.getAttribute('min'), '75');
-    assert.equal(await tokenSlider.getAttribute('max'), '125');
+    assert.equal(await tokenSlider.getAttribute('max'), '150');
     const geometry = () => page.evaluate(() => [...document.querySelectorAll('.layout-small .dp-lineup-node')].map(node => {
       const r = node.getBoundingClientRect();
       return { bottom: r.bottom, width: r.width, scale: getComputedStyle(node).getPropertyValue('--lp-token-scale') };
@@ -210,16 +261,68 @@ const root = path.resolve(__dirname, '../..');
       assert(Math.abs(node.bottom - originalTokens[i].bottom) < 0.1);
       assert(Math.abs(node.width / originalTokens[i].width - 0.75) < 0.01);
     });
-    await tokenSlider.evaluate(input => { input.value = '125'; input.dispatchEvent(new Event('input', { bubbles: true })); });
+    await tokenSlider.evaluate(input => { input.value = '150'; input.dispatchEvent(new Event('input', { bubbles: true })); });
     await settle(page);
     assert(await page.evaluate(() => Number(getSetting('lineupTokenScale')) <= Math.floor(lpGetTokenScaleLimit() * 100 + 0.01)));
     assert.equal(new Set((await geometry()).map(node => node.scale)).size, 1);
+    // 카메라 뷰의 부착 라벨은 화면 경계, 원은 피치 경계로 제한하고 팀명은 계산에서 제외한다.
+    const cameraBounds = await page.evaluate(() => {
+      activatePage('main-big');
+      const node = document.querySelector('.layout-big .dp-lineup-node');
+      const badge = document.createElement('span');
+      badge.className = 'dp-node-badge dp-node-sub-in';
+      badge.textContent = "→73'";
+      node.appendChild(badge);
+      const initial = lpGetTokenScaleLimit();
+      const chips = [...document.querySelectorAll('.layout-big .dp-lineup-team-chip, .layout-big .dp-lineup-team-name-tag')];
+      const styles = chips.map(el => el.style.display);
+      chips.forEach(el => { el.style.display = 'none'; });
+      const withoutTeams = lpGetTokenScaleLimit();
+      chips.forEach((el, i) => { el.style.display = styles[i]; });
+      const item = lpTokenGeometry()[0];
+      const mark = item.parts.find(p => p.bounds.left === 0 && p.bounds.right === document.documentElement.clientWidth);
+      const circle = item.parts.find(p => p.bounds === item.bounds);
+      const visibleOverflow = getComputedStyle(node.closest('.dp-lineup-vertical-pitch')).overflow;
+      const result = { initial, withoutTeams, screen: !!mark, pitch: !!circle, visibleOverflow };
+      badge.remove(); activatePage('main-small');
+      return result;
+    });
+    assert.equal(cameraBounds.initial, cameraBounds.withoutTeams, 'team labels never constrain player size');
+    assert(cameraBounds.screen && cameraBounds.pitch, 'badges and circles use separate boundaries');
+    assert.equal(cameraBounds.visibleOverflow, 'visible', 'camera badges can extend beyond pitch');
+    const substitutionLayers = await page.evaluate(() => {
+      activatePage('main-big');
+      const pitch = document.querySelector('.layout-big .dp-lineup-vertical-pitch');
+      const host = document.createElement('div');
+      host.style.cssText = 'position:absolute;left:80px;top:80px;width:200px;height:120px;z-index:20';
+      pitch.appendChild(host);
+      const results = [];
+      try {
+        for (const kind of ['subIn', 'subOut']) {
+          const labeled = buildLineupNodePairHtml({ playerId: 991, number: 1, name: '교체 선수' }, {}, 'home', { left: 60, top: 50 }, '', { events: { [kind]: { time: { elapsed: 62 } } }, rating: null });
+          const neighbor = buildLineupNodePairHtml({ playerId: 992, number: 2, name: '옆 선수' }, {}, 'home', { left: 40, top: 50 }, '', { events: {}, rating: null });
+          for (const reverse of [false, true]) {
+            host.innerHTML = reverse ? neighbor.circle + labeled.circle : labeled.circle + neighbor.circle;
+            const badge = host.querySelector('.dp-node-sub-in, .dp-node-sub-out');
+            const circle = host.querySelector('[data-player-id="992"] .dp-lineup-circle');
+            badge.style.pointerEvents = circle.style.pointerEvents = 'auto';
+            const a = badge.getBoundingClientRect(), b = circle.getBoundingClientRect();
+            const left = Math.max(a.left, b.left), right = Math.min(a.right, b.right);
+            const top = Math.max(a.top, b.top), bottom = Math.min(a.bottom, b.bottom);
+            results.push(right > left && bottom > top && !!document.elementFromPoint((left + right) / 2, (top + bottom) / 2)?.closest('.dp-node-sub-in, .dp-node-sub-out'));
+          }
+        }
+      } finally { host.remove(); activatePage('main-small'); }
+      return results;
+    });
+    assert(substitutionLayers.every(Boolean), 'IN/OUT labels paint above neighboring circles in either DOM order');
+    await smallLine.click({ position: { x: 10, y: 1 } });
     // 경계 가까이 있는 선수 하나가 전체 확대 한도를 결정한다.
     const clipping = await page.evaluate(() => {
       const node = document.querySelector('.layout-small .dp-lineup-node');
       const top = node.style.top;
       node.style.top = '5px';
-      setSetting('lineupTokenScale', 125);
+      setSetting('lineupTokenScale', 150);
       const scale = Number(getComputedStyle(node).getPropertyValue('--lp-token-scale'));
       const geometry = lpTokenGeometry();
       const inside = geometry.every(a => a.parts.every(p => a.x + p.left * scale >= a.bounds.left - 0.01
@@ -234,6 +337,16 @@ const root = path.resolve(__dirname, '../..');
     await page.evaluate(() => setSetting('lineupTokenScale', 100));
     assert.equal(await popup.locator('.sp-label-sub').count(), 0);
     const hideFormation = popup.getByRole('checkbox', { name: '포메이션 설정 버튼', exact: true });
+    // 공간이 부족한 메뉴는 행을 줄이지 않고 마지막 설정까지 내부 스크롤로 접근한다.
+    await popup.evaluate(el => { el.style.maxHeight = '180px'; pmClampPopupToViewport(el); });
+    await hideFormation.locator('..').scrollIntoViewIfNeeded();
+    assert(await popup.evaluate(el => el.scrollHeight > el.clientHeight && el.scrollTop > 0), 'quick menu scroll reaches the last setting');
+    const scrollBounds = await popup.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight;
+    });
+    assert(scrollBounds, 'scrollable quick menu remains inside the viewport');
+    await popup.evaluate(el => { el.style.removeProperty('max-height'); el.scrollTop = 0; pmClampPopupToViewport(el); });
     assert.equal(await hideFormation.isChecked(), true);
     assert.equal(await popup.locator('.quick-setting-row').last().getByRole('checkbox').getAttribute('aria-label'), '포메이션 설정 버튼');
     assert(await page.locator('[data-formation-edit]').count() > 0);
@@ -243,7 +356,7 @@ const root = path.resolve(__dirname, '../..');
     await page.evaluate(() => setSetting('lineupShowFormationButton', 'on'));
     assert.equal(await hideFormation.isChecked(), true);
     assert.equal(await page.locator('[data-formation-edit]').evaluateAll(buttons => buttons.every(button => getComputedStyle(button).display !== 'none')), true);
-    for (const category of ['lineup', 'lineupHideInitial']) {
+    for (const category of ['lineup', 'lineupHideInitial', 'lineupSubNameHighlight', 'lineupShowOutScorers']) {
       const toggle = popup.locator(`input[data-settings-cat="${category}"]`);
       const setting = page.locator(`#settingsBackdrop input[data-settings-cat="${category}"]`);
       const before = await toggle.isChecked();
@@ -298,7 +411,8 @@ const root = path.resolve(__dirname, '../..');
       // 3-4-3에서 하프라인을 덮는 선수는 그대로 누를 수 있게 두고, 키보드 진입도 확인합니다.
       await lines.nth(i).focus();
       await page.keyboard.press('Enter');
-      assert.equal(await popup.locator('input[type="checkbox"]').count(), 3);
+      assert.deepEqual(await popup.locator('input[type="checkbox"]').evaluateAll(inputs => inputs.map(input => input.dataset.settingsCat)),
+        ['lineup', 'lineupHideInitial', 'lineupSubNameHighlight', 'lineupShowOutScorers', 'lineupShowFormationButton']);
       await change(19 + i);
       assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 19 + i);
       await close();

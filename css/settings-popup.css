@@ -439,6 +439,11 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
   align-items: center;
   gap: 10px;
   max-width: calc(100vw - 16px);
+  max-height: min(480px, calc(var(--display-vh, 1vh) * 100 - 16px));
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   padding: 10px 12px;
   border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
   border-radius: 8px;
@@ -451,6 +456,8 @@ html.is-popout .sp-row-panel-modes .sp-row-label { max-width: none !important; }
 .panel-font-popover .sp-slider-cluster input[type="range"] { width: 140px; min-width: 50px; flex: 1 1 auto; }
 .panel-font-popover.has-name-settings {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
   grid-template-columns: minmax(0, 1fr) auto;
   width: 260px;
   gap: 8px;

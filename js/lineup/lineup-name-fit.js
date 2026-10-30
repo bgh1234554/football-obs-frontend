@@ -790,7 +790,7 @@ function getOpposingLineupBadgeTargets(nameEl) {
 
   const opposingSide = side === 'home' ? 'away' : 'home';
   return Array.from(
-    pitch.querySelectorAll(`.dp-lineup-node.is-${opposingSide} .dp-node-badge, .dp-lineup-node.is-${opposingSide} .dp-node-rating`)
+    pitch.querySelectorAll(`.dp-lineup-node.is-${opposingSide} .dp-node-badge, .dp-lineup-node.is-${opposingSide} .dp-node-rating, .dp-lineup-sub-layer.is-${opposingSide} .dp-node-badge`)
   ).filter(target => canMeasureTextElement(target));
 }
 
