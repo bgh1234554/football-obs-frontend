@@ -1363,3 +1363,10 @@
         grid-column: span 5;
       }
     }
+
+    @media (min-width: 1200px) {
+      #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar { gap: 4px !important; }
+      #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar > button { padding-left: 7px !important; padding-right: 7px !important; }
+      #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar .td-topbar-sep { display: none; }
+      #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar .td-fm-pair { gap: 3px; }
+    }

@@ -8,6 +8,27 @@ const fixture = require('../fixtures/1637598-lineup.json');
   try {
     const page = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1280, height: 900 } });
     await page.evaluate(() => activatePage('tactics'));
+    const initialTeams = await page.evaluate(() => ({ home: structuredClone(tacticsState.homePositions), away: structuredClone(tacticsState.awayPositions) }));
+    for (const side of ['home', 'away']) {
+      const other = side === 'home' ? 'away' : 'home';
+      await page.locator(`#tactics-show-${other}`).uncheck();
+      assert.equal(await page.locator(`.tactics-token[data-team="${other}"]`).count(), 0);
+      assert.equal(await page.locator(`.tactics-token[data-team="${side}"]`).count(), 11);
+      assert.equal(await page.locator(`.td-team-label-${other}`).isVisible(), false);
+      const spread = await page.evaluate(side => {
+        const positions = tacticsState[`${side}Positions`];
+        const xs = positions.map(p => p.x);
+        positions[0] = { x: 33, y: 44 };
+        tacticsApplyFm();
+        return { width: Math.max(...xs) - Math.min(...xs), moved: positions[0], kept: tacticsState[`${side}Positions`][0] };
+      }, side);
+      assert(spread.width > 70);
+      assert.deepEqual(spread.kept, spread.moved);
+      await page.screenshot({ path: `screenshots/tests/tactics-single-${side}.png` });
+      await page.locator(`#tactics-show-${other}`).check();
+      assert.deepEqual(await page.evaluate(() => ({ home: tacticsState.homePositions, away: tacticsState.awayPositions })), initialTeams);
+      assert.equal(await page.locator('.tactics-token').count(), 22);
+    }
     const swap = page.getByRole('button', { name: '진영 바꾸기', exact: true });
     const beforeSwap = await page.evaluate(() => {
       tacticsState.homePositions[0] = { x: 23, y: 37 };
@@ -42,9 +63,16 @@ const fixture = require('../fixtures/1637598-lineup.json');
     assert.deepEqual(drawingSwap.mirrored.ball, { x: 70, y: 45 });
     assert(drawingSwap.removed && drawingSwap.restored, '진영 반전 뒤에도 그림 되돌리기/다시 실행 유지');
     assert.equal(drawingSwap.original.x1, 15);
+    await page.setViewportSize({ width: 1920, height: 1080 });
     await page.evaluate(() => tacticsToggleFullscreen());
     await page.waitForFunction(() => !!document.fullscreenElement);
     assert.equal(await swap.locator('.td-btn-label').isVisible(), false);
+    const topbar = await page.locator('#tactics-topbar').evaluate(bar => {
+      const boxes = [...bar.children].map(e => e.getBoundingClientRect()).filter(r => r.width && r.height);
+      return { singleRow: Math.max(...boxes.map(r => r.top)) < Math.min(...boxes.map(r => r.bottom)), fits: boxes.every(r => r.right <= innerWidth) };
+    });
+    assert(topbar.singleRow && topbar.fits, JSON.stringify(topbar));
+
     await page.evaluate(() => document.exitFullscreen());
     const result = await page.evaluate(fixture => {
       fixture.matchInfo.status = '2H';

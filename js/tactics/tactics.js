@@ -619,7 +619,11 @@
     // 2. 포메이션 좌표 계산 (어웨이는 미러링)
     const homeCoords = TACTICS_FM[homeFm] || TACTICS_FM['4-3-3'];
     const awayCoords = tacticsMirror(TACTICS_FM[awayFm] || TACTICS_FM['4-3-3']);
-    const orient = p => ({ ...p, x: tacticsState.endsSwapped ? 100 - p.x : p.x });
+    const singleTeam = tacticsTeamVisible('home') !== tacticsTeamVisible('away');
+    const orient = p => {
+      const x = singleTeam ? (p.x < 50 ? 5 + (p.x - 5) * 90 / 39 : 95 - (95 - p.x) * 90 / 39) : p.x;
+      return { ...p, x: tacticsState.endsSwapped ? 100 - x : x };
+    };
     const nextHomePositions = homeCoords.map(orient);
     const nextAwayPositions = awayCoords.map(orient);
     const shouldResetHomePositions = !preservePositions
@@ -697,6 +701,7 @@
     [['home', homeColor, homeFm], ['away', awayColor, awayFm]].forEach(([side, color, fm]) => {
       const wrap = document.querySelector(`.td-team-label-${side}`);
       if (wrap) {
+        wrap.style.display = tacticsTeamVisible(side) ? '' : 'none';
         wrap.style.setProperty('--td-team-accent', color.bg);
         wrap.style.setProperty('--td-team-text', color.text);
       }
@@ -709,7 +714,7 @@
     // 6. 홈팀 토큰 생성 — 포지션 레이블은 현재 포메이션 기준으로 덮어씀
     tacticsState.homePositions.forEach((pos, i) => {
       const player = lineup.home.players[i];
-      if (!player) return;
+      if (!player || !tacticsTeamVisible('home')) return;
       // 실제 선수 이름이 있으면 그대로, 없으면(fallback) 포메이션 레이블
       const label = player._isReal ? player.nameKo : homeLabels[i] || player.pos;
       const tok = tacticsCreateToken(i, pos.x, 100 - pos.y, homeColor, {...player, nameKo: label}, showNames);
@@ -720,7 +725,7 @@
     // 7. 어웨이팀 토큰 생성 (idx는 11~21로 홈팀과 구분)
     tacticsState.awayPositions.forEach((pos, i) => {
       const player = lineup.away.players[i];
-      if (!player) return;
+      if (!player || !tacticsTeamVisible('away')) return;
       const label = player._isReal ? player.nameKo : awayLabels[i] || player.pos;
       const tok = tacticsCreateToken(i + 11, pos.x, 100 - pos.y, awayColor, {...player, nameKo: label}, showNames);
       tok.dataset.team = 'away';
@@ -1143,6 +1148,17 @@
   function tacticsSortFormationSelects() {
     tacticsSortFormationSelect(document.getElementById('tactics-home-fm'));
     tacticsSortFormationSelect(document.getElementById('tactics-away-fm'));
+  }
+
+  function tacticsTeamVisible(side) {
+    return document.getElementById(`tactics-show-${side}`)?.checked ?? true;
+  }
+
+  function tacticsChangeTeamVisibility() {
+    tdClearSelection();
+    tdHistory = tdHistory.filter(action => !['move', 'group-move'].includes(action.type));
+    tdFuture = tdFuture.filter(action => !['move', 'group-move'].includes(action.type));
+    tacticsApplyLineup(tacticsState.sourceLineup || TACTICS_MOCK_LINEUP);
   }
 
   /** 홈/어웨이 포메이션 select 변경 시 호출 — lineup 포메이션을 업데이트하고 전술판 재렌더 */
