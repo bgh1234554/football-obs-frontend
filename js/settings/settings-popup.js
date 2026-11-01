@@ -1829,7 +1829,7 @@ function openBackgroundPicker() {
     dialog.id = 'backgroundPicker';
     dialog.className = 'bg-picker';
     dialog.setAttribute('aria-labelledby', 'backgroundPickerTitle');
-    dialog.innerHTML = `<header class="bg-picker-header"><h2 id="backgroundPickerTitle">배경 이미지 설정</h2><button type="button" class="sp-close-btn" data-bg-picker-close aria-label="닫기">×</button></header>
+    dialog.innerHTML = `<header class="bg-picker-header"><h2 id="backgroundPickerTitle">배경 이미지 설정</h2><button type="button" class="sp-close-btn" data-bg-picker-close aria-label="닫기"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button></header>
       <div class="bg-picker-body"><div class="bg-picker-preview"><div class="bg-picker-preview-image" role="button" tabindex="0" aria-label="배경 전체화면 미리보기"><span class="bg-picker-preview-empty"></span><button type="button" class="bg-picker-preview-exit" aria-label="전체화면 미리보기 닫기">닫기</button></div><strong class="bg-picker-preview-name"></strong><p>배경을 선택해 미리 본 뒤 적용하세요. 미리보기 이미지를 더블클릭하면 전체화면으로 볼 수 있습니다.</p></div><div class="bg-picker-list"></div></div>
       <footer class="bg-picker-footer"><button type="button" class="sp-secondary-btn" data-bg-picker-close>취소</button><button type="button" class="sp-secondary-btn" id="backgroundPickerApply">적용</button></footer>`;
     const list = dialog.querySelector('.bg-picker-list');

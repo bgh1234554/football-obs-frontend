@@ -145,7 +145,7 @@ function showTeamNicknameList() {
   pmContainer().innerHTML = `<div class="pm-modal-backdrop" id="teamNickBackdrop">
     <div class="pm-modal pm-modal-wide" role="dialog" aria-label="팀 닉네임 목록">
       <div class="pm-modal-header"><span class="pm-modal-title">팀 닉네임 목록 (${entries.length}개)</span>
-        <button class="pm-modal-close" id="teamNickListClose" aria-label="닫기">&#10005;</button></div>
+        <button class="pm-modal-close" id="teamNickListClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button></div>
       <div class="pm-modal-body"><table class="pm-szn-table pm-nick-list-table">
         <thead><tr><th>원래 이름</th><th>teamId</th><th>닉네임</th><th></th></tr></thead>
         <tbody>${entries.length ? entries.map(([key, entry]) => `<tr>

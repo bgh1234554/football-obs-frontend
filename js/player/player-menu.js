@@ -359,7 +359,7 @@ function pmShowMenu(playerId, clientX, clientY) {
 
   pmContainer().innerHTML = `
 <div class="pm-popup" id="pmPopup" role="dialog">
-  <button class="pm-close" id="pmClose" aria-label="닫기">&#10005;</button>
+  <button class="pm-close" id="pmClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
   <div class="pm-info">
     ${avatarHtml}
     <div class="pm-info-text">
@@ -702,7 +702,7 @@ async function pmShowMatchStats(playerId, player, stats) {
   <div class="pm-modal">
     <div class="pm-modal-header">
       <span class="pm-modal-title">경기 스탯 &mdash; ${pmEsc(displayName)}</span>
-      <button class="pm-modal-close" id="pmModalClose">&#10005;</button>
+      <button class="pm-modal-close" id="pmModalClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
     </div>
     <div class="pm-modal-body pm-body-split">
       <div class="pm-szn-profile" id="pmSznProfile"></div>
@@ -841,7 +841,7 @@ async function pmShowSeasonStats(playerId, player) {
   <div class="pm-modal pm-modal-szn">
     <div class="pm-modal-header">
       <span class="pm-modal-title">시즌 스탯 &mdash; ${pmEsc(displayName)}</span>
-      <button class="pm-modal-close" id="pmModalClose">&#10005;</button>
+      <button class="pm-modal-close" id="pmModalClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
     </div>
     <div class="pm-modal-body pm-body-split">
       <div class="pm-szn-profile" id="pmSznProfile"></div>
@@ -1117,7 +1117,7 @@ function pmShowNicknameList() {
   <div class="pm-modal pm-modal-wide">
     <div class="pm-modal-header">
       <span class="pm-modal-title">닉네임 목록 (${entries.length}개)</span>
-      <button class="pm-modal-close" id="pmModalClose">&#10005;</button>
+      <button class="pm-modal-close" id="pmModalClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
     </div>
     <div class="pm-modal-body">
       <table class="pm-szn-table pm-nick-list-table">

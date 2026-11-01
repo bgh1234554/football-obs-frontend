@@ -1035,7 +1035,7 @@ function pirShowMenu(side, origName, clientX, clientY) {
 
   c.innerHTML = `
 <div class="pm-popup" id="pirPopup" role="dialog">
-  <button class="pm-close" id="pirClose">&#10005;</button>
+  <button class="pm-close" id="pirClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
   <div class="pm-info">
     <div class="pm-avatar pm-avatar-empty" style="opacity:.35"></div>
     <div class="pm-info-text">

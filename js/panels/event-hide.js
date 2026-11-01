@@ -295,7 +295,8 @@ function evHideCreateModal(titleText, extraClass) {
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'ev-subst-picker-close';
-  closeBtn.textContent = '✕';
+  closeBtn.setAttribute('aria-label', '닫기');
+  closeBtn.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg>';
   header.append(title, closeBtn);
 
   const actions = document.createElement('div');

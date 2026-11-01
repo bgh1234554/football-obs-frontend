@@ -159,7 +159,15 @@
   background: rgba(var(--ui-ink-rgb, 255, 255, 255),.08);
   color: var(--ui-text, #fff);
 }
-#settingsCloseBtn {
+:is(#settingsCloseBtn, .sp-close-btn, .pm-modal-close, .pm-close:not(#pmIdBack), .dp-manual-close, .ev-subst-picker-close) {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
   flex: 0 0 26px;
   box-sizing: border-box;
   border: 1px solid rgba(248, 113, 113, .3);
@@ -168,9 +176,9 @@
   border-radius: 7px;
   transition: background 120ms ease, border-color 120ms ease;
 }
-#settingsCloseBtn:hover { background: rgba(248, 113, 113, .2); border-color: rgba(248, 113, 113, .65); }
-#settingsCloseBtn:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
-#settingsCloseBtn svg {
+:is(#settingsCloseBtn, .sp-close-btn, .pm-modal-close, .pm-close:not(#pmIdBack), .dp-manual-close, .ev-subst-picker-close):hover { background: rgba(248, 113, 113, .2); border-color: rgba(248, 113, 113, .65); }
+:is(#settingsCloseBtn, .sp-close-btn, .pm-modal-close, .pm-close:not(#pmIdBack), .dp-manual-close, .ev-subst-picker-close):focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
+:is(#settingsCloseBtn, .sp-close-btn, .pm-modal-close, .pm-close:not(#pmIdBack), .dp-manual-close, .ev-subst-picker-close) svg {
   display: block;
   width: 16px;
   height: 16px;
@@ -179,6 +187,18 @@
   stroke-width: 1.8;
   stroke-linecap: round;
   pointer-events: none;
+}
+
+/* 작은 선수 메뉴에서는 닫기 버튼도 메뉴 크기에 맞춘다. */
+#pmClose.pm-close {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+  border-radius: 6px;
+}
+#pmClose.pm-close svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ----- 모달 바디 (스크롤 가능) ----- */

@@ -419,7 +419,7 @@
               <div class="dp-manual-title" id="scoreaxisStandingsTitle">&#49692;&#50948;&#54364;</div>
               <div class="dp-manual-meta" id="scoreaxisStandingsMeta"></div>
             </div>
-            <button class="dp-manual-close" id="scoreaxisStandingsClose" aria-label="&#45803;&#44592;">&times;</button>
+            <button class="dp-manual-close" id="scoreaxisStandingsClose" aria-label="&#45803;&#44592;" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
           </div>
           <div class="dp-manual-body scoreaxis-standings-popup-body" data-scoreaxis-standings-panel data-scoreaxis-popup-panel></div>
         </div>`;
