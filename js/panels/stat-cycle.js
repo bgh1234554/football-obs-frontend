@@ -623,6 +623,10 @@ function lpStatUpdateVisibility() {
   }
   const mode = _lpStatCycle.mode;
 
+  document.querySelectorAll('.lp-stat .panel-support-link').forEach(link => {
+    link.hidden = !['stats', 'match_info', 'hth', 'fixtures'].includes(mode);
+  });
+
   document.querySelectorAll('.lp-stat [data-team-fixtures-panel]').forEach(el => {
     el.style.display = mode === 'fixtures' ? '' : 'none';
   });

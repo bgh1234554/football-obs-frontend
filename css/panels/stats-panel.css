@@ -5,6 +5,28 @@
        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     /* lp-stat: cycle 버튼 position:absolute 기준점 */
     .lp-stat { position: relative; }
+    /* 공식 임베드가 생성한 버튼은 그대로 두고 제목줄 크기로만 축소한다. */
+    .lp-stat-s { position: relative; }
+    .panel-support-link {
+      position: absolute;
+      top: calc((4px + var(--panel-title-bar-height) - 1px - var(--panel-title-control-size)) / 2);
+      right: 8px;
+      z-index: 20;
+      display: block;
+      width: calc(var(--panel-title-control-size) * 210 / 60);
+      max-width: calc(50% - 42px);
+      height: var(--panel-title-control-size);
+      container-type: inline-size;
+    }
+    .panel-support-link[hidden] { display: none; }
+    .panel-support-link .bmc-btn-container { width: max-content; zoom: calc(100cqw / 210px); }
+    .panel-support-link .bmc-btn { width: 210px; }
+    .panel-support-link .bmc-btn-text { width: auto; }
+    .panel-support-link :is(.bmc-btn, .bmc-btn-text) { font-family: var(--font-family) !important; }
+    .lp-stat.has-pause-btn .panel-support-link {
+      right: calc(8px + var(--panel-title-control-size) + 6px);
+      max-width: calc(50% - 42px - var(--panel-title-control-size) - 6px);
+    }
     /* lp-stat 패널 순환 버튼 — 세 패널(스탯/이벤트/상대전적) 사이 전환 */
     .lp-stat-cycle-btn {
       position: absolute;
