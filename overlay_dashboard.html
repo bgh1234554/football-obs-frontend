@@ -50,6 +50,7 @@
   <link rel="stylesheet" href="css/tactics/tactics-timeline.css"/>
   <link rel="stylesheet" href="css/tactics/tactics-bench.css"/>
   <link rel="stylesheet" href="css/panels/events-panel.css"/>
+  <link rel="stylesheet" href="css/support-buttons.css"/>
   <link rel="stylesheet" href="css/panels/stats-panel.css"/>
   <link rel="stylesheet" href="css/hamburger-nav.css"/>
   <link rel="stylesheet" href="css/panels/bench-injury.css"/>
@@ -1163,7 +1164,7 @@
             </div>
           </div>
           <div class="lp lp-stat">
-            <div class="panel-support-link" hidden><script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="bgh1234554" data-color="#5f7fff" data-emoji="☕" data-font="Cookie" data-text="후원하기" data-outline-color="#ffffff" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script></div>
+            <div class="support-button panel-support-link" hidden><script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="bgh1234554" data-color="#5f7fff" data-emoji="☕" data-font="Cookie" data-text="후원하기" data-outline-color="#ffffff" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script></div>
             <button class="lp-stat-cycle-btn" style="display:none"></button>
             <button class="lp-stat-pause-btn" style="display:none"></button>
             <button class="lp-stat-bench-edit-btn" style="display:none"></button>
@@ -1195,7 +1196,7 @@
             <div data-hth-panel style="display:none"></div>
           </div>
           <div class="lp lp-stat-s">
-            <div class="panel-support-link"><script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="bgh1234554" data-color="#5f7fff" data-emoji="☕" data-font="Cookie" data-text="후원하기" data-outline-color="#ffffff" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script></div>
+            <div class="support-button panel-support-link"><script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="bgh1234554" data-color="#5f7fff" data-emoji="☕" data-font="Cookie" data-text="후원하기" data-outline-color="#ffffff" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script></div>
             <div data-stat-panel></div>
           </div>
         </div>
@@ -1376,7 +1377,7 @@
       <div class="panel"><div class="panelHeader"><div>Leagues</div><div class="hint">국가별 리그 선택</div></div><div class="panelBody" id="widget-leagues-body"></div></div>
       <div class="panel"><div class="panelHeader"><div class="games-header-title"><div>Games</div><button id="games-home-btn" class="panel-fixture-btn games-home-btn" type="button" hidden title="리그 화면을 닫고 날짜별 경기 목록으로 돌아갑니다"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>날짜별 경기</button></div><div class="hint">날짜별 리그 일정/경기 결과 확인</div></div><div class="panelBody" id="games-list"></div></div>
       <div class="panel"><div class="panelHeader"><div style="display:flex;align-items:center;gap:10px;"><div>Details</div><div class="hint">경기 클릭 후 상세 정보, 순위, 경기 ID 확인</div></div><div class="panel-fixture-tools"><div class="fixture-inline fixture-inline-compact" data-fixture-inline-wrap style="display:none"><span class="fixture-inline-label">선택 경기</span><span data-selected-fixture-id class="fixture-inline-id" title="클릭해서 복사">-</span></div><button id="panel-fixture-load-btn" class="panel-fixture-btn panel-fixture-btn-primary" disabled title="선택된 경기를 바로 메인 화면에 불러옵니다">경기 불러오기</button><button class="panel-fixture-btn" title="경기 ID를 직접 입력해 특정 경기를 불러옵니다" onclick="openOverlay()">경기 ID 입력</button></div></div><div class="panelBody" id="game-content"></div></div>
-      <div class="panel"><div class="panelHeader"><div>Standings</div><div class="hint">경기 클릭 시 자동으로 해당 리그의 순위가 표시됩니다</div></div><div class="panelBody"><div id="standings-content"></div><div id="team-content"></div></div></div>
+      <div class="panel"><div class="panelHeader"><div class="standings-header-title"><div>Standings</div><div class="hint">경기 클릭 시 자동으로 해당 리그의 순위가 표시됩니다</div></div><div class="support-button schedule-support-button"><script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="bgh1234554" data-color="#5f7fff" data-emoji="☕" data-font="Cookie" data-text="후원하기" data-outline-color="#ffffff" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script></div></div><div class="panelBody"><div id="standings-content"></div><div id="team-content"></div></div></div>
     </div>
   </div>
 </div><!-- /pages -->
@@ -1562,6 +1563,7 @@
       <div class="tactics-draw-divider" style="height:1px;background:rgba(255,255,255,.08);margin:2px 0;"></div>
       <button onclick="tacticsDrawUndo()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">되돌리기</button>
       <button onclick="tacticsDrawClear()" style="background:var(--ui-control-surface,#1e293b);color:var(--ui-text,#e5e7eb);border:1px solid #ffffff15;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer;text-align:left;">전체 지우기</button>
+      <div class="support-button tactics-support-button"><script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="bgh1234554" data-color="#5f7fff" data-emoji="☕" data-font="Cookie" data-text="후원하기" data-outline-color="#ffffff" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script></div>
     </div>
   </div>
 </div><!-- /tactics-viewport -->
@@ -1698,6 +1700,7 @@
 <script src="js/tactics/tactics-timeline.js"></script>
 <script src="js/tactics/tactics-bench.js"></script>
 <script src="js/core/fsm-board.js"></script>
+<script src="js/core/support-buttons.js"></script>
 <script src="js/core/init.js"></script>
 <script src="js/sidebar/sidebar.js"></script>
 <script src="js/core/popout.js"></script>

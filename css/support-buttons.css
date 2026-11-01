@@ -1,0 +1,22 @@
+/* 공식 임베드의 내용·색상은 유지하고 표시 공간과 사이트 폰트만 맞춘다. */
+.support-button {
+  position: relative;
+  width: calc(var(--panel-title-control-size, 22px) * 3.5);
+  height: var(--panel-title-control-size, 22px);
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.support-button[hidden] { display: none; }
+.support-button .bmc-btn-container {
+  position: absolute;
+  width: max-content;
+  visibility: hidden;
+  transform-origin: top left;
+}
+.support-button.is-ready .bmc-btn-container { visibility: visible; }
+.support-button .bmc-btn { width: 210px; }
+.support-button .bmc-btn-text { width: auto; }
+.support-button :is(.bmc-btn, .bmc-btn-text) { font-family: var(--font-family) !important; }
+.tactics-support-button { width: 100%; height: 44px; margin-top: 8px; }
+.standings-header-title { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.panelHeader .standings-header-title .hint { white-space: normal; }
