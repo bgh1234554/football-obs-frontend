@@ -586,8 +586,11 @@ function mapFormationSlotToPitchPosition(slot, side, options = {}) {
   if (isHome && depth >= 0.85 && homeFwLiftPct !== 0) {
     top -= homeFwLiftPct;
   }
+  // 원톱 이름표의 아래가 하프라인에 오도록 기본 위치를 두고, 실측 피팅 후 미세 보정한다.
+  if (isHome && rawX === options.soloForwardX) top = 44;
   // 홈팀은 rawY 그대로, 원정팀은 100 - rawY를 써서 서로 마주보는 방향으로 배치한다.
-  const yLocal = isHome ? rawY : (100 - rawY);
+  const lateralY = options.spreadLine ? 50 + (rawY - 50) * 1.12 : rawY;
+  const yLocal = isHome ? lateralY : (100 - lateralY);
   // 가로는 5~95% (90% 폭)
   const left = 5 + (yLocal / 100) * 90;
   return { left, top };
@@ -768,12 +771,40 @@ function buildVerticalPitchNodesHtml(lineup, effectiveData, side, pitchMode, opt
   // Iter 5-3: 노드 badge는 항상 모두 렌더 (양 캠 동일 DOM 공유).
   // per-feature 토글은 body 클래스(no-lineup-goals/cards/rating/subtime) + 캠 큼 CSS로 숨김 처리.
   const preFwDepth = pitchMode === 'split' ? getPreFwFormationDepth(lineup?.formation) : null;
+  let combinedOptions = options;
+  const wideLines = new Set();
+  if (pitchMode !== 'split' && options.balanceSoloForward) {
+    // 실제 선발 누락과 관계없이 포메이션 슬롯으로 원톱 여부를 판단한다.
+    const slots = getFormationSlotsByGridOrder(lineup?.formation);
+    const frontX = Math.max(...slots.map(slot => slot.coord.x));
+    const frontCount = slots.filter(slot => slot.coord.x === frontX).length;
+    if (frontCount === 1) {
+      combinedOptions = { ...options, soloForwardX: frontX };
+    } else if (frontX <= 42) {
+      // 투톱·스리톱은 바로 뒤 줄과의 간격을 조금 늘리되 상대 공격 줄과의 여백도 남긴다.
+      combinedOptions = { ...options, homeFwLiftPct: 1 };
+    }
+    for (const x of new Set(slots.map(slot => slot.coord.x))) {
+      const row = slots.filter(slot => slot.coord.x === x).map(slot => slot.coord.y);
+      if ((x - 5) / 39 >= 0.35 && row.length === 3 && Math.min(...row) === 25 && Math.max(...row) === 75) {
+        wideLines.add(x);
+      }
+    }
+  }
 
   getFormationAssignments(lineup).forEach(({ slot, player }) => {
+    // 합친 피치의 윙백은 교체 표시와 앞뒤 이름표 사이에 여백을 남긴다.
+    const pitchSlot = pitchMode !== 'split' && lineup?.formation === '3-5-1-1' && slot.coord.x === 18
+      ? { ...slot, coord: { ...slot.coord, x: options.balanceSoloForward ? 19.5 : side === 'home' ? 20 : 17.5 } } : slot;
     const position = pitchMode === 'split'
       ? mapFormationSlotToBigSplitPitchPosition(slot, side, { preFwDepth })
-      : mapFormationSlotToPitchPosition(slot, side, options);
-    const pair = buildLineupNodePairHtml(player, effectiveData, side, position);
+      : mapFormationSlotToPitchPosition(pitchSlot, side, { ...combinedOptions, spreadLine: wideLines.has(slot.coord.x) });
+    const soloForward = pitchMode !== 'split' && slot.coord.x === combinedOptions.soloForwardX;
+    const midfield3511 = pitchMode !== 'split' && options.balanceSoloForward && lineup?.formation === '3-5-1-1';
+    const extraClass = [soloForward ? 'is-combined-solo-forward' : '',
+      midfield3511 && slot.coord.x === 18 ? 'is-combined-wingback' : '',
+      midfield3511 && slot.coord.x === 25 ? 'is-combined-midfielder' : ''].filter(Boolean).join(' ');
+    const pair = buildLineupNodePairHtml(player, effectiveData, side, position, extraClass);
     circles.push(pair.circle);
     names.push(pair.name);
   });
@@ -1693,7 +1724,9 @@ function renderLineupGrid(effectiveData, rawData, options = {}) {
   // 2) 사용할 마크업(pitch/list)과 이름 길이 모드를 고른다.
   // splitLineup 설정이 ON이면 layout-big에서만 두 피치로 분리 — layout-small은 항상 combined 모드.
   const splitOn = typeof getSetting === 'function' && getSetting('splitLineup') === 'on';
-  const bigPitchOptions = { awaySupportLiftPct: 3.5, awayFwLiftPct: 3, formationOnly: true, showOutScorers: true };
+  // 분할 OFF에서는 양 팀 최전방 사이에 이름표 공간을 확보한다.
+  // 원정 지원 줄도 덜 올려 최전방과 바로 뒤 중앙 선수 사이의 간격을 유지한다.
+  const bigPitchOptions = { awaySupportLiftPct: 1, homeFwLiftPct: 2, balanceSoloForward: true, formationOnly: true, showOutScorers: true };
   const bigCombinedHtml = usePitchMode
     ? buildLineupPitchModeHtml(effectiveData, rawData, bigPitchOptions)
     : buildLineupListModeHtml(effectiveData, rawData);
@@ -1718,6 +1751,7 @@ function renderLineupGrid(effectiveData, rawData, options = {}) {
     panel.classList.toggle('dp-mode-split', splitActive);
     // outer .lp-lineup wrapper — aspect-ratio 변경을 위해 같은 클래스 미러.
     if (wrap) wrap.classList.toggle('dp-mode-split', splitActive);
+    if (isBig && usePitchMode && typeof _lineupSyncSizeMode === 'function') _lineupSyncSizeMode(wrap || panel);
     setPanelTitle(panel, '선발 라인업', '');
     // 패널 모드 클래스가 바뀌면 배치가 달라지므로 색만 바꾸는 경로를 쓰지 않는다.
     const sameMode = classesBefore === `${panel.className}|${wrap?.className || ''}`;

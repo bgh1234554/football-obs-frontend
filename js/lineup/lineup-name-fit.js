@@ -226,6 +226,10 @@ function measureLineupNameCandidateFont(nameEl, lines, targets, prepare, maxFont
           top: wrapRect.top,
           bottom: wrapRect.top + size.height,
         };
+        if (wrap.matches('.is-combined-wingback')) {
+          candidate.top = wrapRect.bottom - size.height;
+          candidate.bottom = wrapRect.bottom;
+        }
         const outsidePitch = hasLineupNamePitchOverflowForRect(candidate, nameEl, getLineupNamePitchPaddingPxForContext(nameEl));
         // 번호/이니셜의 짧은 줄 옆 빈 공간을 성의 전체 폭으로 검사하면,
         // 옆 선수 교체 배지 때문에 안전한 3줄 후보까지 최소 폰트로 축소된다.
@@ -339,6 +343,89 @@ function regrowShrunkLineupNames(labels, configuredFonts) {
       el.style.cssText = saved.css;
     }
   });
+}
+
+/** 이웃을 두 줄로 바꿔 작은 글자를 키우되, 두 라벨의 전체 가독성은 낮추지 않는다. */
+function regrowLineupNamesWithNeighborWrap(labels, configuredFonts) {
+  const specialLines = '.has-surname-breaks, .has-number-line-break';
+  for (const nameEl of labels) {
+    if (!canMeasureTextElement(nameEl) || nameEl.matches(specialLines)) continue;
+    const currentFont = parseFloat(getComputedStyle(nameEl).fontSize);
+    const maxFont = configuredFonts.get(nameEl);
+    if (!Number.isFinite(maxFont) || currentFont >= maxFont) continue;
+    const originalRect = getDisplayLayoutRect(nameEl);
+    const pitch = getLineupNameWrap(nameEl)?.closest('.dp-lineup-vertical-pitch');
+    for (const neighbor of labels) {
+      if (neighbor === nameEl || !canMeasureTextElement(neighbor) || neighbor.matches(specialLines)
+        || getRenderedTextLineCount(neighbor) !== 1
+        || getLineupNameWrap(neighbor)?.closest('.dp-lineup-vertical-pitch') !== pitch) continue;
+      const neighborRect = getDisplayLayoutRect(neighbor);
+      // 다른 줄의 라벨은 바꾸지 않고 같은 줄의 이웃만 후보로 삼는다.
+      if (Math.abs(originalRect.top - neighborRect.top) > 1) continue;
+      const targets = getLineupNameNaturalWidthCollisionTargets(nameEl, labels).filter(el => el !== neighbor);
+      const largestFont = measureLineupNameCandidateFont(nameEl, null, targets, undefined, maxFont);
+      if (largestFont === null || largestFont <= currentFont) continue;
+      const nameStyle = nameEl.style.cssText;
+      const neighborStyle = neighbor.style.cssText;
+      const neighborFont = parseFloat(getComputedStyle(neighbor).fontSize);
+      const neighborMax = configuredFonts.get(neighbor);
+      if (!Number.isFinite(neighborMax)) continue;
+      const originalMin = Math.min(currentFont / maxFont, neighborFont / neighborMax);
+      const originalTotal = currentFont / maxFont + neighborFont / neighborMax;
+      let best = null;
+      try {
+        for (let font = largestFont; font > currentFont; font -= TEXT_FIT_FONT_STEP_PX) {
+          for (let otherFont = neighborFont; otherFont >= LINEUP_NAME_MIN_FONT_PX; otherFont -= TEXT_FIT_FONT_STEP_PX) {
+            const min = Math.min(font / maxFont, otherFont / neighborMax);
+            const total = font / maxFont + otherFont / neighborMax;
+            // 10/12→11/11은 허용하지만, 차이만 줄이려고 10/10으로 낮추지는 않는다.
+            if (min <= originalMin + 0.001 || total < originalTotal - 0.001
+              || (best && (min < best.min - 0.001 || (Math.abs(min - best.min) < 0.001 && total <= best.total)))) continue;
+            const wrap = getLineupNameWrap(nameEl) || nameEl.parentElement;
+            nameEl.style.whiteSpace = '';
+            nameEl.style.display = '';
+            nameEl.style.flexShrink = '';
+            nameEl.style.width = '';
+            nameEl.style.maxWidth = `${wrap.clientWidth}px`;
+            nameEl.style.fontSize = `${font}px`;
+            lockLineupNameWidth(nameEl);
+            const rect = getDisplayLayoutRect(nameEl);
+            const center = (neighborRect.left + neighborRect.right) / 2;
+            const available = center > (rect.left + rect.right) / 2 ? center - rect.right : rect.left - center;
+            const width = Math.floor(Math.min(neighborRect.width - 1, available * 2));
+            const minWidth = isBigLineupName(neighbor) ? getBigLineupNameMinWidthPx(neighbor) : LINEUP_NAME_MIN_WIDTH_PX;
+            if (width < minWidth) continue;
+            neighbor.style.whiteSpace = '';
+            neighbor.style.display = '';
+            neighbor.style.flexShrink = '';
+            neighbor.style.width = `${width}px`;
+            neighbor.style.maxWidth = `${width}px`;
+            neighbor.style.fontSize = `${otherFont}px`;
+            // 늘어난 높이가 원·이름·배지·피치 경계를 침범하는 후보는 제외한다.
+            const accepted = getRenderedTextLineCount(neighbor) === 2 && [nameEl, neighbor].every(el => {
+              const candidate = getDisplayLayoutRect(el);
+              return canStayWithinLineupNameLayout(el)
+                && !hasLineupNamePitchOverflowForRect(candidate, el, getLineupNamePitchPaddingPxForContext(el))
+                && !lineupNameCandidateRectCollides(candidate, el, getLineupNameNaturalWidthCollisionTargets(el, labels));
+            });
+            if (accepted) {
+              // 줄바꿈은 유지하면서 허용 폭의 남는 부분만 실제 글자 폭까지 줄인다.
+              const previousWidth = neighbor.style.width;
+              const height = getDisplayLayoutRect(neighbor).height;
+              lockLineupNameWidth(neighbor);
+              if (!canStayWithinLineupNameLayout(neighbor) || getDisplayLayoutRect(neighbor).height > height + 0.5
+                || getDisplayLayoutRect(neighbor).width > width + 0.5) neighbor.style.width = previousWidth;
+              best = { min, total, nameStyle: nameEl.style.cssText, neighborStyle: neighbor.style.cssText };
+            }
+          }
+        }
+      } finally {
+        nameEl.style.cssText = best ? best.nameStyle : nameStyle;
+        neighbor.style.cssText = best ? best.neighborStyle : neighborStyle;
+      }
+      if (best) break;
+    }
+  }
 }
 
 /** 등번호를 별도 첫 줄에 배치하고, 지정한 이름 줄과 마지막 토큰의 주장 배지를 적용한다. */
@@ -1031,10 +1118,11 @@ function nameRectOverlapsNodeCircleSignificantly(nr, nodeEl) {
   const nearX = Math.max(tL, Math.min(cX, tR));
   const nearY = Math.max(tT, Math.min(cY, tB));
   const dist = Math.sqrt((cX - nearX) ** 2 + (cY - nearY) ** 2);
-  // 원 반지름의 50% 이내까지 들어왔을 때만 발동.
+  // 원 반지름의 50% 경계에서 3px 더 들어왔을 때만 발동.
   // 라벨 테두리나 바둑알 테두리가 아주 살짝 닿는 수준은 무시하고,
   // 이름 텍스트가 바둑알 안쪽 중심부에 확실히 겹칠 때만 축소한다.
-  return dist < radius * 0.5;
+  // 자연 1줄 선택과 최종 충돌 보정에 같은 여유를 적용해 불필요한 줄바꿈·축소를 막는다.
+  return dist < Math.max(1, radius * 0.5 - 3);
 }
 
 /** circles 중 하나라도 nameEl과 의미 있게 겹치면 true. */
@@ -1615,10 +1703,10 @@ function tryLineupNameNaturalSingleLine(nameEl, labels, naturalSize) {
   if (!wrap) return false;
   const wrapRect = getDisplayLayoutRect(wrap);
   const centerX = wrapRect.left + (wrapRect.width / 2);
-  const top = wrapRect.top;
 
   const { width: naturalWidthPx, height: naturalHeightPx } = naturalSize || measureLineupNameNaturalSizeViaClone(nameEl);
   if (!Number.isFinite(naturalWidthPx) || naturalWidthPx <= 0) return false;
+  const top = wrap.matches('.is-combined-wingback') ? wrapRect.bottom - naturalHeightPx : wrapRect.top;
 
   const hypotheticalRect = {
     left: centerX - (naturalWidthPx / 2),
@@ -2034,6 +2122,87 @@ function fitBigLineupTeamChips(root) {
   });
 }
 
+/** 카메라 합친 피치의 홈 원톱 이름표 아래를 하프라인에 맞춘다. 새 충돌이 생기면 이동하지 않는다. */
+function alignCombinedSoloForwardName(labels) {
+  for (const nameEl of labels) {
+    const wrap = getLineupNameWrap(nameEl);
+    if (!wrap?.matches('.is-combined-solo-forward.is-home') || !canMeasureTextElement(nameEl)) continue;
+    const pitch = wrap.closest('.dp-lineup-vertical-pitch');
+    const node = pitch.querySelector('.dp-lineup-node.is-combined-solo-forward.is-home');
+    const midline = pitch.querySelector('.dp-lineup-marking-midline');
+    if (!node || !midline) continue;
+    const pitchRect = getDisplayLayoutRect(pitch), line = getDisplayLayoutRect(midline);
+    const delta = (line.top + line.bottom) / 2 - getDisplayLayoutRect(nameEl).bottom;
+    if (Math.abs(delta) < 0.5 || pitchRect.height <= 0) continue;
+    const parts = [...pitch.querySelectorAll('.is-combined-solo-forward.is-home')];
+    const previous = parts.map(el => el.style.top);
+    parts.forEach(el => { el.style.top = `${parseFloat(el.style.top) + delta / pitchRect.height * 100}%`; });
+    const others = labels.filter(el => el !== nameEl && el.closest('.dp-lineup-vertical-pitch') === pitch);
+    const badges = parts.flatMap(el => [...el.querySelectorAll('.dp-node-badge, .dp-node-rating')]).filter(canMeasureTextElement);
+    const safe = !lineupNameCandidateRectCollides(getDisplayLayoutRect(nameEl), nameEl, getLineupNameNaturalWidthCollisionTargets(nameEl, labels))
+      && !others.some(el => nameOverlapsNodeCircleSignificantly(el, node)
+        || badges.some(badge => wrapsOverlap(el, badge)));
+    if (!safe) parts.forEach((el, i) => { el.style.top = previous[i]; });
+  }
+}
+
+/** 3-5-1-1 윙백 이름표 하단을 같은 팀 중앙 미드필더 평점 배지 하단에 맞춘다. */
+function alignCombinedWingbackNames(labels) {
+  let moved = false;
+  for (const nameEl of labels) {
+    const wrap = getLineupNameWrap(nameEl);
+    if (!wrap?.matches('.is-combined-wingback') || !canMeasureTextElement(nameEl)) continue;
+    const pitch = wrap.closest('.dp-lineup-vertical-pitch');
+    const side = getLineupNameSide(nameEl);
+    const midfielders = [...pitch.querySelectorAll(`.dp-lineup-node.is-combined-midfielder.is-${side}`)];
+    const targets = midfielders.map(node => {
+      const rating = node.querySelector('.dp-node-rating');
+      return canMeasureTextElement(rating) ? rating : node.querySelector('.dp-lineup-avatar, .dp-lineup-circle');
+    }).filter(canMeasureTextElement);
+    if (!targets.length) continue;
+    const bottom = Math.max(...targets.map(el => getDisplayLayoutRect(el).bottom));
+    const pitchRect = getDisplayLayoutRect(pitch);
+    const height = pitchRect.height;
+    if (height <= 0) continue;
+    // 이름은 아래쪽을 고정해 한 줄·두 줄 후보를 같은 기준선에서 비교한다.
+    wrap.style.transform = '';
+    const gap = new DOMMatrix(getComputedStyle(wrap).transform).m42;
+    wrap.style.transform = 'translate(-50%, -100%)';
+    wrap.style.top = `${(bottom - pitchRect.top) / height * 100}%`;
+    const nodeTop = (getDisplayLayoutRect(nameEl).top - gap - pitchRect.top) / height * 100;
+    pitch.querySelectorAll(`.is-combined-wingback.is-${side}`).forEach(el => {
+      if (el === wrap || el.matches('.dp-lineup-name-wrap')) return;
+      if (el.dataset.playerId === wrap.dataset.playerId || (el.matches('.dp-lineup-sub-layer')
+        && el.style.left === wrap.style.left)) {
+        if (Math.abs(parseFloat(el.style.top) - nodeTop) * height / 100 > 0.5) moved = true;
+        el.style.top = `${nodeTop}%`;
+      }
+    });
+  }
+  return moved;
+}
+
+/** 윙백 교체 배지는 이름표 위의 여유 안에서만 내려 수비 이름표와의 작은 접촉을 없앤다. */
+function fitCombinedWingbackSubBadges(labels) {
+  for (const nameEl of labels) {
+    const wrap = getLineupNameWrap(nameEl);
+    if (!wrap?.matches('.is-combined-wingback') || !canMeasureTextElement(nameEl)) continue;
+    const pitch = wrap.closest('.dp-lineup-vertical-pitch');
+    const side = getLineupNameSide(nameEl);
+    const layers = [...pitch.querySelectorAll(`.dp-lineup-sub-layer.is-combined-wingback.is-${side}`)]
+      .filter(el => el.style.left === wrap.style.left);
+    for (const layer of layers) for (const badge of layer.querySelectorAll('.dp-node-sub-in, .dp-node-sub-out')) {
+      badge.style.marginTop = '';
+      const rect = getDisplayLayoutRect(badge);
+      const others = labels.filter(el => el !== nameEl && el.closest('.dp-lineup-vertical-pitch') === pitch)
+        .map(getDisplayLayoutRect).filter(other => rectsOverlap(rect, other));
+      if (!others.length) continue;
+      const delta = Math.max(...others.map(other => other.bottom - rect.top + 2));
+      if (delta > 0 && rect.bottom + delta <= getDisplayLayoutRect(nameEl).top - 2) badge.style.marginTop = `${delta}px`;
+    }
+  }
+}
+
 /**
  * 라인업 토큰 이름 pill 처리 — 네 단계.
  *  0) 고정폭(113px) 캡 없이 한 줄로 폈을 때의 자연 폭을 먼저 시도한다. 주변 라벨/원/배지/팀칩/
@@ -2051,7 +2220,7 @@ function fitBigLineupTeamChips(root) {
  *
  * 호출 시점: innerHTML 갱신 후 다음 frame, 라인업 리사이즈 종료 후에도 다시 호출.
  */
-function fitLineupNamePills(root) {
+function fitLineupNamePills(root, wingbackPass = 0) {
   const scope = root || document;
   const labels = Array.from(scope.querySelectorAll('.dp-lineup-name'))
     .filter(nameEl => !!(nameEl && nameEl.firstChild));
@@ -2077,6 +2246,8 @@ function fitLineupNamePills(root) {
   labels.forEach(nameEl => {
     configuredFonts.set(nameEl, parseFloat(getComputedStyle(nameEl).fontSize));
   });
+  alignCombinedWingbackNames(labels);
+  fitCombinedWingbackSubBadges(labels);
 
   // 0-a) 주장 완장 배지가 있는 라벨은 reset된 측정값을 기준으로 "등번호 왼쪽" vs
   // "번호+이름 뒤" 중 이름이 더 크게 표시되는 배치로 확정한다. 이후 단계(자연 1줄/2줄/축소)가
@@ -2170,6 +2341,17 @@ function fitLineupNamePills(root) {
   regrowShrunkLineupNames(labels, configuredFonts);
   // 기존 결과가 우선이다. 모든 충돌 보정 이후 더 큰 폰트가 안전하게 들어갈 때만 개선한다.
   labels.forEach(nameEl => improveLineupNameWithNumberLine(nameEl, labels, configuredFonts.get(nameEl)));
+  regrowLineupNamesWithNeighborWrap(labels, configuredFonts);
+  alignCombinedSoloForwardName(labels);
+  if (alignCombinedWingbackNames(labels) && wingbackPass < 2) {
+    fitLineupNamePills(scope, wingbackPass + 1);
+    return;
+  }
+  fitCombinedWingbackSubBadges(labels);
+  // 윙백 원과 함께 이동한 교체 배지를 기준으로 수비 이름표의 최종 여백을 다시 확인한다.
+  if (labels.some(el => getLineupNameWrap(el)?.matches('.is-combined-wingback'))) {
+    fitBigLineupNameAgainstPriorityBadges(labels.filter(el => !getLineupNameWrap(el)?.matches('.is-combined-wingback')));
+  }
   stampLineupNameFit(scope);
 }
 

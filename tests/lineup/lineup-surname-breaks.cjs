@@ -346,10 +346,248 @@ const { chromium } = require('playwright');
       const el = panel.querySelector('[data-player-id="107"] .dp-lineup-name');
       return { font: parseFloat(getComputedStyle(el).fontSize), fits: canStayWithinLineupNameLayout(el), overlap: [...panel.querySelectorAll('.dp-lineup-name')].some(other => other !== el && wrapsOverlap(el, other)) };
     });
-    assert.equal(formationName.font, 12, JSON.stringify(formationName));
+    assert(formationName.font >= 12, JSON.stringify(formationName));
     assert(formationName.fits && !formationName.overlap, JSON.stringify(formationName));
     fs.mkdirSync(path.join(root, 'screenshots'), { recursive: true });
     await page.screenshot({ path: path.join(root, 'screenshots/lineup-multipart-name.png') });
+    // 이웃 한 줄 이름의 줄바꿈으로 두 선수의 기본 글자 크기를 함께 확보해야 한다.
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.evaluate(() => {
+      activatePage('main-big');
+      setSetting('splitLineup', 'off');
+      setSetting('lineup', 'short');
+      setSetting('lineupNode', 'photo');
+    });
+    const neighborCases = await page.evaluate(() => {
+      const panel = document.querySelector('.page.active [data-dp-role="lineup"]');
+      const savedStyle = panel.getAttribute('style');
+      panel.style.cssText += ';width:410px;height:700px;flex:none';
+      const outcomes = [];
+      for (const reverse of [false, true]) for (const blocked of [false, true]) {
+        const names = ['조셉 마르티네스', '앙주요안 보니', '마누엘 아칸지', '페데리코 디마르코', '카를루스 아우구스투', '피오트르 지엘린스키', '피오 에스포시토', '제드 스펜스', '페테르 수치치', '헨리크 므히타랸', '마르쿠스 튀람'];
+        if (reverse) [names[1], names[3]] = [names[3], names[1]];
+        const make = (formation, offset) => ({ formation, startXi: buildManualGridValues(formation).map((grid, i) => ({
+          playerId: offset + i, name: names[i], grid, number: i === 2 ? 25 : 14,
+          photoUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+        })), substitutes: [] });
+        const homeLineup = make('4-4-1-1', 100), awayLineup = make('3-4-2-1', 200);
+        applyLineupPanels({ matchInfo: { fixtureId: 'neighbor-wrap', homeTeamId: 1, awayTeamId: 2 }, homeLineup, awayLineup, events: [], playerStats: [...homeLineup.startXi, ...awayLineup.startXi].map(p => ({ playerId: p.playerId, rating: 6.8 })) });
+        const akanji = panel.querySelector('[data-player-id="202"] .dp-lineup-name');
+        const boni = panel.querySelector(`[data-player-id="${reverse ? 203 : 201}"] .dp-lineup-name`);
+        const optimize = window.regrowLineupNamesWithNeighborWrap;
+        // 먼저 기존 피팅 결과를 만든 뒤 새 최적화만 독립적으로 검사한다.
+        window.regrowLineupNamesWithNeighborWrap = () => {};
+        try { fitLineupNamePills(panel); } finally { window.regrowLineupNamesWithNeighborWrap = optimize; }
+        const labels = [...panel.querySelectorAll('.dp-lineup-name')];
+        const fonts = new Map(labels.map(el => [el, 12]));
+        let obstacle;
+        if (blocked && !reverse) {
+          // 한 줄 아래에 배지를 두어 두 줄 후보만 충돌하게 만든다.
+          const wrap = boni.closest('.dp-lineup-name-wrap');
+          obstacle = document.createElement('span');
+          obstacle.className = 'dp-node-badge dp-node-sub-in';
+          obstacle.style.cssText = 'position:absolute;left:0;top:24px;right:auto;bottom:auto;transform:none;width:113px;height:14px';
+          wrap.appendChild(obstacle);
+        }
+        optimize(labels, fonts);
+        const snapshot = () => ({
+          akanji: parseFloat(getComputedStyle(akanji).fontSize), boni: parseFloat(getComputedStyle(boni).fontSize),
+          boniLines: getRenderedTextLineCount(boni),
+          overlap: wrapsOverlap(akanji, boni),
+          clipped: !canStayWithinLineupNameLayout(akanji) || !canStayWithinLineupNameLayout(boni),
+          badgeOverlap: obstacle ? wrapsOverlap(boni, obstacle) : false,
+        });
+        const first = snapshot();
+        let widened;
+        if (!blocked) {
+          panel.style.width = '600px';
+          fitLineupNamePills(panel);
+          widened = snapshot();
+          panel.style.width = '410px';
+        }
+        if (blocked) optimize(labels, fonts); else fitLineupNamePills(panel);
+        outcomes.push({ reverse, blocked, first, widened, repeated: snapshot() });
+      }
+      if (savedStyle === null) panel.removeAttribute('style'); else panel.setAttribute('style', savedStyle);
+      return outcomes;
+    });
+    for (const result of neighborCases) {
+      const label = JSON.stringify(result);
+      assert(!result.first.overlap && !result.first.clipped && !result.first.badgeOverlap, label);
+      if (!result.blocked) {
+        assert.equal(result.first.akanji, 12, label);
+        assert.equal(result.first.boni, 12, label);
+        assert.equal(result.first.boniLines, 2, label);
+        assert.equal(result.widened.akanji, 12, label);
+        assert.equal(result.widened.boniLines, 1, 'unnecessary wrapping must reset after widening: ' + label);
+      }
+      assert.deepEqual(result.repeated, result.first, 'repeated fitting must be stable: ' + label);
+    }
+    console.log('PASS: neighboring names wrap without sacrificing font size, mirrored rows, blocked candidates and repeated fitting.');
+    // 실제 글꼴을 쓰는 독립 배치로 간격·DOM 순서·번호·장애물 조합을 추가 검사한다.
+    const pairCases = await page.evaluate(() => {
+      const host = document.createElement('div');
+      host.className = 'layout-big';
+      host.style.cssText = 'position:fixed;left:0;top:0;width:500px;height:500px';
+      host.innerHTML = '<div class="lp-lineup" style="width:500px;height:500px"><div class="dp-lineup-vertical-pitch" style="width:500px;height:500px"></div></div>';
+      document.body.append(host);
+      const pitch = host.querySelector('.dp-lineup-vertical-pitch');
+      const cases = [];
+      try {
+        for (const neighborName of ['앙주요안 보니', '루카 모드리치']) for (const gap of [92, 86]) for (const mirrored of [false, true]) for (const reverseDom of [false, true]) for (const number of [true, false]) for (const obstacle of ['none', 'badge', 'circle', 'label', 'boundary']) {
+          pitch.innerHTML = '';
+          pitch.style.height = obstacle === 'boundary' ? '150px' : '500px';
+          const make = (text, x, font, width) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'dp-lineup-name-wrap is-away';
+            wrap.style.cssText = `left:${x}px;top:100px`;
+            wrap.innerHTML = buildLineupNameLabelHtml({ number: number ? 25 : '' }, text, 'dp-lineup-name');
+            pitch.append(wrap);
+            const el = wrap.firstElementChild;
+            el.style.cssText = `font-size:${font}px;width:${width}px`;
+            return el;
+          };
+          const a = make('마누엘 아칸지', 230, 10, 59);
+          const b = make(neighborName, 230 + (mirrored ? -gap : gap), 12, 106);
+          b.style.whiteSpace = 'nowrap';
+          if (reverseDom) pitch.prepend(b.parentElement);
+          if (obstacle !== 'none' && obstacle !== 'boundary') {
+            const badge = document.createElement('div');
+            badge.className = obstacle === 'badge' ? 'dp-node-sub-in' : obstacle === 'circle' ? 'dp-lineup-node' : 'dp-lineup-name';
+            badge.style.cssText = `position:absolute;left:${230 + (mirrored ? -gap : gap) - 56}px;top:148px;right:auto;bottom:auto;transform:none;width:113px;height:14px`;
+            if (obstacle === 'circle') badge.style.cssText = `position:absolute;left:${230 + (mirrored ? -gap : gap)}px;top:150px;transform:translate(-50%,-50%);width:20px;height:20px`;
+            if (obstacle === 'label') { badge.textContent = '다른 선수'; badge.style.fontSize = '12px'; }
+            pitch.append(badge);
+          }
+          const labels = [...pitch.querySelectorAll('.dp-lineup-name')];
+          const styles = labels.map(el => el.style.cssText);
+          regrowLineupNamesWithNeighborWrap(labels, new Map(labels.map(el => [el, 12])));
+          const fonts = [a, b].map(el => parseFloat(getComputedStyle(el).fontSize));
+          cases.push({ neighborName, gap, mirrored, reverseDom, number, blocked: obstacle !== 'none', obstacle, fonts,
+            width: getDisplayLayoutRect(b).width,
+            contentWidth: Math.ceil(measureMaxTextLineWidth(b) + getHorizontalChromeWidth(b) + 1),
+            overlap: wrapsOverlap(a, b), fits: [a, b].every(canStayWithinLineupNameLayout),
+            unchanged: labels.every((el, i) => el.style.cssText === styles[i]),
+          });
+        }
+      } finally { host.remove(); }
+      return cases;
+    });
+    for (const result of pairCases) {
+      const label = JSON.stringify(result);
+      assert(result.fits && !result.overlap, label);
+      if (!result.unchanged) {
+        assert(Math.min(...result.fonts) > 10, label);
+        assert(result.fonts[0] + result.fonts[1] >= 22, label);
+        assert(result.width <= result.contentWidth + 0.5, 'wrapped background must fit its text: ' + label);
+      }
+      if (result.gap === 92 && result.number && !result.blocked) assert.deepEqual(result.fonts, [12, 12], label);
+      if (result.neighborName === '앙주요안 보니' && result.gap === 86 && result.number && !result.blocked) assert.deepEqual(result.fonts, [11, 11], label);
+      if (result.blocked) assert(result.unchanged, label);
+    }
+    console.log('PASS: 160 paired name cases cover compact backgrounds, balanced fonts, mirrored/DOM order, numbers, badges, circles, labels and boundaries.');
+    // 다른 선수 원의 경계 부근은 허용하되, 얼굴 중심을 덮는 이름은 계속 충돌로 본다.
+    const circleTolerance = await page.evaluate(() => {
+      const circle = document.createElement('div');
+      circle.style.cssText = 'position:fixed;left:500px;top:100px;width:42px;height:42px';
+      document.body.append(circle);
+      const r = getDisplayLayoutRect(circle), cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+      const rect = bottom => ({ left: cx - r.width, right: cx + r.width, top: cy - r.height, bottom });
+      const skim = nameRectOverlapsNodeCircleSignificantly(rect(cy - r.width * 0.225 + 2), circle);
+      const center = nameRectOverlapsNodeCircleSignificantly(rect(cy + 2), circle);
+      circle.remove();
+      return { skim, center };
+    });
+    assert(!circleTolerance.skim, 'small intrusion near the half-radius boundary must not force shrinking');
+    assert(circleTolerance.center, 'text covering the player center must still be corrected');
+
+    // 분할 OFF의 모든 홈·원정 조합에서 이름표가 읽을 수 있는 크기로 남고 서로 겹치지 않아야 한다.
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.evaluate(() => {
+      setSetting('splitLineup', 'off');
+      setSetting('lineup', 'short');
+      setSetting('lineupNode', 'photo');
+    });
+    for (const config of [
+      { mode: 'main-big', label: 'camera-410x700', width: 410, height: 700 },
+      { mode: 'main-big', label: 'camera-default' },
+      { mode: 'main-big', label: 'camera-360x650', width: 360, height: 650 },
+      { mode: 'main-big', label: 'camera-short', width: 410, height: 700, short: true },
+      { mode: 'main-small', label: 'dashboard' },
+    ]) {
+      const { mode } = config;
+      await page.evaluate(mode => activatePage(mode), mode);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const audit = await page.evaluate(config => {
+        const panel = document.querySelector('.page.active [data-dp-role="lineup"]');
+        const originalStyle = panel.getAttribute('style');
+        if (config.width) panel.style.cssText += `;width:${config.width}px;height:${config.height}px;flex:none`;
+        const size = getDisplayLayoutRect(panel);
+        const names = ['마이크 메냥', '마리오 힐라', '코니 더빈터르', '스트라히냐 파블로비치', '오마리 허친슨', '루카 모드리치', '아르돈 야샤리', '다비데 바르테사기', '모하메드 쿠두스', '데얀 쿨루셰프스키', '코너 갤러거'];
+        const make = (formation, offset, short) => ({ formation, startXi: buildManualGridValues(formation).map((grid, i) => ({
+          playerId: offset + i, name: short ? names[i].split(' ').at(-1) : names[i], number: i + 1, grid,
+          photoUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+        })), substitutes: [] });
+        let count = 0;
+        const failures = [];
+        const check = (home, away, short = false) => {
+          short = short || !!config.short;
+          settingsState.lineupShowNumber = short ? 'off' : 'on';
+          const homeLineup = make(home, 100, short), awayLineup = make(away, 200, short);
+          applyLineupPanels({ matchInfo: { fixtureId: 'formation-name-clearance', homeTeamId: 1, awayTeamId: 2, homeTeamName: '홈', awayTeamName: '원정' }, homeLineup, awayLineup, events: [], playerStats: [...homeLineup.startXi, ...awayLineup.startXi].map(p => ({ playerId: p.playerId, rating: 6.8 })) });
+          // 윙백 교체 표시는 실제와 같은 별도 레이어에 넣어 수비 이름표와의 접촉도 검사한다.
+          for (const side of ['home', 'away']) {
+            const lineup = side === 'home' ? homeLineup : awayLineup;
+            if (lineup.formation !== '3-5-1-1') continue;
+            for (const { slot, player } of getFormationAssignments(lineup)) {
+              if (slot.coord.x !== 18) continue;
+              const node = panel.querySelector(`.dp-lineup-node.is-${side}[data-player-id="${player.playerId}"]`);
+              const layer = node.cloneNode(false);
+              layer.className = node.className.replace('dp-lineup-node', 'dp-lineup-sub-layer');
+              layer.innerHTML = '<span class="dp-lineup-avatar dp-sub-layer-size"></span>' + lpBuildNodeSubBadgesHtml({ subIn: { time: { elapsed: 89 } } });
+              node.after(layer);
+            }
+          }
+          fitLineupNamePills(panel);
+          const labels = [...panel.querySelectorAll('.dp-lineup-name')];
+          const midline = getDisplayLayoutRect(panel.querySelector('.dp-lineup-marking-midline'));
+          const mid = (midline.top + midline.bottom) / 2;
+          const coords = TACTICS_FM[home], frontX = Math.max(...coords.map(coord => coord.x));
+          const expectedSolo = config.mode === 'main-big' && coords.filter(coord => coord.x === frontX).length === 1;
+          const soloLabels = labels.filter(el => el.parentElement.matches('.is-combined-solo-forward.is-home'));
+          if (config.mode === 'main-big') for (const side of ['home', 'away']) {
+            const lineup = side === 'home' ? homeLineup : awayLineup;
+            if (lineup.formation !== '3-5-1-1') continue;
+            const ratings = [...panel.querySelectorAll(`.dp-lineup-node.is-combined-midfielder.is-${side} .dp-node-rating`)];
+            const baseline = Math.max(...ratings.map(el => getDisplayLayoutRect(el).bottom));
+            const wingNames = labels.filter(el => el.parentElement.matches(`.is-combined-wingback.is-${side}`));
+            if (wingNames.length !== 2 || wingNames.some(el => Math.abs(getDisplayLayoutRect(el).bottom - baseline) > 1)) {
+              failures.push({ home, away, reason: side + ' wingback label bottoms must align with midfield ratings' });
+            }
+          }
+          const bad = labels.filter(el => parseFloat(getComputedStyle(el).fontSize) < 9
+            || el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1
+            || nameOverlapsAnyNodeCircle(el, getSiblingNodeCirclesForLabel(el))
+            || getPriorityLineupBadgeTargets(el).some(badge => wrapsOverlap(el, badge))
+            // 정확한 접촉이 새 충돌을 만들면 이름표 아래 절반이 닿는 가까운 안전 위치를 허용한다.
+            || (el.parentElement.matches('.is-combined-solo-forward.is-home') && Math.abs(getDisplayLayoutRect(el).bottom - mid) > getDisplayLayoutRect(el).height / 2)
+            || labels.some(other => other !== el && wrapsOverlap(el, other)));
+          if (labels.length !== 22 || bad.length || soloLabels.length !== Number(expectedSolo)) failures.push({ home, away, short, count: labels.length, bad: bad.map(el => ({ text: el.textContent, font: getComputedStyle(el).fontSize })) });
+          count++;
+        };
+        try {
+          for (const home of Object.keys(TACTICS_FM)) for (const away of Object.keys(TACTICS_FM)) check(home, away);
+          check('3-4-2-1', '3-4-2-1', true);
+          check('4-4-1-1', '3-4-2-1', true);
+        } finally {
+          if (originalStyle === null) panel.removeAttribute('style'); else panel.setAttribute('style', originalStyle);
+          settingsState.lineupShowNumber = 'on';
+        }
+        return { count, failures, width: size.width, height: size.height };
+      }, config);
+      assert.equal(audit.failures.length, 0, config.label + ': ' + JSON.stringify(audit.failures.slice(0, 12)));
+      console.log('PASS: ' + config.label + ' (' + Math.round(audit.width) + 'x' + Math.round(audit.height) + ') combined lineup name clearance, ' + audit.count + ' formation/name cases.');
+    }
     // 실제 모달 스타일을 적용하여 양쪽 스크롤 방향을 시각적으로 검증합니다.
     await page.evaluate(() => {
       const { modal, mount } = evHideCreateModal('교체 선수 수정', 'ev-subst-cluster-modal');

@@ -57,7 +57,7 @@ async function geometry(page) {
     const top = layout.getBoundingClientRect().top + parseFloat(getComputedStyle(layout).paddingTop) * scale;
     return { width: r.width, height: r.height, fraction: r.height / _lineupGetMaxHeight(panel),
       top: outer.top, minTop: top, bottom: outer.bottom,
-      stored: [localStorage.getItem(LINEUP_EDGE_W_KEY), localStorage.getItem(LINEUP_HEIGHT_REFERENCE_KEY), getSetting('lineupScale')],
+      stored: [localStorage.getItem(_lineupSizeKey(LINEUP_EDGE_W_KEY)), localStorage.getItem(_lineupSizeKey(LINEUP_HEIGHT_REFERENCE_KEY)), getSetting('lineupScale')],
       pitches: [...panel.querySelectorAll('.dp-lineup-vertical-pitch')].map(el => {
         const p = el.getBoundingClientRect();
         return { top: p.top, bottom: p.bottom, width: p.width / scale };
@@ -132,11 +132,83 @@ async function reloadAfterBoardScale(browser) {
   await page.close();
   console.log('PASS: initial split pitch ratio, board scale reset and reload');
 }
+async function independentPitchModes(browser) {
+  const { page, errors } = await openPage(browser, 1);
+  try {
+    await page.evaluate(() => activatePage('main-big'));
+    await fillLineups(page); await settle(page);
+    await drag(page, 'lp-lineup-top-edge', 100);
+    const split = await drag(page, 'lp-lineup-right-edge', 0, -50);
+    await page.evaluate(() => setSetting('splitLineup', 'off')); await settle(page);
+    const initialCombined = await check(page);
+    assert(Math.abs(initialCombined.width - split.width) > 30, 'combined must not inherit the split width');
+    await drag(page, 'lp-lineup-top-edge', 90);
+    const combined = await drag(page, 'lp-lineup-right-edge', 0, 40);
+    for (let i = 0; i < 3; i++) {
+      for (const [mode, expected] of [['on', split], ['off', combined]]) {
+        await page.evaluate(mode => setSetting('splitLineup', mode), mode); await settle(page);
+        const actual = await check(page);
+        near(actual.width, expected.width, mode + ' restores its width');
+        near(actual.height, expected.height, mode + ' restores its height');
+      }
+    }
+    await page.evaluate(() => {
+      const range = document.getElementById('boardScaleRange');
+      range.value = '125'; range.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await settle(page);
+    const largerBoard = await check(page);
+    near(largerBoard.width, combined.width, 'available free space preserves lineup width');
+    near(largerBoard.height, combined.height, 'available free space preserves lineup height');
+    await page.evaluate(() => {
+      const range = document.getElementById('boardScaleRange');
+      range.value = '85'; range.dispatchEvent(new Event('input', { bubbles: true }));
+    }); await settle(page);
+    const expanded = await drag(page, 'lp-lineup-top-edge', -2000);
+    await page.evaluate(() => {
+      const range = document.getElementById('boardScaleRange');
+      range.value = '125'; range.dispatchEvent(new Event('input', { bubbles: true }));
+    }); await settle(page);
+    const fitted = await check(page);
+    assert(fitted.height < expanded.height - 1, 'test must exhaust available height');
+    near(fitted.width / fitted.height, expanded.width / expanded.height, 'insufficient height fits both dimensions together', 0.003);
+    await page.evaluate(() => {
+      const range = document.getElementById('boardScaleRange');
+      range.value = '85'; range.dispatchEvent(new Event('input', { bubbles: true }));
+    }); await settle(page);
+    near((await check(page)).width, expanded.width, 'board reduction restores the original width');
+    await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
+    const full = await drag(page, 'lp-lineup-top-edge', -2000);
+    await page.evaluate(() => {
+      const range = document.getElementById('boardScaleRange');
+      range.value = '125'; range.dispatchEvent(new Event('input', { bubbles: true }));
+    }); await settle(page);
+    const fullFit = await check(page);
+    assert(fullFit.height < full.height - 1, 'fullscreen test must exhaust available height');
+    near(fullFit.width / fullFit.height, full.width / full.height, 'fullscreen board resize preserves pitch ratio', 0.003);
+    await page.evaluate(() => {
+      const range = document.getElementById('boardScaleRange');
+      range.value = '85'; range.dispatchEvent(new Event('input', { bubbles: true }));
+    }); await settle(page);
+    await page.evaluate(() => document.exitFullscreen()); await settle(page);
+    await page.reload(); await page.evaluate(() => activatePage('main-big'));
+    await fillLineups(page); await settle(page);
+    near((await check(page)).width, combined.width, 'reload restores combined width');
+    await page.evaluate(() => setSetting('splitLineup', 'on')); await settle(page);
+    near((await check(page)).width, split.width, 'reload preserves the other mode width');
+    await page.evaluate(() => resetAllLayoutSizes()); await settle(page);
+    await page.evaluate(() => setSetting('splitLineup', 'off')); await settle(page);
+    assert(Math.abs((await check(page)).width - combined.width) > 30, 'global reset clears both modes');
+    assert.deepEqual(errors, []);
+    console.log('PASS: independent split/combined sizes, repeated switches, board free space and reload');
+  } finally { await page.close(); }
+}
 async function legacy(browser) {
   const { page } = await openPage(browser, 1);
   await page.evaluate(() => activatePage('main-big'));
   await fillLineups(page);
   await page.evaluate(() => {
+    _lineupClearAllModeSizes();
     localStorage.setItem(LINEUP_EDGE_W_KEY, '330');
     localStorage.setItem(LINEUP_EDGE_H_KEY, '650');
     // 구버전 저장값으로 처음 시작하는 상태를 만든다.
@@ -223,6 +295,7 @@ async function fullscreenApi(browser) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    await independentPitchModes(browser);
     await reloadAfterBoardScale(browser);
     if (process.argv.includes('--reload-only')) return;
     await legacy(browser);
