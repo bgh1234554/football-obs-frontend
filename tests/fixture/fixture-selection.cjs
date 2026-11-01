@@ -93,6 +93,39 @@ const root = path.resolve(__dirname, '../..');
     assert.deepEqual(errors, []);
     console.log('PASS: polling, recent selection, load button, and late responses preserve the latest fixture selection');
 
+    // ID 입력의 Enter도 버튼과 같은 조회·중복 방지·화면 전환을 사용해야 한다.
+    await page.evaluate(() => {
+      window.enterRequests = [];
+      window.enterMainPage = getSetting('mainPage');
+      setSetting('mainPage', 'small');
+      fetchFixture = id => {
+        window.enterRequests.push(id);
+        return new Promise(resolve => { window.finishEnterLoad = resolve; });
+      };
+      openOverlay();
+    });
+    const fixtureInput = page.locator('#main-fixture-input');
+    await fixtureInput.fill(' 700 ');
+    await fixtureInput.dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+    await fixtureInput.dispatchEvent('keydown', { key: 'Enter', repeat: true });
+    assert.deepEqual(await page.evaluate(() => window.enterRequests), [], 'composition and held Enter must not load');
+    await fixtureInput.press('Enter');
+    assert.deepEqual(await page.evaluate(() => window.enterRequests), ['700']);
+    assert(await page.locator('#main-show-btn').isDisabled(), 'Enter shares the loading guard');
+    assert.equal(await page.evaluate(() => document.getElementById('fixture-overlay').classList.contains('open')), false);
+    assert.equal(await page.evaluate(() => document.getElementById('page-main-small').classList.contains('active')), true);
+    await page.evaluate(() => openOverlay());
+    await fixtureInput.press('Enter');
+    assert.deepEqual(await page.evaluate(() => window.enterRequests), ['700'], 'Enter while loading must not duplicate requests');
+    await page.evaluate(() => window.finishEnterLoad({ matchInfo: { fixtureId: '700', status: 'FT', elapsed: 90, homeTeamName: 'Home', awayTeamName: 'Away' }, events: [], playerStats: [] }));
+    await page.waitForFunction(() => !_mainShowBtnBusy);
+    await fixtureInput.fill('');
+    await fixtureInput.press('Enter');
+    assert.equal(await page.evaluate(() => activeFixtureId), null, 'empty Enter resets just like the button');
+    assert.deepEqual(await page.evaluate(() => window.enterRequests), ['700']);
+    await page.evaluate(() => { clearPolling(); setSetting('mainPage', window.enterMainPage); });
+    console.log('PASS: fixture input Enter shares button loading, trimming, busy guard, navigation and empty reset; composition/repeats are ignored');
+
     // 실제 통신 함수를 복원한 새 화면에서 위젯 차단과 불러오기 버튼을 함께 확인한다.
     await page.reload();
     widgetRequests.length = 0; fixtureRequests.length = 0;

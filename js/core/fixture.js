@@ -260,6 +260,11 @@
     if (typeof window.activatePage === 'function') window.activatePage(target);
   }
   if(mainShowBtn) mainShowBtn.addEventListener('click', ()=> triggerFixtureLoad(mainInput?.value));
+  if(mainInput) mainInput.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.repeat) return;
+    e.preventDefault();
+    mainShowBtn?.click();
+  });
   if(panelFixtureLoadBtn) panelFixtureLoadBtn.addEventListener('click', ()=> triggerFixtureLoad(currentFixtureId));
   if(mainUseLastBtn) mainUseLastBtn.addEventListener('click', ()=>{
     // lastSeenFixtureId 우선(위젯 클릭 포함 최신 선택) — 아직 이번 세션에 아무것도 선택 안 했으면
