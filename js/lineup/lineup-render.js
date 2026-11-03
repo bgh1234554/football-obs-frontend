@@ -1188,6 +1188,7 @@ function lpFitBenchCycleTitle(titleEl) {
 const injuryReasonFitObserved = new WeakSet();
 const injuryReasonFitQueued = new WeakSet();
 const injuryReasonFitWidths = new WeakMap();
+const injuryReasonFitPanels = new WeakMap();
 let injuryReasonFitObserver = null;
 
 /** 이름은 유지하고 사유의 최소 크기도 명단 글씨에 비례시킨다. 그래도 안 들어가면 기본 크기로 줄바꿈한다. */
@@ -1233,8 +1234,8 @@ function fitInjuryReasons(panel) {
 
 /**
  * 부상 사유의 글자 축소·줄바꿈 보정을 패널별로 다음 프레임에 한 번 예약한다.
- * 최초 호출 때 ResizeObserver를 등록하되 이후 자동 보정은 패널의 폭이 달라질 때만 수행한다.
- * 보드 높이 전환이나 사유 피팅 자체로 생긴 높이 변화는 다시 피팅하지 않아 순환을 방지한다.
+ * 패널과 명단의 실제 내용 폭을 감지해 높이 조절 후 생긴 스크롤바 너비도 반영한다.
+ * 내용 폭이 같은 높이 변화는 다시 피팅하지 않아 순환을 방지한다.
  * 내용 교체·설정 변경·페이지 활성화에서 직접 호출하면 폭이 같아도 다시 검사하므로
  * 너비 캐시 때문에 새 선수나 변경된 글꼴 설정을 놓치지 않는다.
  *
@@ -1243,17 +1244,23 @@ function fitInjuryReasons(panel) {
  */
 function queueFitInjuryReasons(panel) {
   if (!panel) return;
-  if (typeof ResizeObserver !== 'undefined' && !injuryReasonFitObserved.has(panel)) {
+  if (typeof ResizeObserver !== 'undefined') {
     injuryReasonFitObserver ||= new ResizeObserver(entries => entries.forEach(entry => {
       const width = entry.contentRect.width;
       // 사유의 줄바꿈은 폭에 의존한다. 보드 높이 전환이나 피팅 결과로 패널
       // 높이만 바뀐 경우 다시 축소·측정하는 순환을 만들지 않는다.
       if (injuryReasonFitWidths.get(entry.target) === width) return;
       injuryReasonFitWidths.set(entry.target, width);
-      queueFitInjuryReasons(entry.target);
+      queueFitInjuryReasons(injuryReasonFitPanels.get(entry.target));
     }));
-    injuryReasonFitObserved.add(panel);
-    injuryReasonFitObserver.observe(panel);
+    // 바깥 패널 폭은 그대로여도 세로 스크롤바가 생기면 명단의 내용 폭은 줄어든다.
+    // 렌더링으로 교체된 명단도 등록하되, 같은 요소는 중복 관찰하지 않는다.
+    [panel, ...panel.querySelectorAll('.dp-list, .ic-list')].forEach(target => {
+      if (injuryReasonFitObserved.has(target)) return;
+      injuryReasonFitObserved.add(target);
+      injuryReasonFitPanels.set(target, panel);
+      injuryReasonFitObserver.observe(target);
+    });
   }
   if (injuryReasonFitQueued.has(panel)) return;
   injuryReasonFitQueued.add(panel);

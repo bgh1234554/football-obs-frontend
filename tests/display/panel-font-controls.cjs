@@ -6,7 +6,7 @@ const { openPage, settle } = require('../tactics/helpers');
 const root = path.resolve(__dirname, '../..');
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] });
   try {
     const page = await openPage(browser, { viewport: { width: 1920, height: 1080 }, dpr: 1, platform: 'Win32' });
     const errors = [];
@@ -557,6 +557,45 @@ const root = path.resolve(__dirname, '../..');
       assert(result.overflow <= 1, JSON.stringify(result));
     }
     assert(reasonFits.some(result => result.size === 21 && result.newline), 'large names move reasons to a readable new line');
+    // 패널 폭을 유지한 채 높이만 줄여 스크롤바가 생겨도 실제 명단 폭으로 다시 피팅한다.
+    const scrollFits = await page.evaluate(async () => {
+      const panel = document.createElement('div');
+      panel.style.cssText = 'position:fixed;left:0;top:0;width:270px';
+      panel.innerHTML = `<div class="dp-list" style="height:600px;overflow-y:auto">${buildInjuryListHtml(
+        Array.from({ length: 8 }, (_, i) => ({ playerId: 987100 + i, name: '에밀리아노 마르티네스', number: i + 1, reason: 'Knee Injury', type: 'Missing Fixture' })),
+        true, { inlineReason: true })}</div>`;
+      document.body.append(panel);
+      const original = window.fitInjuryReasons;
+      let calls = 0;
+      window.fitInjuryReasons = function (...args) { calls++; return original.apply(this, args); };
+      const wait = async () => { for (let i = 0; i < 6; i++) await new Promise(requestAnimationFrame); };
+      try {
+        queueFitInjuryReasons(panel);
+        await wait();
+        const list = panel.firstElementChild;
+        const results = [];
+        for (const height of [60, 600]) {
+          const before = { width: list.clientWidth, calls, panelWidth: panel.clientWidth };
+          list.style.height = `${height}px`;
+          await wait();
+          const html = list.innerHTML;
+          original(panel);
+          results.push({ changedWidth: before.width !== list.clientWidth, refitted: calls > before.calls,
+            samePanelWidth: before.panelWidth === panel.clientWidth, freshMatches: html === list.innerHTML,
+            scrolling: list.scrollHeight > list.clientHeight,
+            fits: [...list.querySelectorAll('.dp-item-name')].every(label => label.scrollWidth <= label.clientWidth + 1) });
+        }
+        return results;
+      } finally {
+        window.fitInjuryReasons = original;
+        panel.remove();
+      }
+    });
+    assert.deepEqual(scrollFits.map(result => result.scrolling), [true, false]);
+    for (const result of scrollFits) {
+      assert(result.changedWidth && result.refitted && result.samePanelWidth, JSON.stringify(result));
+      assert(result.freshMatches && result.fits, JSON.stringify(result));
+    }
     // 경기 정보와 상대전적도 제목 메뉴·설정 슬라이더·저장을 공유한다.
     await page.evaluate(() => {
       applyHthPanel({ matches: [{
