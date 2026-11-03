@@ -24,6 +24,7 @@
     state.running = true;
     state.lastRunningTickMs = Date.now();
     el.clock.textContent = fmtClock(state.seconds);
+    updateClockToggleButtons();
   }
 
   /** 정지 직전까지의 경과 시간을 반영한 뒤 실행 상태와 기준 시각을 초기화한다. */
@@ -32,6 +33,7 @@
     state.running = false;
     state.lastRunningTickMs = 0;
     el.clock.textContent = fmtClock(state.seconds);
+    updateClockToggleButtons();
   }
 
   /** 현재 실행 상태에 따라 시계를 일시정지하거나 시작한다. */
@@ -50,6 +52,19 @@
       state.lastRunningTickMs = 0;
       el.clock.textContent = fmtClock(state.seconds);
     }
+    updateClockToggleButtons();
+  }
+
+  /** 마우스와 단축키 조작에 동일한 타이머 실행 상태를 표시한다. */
+  function updateClockToggleButtons() {
+    document.querySelectorAll('.clock-toggle').forEach(button => {
+      const label = state.running ? '타이머 일시정지' : '타이머 시작';
+      if (button.getAttribute('aria-label') !== label) {
+        button.textContent = state.running ? '⏸' : '▶';
+        button.title = label;
+        button.setAttribute('aria-label', label);
+      }
+    });
   }
 
   window.syncRunningClockToNow = syncRunningClockToNow;
@@ -61,6 +76,8 @@
   /** 200ms마다 호출되는 타이머 틱 — 실제 경과 시간(delta)을 계산해 seconds에 반영 */
   function tick(){
     syncRunningClockToNow();
+    updateClockToggleButtons();
+    if ($('clockToggle')?.parentElement.parentElement.matches(':hover')) positionClockToggle();
   }
   // 200ms 인터벌로 tick 호출 (1초당 5회 → secPerTick 배율로 속도 조절)
   let timer = setInterval(tick, 200);
@@ -96,6 +113,60 @@
   const ceConfirm    = $('ceConfirm');
   const ceColon      = $('ceColon');
   const cePresets    = $('cePresets');
+
+  /** 호버 버튼을 추가시간 뒤가 아닌 실제 시계 숫자 바로 오른쪽에 붙인다. */
+  function positionClockToggle() {
+    const button = $('clockToggle');
+    if (!button || !clockEl) return;
+    const host = button.parentElement.parentElement;
+    const clockRect = clockEl.getBoundingClientRect();
+    const scale = clockRect.width / clockEl.offsetWidth;
+    const textRange = document.createRange();
+    textRange.selectNodeContents(clockEl);
+    const textRight = (textRange.getBoundingClientRect().right - clockRect.left) / scale;
+    const extra = $('extra');
+    const hasExtra = extra && !extra.classList.contains('hidden');
+    let gapEnd = clockEl.offsetWidth * 2 - textRight;
+    if (hasExtra) {
+      textRange.selectNodeContents(extra);
+      const previousShift = parseFloat(host.style.getPropertyValue('--clock-extra-shift')) || 0;
+      gapEnd = (textRange.getBoundingClientRect().left - clockRect.left) / scale - previousShift;
+    }
+    const size = Math.min(24, Math.max(18, (gapEnd - textRight - 6) / 2));
+    const width = size * 2 + 2;
+    const shift = hasExtra ? Math.max(0, width + 4 - (gapEnd - textRight)) : 0;
+    const center = Math.max(textRight + 2 + width / 2, Math.min(clockEl.offsetWidth, gapEnd + shift - 2 - width / 2));
+    host.style.setProperty('--clock-control-size', size + 'px');
+    host.style.setProperty('--clock-extra-shift', shift + 'px');
+    host.style.setProperty('--clock-toggle-left', (clockEl.offsetLeft + center) + 'px');
+    host.style.setProperty('--clock-toggle-top', (clockEl.offsetTop + clockEl.offsetHeight / 2) + 'px');
+  }
+  $('clockToggle')?.parentElement.parentElement.addEventListener('mouseenter', positionClockToggle);
+
+  /** 편집기에 표시된 분·초를 실제 적용할 시간으로 읽는다. */
+  function clockEditorSeconds() {
+    const mm = Math.max(0, parseInt(ceMin.value, 10) || 0);
+    const ss = Math.min(59, Math.max(0, parseInt(ceSec.value, 10) || 0));
+    return mm * 60 + ss;
+  }
+
+  document.querySelectorAll('.clock-hover-controls button').forEach(button => {
+    button.addEventListener('focus', positionClockToggle);
+    button.addEventListener('keydown', event => {
+      // 버튼의 기본 키보드 클릭을 편집 확정이나 전역 단축키로 중복 처리하지 않는다.
+      if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+    });
+    button.addEventListener('click', () => {
+      if (button.id === 'clockStop') {
+        pauseClockTimer();
+        const checkpoint = [6300, 5400, 2700, 0].find(seconds => seconds <= state.seconds);
+        setClockSeconds(checkpoint);
+      } else toggleClockRunning();
+      render();
+      persist();
+    });
+  });
+  updateClockToggleButtons();
 
   // ── 시간 프리셋 드롭다운 (":" hover 시 표시) ──
   // 콜론에서 드롭다운으로 마우스를 옮기는 동안 시각적 공백(스코어박스 하단 패딩)을
@@ -213,12 +284,12 @@
 
   /**
    * 시계 더블클릭 시 인라인 편집기를 열고, 확인/취소/외부클릭을 처리하는 편집 세션을 시작.
-   * 편집 중에는 타이머가 정지되고, 확인 후 입력된 시각으로 재개됨.
+   * 편집 중에도 실행 상태를 유지하며, 확인 후 입력된 시각으로 재개됨.
    */
   function openClockEditor() {
-    // 1. 타이머 정지 및 현재 시간 분/초 분해
-    const wasRunning = state.running;
-    pauseClockTimer();
+    if (clockEditor.classList.contains('active')) return;
+    // 1. 실행 상태를 유지한 채 현재 시간 분/초 분해
+    syncRunningClockToNow();
 
     const totalSec = Math.floor(state.seconds);
     const m = Math.floor(totalSec / 60);
@@ -229,6 +300,21 @@
     // 2. 시계 텍스트 숨기고 편집 UI 표시
     if (clockEl.closest('.fsm-board')) {
       const style = getComputedStyle(clockEl);
+      // 편집기 폭이 커져도 원래 시계의 콜론 위치를 기준으로 확장한다.
+      const clockRect = clockEl.getBoundingClientRect();
+      const scale = clockRect.width / clockEl.offsetWidth;
+      const text = clockEl.firstChild;
+      const colonIndex = text?.textContent.indexOf(':') ?? -1;
+      let colonCenter = clockEl.offsetWidth / 2;
+      if (text?.nodeType === Node.TEXT_NODE && colonIndex >= 0) {
+        const range = document.createRange();
+        range.setStart(text, colonIndex);
+        range.setEnd(text, colonIndex + 1);
+        const rect = range.getBoundingClientRect();
+        colonCenter = (rect.left + rect.width / 2 - clockRect.left) / scale;
+      }
+      clockEditor.style.setProperty('--clock-editor-anchor', (clockEl.offsetLeft + colonCenter) + 'px');
+      clockEditor.style.setProperty('--clock-editor-top', (clockEl.offsetTop + clockEl.offsetHeight / 2) + 'px');
       clockEditor.style.setProperty('--fsm-clock-background', style.background);
       // 가상 요소의 배경을 프리셋 메뉴에도 전달합니다.
       const shapeStyle = getComputedStyle(clockEl, '::before');
@@ -237,8 +323,10 @@
       clockEditor.style.setProperty('--fsm-clock-menu-background', usesShapeBackground ? shapeStyle.background : style.background);
       clockEditor.style.setProperty('--fsm-clock-color', style.color);
       clockEditor.style.setProperty('--fsm-clock-width', clockEl.offsetWidth + 'px');
+      clockEditor.style.setProperty('--fsm-clock-height', clockEl.offsetHeight + 'px');
+      clockEditor.style.setProperty('--fsm-clock-font-size', style.fontSize);
       if (clockEl.closest('[data-fsm-theme="eliteserien"]')) {
-        // 편집 전후 숫자 폭과 기준선을 같게 유지하고 확인 버튼은 바깥에 둡니다.
+        // 편집 전후 숫자 폭과 기준선을 같게 유지합니다.
         ceMin.value = String(m).padStart(2, '0');
         ceSec.value = String(s).padStart(2, '0');
         const context = document.createElement('canvas').getContext('2d');
@@ -254,17 +342,21 @@
       clockEl.style.display = 'none';
     }
     clockEditor.classList.add('active');
+    if (clockEl.closest('.fsm-board')) {
+      const editorRect = clockEditor.getBoundingClientRect();
+      const colonRect = ceColon.getBoundingClientRect();
+      const scale = editorRect.width / clockEditor.offsetWidth;
+      clockEditor.style.setProperty('--clock-editor-colon-offset', ((colonRect.left + colonRect.width / 2 - editorRect.left) / scale) + 'px');
+    }
     ceMin.focus();
     ceMin.select();
 
     // 3. 확인(Enter/버튼) 시 시간 적용 후 편집기 닫기
     /** 입력한 분·초를 허용 범위로 보정해 시계를 시작하고 편집 UI·리스너 정리 후 상태를 저장한다. */
     function applyTime() {
-      const mm = Math.max(0, parseInt(ceMin.value, 10) || 0);
-      const ss = Math.min(59, Math.max(0, parseInt(ceSec.value, 10) || 0));
       // 편집 확정 시 항상 재생 시작. (이전엔 wasRunning 복원이라 00:00 정지 상태에서
       // 편집 후 체크 눌러도 멈춰있었음 — '시간을 정했으니 돌리자'가 자연스러움)
-      setClockSeconds(mm * 60 + ss, { autoStart: true });
+      setClockSeconds(clockEditorSeconds(), { autoStart: true });
       closeClockEditor();
       cleanup();
       render();
@@ -295,23 +387,19 @@
     };
 
     // 4. Enter로 확인, Escape로 취소 (편집 세션 키보드 이벤트)
-    /** Enter는 입력을 확정하고, Escape는 입력을 취소해 편집 전 타이머 실행 상태로 돌아간다. */
+    /** Enter는 입력을 확정하고, Escape는 실제 시간과 실행 상태를 유지하며 입력만 취소한다. */
     function onKeyDown(e) {
       if (e.key === 'Enter') { e.preventDefault(); applyTime(); cleanup(); }
       if (e.key === 'Escape') {
-        if (wasRunning) startClockTimer();
-        else pauseClockTimer();
         closeClockEditor();
         cleanup();
       }
     }
 
     // 5. 편집기 외부 클릭 시 취소
-    /** 편집기와 시계 밖을 클릭하면 입력을 취소하고 편집 전 실행 상태를 복원한다. */
+    /** 편집기와 시계 밖을 클릭하면 실제 시간과 실행 상태를 유지하며 입력만 취소한다. */
     function onOutsideClick(e) {
       if (!clockEditor.contains(e.target) && e.target !== clockEl) {
-        if (wasRunning) startClockTimer();
-        else pauseClockTimer();
         closeClockEditor();
         cleanup();
       }

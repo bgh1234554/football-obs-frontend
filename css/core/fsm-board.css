@@ -485,12 +485,33 @@
   transition-property: background-color, color, border-color, border-radius, box-shadow;
 }
 .fsm-board #clockEditor {
-  left: 50%; top: 50%; transform: translate(-50%, -50%);
-  margin: 0; padding: 2px 4px;
+  left: var(--clock-editor-anchor, 50%); top: var(--clock-editor-top, 50%);
+  transform: translate(calc(-1 * var(--clock-editor-colon-offset, 0px)), -50%);
+  margin: 0; padding: 0 4px;
+  height: var(--fsm-clock-height); box-sizing: border-box;
   width: max-content; min-width: var(--fsm-clock-width);
   justify-content: center;
   background: var(--fsm-clock-background);
   color: var(--fsm-clock-color);
+}
+/* 증감 버튼을 숫자 오른쪽에 쌓아 원래 시계 높이 안에서 편집한다. */
+.fsm-board #clockEditor .ce-unit {
+  display: grid; grid-template-columns: auto 12px; grid-template-rows: 1fr 1fr;
+  height: 100%; gap: 0;
+}
+.fsm-board #clockEditor .ce-num {
+  grid-column: 1; grid-row: 1 / 3; height: 100%; box-sizing: border-box;
+  font-size: var(--fsm-clock-font-size);
+}
+.fsm-board #clockEditor .ce-arrow {
+  grid-column: 2; padding: 0 2px; font-size: 8px; align-self: stretch;
+}
+.fsm-board #clockEditor .ce-arrow:first-child { grid-row: 1; }
+.fsm-board #clockEditor .ce-arrow:last-child { grid-row: 2; }
+.fsm-board #clockEditor .ce-colon { font-size: var(--fsm-clock-font-size); padding-bottom: 0; }
+.fsm-board #clockEditor .ce-confirm {
+  height: calc(var(--fsm-clock-height) - 4px);
+  width: calc(var(--fsm-clock-height) - 4px); flex: 0 0 auto;
 }
 .fsm-board .time.is-editing { color: transparent !important; }
 .board.fsm-board .time { z-index: 1; }
