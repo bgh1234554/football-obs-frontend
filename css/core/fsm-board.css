@@ -459,6 +459,7 @@
   z-index: 100;
 }
 .fsm-board .scoreboard-timer { position: relative; }
+.fsm-board .scoreboard-timer:has(#clockEditor.active) { z-index: 10; }
 .board :is(#clock, #extra) { cursor: pointer !important; }
 .board :is(#clock, #extra):hover { outline: 1px solid rgba(255,255,255,.55); outline-offset: 2px; }
 /* 추가시간을 숨겨도 원래 위치에서 마우스로 켤 수 있게 투명한 클릭 영역을 남긴다. */
@@ -487,7 +488,7 @@
 .fsm-board #clockEditor {
   left: var(--clock-editor-anchor, 50%); top: var(--clock-editor-top, 50%);
   transform: translate(calc(-1 * var(--clock-editor-colon-offset, 0px)), -50%);
-  margin: 0; padding: 0 4px;
+  margin: 0; padding: 0 2px; gap: 0;
   height: var(--fsm-clock-height); box-sizing: border-box;
   width: max-content; min-width: var(--fsm-clock-width);
   justify-content: center;
@@ -496,7 +497,7 @@
 }
 /* 증감 버튼을 숫자 오른쪽에 쌓아 원래 시계 높이 안에서 편집한다. */
 .fsm-board #clockEditor .ce-unit {
-  display: grid; grid-template-columns: auto 12px; grid-template-rows: 1fr 1fr;
+  display: grid; grid-template-columns: auto 8px; grid-template-rows: 1fr 1fr;
   height: 100%; gap: 0;
 }
 .fsm-board #clockEditor .ce-num {
@@ -504,12 +505,13 @@
   font-size: var(--fsm-clock-font-size);
 }
 .fsm-board #clockEditor .ce-arrow {
-  grid-column: 2; padding: 0 2px; font-size: 8px; align-self: stretch;
+  grid-column: 2; margin: 0; padding: 0; min-width: 0; font-size: 8px; align-self: stretch;
 }
 .fsm-board #clockEditor .ce-arrow:first-child { grid-row: 1; }
 .fsm-board #clockEditor .ce-arrow:last-child { grid-row: 2; }
-.fsm-board #clockEditor .ce-colon { font-size: var(--fsm-clock-font-size); padding-bottom: 0; }
+.fsm-board #clockEditor .ce-colon { font-size: var(--fsm-clock-font-size); padding: 0 1px; }
 .fsm-board #clockEditor .ce-confirm {
+  margin-left: 2px;
   height: calc(var(--fsm-clock-height) - 4px);
   width: calc(var(--fsm-clock-height) - 4px); flex: 0 0 auto;
 }

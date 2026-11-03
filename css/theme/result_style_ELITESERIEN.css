@@ -331,8 +331,8 @@
 
 /* 숫자 폭과 글꼴은 테마에 맞추고 조작부는 공통 편집기 배치를 사용합니다. */
 .board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor {
- width: max-content; height: var(--fsm-clock-height); min-width: var(--fsm-clock-width); box-sizing: border-box; gap: 2px;
- padding: 0 6px; font: bold 22px/1 'NanumGothic';
+ width: max-content; height: var(--fsm-clock-height); min-width: var(--fsm-clock-width); box-sizing: border-box; gap: 0;
+ padding: 0 2px; font: bold 22px/1 'NanumGothic';
 }
 .board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-unit { position: relative; gap: 0; }
 .board.fsm-board[data-fsm-theme="eliteserien"] #clockEditor .ce-num {

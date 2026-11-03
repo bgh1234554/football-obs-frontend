@@ -15,6 +15,18 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
  assert(await page.locator('#clockEditor').isVisible());
  const editingColon=await page.locator('#ceColon').evaluate(e=>{const b=e.getBoundingClientRect();return b.x+b.width/2;});
  assert(Math.abs(originalColon-editingColon)<1,`${theme}: colon stays anchored when editor opens (${originalColon} -> ${editingColon})`);
+ const minuteWidth=(await page.locator('#ceMin').boundingBox()).width;
+ for(const value of ['105','120','999']){
+  await page.locator('#ceMin').fill(value);
+  const fit=await page.locator('#ceMin').evaluate(e=>{const s=getComputedStyle(e);const c=document.createElement('canvas').getContext('2d');c.font=s.font;const text=c.measureText(e.value).width;const available=e.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight);return {fits:text<=available,scroll:e.scrollLeft};});
+  assert(fit.fits&&fit.scroll===0,`${theme}: all three minute digits are visible for ${value}`);
+  if(theme==='seriea'&&value==='105'){fs.mkdirSync(path.join(root,'screenshots','fsm-clock-editor'),{recursive:true});await page.screenshot({path:path.join(root,'screenshots','fsm-clock-editor','seriea-three-digit-input.png')});}
+  assert(Math.abs((await page.locator('#ceMin').boundingBox()).width-minuteWidth)<1,`${theme}: minute input width stays fixed`);
+  const colon=await page.locator('#ceColon').evaluate(e=>{const b=e.getBoundingClientRect();return b.x+b.width/2;});
+  assert(Math.abs(originalColon-colon)<1,`${theme}: typing three digits keeps colon fixed`);
+ }
+ await page.locator('#ceMin').fill('99');await page.locator('#ceMinUp').click();assert.equal(await page.locator('#ceMin').inputValue(),'100');
+ await page.locator('#ceMin').fill('2');
  const confirmRect=await page.locator('#ceConfirm').boundingBox();
  assert.equal(await page.locator('#clockEditor .clock-toggle').count(),0);
  assert(!await page.locator('#clockToggle').isVisible(),`${theme}: playback hidden while editing`);
