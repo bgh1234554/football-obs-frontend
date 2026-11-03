@@ -25,6 +25,9 @@
   let host = null;
   let hideTimer = null;    // 표시 시간(SHOW_MS)이 끝나면 사라지기 시작
   let fadeTimer = null;    // 사라지는 효과(FADE_MS)가 끝나면 다음 이벤트로
+  let previewHost = null;
+  let previewTimer = null;
+  let previewHideTimer = null;
 
   /**
    * 대기열·보이는 표시·진행 중인 타이머를 모두 치운다. 설정을 끄거나 다른 경기로 바뀔 때 쓴다.
@@ -79,7 +82,8 @@
     ? getDisplayLayoutRect(element) : element.getBoundingClientRect();
 
   /** 기본 너비·배율·아랫변 위치를 현재 레이아웃에 맞춘다. */
-  function place(target) {
+  function place(target, element = host) {
+    const host = element;
     const { layout, column } = target;
     // 패널 영역: 그 페이지의 패널(.lp)들이 차지하는 세로 범위(캠 작음은 이벤트 칼럼이 위쪽 절반뿐이라 전체 패널 기준으로 잰다).
     const panels = [...layout.querySelectorAll('.lp')].filter(node => node.offsetHeight).map(layoutRect);
@@ -89,7 +93,7 @@
       : { x: window.innerWidth, y: window.innerHeight };
     const panelBottom = Math.max(...panels.map(rect => rect.bottom), columnRect.bottom);
     // 설정 100%는 이벤트 패널 칼럼 너비의 1.25배(SPOTLIGHT_BASE_SCALE). 칼럼 너비 그대로는 화면에서 너무 작았다.
-    const scale = SPOTLIGHT_BASE_SCALE * Math.max(100, Math.min(250, Number(getSetting('eventSpotlightScale')) || 100)) / 100;
+    const scale = SPOTLIGHT_BASE_SCALE * Math.max(100, Math.min(250, Number(getSetting('eventSpotlightScale')) || SETTINGS_DEFAULTS.eventSpotlightScale)) / 100;
     host.style.width = `${columnRect.width}px`;
     host.classList.toggle('is-board', mode() === 'board');
     if (mode() === 'board') {
@@ -149,6 +153,7 @@
 
   /** 이벤트 패널에서 새로 생긴 행을 복제해 대기열에 넣는다(오래된 이벤트부터). */
   function enqueue(rows) {
+    window.evSpotlightStopPreview();
     rows.reverse().forEach(source => {
       const clone = source.cloneNode(true);
       clone.classList.remove('ev-row-new', 'ev-row-glow-held', 'is-editable', 'has-hide-btn');
@@ -162,6 +167,69 @@
     });
     showNext();
   }
+
+  /** 크기 견본은 실제 이벤트 대기열·중복 감지와 분리해 표시한다. */
+  window.evSpotlightStopPreview = () => {
+    clearTimeout(previewTimer);
+    clearTimeout(previewHideTimer);
+    previewHost?.remove();
+    previewHost = null;
+  };
+
+  function placePreview() {
+    if (!previewHost) return;
+    const target = activeLayout();
+    if (target) { place(target, previewHost); return; }
+    // 일정/설정 전용 창에서도 선택한 카메라 뷰의 실제 칼럼 너비를 측정한다.
+    const page = document.getElementById(getSetting('mainPage') === 'small' ? 'page-main-small' : 'page-main-big');
+    const column = page?.querySelector(page.id === 'page-main-big' ? '.lp-stat' : '.lp-events-s');
+    if (!page || !column) return;
+    const style = page.style.cssText;
+    let width;
+    try {
+      Object.assign(page.style, { display: 'block', visibility: 'hidden', position: 'fixed', inset: '0', pointerEvents: 'none' });
+      width = layoutRect(column).width;
+    } finally { page.style.cssText = style; }
+    previewHost.classList.remove('is-board');
+    previewHost.style.width = `${width}px`;
+    previewHost.style.top = '';
+    previewHost.style.left = '50%';
+    previewHost.style.bottom = '24px';
+    previewHost.style.setProperty('--ev-spotlight-scale', String(SPOTLIGHT_BASE_SCALE * Number(getSetting('eventSpotlightScale')) / 100));
+  }
+
+  window.evSpotlightPreview = () => {
+    clearTimeout(previewTimer);
+    // 슬라이더를 움직이는 동안 여러 견본을 쌓지 않고 마지막 값만 보여 준다.
+    previewTimer = setTimeout(() => {
+      window.evSpotlightStopPreview();
+      if (showing) return; // 실제 이벤트가 보이면 그 이벤트에 새 크기가 바로 적용된다.
+      previewHost = document.createElement('div');
+      previewHost.className = 'ev-spotlight ev-spotlight-preview';
+      previewHost.style.transition = 'none';
+      previewHost.setAttribute('role', 'status');
+      previewHost.setAttribute('aria-label', '신규 이벤트 크기 미리보기');
+      previewHost.style.setProperty('--ev-name-base-size', `${SPOTLIGHT_FONT_SIZE}px`);
+      previewHost.style.setProperty('--ev-ui-scale', '1');
+      const list = document.createElement('div');
+      list.className = 'ev-list';
+      const row = evCreateRow({ type: 'Goal', detail: 'Normal Goal', side: 'home',
+        playerName: '미리보기 득점자', assistName: '미리보기 도움 선수', elapsed: 88 },
+        { matchInfo: { status: '2H', elapsed: 88 } });
+      row.classList.add('ev-row-new');
+      list.append(row);
+      previewHost.append(list);
+      (document.fullscreenElement || document.body).append(previewHost);
+      placePreview();
+      window.evRefitPanelRows?.(previewHost, SPOTLIGHT_FONT_SIZE);
+      // 줄 높이가 확정된 다음 실제 팝업과 같은 기준으로 배치한다.
+      placePreview();
+      void previewHost.offsetWidth;
+      previewHost.style.transition = '';
+      requestAnimationFrame(() => previewHost?.classList.add('is-visible'));
+      previewHideTimer = setTimeout(window.evSpotlightStopPreview, SHOW_MS);
+    }, 250);
+  };
 
   /** fixture.js: 같은 경기에서 이벤트 개수가 늘어난 응답을 렌더하기 직전에 호출. */
   window.evSpotlightMarkNewEvents = () => { pendingNew = true; };
@@ -191,6 +259,7 @@
   // 설정을 끄면 대기 중인 표시도 바로 치운다. 배율을 바꾸면 보이는 중인 표시에도 바로 반영한다.
   document.addEventListener('settings:change', event => {
     const category = event.detail?.category;
+    if (category === 'eventSpotlightScale' || category === 'eventSpotlight') placePreview();
     if (category === 'eventSpotlight' && !enabled()) reset();
     if ((category === 'eventSpotlightScale' || category === 'eventSpotlight') && enabled() && host && !host.hidden) {
       const target = activeLayout();
@@ -198,8 +267,10 @@
     }
   });
   window.addEventListener('resize', () => {
+    placePreview();
     if (!host || host.hidden) return;
     const target = activeLayout();
     if (target) place(target);
   });
+  document.addEventListener('page:activated', () => window.evSpotlightStopPreview());
 })();

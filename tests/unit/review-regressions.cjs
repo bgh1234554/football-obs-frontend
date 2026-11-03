@@ -61,14 +61,13 @@ const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function 
 // 기존 설정에 배경 선택이 없으면 새 기본값을 쓰되, 직접 고른 값과 팀 무드 이전은 유지한다.
 {
  const source=read('js/settings/settings-popup.js');
- const start=source.indexOf('const SETTINGS_DEFAULTS =');
- const defaults=source.slice(start,source.indexOf('\n};',start)+3);
+ const defaults=source.slice(0,source.indexOf('function isDashboardFullscreen()'));
  const load=extract('js/settings/settings-popup.js','loadSettings','function saveSettings()');
  for(const key of ['current','legacy']) for(const presets of [null,{}, {bgPreset:'charcoal'}, {lightBgPreset:'sky-glass'}, {bgPreset:'team'}, {bgPreset:'off',lightBgPreset:'off'}, {bgImageUrl:'https://example.com/background.jpg'}, {bgImageData:'data:image/png;base64,example'}, {bgPreset:'stadium',lightBgPreset:'stadium-day'}]){
   let stored=presets===null?null:{...presets};let current=key==='current'?stored:null,legacy=key==='legacy'?stored:null;
   const context={SETTINGS_STORAGE_KEY:'current',SETTINGS_LEGACY_STORAGE_KEYS:['legacy'],applyLayoutSettings(){},clampPercent:n=>Number(n),isValidSetting:(category,value)=>value!==undefined,
-   localStorage:{getItem:k=>JSON.stringify(k==='current'?current:legacy),removeItem:k=>{if(k==='legacy')legacy=null;}},getSetting:category=>context.state[category],saveSettings:()=>{current={...context.state};return true;}};
-  vm.runInNewContext(defaults+';globalThis.state={...SETTINGS_DEFAULTS};globalThis.settingsState=state;'+load,context);
+   localStorage:{getItem:k=>JSON.stringify(k==='obs.settings.v3'?current:legacy),removeItem:k=>{if(k==='obs.settings.v2')legacy=null;}},getSetting:category=>context.state[category],saveSettings:()=>{current={...context.state,_defaults:context.settingsDefaultSnapshot()};return true;}};
+  vm.runInNewContext(defaults+';globalThis.state=settingsState;'+load,context);
   const fresh={bgPreset:context.state.bgPreset,lightBgPreset:context.state.lightBgPreset};
   for(let reload=0;reload<2;reload++){
    vm.runInNewContext('Object.assign(settingsState, SETTINGS_DEFAULTS);loadSettings();',context);
@@ -78,6 +77,82 @@ const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function 
    for(const category of ['bgImageUrl','bgImageData'])if(presets?.[category])assert.equal(context.state[category],presets[category]);
   }
  }
+}
+// 매 배포의 기본값을 저장하고, 저장값이 직전 기본값과 같을 때만 다음 기본값으로 이동한다.
+{
+ const source=read('js/settings/settings-popup.js');
+ const core=source.slice(0,source.indexOf('/**\n * category 하나가 바뀌었을 때'));
+ function session(payload) {
+  let stored=payload==null?null:JSON.stringify(payload), fail=false;
+  const context={console:{warn(){}},fullscreen:false,requestAnimationFrame(){},
+   CustomEvent:class{},document:{dispatchEvent(){},querySelector(){return null;}},
+   applyLayoutSettings(){},applySettingSideEffects(){},emitSettingsChange(){},
+   localStorage:{getItem(){return stored;},setItem(key,value){if(fail)throw Error('quota');stored=value;},removeItem(){stored=null;}}};
+  vm.createContext(context);
+  vm.runInContext(core+'\nsyncSettingUi=()=>{};isDashboardFullscreen=()=>fullscreen;globalThis.values=settingsState;globalThis.defaults=SETTINGS_DEFAULTS;globalThis.fullDefaults=DASHBOARD_FULLSCREEN_DEFAULTS;loadSettings();',context);
+  return {context,stored:()=>JSON.parse(stored),fail:value=>{fail=value;}};
+ }
+ for(const value of [100,110,125,200]) {
+  const s=session({eventSpotlightScale:value});
+  assert.equal(s.context.values.eventSpotlightScale,value===100?125:value);
+  assert.equal(s.stored()._defaults.eventSpotlightScale,125);
+  s.context.defaults.eventSpotlightScale=150;s.context.loadSettings();
+  assert.equal(s.context.values.eventSpotlightScale,[100,125].includes(value)?150:value);
+  s.context.defaults.eventSpotlightScale=175;s.context.loadSettings();
+  assert.equal(s.context.values.eventSpotlightScale,[100,125].includes(value)?175:value);
+ }
+ // 중간 버전을 건너뛰어도 최초 이력이 없는 100은 당시 기본값으로 판별한다.
+ const skipped=session({eventSpotlightScale:100});
+ skipped.context.defaults.eventSpotlightScale=200;
+ const legacy={eventSpotlightScale:100};
+ skipped.context.localStorage.setItem('obs.settings.v3',JSON.stringify(legacy));skipped.context.loadSettings();
+ assert.equal(skipped.context.values.eventSpotlightScale,200);
+ // 기본값 이력이 있는 사용자도 중간 배포를 거치지 않고 최신 기본값으로 바로 이동한다.
+ for (const value of [125,110]) {
+  const tracked=session(null);tracked.context.setSetting('eventSpotlightScale',value);
+  tracked.context.defaults.eventSpotlightScale=200;tracked.context.loadSettings();
+  assert.equal(tracked.context.values.eventSpotlightScale,value===125?200:110);
+ }
+ // 수동 선택 기록 대신 값만 비교하므로 새 기본값과 같아진 값은 그 다음 기본값 변경을 따른다.
+ const converged=session(null);converged.context.setSetting('eventSpotlightScale',110);
+ converged.context.defaults.eventSpotlightScale=110;converged.context.loadSettings();
+ converged.context.defaults.eventSpotlightScale=150;converged.context.loadSettings();
+ assert.equal(converged.context.values.eventSpotlightScale,150);
+ // 100으로 직접 되돌렸더라도 직전 기본값 125와 다르면 이후 업데이트에서 유지한다.
+ const s=session({eventSpotlightScale:100});
+ s.context.setSetting('eventSpotlightScale',100);
+ s.context.defaults.eventSpotlightScale=150;s.context.loadSettings();
+ assert.equal(s.context.values.eventSpotlightScale,100);
+ s.context.resetPanelFontSetting('eventSpotlightScale');
+ s.context.defaults.eventSpotlightScale=175;s.context.loadSettings();
+ assert.equal(s.context.values.eventSpotlightScale,175);
+ // 다른 항목의 저장도 기본값 이력을 보존하며 숫자/선택값/색상에 동일한 규칙을 적용한다.
+ const generic=session(null);generic.context.setSetting('scorer','short');
+ Object.assign(generic.context.defaults,{bgAlpha:30,lineupShowRating:'off',panelColor:'#112233'});
+ generic.context.loadSettings();
+ assert.equal(generic.context.values.bgAlpha,30);
+ assert.equal(generic.context.values.lineupShowRating,'off');
+ assert.equal(generic.context.values.panelColor,'#112233');
+ assert.equal(generic.context.values.scorer,'short');
+ generic.context.setSetting('bgAlpha',10);
+ generic.context.defaults.bgAlpha=40;generic.context.loadSettings();
+ assert.equal(generic.context.values.bgAlpha,10);
+ // 일반/라이트 모드와 전체화면 기본값은 각각 비교한다.
+ const modes=session(null);modes.context.setSetting('panelAlpha',45);
+ modes.context.setSetting('uiMode','light');modes.context.setSetting('panelAlpha',25);
+ modes.context.defaults.panelAlpha=35;modes.context.defaults.lightPanelAlpha=30;modes.context.loadSettings();
+ assert.equal(modes.context.values.panelAlpha,45);assert.equal(modes.context.values.lightPanelAlpha,30);
+ modes.context.fullscreen=true;modes.context.resetPanelFontSetting('lineupNameSize');
+ modes.context.fullDefaults.lineupNameSize=18;modes.context.loadSettings();
+ assert.equal(modes.context.getSetting('lineupNameSize'),18);
+ modes.context.setSetting('lineupNameSize',17);
+ modes.context.fullDefaults.lineupNameSize=20;modes.context.loadSettings();
+ assert.equal(modes.context.getSetting('lineupNameSize'),17);
+ // 저장 실패는 이전 저장값/이력을 지키며, 다음 로드에서 이전을 다시 시도한다.
+ const before=s.stored();s.fail(true);s.context.defaults.eventSpotlightScale=200;s.context.loadSettings();
+ assert.deepEqual(s.stored(),before);s.fail(false);s.context.loadSettings();
+ assert.equal(s.stored().eventSpotlightScale,200);
+ console.log('PASS settings default migration: legacy, successive/skipped updates, custom values, resets, modes and save failure');
 }
 // 목차 링크와 실제 중계 화면 제목은 같은 slug로 연결되어야 한다.
 {

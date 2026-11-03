@@ -470,7 +470,7 @@ const root = path.resolve(__dirname, '../..');
     await page.locator('.ev-spotlight').waitFor({ state: 'hidden', timeout: 7000 });
     assert(await spotlightMenu.isVisible());
     await spotlightMenu.getByRole('button', { name: '초기화', exact: true }).click();
-    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), 100);
+    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), 125);
     await page.keyboard.press('Escape');
     assert.equal(await spotlightMenu.count(), 0);
     assert.deepEqual(errors, []);

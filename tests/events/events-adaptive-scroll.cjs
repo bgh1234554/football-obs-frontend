@@ -9,7 +9,7 @@ const list={scrollHeight:1300,clientHeight:300,scrollTop:0,
   addEventListener(type,cb){listeners.set(type,cb);},removeEventListener(type){listeners.delete(type);}};
 const settings={statsAutoSwipeSec:10,statCycleAuto:'on'};
 const context=vm.createContext({console,performance:{now:()=>now},
-  document:{addEventListener(){},querySelectorAll(){return [];},querySelector(){return {querySelector:()=>list};}},
+  document:{addEventListener(){},querySelectorAll(){return [];},querySelector(selector){return selector === '.lp-stat-mode-choices' ? null : {querySelector:()=>list};}},
   getSetting:key=>settings[key],
   setTimeout:(cb,delay)=>{timers.set(++id,{cb,delay});return id;}, clearTimeout:id=>timers.delete(id),
   requestAnimationFrame:cb=>{frames.set(++id,cb);return id;},cancelAnimationFrame:id=>frames.delete(id),

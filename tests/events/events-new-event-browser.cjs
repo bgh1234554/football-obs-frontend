@@ -143,8 +143,66 @@ const draftRoot = path.resolve(process.argv[2] || root);
         assert.equal(await page.locator('.ev-period-marker').filter({ hasText: '연장' }).count(), 0);
       }
     }
+    // 크기 조절 견본은 설정창 위에 실제 배율로 보이며 경기 데이터와 신규 감지 상태를 바꾸지 않는다.
+    await page.evaluate(() => { clearPolling(); setSetting('eventSpotlight', 'off'); openSettingsPopup(); });
+    await page.getByRole('button', { name: '설정 검색', exact: true }).click();
+    await page.getByRole('searchbox', { name: '설정 검색어' }).fill('신규 이벤트 표시 크기');
+    const size = page.locator('#settingsBackdrop [data-settings-slider="eventSpotlightScale"]');
+    const preview = page.locator('.ev-spotlight-preview.is-visible');
+    const fixtureBefore = await page.evaluate(() => JSON.stringify(window._eventsLastData));
+    for (const layout of ['main-big', 'main-small', 'schedule']) {
+      await page.evaluate(layout => activatePage(layout), layout);
+      await size.fill('125'); await size.fill('150');
+      await page.clock.runFor(700);
+      assert.equal(await preview.count(), 1, '연속 조절 후 견본은 하나만 표시한다.');
+      await preview.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+      assert((await preview.innerText()).includes('미리보기 득점자'));
+      const first = await preview.boundingBox();
+      assert(first.width > 0 && first.height > 0, layout);
+      const style = await preview.evaluate(el => ({ z: Number(getComputedStyle(el).zIndex), settingsZ: Number(getComputedStyle(document.getElementById('settingsBackdrop')).zIndex), pointer: getComputedStyle(el).pointerEvents }));
+      assert(style.z > style.settingsZ, '열린 설정창보다 위에 표시한다.');
+      assert.equal(style.pointer, 'none', '견본이 설정 조작을 막지 않는다.');
+      await size.fill('200'); await page.clock.runFor(700);
+      await preview.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+      const enlarged = await preview.boundingBox();
+      assert(Math.abs(enlarged.width / first.width - 200 / 150) < .01, '실제 선택 배율대로 확대한다.');
+      assert.equal(await page.evaluate(() => getSetting('eventSpotlight')), 'off', 'OFF 상태도 임시 견본만 표시한다.');
+      assert.equal(await page.evaluate(() => JSON.stringify(window._eventsLastData)), fixtureBefore);
+      if (layout === 'main-small') {
+        fs.mkdirSync(path.join(root, 'screenshots/tests'), { recursive: true });
+        await page.screenshot({ path: path.join(root, 'screenshots/tests/event-size-preview.png') });
+      }
+      await page.clock.runFor(5200);
+      assert.equal(await preview.count(), 0, '견본은 자동으로 사라진다.');
+    }
+    await page.evaluate(() => {
+      closeSettingsPopup(); activatePage('main-big'); setSetting('eventSpotlight', 'board');
+      window.previewSource = document.createElement('div'); previewSource.innerHTML = '<div class="ev-list"></div>';
+      evSpotlightAfterRender('after-preview', [previewSource]);
+      evSpotlightPreview();
+    });
+    await page.clock.runFor(700);
+    await page.evaluate(() => {
+      previewSource.firstChild.append(evCreateRow({ type: 'Goal', detail: 'Normal Goal', side: 'home', playerName: '실제 신규 이벤트', elapsed: 89 }, { matchInfo: { status: '2H', elapsed: 89 } }, 'actual-after-preview'));
+      evSpotlightMarkNewEvents(); evSpotlightAfterRender('after-preview', [previewSource]);
+    });
+    await page.clock.runFor(100);
+    assert.equal(await preview.count(), 0, '실제 이벤트가 들어오면 견본을 치운다.');
+    const actual = page.locator('.ev-spotlight:not(.ev-spotlight-preview).is-visible');
+    assert((await actual.innerText()).includes('실제 신규 이벤트'));
+    await actual.click();
+    await page.clock.runFor(5400);
+    const menu = page.getByRole('dialog', { name: '신규 이벤트 표시 크기', exact: true });
+    await menu.getByRole('slider').fill('175');
+    await page.clock.runFor(700);
+    assert.equal(await preview.count(), 1, '팝업의 빠른 크기 메뉴에서도 견본을 표시한다.');
+    await menu.getByRole('button', { name: '초기화', exact: true }).click();
+    await page.clock.runFor(700);
+    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), 125);
+    assert.equal(await preview.count(), 1);
+    await page.clock.runFor(5200);
     assert.deepEqual(errors, []);
-    console.log('PASS: big/small status-only halftime/fulltime, duplicate suppression, direct shootout without phantom extra time, genuine extra-time endings.');
+    console.log('PASS: event lifecycle and size previews in both camera layouts, settings/schedule, quick menu, actual scale, cleanup and real-event priority.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 

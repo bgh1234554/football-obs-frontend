@@ -127,7 +127,7 @@ const SETTINGS_DEFAULTS = {
   // 신규 이벤트 화면 중앙 하단 표시 (js/panels/event-spotlight.js). 배율은 이벤트 패널 칼럼 너비 기준 %.
   // 'off' = 표시 안 함, 'board' = 점수판 바로 아래(윗변 고정, 아래로 커짐), 'bottom' = 화면 가운데 패널 하단선(아랫변 고정, 위로 커짐).
   eventSpotlight: 'board',
-  eventSpotlightScale: 100,
+  eventSpotlightScale: 125,
   // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
@@ -356,6 +356,129 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
 const DASHBOARD_FULLSCREEN_DEFAULTS = { lineupNameSize: 16, benchInjuryNameSize: 14, lineupTokenScale: 115 };
+// 기본값 이력을 저장하기 전 버전의 기준표. 앞으로 기본값을 변경해도 이 표는 유지한다.
+const SETTINGS_LEGACY_DEFAULTS = Object.freeze({
+  "uiMode": "dark",
+  "teamName": "long",
+  "lineup": "short",
+  "scorer": "long",
+  "roster": "long",
+  "lineupNode": "photo",
+  "lineupHideInitial": "off",
+  "lineupShowFormationButton": "on",
+  "boardFlashSound": "off",
+  "eventSpotlightSound": "off",
+  "notificationSoundVolume": 100,
+  "notificationSoundSet": "1",
+  "notificationSoundSetRevision": 4,
+  "lineupScale": 100,
+  "lineupTokenScaleFullscreen": null,
+  "lineupTokenScale": 100,
+  "lineupNameSize": 12,
+  "lineupNameSizeFullscreen": null,
+  "splitLineup": "on",
+  "leagueLogoPos": "center",
+  "lineupPitchTone": "black",
+  "lightLineupPitchTone": "green",
+  "teamLogo": "logo",
+  "mainPage": "big",
+  "fanReaction": "on",
+  "bigLineupVisible": "on",
+  "bigInfoVisible": "on",
+  "statCycleAuto": "on",
+  "statCycleModeStats": "on",
+  "statCycleModeEvents": "on",
+  "statCycleModeHth": "on",
+  "statCycleModeTeamFixtures": "on",
+  "statCycleModeBenchHome": "on",
+  "statCycleModeBenchAway": "on",
+  "statCycleModeMatchInfo": "on",
+  "statCycleModeInjuries": "on",
+  "statsAutoSwipe": "on",
+  "statsAutoSwipeSec": 10,
+  "event": "long",
+  "eventNameSize": 15,
+  "benchInjuryNameSize": 13,
+  "benchInjuryNameSizeFullscreen": null,
+  "statsNameSize": 12,
+  "matchInfoNameSize": 16,
+  "hthNameSize": 12,
+  "teamFixturesNameSize": 11,
+  "eventSpotlight": "board",
+  "eventSpotlightScale": 100,
+  "subReflect": "on",
+  "autoLinkPlayerIdByName": "on",
+  "popoutModals": "off",
+  "lineupShowGoals": "on",
+  "lineupShowCards": "on",
+  "lineupShowRating": "on",
+  "lineupShowSubTime": "on",
+  "lineupSubNameHighlight": "off",
+  "lineupShowNumber": "on",
+  "lineupShowOutScorers": "off",
+  "noteShowPenaltyMisses": "on",
+  "noteShowRedCards": "on",
+  "noteOwnGoalColor": "#b6c2d1",
+  "notePenaltyMissColor": "#fb923c",
+  "noteRedCardColor": "#ff6b6b",
+  "ratingColorBelow6": "#cd0b00",
+  "ratingColor6": "#ed7e07",
+  "ratingColor65": "#d9af00",
+  "ratingColor7": "#00c424",
+  "ratingColor8": "#00adc4",
+  "ratingColor9": "#374df5",
+  "ratingColor95": "#7f1d6d",
+  "bgColor": "#111827",
+  "lightBgColor": "#c2c6cc",
+  "bgTeamDirection": "off",
+  "bgPreset": "stadium",
+  "lightBgPreset": "stadium-day",
+  "bgAlpha": 0,
+  "matchInfoLabelColor": "#60A5FA",
+  "matchInfoLabelColorRev": 1,
+  "panelColor": "#0b1220",
+  "bgImageUrl": "",
+  "bgImageData": "",
+  "panelAlpha": 25,
+  "lightPanelAlpha": 25,
+  "pitchAlpha": 25,
+  "tacticsAlpha": 0,
+  "tacticsTopbarScale": 100,
+  "tacticsDrawtoolsScale": 150,
+  "tacticsFullscreenAlign": "center",
+  "tacticsTouchLayout": "auto",
+  "tacticsNameSize": 12,
+  "tacticsTokenScale": 100,
+  "alphaTransparencyMode": "transparency",
+  "tacticsDrawtoolsScaleRev": "v150",
+  "greenscreen": "off",
+  "greenscreenIntensity": "purple",
+  "bigPanelLinked": "on"
+});
+const SETTINGS_LEGACY_FULLSCREEN_DEFAULTS = Object.freeze({ lineupNameSize: 16, benchInjuryNameSize: 14, lineupTokenScale: 115 });
+
+/** 저장 당시 기본값도 기록해 다음 버전에서 사용자 값과 비교한다. */
+function settingsDefaultSnapshot() {
+  return { ...SETTINGS_DEFAULTS, ...Object.fromEntries(Object.entries(DASHBOARD_FULLSCREEN_DEFAULTS)
+    .map(([key, value]) => [`${key}Fullscreen`, value])) };
+}
+
+/** 이전 기본값과 같은 저장값만 현재 기본값으로 옮긴다. */
+function migrateSettingsDefaults(parsed) {
+  const previous = parsed._defaults && typeof parsed._defaults === 'object' && !Array.isArray(parsed._defaults)
+    ? parsed._defaults : { ...SETTINGS_LEGACY_DEFAULTS, ...Object.fromEntries(Object.entries(SETTINGS_LEGACY_FULLSCREEN_DEFAULTS)
+      .map(([key, value]) => [`${key}Fullscreen`, value])) };
+  const current = settingsDefaultSnapshot();
+  const equal = (a, b) => typeof a === 'string' && /^#[0-9a-f]{6}$/i.test(a)
+    ? a.toLowerCase() === String(b).toLowerCase() : a === b;
+  Object.keys(SETTINGS_DEFAULTS).forEach(key => {
+    if (Object.hasOwn(parsed, key) && Object.hasOwn(previous, key)
+      && equal(settingsState[key], previous[key]) && !equal(previous[key], current[key])) {
+      settingsState[key] = current[key];
+    }
+  });
+  return JSON.stringify(parsed._defaults) !== JSON.stringify(current);
+}
 function isDashboardFullscreen() {
   // F11은 fullscreenElement를 설정하지 않으므로 실제 화면 높이도 확인한다.
   return !!document.querySelector('#page-main-small.active') && (
@@ -554,6 +677,7 @@ function isValidSetting(category, value) {
  */
 function loadSettings() {
   try {
+    Object.assign(settingsState, SETTINGS_DEFAULTS);
     // 1) v3 → v2 순서로 첫 valid payload 탐색.
     const storageKeys = [SETTINGS_STORAGE_KEY, ...SETTINGS_LEGACY_STORAGE_KEYS];
     let parsed = null;
@@ -655,6 +779,7 @@ function loadSettings() {
       normalizedSettings = true;
     }
 
+    normalizedSettings = migrateSettingsDefaults(parsed) || normalizedSettings;
     if (settingsState.statCycleAuto === 'on' && settingsState.statsAutoSwipe !== 'on') {
       settingsState.statsAutoSwipe = 'on';
       normalizedSettings = true;
@@ -678,7 +803,7 @@ function loadSettings() {
 /** 현재 settingsState를 v3 키에 JSON으로 저장. localStorage 풀이면 무시. */
 function saveSettings() {
   try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsState));
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...settingsState, _defaults: settingsDefaultSnapshot() }));
     return true;
   } catch (error) {
     console.warn('설정 저장 실패:', error);
@@ -1414,8 +1539,14 @@ function openPanelFontPopup(title, clickPoint = null) {
   reset.type = 'button';
   reset.className = 'panel-font-reset';
   reset.textContent = '초기화';
-  reset.addEventListener('click', () => { resetPanelFontSetting(category); syncPanelFontPopup(); });
-  input.addEventListener('input', () => { setSetting(category, Number(input.value)); syncPanelFontPopup(); });
+  reset.addEventListener('click', () => {
+    resetPanelFontSetting(category); syncPanelFontPopup();
+    if (isSpotlight) window.evSpotlightPreview?.();
+  });
+  input.addEventListener('input', () => {
+    setSetting(category, Number(input.value)); syncPanelFontPopup();
+    if (isSpotlight) window.evSpotlightPreview?.();
+  });
   cluster.append(input, value);
   const heading = document.createElement('div');
   heading.className = 'panel-font-heading';
@@ -2887,6 +3018,7 @@ function initSettingsPopup() {
         if (PANEL_FONT_SETTINGS.includes(category) || category === 'lineupTokenScale') resetPanelFontSetting(category);
         else if (['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].includes(category)) resetTransparencySetting(category);
         else setSetting(category, SETTINGS_DEFAULTS[category]);
+        if (category === 'eventSpotlightScale') window.evSpotlightPreview?.();
       });
       input.parentElement.append(reset);
     }
@@ -2909,6 +3041,7 @@ function initSettingsPopup() {
     }
     input.addEventListener('input', () => {
       setSetting(category, Number(input.value));
+      if (category === 'eventSpotlightScale') window.evSpotlightPreview?.();
     });
   });
 

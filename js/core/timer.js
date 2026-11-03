@@ -114,6 +114,26 @@
   const ceColon      = $('ceColon');
   const cePresets    = $('cePresets');
 
+  /** 분 입력칸 폭은 유지하고 입력한 숫자가 넘칠 때만 글자 크기를 줄인다. */
+  function fitClockMinuteInput() {
+    if (!clockEditor.classList.contains('active')) return;
+    ceMin.style.fontSize = '';
+    const style = getComputedStyle(ceMin);
+    const context = document.createElement('canvas').getContext('2d');
+    context.font = style.font;
+    const textWidth = context.measureText(ceMin.value || '0').width;
+    const available = ceMin.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 1;
+    if (available > 0 && textWidth > available) {
+      ceMin.style.fontSize = (Math.floor(parseFloat(style.fontSize) * available / textWidth * 10) / 10) + 'px';
+    }
+    ceMin.scrollLeft = 0;
+  }
+  ceMin.addEventListener('input', fitClockMinuteInput);
+  clockEditor.addEventListener('click', event => {
+    if (event.target.closest('.ce-arrow')) fitClockMinuteInput();
+  });
+  clockEditor.addEventListener('wheel', fitClockMinuteInput, { passive: true });
+
   /** 호버 버튼을 추가시간 뒤가 아닌 실제 시계 숫자 바로 오른쪽에 붙인다. */
   function positionClockToggle() {
     const button = $('clockToggle');
@@ -342,6 +362,7 @@
       clockEl.style.display = 'none';
     }
     clockEditor.classList.add('active');
+    fitClockMinuteInput();
     if (clockEl.closest('.fsm-board')) {
       const editorRect = clockEditor.getBoundingClientRect();
       const colonRect = ceColon.getBoundingClientRect();

@@ -907,6 +907,7 @@
 .ev-spotlight[hidden] { display: none; }
 .ev-spotlight .ev-list { overflow: visible; padding: 0; margin: 0; }
 .ev-spotlight.is-visible { pointer-events: auto; }
+.ev-spotlight.ev-spotlight-preview { z-index: 11001; pointer-events: none; }
 .ev-spotlight .ev-row { cursor: pointer; }
 .ev-spotlight .ev-period-marker { min-height: 40px; padding-block: 8px; }
 .ev-spotlight:has(.ev-period-marker)::after { inset: 0; border-left: 1px solid #A9A9A9; border-radius: 6px; }
