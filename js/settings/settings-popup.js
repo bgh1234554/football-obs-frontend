@@ -121,6 +121,7 @@ const SETTINGS_DEFAULTS = {
   // 경기 스탯 패널 (.st-title/.st-val) 글자 크기 (px). 막대 굵기(.st-bar height)가
   // 기본값(12px) 대비 이 값의 비율만큼 함께 굵어진다 (statBarHeight = 6px * size/12).
   statsNameSize: 12,
+  statsNameSizeFullscreen: null, // 대시보드 전체화면 값. null이면 전체화면 기본값(16px)을 따른다.
   matchInfoNameSize: 16,
   hthNameSize: 12,
   teamFixturesNameSize: 11,
@@ -355,7 +356,7 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // 현재 설정값을 보관하는 단일 객체. loadSettings()가 localStorage에서 채우고,
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
-const DASHBOARD_FULLSCREEN_DEFAULTS = { lineupNameSize: 16, benchInjuryNameSize: 14, lineupTokenScale: 115 };
+const DASHBOARD_FULLSCREEN_DEFAULTS = { lineupNameSize: 15, benchInjuryNameSize: 14, lineupTokenScale: 115, statsNameSize: 16 };
 // 기본값 이력을 저장하기 전 버전의 기준표. 앞으로 기본값을 변경해도 이 표는 유지한다.
 const SETTINGS_LEGACY_DEFAULTS = Object.freeze({
   "uiMode": "dark",
@@ -1656,7 +1657,7 @@ window.addEventListener('resize', closePanelFontPopup);
 // 화면 모드가 바뀌면 저장값은 유지하고 현재 화면의 기본값과 입력 UI만 다시 적용한다.
 let lastDashboardFontContext = null;
 function syncDashboardFontContext() {
-  const categories = [...Object.keys(DASHBOARD_FULLSCREEN_DEFAULTS), 'statsNameSize'];
+  const categories = Object.keys(DASHBOARD_FULLSCREEN_DEFAULTS);
   // 적용 값이 그대로면 화면 전환/리사이즈마다 이름 전체 피팅을 다시 돌리지 않고, 피팅 입력(패널 크기 등)이 바뀐 라인업만 맞춘다.
   const context = JSON.stringify(categories.map(category => getSetting(category)));
   const changed = context !== lastDashboardFontContext;

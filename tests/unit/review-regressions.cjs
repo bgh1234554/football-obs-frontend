@@ -159,6 +159,14 @@ const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function 
  modes.context.setSetting('lineupNameSize',17);
  modes.context.fullDefaults.lineupNameSize=20;modes.context.loadSettings();
  assert.equal(modes.context.getSetting('lineupNameSize'),17);
+ // 대시보드 전체화면 경기 스탯은 16px가 기본이고, 일반 화면에서 직접 바꾼 크기는 그대로 이어 쓴다.
+ const stats=session(null);
+ assert.equal(stats.context.getSetting('statsNameSize'),12);
+ stats.context.fullscreen=true;assert.equal(stats.context.getSetting('statsNameSize'),16);
+ stats.context.fullscreen=false;stats.context.setSetting('statsNameSize',14);
+ stats.context.fullscreen=true;assert.equal(stats.context.getSetting('statsNameSize'),14);
+ stats.context.resetPanelFontSetting('statsNameSize');assert.equal(stats.context.getSetting('statsNameSize'),16);
+ stats.context.fullscreen=false;assert.equal(stats.context.getSetting('statsNameSize'),14);
  // 저장 실패는 이전 저장값/이력을 지키며, 다음 로드에서 이전을 다시 시도한다.
  const before=s.stored();s.fail(true);s.context.defaults.eventSpotlightScale=200;s.context.loadSettings();
  assert.deepEqual(s.stored(),before);s.fail(false);s.context.loadSettings();

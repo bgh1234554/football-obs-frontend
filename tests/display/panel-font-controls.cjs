@@ -82,7 +82,7 @@ const root = path.resolve(__dirname, '../..');
     // 대시보드 전체화면 기본값과 직접 조정한 값은 일반 화면과 분리해서 저장한다.
     await page.evaluate(() => document.documentElement.requestFullscreen());
     await settle(page);
-    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [16, 14]);
+    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [15, 14]);
     assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 115);
     await page.evaluate(() => setSetting('lineupTokenScale', 90));
     await page.locator('#benchPanel [data-panel-font]').first().click();
@@ -129,7 +129,7 @@ const root = path.resolve(__dirname, '../..');
     assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [19, 17]);
     assert.equal(await page.evaluate(() => getSetting('lineupTokenScale')), 90);
     await page.evaluate(() => { resetSettingsToDefaults(); clearPolling(); });
-    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [16, 14]);
+    assert.deepEqual(await page.evaluate(() => ['lineupNameSize', 'benchInjuryNameSize'].map(getSetting)), [15, 14]);
     await page.evaluate(() => document.fullscreenElement ? document.exitFullscreen() : undefined);
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.evaluate(() => {
@@ -482,7 +482,8 @@ const root = path.resolve(__dirname, '../..');
       await page.evaluate(view => activatePage(view), view);
       await settle(page);
       await page.evaluate(() => resetPanelFontSetting('statsNameSize'));
-      const defaultSize = view === 'main-big' ? 16 : 12;
+      // 대시보드는 전체화면(창 높이 = 화면 높이)일 때 전체화면 기본값 16px을 쓴다.
+      const defaultSize = view === 'main-big' || await page.evaluate(() => isDashboardFullscreen()) ? 16 : 12;
       assert.equal(await page.evaluate(() => getSetting('statsNameSize')), defaultSize);
       assert.equal(await page.locator('input[data-settings-slider="statsNameSize"]').inputValue(), String(defaultSize));
       await page.evaluate(() => setSetting('statsNameSize', 18));
