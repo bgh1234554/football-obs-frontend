@@ -145,7 +145,7 @@ const root = path.resolve(__dirname, '../..');
       Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight });
       window.dispatchEvent(new Event('resize'));
     });
-    assert.deepEqual(await page.evaluate(() => ['--lp-name-base-size', '--dp-item-name-size'].map(key => document.documentElement.style.getPropertyValue(key))), ['16px', '14px']);
+    assert.deepEqual(await page.evaluate(() => ['--lp-name-base-size', '--dp-item-name-size'].map(key => document.documentElement.style.getPropertyValue(key))), ['15px', '14px']);
     await page.evaluate(() => {
       Object.defineProperty(screen, 'height', { configurable: true, value: innerHeight + 100 });
       setSetting('lineupNameSize', 18);
