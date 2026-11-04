@@ -310,16 +310,17 @@
       outline-offset: 2px;
     }
 
-    /* 시계 조작은 호버로 표시하고 시간 편집 중에는 숨긴다. */
+    /* 시계 조작은 호버로 표시하고 시간 편집 중에는 숨긴다.
+       평소에는 visibility 대신 투명도/포인터만 꺼서 Tab으로 버튼에 들어올 수 있게 하고, 포커스되면 표시한다. */
     .scoreboard-timer { position: relative; }
     .clock-hover-controls {
       display: flex; gap: 2px;
       position: absolute; left: var(--clock-toggle-left, 100%); top: var(--clock-toggle-top, 50%); transform: translate(-50%, -50%);
-      margin: 0; z-index: 5; visibility: hidden;
+      margin: 0; z-index: 5; opacity: 0; pointer-events: none;
     }
     .clock-hover-controls .ce-confirm { margin: 0; flex: 0 0 auto; width: var(--clock-control-size, 24px); height: var(--clock-control-size, 24px); font-size: 11px; }
     .scoreboard-timer:hover > .clock-hover-controls,
-    .scoreboard-timer > .clock-hover-controls:has(:focus-visible) { visibility: visible; }
+    .scoreboard-timer > .clock-hover-controls:has(:focus-visible) { opacity: 1; pointer-events: auto; }
     .scoreboard-timer:has(.clock-editor.active) > .clock-hover-controls { visibility: hidden; }
     .scoreboard-timer:hover:not(:has(.clock-editor.active)) > #extra,
     .scoreboard-timer:has(.clock-hover-controls :focus-visible):not(:has(.clock-editor.active)) > #extra { translate: var(--clock-extra-shift, 0px) 0; }

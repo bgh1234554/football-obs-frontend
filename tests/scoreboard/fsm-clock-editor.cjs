@@ -3,6 +3,8 @@ const root=path.resolve(__dirname,'../..');
 (async()=>{const browser=await chromium.launch({headless:true});try{
 const page=await browser.newPage({viewport:{width:1280,height:720}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!=='http://localhost')return route.abort();const f=path.join(root,u.pathname==='/'?'overlay_dashboard.html':decodeURIComponent(u.pathname));if(!fs.existsSync(f)||fs.statSync(f).isDirectory())return route.fulfill({status:404,body:''});return route.fulfill({body:fs.readFileSync(f),contentType:{'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.ttf':'font/ttf','.woff':'font/woff'}[path.extname(f)]||'application/octet-stream'});});
+/** 시계 hover 버튼이 실제로 보이고 누를 수 있는지. 평소에는 Tab 이동을 위해 투명도로만 숨긴다. */
+const clockControlShown=id=>page.locator('#'+id).evaluate(e=>{const c=getComputedStyle(e.parentElement);return c.visibility==='visible'&&c.opacity==='1'&&c.pointerEvents!=='none';});
 await page.goto('http://localhost/');await page.addStyleTag({content:'* { transition: none !important; animation: none !important; }'});await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(200);
 
 for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
@@ -29,7 +31,7 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
  await page.locator('#ceMin').fill('2');
  const confirmRect=await page.locator('#ceConfirm').boundingBox();
  assert.equal(await page.locator('#clockEditor .clock-toggle').count(),0);
- assert(!await page.locator('#clockToggle').isVisible(),`${theme}: playback hidden while editing`);
+ assert(!await clockControlShown('clockToggle'),`${theme}: playback hidden while editing`);
  const editorRect=await page.locator('#clockEditor').boundingBox();
  const clockRect=await page.locator('#clock').boundingBox();
  assert(Math.abs(editorRect.height-clockRect.height)<1&&Math.abs(editorRect.y-clockRect.y)<1,`${theme}: editing keeps original clock height and vertical position`);
@@ -79,27 +81,32 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
  assert.equal(await page.locator('#ceSec').inputValue(),'15');
  await page.keyboard.press('Escape');
  assert(await page.evaluate(()=>state.running&&state.seconds>=125&&state.seconds<615),`${theme}: cancel keeps elapsed time and discards draft`);
- await page.mouse.click(0,0);assert(!await page.locator('#clockToggle').isVisible(),`${theme}: playback hidden away from clock`);
- await page.locator('#clock').hover();assert(await page.locator('#clockToggle').isVisible());
+ await page.mouse.click(0,0);assert(!await clockControlShown('clockToggle'),`${theme}: playback hidden away from clock`);
+ await page.locator('#clock').hover();assert(await clockControlShown('clockToggle'));
  const clockBox=await page.locator('#clock').boundingBox();
  const hoverBox=await page.locator('#clockToggle').boundingBox();
- assert(await page.locator('#clockStop').isVisible(),`${theme}: stop appears beside playback`);
+ assert(await clockControlShown('clockStop'),`${theme}: stop appears beside playback`);
  if(theme==='seriea')await page.screenshot({path:path.join(root,'screenshots','fsm-clock-editor','seriea-hover-controls.png')});
  await page.locator('#clockToggle').click();assert(!await page.evaluate(()=>state.running));
- await page.mouse.move(0,0);assert(!await page.locator('#clockToggle').isVisible(),`${theme}: mouse click does not leave playback stuck visible`);
+ await page.mouse.move(0,0);assert(!await clockControlShown('clockToggle'),`${theme}: mouse click does not leave playback stuck visible`);
  await page.locator('#clock').hover();
  const pausedSeconds=await page.evaluate(()=>state.seconds);
  await page.evaluate(()=>syncRunningClockToNow(Date.now()+5000));assert.equal(await page.evaluate(()=>state.seconds),pausedSeconds);
  assert.equal(await page.locator('#clockToggle').getAttribute('aria-label'),'타이머 시작');
  await page.locator('#clockToggle').press('Enter');assert(await page.evaluate(()=>state.running));
  await page.locator('#clockToggle').press('Space');assert(!await page.evaluate(()=>state.running));
- await page.locator('#clock').dblclick();assert(!await page.locator('#clockToggle').isVisible());
+ await page.locator('#clock').dblclick();assert(!await clockControlShown('clockToggle'));
  await page.locator('#ceMin').fill('0');await page.locator('#ceSec').fill('16');await page.locator('#ceConfirm').click();
  assert(await page.evaluate(()=>state.running&&state.seconds>=16&&state.seconds<17));
  await page.locator('#clock').hover();await page.locator('#clockToggle').click();
  assert(await page.evaluate(()=>!state.running&&state.seconds>=16&&state.seconds<17),`${theme}: hover pause uses live time, not old editor draft`);
  await page.locator('#clockToggle').evaluate(e=>e.blur());await page.mouse.move(0,0);
- assert(!await page.locator('#clockToggle').isVisible());
+ assert(!await clockControlShown('clockToggle'));
+ // 마우스 없이 키보드로 버튼에 들어오면 보인다.
+ await page.keyboard.press('Shift');await page.locator('#clockToggle').focus();
+ assert(await page.locator('#clockToggle').evaluate(e=>e.matches(':focus-visible')&&document.activeElement===e),`${theme}: playback reachable by keyboard`);
+ assert(await clockControlShown('clockToggle'),`${theme}: keyboard focus shows playback`);
+ await page.locator('#clockToggle').evaluate(e=>e.blur());
  // 세 자리 시간에서도 두 버튼이 시간 숫자와 추가시간 사이에 들어간다.
  for(const seconds of [2790,6300,7200]){
   await page.evaluate(seconds=>{setManualExtra(1);setClockSeconds(seconds,{autoStart:true});},seconds);
