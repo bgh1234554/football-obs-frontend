@@ -55,7 +55,7 @@ async function geometry(page) {
     const layout = panel.closest('.layout-wrap');
     const scale = outer.height / r.height;
     const top = layout.getBoundingClientRect().top + parseFloat(getComputedStyle(layout).paddingTop) * scale;
-    return { width: r.width, height: r.height, fraction: r.height / _lineupGetMaxHeight(panel),
+    return { width: r.width, height: r.height, maxHeight: _lineupGetMaxHeight(panel), fraction: r.height / _lineupGetMaxHeight(panel),
       top: outer.top, minTop: top, bottom: outer.bottom,
       stored: [localStorage.getItem(_lineupSizeKey(LINEUP_EDGE_W_KEY)), localStorage.getItem(_lineupSizeKey(LINEUP_HEIGHT_REFERENCE_KEY)), getSetting('lineupScale')],
       pitches: [...panel.querySelectorAll('.dp-lineup-vertical-pitch')].map(el => {
@@ -244,8 +244,11 @@ async function fullscreenApi(browser) {
   const before = await check(page);
   await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
   const entered = await check(page);
-  near(entered.width, before.width, 'Fullscreen API entry width');
-  near(entered.height, before.height, 'Fullscreen API entry height');
+  // 자동화의 Fullscreen API는 뷰포트 높이를 늘리지 않는다. 커진 점수판으로 공간이 부족하면 피치 비율을 유지해 맞춘다.
+  const entryHeight = Math.min(before.height, entered.maxHeight);
+  near(entered.height, entryHeight, 'Fullscreen API entry fits available height');
+  near(entered.width / entered.height, before.width / before.height, 'Fullscreen API entry preserves pitch ratio', .003);
+  assert.deepEqual(entered.stored, before.stored, 'fullscreen board scaling must not rewrite lineup settings');
   const widened = await drag(page, 'lp-lineup-right-edge', 0, 20);
   near(widened.height, entered.height, 'fullscreen width edit preserves height');
   assert.equal(JSON.parse(widened.stored[1]).fullscreen, true, 'width edit records fullscreen context');
@@ -283,8 +286,8 @@ async function fullscreenApi(browser) {
     const regularReset = await check(page);
     await page.evaluate(() => document.documentElement.requestFullscreen()); await settle(page);
     const regularEntered = await check(page);
-    near(regularEntered.width, regularReset.width, 'regular reset keeps pitch width on fullscreen entry');
-    near(regularEntered.height, regularReset.height, 'regular reset keeps pitch height on fullscreen entry');
+    near(regularEntered.height, Math.min(regularReset.height, regularEntered.maxHeight), 'regular reset fits fullscreen space');
+    near(regularEntered.width / regularEntered.height, regularReset.width / regularReset.height, 'regular reset preserves pitch ratio', .003);
     assert.equal(await page.evaluate(() => getSetting('lineupNameSize')), 15);
     assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue('--lp-name-base-size')), '15px');
     await page.evaluate(() => document.exitFullscreen()); await settle(page);

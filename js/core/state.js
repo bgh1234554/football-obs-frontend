@@ -20,6 +20,7 @@
   const LEGACY_NANUM_GOTHIC_DEFAULT_FONT_FAMILY = normalizeFontFamilySpec("'Ubuntu', 'Nanum Gothic', 'Malgun Gothic', 'Apple SD Gothic Neo', Arial, sans-serif");
   // PK 하프에서 잠시 다른 하프로 이탈했다 돌아왔을 때 시퀀스를 보존하는 retention 시간 (30초).
   const PK_RETENTION_MS = 30 * 1000;
+  const BOARD_SCALE_DEFAULTS = { windowed: 85, fullscreen: 100 };
 
   /** PK 점수 정규화 — null은 그대로, 음수/NaN은 0으로 클램프. */
   function normalizePenaltyScore(scoreMaybe){
@@ -64,7 +65,9 @@
     homeLogoUpload: '', awayLogoUpload: '',
     radiusMode: 'round',
     boardWidth: 1080,
-    boardScale: 85,
+    boardScale: BOARD_SCALE_DEFAULTS.windowed,
+    boardScaleFullscreen: BOARD_SCALE_DEFAULTS.fullscreen,
+    boardScaleDefaults: { ...BOARD_SCALE_DEFAULTS },
     boardScaleDefault85Migrated: true,
     boardPosition: 'center',
     homeLogoScale: 1, awayLogoScale: 1,
@@ -254,6 +257,15 @@
       const migrateBoardScale = saved && saved.boardScaleDefault85Migrated !== true;
       if (migrateBoardScale && Number(saved.boardScale) === 75) state.boardScale = 85;
       state.boardScaleDefault85Migrated = true;
+      // 기존 공통 배율은 두 모드로 옮기되, 이전 기본값 85만 전체화면 기본값 100으로 바꾼다.
+      const previousScaleDefaults = saved?.boardScaleDefaults || { windowed: 85, fullscreen: 85 };
+      const validScale = value => Number.isFinite(value) && value >= 50 && value <= 125;
+      const previousWindowed = validScale(state.boardScale) ? state.boardScale : BOARD_SCALE_DEFAULTS.windowed;
+      const previousFullscreen = validScale(saved?.boardScaleFullscreen) ? saved.boardScaleFullscreen : previousWindowed;
+      state.boardScale = previousWindowed === previousScaleDefaults.windowed ? BOARD_SCALE_DEFAULTS.windowed : previousWindowed;
+      state.boardScaleFullscreen = previousFullscreen === previousScaleDefaults.fullscreen ? BOARD_SCALE_DEFAULTS.fullscreen : previousFullscreen;
+      state.boardScaleDefaults = { ...BOARD_SCALE_DEFAULTS };
+      const migrateScaleDefaults = saved && JSON.stringify(saved.boardScaleDefaults) !== JSON.stringify(BOARD_SCALE_DEFAULTS);
       // 새로고침 사이 경과한 실제 시간을 더해줘서 시계가 끊기지 않게 보정.
       // lastRunningTickMs는 timer.js의 tick()에서 매 틱마다 Date.now()로 갱신 + beforeunload에서 persist.
       if (state.running && state.lastRunningTickMs) {
@@ -301,6 +313,6 @@
       if (!state.teamColorsByFixture[state.teamColorOverrideFixtureId]) saveFixtureTeamColors();
       state.leagueId = saved?.leagueId ?? null;
       state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;
-      if (migrateBoardScale) persist();
+      if (migrateBoardScale || migrateScaleDefaults) persist();
     }catch(e){ console.warn('복원 실패:', e); }
   }

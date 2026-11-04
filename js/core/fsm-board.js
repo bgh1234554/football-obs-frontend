@@ -2165,7 +2165,7 @@ window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickContro
 function syncScoreboardScaleControl(root, key) {
   const control = root.querySelector(`[data-scale-key="${key}"]`);
   if (!control) return;
-  const value = Number(state.boardScale) || 85;
+  const value = getBoardScale();
   control.querySelector('input').value = value;
   control.querySelector('output').textContent = `${value}%`;
 }
@@ -2196,7 +2196,7 @@ function createScoreboardScaleControl(key, label) {
   control.querySelector('input').addEventListener('pointercancel', finishScoreboardScaleDrag);
   control.querySelector('input').addEventListener('lostpointercapture', finishScoreboardScaleDrag);
   control.querySelector('input').addEventListener('change', () => persist());
-  control.querySelector('button').addEventListener('click', () => { update(85); persist(); });
+  control.querySelector('button').addEventListener('click', () => { update(getBoardScaleDefault()); persist(); });
   const wrapper = document.createElement('div');
   wrapper.append(control);
   syncScoreboardScaleControl(wrapper, key);

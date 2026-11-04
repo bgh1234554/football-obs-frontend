@@ -14,10 +14,21 @@ const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
   const context=load();
   assert.equal(context.result.boardScale,saved?.boardScaleDefault85Migrated?75:saved?.boardScale===90?90:85);
   assert.equal(context.result.boardScaleDefault85Migrated,true);
+  assert.equal(context.result.boardScaleFullscreen,saved?.boardScaleDefault85Migrated?75:saved?.boardScale===90?90:100);
   // 사용자가 75%로 되돌려 저장한 뒤 새로고침해도 재전환하지 않는다.
   context.result.boardScale=75;
+  context.result.boardScaleFullscreen=110;
   context.persist();
   assert.equal(load().result.boardScale,75);
+  assert.equal(load().result.boardScaleFullscreen,110);
+ }
+ // 모드별 기본값도 저장 당시 기본값과 같은 값만 새 기본값으로 이전한다.
+ for (const fullscreen of [85,95]) {
+  const stored={boardScale:85,boardScaleFullscreen:fullscreen,boardScaleDefault85Migrated:true,boardScaleDefaults:{windowed:85,fullscreen:85}};
+  const context={console,$:()=>null,clampNum:(v,min,max,fallback)=>Math.min(max,Math.max(min,Number(v)||fallback)),expireStalePkState(){},localStorage:{getItem:()=>JSON.stringify(stored),setItem(){}}};
+  vm.runInNewContext(read('js/core/state.js')+'\nrestore();globalThis.result=state;',context);
+  assert.equal(context.result.boardScale,85);
+  assert.equal(context.result.boardScaleFullscreen,fullscreen===85?100:95);
  }
 }
 // 누적 퇴장 추정은 카드 종류만 바꾸며, 사유와 API 원본은 그대로 보존한다.

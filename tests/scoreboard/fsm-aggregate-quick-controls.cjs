@@ -317,6 +317,82 @@ const { openPage, settle } = require('../tactics/helpers');
     assert.equal(await page.evaluate(() => window.fsmScaleDrag), null);
     assert.equal(await page.locator('#boardScaleRange').inputValue(), '65');
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('obs-scoreboard-state-v2')).boardScale), 65);
+
+    // 창모드/전체화면의 기본값·수동값·초기화는 각각 저장하고 실제 배율과 모든 입력창을 맞춘다.
+    const modes = await openPage(browser, { dpr: 1, platform: 'Win32', viewport: { width: 1920, height: 950 } });
+    modes.on('pageerror', error => errors.push(error.message));
+    await modes.evaluate(() => { clearPolling(); activatePage('main-big'); });
+    const expectScale = async expected => {
+      await settle(modes);
+      const result = await modes.evaluate(() => {
+        const stage = document.getElementById('boardStageInner');
+        return { value: getBoardScale(), range: document.getElementById('boardScaleRange').value,
+          ratio: stage.getBoundingClientRect().width / stage.offsetWidth,
+          menus: [...document.querySelectorAll('.fsm-scale-control input')].map(input => input.value) };
+      });
+      assert.equal(result.value, expected);
+      assert.equal(result.range, String(expected));
+      assert(Math.abs(result.ratio - expected / 100) < .002, `rendered scale: ${JSON.stringify(result)}`);
+      assert(result.menus.every(value => value === String(expected)));
+    };
+    const editScale = async value => {
+      await modes.evaluate(() => activatePage('theme'));
+      await modes.locator('#boardScaleRange').fill(String(value));
+      await expectScale(value);
+    };
+    await expectScale(85);
+    await modes.evaluate(() => document.documentElement.requestFullscreen());
+    await expectScale(100);
+    await editScale(110);
+    await modes.evaluate(() => document.exitFullscreen());
+    await expectScale(85);
+    await editScale(90);
+    await modes.evaluate(() => document.documentElement.requestFullscreen());
+    await expectScale(110);
+    await modes.reload();
+    await modes.evaluate(() => { clearPolling(); activatePage('theme'); });
+    if (!(await modes.evaluate(() => !!document.fullscreenElement))) {
+      await modes.evaluate(() => document.documentElement.requestFullscreen());
+    }
+    await expectScale(110);
+    await modes.locator('#boardScaleReset').click();
+    await expectScale(100);
+    await modes.evaluate(() => document.exitFullscreen());
+    await expectScale(90);
+    await modes.locator('#boardScaleReset').click();
+    await expectScale(85);
+    // 기본값 적용 뒤 85%로 직접 되돌린 전체화면 값은 다음 로드에서도 유지한다.
+    await modes.evaluate(() => document.documentElement.requestFullscreen());
+    await editScale(85);
+    await modes.reload();
+    await modes.evaluate(() => { clearPolling(); activatePage('main-big'); });
+    if (!(await modes.evaluate(() => !!document.fullscreenElement))) {
+      await modes.evaluate(() => document.documentElement.requestFullscreen());
+    }
+    await expectScale(85);
+    await modes.locator('#team-score-left').click();
+    await modes.locator('#boardAggControls .fsm-scale-control button').click();
+    await expectScale(100);
+    await modes.keyboard.press('Escape');
+    if (await modes.evaluate(() => !!document.fullscreenElement)) await modes.evaluate(() => document.exitFullscreen());
+    await expectScale(85);
+    // F11에 쓰이는 display-mode 경로는 모든 테마에서 두 뷰의 배율 전환을 검증한다.
+    await modes.evaluate(() => {
+      window.testBoardFullscreen = false;
+      Object.defineProperty(boardFullscreenMedia, 'matches', { configurable: true, get: () => window.testBoardFullscreen });
+    });
+    for (const theme of await modes.evaluate(() => Object.keys(FSM_THEMES))) {
+      await modes.evaluate(theme => applyTheme(theme, null), theme);
+      await modes.waitForFunction(() => !pendingThemeLink);
+      for (const view of ['main-big', 'main-small']) {
+        await modes.evaluate(view => activatePage(view), view);
+        for (const fullscreen of [true, false]) {
+          await modes.evaluate(fullscreen => { window.testBoardFullscreen = fullscreen; window.dispatchEvent(new Event('resize')); }, fullscreen);
+          await expectScale(fullscreen ? 100 : 85);
+        }
+      }
+    }
+    console.log('PASS scoreboard scale: windowed/fullscreen defaults, separate persistence, reload, both reset controls and all themes/views.');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

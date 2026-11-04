@@ -884,7 +884,7 @@
       let loadedFonts = 0;
       document.fonts?.forEach(face => { if (face.status === 'loaded') loadedFonts++; });
       return JSON.stringify([homeLines, awayLines, state.noteFontSize ?? 18,
-        state.noteEnabled, state.manualMode, state.boardScale, state.boardPosition,
+        state.noteEnabled, state.manualMode, getBoardScale(), state.boardPosition,
         boardEl.className, boardEl.dataset.fsmTheme, boardH, timerH, loadedFonts,
         $('boardStageWrap').clientWidth, rectKey(stage), rectKey(boardEl), rectKey(main),
         main ? Array.from(main.children, rectKey) : [], fontKey(el.homeNote), fontKey(el.awayNote)]);
@@ -901,7 +901,7 @@
     if (homeNoteSide) homeNoteSide.style.width = 'max-content';
     if (awayNoteSide) awayNoteSide.style.width = 'max-content';
 
-    const scale = boardScaleFactor(state.boardScale ?? 85);
+    const scale = boardScaleFactor(getBoardScale());
     const viewportWidth = $('boardStageWrap').clientWidth;
     const available = Math.max(0, (viewportWidth - 16) / scale - boardEl.offsetWidth - 10);
     const position = state.boardPosition || 'center';
@@ -1034,6 +1034,27 @@
   const boardStageWrap  = $('boardStageWrap');
   const boardScaleRange = $('boardScaleRange');
   const boardScaleLabel = $('boardScaleLabel');
+  const boardFullscreenMedia = window.matchMedia('(display-mode: fullscreen)');
+  let boardFullscreenApplied = null;
+
+  /** Fullscreen API와 브라우저 F11 전체화면 모두 같은 모드별 배율을 사용한다. */
+  function isBoardFullscreen() {
+    return !!document.fullscreenElement || boardFullscreenMedia.matches;
+  }
+  function getBoardScaleDefault() {
+    return BOARD_SCALE_DEFAULTS[isBoardFullscreen() ? 'fullscreen' : 'windowed'];
+  }
+  function getBoardScale() {
+    return (isBoardFullscreen() ? state.boardScaleFullscreen : state.boardScale) ?? getBoardScaleDefault();
+  }
+  function setBoardScaleValue(value) {
+    state[isBoardFullscreen() ? 'boardScaleFullscreen' : 'boardScale'] = value;
+  }
+  function syncBoardFullscreenScale() {
+    if (boardFullscreenApplied === isBoardFullscreen()) return;
+    initBoardScale();
+    autoLayoutNotes();
+  }
 
   // 터치 기기 전술판 배치(js/tactics/tactics.js: tacticsApplyTouchLayout)에서 점수판을 작게 줄이는 비율.
   // 사용자가 정한 배율의 70%까지만 쓰고, 좁은 세로 화면에서는 점수판이 화면 폭 안에 들어오도록 더 줄인다.
@@ -1238,11 +1259,14 @@
 
   /** restore() 후 state.boardScale 값으로 초기 배율을 적용 (DOM 렌더 후 requestAnimationFrame에서 호출) */
   function initBoardScale(){
-    const pct = state.boardScale ?? 85;
-    applyBoardScale(pct);
+    boardFullscreenApplied = isBoardFullscreen();
+    applyBoardScale(getBoardScale());
   }
   // 터치 기기 전술판 배치 전환/탭 이동/화면 회전 시 점수판 배율을 다시 계산하도록 노출
-  window.reapplyBoardScale = () => applyBoardScale(state.boardScale ?? 85);
+  window.reapplyBoardScale = () => initBoardScale();
+  document.addEventListener('fullscreenchange', syncBoardFullscreenScale);
+  boardFullscreenMedia.addEventListener('change', syncBoardFullscreenScale);
+  window.addEventListener('resize', syncBoardFullscreenScale);
 
   if (window.ResizeObserver && boardStageInner) {
     new ResizeObserver(entries => {
@@ -1260,23 +1284,23 @@
 
   // [이벤트 등록] 배율 슬라이더 및 리셋 버튼
   boardScaleRange?.addEventListener('input', e=>{
-    state.boardScale = Number(e.target.value);
+    setBoardScaleValue(Number(e.target.value));
     if (!window.fsmScaleDrag) {
-      applyBoardScale(state.boardScale);
+      applyBoardScale(getBoardScale());
       return;
     }
     // 드래그 입력이 몰려도 프레임마다 최신 배율만 미리보기로 반영합니다.
     if (boardScaleInputFrame !== null) return;
     boardScaleInputFrame = requestAnimationFrame(() => {
       boardScaleInputFrame = null;
-      applyBoardScale(state.boardScale);
+      applyBoardScale(getBoardScale());
     });
   });
   boardScaleRange?.addEventListener('change', () => persist());
 
   $('boardScaleReset')?.addEventListener('click', ()=>{
-    state.boardScale = 85;
-    applyBoardScale(75);
+    setBoardScaleValue(getBoardScaleDefault());
+    applyBoardScale(getBoardScale());
     persist();
   });
 

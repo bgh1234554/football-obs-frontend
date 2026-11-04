@@ -1541,7 +1541,9 @@ function applyStoredLineupEdgeOverrides() {
       lineupHeightReferences.set(panel, reference);
     }
     // 전체화면 진입은 크기 유지. 일반 화면 복귀는 원본 화면의 높이 비율로 환산한다.
-    const sameViewport = !reference.viewportHeight || reference.viewportHeight === window.innerHeight;
+    // 점수판 배율이 창모드/전체화면별로 달라 뷰포트 높이가 같아도 전체화면에서 돌아오면 원본 비율로 환산한다.
+    const sameViewport = (!reference.viewportHeight || reference.viewportHeight === window.innerHeight)
+      && !(reference.fullscreen && !_lineupIsFullscreen());
     const height = Math.min(available, _lineupIsFullscreen() || sameViewport
       ? reference.height : reference.height * available / reference.available);
     const storedW = _lineupEdgeLoad(LINEUP_EDGE_W_KEY, LINEUP_EDGE_MIN_W);
