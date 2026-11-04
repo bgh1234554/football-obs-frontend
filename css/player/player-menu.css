@@ -250,10 +250,11 @@
   background: rgba(18, 18, 35, 0.99);
   border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.16);
   border-radius: 12px;
-  width: 520px;
+  /* --pm-modal-scale: 스탯 모달 창 크기 슬라이더(player-stats-modal-controls.js). 다른 모달은 1 */
+  width: calc(520px * var(--pm-modal-scale, 1));
   max-width: calc(calc(var(--display-vw, 1vw) * 100) - 32px);
   /* 고정 높이 지정 — body가 flex:1로 남은 공간 채울 수 있도록 */
-  height: min(calc(var(--display-vh, 1vh) * 85), 600px);
+  height: calc(min(calc(var(--display-vh, 1vh) * 85), 600px) * var(--pm-modal-scale, 1));
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 40px rgba(0,0,0,.75);
@@ -428,10 +429,86 @@
 
 /* ── 시즌 스탯 wide modal ── */
 .pm-modal.pm-modal-szn {
-  width: calc(var(--display-vw, 1vw) * 55);
+  width: calc(var(--display-vw, 1vw) * 55 * var(--pm-modal-scale, 1));
   min-width: min(400px, calc(calc(var(--display-vw, 1vw) * 100) - 32px));
-  height: min(calc(var(--display-vh, 1vh) * 85), 700px);
+  height: calc(min(calc(var(--display-vh, 1vh) * 85), 700px) * var(--pm-modal-scale, 1));
 }
+
+/* ── 스탯 모달 창 크기 / 내용 확대 (player-stats-modal-controls.js) ── */
+.pm-modal-sizable .pm-modal-header { gap: 10px; }
+/* 제목줄 창 크기 버튼은 아래 내용 확대 버튼(.pm-content-zoom)과 같은 모양을 쓰고 위치만 다르다. */
+.pm-modal-header .pm-modal-size { margin: 0 0 0 auto; }
+/* 가운데 %에 마우스를 올리면 아래로 배율 목록 — 아래 본문 위에 그려지도록 제목줄을 위로 올린다. */
+.pm-modal-sizable .pm-modal-header { position: relative; z-index: 2; }
+.pm-size-preset { position: relative; display: inline-flex; }
+.pm-size-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  min-width: 58px;
+  background: var(--ui-surface-raised, rgb(18, 18, 35));
+  border: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+/* 값과 목록 사이 틈을 지날 때 목록이 닫히지 않도록 이어 준다. */
+.pm-size-preset::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 6px; }
+.pm-size-preset:is(:hover, :focus-within):not(.is-closed) .pm-size-menu { display: flex; }
+.pm-content-zoom .pm-size-menu button { width: 100%; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.pm-content-zoom .pm-size-menu button[aria-checked="true"] { background: rgba(var(--control-accent-rgb, 59, 130, 246),.28); }
+.pm-szn-profile-row {
+  /* 글씨 크기 배율 목록이 아래 스탯 표 위에 그려지도록 */
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  border-bottom: 1px solid rgba(var(--ui-ink-rgb, 255, 255, 255),.12);
+}
+.pm-szn-profile-row .pm-szn-profile { flex: 1 1 auto; min-width: 0; border-bottom: none; }
+/* -/+는 시즌 탐색 버튼(.pm-nav-btn)과 같은 둥근 버튼, 가운데 %는 배경 없는 텍스트 버튼 */
+.pm-content-zoom {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 12px 10px 0;
+}
+.pm-content-zoom button {
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-text, #e2e8f0);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .1s;
+}
+.pm-content-zoom .pm-zoom-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  background: rgba(var(--ui-ink-rgb, 255, 255, 255),.1);
+  border-color: rgba(var(--ui-ink-rgb, 255, 255, 255),.18);
+}
+.pm-zoom-btn svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; fill: none; }
+.pm-content-zoom .pm-zoom-value { min-width: 42px; padding: 0 3px; font-variant-numeric: tabular-nums; }
+.pm-content-zoom button:hover:not(:disabled) { background: rgba(var(--ui-ink-rgb, 255, 255, 255),.2); }
+.pm-content-zoom button:focus-visible { outline: 1px solid currentColor; outline-offset: 1px; }
+.pm-content-zoom button:disabled { opacity: .3; cursor: default; }
+/* 창 크기와 별개로 프로필·시즌 탐색·표만 확대한다. 넘치면 기존 스크롤 영역(.pm-szn-scroll)이 스크롤한다. */
+/* --pm-content-zoom-base: 글씨 크기 100%의 기준. 예전 125% 크기를 새 100%로 쓴다. */
+.pm-modal-sizable { --pm-content-zoom-base: 1.25; }
+.pm-modal-sizable :is(.pm-szn-profile, .pm-szn-nav-fixed > *, .pm-szn-scroll > *) { zoom: calc(var(--pm-content-zoom, 1) * var(--pm-content-zoom-base)); }
 
 .pm-modal-body.pm-body-split {
   display: flex;

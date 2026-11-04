@@ -714,6 +714,8 @@ async function pmShowMatchStats(playerId, player, stats) {
 </div>`;
 
   pmRenderMatchProfile(player, playerId);
+  // 창 크기 슬라이더와 내용 확대 버튼(player-stats-modal-controls.js)
+  window.pmMountStatsModalControls?.('match');
   document.getElementById('pmModalClose').addEventListener('click', pmHideAll);
   document.getElementById('pmBackdrop').addEventListener('click', e => {
     if (e.target === e.currentTarget) pmHideAll();
@@ -853,6 +855,7 @@ async function pmShowSeasonStats(playerId, player) {
   </div>
 </div>`;
 
+  window.pmMountStatsModalControls?.('season');
   document.getElementById('pmModalClose').addEventListener('click', pmHideAll);
   document.getElementById('pmBackdrop').addEventListener('click', e => {
     if (e.target === e.currentTarget) pmHideAll();
