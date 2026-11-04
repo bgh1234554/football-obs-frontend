@@ -64,5 +64,7 @@ const PLAYER_SZN_LABELS = {
   // ── 네비게이션 / 상태 ────────────────────────────────────────────────────
   navOlder:  '&#9664; 이전 시즌',
   navNewer:  '다음 시즌 &#9654;',
+  navOlderLoading: '불러오는 중...',
+  navOlderNone:    '이전 기록 없음',
   emptyData: '데이터 없음',
 };

@@ -11,6 +11,7 @@ const root = path.resolve(__dirname, '../..');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const calls = [];
+    const statCalls = [];
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
       if (url.pathname === '/api/players/search') {
@@ -22,6 +23,14 @@ const root = path.resolve(__dirname, '../..');
         const count = query === 'Empty' ? 0 : byId ? 1 : rawPage === 1 ? 250 : 7;
         const players = Array.from({ length: count }, (_, i) => ({ id: byId ? Number(query) : rawPage * 1000 + i, name: `후보 ${rawPage}-${i}`, fullName: `후보 선수 ${rawPage}-${i}`, englishName: `German Ivan ${rawPage}-${i}`, nationality: 'Testland', age: 25, number: 19, photoUrl: 'http://localhost/resources/imgs/manual-player.png' }));
         return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ players, page: rawPage, totalPages: byId || !count ? 1 : 2 }) });
+      }
+      if (url.pathname === '/api/playerStats/555') {
+        // 기본 조회는 2025~2026, 이전 시즌 버튼은 season 파라미터로 요청한다. 백엔드가 빈 2024~2023을 건너뛰고 2022를 준 상황, 2021부터는 기록 없음.
+        const season = url.searchParams.get('season');
+        statCalls.push(season);
+        const row = year => [{ league: { name: `리그 ${year}` }, team: { name: '팀' }, games: { appearences: 1 } }];
+        const statistics = season == null ? { '2025': row(2025), '2026': row(2026) } : season === '2024' ? { '2022': row(2022) } : {};
+        return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ player: season == null ? { id: 555, name: '시즌 선수' } : null, statistics }) });
       }
       if (url.hostname !== 'localhost') return route.abort();
       const file = path.join(root, decodeURIComponent(url.pathname === '/' ? '/overlay_dashboard.html' : url.pathname));
@@ -372,7 +381,23 @@ const root = path.resolve(__dirname, '../..');
     assert.deepEqual(await reloadZeroPlayer('search-test'), { home: 0, away: matchedId });
     await page.reload();
     assert.deepEqual(await reloadZeroPlayer('search-test'), { home: 0, away: matchedId });
+    // 시즌 스탯 모달: 가장 오래된 시즌에서 이전 시즌 버튼은 한 해 전부터 요청해 응답 시즌(빈 해 건너뜀)으로 이동하고, 기록이 없으면 잠긴다.
+    await page.evaluate(() => pmShowSeasonStats(555, { playerId: 555, name: '시즌 선수', number: 7 }));
+    const seasonKey = () => page.locator('.pm-szn-key').textContent();
+    await page.waitForFunction(() => document.querySelector('.pm-szn-key')?.textContent === '2026');
+    await page.locator('#pmNavOlder').click();
+    assert.equal(await seasonKey(), '2025');
+    await page.locator('#pmNavOlder').click();
+    await page.waitForFunction(() => document.querySelector('.pm-szn-key')?.textContent === '2022');
+    assert(await page.locator('.pm-szn-table').textContent().then(text => text.includes('리그 2022')));
+    await page.locator('#pmNavOlder').click();
+    await page.waitForFunction(() => document.querySelector('#pmNavOlder')?.disabled);
+    assert.equal(await seasonKey(), '2022');
+    await page.locator('#pmNavNewer').click();
+    assert.equal(await seasonKey(), '2025');
+    assert.deepEqual(statCalls, [null, '2024', '2021']);
+    await page.evaluate(() => pmHideAll());
     assert.deepEqual(errors, []);
-    console.log('PASS: ID/name search, height-based pagination, four UIs including bench fixed rows and optional IDs, metadata preservation, API refresh, save/cancel, photo choice and stale responses.');
+    console.log('PASS: ID/name search, height-based pagination, four UIs including bench fixed rows and optional IDs, metadata preservation, API refresh, save/cancel, photo choice, stale responses and older season loading.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

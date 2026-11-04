@@ -255,11 +255,13 @@
   // GET /api/playerStats/{playerId}
   // 응답: PlayerProfileStatResponseDto (선수 기본 정보 + 시즌별 대회 스탯)
   //
-  // 시즌은 백엔드가 결정 (9/1 이전: 전 시즌+현 시즌, 이후: 현 시즌).
+  // 기본 시즌은 백엔드가 결정 (7/1 이전: 재작년~올해, 이후: 작년+올해).
+  // options.season을 주면 그 시즌 하나만 조회한다(시즌 스탯 모달의 이전 시즌 버튼).
   // 사용처: 선수 클릭 → 메뉴 → 개인 스탯 팝업
   // ---------------------------------------------------------------------------
   async function fetchPlayerStats(playerId, options = {}) {
-    return await apiFetch(`/api/playerStats/${encodeURIComponent(playerId)}`, options);
+    const qs = options.season != null ? `?season=${encodeURIComponent(options.season)}` : '';
+    return await apiFetch(`/api/playerStats/${encodeURIComponent(playerId)}${qs}`, options);
   }
 
   /** 원본 선수 검색 한 페이지를 가져온다. 화면 페이지는 공통 검색 UI에서 나눈다. */

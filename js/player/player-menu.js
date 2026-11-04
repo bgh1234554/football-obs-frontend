@@ -831,6 +831,9 @@ let _pmSznData = null;
 let _pmSznKeys = [];
 let _pmSznIdx  = 0;
 let _pmSznRequestId = 0;
+let _pmSznProfileId = null;
+// 'idle' | 'loading' | 'none'(더 이전 시즌 기록 없음)
+let _pmSznOlderState = 'idle';
 
 /** 연결 ID의 시즌 스탯을 조회해 최신 시즌부터 표시한다. 로딩 상태와 조회 실패 메시지도 처리한다. */
 async function pmShowSeasonStats(playerId, player) {
@@ -875,6 +878,8 @@ async function pmShowSeasonStats(playerId, player) {
     _pmSznData = data;
     _pmSznKeys = Object.keys(data.statistics || {}).sort().reverse();
     _pmSznIdx  = 0;
+    _pmSznProfileId = profileId;
+    _pmSznOlderState = 'idle';
     pmRenderSeasonProfile(data.player, player.number);
     pmRenderSeasonPage();
   } catch (err) {
@@ -962,10 +967,18 @@ function pmRenderSeasonPage() {
     return;
   }
 
+  const L = (typeof PLAYER_SZN_LABELS !== 'undefined') ? PLAYER_SZN_LABELS : {};
+  const sl = (k, fb) => L[k] != null ? L[k] : fb;
   const key  = _pmSznKeys[_pmSznIdx];
   const list = (_pmSznData.statistics || {})[key] || [];
-  const canOlder = _pmSznIdx < _pmSznKeys.length - 1;
+  // 가장 오래된 시즌에서는 아직 조회하지 않은 한 해 전 시즌을 요청할 수 있다.
+  const atOldest = _pmSznIdx >= _pmSznKeys.length - 1;
+  const canOlder = !atOldest || _pmSznOlderState === 'idle';
   const canNewer = _pmSznIdx > 0;
+  const olderLabel = !atOldest ? sl('navOlder','&#9664; 구시즌')
+    : _pmSznOlderState === 'loading' ? sl('navOlderLoading','불러오는 중...')
+    : _pmSznOlderState === 'none' ? sl('navOlderNone','이전 기록 없음')
+    : sl('navOlder','&#9664; 구시즌');
 
   const v = (x, sfx = '') => (x != null) ? `${x}${sfx}` : '-';
 
@@ -1018,15 +1031,12 @@ function pmRenderSeasonPage() {
 </tr>`;
   }).join('');
 
-  // 3) 표시 라벨과 시즌 탐색 바를 준비한 뒤 그룹 헤더와 기록 행을 표에 배치한다.
-  const L = (typeof PLAYER_SZN_LABELS !== 'undefined') ? PLAYER_SZN_LABELS : {};
-  const sl = (k, fb) => L[k] != null ? L[k] : fb;
-
+  // 3) 시즌 탐색 바를 준비한 뒤 그룹 헤더와 기록 행을 표에 배치한다.
   const nav = document.getElementById('pmSznNav');
   if (nav) {
     nav.innerHTML = `
 <div class="pm-szn-nav">
-  <button class="pm-nav-btn" id="pmNavOlder" ${canOlder ? '' : 'disabled'}>${sl('navOlder','&#9664; 구시즌')}</button>
+  <button class="pm-nav-btn" id="pmNavOlder" ${canOlder ? '' : 'disabled'}>${olderLabel}</button>
   <span class="pm-szn-key">${pmEsc(key)}</span>
   <button class="pm-nav-btn" id="pmNavNewer" ${canNewer ? '' : 'disabled'}>${sl('navNewer','신시즌 &#9654;')}</button>
 </div>`;
@@ -1067,13 +1077,50 @@ function pmRenderSeasonPage() {
   </table>
 </div>`;
 
-  // 4) 시즌 버튼은 인덱스만 바꿔 재렌더한다. API를 다시 호출하지 않는다.
+  // 4) 이미 받은 시즌은 인덱스만 바꿔 재렌더하고, 가장 오래된 시즌에서는 한 해 전 시즌만 새로 조회한다.
   document.getElementById('pmNavOlder')?.addEventListener('click', () => {
     if (_pmSznIdx < _pmSznKeys.length - 1) { _pmSznIdx++; pmRenderSeasonPage(); }
+    else pmLoadOlderSeason();
   });
   document.getElementById('pmNavNewer')?.addEventListener('click', () => {
     if (_pmSznIdx > 0) { _pmSznIdx--; pmRenderSeasonPage(); }
   });
+}
+
+/**
+ * 가장 오래된 시즌보다 이전 시즌을 조회해 목록 끝에 붙이고 그 시즌으로 이동한다.
+ * 백엔드가 기록 없는 해를 몇 년까지 건너뛰므로 응답의 시즌 키를 그대로 쓴다. 기록이 없으면 버튼을 잠근다.
+ */
+async function pmLoadOlderSeason() {
+  if (_pmSznOlderState !== 'idle' || !_pmSznKeys.length || typeof fetchPlayerStats !== 'function') return;
+  const oldest = Number(_pmSznKeys[_pmSznKeys.length - 1]);
+  const myReqId = _pmSznRequestId;
+  _pmSznOlderState = 'loading';
+  pmRenderSeasonPage();
+  let season = null;
+  let list = null;
+  try {
+    const data = await fetchPlayerStats(_pmSznProfileId, { season: oldest - 1 });
+    season = Object.keys(data?.statistics || {}).find(k => Number(k) < oldest) ?? null;
+    list = season != null ? data.statistics[season] : null;
+  } catch {
+    // 일시적 실패는 다시 누를 수 있게 idle로 되돌린다.
+    if (myReqId !== _pmSznRequestId) return;
+    _pmSznOlderState = 'idle';
+    pmRenderSeasonPage();
+    return;
+  }
+  // 그 사이 모달이 닫혔거나 다른 선수를 열었으면 응답을 버린다.
+  if (myReqId !== _pmSznRequestId || !document.getElementById('pmBackdrop')) return;
+  if (list) {
+    _pmSznData.statistics[season] = list;
+    _pmSznKeys.push(season);
+    _pmSznIdx = _pmSznKeys.length - 1;
+    _pmSznOlderState = 'idle';
+  } else {
+    _pmSznOlderState = 'none';
+  }
+  pmRenderSeasonPage();
 }
 
 // ── 닉네임 목록 모달 ──────────────────────────────────────────────────────────
