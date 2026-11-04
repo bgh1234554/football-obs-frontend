@@ -91,7 +91,7 @@ const { openPage } = require('../tactics/helpers');
       await current.locator('.ev-title').click();
       const popup = page.locator('.panel-font-popover');
       assert.equal(await popup.getAttribute('data-category'), 'teamFixturesNameSize');
-      await popup.locator('input').evaluate(input => {
+      await popup.locator('input[aria-label="글자 크기"]').evaluate(input => {
         input.value = '21'; input.dispatchEvent(new Event('input', { bubbles: true }));
       });
       await page.keyboard.press('Escape');
@@ -132,7 +132,7 @@ const { openPage } = require('../tactics/helpers');
         if (area.totalWidth > area.width + 1) assert(area.left > 0, JSON.stringify(area));
       }
       await current.locator('.ev-title').click();
-      await popup.locator('.panel-font-reset').click();
+      await popup.locator('.panel-font-reset').first().click();
       await page.keyboard.press('Escape');
       await current.getByTitle('이전 페이지', { exact: true }).click();
     }

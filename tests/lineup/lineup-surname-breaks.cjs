@@ -400,10 +400,13 @@ const { chromium } = require('playwright');
         const first = snapshot();
         let widened;
         if (!blocked) {
+          // 피치는 종횡비를 유지하므로 높이도 늘려야 실제 피치 폭이 넓어진다.
           panel.style.width = '600px';
+          panel.style.height = '1100px';
           fitLineupNamePills(panel);
           widened = snapshot();
           panel.style.width = '410px';
+          panel.style.height = '700px';
         }
         if (blocked) optimize(labels, fonts); else fitLineupNamePills(panel);
         outcomes.push({ reverse, blocked, first, widened, repeated: snapshot() });

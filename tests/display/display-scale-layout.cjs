@@ -9,6 +9,12 @@ const near = (actual, expected, label, tolerance = 1.5) => assert(Math.abs(actua
 
 async function openPage(browser, dpr) {
   const page = await browser.newPage({ viewport: { width: 1920 / dpr, height: 960 / dpr }, deviceScaleFactor: dpr });
+  // setViewportSize/CDP 화면 변경이 screen까지 창 크기로 바꾸면 창 높이 = 화면 높이로 보고
+  // F11 전체화면 판정(isDashboardFullscreen)이 켜진다. 검사하는 모든 창보다 큰 화면으로 고정한다.
+  await page.addInitScript(() => {
+    Object.defineProperty(Screen.prototype, 'width', { configurable: true, get: () => 7680 });
+    Object.defineProperty(Screen.prototype, 'height', { configurable: true, get: () => 4320 });
+  });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route => {
@@ -33,6 +39,8 @@ async function fillLineups(page) {
     const lineup = offset => ({ formation: '4-3-3', coach: { name: '테스트 감독' }, startXi: names.map((name, i) => ({ id: offset + i, name, number: i + 1, grid: grids[i], pos: i === 0 ? 'G' : 'M' })), substitutes: [] });
     applyLineupPanels({ matchInfo: { fixtureId: 'test-scale', homeTeamId: 1, awayTeamId: 2, homeTeamName: '네덜란드', awayTeamName: '모로코' }, homeLineup: lineup(100), awayLineup: lineup(200), homeInjuries: [], awayInjuries: [], events: [], playerStats: [] });
   });
+  // 이름 폭은 글꼴 로딩 전후로 달라지므로 글꼴이 준비된 뒤 맞춘다.
+  await page.evaluate(() => document.fonts.ready);
   await frames(page);
   await page.evaluate(() => { applyStoredBigPanelHeights(); fitLineupNamePills(); });
 }
@@ -63,6 +71,8 @@ async function testDrag(page, dpr) {
   await frames(page);
   near((await measure(page)).column.width, before + 40, 'column drag follows physical pointer');
   await page.reload({ waitUntil: 'load' });
+  // 복원할 경기가 없으면 일정 확인으로 열리므로 카메라 뷰로 돌아와 측정한다.
+  await page.evaluate(() => activatePage('main-big'));
   await frames(page);
   near((await measure(page)).column.width, before + 40, 'saved width survives reload');
 }
@@ -96,6 +106,8 @@ async function alternateLayouts(page) {
 
 async function testSmallBenchHeight(page, dpr) {
   const seed = async () => {
+    // 감독·주심 등 명단 정보 칸의 내용이 새로고침 전후로 달라지면 자동 높이도 달라지므로 같은 경기로 채운다.
+    await fillLineups(page);
     await page.evaluate(() => activatePage('main-small'));
     await frames(page);
     await page.evaluate(() => {
@@ -225,7 +237,7 @@ async function testResolutionPersistence(page) {
     });
     for (let reload = 0; reload < 3; reload++) {
       await page.reload({ waitUntil: 'load' });
-      await testTacticsEvents(page, dpr);
+      await testTacticsEvents(page, dpr, { screenshot: false });
       await page.evaluate(() => { setSetting('eventNameSize', 15); activatePage('main-big'); });
       await fillLineups(page);
       const current = await read();
@@ -260,6 +272,7 @@ async function testResolutionPersistence(page) {
   for (const dpr of [1, 1.25, 2]) {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920 / dpr, height: 1080 / dpr, deviceScaleFactor: dpr, mobile: false });
     await page.reload({ waitUntil: 'load' });
+    await page.evaluate(() => activatePage('main-big'));
     await frames(page);
     const current = await read();
     assert.equal(current.saved, null, 'reset persists across reload and DPI change');
@@ -271,6 +284,8 @@ async function testResolutionPersistence(page) {
 
 // 글꼴과 가용 높이가 바뀌어도 스탯은 잘리지 않는 최대 행 수를 사용한다.
 async function testStatsCapacity(page) {
+  // 앞선 검사가 남긴 라인업/패널 상태와 섞이지 않도록 --stats 단독 실행과 같은 새 페이지 상태에서 시작한다.
+  await page.reload({ waitUntil: 'load' });
   await page.evaluate(() => activatePage('main-small'));
   await frames(page);
   // 팬 반응을 꺼도 같은 경계에서 너비 조절과 초기화를 할 수 있어야 한다.
@@ -515,7 +530,7 @@ async function testSpotlightPosition(page) {
   await page.evaluate(() => setSetting('eventSpotlight', 'off'));
 }
 
-async function testTacticsEvents(page, dpr) {
+async function testTacticsEvents(page, dpr, { screenshot = true } = {}) {
   const data = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/1637598-lineup.json'), 'utf8'));
   data.matchInfo.status = '1H';
   data.events = [
@@ -549,7 +564,8 @@ async function testTacticsEvents(page, dpr) {
       assert(row.scroll <= row.height + 1, 'player text is not clipped');
     });
   }
-  await page.screenshot({ path: path.join(root, `screenshots/tests/tactics-events-scale-${dpr}.png`) });
+  // page.screenshot은 CDP로 바꾼 화면 크기를 원래대로 되돌리므로 해상도 검사 중에는 찍지 않는다.
+  if (screenshot) await page.screenshot({ path: path.join(root, `screenshots/tests/tactics-events-scale-${dpr}.png`) });
 }
 
 (async () => {
@@ -581,6 +597,9 @@ async function testTacticsEvents(page, dpr) {
       await testSpotlightFontIndependence(page);
       await testSpotlightPosition(page);
       await page.evaluate(() => activatePage('main-big'));
+      // 페이지 전환 뒤 예약된 이름 피팅이 끝난 다음 잰다. 바로 재면 피팅 전/후 중 어느 쪽이 잡힐지 실행마다 달라진다.
+      await frames(page);
+      await page.waitForTimeout(300);
       const current = await measure(page);
       assert.equal(current.labels.length, 22, 'both teams render');
       near(current.body.width, 1920, 'physical width');

@@ -15,11 +15,11 @@ const { openPage } = require('../tactics/helpers');
       applySettingsTab('lineup');
     });
     const camera = page.frameLocator('[data-example-group="camera"] iframe');
-    await camera.locator('.dp-lineup-avatar').waitFor();
-    assert.match(await camera.locator('.dp-lineup-avatar').getAttribute('style'), /settings-preview-salah/);
+    await camera.locator('.dp-lineup-avatar:not(.dp-sub-layer-size)').waitFor();
+    assert.match(await camera.locator('.dp-lineup-avatar:not(.dp-sub-layer-size)').getAttribute('style'), /settings-preview-salah/);
     assert.match(await camera.locator('.dp-lineup-name').innerText(), /살라/);
     assert.equal(await page.locator('[data-example-group="camera"] iframe').count(), 1);
-    assert.equal(await page.locator('[data-example-group="camera"] .sp-row').count(), 6);
+    assert.equal(await page.locator('[data-example-group="camera"] .sp-row').count(), 7);
     for (const [category, selector] of [
       ['lineupShowGoals', '.dp-node-goal'], ['lineupShowCards', '.dp-node-card'],
       ['lineupShowRating', '.dp-node-rating'], ['lineupShowSubTime', '.dp-node-sub-in'],

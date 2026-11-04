@@ -10,6 +10,8 @@ const { openPage, settle } = require('../tactics/helpers');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const themes = await page.evaluate(() => Object.keys(FSM_THEMES));
+    // 프리미어리그 계열 테마는 큰 점수뿐 아니라 작은 흰 점수·합계까지 같은 윤곽을 쓴다(css/core/fsm-board.css).
+    const OUTLINED_THEMES = ['belarus', 'jleague', 'pl', 'romanian', 'saudi', 'singapore', 'turkishcup', 'uzbek'];
     const outlined = new Set();
     for (const theme of themes) {
       await page.evaluate(theme => {
@@ -30,7 +32,7 @@ const { openPage, settle } = require('../tactics/helpers');
           return { size: parseFloat(getComputedStyle(node.parentElement).fontSize), color: c.color, stroke: c.webkitTextStrokeWidth, strokeColor: c.webkitTextStrokeColor, order: c.paintOrder };
         }));
         for (const score of scores) {
-          const large = score.size >= 60 && score.color === 'rgb(255, 255, 255)';
+          const large = score.color === 'rgb(255, 255, 255)' && (score.size >= 60 || OUTLINED_THEMES.includes(theme));
           assert.equal(score.stroke, large ? '1px' : '0px', JSON.stringify({ theme, scale, aggregate, score }));
           if (large) {
             outlined.add(theme);
@@ -54,7 +56,7 @@ const { openPage, settle } = require('../tactics/helpers');
         await page.locator('#board').screenshot({ path: `screenshots/tests/large-score-outline-${theme}.png` });
       }
     }
-    assert.deepEqual([...outlined].sort(), ['belarus', 'jleague', 'pl', 'romanian', 'saudi', 'turkishcup', 'uzbek']);
+    assert.deepEqual([...outlined].sort(), OUTLINED_THEMES);
     assert.deepEqual(errors, []);
     console.log('PASS large white main and aggregate score outlines across all themes, both sides, 75/100% and aggregate on/off; ordinary scores remain unchanged');
   } finally { await browser.close(); }
