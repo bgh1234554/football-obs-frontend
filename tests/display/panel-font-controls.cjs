@@ -470,7 +470,8 @@ const root = path.resolve(__dirname, '../..');
     await page.locator('.ev-spotlight').waitFor({ state: 'hidden', timeout: 7000 });
     assert(await spotlightMenu.isVisible());
     await spotlightMenu.getByRole('button', { name: '초기화', exact: true }).click();
-    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), 125);
+    // 초기화는 창모드 100%, 전체화면 125%로 돌아간다.
+    assert.equal(await page.evaluate(() => getSetting('eventSpotlightScale')), await page.evaluate(() => isScreenFullscreen()) ? 125 : 100);
     await page.keyboard.press('Escape');
     assert.equal(await spotlightMenu.count(), 0);
     assert.deepEqual(errors, []);
@@ -814,7 +815,7 @@ const root = path.resolve(__dirname, '../..');
     for (const { category, tab, min, max } of settingsSliders) {
       await page.locator(`[data-sp-tab="${tab}"]`).click();
       const input = page.locator(`#settingsBackdrop input[data-settings-slider="${category}"]`);
-      const expected = await page.evaluate(category => ['benchInjuryNameSize', 'statsNameSize'].includes(category) ? 16 : SETTINGS_DEFAULTS[category], category);
+      const expected = await page.evaluate(category => ['benchInjuryNameSize', 'statsNameSize'].includes(category) ? 16 : fullscreenSettingDefault(category) ?? SETTINGS_DEFAULTS[category], category);
       await input.evaluate((input, value) => {
         input.value = String(value); input.dispatchEvent(new Event('input', { bubbles: true }));
       }, expected === max ? min : max);

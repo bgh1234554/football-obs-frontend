@@ -128,7 +128,8 @@ const SETTINGS_DEFAULTS = {
   // 신규 이벤트 화면 중앙 하단 표시 (js/panels/event-spotlight.js). 배율은 이벤트 패널 칼럼 너비 기준 %.
   // 'off' = 표시 안 함, 'board' = 점수판 바로 아래(윗변 고정, 아래로 커짐), 'bottom' = 화면 가운데 패널 하단선(아랫변 고정, 위로 커짐).
   eventSpotlight: 'board',
-  eventSpotlightScale: 125,
+  eventSpotlightScale: 100,
+  eventSpotlightScaleFullscreen: null, // 전체화면(카메라 뷰/대시보드 뷰 공통) 값. null이면 전체화면 기본값(125%)을 따른다.
   // 라인업 이벤트 표시 (Iter 5-3) — 양 캠 공통 마스터 토글.
   // ON: 교체 IN 선수가 선발 그리드 자리로 올라오고 OUT 선수가 벤치로 내려감.
   // OFF: startXi/벤치 원본 유지 + OUT 선수에 빨간 화살표, IN 선수에 초록 화살표 마커.
@@ -357,6 +358,9 @@ const LINEUP_PITCH_TONES = Object.keys(LINEUP_PITCH_TONE_STYLES);
 // setSetting()이 변경 시점마다 saveSettings()로 다시 직렬화한다.
 const settingsState = { ...SETTINGS_DEFAULTS };
 const DASHBOARD_FULLSCREEN_DEFAULTS = { lineupNameSize: 15, benchInjuryNameSize: 14, lineupTokenScale: 115, statsNameSize: 16 };
+// 카메라 뷰/대시보드 뷰 구분 없이 전체화면일 때 쓰는 기본값. 값은 `${key}Fullscreen`에 따로 저장한다.
+const SCREEN_FULLSCREEN_DEFAULTS = { eventSpotlightScale: 125 };
+const FULLSCREEN_SETTING_DEFAULTS = { ...DASHBOARD_FULLSCREEN_DEFAULTS, ...SCREEN_FULLSCREEN_DEFAULTS };
 // 기본값 이력을 저장하기 전 버전의 기준표. 앞으로 기본값을 변경해도 이 표는 유지한다.
 const SETTINGS_LEGACY_DEFAULTS = Object.freeze({
   "uiMode": "dark",
@@ -460,7 +464,7 @@ const SETTINGS_LEGACY_FULLSCREEN_DEFAULTS = Object.freeze({ lineupNameSize: 16, 
 
 /** 저장 당시 기본값도 기록해 다음 버전에서 사용자 값과 비교한다. */
 function settingsDefaultSnapshot() {
-  return { ...SETTINGS_DEFAULTS, ...Object.fromEntries(Object.entries(DASHBOARD_FULLSCREEN_DEFAULTS)
+  return { ...SETTINGS_DEFAULTS, ...Object.fromEntries(Object.entries({ ...DASHBOARD_FULLSCREEN_DEFAULTS, ...SCREEN_FULLSCREEN_DEFAULTS })
     .map(([key, value]) => [`${key}Fullscreen`, value])) };
 }
 
@@ -480,19 +484,22 @@ function migrateSettingsDefaults(parsed) {
   });
   return JSON.stringify(parsed._defaults) !== JSON.stringify(current);
 }
+/** 전체화면 여부. F11은 fullscreenElement를 설정하지 않으므로 실제 화면 높이도 확인한다. */
+function isScreenFullscreen() {
+  return !!document.fullscreenElement || (screen.height > 0 && Math.abs(window.innerHeight - screen.height) <= 2);
+}
 function isDashboardFullscreen() {
-  // F11은 fullscreenElement를 설정하지 않으므로 실제 화면 높이도 확인한다.
-  return !!document.querySelector('#page-main-small.active') && (
-    !!document.fullscreenElement || (screen.height > 0 && Math.abs(window.innerHeight - screen.height) <= 2)
-  );
+  return !!document.querySelector('#page-main-small.active') && isScreenFullscreen();
+}
+/** 지금 화면에서 쓰는 전체화면 기본값. 전체화면이 아니거나 전체화면 기본값이 없는 항목이면 undefined. */
+function fullscreenSettingDefault(category) {
+  if (category in DASHBOARD_FULLSCREEN_DEFAULTS) return isDashboardFullscreen() ? DASHBOARD_FULLSCREEN_DEFAULTS[category] : undefined;
+  if (category in SCREEN_FULLSCREEN_DEFAULTS) return isScreenFullscreen() ? SCREEN_FULLSCREEN_DEFAULTS[category] : undefined;
+  return undefined;
 }
 
 function resetPanelFontSetting(category) {
-  if (category in DASHBOARD_FULLSCREEN_DEFAULTS && isDashboardFullscreen()) {
-    setSetting(category, DASHBOARD_FULLSCREEN_DEFAULTS[category]);
-  } else {
-    setSetting(category, SETTINGS_DEFAULTS[category]);
-  }
+  setSetting(category, fullscreenSettingDefault(category) ?? SETTINGS_DEFAULTS[category]);
 }
 
 function normalizeBackgroundImageUrl(input) {
@@ -599,7 +606,7 @@ function isValidSetting(category, value) {
   if (category === 'notificationSoundSetRevision') return value === 4;
   if (category === 'notificationSoundVolume') return Number.isFinite(value) && value >= 0 && value <= 100;
   if (category === 'lineupTokenScale') return Number.isFinite(value) && value >= 75 && value <= 150;
-  if (category.endsWith('Fullscreen') && category.slice(0, -10) in DASHBOARD_FULLSCREEN_DEFAULTS) {
+  if (category.endsWith('Fullscreen') && category.slice(0, -10) in FULLSCREEN_SETTING_DEFAULTS) {
     return value === null || isValidSetting(category.slice(0, -10), value);
   }
   if (category === 'uiMode') return ['dark', 'light'].includes(value);
@@ -834,9 +841,10 @@ function getSetting(category) {
     const size = settingsState[category] ?? SETTINGS_DEFAULTS[category];
     return size === SETTINGS_DEFAULTS[category] ? 16 : size;
   }
-  if (category in DASHBOARD_FULLSCREEN_DEFAULTS && isDashboardFullscreen()) {
+  const fullDefault = fullscreenSettingDefault(category);
+  if (fullDefault !== undefined) {
     return settingsState[`${category}Fullscreen`]
-      ?? (category !== 'lineupTokenScale' && settingsState[category] !== SETTINGS_DEFAULTS[category] ? settingsState[category] : DASHBOARD_FULLSCREEN_DEFAULTS[category]);
+      ?? (category !== 'lineupTokenScale' && settingsState[category] !== SETTINGS_DEFAULTS[category] ? settingsState[category] : fullDefault);
   }
   if (settingsState.uiMode === 'light' && ['bgColor', 'bgPreset'].includes(category)) {
     const lightCategory = category === 'bgColor' ? 'lightBgColor' : 'lightBgPreset';
@@ -882,7 +890,7 @@ function setSetting(category, value) {
     value = Math.min(value, Math.max(75, Math.floor(lpGetTokenScaleLimit() * 100 + 0.001)));
     requestAnimationFrame(() => syncSliderUi(category));
   }
-  if (category in DASHBOARD_FULLSCREEN_DEFAULTS && isDashboardFullscreen()) {
+  if (fullscreenSettingDefault(category) !== undefined) {
     const key = `${category}Fullscreen`;
     if (value !== null && !isValidSetting(category, value)) return false;
     const previous = settingsState[key];
@@ -1657,7 +1665,7 @@ window.addEventListener('resize', closePanelFontPopup);
 // 화면 모드가 바뀌면 저장값은 유지하고 현재 화면의 기본값과 입력 UI만 다시 적용한다.
 let lastDashboardFontContext = null;
 function syncDashboardFontContext() {
-  const categories = Object.keys(DASHBOARD_FULLSCREEN_DEFAULTS);
+  const categories = Object.keys(FULLSCREEN_SETTING_DEFAULTS);
   // 적용 값이 그대로면 화면 전환/리사이즈마다 이름 전체 피팅을 다시 돌리지 않고, 피팅 입력(패널 크기 등)이 바뀐 라인업만 맞춘다.
   const context = JSON.stringify(categories.map(category => getSetting(category)));
   const changed = context !== lastDashboardFontContext;
@@ -3025,7 +3033,7 @@ function initSettingsPopup() {
       reset.setAttribute('aria-label', `${label} 초기화`);
       reset.title = `${label} 초기화`;
       reset.addEventListener('click', () => {
-        if (PANEL_FONT_SETTINGS.includes(category) || category === 'lineupTokenScale') resetPanelFontSetting(category);
+        if (PANEL_FONT_SETTINGS.includes(category) || category in FULLSCREEN_SETTING_DEFAULTS) resetPanelFontSetting(category);
         else if (['panelAlpha', 'pitchAlpha', 'tacticsAlpha'].includes(category)) resetTransparencySetting(category);
         else setSetting(category, SETTINGS_DEFAULTS[category]);
         if (category === 'eventSpotlightScale') window.evSpotlightPreview?.();

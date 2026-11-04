@@ -100,18 +100,29 @@ const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function 
    applyLayoutSettings(){},applySettingSideEffects(){},emitSettingsChange(){},
    localStorage:{getItem(){return stored;},setItem(key,value){if(fail)throw Error('quota');stored=value;},removeItem(){stored=null;}}};
   vm.createContext(context);
-  vm.runInContext(core+'\nsyncSettingUi=()=>{};isDashboardFullscreen=()=>fullscreen;globalThis.values=settingsState;globalThis.defaults=SETTINGS_DEFAULTS;globalThis.fullDefaults=DASHBOARD_FULLSCREEN_DEFAULTS;loadSettings();',context);
+  vm.runInContext(core+'\nsyncSettingUi=()=>{};isDashboardFullscreen=()=>fullscreen;isScreenFullscreen=()=>fullscreen;globalThis.values=settingsState;globalThis.defaults=SETTINGS_DEFAULTS;globalThis.fullDefaults=DASHBOARD_FULLSCREEN_DEFAULTS;loadSettings();',context);
   return {context,stored:()=>JSON.parse(stored),fail:value=>{fail=value;}};
  }
+ // 신규 이벤트 배율은 창모드 기본 100%(이력 없는 저장값은 당시 기본값 100과 비교), 다음 기본값으로 차례로 이동한다.
  for(const value of [100,110,125,200]) {
   const s=session({eventSpotlightScale:value});
-  assert.equal(s.context.values.eventSpotlightScale,value===100?125:value);
-  assert.equal(s.stored()._defaults.eventSpotlightScale,125);
+  assert.equal(s.context.values.eventSpotlightScale,value);
+  assert.equal(s.stored()._defaults.eventSpotlightScale,100);
   s.context.defaults.eventSpotlightScale=150;s.context.loadSettings();
-  assert.equal(s.context.values.eventSpotlightScale,[100,125].includes(value)?150:value);
+  assert.equal(s.context.values.eventSpotlightScale,value===100?150:value);
   s.context.defaults.eventSpotlightScale=175;s.context.loadSettings();
-  assert.equal(s.context.values.eventSpotlightScale,[100,125].includes(value)?175:value);
+  assert.equal(s.context.values.eventSpotlightScale,value===100?175:value);
  }
+ // 125%가 기본이던 버전에서 그대로 둔 값은 창모드 100%로 돌아가고, 전체화면에서는 125%로 보인다.
+ const spot=session({eventSpotlightScale:125,_defaults:{eventSpotlightScale:125}});
+ assert.equal(spot.context.getSetting('eventSpotlightScale'),100);
+ spot.context.fullscreen=true;assert.equal(spot.context.getSetting('eventSpotlightScale'),125);
+ spot.context.setSetting('eventSpotlightScale',150);assert.equal(spot.context.getSetting('eventSpotlightScale'),150);
+ spot.context.fullscreen=false;assert.equal(spot.context.getSetting('eventSpotlightScale'),100);
+ spot.context.setSetting('eventSpotlightScale',110);
+ spot.context.fullscreen=true;assert.equal(spot.context.getSetting('eventSpotlightScale'),150);
+ spot.context.resetPanelFontSetting('eventSpotlightScale');assert.equal(spot.context.getSetting('eventSpotlightScale'),125);
+ spot.context.fullscreen=false;assert.equal(spot.context.getSetting('eventSpotlightScale'),110);
  // 중간 버전을 건너뛰어도 최초 이력이 없는 100은 당시 기본값으로 판별한다.
  const skipped=session({eventSpotlightScale:100});
  skipped.context.defaults.eventSpotlightScale=200;
@@ -119,21 +130,21 @@ const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function 
  skipped.context.localStorage.setItem('obs.settings.v3',JSON.stringify(legacy));skipped.context.loadSettings();
  assert.equal(skipped.context.values.eventSpotlightScale,200);
  // 기본값 이력이 있는 사용자도 중간 배포를 거치지 않고 최신 기본값으로 바로 이동한다.
- for (const value of [125,110]) {
+ for (const value of [100,110]) {
   const tracked=session(null);tracked.context.setSetting('eventSpotlightScale',value);
   tracked.context.defaults.eventSpotlightScale=200;tracked.context.loadSettings();
-  assert.equal(tracked.context.values.eventSpotlightScale,value===125?200:110);
+  assert.equal(tracked.context.values.eventSpotlightScale,value===100?200:110);
  }
  // 수동 선택 기록 대신 값만 비교하므로 새 기본값과 같아진 값은 그 다음 기본값 변경을 따른다.
  const converged=session(null);converged.context.setSetting('eventSpotlightScale',110);
  converged.context.defaults.eventSpotlightScale=110;converged.context.loadSettings();
  converged.context.defaults.eventSpotlightScale=150;converged.context.loadSettings();
  assert.equal(converged.context.values.eventSpotlightScale,150);
- // 100으로 직접 되돌렸더라도 직전 기본값 125와 다르면 이후 업데이트에서 유지한다.
- const s=session({eventSpotlightScale:100});
- s.context.setSetting('eventSpotlightScale',100);
+ // 직전 기본값 100과 다른 값은 이후 업데이트에서 유지한다.
+ const s=session({eventSpotlightScale:110});
+ s.context.setSetting('eventSpotlightScale',110);
  s.context.defaults.eventSpotlightScale=150;s.context.loadSettings();
- assert.equal(s.context.values.eventSpotlightScale,100);
+ assert.equal(s.context.values.eventSpotlightScale,110);
  s.context.resetPanelFontSetting('eventSpotlightScale');
  s.context.defaults.eventSpotlightScale=175;s.context.loadSettings();
  assert.equal(s.context.values.eventSpotlightScale,175);
