@@ -509,6 +509,8 @@
 /* --pm-content-zoom-base: 글씨 크기 100%의 기준. 예전 125% 크기를 새 100%로 쓴다. */
 .pm-modal-sizable { --pm-content-zoom-base: 1.25; }
 .pm-modal-sizable :is(.pm-szn-profile, .pm-szn-nav-fixed > *, .pm-szn-scroll > *) { zoom: calc(var(--pm-content-zoom, 1) * var(--pm-content-zoom-base)); }
+/* 시즌 스탯은 프로필만 새 기준(125%)을 쓰고, 시즌 이동·기록 표는 예전 100% 크기를 기준으로 한다. */
+.pm-modal-sizable.pm-modal-szn :is(.pm-szn-nav-fixed > *, .pm-szn-scroll > *) { --pm-content-zoom-base: 1; }
 
 .pm-modal-body.pm-body-split {
   display: flex;
