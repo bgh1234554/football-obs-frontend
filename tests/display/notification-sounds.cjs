@@ -149,6 +149,23 @@ const { openPage } = require('../tactics/helpers');
     await page.locator('#sound-demo-start').click();
     await page.locator('#sound-demo-start').waitFor({ state: 'detached' });
     assert.deepEqual(await page.evaluate(() => [state.homeScore, getSetting('notificationSoundSet'), getSetting('notificationSoundVolume')]), original, '확장 가능한 콘솔 데모가 다음 세트로 넘어가고 중지 시 원상 복원');
+    // OBS 브라우저 소스는 클릭/키 입력 없이 켜져 있으므로, 입력 없이도 첫 깜빡임부터 소리가 나야 한다.
+    const obsPage = await openPage(browser, { viewport: { width: 1920, height: 1080 }, dpr: 1, platform: 'Win32' });
+    try {
+      await obsPage.evaluate(() => { setSetting('boardFlashSound', 'on'); setSetting('notificationSoundSet', '1'); });
+      await obsPage.addInitScript(() => {
+        window.obsstudio = { pluginVersion: 'test' };
+        window.obsSoundStarts = 0;
+        const Original = window.AudioContext;
+        window.AudioContext = class extends Original {
+          createOscillator() { obsSoundStarts++; return super.createOscillator(); }
+        };
+      });
+      await obsPage.reload();
+      await obsPage.evaluate(() => { clearPolling(); activatePage('main-big'); flashScore('home'); });
+      await obsPage.waitForTimeout(300);
+      assert(await obsPage.evaluate(() => obsSoundStarts > 0), 'OBS 브라우저 소스는 입력 없이도 첫 알림음 재생');
+    } finally { await obsPage.close(); }
     console.log('notification-sounds: passed');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -249,6 +249,11 @@
     if (!kind || !enabled(kind) || !event.target.getClientRects().length) return;
     const animation = event.target.getAnimations().find(item => item.animationName === event.animationName);
     const duration = Number(animation?.effect?.getTiming().duration) / 1000;
+    // OBS 브라우저 소스는 사용자 입력 없이도 재생할 수 있으므로, 준비되지 않았으면 바로 준비한 뒤 재생한다.
+    if (window.obsstudio && context?.state !== 'running') {
+      void unlock().then(audio => { if (audio) play(kind, duration, event.target); });
+      return;
+    }
     play(kind, duration, event.target);
   });
   document.addEventListener('animationcancel', event => {
@@ -261,6 +266,9 @@
   const prepare = () => { if (enabled('board') || enabled('event')) void unlock(); };
   document.addEventListener('pointerdown', prepare, true);
   document.addEventListener('keydown', prepare, true);
+  // OBS 브라우저 소스(자동 재생 허용)는 클릭/키 입력이 없어 위 경로로는 오디오가 준비되지 않는다.
+  // 일반 브라우저는 입력 없이 AudioContext를 만들면 경고만 남고 재생되지 않으므로 OBS에서만 미리 준비한다.
+  if (window.obsstudio) prepare();
   document.addEventListener('settings:change', event => {
     if (['boardFlashSound', 'eventSpotlightSound', 'notificationSoundVolume', 'notificationSoundSet'].includes(event.detail?.category)) {
       volumePreviewVersion++;
