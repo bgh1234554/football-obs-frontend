@@ -37,6 +37,7 @@
     const keys = Object.keys(updates);
     const changed = keys.some(key => state.colors[key] !== updates[key]);
     const teamColorChanged = keys.some(key => TEAM_COLOR_KEYS.has(key));
+    const previousOverride = [state.teamColorOverride, state.teamColorOverrideFixtureId];
     if (teamColorChanged) {
       state.teamColorOverride = true;
       state.teamColorOverrideFixtureId = typeof getLastFixtureId === 'function' ? getLastFixtureId() : null;
@@ -48,7 +49,11 @@
       if ($(id + 'Hex')) $(id + 'Hex').value = updates[key];
     });
     if (teamColorChanged) saveFixtureTeamColors();
-    if (!changed && !teamColorChanged) return;
+    // 같은 값을 다시 확정하면 경기별 수동 색상 기록만 남기고 렌더·변경 알림은 보내지 않는다.
+    if (!changed) {
+      if (previousOverride[0] !== state.teamColorOverride || previousOverride[1] !== state.teamColorOverrideFixtureId) persist();
+      return;
+    }
     if (teamColorChanged && typeof applyTeamColors === 'function') applyTeamColors();
     persist();
     render();

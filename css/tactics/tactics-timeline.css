@@ -1364,7 +1364,8 @@
       }
     }
 
-    @media (min-width: 1200px) {
+    /* @media는 OS 배율에 따라 CSS 폭이 달라져(200%면 1920 화면이 960px) 같은 화면에서도 상단바가 두 줄로 바뀌었다. */
+    @container tactics-viewport (min-width: 1200px) {
       #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar { gap: 4px !important; }
       #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar > button { padding-left: 7px !important; padding-right: 7px !important; }
       #page-tactics:fullscreen:not(.td-touch-topbar) #tactics-topbar .td-topbar-sep { display: none; }

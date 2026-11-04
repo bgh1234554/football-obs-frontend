@@ -145,7 +145,8 @@
     textRange.selectNodeContents(clockEl);
     const textRight = (textRange.getBoundingClientRect().right - clockRect.left) / scale;
     const extra = $('extra');
-    const hasExtra = extra && !extra.classList.contains('hidden');
+    // 숨긴 추가시간도 클릭해서 다시 켤 수 있도록 자리가 보이는 테마가 있으므로, 화면에 자리가 있으면 피해서 배치한다.
+    const hasExtra = extra && extra.getBoundingClientRect().width > 0 && getComputedStyle(extra).visibility !== 'hidden';
     let gapEnd = clockEl.offsetWidth * 2 - textRight;
     if (hasExtra) {
       textRange.selectNodeContents(extra);

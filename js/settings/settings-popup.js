@@ -1094,7 +1094,7 @@ function resetRatingColorsToDefaults() {
  *
  * 마지막에 fitLineupNamePills로 이름 잘림 보정 재호출(이름 폰트 크기 변경 영향).
  */
-function applyLayoutSettings() {
+function applyLayoutSettings({ refitLineups = true } = {}) {
   Object.entries(NOTE_COLOR_VARS).forEach(([category, variable]) => {
     document.documentElement.style.setProperty(variable, chromaSafe(getSetting(category)));
   });
@@ -1210,8 +1210,11 @@ function applyLayoutSettings() {
     body.classList.toggle('greenscreen-mode',  getSetting('greenscreen') === 'on');
   }
   // 라인업 이름 변화 시 pill width / 잘림 보정 다시 호출 (lineup-name-fit.js의 fit 함수)
-  if (typeof window.fitLineupNamePills === 'function') {
+  if (refitLineups && typeof window.fitLineupNamePills === 'function') {
     requestAnimationFrame(() => window.fitLineupNamePills());
+  } else if (typeof window.fitLineupNamePillsIfChanged === 'function') {
+    requestAnimationFrame(() => document.querySelectorAll('[data-dp-role="lineup"]')
+      .forEach(panel => window.fitLineupNamePillsIfChanged(panel)));
   }
   // benchInjuryNameSize 변경 시 글자 크기가 바뀌어 교체/미출전 명단 내용 높이가 달라지므로,
   // 캠 작음(#benchPanel/#injuryPanel) 높이 자동 배분도 다시 실행 (lineup-name-fit.js).
@@ -1651,9 +1654,15 @@ document.addEventListener('page:activated', closePanelFontPopup);
 document.addEventListener('fullscreenchange', closePanelFontPopup);
 window.addEventListener('resize', closePanelFontPopup);
 // 화면 모드가 바뀌면 저장값은 유지하고 현재 화면의 기본값과 입력 UI만 다시 적용한다.
+let lastDashboardFontContext = null;
 function syncDashboardFontContext() {
-  applyLayoutSettings();
-  [...Object.keys(DASHBOARD_FULLSCREEN_DEFAULTS), 'statsNameSize'].forEach(category => {
+  const categories = [...Object.keys(DASHBOARD_FULLSCREEN_DEFAULTS), 'statsNameSize'];
+  // 적용 값이 그대로면 화면 전환/리사이즈마다 이름 전체 피팅을 다시 돌리지 않고, 피팅 입력(패널 크기 등)이 바뀐 라인업만 맞춘다.
+  const context = JSON.stringify(categories.map(category => getSetting(category)));
+  const changed = context !== lastDashboardFontContext;
+  lastDashboardFontContext = context;
+  applyLayoutSettings({ refitLineups: changed });
+  categories.forEach(category => {
     syncSettingUi(category);
     emitSettingsChange(category);
   });

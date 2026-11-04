@@ -47,6 +47,8 @@
       transform-origin: top left;
       --display-vw: var(--tactics-fs-vw);
       --display-vh: var(--tactics-fs-vh);
+      /* 전체화면 상단바 반응형 규칙이 CSS 픽셀 대신 전술판 레이아웃 폭을 기준으로 하도록 한다. */
+      container: tactics-viewport / inline-size;
     }
     body {
       container-type: inline-size;
