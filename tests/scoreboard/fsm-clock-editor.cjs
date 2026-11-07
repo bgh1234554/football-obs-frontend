@@ -117,6 +117,11 @@ for(const theme of await page.evaluate(()=>Object.keys(FSM_THEMES))) {
   await page.locator('#clockStop').click();
   assert.equal(await page.evaluate(()=>state.seconds),seconds<6300?2700:6300);assert(!await page.evaluate(()=>state.running));
  }
+ // 추가시간 위에서는 버튼을 띄우지 않고, 시계 숫자로 돌아오면 다시 띄운다(추가시간 더블클릭 수정과 겹치지 않게).
+ await page.mouse.move(0,0);await page.locator('#extra').hover();
+ assert(!await clockControlShown('clockToggle'),`${theme}: playback hidden over extra time`);
+ await page.locator('#clock').hover();assert(await clockControlShown('clockToggle'),`${theme}: playback returns over clock`);
+ await page.mouse.move(0,0);
  if(theme==='default')for(const running of [false,true])for(const [seconds,expected] of [[0,0],[2699,0],[2700,2700],[5399,2700],[5400,5400],[6299,5400],[6300,6300],[9000,6300]]){
   const result=await page.evaluate(({seconds,running})=>{setClockSeconds(seconds,{autoStart:running});document.querySelector('#clockStop').click();return {seconds:state.seconds,running:state.running};},{seconds,running});
   assert.deepEqual(result,{seconds:expected,running:false});

@@ -163,6 +163,14 @@
     host.style.setProperty('--clock-toggle-top', (clockEl.offsetTop + clockEl.offsetHeight / 2) + 'px');
   }
   $('clockToggle')?.parentElement.parentElement.addEventListener('mouseenter', positionClockToggle);
+  // 추가시간에 마우스를 올리면 버튼을 숨겨 더블클릭 수정과 겹치지 않게 한다. 시계 숫자로 돌아오거나
+  // 시계 영역을 벗어날 때까지 유지해, 버튼이 사라지며 추가시간이 움직여도 숨김/표시가 반복되지 않는다.
+  const clockHost = $('clockToggle')?.parentElement.parentElement;
+  if (clockHost) {
+    $('extra')?.addEventListener('pointerenter', () => clockHost.classList.add('clock-controls-suppressed'));
+    clockEl?.addEventListener('pointerenter', () => clockHost.classList.remove('clock-controls-suppressed'));
+    clockHost.addEventListener('pointerleave', () => clockHost.classList.remove('clock-controls-suppressed'));
+  }
 
   /** 편집기에 표시된 분·초를 실제 적용할 시간으로 읽는다. */
   function clockEditorSeconds() {
