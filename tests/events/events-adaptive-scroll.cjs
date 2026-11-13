@@ -45,6 +45,9 @@ assert.equal(list.scrollTop,1000,'then starts the full bottom-to-top pass');
 assert.equal(fire(run('_lpAuto.scrollTimer')),1000);
 now=20000;frame();assert.equal(list.scrollTop,0);
 assert.equal(fire(run('_lpAuto.scrollTimer')),2500);
+// 자동 이동 중 이전 목록이 DOM에서 제거되면 브라우저가 scrollTop=0인 scroll 이벤트를
+// 늦게 보낼 수 있다. 프로그램 이동 표시가 해제된 상태에서도 이 이벤트를 무시해야
+// 하므로 시작 대기를 끝내고 표시 해제 타이머까지 실행한 뒤 분리 상황을 재현한다.
 start(30);
 fire(run('_lpAuto.scrollTimer'));
 fire(run('_lpAuto.scrollProgrammaticTimer'));
@@ -61,6 +64,8 @@ start(30);run('lpStatTogglePause()');assert.equal(frames.size,0);assert.equal(ti
 for(const invalid of [0,-1,NaN,Infinity]) assert.equal(Object.keys(context._lpEventScrollOptions(invalid)).length,0);
 run('_lpStatCycle.paused=false');
 // HTH는 맨 위를 3초 보여준 뒤, 경기 수에 따른 기존 이동 시간으로 아래→위를 훑는다.
+// 10초 간격의 확장 경계인 15경기 전후를 함께 검사한다. 최초 표시 시간만 늘어나고,
+// 이동 중간 위치와 끝 대기 시간은 기존 행 수 기반 규칙을 유지하는지 각각 확인한다.
 for (const [rows, travel] of [[14, 6500], [15, 10000], [30, 20000], [60, 40000]]) {
   run("_lpAutoClear(); _lpStatCycle.mode='hth';");
   context._hthState = { displayMatches: Array.from({ length: rows }) };

@@ -555,12 +555,27 @@
     });
   }
 
-  /** 현재 테마에 팀 로고의 여백·채움·외곽색 보정을 적용한다. */
+  /**
+   * 현재 테마에 맞춰 양쪽 팀 로고의 투명 여백, 내부 채움, 외곽색 대비 보정을 적용한다.
+   *
+   * 호출 시점은 두 곳이다. 일반 render()에서는 팀 로고나 색상 변경을 반영하고,
+   * swapThemeLink()에서는 비동기 CSS 교체가 끝난 뒤 목적 테마에 로고 보정을 복원한다.
+   * render()만 사용하면 아직 UNL이 표시되는 동안 보정을 건너뛴 뒤, 팀 로고가 필요한
+   * 테마로 이동해도 다음 폴링이나 사용자 입력까지 작은 원본 상태로 남을 수 있다.
+   *
+   * LogoTrim은 같은 URL의 유효한 분석 결과를 재사용하고, 새 URL만 비동기로 분석한다.
+   * 따라서 테마 전환마다 분석 캐시를 지우거나 로고 원본을 다시 가공할 필요는 없다.
+   * 사용자 지정 확대 배율과 이동 좌표는 CSS 변수로 별도 적용하므로 여기서 초기화하지 않는다.
+   *
+   * @returns {void}
+   */
   function renderScoreboardLogos() {
     for (const side of ['home', 'away']) {
       // UNL 장식에는 팀 로고 보정을 적용하지 않는다. 테마를 떠나면 캐시된 보정을 복원한다.
       if (el[`${side}Logo`]?.closest('.fsm-board')?.dataset.fsmTheme === 'unl') continue;
       LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
+        // 실제 보이는 경계가 준비된 뒤 외곽색을 판정해야 원본의 투명 여백을 로고 색으로
+        // 오인하지 않는다. 분석 완료 시점의 최신 팀 색상도 콜백 안에서 다시 읽는다.
         ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
           chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
       });

@@ -1,4 +1,11 @@
-/** 화면 애니메이션의 시작·길이에 맞춰 짧은 알림음을 합성한다. 기본값은 무음이다. */
+/**
+ * 점수판 깜빡임과 신규 이벤트 표시 애니메이션에 맞춰 알림음을 재생한다.
+ *
+ * 설정의 board/event 재생 여부와 음량을 따르며 기본값은 무음이다. 실제 animationstart에서
+ * 지속 시간을 읽으므로 화면 표시와 소리의 기준이 분리되지 않는다. 두 종류는 독립 채널로
+ * 관리하고 같은 종류의 동시 변경은 합쳐 점수와 득점자 갱신이 겹쳐도 소리를 중복하지 않는다.
+ * 일반 브라우저는 사용자 입력으로 오디오를 준비하고, 자동 재생이 가능한 OBS만 별도 준비한다.
+ */
 (() => {
   let context = null;
   const channels = new Map();
@@ -8,7 +15,13 @@
   const sampleBuffers = new Map();
   const sampleRequests = new Map();
 
-  /** 선택한 샘플만 미리 읽어 알림 시점의 네트워크 대기를 피한다. */
+  /**
+   * 녹음 샘플을 사용하는 세트만 가져와 AudioBuffer로 미리 디코딩한다.
+   * 완료된 버퍼와 진행 중인 Promise를 별도로 캐시해 동시에 준비해도 다운로드가 겹치지
+   * 않게 한다. 실패한 Promise는 제거해 다음 준비 요청에서 다시 시도할 수 있게 한다.
+   * @param {string} set 설정에서 선택한 알림음 세트 키.
+   * @returns {Promise<boolean>} 샘플 준비 성공 여부. 합성 전용 세트는 다운로드 없이 성공한다.
+   */
   async function prepareSamples(set) {
     if (!sampleSets[set]) return true;
     if (!context) return false;
@@ -27,7 +40,12 @@
   }
   const enabled = kind => getSetting(kind === 'board' ? 'boardFlashSound' : 'eventSpotlightSound') === 'on';
 
-  /** 사용자 입력 안에서만 오디오를 준비하며, 잠긴 상태에서 놓친 알림은 나중에 재생하지 않는다. */
+  /**
+   * AudioContext를 생성하거나 재개하고 선택한 샘플의 사전 준비를 시작한다.
+   * 일반 브라우저에서는 사용자 입력 경로에서 호출하며, 재개가 거부되면 알림을 쌓아 두지
+   * 않고 준비 실패로 돌려준다. OBS는 자동 재생 경로에서도 이 함수를 사용할 수 있다.
+   * @returns {Promise<AudioContext|null>} 실행 가능한 오디오 컨텍스트 또는 준비 실패 시 null.
+   */
   async function unlock() {
     try {
       const Audio = window.AudioContext || window.webkitAudioContext;
@@ -39,6 +57,7 @@
     } catch { return null; }
   }
 
+  /** 지정한 채널의 예약/재생 노드를 모두 정지한다. 이미 끝난 노드의 중복 stop 오류는 무시한다. */
   function stop(kind) {
     const channel = channels.get(kind);
     if (!channel) return;
@@ -46,7 +65,16 @@
     channels.delete(kind);
   }
 
-  /** 짧게 튕기는 본음 뒤에 높은 음과 유리 배음을 겹치며, 잔향도 표시 구간 안에서 끝낸다. */
+  /**
+   * 선택한 세트에 맞춰 샘플 또는 합성 음성을 채널에 예약한다.
+   * 녹음 샘플은 짧은 페이드로 시작과 끝의 잡음을 줄이고, 합성 세트는 발음과 잔향을
+   * 지정된 표시 구간 안에 배치한다. 생성한 재생 노드를 channel.nodes에 등록해야
+   * 애니메이션 취소나 설정 변경 시 stop()이 남은 소리까지 정리할 수 있다.
+   * @param {object} channel 종류별 재생 노드와 표시 대상을 보관하는 채널.
+   * @param {number} start AudioContext.currentTime 기준 재생 시작 시각(초).
+   * @param {number} duration 재생에 사용할 시간(초). 이벤트 샘플은 별도 표시 길이를 사용한다.
+   * @param {'board'|'event'} kind 알림 종류.
+   */
   function bell(channel, start, duration, kind) {
     const set = getSetting('notificationSoundSet');
     if (sampleSets[set]) {
@@ -218,6 +246,15 @@
     });
   }
 
+  /**
+   * 준비된 컨텍스트에서 알림을 재생하고 같은 종류의 겹치는 요청을 정리한다.
+   * 80ms 안에 시작한 화면 대상은 기존 채널에 합쳐 재생 횟수를 늘리지 않는다.
+   * 점수판은 깜빡임의 세 번 보이는 구간에 맞추고, 신규 이벤트는 한 구간으로 재생한다.
+   * 오디오가 잠겼거나 길이/음량이 유효하지 않으면 나중에 재생할 대기열을 만들지 않는다.
+   * @param {'board'|'event'} kind 재생할 알림 채널.
+   * @param {number} duration 화면 애니메이션의 길이(초).
+   * @param {Element|null} target 취소 시 재생을 정리할 화면 애니메이션 대상.
+   */
   function play(kind, duration, target = null) {
     if (!context || context.state !== 'running' || !Number.isFinite(duration) || duration <= .03) return;
     if (Number(getSetting('notificationSoundVolume')) <= 0) return;
@@ -238,6 +275,7 @@
     } else bell(channel, start, duration, kind);
   }
 
+  /** 같은 CSS 애니메이션을 쓰는 다른 UI가 울리지 않도록 실제 알림 대상과 이름을 함께 판정한다. */
   function animationKind(event) {
     if (event.animationName === 'board-flash' && event.target.matches('.flash-update')) return 'board';
     if (event.animationName === 'ev-row-glow' && event.target.closest('.ev-spotlight.is-visible')) return 'event';
@@ -257,6 +295,8 @@
     play(kind, duration, event.target);
   });
   document.addEventListener('animationcancel', event => {
+    // 동시에 묶인 화면 대상 중 하나만 사라진 경우에는 나머지 대상의 소리를 유지한다.
+    // 해당 채널에 속한 모든 애니메이션 대상이 사라졌을 때만 전체 재생을 정지한다.
     for (const [kind, channel] of channels) {
       if (!channel.targets.has(event.target)) continue;
       channel.targets.delete(event.target);
@@ -282,7 +322,12 @@
     if (!event.target.matches('[data-settings-slider="notificationSoundVolume"]')) return;
     previewEnabled();
   });
-  /** 볼륨과 세트 선택은 켜진 알림음만 짧게 미리 들려준다. */
+  /**
+   * 음량이나 세트 변경을 짧게 모아 현재 켜진 알림음만 미리 재생한다.
+   * 샘플 준비와 점수판 미리듣기 사이에도 설정이나 페이지가 바뀔 수 있으므로 version을
+   * 비교해 오래된 요청의 소리가 뒤늦게 재생되지 않게 한다. 두 알림이 켜져 있으면
+   * 점수판 소리가 끝난 뒤 이벤트 소리를 재생해 서로 비교할 수 있게 한다.
+   */
   function previewEnabled() {
     const version = ++volumePreviewVersion;
     if ((!enabled('board') && !enabled('event')) || Number(getSetting('notificationSoundVolume')) <= 0) return;

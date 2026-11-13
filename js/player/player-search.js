@@ -1,4 +1,10 @@
-// 선수 ID 연결·빈 슬롯 입력에서 함께 사용하는 높이별 페이지 후보 선택기.
+/**
+ * 선수 ID 연결과 빈 슬롯 입력 팝업에서 사용하는 공통 검색 상태와 후보 선택 UI.
+ *
+ * API 페이지(rawPage), 그 결과를 패널 높이만큼 나눈 내부 페이지(localPage), 사용자에게
+ * 표시할 누적 페이지(screenPage)를 구분한다. 패널 높이가 바뀌어도 API를 재요청하지 않고
+ * 같은 결과 배열을 다시 나누며, 비동기 응답은 요청 버전과 팝업 활성 여부가 맞을 때만 반영한다.
+ */
 /** 양의 안전한 정수만 선수 ID로 인정하며, 사용할 수 없는 값은 0으로 반환합니다. */
 function playerSearchId(value) {
   const text = String(value ?? '').trim();
@@ -8,6 +14,8 @@ function playerSearchId(value) {
 
 /**
  * API 검색 결과를 캐시하고 패널 높이에 맞는 화면 페이지로 나누어 관리합니다.
+ * 캐시는 현재 검색어 안에서 API 페이지별로 보관하며 새 검색이나 reset에서 비운다.
+ * version은 검색어뿐 아니라 페이지 요청마다 증가해 먼저 보낸 응답이 나중 상태를 덮지 못한다.
  * @param {Object} options 검색 상태와 선택 결과를 전달할 콜백입니다.
  * @param {Function} options.onChange 활성 상태에서 검색 상태가 바뀌면 호출합니다.
  * @param {Function} options.onSelect 유효한 선수 후보를 선택하면 호출합니다.
@@ -25,7 +33,12 @@ function createPlayerSearch({ onChange, onSelect, isActive = () => true }) {
     state.screenPage = 1 + state.localPage;
     for (let page = 1; page < state.rawPage; page++) state.screenPage += Math.max(1, Math.ceil((state.pages.get(page)?.length || 0) / state.pageSize));
   };
-  /** API 페이지를 가져오거나 캐시에서 읽으며, localPage가 -1이면 해당 결과의 마지막 화면을 엽니다. */
+  /**
+   * API 페이지를 가져오거나 현재 검색의 페이지 캐시에서 읽는다.
+   * localPage=-1은 이전 API 페이지로 돌아갈 때 그 결과의 마지막 내부 화면을 뜻한다.
+   * 성공, 오류, finally 모두 요청 버전을 검사해 닫힌 팝업이나 새 검색의 로딩 상태를
+   * 오래된 응답이 변경하지 않도록 한다. 응답의 페이지 번호와 결과 구조도 저장 전에 확인한다.
+   */
   async function load(rawPage, localPage, screenPage) {
     const request = ++version;
     state.loading = true;
@@ -180,6 +193,7 @@ function bindPlayerSearchResize(host, edge = 'top') {
   host.appendChild(handle);
 }
 
+/** 검색 영역과 크기 조절 핸들을 제거하고 ResizeObserver를 해제해, 닫힌 팝업을 계속 측정하지 않게 한다. */
 function closePlayerSearchSidePanel(host) {
   host?.querySelector(':scope > .ps-side-panel')?._psObserver?.disconnect();
   host?.querySelector(':scope > .ps-side-panel')?.remove();
@@ -188,6 +202,11 @@ function closePlayerSearchSidePanel(host) {
   if (host) { host.style.height = ''; host.style.removeProperty('--ps-base-width'); }
 }
 
+/**
+ * 검색 결과 패널의 높이와 클릭을 검색 상태 객체에 연결한다.
+ * 결과 HTML을 교체할 때 같은 패널의 관찰자를 중복 생성하지 않고 최신 fit 함수만 갱신한다.
+ * 선택 완료 상태에서는 페이지 용량을 재계산하지 않아 선택한 선수 표시가 다시 나뉘지 않게 한다.
+ */
 function bindPlayerSearchPanel(panel, search) {
   // CSS의 행 높이와 간격으로 용량을 계산해 후보가 중간에 잘리지 않게 한다.
   const fit = () => {
@@ -209,7 +228,13 @@ function bindPlayerSearchPanel(panel, search) {
   };
 }
 
-/** 팝업 검색칸에 공통 후보 선택기를 연결한다. */
+/**
+ * 팝업의 검색 입력, 검색 버튼, 후보 선택을 공통 검색 상태와 연결한다.
+ * 입력을 다시 바꾸면 이전 선택을 무효화하고 진행 중인 응답도 reset으로 무효화한다.
+ * 팝업 연결 여부와 입력기가 여전히 그 팝업에 속하는지 검사해 교체된 편집창을 보호한다.
+ * @param {object} options 입력기와 후보 선택/무효화 콜백.
+ * @returns {object} 생성한 공통 검색 상태와 제어 메서드.
+ */
 function bindPopupPlayerSearch({ input, button, popup, onSelect, onInvalidate }) {
   const search = createPlayerSearch({
     isActive: () => popup.isConnected && popup.contains(input),

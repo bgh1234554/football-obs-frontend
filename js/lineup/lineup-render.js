@@ -1027,6 +1027,11 @@ function renderBenchPanel(effectiveData, rawData) {
 
   const homeList = panel.querySelector('[data-bench-side="home"] .dp-list');
   const awayList = panel.querySelector('[data-bench-side="away"] .dp-list');
+  // 작은 레이아웃은 .dp-list 자체를 재사용하면서 자식 선수 행만 교체한다.
+  // innerHTML 변경으로 기존 위치가 줄어들거나 초기화될 수 있으므로 같은 경기의 위치를
+  // 먼저 저장하고, 명단과 인원수별 클래스가 적용된 뒤 복원한다. 경기 ID가 달라졌을 때는
+  // 이전 경기의 중간 위치를 넘기지 않는다. data-scroll-fixture는 stat-cycle.js의 작은
+  // 레이아웃 자동스크롤도 읽으며, 진행 시간을 유지할지 새 주기로 시작할지 판단한다.
   const scrollFixture = String(effectiveData?.matchInfo?.fixtureId || '');
   if (homeList) {
     const top = homeList.dataset.scrollFixture === scrollFixture ? homeList.scrollTop : 0;
@@ -1343,6 +1348,9 @@ function lpBenchCycleRebalance(panel) {
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
   if (!body.getClientRects().length || body.clientHeight <= 0) return;
+  // 측정 도중 2열 스타일을 넣으면 세로 스크롤 범위가 사라져 scrollTop이 0으로 바뀔 수
+  // 있다. 최종 배치가 다시 세로 스크롤 모드가 되는 경우에만 측정 전 위치를 복원한다.
+  // 실제로 1열이나 2열 안에 모두 들어가는 경우에는 스크롤 위치를 유지할 필요가 없다.
   const top = body.scrollTop;
 
   // 1열 상태에서 overflow 측정
@@ -1396,6 +1404,9 @@ function renderBenchCyclePanels(effectiveData) {
 
   document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
     el.innerHTML = buildBenchCyclePanelHtml(homeSubs, getTeamName(effectiveData, 'home'), homeColor, 'home');
+    // DOM 교체 직후 동기적으로 알린다. 다음 rAF의 배치 측정까지 기다리면, 분리된 이전
+    // 목록의 scroll 이벤트가 먼저 도착해 자동 이동을 취소하거나 새 목록의 맨 위가 노출된다.
+    // stat-cycle.js는 이 이벤트에서 새 .bc-body에 현재 위치와 중단 리스너를 즉시 넘긴다.
     el.dispatchEvent(new CustomEvent('bench-panel:rendered', { bubbles: true }));
   });
   document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
@@ -1403,7 +1414,8 @@ function renderBenchCyclePanels(effectiveData) {
     el.dispatchEvent(new CustomEvent('bench-panel:rendered', { bubbles: true }));
   });
 
-  // 렌더 직후 rebalance
+  // 스크롤 대상 교체는 위에서 끝내고, 실제 1열/2열/스크롤 배치는 다음 프레임에 측정한다.
+  // lpBenchCycleRebalance()가 측정 중 바뀔 수 있는 위치를 보존하므로 진행 시간을 재시작하지 않는다.
   requestAnimationFrame(() => {
     document.querySelectorAll('.lp-stat [data-bench-home-panel], .lp-stat [data-bench-away-panel]').forEach(lpBenchCycleRebalance);
   });

@@ -56,6 +56,11 @@
     return { layout, column };
   }
 
+  /**
+   * 실제 신규 이벤트를 표시할 고정 레이어를 한 번 생성하고 이후 표시마다 재사용한다.
+   * 원본 이벤트 패널 바깥에 두어 알림 크기가 카메라 레이아웃의 높이 계산에 들어가지 않게 한다.
+   * 레이어의 클릭은 크기 설정을 열지만 복제된 행의 원본 편집 동작은 실행하지 않는다.
+   */
   function ensureHost() {
     if (host) return host;
     host = document.createElement('div');
@@ -115,6 +120,12 @@
     host.style.setProperty('--ev-spotlight-scale', String(scale));
   }
 
+  /**
+   * 표시 중인 이벤트가 없을 때 대기열에서 한 행을 꺼내 표시하고 다음 행까지 이어간다.
+   * 행의 글씨 맞춤과 위치 계산을 투명 상태에서 끝낸 뒤 나타나게 해 높이 변화가 보이지 않게 한다.
+   * 표시 시간과 사라지는 시간을 별도 타이머로 두어 이전 행이 사라진 뒤에만 다음 행을 시작한다.
+   * 알림이 꺼졌거나 카메라 레이아웃이 아니면 대기열을 비워 나중에 과거 이벤트를 몰아 띄우지 않는다.
+   */
   function showNext() {
     if (showing || !queue.length) return;
     const target = enabled() ? activeLayout() : null;
@@ -151,7 +162,12 @@
     }, SHOW_MS);
   }
 
-  /** 이벤트 패널에서 새로 생긴 행을 복제해 대기열에 넣는다(오래된 이벤트부터). */
+  /**
+   * 새 이벤트 행을 오래된 것부터 복제해 표시 대기열에 넣는다.
+   * 원본 패널의 편집/숨기기 버튼과 유지 중인 강조 상태를 제거해 알림이 원본 동작을
+   * 대신 실행하지 않게 한다. 실제 이벤트가 오면 크기 견본을 먼저 치워 겹치지 않게 한다.
+   * @param {HTMLElement[]} rows 원본 이벤트 패널에서 새로 추가된 행.
+   */
   function enqueue(rows) {
     window.evSpotlightStopPreview();
     rows.reverse().forEach(source => {
@@ -176,6 +192,11 @@
     previewHost = null;
   };
 
+  /**
+   * 크기 견본을 현재 카메라 칼럼의 폭으로 배치한다. 일정이나 설정 페이지에서는 선택한
+   * 카메라 레이아웃을 보이지 않게 잠시 측정하고 원래 인라인 스타일을 finally에서 복원한다.
+   * 실제 이벤트 표시 위치와 견본 위치를 분리해 설정 중에 화면 이동이나 실제 이벤트 재생을 만들지 않는다.
+   */
   function placePreview() {
     if (!previewHost) return;
     const target = activeLayout();
@@ -234,7 +255,14 @@
   /** fixture.js: 같은 경기에서 이벤트 개수가 늘어난 응답을 렌더하기 직전에 호출. */
   window.evSpotlightMarkNewEvents = () => { pendingNew = true; };
 
-  /** events-panel.js: 이벤트 패널을 다시 그린 직후 호출. 이전에 본 키와 비교해 새 행만 고른다. */
+  /**
+   * events-panel.js가 렌더한 결과를 이전 키 집합과 비교해 새 이벤트와 구간 알림을 추린다.
+   * 같은 경기를 여러 컨테이너에 렌더해도 한 목록만 기준으로 사용한다. 일반 이벤트는
+   * fixture.js의 pendingNew 표시가 있는 렌더에서만 알리고, 구간 종료 행은 별도 키로
+   * 같은 개수의 응답 변경도 감지한다. 첫 조회나 경기 변경의 과거 이벤트는 표시하지 않는다.
+   * @param {string|number} fixtureId 렌더한 경기 ID.
+   * @param {Iterable<HTMLElement>} containers 같은 경기의 이벤트 패널 컨테이너들.
+   */
   window.evSpotlightAfterRender = (fixtureId, containers) => {
     const source = Array.from(containers).find(container => container.querySelector('.ev-row[data-ev-key], .ev-period-marker')) || containers[0];
     const allRows = source ? [...source.querySelectorAll('.ev-list > .ev-row')] : [];

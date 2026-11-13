@@ -385,13 +385,30 @@ function hthCreateTitleBar(container) {
 
   return titleBar;
 }
-/** 메타 행 wrap 감지 → .hth-meta-row-wrapped 토글 */
+/**
+ * 화면에 표시되는 상대전적의 팀명과 메타정보를 실제 패널 폭에 맞춰 배치한다.
+ *
+ * 팀명은 전체 이름, 단축명, 글씨 축소 순서로 조정하고, 메타정보는 한 줄에 좌우로
+ * 배치할 수 없을 때 두 줄 가운데 정렬로 바꾼다. 숨겨진 패널은 폭을 측정할 수 없으므로
+ * 제외하며, 해당 패널이 표시될 때 hthScheduleMetaWrap()이 다시 측정을 예약한다.
+ *
+ * 중요한 것은 DOM 쓰기와 읽기의 순서다. 선수나 경기 행마다 글자를 바꾸고 즉시 크기를
+ * 읽으면 매번 강제 레이아웃이 발생해 긴 목록을 스크롤하는 프레임이 막힌다. 같은 단계의
+ * 변경을 모든 행에 먼저 적용한 뒤 결과를 일괄 측정하는 순서를 유지해야 한다.
+ *
+ * 직접 호출하면 즉시 배치를 마친다. 가시성 변경, resize, 설정 이벤트처럼 같은 프레임에
+ * 여러 번 발생하는 경로에서는 중복 작업을 합치는 hthScheduleMetaWrap()을 사용한다.
+ *
+ * @returns {void}
+ */
 function hthCheckMetaWrap() {
   // 팀 이름 설정을 우선 적용하고 풀네임 모드에서만 폭에 따라 단축명으로 줄인다.
   const useLong = getSetting('teamName') === 'long';
   const panels = [...document.querySelectorAll('[data-hth-panel]')]
     .filter(panel => panel.getClientRects().length && panel.clientWidth);
   const labels = panels.flatMap(panel => [...panel.querySelectorAll('.hth-team-name[data-long-name]')]);
+  // Range는 줄 안에서도 글자 조각별 사각형을 반환할 수 있다. 사각형 개수가 아니라
+  // 같은 top 좌표를 묶어 실제 줄 수를 센다. 소수점 좌표 차이는 반올림해 한 줄로 취급한다.
   const lineCount = label => {
     const range = document.createRange();
     range.selectNodeContents(label);
@@ -400,14 +417,20 @@ function hthCheckMetaWrap() {
   // 모든 쓰기를 끝낸 뒤 한꺼번에 측정한다. 행마다 DOM 변경→측정을 반복하면
   // 긴 목록에서 수십~수백 번 강제 레이아웃이 발생해 스크롤 프레임을 막는다.
   labels.forEach(label => {
+    // 이전에 좁은 폭에서 적용한 축소를 먼저 해제해야, 패널이 넓어졌을 때 전체 이름과
+    // 기본 글씨 크기로 돌아갈 수 있다. 이전 측정 결과를 다음 측정의 기준으로 쓰지 않는다.
     label.style.fontSize = '';
     label.textContent = useLong ? label.dataset.longName : label.dataset.shortName;
   });
+  // 전체 이름을 선호하되 세 줄 이상이면 단축명을 시험한다. 단축명도 세 줄 이상이면
+  // 줄 수 제한에 실질적인 이점이 없으므로 전체 이름을 복원한 뒤 글씨 크기로 해결한다.
   const shortened = useLong ? labels.filter(label => lineCount(label) >= 3) : [];
   shortened.forEach(label => { label.textContent = label.dataset.shortName; });
   const fallback = shortened.filter(label => lineCount(label) >= 3);
   fallback.forEach(label => { label.textContent = label.dataset.longName; });
-  // 단축명도 세 줄 이상이면 풀네임을 쓰고 네 줄부터만 글씨를 줄인다.
+  // 세 줄은 그대로 허용하며 네 줄부터만 0.5px씩 줄인다. 매 반복에서도 모든 대상의
+  // 크기를 먼저 쓰고 줄 수를 함께 읽어, 이름마다 별도 레이아웃을 강제하지 않는다.
+  // 최소 1px에서 멈추므로 극단적으로 좁은 영역에서도 반복이 끝난다.
   let oversized = labels.map(label => ({ label, size: parseFloat(getComputedStyle(label).fontSize) }))
     .filter(({ label, size }) => size > 1 && lineCount(label) > 3);
   while (oversized.length) {
@@ -418,6 +441,9 @@ function hthCheckMetaWrap() {
     oversized = oversized.filter(({ label, size }) => size > 1 && lineCount(label) > 3);
   }
   const rows = panels.flatMap(panel => [...panel.querySelectorAll('.hth-meta-row')]);
+  // 기존 두 줄 클래스를 모두 해제한 자연 배치에서 줄바꿈을 측정한다. 클래스를 남겨 두면
+  // 폭이 넓어져도 항상 두 줄로 측정돼 한 줄 배치로 돌아오지 못한다. 읽기를 끝낸 뒤에만
+  // 클래스를 일괄 적용해 행마다 레이아웃을 다시 계산하는 일을 피한다.
   rows.forEach(row => row.classList.remove('hth-meta-row-wrapped'));
   const wrapped = rows.map(row => {
     const left = row.querySelector('.hth-meta-left'), right = row.querySelector('.hth-meta-right');
@@ -426,6 +452,16 @@ function hthCheckMetaWrap() {
   rows.forEach((row, index) => row.classList.toggle('hth-meta-row-wrapped', wrapped[index]));
 }
 let _hthMetaWrapFrame = null;
+/**
+ * 여러 상대전적 배치 요청을 다음 애니메이션 프레임의 한 번의 측정으로 합친다.
+ *
+ * 데이터 렌더, 패널 표시, ResizeObserver가 같은 변경에 연달아 반응할 수 있다.
+ * 이미 예약된 프레임이 있으면 추가 예약 없이 최신 DOM을 그 프레임에서 함께 측정한다.
+ * 실행 직전에 예약 표시를 해제하므로 측정 후 새로 발생한 폭 변경은 다음 프레임에
+ * 다시 처리할 수 있다. 요청이 들어올 때마다 기존 예약을 취소하는 지연 방식은 아니다.
+ *
+ * @returns {void}
+ */
 function hthScheduleMetaWrap() {
   if (_hthMetaWrapFrame !== null) return;
   _hthMetaWrapFrame = requestAnimationFrame(() => {
@@ -463,6 +499,9 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
 
   // 2) 각 패널의 제목과 경기 목록을 교체한다. 표시할 경기가 없으면 빈 상태 메시지를 넣는다.
   document.querySelectorAll('[data-hth-panel]').forEach(container => {
+    // 캐시는 같은 팀 조합을 공유하지만 사용자가 보는 경기는 서로 다를 수 있다.
+    // 팀 조합과 fixtureId가 모두 같을 때만 위치를 유지해, 색상 변경이나 재렌더에서는
+    // 읽던 위치를 보존하고 다른 경기를 선택하면 맨 위에서 시작하도록 한다.
     const fixtureKey = `${_hthState.cacheKey}:${fixtureData?.matchInfo?.fixtureId || ''}`;
     const scrollTop = container._hthScrollFixtureKey === fixtureKey
       ? container.querySelector('.hth-list')?.scrollTop || 0 : 0;
@@ -484,6 +523,8 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
     if (titleBar) container.replaceChildren(titleBar, list);
     else container.replaceChildren(list);
     list.scrollTop = scrollTop;
+    // 작은 레이아웃의 수동 위치는 위에서 복원하고, 큰 레이아웃의 진행 중인 자동 이동은
+    // 이 이벤트를 받은 stat-cycle.js가 새 목록으로 연결한다. 전환 타이머는 다시 시작하지 않는다.
     container.dispatchEvent(new CustomEvent('hth-panel:rendered', { bubbles: true }));
   });
 

@@ -61,11 +61,16 @@ const draftRoot = path.resolve(process.argv[2] || root);
     assert.deepEqual(errors,[]);
     console.log('PASS: visible top insertion, five-second hold, bottom-to-top scroll, polling continuity, glow through completion and previous-panel return.');
 
-    // 이벤트 개수가 그대로인 상태 변경도 실제 폴링 경로로 알림을 띄워야 합니다.
+    // 여기까지는 실제 시간으로 새 이벤트의 삽입과 이동을 관찰한다. 이후에는 긴 상대전적과
+    // 이벤트 구간 알림의 대기를 가상 시계로 진행한다. 실제 시계에서 만든 예약을 먼저
+    // 정리하지 않으면 설치 뒤 clearTimeout()으로 정리되지 않는 기존 예약이 남을 수 있다.
+    // 그러면 수동으로 선택한 패널이 이전 자동 전환에 의해 바뀌어 검증 결과가 흔들린다.
     await page.evaluate(() => { setSetting('statCycleAuto', 'off'); _lpAutoClear(); });
     await page.clock.install();
     const baseFixture = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/1637598-lineup.json'), 'utf8'));
     // 긴 상대전적과 후보명단도 실제 DOM 교체/폴링 뒤 스크롤을 이어간다.
+    // 후보를 60명 넣어 기본 패널 크기에서도 2열로 모두 표시할 수 없는 조건을 만든다.
+    // 실제 서비스의 명단 정원을 뜻하는 값이 아니라, 스크롤 경로를 확실히 실행하는 데이터다.
     await page.evaluate(async fixture => {
       setSetting('statCycleAuto', 'off');
       window.scrollFixture = structuredClone(fixture);
@@ -82,6 +87,8 @@ const draftRoot = path.resolve(process.argv[2] || root);
       applyHthPanel(scrollHth, scrollFixture);
     }, baseFixture);
     for (const view of ['main-big', 'main-small']) {
+      // 두 레이아웃의 수동 위치 보존부터 확인한다. 이 구간은 자동 전환을 꺼 두어
+      // 사용자가 읽던 위치를 재렌더가 바꾸는 문제와 자동 이동 자체의 문제를 구분한다.
       const selector = view === 'main-big' ? '.layout-big .hth-list' : '.lp-events-s .hth-list';
       await page.evaluate(view => {
         setSetting('statCycleAuto', 'off'); activatePage(view); _lpAutoClear();
@@ -112,6 +119,8 @@ const draftRoot = path.resolve(process.argv[2] || root);
       const interval = _lpGetIntervalMs();
       return _lpHthScrollOptions(interval).scrollDurationMs + interval * 0.1 - 2400 + 100;
     });
+    // 시작과 이동 중의 위치는 위에서 실제 rAF로 검사했다. 남은 긴 이동은 마지막
+    // 프레임까지 건너뛰어, 재렌더 뒤에도 끝 위치에 도달하는지 별도로 확인한다.
     await page.clock.fastForward(remainingHthTravel);
     assert.equal(await page.locator('.layout-big .hth-list').evaluate(list => list.scrollTop), 0, 'long HTH finishes the full scroll after rerender');
     for (const side of ['home', 'away']) {
@@ -138,6 +147,8 @@ const draftRoot = path.resolve(process.argv[2] || root);
         const previous = panel.querySelector('.bc-body'), top = previous.scrollTop;
         renderBenchCyclePanels(scrollFixture);
         // 브라우저가 제거된 목록에 전달하는 늦은 scroll 이벤트를 재현한다.
+        // 새 목록의 위치를 같은 작업 안에서 읽어 다음 프레임의 자동 이동이 잘못된
+        // 초기화를 덮어주기 전에, 렌더 함수 자체가 즉시 위치를 넘겼는지 확인한다.
         previous.dispatchEvent(new Event('scroll'));
         return { before: top, after: panel.querySelector('.bc-body').scrollTop };
       }, side);
@@ -147,6 +158,8 @@ const draftRoot = path.resolve(process.argv[2] || root);
       assert(after > before, `${side}: polling preserves bench auto scroll`);
     }
     await page.evaluate(() => { activatePage('main-small'); _lpAutoClear(); });
+    // 작은 레이아웃은 두 팀의 목록이 동시에 보인다. 한쪽만 우연히 움직인 경우가
+    // 통과하지 않도록 두 목록을 모두 확인한 뒤, 한쪽 조작과 전체 자동 해제를 구분한다.
     await page.clock.runFor(1400);
     const smallSelector = '#benchPanel .dp-list';
     const beforeSmall = await page.locator(smallSelector).evaluateAll(lists => lists.map(list => list.scrollTop));

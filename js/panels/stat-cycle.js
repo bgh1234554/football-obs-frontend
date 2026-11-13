@@ -110,7 +110,16 @@ function _lpEventsScrollEl(mode = 'events') {
   if (mode === 'fixtures') return panel?.querySelector('.tf-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
-/** 현재 모드가 목록형 자동 스크롤 대상인지 판단한다. 실제 넘침은 레이아웃 후 측정한다. */
+/**
+ * 패널이 공통 목록 자동스크롤 절차를 사용하는지 반환한다.
+ *
+ * 여기서는 패널의 종류만 판정한다. 특히 교체명단의 2열 배치와 스크롤 여부는 패널을
+ * 표시한 다음 프레임에 확정되므로 data-bench-scroll 같은 이전 측정값으로 시작을 막지 않는다.
+ * 실제 이동할 길이가 없으면 _lpStartEventsScroll()이 대기 후 전환하는 경로로 처리한다.
+ *
+ * @param {string} mode 현재 패널 모드.
+ * @returns {boolean} 공통 목록 자동스크롤을 사용하는 모드인지 여부.
+ */
 function _lpModeUsesPanelAutoScroll(mode) {
   // 교체 명단은 표시 후 다음 프레임에 overflow가 확정된다. 시작 전에 속성으로 거르면
   // 숨겨져 있던 패널에 처음 진입할 때 자동 스크롤이 빠진다.
@@ -206,8 +215,10 @@ function _lpBindEventsScrollInterruption(el) {
     if (_LP_SCROLL_KEYS.has(event.key)) cancel();
   };
   const onScroll = () => {
-    // DOM 교체로 분리된 목록도 scroll 이벤트를 낼 수 있다. 새 목록에 위치를
-    // 넘기기 전에 이를 사용자 조작으로 처리하면 진행 중인 스크롤이 취소된다.
+    // 브라우저는 DOM에서 제거된 이전 목록에도 늦은 scroll 이벤트를 보낼 수 있다.
+    // 이때 분리된 요소의 scrollTop은 0으로 보일 수 있어 마지막 자동 위치와 비교하면
+    // 사용자 조작으로 오인하게 된다. 연결 여부와 현재 추적 대상 여부를 먼저 확인해야
+    // 이 이벤트가 새 목록의 자동 이동과 전환 타이머를 취소하지 않는다.
     if (!el.isConnected || el !== _lpAuto.scrollEl) return;
     if (_lpAuto.scrollProgrammatic) return;
     if (_lpAuto.scrollExpectedTop != null
@@ -362,7 +373,20 @@ function _lpEventScrollOptions(baseIntervalMs) {
 /** 상대전적 경기 수가 많으면 실제 스크롤 이동 시간을 비례해서 늘린다(HTH 패널 전용). */
 const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
-/** 실제 상대 전적 행 수가 기준 이상이면 이동 시간을 늘리는 옵션을 반환한다. 기본 속도면 빈 객체. */
+/**
+ * 상대전적의 최초 표시 대기와 경기 수에 따른 스크롤 이동 시간을 계산한다.
+ *
+ * 맨 위의 최신 경기들을 3초 보여주는 동작은 행 수와 무관하게 항상 반환한다.
+ * 이 대기가 끝나면 _lpStartEventsScroll()이 맨 아래로 이동해 기존 아래에서 위 방향의
+ * 전체 스크롤을 시작한다. 최초 3초는 기존 시작 대기와 이동 시간에 추가되는 시간이다.
+ *
+ * 이동 시간 확장은 화면에 실제 표시되는 과거 경기 수를 기준으로 한다. 예를 들어
+ * 기본 간격이 10초면 15경기 미만은 기존 6.5초 이동을 사용하고, 15경기부터는
+ * (경기 수 / 1.5)초로 이동 시간을 늘린다. 시작과 종료의 대기 비율은 그대로 유지한다.
+ *
+ * @param {number} baseIntervalMs 사용자가 설정한 기본 패널 전환 간격(ms).
+ * @returns {object} 최초 맨 위 대기와, 필요한 경우 확장한 이동 시간 및 양끝 대기 옵션.
+ */
 function _lpHthScrollOptions(baseIntervalMs) {
   const options = { showNewestFirstMs: 3000 };
   // displayMatches는 오늘 포함 이후 예정 경기를 뺀, 실제로 화면에 그려지는 행 수와 일치하는 배열
@@ -400,7 +424,19 @@ function _lpInjuryScrollOptions(baseIntervalMs) {
   };
 }
 
-/** 상대 전적 데이터를 준비한 뒤 스크롤을 시작한다. 로딩 중에는 다음 패널로 넘어갈 대체 타이머를 둔다. */
+/**
+ * 현재 경기의 상대전적 데이터를 준비하고, 준비된 목록의 행 수에 맞춰 스크롤을 시작한다.
+ *
+ * 유효한 데이터가 있으면 즉시 시작하고, 새 조회가 필요하면 로딩 중 다음 패널로 넘어갈
+ * 대체 타이머를 둔다. 응답이 먼저 완료되면 이 타이머를 지우고 실제 스크롤을 예약한다.
+ *
+ * 모드 이름만 비교하면 조회 중 다른 패널로 갔다가 다시 hth로 돌아온 경우를 구분할 수
+ * 없다. 시작 당시 generation도 함께 비교해 이전 진입의 응답이 현재 진입의 타이머나
+ * 스크롤을 덮어쓰지 않도록 한다. 자동 전환 해제와 일시정지도 완료 시점에 다시 검사한다.
+ *
+ * @param {number} intervalMs 기본 패널 전환 간격(ms).
+ * @returns {void}
+ */
 function _lpStartHthScrollWhenReady(intervalMs) {
   const generation = _lpAuto.generation;
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
@@ -892,7 +928,19 @@ function lpStatResumeAfterNewEventRendered() {
 
 // ─── 이벤트 리스너 ────────────────────────────────────────────────────────────
 
-// 폴링으로 목록이 교체돼도 현재 위치와 스크롤 대상을 이어받는다.
+/**
+ * 목록 렌더 완료 이벤트를 받아 진행 중인 자동스크롤을 새 DOM 요소로 연결한다.
+ *
+ * 같은 모드의 큰 레이아웃 패널에서만 동작한다. 현재 요소를 그대로 쓴 렌더나 이미
+ * 종료된 스크롤에는 관여하지 않으며, 작은 레이아웃의 독립 스크롤에도 영향을 주지 않는다.
+ * 분리된 이전 목록은 scrollTop이 0으로 바뀔 수 있으므로 마지막 프로그램 이동값을 우선
+ * 사용한다. 기존 사용자 조작 리스너를 제거하고 새 요소의 위치와 리스너만 교체해,
+ * rAF가 계산 중인 경과 시간과 시작/종료 대기 타이머는 그대로 이어간다.
+ *
+ * @param {Event} event events, hth 또는 bench 패널에서 동기적으로 발생한 렌더 완료 이벤트.
+ * @param {string} mode 렌더된 목록이 속한 패널 모드.
+ * @returns {void}
+ */
 function _lpRebindPanelScroll(event, mode) {
   if (_lpStatCycle.mode !== mode || !_lpAuto.scrollEl
     || !event.target?.closest?.('.lp-stat')) return;
@@ -966,11 +1014,26 @@ window.lpStatAutoRestart = function lpStatAutoRestart() {
   }
 };
 
-// 작은 카메라 뷰의 홈/원정 후보 명단은 패널 전환 없이 독립적으로 위→아래 순환한다.
-// 같은 DOM을 사용하는 폴링 갱신은 진행 시간을 유지하고, 직접 조작하면 한 간격 쉬었다 재개한다.
+// 작은 레이아웃의 두 명단은 서로 다른 길이와 스크롤 위치를 가질 수 있다.
+// rAF 예약은 하나만 사용하지만 주기 시작 시각, 재개 위치, 경기 ID는 목록별 WeakMap에 둔다.
+// 큰 레이아웃의 _lpAuto와 분리해 한쪽 명단의 조작이 다른 쪽의 진행 시간을 초기화하지 않으며,
+// 제거된 DOM을 상태 저장소가 계속 붙잡지 않도록 일반 Map 대신 WeakMap을 사용한다.
 let _lpSmallBenchRaf = null;
 let _lpSmallBenchStates = new WeakMap();
 const LP_BENCH_SCROLL_PX_PER_SECOND = 40;
+/**
+ * 작은 레이아웃의 홈/원정 교체명단 자동스크롤 예약을 현재 화면과 설정에 맞춘다.
+ *
+ * 자동 전환이 켜진 작은 레이아웃에서만 단일 rAF 루프를 유지한다. 설정이나 페이지가
+ * 바뀌어 재호출되면 기존 예약을 먼저 정리하며, 조건이 해제되면 목록별 진행 상태도 비운다.
+ * 표시 중 같은 조건으로 재호출된 경우에는 상태를 유지해 진행 중인 위치를 이어간다.
+ *
+ * 각 목록은 시작 대기, 아래로 이동, 끝 대기 순서로 반복한다. 이동 시간은 기본 간격의
+ * 65%와 남은 거리를 40px/s로 이동하는 시간 중 긴 쪽을 사용해 긴 명단이 너무 빨리
+ * 지나가지 않게 한다. 같은 경기의 명단 갱신은 주기를 유지하고, 경기 ID 변경만 새로 시작한다.
+ *
+ * @returns {void}
+ */
 function _lpSyncSmallBenchScroll() {
   if (_lpSmallBenchRaf) cancelAnimationFrame(_lpSmallBenchRaf);
   _lpSmallBenchRaf = null;
@@ -990,6 +1053,8 @@ function _lpSyncSmallBenchScroll() {
         _lpSmallBenchStates.set(list, state);
       }
       const fixture = list.dataset.scrollFixture;
+      // renderBenchPanel()이 목록을 채울 때 기록한 경기 ID로 폴링과 경기 변경을 구분한다.
+      // DOM 요소가 재사용됐다는 이유만으로 이전 경기의 주기까지 넘겨서는 안 된다.
       if (fixture !== state.fixture) {
         Object.assign(state, { start: now, from: 0, fixture });
       }
@@ -998,9 +1063,13 @@ function _lpSyncSmallBenchScroll() {
         (max - state.from) / LP_BENCH_SCROLL_PX_PER_SECOND * 1000);
       const endHold = interval * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO);
       const elapsed = now - state.start;
+      // 직접 조작한 목록은 start를 미래로 옮겨 둔다. 대기 중에도 실제 위치를 계속 읽어
+      // 휠의 기본 동작, 터치 관성, 스크롤바 드래그가 끝난 위치에서 자연스럽게 재개한다.
       if (elapsed < 0) { state.from = list.scrollTop; return; }
       const progress = Math.max(0, Math.min(1, (elapsed - hold) / travel));
       list.scrollTop = state.from + (max - state.from) * progress;
+      // 아래쪽의 마지막 선수까지 보여준 뒤 끝 대기를 마친 경우에만 맨 위의 새 주기로
+      // 돌아간다. 목록 갱신이나 크기 재측정만으로 이 주기 시작 시각을 바꾸지 않는다.
       if (elapsed >= hold + travel + endHold) Object.assign(state, { start: now, from: 0 });
     });
     _lpSmallBenchRaf = requestAnimationFrame(tick);
@@ -1015,6 +1084,9 @@ document.addEventListener('settings:change', event => {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('#benchPanel .dp-list').forEach(list => {
+    // 클릭이나 스크롤과 관계없는 키 입력은 선수 메뉴 등의 기존 동작으로 남긴다.
+    // 스크롤 조작만 감지해 해당 목록을 기본 간격만큼 쉬게 하고, 브라우저의 기본
+    // 휠/터치 동작은 막지 않는다. 다른 팀 목록의 상태는 변경하지 않는다.
     const interrupt = event => {
       if (event.type === 'keydown' && !_LP_SCROLL_KEYS.has(event.key)) return;
       if (event.type === 'pointerdown' && !_lpPointerLooksLikeScrollbarDrag(event, list)) return;

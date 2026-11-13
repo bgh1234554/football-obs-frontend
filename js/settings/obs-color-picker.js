@@ -1,4 +1,11 @@
-// OBS의 네이티브 색상 창 대신 문서 안에서 색을 고릅니다.
+/**
+ * OBS의 네이티브 색상 선택 창을 문서 내부 팝오버로 대체한다.
+ *
+ * 원본 input[type=color]를 유지하고 input은 화면 미리보기, change는 확정 저장에 사용한다.
+ * 드래그 입력은 rAF당 한 번으로 합치고 종료 시 마지막 값을 확정해 매 포인터 이동마다
+ * 설정을 저장하는 부담을 줄인다. 일반 브라우저와 팝오버 미지원 환경은 가로채지 않는다.
+ * 내부 계산은 HSV로 통일하고 HEX, RGB, HSL 입력과 표시만 서로 변환한다.
+ */
 (() => {
   let picker, target, hue = 0, saturation = 0, brightness = 1;
   let frame = 0, dragging = false, committedColor = '', previewColor = '';
@@ -10,6 +17,11 @@
     return [channel(5), channel(3), channel(1)];
   };
   const color = () => '#' + rgb().map(c => c.toString(16).padStart(2, '0')).join('');
+  /**
+   * 유효한 6자리 HEX 입력을 내부 HSV 상태로 읽는다. 무채색은 색조를 계산할 수 없으므로
+   * 기존 hue를 보존해 채도를 다시 올렸을 때 직전에 선택한 색조로 돌아가도록 한다.
+   * @param {string} value 원본 color 입력이나 검증된 숫자 입력에서 얻은 HEX 문자열.
+   */
   function read(value) {
     const [r, g, b] = value.match(/[0-9a-f]{2}/gi).map(c => parseInt(c, 16) / 255);
     const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
@@ -17,6 +29,7 @@
     saturation = max ? delta / max : 0;
     brightness = max;
   }
+  /** 내부 HSV를 기준으로 선택 점, 색조 막대, HEX/RGB/HSL 필드를 함께 갱신한다. 원본 입력기는 바꾸지 않는다. */
   function paint() {
     const channels = rgb();
     const value = '#' + channels.map(c => c.toString(16).padStart(2, '0')).join('');
@@ -32,6 +45,11 @@
       picker.querySelector(`[data-picker-hsl="${index}"]`).value = Math.round(value);
     });
   }
+  /**
+   * 현재 색을 원본 입력기에 전달한다. 미리보기 값과 저장 완료 값을 별도로 기억해
+   * 같은 값의 input/change를 중복 발생시키지 않는다. 입력기가 제거되면 전달하지 않는다.
+   * @param {boolean} final true면 변경된 값을 확정 저장하고, false면 미리보기만 갱신한다.
+   */
   function commit(final = true) {
     if (!target?.isConnected) return;
     const value = color();
@@ -46,11 +64,13 @@
       target.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
+  /** 연속 포인터 입력을 한 프레임의 최신 미리보기로 합친다. 저장은 finishDrag()가 담당한다. */
   function queuePreview() {
     dragging = true;
     if (frame) return;
     frame = requestAnimationFrame(() => { frame = 0; paint(); commit(false); });
   }
+  /** 예약된 미리보기를 정리하고 최종 상태를 직접 반영한다. 팝오버 닫기와 포인터 캡처 해제도 이 경로를 쓴다. */
   function finishDrag() {
     if (!dragging) return;
     dragging = false;
@@ -58,6 +78,11 @@
     paint(); commit();
   }
   function close() { finishDrag(); picker.hidePopover(); target?.focus({ preventScroll: true }); }
+  /**
+   * 한 번 생성한 팝오버에 포인터, 방향키, 숫자 입력, 스포이트 처리를 연결한다.
+   * 대상 입력기를 바꿔도 이 DOM을 재사용하며, 지원되지 않는 스포이트만 비활성화한다.
+   * Tab 포커스는 팝오버 안에서 순환시키고 Escape는 진행 중인 색을 확정한 뒤 닫는다.
+   */
   function create() {
     picker = document.createElement('div');
     picker.id = 'obsColorPicker';
@@ -158,6 +183,8 @@
     });
   }
   document.addEventListener('click', event => {
+    // 실제 클릭 시점에 OBS와 팝오버 지원 여부를 확인한다. 원본 입력기를 교체하지 않아
+    // 나중에 생성된 설정 팝업의 color 입력에도 같은 위임 리스너가 동작한다.
     const input = event.target.closest('input[type="color"]');
     if (!window.obsstudio || typeof HTMLElement.prototype.showPopover !== 'function' || !input || input.disabled) return;
     event.preventDefault();

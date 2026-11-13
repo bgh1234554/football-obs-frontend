@@ -809,8 +809,13 @@ const root = path.resolve(__dirname, '../..');
     await settle(page);
     const hthMetrics = await page.context().newCDPSession(page);
     await hthMetrics.send('Performance.enable');
+    // 실행 시간(ms)은 PC 성능이나 다른 테스트 부하에 따라 달라진다. 여기서는 브라우저가
+    // 실제로 수행한 LayoutCount 증가량을 검사해, 40경기의 각 팀명마다 강제 레이아웃이
+    // 생기는 이전 구조로 돌아가는 것을 막는다. 8회는 단계별 일괄 측정의 여유 범위이며
+    // 패널의 색상이나 특정 행의 고정 픽셀 크기를 검사하는 값은 아니다.
     const layoutCount = async () => (await hthMetrics.send('Performance.getMetrics')).metrics.find(metric => metric.name === 'LayoutCount').value;
     const beforeFitLayouts = await layoutCount();
+    // 마지막 클래스 변경까지 레이아웃에 반영한 뒤 카운터를 읽어 미뤄진 작업도 포함한다.
     await page.evaluate(() => { hthCheckMetaWrap(); document.querySelector('.layout-big .hth-list').scrollHeight; });
     const fitLayouts = await layoutCount() - beforeFitLayouts;
     assert(fitLayouts <= 8, `HTH fitting must batch layout reads/writes for 40 matches; actual layouts: ${fitLayouts}`);

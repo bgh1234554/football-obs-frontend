@@ -117,6 +117,9 @@ const { openPage, settle } = require('../tactics/helpers');
     await page.waitForFunction(() => document.getElementById('homeLogo').classList.contains('logo-trimmed'));
     // 비동기 테마 전환 완료만으로 보정이 복구돼야 한다. render()를 추가 호출하면
     // UNL 장식에서 팀 로고로 돌아올 때 빠진 보정을 테스트가 대신 적용하게 된다.
+    // 먼저 정상 CNL 상태의 양쪽 크기를 얻고, UNL에서 바로 나오거나 기본 테마를
+    // 거쳐 나온 결과를 같은 기준과 비교한다. 기준값을 CSS의 고정 크기로 적지 않아
+    // 디자인이 바뀌어도 전환 전후에 동일하게 복원돼야 한다는 관계를 검증한다.
     await page.evaluate(() => applyTheme('cnl', null));
     await page.waitForFunction(() => !pendingThemeLink);
     await settle(page);
@@ -172,6 +175,8 @@ const { openPage, settle } = require('../tactics/helpers');
       console.log('PASS trim fit and center', theme);
     }
     // UNL에서 새 경기를 불러온 경우에도 CNL로 나오면 미분석 로고의 보정을 시작한다.
+    // 앞선 전환은 이미 분석된 URL의 복원을 검사했다. 이 경우는 다른 두 URL을 UNL에
+    // 머무는 동안 설정해, 목적 테마가 처음 분석을 시작해야 하는 경로까지 구분해 검사한다.
     await page.evaluate(() => applyTheme('unl', null));
     await page.waitForFunction(() => !pendingThemeLink);
     await settle(page);
@@ -284,6 +289,8 @@ const { openPage, settle } = require('../tactics/helpers');
 
     // 모든 출발/도착 조합을 실제 비동기 CSS 교체 경로로 순회한다. 가상 시계는
     // 프레임 대기만 단축하며, 테마 전환 후 render()를 대신 호출하지 않는다.
+    // 가로형과 세로형 로고를 나누고 양쪽 확대 배율과 이동 좌표도 다르게 지정한다.
+    // 기본 배율의 정사각형 하나만 쓰면 종횡비 처리나 사용자 보정의 누락을 놓칠 수 있다.
     await page.evaluate(() => applyTheme('default', null));
     await page.waitForFunction(() => !pendingThemeLink);
     await settle(page);
@@ -297,6 +304,14 @@ const { openPage, settle } = require('../tactics/helpers');
     });
     await page.waitForFunction(() => ['homeLogo', 'awayLogo'].every(id => document.getElementById(id).classList.contains('logo-trimmed')));
     await page.clock.install();
+    /**
+     * CSS 로딩, 교체 대기, 교체 직후 rAF까지 실제 제품 코드가 실행되도록 기다린다.
+     * 가상 시간만 한 번에 크게 넘기면 CSS 응답보다 먼저 프레임이 끝날 수 있으므로
+     * 100ms씩 진행하며 pendingThemeLink가 해제됐는지 검사한다. 마지막 50ms는 링크
+     * 교체 후 예약된 로고 복원과 배치 측정에 사용하며 render()로 대신 처리하지 않는다.
+     * @param {string} theme 적용할 등록 테마 키.
+     * @returns {Promise<void>}
+     */
     const switchTheme = async theme => {
       await page.evaluate(theme => applyTheme(theme, null), theme);
       for (let retry = 0; retry < 10; retry++) {
@@ -306,6 +321,8 @@ const { openPage, settle } = require('../tactics/helpers');
       assert.equal(await page.evaluate(() => !!pendingThemeLink), false, `${theme}: stylesheet swap completed`);
       await page.clock.runFor(50);
     };
+    // 점수판 전체의 이동에 따라 화면 절대 좌표는 달라질 수 있다. 로고 표시 칸 중심에
+    // 대한 상대 중심을 비교해야 그 이동을 로고 정렬 오류로 오인하지 않는다.
     const logoGeometry = () => page.locator('.fsm-board .team-logo img').evaluateAll(images => images.map(img => {
       const rect = img.getBoundingClientRect(), box = img.closest('.team-logo').getBoundingClientRect();
       return { src: img.getAttribute('src'), trimmed: img.classList.contains('logo-trimmed'),
@@ -314,6 +331,8 @@ const { openPage, settle } = require('../tactics/helpers');
         centerY: rect.y + rect.height / 2 - box.y - box.height / 2 };
     }));
     const allThemes = await page.evaluate(() => Object.keys(FSM_THEMES));
+    // 테마별 정상 상태를 먼저 안정화해 저장한다. 전환 행렬에서는 도착 테마의 기준과
+    // 비교하므로 서로 다른 점수판이 의도적으로 쓰는 크기나 회전은 오류로 취급하지 않는다.
     const references = new Map();
     for (const theme of allThemes) {
       await switchTheme(theme);
@@ -321,7 +340,11 @@ const { openPage, settle } = require('../tactics/helpers');
       await page.clock.runFor(50);
       references.set(theme, await logoGeometry());
     }
-    // 완전 방향 그래프의 오일러 경로: 불필요한 왕복 없이 모든 순서쌍을 한 번씩 지난다.
+    // 테마를 정점, 출발 테마에서 도착 테마로 바꾸는 조합을 방향 간선으로 본다.
+    // 각 정점의 미사용 도착 목록에서 간선을 하나씩 소비하고, 더 갈 곳이 없을 때 경로를
+    // 확정한 뒤 뒤집으면 모든 순서쌍을 한 번씩 지나는 오일러 순회가 된다. 매 검사마다
+    // 출발점으로 별도 복귀하는 전환을 줄이면서 A→B와 B→A를 빠짐없이 검사할 수 있다.
+    // 같은 테마로 다시 선택하는 조합도 포함하므로 전체 검사 수는 등록 테마 수의 제곱이다.
     const remaining = allThemes.map(() => allThemes.map((_, index) => index));
     const stack = [0], circuit = [];
     while (stack.length) {

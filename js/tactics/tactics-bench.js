@@ -1,4 +1,11 @@
-// 전술판의 수동 교체는 원본 경기 명단과 분리하고 선택한 타임라인 시점에만 합성한다.
+/**
+ * 전술판에서 같은 팀의 벤치 선수와 피치 선수를 수동으로 교체하는 UI와 상태를 관리한다.
+ *
+ * changes에는 선수 객체를 직접 수정하는 대신 교체 시각과 두 선수의 식별 키를 기록한다.
+ * 선택한 타임라인 시점의 공식 명단에 이 기록을 합성하므로 원본 API 명단은 유지된다.
+ * 관련 선수의 공식 교체나 퇴장이 수동 기록 이후에 발생하면 그 시점부터 공식 상태가 우선한다.
+ * 경기 변경은 전체 수동 상태를 비우지만, 같은 경기의 폴링은 현재 기록을 그대로 유지한다.
+ */
 const tacticsBenchState = { fixtureId: '', changes: [], open: { home: false, away: false }, drag: null, ignoreClickUntil: 0 };
 
 /** ID가 없는 선수도 이름과 등번호를 함께 사용해 같은 선수끼리만 식별한다. */
@@ -9,6 +16,11 @@ function tacticsBenchPlayerKey(player) {
   return `name:${String(name).trim().toLowerCase()}:${player?.number ?? ''}`;
 }
 
+/**
+ * 경기 ID가 달라졌을 때만 드래그, 수동 교체 기록, 명단 열림 상태를 초기화한다.
+ * 같은 ID의 재렌더에서는 돌아가므로 폴링 때문에 사용자의 전술 실험이 사라지지 않는다.
+ * @param {string|number|null} id 현재 전술판에 연결된 경기 ID.
+ */
 function tacticsBenchSyncFixture(id) {
   id = String(id ?? '');
   if (tacticsBenchState.fixtureId === id) return;
@@ -18,7 +30,14 @@ function tacticsBenchSyncFixture(id) {
   tacticsBenchState.open = { home: false, away: false };
 }
 
-/** 공식 교체·퇴장이 수동 교체의 어느 선수에든 적용되면 그 시점부터 공식 명단을 따른다. */
+/**
+ * 선택한 타임라인 시점의 명단에 유효한 수동 교체만 합성해 반환한다.
+ * 각 팀의 선수 배열과 항목을 복제해 공식 명단을 수정하지 않는다. 수동 교체 이후부터
+ * 선택 시점까지 두 선수 중 누구에게든 공식 이벤트가 적용됐으면 그 수동 기록은 건너뛴다.
+ * 교체 투입 선수는 나가는 선수의 grid를 이어받고, 벤치로 나간 선수의 grid는 비운다.
+ * @param {object} data 타임라인 시점의 경기 데이터 또는 합성할 경기 데이터.
+ * @returns {object} 유효한 수동 교체가 반영된 데이터. 적용할 기록이 없으면 입력을 그대로 반환한다.
+ */
 function tacticsBenchApplyFixture(data) {
   tacticsBenchSyncFixture(data?.matchInfo?.fixtureId);
   if (!tacticsBenchState.changes.length) return data;
@@ -62,7 +81,15 @@ function tacticsBenchApplyFixture(data) {
   return result;
 }
 
-/** 같은 팀의 현재 벤치 선수와 피치 선수만 맞교환한다. */
+/**
+ * 같은 팀의 현재 벤치 선수와 실제 피치 선수를 확인한 뒤 현재 시각의 수동 교체를 기록한다.
+ * 화면에 남은 오래된 토큰이나 빈 슬롯을 대상으로 기록하지 않도록 현재 명단에서도 다시
+ * 확인하고, 성공하면 타임라인을 다시 합성해 피치와 벤치 표시를 함께 갱신한다.
+ * @param {'home'|'away'} side 교체할 팀.
+ * @param {string} incoming 투입할 벤치 선수의 식별 키.
+ * @param {string} outgoing 피치에서 나갈 선수의 식별 키.
+ * @returns {boolean} 교체 기록을 추가했는지 여부.
+ */
 function tacticsBenchSwap(side, incoming, outgoing) {
   const lineup = tacticsState.lineup?.[side];
   const bench = lineup?.bench || [];
@@ -77,6 +104,7 @@ function tacticsBenchSwap(side, incoming, outgoing) {
   return true;
 }
 
+/** 팀을 지정하면 그 팀의 수동 교체만 지우고, 생략하면 양쪽 기록과 명단 열림 상태를 함께 초기화한다. */
 function tacticsBenchReset(side) {
   tacticsBenchCancelDrag(true);
   if (side === 'home' || side === 'away') {
@@ -104,6 +132,12 @@ function tacticsBenchLayout() {
   layer.classList.toggle('is-vertical', !!tdPitchVertical);
 }
 
+/**
+ * 양쪽 벤치 트레이와 선수 토큰을 현재 합성 명단에 맞춰 갱신한다.
+ * 드래그 중에는 캡처된 원본 토큰이 제거되지 않게 재렌더를 보류한다. 평상시에는 기존
+ * 트레이를 재사용하고 선수 목록을 교체하되 스크롤 위치를 보존한다. 닫힌 트레이는
+ * inert와 aria-hidden도 함께 설정해 보이지 않는 선수로 포커스가 들어가지 않게 한다.
+ */
 function tacticsBenchRender() {
   if (tacticsBenchState.drag) return;
   const pitch = document.getElementById('tactics-pitch');
@@ -163,6 +197,7 @@ function tacticsBenchRender() {
   tacticsBenchLayout();
 }
 
+/** 화면 포인터 좌표를 벤치 레이어의 로컬 좌표로 바꿔 화면 배율이 적용돼도 드래그 복제본을 같은 위치에 둔다. */
 function tacticsBenchDragPoint(clientX, clientY) {
   const layer = document.getElementById('tactics-bench-layer');
   const rect = layer.getBoundingClientRect();
@@ -170,6 +205,11 @@ function tacticsBenchDragPoint(clientX, clientY) {
   return { x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale };
 }
 
+/**
+ * 원본 벤치 토큰은 명단에 두고 이동용 복제본을 별도 레이어에 만든다.
+ * 포인터 캡처와 window 리스너로 트레이 밖에서도 이동과 종료를 받으며,
+ * 복제본 크기는 화면 배율을 제거한 레이아웃 단위로 저장한다.
+ */
 function tacticsBenchDragStart(event) {
   if (event.button !== 0 || tacticsBenchState.drag) return;
   event.preventDefault(); event.stopPropagation();
@@ -192,6 +232,7 @@ function tacticsBenchDragStart(event) {
   window.addEventListener('pointercancel', tacticsBenchDragEnd);
 }
 
+/** 이동 복제본을 따라가게 하고, 포인터 아래의 같은 팀 피치 토큰만 교체 대상으로 강조한다. */
 function tacticsBenchDragMove(event) {
   const drag = tacticsBenchState.drag;
   if (!drag || drag.pointerId !== event.pointerId) return;
@@ -207,6 +248,10 @@ function tacticsBenchDragMove(event) {
   drag.target?.classList.add('td-bench-drop-target');
 }
 
+/**
+ * 마지막 포인터 위치를 다시 판정해 유효한 같은 팀 선수에게 놓았을 때만 교체를 확정한다.
+ * pointercancel은 교체를 적용하지 않으며, 종료 정리를 먼저 마친 뒤 타임라인을 재렌더한다.
+ */
 function tacticsBenchDragEnd(event) {
   const drag = tacticsBenchState.drag;
   if (!drag || drag.pointerId !== event.pointerId) return;
@@ -221,7 +266,13 @@ function tacticsBenchDragEnd(event) {
   if (!cancelled && outgoing) tacticsBenchSwap(side, incoming, outgoing);
 }
 
-/** 빈 곳에 놓으면 명단을 다시 펼치고 잡았던 바둑알을 원래 자리로 돌려보낸다. */
+/**
+ * 드래그 리스너, 캡처, 대상 강조를 정리하고 복제본을 제거하거나 원래 자리로 돌려보낸다.
+ * 성공한 교체는 트레이를 닫고, 빈 곳에 놓은 경우는 원위치 애니메이션 뒤 명단을 갱신한다.
+ * 종료 직후 300ms 동안 바깥 클릭을 무시해 같은 포인터 동작의 click이 트레이를 다시 닫지 않게 한다.
+ * @param {boolean} immediate 경기 변경이나 강제 종료처럼 복귀 애니메이션을 생략할지 여부.
+ * @param {boolean} accepted 유효한 교체 대상으로 드롭했는지 여부.
+ */
 function tacticsBenchCancelDrag(immediate = false, accepted = false) {
   const drag = tacticsBenchState.drag;
   if (!drag) return;
