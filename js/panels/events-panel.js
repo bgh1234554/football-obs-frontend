@@ -280,7 +280,7 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
 /**
  * 이름과 ID가 모두 비어 있는 교체 IN을 같은 팀의 출전 스탯으로 보완한다.
  * 원래 벤치 선수 중 출전 시간/평점이 생겼고, 다른 IN에 연결되지 않은 선수만 쓴다.
- * 후보와 이벤트가 서로 유일할 때만 연결하므로 동시 교체의 순서로 선수를 추측하지 않는다.
+ * 같은 시각의 미확인 교체 수와 공통 후보 수가 같고 다른 시각과 겹치지 않으면 묶어서 연결한다.
  * 결과는 현재 응답에만 적용한다. 원본 ID/이벤트 키와 수동 연결은 그대로 유지한다.
  */
 function evInferSubstInFromStats(events, fixtureData, overrides) {
@@ -321,10 +321,25 @@ function evInferSubstInFromStats(events, fixtureData, overrides) {
       if (observed < elapsed) return false;
       return !(Number(stat.minutes) > 0) || Math.abs(Number(stat.minutes) - (observed - elapsed)) <= 2;
     }) }));
+    const groups = new Map();
     for (const edge of graph) {
-      if (edge.candidates.length !== 1) continue;
-      const candidate = edge.candidates[0];
-      if (graph.filter(other => other.candidates.includes(candidate)).length === 1) result.set(edge.ev, candidate.player);
+      const time = `${Number(edge.ev.elapsed) || 0}|${Number(edge.ev.extra) || 0}`;
+      if (!groups.has(time)) groups.set(time, []);
+      groups.get(time).push(edge);
+    }
+    for (const group of groups.values()) {
+      const pool = group[0].candidates;
+      if (pool.length !== group.length) continue;
+      if (!group.every(edge => edge.candidates.length === pool.length
+        && pool.every(candidate => edge.candidates.includes(candidate)))) continue;
+      if (graph.some(edge => !group.includes(edge)
+        && edge.candidates.some(candidate => pool.includes(candidate)))) continue;
+      // 동시 교체의 OUT–IN 조합은 확정할 수 없으므로 일정한 순서로 표시하고 수동 수정은 유지한다.
+      const orderedEvents = [...group].sort((a, b) => evSubstEventKey(a.ev).localeCompare(evSubstEventKey(b.ev)));
+      const orderedPlayers = [...pool].sort((a, b) =>
+        `${Number(a.player.playerId) || 0}|${names(a.player).join('|')}`.localeCompare(
+          `${Number(b.player.playerId) || 0}|${names(b.player).join('|')}`));
+      orderedEvents.forEach((edge, index) => result.set(edge.ev, orderedPlayers[index].player));
     }
   }
   return result;

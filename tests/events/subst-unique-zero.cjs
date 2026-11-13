@@ -35,3 +35,55 @@ console.log('PASS unique zero-ID substitution fallback, retained editable ID/key
  assert.equal(run(data)[0].assistName,'Manual');stored={};
  console.log('PASS played-bench substitution inference: polling lag, existing links, ambiguity, timing, sides and manual precedence');
 }
+
+// 같은 시각에 들어온 선수 집합이 확정되면 개별 OUT 조합과 무관하게 모두 보완한다.
+for (const count of [2, 3]) {
+ const data={
+  matchInfo:{fixtureId:1490540,elapsed:90},
+  awayLineup:{startXi:[{playerId:1,name:'Starter'}],substitutes:[
+   ...Array.from({length:count},(_,i)=>({playerId:i === 0 ? 0 : 100+i,name:`Played ${i}`})),
+   {playerId:200,name:'Unused'},
+  ]},
+  playerStats:[{side:'away',playerId:1,minutes:90,rating:'6.5'},
+   ...Array.from({length:count},(_,i)=>({side:'away',playerId:i === 0 ? 0 : 100+i,playerName:`Played ${i}`,minutes:23,rating:'6.4'})),
+   {side:'away',playerId:200,minutes:0,rating:null},
+  ],
+  events:Array.from({length:count},(_,i)=>({type:'subst',side:'away',elapsed:67,playerId:10+i,assistId:null})),
+ };
+ const before=JSON.stringify(data);
+ const resolved=run(data);
+ assert.deepEqual(Array.from(resolved,ev=>ev.assistName).sort(),Array.from({length:count},(_,i)=>`Played ${i}`));
+ resolved.forEach((ev,i)=>{
+  assert.equal(ev.assistId,null);
+  assert(c.evSubstHasUnlinkedId(ev,'assist'));
+  assert.equal(c.evSubstEventKey(ev),c.evSubstEventKey(data.events[i]));
+ });
+ assert.equal(JSON.stringify(data),before);
+ const reversed=JSON.parse(before);
+ reversed.events.reverse();reversed.awayLineup.substitutes.reverse();
+ const byKey=events=>Object.fromEntries(events.map(ev=>[c.evSubstEventKey(ev),ev.assistName]));
+ assert.deepEqual(byKey(run(reversed)),byKey(resolved));
+ for (const mutate of [
+  d=>d.events[0].elapsed=68,
+  d=>d.events[0].extra=1,
+  d=>d.events.push({...d.events[0],elapsed:68,playerId:50}),
+  d=>d.playerStats[1].minutes=40,
+  d=>d.playerStats[1].side='home',
+  d=>Object.assign(d.playerStats[d.playerStats.length-1],{minutes:23,rating:'6.0'}),
+ ]) {
+  const copy=JSON.parse(before);mutate(copy);
+  assert(run(copy).every(ev=>!ev.assistName));
+ }
+ // API나 수동 연결로 한 자리가 확정되면 나머지 후보만 사용한다.
+ const known=JSON.parse(before);
+ known.events[0].assistName='Played 0';
+ assert.equal(run(known)[0].assistName,'Played 0');
+ assert.equal(new Set(Array.from(run(known),ev=>ev.assistName)).size,count);
+ stored={1490540:{[c.evSubstEventKey(data.events[0])]:{assist:{playerId:0,name:'Played 0'}}}};
+ const manual=run(data);
+ assert.equal(manual[0].assistName,'Played 0');
+ assert.equal(manual[0].assistId,0);
+ assert.equal(new Set(Array.from(manual,ev=>ev.assistName)).size,count);
+ stored={};
+}
+console.log('PASS simultaneous substitution groups: complete played set, stable pairing, timing isolation, candidate counts, existing links and editability');
