@@ -187,15 +187,17 @@ function clearAllPlayerNicknames() {
 
 /** HTML에 삽입할 값을 문자열로 바꾸고 특수문자를 이스케이프한다. nullish 값은 빈 문자열이다. */
 function pmEsc(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c =>
+  return displayText(v).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 // ── 포지션 한글화 ─────────────────────────────────────────────────────────────
 
-/** API 포지션 G/D/M/F를 표시용 GK/DF/MF/FW로 바꾸고, 알 수 없는 값은 그대로 반환한다. */
+/** API 포지션을 표시용 약자로 바꾼다. 누락 값과 문자열 null/undefined는 정보 없음으로 표시한다. */
 function pmPosKo(pos) {
-  return ({ G: 'GK', D: 'DF', M: 'MF', F: 'FW' })[pos] || pos || '-';
+  const value = displayText(pos).trim();
+  if (!value) return '정보 없음';
+  return ({ G: 'GK', D: 'DF', M: 'MF', F: 'FW' })[value.toUpperCase()] || value;
 }
 
 // ── 선수 데이터 조회 ──────────────────────────────────────────────────────────
@@ -233,12 +235,44 @@ function pmFindPlayer(playerId) {
 }
 
 /** 현재 경기의 선수별 스탯을 연결 ID 반영 데이터에서 우선 찾는다. 데이터나 해당 선수가 없으면 null. */
-function pmFindMatchStats(playerId) {
+function pmFindMatchStats(playerId, player) {
+  const matches = pmFindMatchStatCandidates(playerId, player);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/** 현재 경기의 동일 팀 후보만 반환한다. 모호한 이름은 선택 화면에 그대로 전달한다. */
+function pmFindMatchStatCandidates(playerId, player) {
   const stats = typeof lineupPanelState !== 'undefined'
     ? (lineupPanelState.lastEffectiveData?.playerStats || lineupPanelState.lastFixture?.playerStats) : null;
-  if (!Array.isArray(stats)) return null;
-  const id = Number(playerId);
-  return stats.find(s => s && Number(s.playerId) === id) || null;
+  if (!Array.isArray(stats)) return [];
+  const target = player || pmFindPlayer(playerId);
+  return lpFindPlayerMatchStatCandidates(stats, playerId, target?._side, target);
+}
+
+/** 이름과 추가 정보로도 특정하지 못한 경기 스탯은 후보를 보여준 뒤 선택한 행만 연다. */
+function pmChooseMatchStats(playerId, player, candidates) {
+  if (!candidates.length) return;
+  if (candidates.length === 1) return pmShowMatchStats(playerId, player, candidates[0]);
+  pmContainer().innerHTML = `<div class="pm-modal-backdrop" id="pmBackdrop">
+    <div class="pm-modal" role="dialog" aria-label="경기 스탯 선수 선택">
+      <div class="pm-modal-header"><span class="pm-modal-title">경기 스탯 선수 선택</span>
+        <button class="pm-btn" id="pmStatChoiceClose">닫기</button></div>
+      <div class="pm-szn-scroll pm-stat-choices"><p>선수 정보를 확인하고 선택하세요.</p>
+        ${candidates.map((s, i) => `<button class="pm-btn" data-stat-choice="${i}">
+          ${pmEsc(s.playerNameKoLong || s.playerName || s.name || '-')}
+          / ${pmEsc(player._side === 'home' ? '홈' : '원정')}
+          / 등번호 ${pmEsc(Number(s.number) > 0 ? s.number : '-')}
+          / ${pmEsc(pmPosKo(s.position || s.pos))}
+          / 출전 ${pmEsc(s.minutes ?? '-')}분 / 평점 ${pmEsc(s.rating || '-')}
+        </button>`).join('')}
+      </div></div></div>`;
+  document.getElementById('pmStatChoiceClose').addEventListener('click', pmHideAll);
+  document.getElementById('pmBackdrop').addEventListener('click', e => {
+    if (e.target === e.currentTarget) pmHideAll();
+  });
+  document.querySelectorAll('[data-stat-choice]').forEach(button => {
+    button.addEventListener('click', () => pmShowMatchStats(playerId, player, candidates[Number(button.dataset.statChoice)]));
+  });
 }
 
 /** 경기/시즌 스탯 조회용 playerId 결정. ID 연결 override가 있으면 연결된 ID, 없으면 원본 ID 그대로. */
@@ -282,7 +316,7 @@ function pmHideAll() {
 // ── 컨텍스트 메뉴 팝업 ────────────────────────────────────────────────────────
 
 /** 선발/교체 명단 선수에게만 경기별 수동 주장 토글을 제공한다. */
-function pmCaptainButtonHtml(player, side) {
+function pmCaptainButtonHtml(player, side, inline = true) {
   if (!getActiveFixtureId() || !['home', 'away'].includes(side) || !player) return '';
   const key = buildCaptainPlayerKey(player);
   const data = lineupPanelState.lastEffectiveData || lineupPanelState.lastFixture;
@@ -290,7 +324,7 @@ function pmCaptainButtonHtml(player, side) {
   if (!key || ![...(lineup?.startXi || []), ...(lineup?.substitutes || [])]
     .some(p => buildCaptainPlayerKey(p) === key)) return '';
   const selected = getManualSideData(getActiveFixtureId(), side)?.captainKey === key;
-  return `<button class="pm-btn pm-btn-inline" id="pmBtnCaptain" aria-pressed="${selected}" title="${selected ? '수동 지정을 해제하고 기존 주장 정보 사용' : '이 선수를 이 경기의 주장으로 지정'}">${selected ? '주장 해제' : '주장 지정'}</button>`;
+  return `<button class="pm-btn${inline ? ' pm-btn-inline' : ''}" id="pmBtnCaptain" aria-pressed="${selected}" title="${selected ? '수동 지정을 해제하고 기존 주장 정보 사용' : '이 선수를 이 경기의 주장으로 지정'}">${selected ? '주장 해제' : '주장 지정'}</button>`;
 }
 
 function pmBindCaptainButton(player, side, reopen) {
@@ -332,7 +366,8 @@ function pmShowMenu(playerId, clientX, clientY) {
   const number = player.number ?? '';
   const pos    = pmPosKo(player.pos || player.position);
 
-  const hasMatchStats = !!pmFindMatchStats(pid);
+  const matchCandidates = pmFindMatchStatCandidates(pid, player);
+  const hasMatchStats = matchCandidates.length > 0;
 
   const photoUrl = player.photoUrl || player.playerPhotoUrl || '';
   const avatarHtml = photoUrl
@@ -390,7 +425,7 @@ function pmShowMenu(playerId, clientX, clientY) {
     document.getElementById('pmBtnMatch').addEventListener('click', e => {
       e.stopPropagation();
       pmHideAll();
-      pmShowMatchStats(pid, player, pmFindMatchStats(pid));
+      pmChooseMatchStats(pid, player, matchCandidates);
     });
   }
   document.getElementById('pmBtnSeason').addEventListener('click', e => {
@@ -724,6 +759,9 @@ async function pmShowMatchStats(playerId, player, stats) {
   const profileId = pmResolveLinkedProfileId(playerId, player);
   // 2) 요청 번호를 부여해 더 최근의 경기 스탯 조회가 시작되면 이전 응답을 무시한다.
   const myReqId = ++_pmMatchRequestId;
+  // ID가 없어도 현재 경기 스탯은 표시할 수 있다. 선수 프로필 API에는 실제
+  // ID가 필요하므로 0으로 요청하지 않고 방금 그린 기본 프로필을 유지한다.
+  if (!(Number(profileId) > 0)) return;
   try {
     const data = await (typeof fetchPlayerStats === 'function'
       ? fetchPlayerStats(profileId)
@@ -770,6 +808,7 @@ function pmRenderMatchProfile(player, playerId) {
 
 /** 선수 경기 스탯 객체를 표 행 HTML로 변환한다. 빈 항목은 생략하고 평점은 색상 배지로 표시한다. */
 function pmBuildMatchStatRows(s) {
+  s = normalizeMissingValues(s);
   // 1) 라벨과 공통 값 포맷을 준비한다. 0은 유효한 기록이므로 일반 행에서 생략하지 않는다.
   const L = (typeof PLAYER_MATCH_STAT_LABELS !== 'undefined') ? PLAYER_MATCH_STAT_LABELS : {};
   const lbl = key => L[key] || key;
@@ -890,6 +929,8 @@ async function pmShowSeasonStats(playerId, player) {
 
 /** 상세 선수 프로필의 사진·이름·국적·신체 정보·출생 정보를 값이 있는 항목만 표시한다. */
 function pmRenderSeasonProfile(p, number) {
+  p = normalizeMissingValues(p);
+  number = displayText(number);
   const el = document.getElementById('pmSznProfile');
   if (!el || !p) return;
 
@@ -899,7 +940,7 @@ function pmRenderSeasonProfile(p, number) {
 
   const nick = getPlayerNickname(p.id);
   const baseName   = nick || p.fullName || p.name || '';
-  const displayName = (number != null ? `${number} ` : '') + baseName;
+  const displayName = (number !== '' && number != null ? `${number} ` : '') + baseName;
 
   const birthDate  = p.birth?.date ? p.birth.date.replace(/-/g, '.') : '';
   const birthPlace = [p.birth?.place, p.birth?.country].filter(Boolean).join(' / ');
@@ -930,15 +971,15 @@ function pmRenderSeasonProfile(p, number) {
  * @returns {string|null} HTML 이스케이프된 문자열, 값이 비어 있으면 null
  */
 function pmFormatBodyMeasurement(value, unit) {
-  if (value == null) return null;
+  if (!displayText(value)) return null;
   // API에서 단위를 포함해 보내는 경우에도 단위는 한 번만 표시합니다.
   const text = String(value).trim().replace(new RegExp(`(?:\\s*${unit})+$`, 'i'), '').trim();
-  return text ? `${pmEsc(text)}${unit}` : null;
+  return displayText(text) ? `${pmEsc(text)}${unit}` : null;
 }
 
 /** 평점을 소수 첫째 자리와 설정된 구간 색상의 배지로 반환한다. 빈 값은 '-', 숫자가 아니면 텍스트. */
 function _pmRatingHtml(r) {
-  if (r == null || r === '') return '-';
+  if (!displayText(r)) return '-';
   const n = Number(r);
   if (isNaN(n)) return pmEsc(String(r));
   const color = typeof getSetting === 'function' ? (
@@ -980,10 +1021,11 @@ function pmRenderSeasonPage() {
     : _pmSznOlderState === 'none' ? sl('navOlderNone','이전 기록 없음')
     : sl('navOlder','&#9664; 구시즌');
 
-  const v = (x, sfx = '') => (x != null) ? `${x}${sfx}` : '-';
+  const v = (x, sfx = '') => displayText(x) ? `${pmEsc(x)}${sfx}` : '-';
 
   // 2) 대회·팀별 기록을 한 행씩 만든다. 누락 기록은 '-'로, 카드와 평점은 별도 표시 형식으로 변환한다.
-  const tableRows = list.map(stat => {
+  const tableRows = list.map(rawStat => {
+    const stat = normalizeMissingValues(rawStat);
     const lg = stat.league   || {};
     const tm = stat.team     || {};
     const gm = stat.games    || {};

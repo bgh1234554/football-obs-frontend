@@ -141,6 +141,8 @@
   display: flex;
   gap: 6px;
 }
+/* ID 없는 선수 메뉴도 검색 영역 아래에서 일반 메뉴와 같은 크기의 버튼을 쓴다. */
+.pir-actions { margin-top: 12px; }
 
 .pm-btn {
   flex: 1 1 0;
@@ -541,6 +543,17 @@
 }
 .pm-match-stat-scroll {
   padding: 8px 14px 14px;
+}
+
+/* 스탯 후보는 긴 이름과 출전 정보를 줄바꿈하고, 후보마다 독립된 행으로 보여준다. */
+.pm-stat-choices { padding: 8px 14px 14px; }
+.pm-stat-choices .pm-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px;
+  text-align: left;
+  white-space: normal;
 }
 
 /* ── 선수 프로필 섹션 ── */

@@ -5,8 +5,8 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /** 풀폼/그리드 모달의 포메이션 select용 option HTML — TACTICS_FM에 등록된 전체 목록. */
-function buildFormationOptionsHtml(selected) {
-  return Object.keys(getTacticsFormationMap())
+function buildFormationOptionsHtml(selected, allowEmpty = false) {
+  return (allowEmpty ? `<option value=""${!selected ? ' selected' : ''}>선택 없음</option>` : '') + Object.keys(getTacticsFormationMap())
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .map(formation => `<option value="${dpEscape(formation)}"${formation === selected ? ' selected' : ''}>${dpEscape(formation)}</option>`)
     .join('');
@@ -160,13 +160,21 @@ function initGridState(side) {
   const playersById = Object.fromEntries(players.map((p, idx) => [p._manualSlot || buildLineupRosterKey(p, idx), p]));
 
   const stored = getManualSideData(fixtureId, side)?.lineup;
-  // 포메이션 우선순위: 저장된 수동값 > API 응답 > default(4-3-3)
+  // 위치와 동일한 원본 선수 키로 등번호를 보관한다. ID 0 선수들이 서로의
+  // 번호를 덮지 않고, 드래그/포메이션 변경 후에도 번호가 선수를 따라간다.
+  Object.entries(stored?.numberByPlayerId || {}).forEach(([key, number]) => {
+    if (playersById[key]) playersById[key].number = number;
+  });
+  // 포메이션이 없으면 등번호만 편집할 수 있다. 임의의 기본 포메이션을 넣으면
+  // 번호만 저장해도 배치까지 확정되므로, 명시적으로 선택하기 전에는 빈 값을 유지한다.
+  // 등번호만 저장한 뒤 새 응답에서 포메이션이 제공되거나 추정 가능해지면
+  // 그 결과를 사용한다. 저장된 빈 포메이션이 새 정보를 가리지 않도록 한다.
   let formation = stored?.formation || apiLineup?.formation;
-  if (!formation || !getTacticsFormationMap()[formation]) formation = DETAIL_DEFAULT_FORMATION;
+  if (!formation || !getTacticsFormationMap()[formation]) formation = '';
 
   const slotsCount = (getTacticsFormationMap()[formation] || []).length || 11;
   const slotPlayerIds = new Array(slotsCount).fill(null);
-  const gridValues = buildManualGridValues(formation);
+  const gridValues = formation ? buildManualGridValues(formation) : [];
 
   // 1) 저장된 수동 grid 매핑 우선
   if (stored?.gridByPlayerId) {
@@ -200,13 +208,14 @@ function initGridState(side) {
     if (cursor < slotsCount) slotPlayerIds[cursor] = pidStr;
   });
 
-  lineupPanelState.gridState = { side, formation, slotPlayerIds, players: playersById };
+  lineupPanelState.gridState = { side, formation, slotPlayerIds, players: playersById, numberEdits: { ...stored?.numberByPlayerId } };
 }
 
 /** API 원본 대신 드래그로 수정한 현재 슬롯을 새 포메이션의 대응 역할로 옮긴다. */
 function recomputeGridSlotsForFormation(side, formation) {
   const state = lineupPanelState.gridState;
   if (!state || state.side !== side) return [];
+  if (!state.formation || !formation) return [...state.slotPlayerIds];
   return remapLineupFormationSlots(state.formation, formation, state.slotPlayerIds);
 }
 
@@ -224,8 +233,9 @@ function buildGridRowHtml(pidStr, slotIndex) {
   const { formation, players, side } = lineupPanelState.gridState;
   const labels = getFormationSlotLabels(formation);
   const p = pidStr ? players[pidStr] : null;
-  const photoStyle = p?.photoUrl ? ` style="background-image:url('${dpEscape(p.photoUrl)}')"` : '';
-  const photoCls = p?.photoUrl ? '' : ' dp-grid-photo-empty';
+  const photoUrl = p ? getLineupPlayerPhotoUrl(p) : '';
+  const photoStyle = photoUrl ? ` style="background-image:url('${dpEscape(photoUrl)}')"` : '';
+  const photoCls = photoUrl ? '' : ' dp-grid-photo-empty';
   const num = p ? dpEscape(p.number ?? '') : '';
   const resolvedName = p ? (lineupPanelState.gridState.fullFormRows ? p.name : (pickName(p, 'lineup') || p.name || '')) : '';
   const isNamelessPlayer = !!p && !resolvedName && Number(p.playerId) > 0;
@@ -249,7 +259,9 @@ function buildGridRowHtml(pidStr, slotIndex) {
     <span class="dp-grid-handle" aria-hidden="true">⠿</span>
     <span class="dp-grid-slot-label">${dpEscape(labels[slotIndex] || `${slotIndex + 1}`)}</span>
     <span class="dp-grid-photo${photoCls}"${photoStyle}></span>
-    <span class="dp-grid-num">${num}</span>
+    <span class="dp-grid-num">${p && !p._manualSlot && !lineupPanelState.gridState.fullFormRows
+      ? `<input class="dp-input dp-grid-number-input" data-roster-key="${dpEscape(pidStr)}" aria-label="${dpEscape(resolvedName || '선수')} 등번호" inputmode="numeric" maxlength="3" value="${num}" placeholder="번호" draggable="false">`
+      : num}</span>
     <span class="dp-grid-name${emptyCls}">${nameHtml}</span>
   </div>`;
 }
@@ -304,7 +316,7 @@ function buildLineupGridFormHtml() {
       <label class="dp-field">
         <span class="dp-field-label">포메이션</span>
         <select class="dp-select" name="manual-formation" id="manualGridFormation">
-          ${buildFormationOptionsHtml(formation)}
+          ${buildFormationOptionsHtml(formation, !lineupPanelState.gridState.fullFormRows)}
         </select>
       </label>
       <div class="dp-grid-list" id="manualGridList">${rows}</div>
@@ -413,6 +425,11 @@ function bindLineupGridDragDrop() {
 function extractGridOverrideFromState() {
   if (!lineupPanelState.gridState) return null;
   const { formation, slotPlayerIds, players } = lineupPanelState.gridState;
+  const numberByPlayerId = { ...lineupPanelState.gridState.numberEdits };
+  // '선택 없음'은 위치/포메이션을 저장하지 않는다. 등번호만 별도로 남겨
+  // 폴링과 새로고침 후에도 원래의 목록 표시를 그대로 유지한다.
+  if (!formation) return Object.keys(numberByPlayerId).length
+    ? { formation: null, gridByPlayerId: {}, numberByPlayerId } : null;
   const manualSlots = [];
   const grids = buildManualGridValues(formation);
   const gridByPlayerId = {};
@@ -423,7 +440,8 @@ function extractGridOverrideFromState() {
       if (player.name?.trim()) manualSlots.push({ ...player, grid: grids[idx], origName: player.origName || player.name.trim(), nameKoLong: player.nameKoLong || player.name.trim() });
     } else gridByPlayerId[pid] = grids[idx];
   });
-  return (Object.keys(gridByPlayerId).length || manualSlots.length) ? { formation, gridByPlayerId, manualSlots } : null;
+  return (Object.keys(gridByPlayerId).length || manualSlots.length)
+    ? { formation, gridByPlayerId, manualSlots, numberByPlayerId: { ...lineupPanelState.gridState.numberEdits } } : null;
 }
 
 /**
@@ -1133,6 +1151,21 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('change', event => {
+  if (event.target?.classList?.contains('dp-grid-number-input')) {
+    const state = lineupPanelState.gridState;
+    const key = event.target.dataset.rosterKey;
+    if (!state?.players[key]) return;
+    const number = event.target.value.trim();
+    if (number && !/^\d{1,3}$/.test(number)) {
+      event.target.value = state.players[key].number ?? '';
+      return;
+    }
+    state.players[key].number = number;
+    state.numberEdits ||= {};
+    if (number) state.numberEdits[key] = number;
+    else delete state.numberEdits[key]; // 빈 값으로 저장하면 공급자의 등번호로 돌아간다.
+    return;
+  }
   if (event.target?.matches('#manualLineupFullForm input[name^="lineup-captain-"]') && event.target.checked) {
     document.querySelectorAll('#manualLineupFullForm input[name^="lineup-captain-"]').forEach(input => {
       if (input !== event.target) input.checked = false;

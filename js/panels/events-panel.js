@@ -278,17 +278,68 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
 }
 
 /**
- * events 배열에 저장된 교체 선수 override를 적용한 새 배열 반환.
- * lineup-data.js의 buildEffectiveFixtureData에서 호출해
- * subReflect 교체 swap이 override를 반영하도록 함.
+ * 이름과 ID가 모두 비어 있는 교체 IN을 같은 팀의 출전 스탯으로 보완한다.
+ * 원래 벤치 선수 중 출전 시간/평점이 생겼고, 다른 IN에 연결되지 않은 선수만 쓴다.
+ * 후보와 이벤트가 서로 유일할 때만 연결하므로 동시 교체의 순서로 선수를 추측하지 않는다.
+ * 결과는 현재 응답에만 적용한다. 원본 ID/이벤트 키와 수동 연결은 그대로 유지한다.
  */
+function evInferSubstInFromStats(events, fixtureData, overrides) {
+  const result = new Map();
+  const norm = value => String(value || '').trim().toLowerCase().replace(/[\s.\-'"]/g, '');
+  const names = p => [p?.name, p?.nameKoLong, p?.origName, p?.playerOrigName, p?.playerName, p?.playerNameKoLong]
+    .map(norm).filter(Boolean);
+  const rosterData = typeof inferLineupsFromPlayerStats === 'function' ? inferLineupsFromPlayerStats(fixtureData) : fixtureData;
+  for (const side of ['home', 'away']) {
+    const subs = events.filter(ev => ev?.side === side && String(ev.type || '').toLowerCase() === 'subst');
+    const unknown = subs.filter(ev => evSubstHasUnlinkedId(ev, 'assist')
+      && !overrides[evSubstEventKey(ev)]?.assist
+      && ![ev.assistName, ev.assistNameKoLong, ev.assistOrigName].some(v => String(v || '').trim()));
+    if (!unknown.length) continue;
+    const stats = (fixtureData.playerStats || []).filter(p => p?.side === side);
+    const lineup = rosterData[`${side}Lineup`];
+    const used = (lineup?.substitutes || []).filter(p => subs.some(ev => {
+      const manual = overrides[evSubstEventKey(ev)]?.assist;
+      const id = Number(manual?.playerId ?? ev.assistId);
+      const inNames = [manual?.name, ev.assistName, ev.assistNameKoLong, ev.assistOrigName].map(norm).filter(Boolean);
+      return (id > 0 && id === Number(p.playerId)) || names(p).some(n => inNames.includes(n));
+    }));
+    const candidates = (lineup?.substitutes || []).filter(p => p && !used.includes(p)).map(player => {
+      const matches = typeof lpFindPlayerMatchStats === 'function'
+        ? [lpFindPlayerMatchStats(stats, player.playerId, side, player)].filter(Boolean)
+        : stats.filter(s => Number(player.playerId) > 0
+          ? Number(s.playerId) === Number(player.playerId) : names(player).some(n => names(s).includes(n)));
+      const stat = matches.length === 1 ? matches[0] : null;
+      return stat && (Number(stat.minutes) > 0 || Number(stat.rating) > 0) ? { player, stat } : null;
+    }).filter(Boolean);
+    // 이벤트보다 선수 스탯 갱신이 늦을 수 있다. 주전들의 누적 출전 시간을 스탯
+    // 관측 시점으로 사용해, 79분 응답에 77분 스탯이 온 경우도 같은 기준으로 비교한다.
+    const now = Number(fixtureData.matchInfo?.elapsed) || 0;
+    const statMinute = Math.max(0, ...stats.map(p => Number(p.minutes) || 0));
+    const observed = now && statMinute ? Math.min(now, statMinute) : now || statMinute;
+    const graph = unknown.map(ev => ({ ev, candidates: candidates.filter(({ stat }) => {
+      const elapsed = Number(ev.elapsed) || 0;
+      if (observed < elapsed) return false;
+      return !(Number(stat.minutes) > 0) || Math.abs(Number(stat.minutes) - (observed - elapsed)) <= 2;
+    }) }));
+    for (const edge of graph) {
+      if (edge.candidates.length !== 1) continue;
+      const candidate = edge.candidates[0];
+      if (graph.filter(other => other.candidates.includes(candidate)).length === 1) result.set(edge.ev, candidate.player);
+    }
+  }
+  return result;
+}
+
+/** 저장된 수동 연결을 우선하며 현재 응답에만 교체 선수 이름 보완을 적용한다. */
 function evPatchSubstEvents(events, fixtureId, fixtureData = window._eventsLastData) {
   if (!Array.isArray(events) || !fixtureId) return events;
   const overrides = evLoadSubstOverrides()[fixtureId] || {};
+  const sameFixture = String(fixtureData?.matchInfo?.fixtureId ?? '') === String(fixtureId);
+  const statsInferred = sameFixture ? evInferSubstInFromStats(events, fixtureData, overrides) : new Map();
   // 같은 팀의 미해결 교체 필드와 ID 0 명단 선수가 각각 하나일 때만 빈 이름을 보완합니다.
   // ID는 그대로 두어 자동 추정 후에도 기존 밑줄과 수동 수정 기능을 유지합니다.
   const fallback = {};
-  if (String(fixtureData?.matchInfo?.fixtureId ?? '') === String(fixtureId)) {
+  if (sameFixture) {
     for (const side of ['home', 'away']) {
       const unresolved = events.flatMap(ev => String(ev?.type || '').toLowerCase() === 'subst' && ev.side === side
         ? ['player', 'assist'].filter(field => evSubstHasUnlinkedId(ev, field)).map(field => ({ev, field})) : []);
@@ -312,10 +363,16 @@ function evPatchSubstEvents(events, fixtureId, fixtureData = window._eventsLastD
     if (String(ev?.type || '').toLowerCase() !== 'subst') return ev;
     const key = evSubstEventKey(ev);
     const evOverride = overrides[key];
-    if (!evOverride && fallback[ev.side]?.ev !== ev) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
+    if (!evOverride && fallback[ev.side]?.ev !== ev && !statsInferred.has(ev)) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
     const patched = { ...ev, _evSubstKey: key };
+    const statsPlayer = statsInferred.get(ev);
+    if (statsPlayer) {
+      patched.assistName = statsPlayer.name || statsPlayer.nameKoLong;
+      patched.assistNameKoLong = statsPlayer.nameKoLong || null;
+      patched.assistOrigName = statsPlayer.origName || null;
+    }
     const inferred = fallback[ev.side];
-    if (inferred?.ev === ev) {
+    if (inferred?.ev === ev && !statsPlayer) {
       patched[`${inferred.field}Name`] = inferred.candidate.name || inferred.candidate.nameKoLong;
       patched[`${inferred.field}NameKoLong`] = inferred.candidate.nameKoLong || null;
       patched[`${inferred.field}OrigName`] = inferred.candidate.origName || null;

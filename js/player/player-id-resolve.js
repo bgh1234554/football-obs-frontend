@@ -942,7 +942,7 @@ window.pirFindOriginalIdKey = pirFindOriginalIdKey;
 
 /** HTML 특수문자 escape (innerHTML 삽입용). */
 function pirEsc(v) {
-  return String(v ?? '').replace(/[&<>"']/g, c =>
+  return displayText(v).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
@@ -962,6 +962,7 @@ function pirGetCurrentFixtureId() {
 /** 클릭된 DOM 엘리먼트에서 home/away side를 클래스(is-home/is-away)나 data-* 속성으로 추론. */
 function pirGetSide(el) {
   if (!el) return null;
+  if (['home', 'away'].includes(el.dataset.playerSide)) return el.dataset.playerSide;
   if (el.classList.contains('is-home')) return 'home';
   if (el.classList.contains('is-away')) return 'away';
   const bench = el.closest('[data-bench-side]');
@@ -1032,19 +1033,19 @@ function pirShowMenu(side, origName, clientX, clientY) {
     : origName;
   const nickname = typeof getPlayerNickname === 'function' ? getPlayerNickname(0, nickSourceName) : null;
   const canEditNickname = !!nickSourceName && typeof pmEditNickname === 'function';
+  // ID 연결 여부와 현재 경기 스탯 제공 여부는 별개다. 같은 팀의 이름으로
+  // 유일하게 찾은 스탯만 열고, 시즌 프로필을 위해 임의의 ID를 만들지 않는다.
+  const matchPlayer = player ? { ...player, _side: side } : null;
+  const matchCandidates = typeof pmFindMatchStatCandidates === 'function' ? pmFindMatchStatCandidates(0, matchPlayer) : [];
 
   c.innerHTML = `
 <div class="pm-popup" id="pirPopup" role="dialog">
   <button class="pm-close" id="pirClose" aria-label="닫기" type="button"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m5 5 6 6M11 5l-6 6" /></svg></button>
   <div class="pm-info">
-    <div class="pm-avatar pm-avatar-empty" style="opacity:.35"></div>
+    <div class="pm-avatar"><img src="${pirEsc(getLineupPlayerPhotoUrl(player || { playerId: 0 }))}" alt=""></div>
     <div class="pm-info-text">
       <div class="pm-name"><span class="pm-num">${pirEsc(num)}</span>${pirEsc(displayName)}</div>
       ${idStatusHtml}
-      <div class="pm-pos pm-inline-actions">
-        ${typeof pmCaptainButtonHtml === 'function' ? pmCaptainButtonHtml(player, side) : ''}
-        ${canEditNickname ? '<button class="pm-btn pm-btn-inline" id="pirBtnNick">닉네임 설정</button>' : ''}
-      </div>
       ${existing ? `<div class="pm-nick-badge" style="color:#8cf">연결됨: ID ${pirEsc(String(existing.playerId))}</div>` : ''}
       ${nickname ? `<div class="pm-nick-badge">닉네임: ${pirEsc(nickname)}</div>` : ''}
     </div>
@@ -1070,6 +1071,11 @@ function pirShowMenu(side, origName, clientX, clientY) {
       <button class="pm-btn" id="pirCancel">취소</button>
     </div>
   </div>
+  <div class="pm-btns pir-actions">
+    ${typeof pmCaptainButtonHtml === 'function' ? pmCaptainButtonHtml(player, side, false) : ''}
+    <button class="pm-btn" id="pirBtnNick"${canEditNickname ? '' : ' disabled'}>닉네임 설정</button>
+    <button class="pm-btn" id="pirBtnMatch"${matchCandidates.length ? '' : ' disabled'}>경기 스탯</button>
+  </div>
 </div>`;
 
   if (typeof pmPositionPopup === 'function') {
@@ -1085,6 +1091,9 @@ function pirShowMenu(side, origName, clientX, clientY) {
   const preview = document.getElementById('pirPreview');
 
   const popup = document.getElementById('pirPopup');
+  document.getElementById('pirBtnMatch')?.addEventListener('click', () => {
+    pmChooseMatchStats(0, matchPlayer, matchCandidates);
+  });
   bindPopupPlayerSearch({
     input, button: document.getElementById('pirFetch'), popup,
     onSelect: p => {

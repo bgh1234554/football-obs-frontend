@@ -2,7 +2,7 @@
   // [백엔드 API fetch]
   // 백엔드: https://football-obs-backend.onrender.com
   //
-  // 통신 레이어 전용. 응답 본문(JSON)을 그대로 반환하거나 ApiError를 throw.
+  // 통신 레이어 전용. JSON의 문자열 누락 표기를 정리해 반환하거나 ApiError를 throw.
   // state 매핑/렌더링은 호출자(fixture.js 등)에서 처리.
   //
   // 추가 정책:
@@ -177,7 +177,7 @@
 
       let body = null;
       if (text) {
-        try { body = JSON.parse(text); } catch { /* 본문이 JSON이 아니면 null 유지 */ }
+        try { body = normalizeMissingValues(JSON.parse(text)); } catch { /* 본문이 JSON이 아니면 null 유지 */ }
       }
 
       if (res.ok) return body;

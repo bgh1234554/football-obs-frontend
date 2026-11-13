@@ -352,9 +352,72 @@ function lpResolveSubstEventIdsForAggregation(fixtureData) {
 }
 
 /**
- * fixtureData.players(PlayerStats)에서 playerId → rating(string) 맵.
- * rating이 없거나 빈 값/유효 범위 밖이면 그대로 (UI에서 null 처리).
+ * 현재 경기의 선수 스탯 후보를 찾는다. 실제 ID가 있으면 그 ID를 우선 사용한다.
+ * ID 0은 선수 식별자가 아니므로 반드시 같은 팀 안에서 이름을 비교해야 한다.
+ * 원문/축약명/전체 이름의 완전 일치를 먼저 찾고, 없으면 기존 fuzzy 매칭의
+ * 유사도 기준과 후보 간 점수 차이 기준을 재사용한다. 동명이인은 추측하지 않는다.
+ * fuzzy 후보의 pid는 배열 위치를 찾기 위한 임시 번호이며 API 데이터에는 쓰지 않는다.
  */
+function lpFindPlayerMatchStatCandidates(stats, playerId, side, player) {
+  if (!Array.isArray(stats)) return [];
+  const id = Number(playerId);
+  const rows = stats.filter(p => p && (!side || p.side === side));
+  if (id > 0) {
+    const byId = rows.filter(p => Number(p.playerId) === id);
+    if (byId.length) return byId;
+  }
+  if (!player || !['home', 'away'].includes(side)) return [];
+  // 실제 ID가 서로 다른 행은 기존 ID 연결 로직의 책임이다. 한쪽 ID가 없을 때만
+  // 이름으로 보완하며, 표시용 닉네임 대신 API 이름을 써서 닉네임 변경과 분리한다.
+  const candidates = rows.filter(p => !(id > 0) || !(Number(p.playerId) > 0));
+  const namesOf = p => [p.origName, p.playerOrigName, p.name, p.playerName, p.nameKoLong, p.playerNameKoLong]
+    .map(lpNormalizePlayerName).filter(Boolean);
+  const names = namesOf(player);
+  // 축약명이 겹쳐도 전체 이름이 유일하게 일치하면 그 선수를 우선한다.
+  const exactScores = candidates.map(p => Math.max(0, ...namesOf(p).filter(name => names.includes(name)).map(name => name.length)));
+  const bestExact = Math.max(0, ...exactScores);
+  const exact = bestExact ? candidates.filter((p, i) => exactScores[i] === bestExact) : [];
+  const toNames = p => ({
+    origName: p.origName || p.playerOrigName || p.name || p.playerName,
+    koName: p.name || p.playerName,
+    koNameLong: p.nameKoLong || p.playerNameKoLong,
+  });
+  let matches = exact;
+  if (!matches.length && typeof pirFuzzyFindRosterMatch === 'function'
+      && !(typeof getSetting === 'function' && getSetting('autoLinkPlayerIdByName') === 'off')) {
+    const pool = candidates.map((p, i) => ({ pid: i + 1, ...toNames(p) }));
+    const index = pirFuzzyFindRosterMatch(toNames(player), pool);
+    // 전체 비교에서 점수 차이가 부족하면 통과 가능한 후보들을 남겨 추가 정보로
+    // 좁힌다. 여기서도 해결되지 않은 후보는 클릭 메뉴에서 사용자가 직접 선택한다.
+    matches = index ? [candidates[index - 1]] : candidates.filter((p, i) =>
+      pirFuzzyFindRosterMatch(toNames(player), [pool[i]]));
+  }
+  // 출전 여부나 선발/벤치 구분은 교체 반영 후 달라질 수 있어 단독 근거로 쓰지 않는다.
+  // 두 데이터에 모두 있는 등번호/포지션/출전 시간만 비교하고, 일치 후보가 실제로
+  // 있을 때만 좁힌다. 0번과 빈 포지션은 API 미제공 값이므로 근거에서 제외한다.
+  const position = p => String(p.pos || p.position || '').trim().toUpperCase()
+    .replace(/^(GK|DF|MF|FW)$/, v => ({ GK: 'G', DF: 'D', MF: 'M', FW: 'F' })[v]);
+  const evidence = [
+    p => Number(player.number) > 0 && Number(p.number) === Number(player.number),
+    p => /^[GDMF]$/.test(position(player)) && position(p) === position(player),
+    p => player.minutes != null && p.minutes != null && Number(player.minutes) > 0
+      && Math.abs(Number(p.minutes) - Number(player.minutes)) <= 1,
+  ];
+  for (const agrees of evidence) {
+    if (matches.length <= 1) break;
+    const narrowed = matches.filter(agrees);
+    if (narrowed.length) matches = narrowed;
+  }
+  return matches;
+}
+
+/** 자동 표시에는 유일하게 확정된 스탯만 쓴다. 후보가 여러 개면 선택 메뉴가 처리한다. */
+function lpFindPlayerMatchStats(stats, playerId, side, player) {
+  const matches = lpFindPlayerMatchStatCandidates(stats, playerId, side, player);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/** 실제 playerId의 평점 맵. ID가 없는 선수는 팀/이름 기반 조회를 별도로 사용한다. */
 function lpBuildRatingMap(players) {
   const map = new Map();
   if (!Array.isArray(players)) return map;

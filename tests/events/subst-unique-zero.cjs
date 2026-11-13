@@ -7,3 +7,31 @@ const named=JSON.parse(original);named.events[0].assistName='API name';assert.eq
 stored={1490540:{[c.evSubstEventKey(fixture.events[0])]:{assist:{playerId:12,name:'Manual'}}}};patched=run(fixture)[0];assert.equal(patched.assistName,'Manual');assert.equal(patched.assistId,12);stored={};
 const out=JSON.parse(original);out.events[0]={type:'subst',side:'home',elapsed:58,playerId:0,assistId:12,assistName:'Known'};out.homeLineup={startXi:[{playerId:0,name:'Out player'}],substitutes:[]};assert.equal(run(out)[0].playerName,'Out player');
 console.log('PASS unique zero-ID substitution fallback, retained editable ID/key, ambiguity, role, fixture isolation, existing names, manual precedence and immutable source');
+
+// 전체 벤치에 ID 0 선수가 여럿이어도 실제 출전한 미연결 후보가 유일하면 보완한다.
+{
+ const data=JSON.parse(original);
+ data.matchInfo.elapsed=79;
+ data.homeLineup.startXi=[{playerId:1,name:'Starter'}];
+ data.homeLineup.substitutes=[{playerId:0,name:'S. Kadida',nameKoLong:'Sadok Kadida'},{playerId:0,name:'S. Chouchane'},{playerId:2,name:'Known sub'}];
+ data.playerStats=[{side:'home',playerId:1,minutes:77,rating:'6.2'}, {side:'home',playerId:0,playerName:'S. Kadida',minutes:6,rating:'6.3'}, {side:'home',playerId:0,playerName:'S. Chouchane',minutes:0,rating:'0'}, {side:'home',playerId:2,minutes:6,rating:'6.1'}];
+ data.events=[{type:'subst',side:'home',elapsed:71,playerId:1,assistId:null}, {type:'subst',side:'home',elapsed:71,playerId:3,assistId:2,assistName:'Known sub'}];
+ const before=JSON.stringify(data);
+ // 이전 응답에 스탯이 없으면 미해결로 남고, 다음 응답에 들어오면 새로 연결한다.
+ const earlier=JSON.parse(before);earlier.playerStats=[];
+ assert.equal(run(earlier)[0].assistName,undefined);
+ const resolved=run(data)[0];
+ assert.equal(resolved.assistName,'S. Kadida');
+ assert.equal(resolved.assistId,null);
+ assert.equal(c.evSubstEventKey(resolved),c.evSubstEventKey(data.events[0]));
+ assert.equal(JSON.stringify(data),before);
+ for(const mutate of [
+  d=>d.events.push({...d.events[0],playerId:4}),
+  d=>d.playerStats[2]={...d.playerStats[2],minutes:6,rating:'6.1'},
+  d=>d.playerStats[1].minutes=40,
+  d=>d.playerStats[1].side='away',
+ ]) { const copy=JSON.parse(before);mutate(copy);assert.equal(run(copy)[0].assistName,undefined); }
+ stored={1490540:{[c.evSubstEventKey(data.events[0])]:{assist:{playerId:42,name:'Manual'}}}};
+ assert.equal(run(data)[0].assistName,'Manual');stored={};
+ console.log('PASS played-bench substitution inference: polling lag, existing links, ambiguity, timing, sides and manual precedence');
+}

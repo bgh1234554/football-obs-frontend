@@ -587,7 +587,7 @@
 
   function fixtureDataForColorReset() {
     if (_lastFixtureData?.matchInfo) return _lastFixtureData;
-    try { return JSON.parse(sessionStorage.getItem('cached_fixture_data') || 'null'); }
+    try { return normalizeMissingValues(JSON.parse(sessionStorage.getItem('cached_fixture_data') || 'null')); }
     catch { return null; }
   }
 
@@ -973,6 +973,7 @@
     try{
       // 수동 로드는 60초, 폴링은 10초(기본값) — Render 콜드 스타트(20~40s) 대응
       let data = await fetchFixture(normalizedFixtureId, { silent, timeoutMs: silent ? 10000 : 60000, cache: cacheMode });
+      data = normalizeMissingValues(data);
       // requestSeq 비교: 같은 fixtureId로 겹쳐 호출돼도(강제 새로고침 도중 폴링 등) 더 나중에
       // 시작된 호출이 있으면 이 응답은 폐기 — _lastFetchId(fixtureId 문자열) 비교로는 같은
       // fixtureId끼리 겹친 요청을 구분할 수 없었음.
@@ -1596,7 +1597,7 @@
         });
         return;
       }
-      let data = JSON.parse(raw);
+      let data = normalizeMissingValues(JSON.parse(raw));
       // 캐시에는 원본(_rawEvents)이 함께 저장돼 있어, 숨김 기록을 다시 적용하면 복원도 그대로 동작한다.
       if (data && typeof window.evHideApplyToFixtureData === 'function') data = window.evHideApplyToFixtureData(data);
       if (!data || !data.matchInfo) {

@@ -55,6 +55,27 @@ const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
 }
 /** 파일 p에서 function name( 부터 end 문자열 직전까지의 소스를 잘라낸다. */
 const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function '+name+'('),s.indexOf(end,s.indexOf('function '+name+'(')));};
+// 누락 표기는 공통 표시/단위 처리 전에 비우고 0, 정상 이름, 원본 응답은 보존한다.
+{
+ const profile={innerHTML:''};
+ const c={window:{},document:{addEventListener(){},getElementById:id=>id==='pmSznProfile'?profile:null},localStorage:{getItem:()=>null}};
+ vm.createContext(c);
+ vm.runInContext(read('js/core/utils.js')+'\n'+read('js/player/player-menu.js'),c);
+ for(const value of [null,undefined,'',' null ','UNDEFINED','NaN',NaN,Infinity]) assert.equal(c.displayText(value,'-'),'-');
+ assert.equal(c.displayText(0),'0');assert.equal(c.displayText(false),'false');assert.equal(c.displayText('Null FC'),'Null FC');
+ const raw={name:'Null FC',nested:[{name:'null',number:0,flag:false},'undefined'],empty:'',nil:null};
+ const before=JSON.stringify(raw),clean=c.normalizeMissingValues(raw);
+ assert.equal(clean.nested[0].name,null);assert.equal(clean.nested[0].number,0);assert.equal(clean.nested[0].flag,false);
+ assert.equal(clean.nested[1],null);assert.equal(clean.name,'Null FC');assert.equal(clean.empty,'');assert.equal(JSON.stringify(raw),before);
+ assert.equal(c.normalizeMissingValues(clean),clean);
+ for(const [value,expected] of [[null,null],['null',null],['null cm',null],['undefined',null],['NaN',null],['171cmcm','171cm'],[171,'171cm']]) assert.equal(c.pmFormatBodyMeasurement(value,'cm'),expected);
+ const rows=c.pmBuildMatchStatRows({minutes:'null',position:'undefined',rating:'NaN',shotsTotal:0,passesTotal:'null',passesSuccessful:0,passesAccuracy:'undefined',tacklesTotal:'null',tacklesBlocks:0,tacklesInterceptions:'undefined',duelsTotal:0,duelsWon:'null'});
+ assert(!/\b(null|undefined|NaN)\b/.test(rows));assert(rows.includes('>0<'));assert(rows.includes('-(0)'));
+ c.pmRenderSeasonProfile({name:'Valid player',fullName:'null',age:'undefined',nationality:'null',height:'null cm',weight:'NaN',birth:{date:'null',place:'undefined',country:'null'}},'undefined');
+ assert(profile.innerHTML.includes('Valid player'));assert(!/\b(null|undefined|NaN)\b/.test(profile.innerHTML));
+ assert(!profile.innerHTML.includes('nullcm'));
+ console.log('PASS missing-value normalization: nested API data, immutable source, zero/false/names, units, composite stats and profiles');
+}
 // 실제 선발·백업 명단에 있는 선수의 미등록·차출 정보는 제외하고, 명단 밖 정보는 유지한다.
 {
  const context={};

@@ -137,9 +137,7 @@ function stParseNumber(val) {
 
 /** 한 row의 표시 문자열. 숫자는 그대로, %는 그대로, null은 "-". */
 function stDisplayValue(val) {
-  if (val == null) return '-';
-  if (typeof val === 'number') return String(val);
-  return String(val);
+  return displayText(val, '-');
 }
 
 /**
@@ -149,7 +147,7 @@ function stDisplayValue(val) {
 function stResolveValue(stats, key) {
   if (!stats) return null;
   if (key === 'passesPercent') {
-    if (stats.passesPercent != null && String(stats.passesPercent).trim() !== '') return stats.passesPercent;
+    if (displayText(stats.passesPercent)) return stats.passesPercent;
     const total = stParseNumber(stats.totalPasses);
     const accurate = stParseNumber(stats.passesAccurate);
     if (total && accurate != null) return Math.round((accurate / total) * 100) + '%';
@@ -177,8 +175,8 @@ function stCollectRows(fixtureData) {
     const homeVal = stResolveValue(home, key);
     const awayVal = stResolveValue(away, key);
     // 양쪽 다 null/빈문자열이면 skip
-    const homeEmpty = homeVal == null || String(homeVal).trim() === '';
-    const awayEmpty = awayVal == null || String(awayVal).trim() === '';
+    const homeEmpty = !displayText(homeVal);
+    const awayEmpty = !displayText(awayVal);
     if (homeEmpty && awayEmpty) continue;
     // goalsPrevented는 양쪽 모두 0이면 의미 없는 항목으로 skip (사용자 요청).
     if (key === 'goalsPrevented') {

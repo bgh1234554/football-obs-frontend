@@ -635,6 +635,9 @@ body.lineup-sub-name-highlight .dp-lineup-name.is-sub-out:not(.is-yellow):not(.i
 .dp-lineup-list-wrap {
   flex: 1 1 0;
   min-height: 0;
+  /* 피치용 패널은 바깥 여백이 없으므로 목록 모드에서 교체 명단과 같은 안쪽 여백을 복원한다. */
+  padding: 8px 10px;
+  box-sizing: border-box;
 }
 /* 포메이션 정보가 없어 줄글 폴백으로 표시될 때 — 팀 이름/선수 이름이 길면
    한 줄 말줄임표 대신 잘리지 않게 줄바꿈되도록 함(#benchPanel/#injuryPanel과 동일 처리). */

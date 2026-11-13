@@ -397,6 +397,27 @@ const root = path.resolve(__dirname, '../..');
     assert.equal(await seasonKey(), '2025');
     assert.deepEqual(statCalls, [null, '2024', '2021']);
     await page.evaluate(() => pmHideAll());
+    // 실제 API 파싱을 거쳐 프로필/시즌 스탯의 문자열 누락 표기와 단위 노출을 검사한다.
+    await page.route('**/api/playerStats/777**', route => route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ player: { id: 777, name: 'Valid player', fullName: 'null', age: 'undefined',
+        nationality: 'null', height: 'null cm', weight: 'NaN', birth: { date: 'null', place: 'undefined', country: 'null' } },
+        statistics: { '2026': [{ league: { name: 'null' }, team: { name: 'undefined' },
+          games: { appearences: 0, lineups: 0, minutes: 'null', rating: 'undefined' },
+          passes: { total: 0, accuracy: 'NaN' }, goals: { total: 0 } }] } }),
+    }));
+    const missing = await page.evaluate(async () => {
+      const data = await fetchPlayerStats(777);
+      return { fullName: data.player.fullName, age: data.player.age, minutes: data.statistics['2026'][0].games.minutes };
+    });
+    assert.deepEqual(missing, { fullName: null, age: null, minutes: null });
+    await page.evaluate(() => pmShowSeasonStats(777, { playerId: 777, name: 'Valid player', number: '' }));
+    await page.waitForFunction(() => document.querySelector('#pmSznProfile')?.textContent.includes('Valid player'));
+    const missingText = await page.locator('#pmBackdrop').innerText();
+    assert(!/\b(null|undefined|NaN)\b/i.test(missingText));
+    assert(!missingText.includes('nullcm'));
+    assert((await page.locator('#pmBackdrop .pm-st-num').allTextContents()).includes('0'));
+    await page.locator('#pmModalClose').click();
     assert.deepEqual(errors, []);
     console.log('PASS: ID/name search, height-based pagination, four UIs including bench fixed rows and optional IDs, metadata preservation, API refresh, save/cancel, photo choice, stale responses and older season loading.');
   } finally { await browser.close(); }

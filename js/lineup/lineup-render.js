@@ -39,10 +39,15 @@ function lpGetPlayerEventsForPlayer(player, side) {
 }
 
 /** 선수 1명의 경기 평점. 데이터 없음(unset)과 0 평점을 구분하기 위해 has() 먼저 체크. */
-function lpGetPlayerRating(playerId) {
+function lpGetPlayerRating(playerId, side, player) {
   if (playerId == null) return null;
   const map = lpGetContext().ratingByPlayer;
-  return map.has(String(playerId)) ? map.get(String(playerId)) : null;
+  if (Number(playerId) > 0 && map.has(String(playerId))) return map.get(String(playerId));
+  // ID 0끼리는 맵 키를 공유할 수 없다. 클릭 메뉴와 동일한 팀/이름 조회로
+  // 원본 스탯을 찾으며, 평점 0은 미제공 값이므로 기존과 같이 표시하지 않는다.
+  const stats = lpFindPlayerMatchStats(lpGetContext().playerStats, playerId, side, player);
+  const rating = Number(stats?.rating);
+  return Number.isFinite(rating) && rating > 0 ? rating : null;
 }
 
 /** 팝업에서 지정한 주장을 우선하고, 없으면 수동 폼/API 주장 정보를 사용한다. */
@@ -105,8 +110,8 @@ function lpBuildGoalsAssistsHtml(events) {
 }
 
 /** 평점 박스 HTML — 평점 색상 매핑은 lpRatingColor가 처리 */
-function lpBuildRatingHtml(playerId) {
-  const rating = lpGetPlayerRating(playerId);
+function lpBuildRatingHtml(playerId, side, player) {
+  const rating = lpGetPlayerRating(playerId, side, player);
   if (rating == null) return '';
   const color = typeof lpRatingColor === 'function' ? lpRatingColor(rating) : '#666';
   const foreground = teamColorContrastRatio('#000000', color) > teamColorContrastRatio('#ffffff', color) ? '#000000' : '#ffffff';
@@ -143,12 +148,12 @@ function lpBuildRosterRowHtml(player, kind, side) {
   const cardsHtml = lpBuildCardMarkersHtml(events);
   const subHtml = lpBuildSubMarkerHtml(events, kind);
   const goalsAssistsHtml = lpBuildGoalsAssistsHtml(events);
-  const ratingHtml = lpBuildRatingHtml(player.playerId);
+  const ratingHtml = lpBuildRatingHtml(player.playerId, side, player);
   const captainHtml = typeof lpIsCaptain === 'function' && lpIsCaptain(player.playerId, player)
     ? '<span class="dp-roster-captain" title="주장">C</span>'
     : '';
 
-  return `<div class="${itemClass}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
+  return `<div class="${itemClass}" data-player-side="${dpEscape(side)}" data-player-id="${dpEscape(player.playerId)}"${Number(player.playerId) === 0 ? ` data-player-orig-name="${dpEscape(player.name || player.playerName || '')}"` : ''}>
     <span class="dp-item-num">${dpEscape(player.number ?? '')}</span>
     <span class="dp-item-content">
       <span class="${nameClass}"${title}>${captainHtml}${lpBuildRosterNameHtml(player, kind === 'bench' ? 'roster' : 'lineup')}</span>
@@ -295,7 +300,7 @@ function setSideName(panel, dataAttrPrefix, side, teamName, accentColor, accentT
   if (accentColor) {
     nameEl.style.setProperty('--dp-team-accent', accentColor);
     nameEl.style.setProperty('--dp-team-text', accentTextColor || '#fff');
-    if (dataAttrPrefix === 'bench' || dataAttrPrefix === 'injury') {
+    if (dataAttrPrefix === 'bench' || dataAttrPrefix === 'injury' || dataAttrPrefix === 'lineup') {
       teamOutlineLowContrast(nameEl, accentColor, accentTextColor || '#fff', teamPanelBackground(panel));
     }
   } else {
@@ -350,9 +355,9 @@ function setRefereeElement(el, effectiveData, rawData) {
   if (!el) return;
 
   const fixtureId = getActiveFixtureId();
-  const manualReferee = String(getManualEntry(fixtureId)?.refereeName || '').trim();
-  const rawReferee = String(rawData?.matchInfo?.refereeName || '').trim();
-  const effectiveReferee = String(effectiveData?.matchInfo?.refereeName || '').trim() || manualReferee;
+  const manualReferee = displayText(getManualEntry(fixtureId)?.refereeName).trim();
+  const rawReferee = displayText(rawData?.matchInfo?.refereeName).trim();
+  const effectiveReferee = displayText(effectiveData?.matchInfo?.refereeName).trim() || manualReferee;
   const editable = !rawReferee;
 
   el.textContent = effectiveReferee || '(정보 없음)';
@@ -363,8 +368,8 @@ function setRefereeElement(el, effectiveData, rawData) {
 
 /** 경기장 표시 텍스트 — venueName + venueCity (도시 있으면 ", 도시" 형태로 붙임). 둘 다 없으면 ''. */
 function formatVenueText(matchInfo) {
-  const venueName = String(matchInfo?.venueName || '').trim();
-  const venueCity = String(matchInfo?.venueCity || '').trim();
+  const venueName = displayText(matchInfo?.venueName).trim();
+  const venueCity = displayText(matchInfo?.venueCity).trim();
   if (venueName && venueCity && venueCity !== venueName) return `${venueName}, ${venueCity}`;
   return venueName || venueCity;
 }
@@ -374,7 +379,7 @@ function formatVenueText(matchInfo) {
 function setVenueElement(el, effectiveData, rawData) {
   if (!el) return;
 
-  const rawVenue = String(rawData?.matchInfo?.venueName || '').trim();
+  const rawVenue = displayText(rawData?.matchInfo?.venueName).trim();
   const venueText = formatVenueText(effectiveData?.matchInfo);
   const editable = !rawVenue;
 
@@ -683,7 +688,7 @@ function buildLineupNodePairHtml(player, effectiveData, side, position, extraCla
   const isSentOff = !!(events?.red);
   const badgesHtml = lpBuildNodeBadgesHtml(events, false);
   const substitutionsHtml = lpBuildNodeSubBadgesHtml(events);
-  const ratingHtml = preview ? lpBuildNodeRatingHtml(player.playerId, preview.rating) : lpBuildNodeRatingHtml(player.playerId);
+  const ratingHtml = lpBuildNodeRatingHtml(player.playerId, preview ? preview.rating : lpGetPlayerRating(player.playerId, side, player));
   const extraClassSuffix = extraClass ? ` ${extraClass}` : '';
   const nodeClass = `dp-lineup-node is-${side}${extraClassSuffix}${isSentOff ? ' is-sent-off' : ''}`;
   // 양쪽 교체 기록이 있으면 최종 OUT 상태를 우선하고, 피치 옆 공격포인트 열은 강조하지 않는다.
@@ -982,7 +987,7 @@ function buildLineupListSideHtml(effectiveData, rawData, side) {
   const rawLineup = rawData?.[`${side}Lineup`];
 
   // 포메이션 미제공 안내문은 모달 description에 흡수했으므로 패널 위에 별도 노트 없음.
-  return `<div class="dp-col">
+  return `<div class="dp-col" data-lineup-side="${side}">
     ${buildLineupSideHeaderHtml(
       side,
       getTeamName(effectiveData, side),
@@ -1786,6 +1791,12 @@ function renderLineupGrid(effectiveData, rawData, options = {}) {
     // 패널 모드 클래스가 바뀌면 배치가 달라지므로 색만 바꾸는 경로를 쓰지 않는다.
     const sameMode = classesBefore === `${panel.className}|${wrap?.className || ''}`;
     lpSetLineupBodyHtml(body, isBig ? splitHtml : smallCombinedHtml, !!options.colorsOnly && sameMode);
+    // 목록 모드도 교체 명단과 같은 팀 라벨을 사용한다. 공통 갱신 함수를 거쳐
+    // 사용자 팀색 변경, 닉네임 편집과 어두운 팀색의 대비 보정까지 함께 유지한다.
+    if (!usePitchMode) for (const side of ['home', 'away']) {
+      const colors = getLineupSideColors(effectiveData, side);
+      setSideName(panel, 'lineup', side, getTeamName(effectiveData, side), colors.bg, colors.text);
+    }
   });
 }
 
@@ -1935,6 +1946,7 @@ function rerenderLineupPanels(options = {}) {
   lineupPanelState.context = {
     eventsByPlayer: typeof lpAggregatePlayerEvents === 'function' ? lpAggregatePlayerEvents(markerEvents) : new Map(),
     ratingByPlayer: typeof lpBuildRatingMap === 'function' ? lpBuildRatingMap(rawPlayerStats) : new Map(),
+    playerStats: rawPlayerStats, // ID가 없는 선수는 팀과 원래 이름으로 같은 경기 스탯을 조회한다.
     captainSet: typeof lpBuildCaptainSet === 'function' ? lpBuildCaptainSet(rawPlayerStats) : new Set(),
   };
 

@@ -4,6 +4,35 @@
 
   /** id로 DOM 엘리먼트를 가져오는 단축 함수 */
   const $ = id => document.getElementById(id);
+  /**
+   * 화면에 표시할 단일 값. null/undefined와 공급자가 문자열로 보낸 누락 표기를
+   * 비운다. 0과 false는 유효한 값이며, 'Null FC'처럼 이름 일부인 문자열은 보존한다.
+   * 단위를 붙이거나 HTML을 이스케이프하기 전에 호출해야 'null분' 같은 조합도 막는다.
+   */
+  function displayText(value, fallback = '') {
+    if (value == null || (typeof value === 'number' && !Number.isFinite(value))) return fallback;
+    const text = String(value);
+    return !text.trim() || /^(null|undefined|nan)$/i.test(text.trim()) ? fallback : text;
+  }
+
+  /**
+   * API/캐시의 JSON에서 문자열 누락 표기를 실제 null로 통일한다. 그래야 이름
+   * fallback이나 단위 표시가 값이 없는 것으로 판단한다. 원본 객체와 키는 바꾸지
+   * 않으며, 값이 달라지는 가지에만 복사본을 만들어 정상 응답은 그대로 재사용한다.
+   */
+  function normalizeMissingValues(value) {
+    if (typeof value === 'string') return /^(null|undefined|nan)$/i.test(value.trim()) ? null : value;
+    if (!value || typeof value !== 'object') return value;
+    if (!Array.isArray(value) && Object.prototype.toString.call(value) !== '[object Object]') return value;
+    let result = value;
+    for (const key of Object.keys(value)) {
+      const normalized = normalizeMissingValues(value[key]);
+      if (normalized === value[key]) continue;
+      if (result === value) result = Array.isArray(value) ? [...value] : { ...value };
+      result[key] = normalized;
+    }
+    return result;
+  }
   /** CSS 커스텀 변수 값을 설정하는 단축 함수 */
   const setCSS = (k,v) => document.documentElement.style.setProperty(k, v);
   /** CSS 커스텀 변수 값을 읽어오는 함수 */

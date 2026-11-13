@@ -40,7 +40,7 @@ function hthPersistCache() {
 /** 탭에 저장된 유효한 상대 전적 캐시를 메모리로 복원하고 저장소의 만료 항목을 정리한다. */
 function hthHydrateCache() {
   try {
-    const raw = JSON.parse(sessionStorage.getItem(HTH_CACHE_STORAGE_KEY) || '{}');
+    const raw = normalizeMissingValues(JSON.parse(sessionStorage.getItem(HTH_CACHE_STORAGE_KEY) || '{}'));
     const now = Date.now();
     Object.entries(raw || {}).forEach(([key, entry]) => {
       if (entry && Number(entry.expiresAt) > now) _hthCache.set(key, entry);

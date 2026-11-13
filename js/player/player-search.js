@@ -117,12 +117,12 @@ function playerSearchResultsHtml(search) {
   const players = s.pages.get(s.rawPage) || [];
   const start = s.localPage * s.pageSize;
   const selected = s.selected;
-  const visible = selected ? [selected] : players.slice(start, start + s.pageSize);
+  const visible = (selected ? [selected] : players.slice(start, start + s.pageSize)).map(normalizeMissingValues);
   const items = visible.map((p, i) => `<button type="button" class="ps-result${selected ? ' is-selected' : ''}" data-ps-index="${start + i}"${selected ? ' disabled' : ''}>
     ${p.photoUrl ? `<img src="${esc(p.photoUrl)}" alt="" loading="lazy">` : '<span class="ps-avatar-empty"></span>'}
     <span class="ps-result-text" title="${esc([p.fullName || p.name, p.englishName].filter(Boolean).join(' · '))}"><strong>${esc(p.fullName || p.name || p.englishName)}</strong>
     ${p.englishName && p.englishName !== (p.fullName || p.name) ? `<span>${esc(p.englishName)}</span>` : ''}
-    <small>${esc([p.nationality, p.age ? `${p.age}세` : '', `ID ${p.id}`].filter(Boolean).join(' · '))}</small></span>
+    <small>${esc([p.nationality, p.age ? `${p.age}세` : '', `ID ${displayText(p.id, '-')}`].filter(Boolean).join(' / '))}</small></span>
   </button>`).join('');
   const hasNext = start + s.pageSize < players.length || s.rawPage < s.totalPages;
   return `<div class="ps-heading">${selected ? '선택한 선수' : '검색 결과'}</div>

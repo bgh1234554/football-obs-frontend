@@ -72,16 +72,18 @@ function buildEffectiveFixtureData(data) {
             coach: base.coach ? { ...base.coach } : null,
           };
         }
-      } else if (manualSide.lineup.gridByPlayerId) {
+      } else if (manualSide.lineup.gridByPlayerId || manualSide.lineup.numberByPlayerId) {
         // (B) 그리드만 모드 — API의 startXi를 보존, formation + 선수별 grid만 override.
         // 카드/교체 이벤트는 자동 모드와 같은 데이터 구조라 그대로 작동.
-        const grids = manualSide.lineup.gridByPlayerId;
+        const grids = manualSide.lineup.formation ? (manualSide.lineup.gridByPlayerId || {}) : {};
         lineup = {
           ...base,
           formation: manualSide.lineup.formation || base.formation || null,
           startXi: clonePlayers(base.startXi || []).map((p, idx) => ({
             ...p,
             grid: grids[buildLineupRosterKey(p, idx)] || p.grid || null,
+            ...(Object.hasOwn(manualSide.lineup.numberByPlayerId || {}, buildLineupRosterKey(p, idx))
+              ? { number: manualSide.lineup.numberByPlayerId[buildLineupRosterKey(p, idx)] } : {}),
           })),
           substitutes: clonePlayers(base.substitutes || []),
           coach: base.coach ? { ...base.coach } : null,
@@ -355,7 +357,7 @@ function inferLineupsFromPlayerStats(data) {
       number: Number(p.number) > 0 ? p.number : '',
       pos: clean(p.position),
       grid: null,
-      photoUrl: clean(p.playerPhotoUrl) || null,
+      photoUrl: getLineupPlayerPhotoUrl({ ...p, playerPhotoUrl: clean(p.playerPhotoUrl) }) || null,
       _inferredFromPlayerStats: true,
     });
 

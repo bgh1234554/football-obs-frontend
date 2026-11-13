@@ -18,6 +18,13 @@ function getManualSlotPhotoUrl() {
   const path = 'resources/imgs/manual-player.png';
   return typeof appAssetPath === 'function' ? appAssetPath(path) : path;
 }
+
+/** ID 0의 누락 사진이나 공급자의 0.png 대신 저장소의 기본 프로필을 사용한다. */
+function getLineupPlayerPhotoUrl(player) {
+  const photo = player?.photoUrl || player?.playerPhotoUrl || '';
+  return Number(player?.playerId) === 0 && (!photo || /\/0\.png(?:[?#]|$)/.test(photo))
+    ? getManualSlotPhotoUrl() : photo;
+}
 const DETAIL_INJURY_ROWS = 12;
 const DETAIL_SIDE_TITLES = { home: '홈', away: '원정' };
 const DETAIL_PANEL_BALANCE_EPSILON_PX = 1;
@@ -35,7 +42,7 @@ let detailBenchResizeObserver = null;
 
 /** HTML에 안전하게 삽입하기 위해 `& < > " '`를 entity로 escape. innerHTML 합성 시 사용. */
 function dpEscape(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
+  return displayText(value).replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
@@ -77,7 +84,7 @@ function buildCaptainPlayerKey(player) {
 
 /** 선수 배열 깊은 복사 (1-depth). null 항목 제거. 입력이 배열 아니면 빈 배열. */
 function clonePlayers(players) {
-  return Array.isArray(players) ? players.filter(Boolean).map(player => ({ ...player })) : [];
+  return Array.isArray(players) ? players.filter(Boolean).map(player => ({ ...player, photoUrl: getLineupPlayerPhotoUrl(player) || null })) : [];
 }
 
 /** 부상자 배열 깊은 복사 (1-depth). null 제거. */
@@ -222,11 +229,13 @@ function sanitizeManualSideData(sideData) {
     const gridByPlayerId = sideData.lineup.gridByPlayerId;
     const hasGrids = gridByPlayerId && typeof gridByPlayerId === 'object'
       && Object.keys(gridByPlayerId).length > 0;
+    const numberByPlayerId = { ...sideData.lineup.numberByPlayerId };
+    const hasNumbers = Object.keys(numberByPlayerId).length > 0;
 
     if (hasStartXiArr) {
       next.lineup = { formation, startXi: clonePlayers(sideData.lineup.startXi) };
-    } else if (hasGrids && formation) {
-      next.lineup = { formation, gridByPlayerId: { ...gridByPlayerId }, manualSlots: clonePlayers(sideData.lineup.manualSlots || []) };
+    } else if ((hasGrids && formation) || hasNumbers) {
+      next.lineup = { formation, gridByPlayerId: formation ? { ...gridByPlayerId } : {}, numberByPlayerId, manualSlots: formation ? clonePlayers(sideData.lineup.manualSlots || []) : [] };
     }
   }
 
