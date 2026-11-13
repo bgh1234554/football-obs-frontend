@@ -389,37 +389,52 @@ function hthCreateTitleBar(container) {
 function hthCheckMetaWrap() {
   // 팀 이름 설정을 우선 적용하고 풀네임 모드에서만 폭에 따라 단축명으로 줄인다.
   const useLong = getSetting('teamName') === 'long';
-  document.querySelectorAll('[data-hth-panel] .hth-team-name[data-long-name]').forEach(label => {
+  const panels = [...document.querySelectorAll('[data-hth-panel]')]
+    .filter(panel => panel.getClientRects().length && panel.clientWidth);
+  const labels = panels.flatMap(panel => [...panel.querySelectorAll('.hth-team-name[data-long-name]')]);
+  const lineCount = label => {
+    const range = document.createRange();
+    range.selectNodeContents(label);
+    return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
+  };
+  // 모든 쓰기를 끝낸 뒤 한꺼번에 측정한다. 행마다 DOM 변경→측정을 반복하면
+  // 긴 목록에서 수십~수백 번 강제 레이아웃이 발생해 스크롤 프레임을 막는다.
+  labels.forEach(label => {
     label.style.fontSize = '';
     label.textContent = useLong ? label.dataset.longName : label.dataset.shortName;
-    if (!label.getClientRects().length || !label.clientWidth) return;
-    const lineCount = () => {
-      const range = document.createRange();
-      range.selectNodeContents(label);
-      return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
-    };
-    if (useLong && lineCount() >= 3) {
-      label.textContent = label.dataset.shortName;
-      if (lineCount() >= 3) label.textContent = label.dataset.longName;
-    }
-    // 단축명도 세 줄 이상이면 풀네임을 쓰고 네 줄부터만 글씨를 줄인다.
-    let size = parseFloat(getComputedStyle(label).fontSize);
-    while (lineCount() > 3 && size > 1) {
-      size = Math.max(1, size - 0.5);
-      label.style.fontSize = `${size}px`;
-    }
   });
-  document.querySelectorAll('[data-hth-panel] .hth-meta-row').forEach(row => {
-    const left = row.querySelector('.hth-meta-left');
-    const right = row.querySelector('.hth-meta-right');
-    if (!left || !right) return;
-    row.classList.remove('hth-meta-row-wrapped');
-    const wrapped = right.getBoundingClientRect().top > left.getBoundingClientRect().bottom - 2;
-    row.classList.toggle('hth-meta-row-wrapped', wrapped);
+  const shortened = useLong ? labels.filter(label => lineCount(label) >= 3) : [];
+  shortened.forEach(label => { label.textContent = label.dataset.shortName; });
+  const fallback = shortened.filter(label => lineCount(label) >= 3);
+  fallback.forEach(label => { label.textContent = label.dataset.longName; });
+  // 단축명도 세 줄 이상이면 풀네임을 쓰고 네 줄부터만 글씨를 줄인다.
+  let oversized = labels.map(label => ({ label, size: parseFloat(getComputedStyle(label).fontSize) }))
+    .filter(({ label, size }) => size > 1 && lineCount(label) > 3);
+  while (oversized.length) {
+    oversized.forEach(item => {
+      item.size = Math.max(1, item.size - 0.5);
+      item.label.style.fontSize = `${item.size}px`;
+    });
+    oversized = oversized.filter(({ label, size }) => size > 1 && lineCount(label) > 3);
+  }
+  const rows = panels.flatMap(panel => [...panel.querySelectorAll('.hth-meta-row')]);
+  rows.forEach(row => row.classList.remove('hth-meta-row-wrapped'));
+  const wrapped = rows.map(row => {
+    const left = row.querySelector('.hth-meta-left'), right = row.querySelector('.hth-meta-right');
+    return !!left && !!right && right.getBoundingClientRect().top > left.getBoundingClientRect().bottom - 2;
+  });
+  rows.forEach((row, index) => row.classList.toggle('hth-meta-row-wrapped', wrapped[index]));
+}
+let _hthMetaWrapFrame = null;
+function hthScheduleMetaWrap() {
+  if (_hthMetaWrapFrame !== null) return;
+  _hthMetaWrapFrame = requestAnimationFrame(() => {
+    _hthMetaWrapFrame = null;
+    hthCheckMetaWrap();
   });
 }
 window.addEventListener('resize', () => {
-  if (_hthState.mode === 'hth') hthCheckMetaWrap();
+  if (_hthState.mode === 'hth') hthScheduleMetaWrap();
 });
 // 패널을 드래그해 폭을 바꾸는 경우에도 현재 글씨 크기로 메타 행을 다시 배치한다.
 document.addEventListener('DOMContentLoaded', () => {
@@ -429,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const changed = widths.get(entry.target) !== entry.contentRect.width;
       widths.set(entry.target, entry.contentRect.width);
       return changed;
-    })) requestAnimationFrame(hthCheckMetaWrap);
+    })) hthScheduleMetaWrap();
   });
   document.querySelectorAll('[data-hth-panel]').forEach(panel => observer.observe(panel));
 });
@@ -448,6 +463,10 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
 
   // 2) 각 패널의 제목과 경기 목록을 교체한다. 표시할 경기가 없으면 빈 상태 메시지를 넣는다.
   document.querySelectorAll('[data-hth-panel]').forEach(container => {
+    const fixtureKey = `${_hthState.cacheKey}:${fixtureData?.matchInfo?.fixtureId || ''}`;
+    const scrollTop = container._hthScrollFixtureKey === fixtureKey
+      ? container.querySelector('.hth-list')?.scrollTop || 0 : 0;
+    container._hthScrollFixtureKey = fixtureKey;
     const titleBar = hthCreateTitleBar(container);
     const matches = _hthState.displayMatches;
     if (!matches.length) {
@@ -464,11 +483,13 @@ function applyHthPanel(hthData, fixtureData, meta = {}) {
     matches.forEach(m => list.appendChild(hthCreateRow(m, fixtureData, panelBackground)));
     if (titleBar) container.replaceChildren(titleBar, list);
     else container.replaceChildren(list);
+    list.scrollTop = scrollTop;
+    container.dispatchEvent(new CustomEvent('hth-panel:rendered', { bubbles: true }));
   });
 
   // 3) 표시 후 줄바꿈을 측정하고, 패널 전환 버튼에 새 데이터의 가용 상태를 반영한다.
   // 패널이 보이는 상태면 wrap 체크
-  if (_hthState.mode === 'hth') requestAnimationFrame(hthCheckMetaWrap);
+  if (_hthState.mode === 'hth') hthScheduleMetaWrap();
 
   // lp-stat cycle 버튼 상태 갱신 (Iter 7)
   if (typeof window.lpStatUpdateBtn === 'function') window.lpStatUpdateBtn();
@@ -558,7 +579,7 @@ function hthSetMode(mode, { automatic = false } = {}) {
   _hthState.manualSelection = !automatic;
   hthUpdateVisibility();
   if (_hthState.mode === 'hth') {
-    requestAnimationFrame(hthCheckMetaWrap);
+    hthScheduleMetaWrap();
   } else if (window._eventsLastData && typeof window.applyEventsPanel === 'function') {
     window.applyEventsPanel(window._eventsLastData, { animate: false });
   }
@@ -637,7 +658,7 @@ function hthRerenderColors() {
 }
 document.addEventListener('team-nicknames:change', hthRerenderColors);
 document.addEventListener('settings:change', e => {
-  if (['hthNameSize', 'teamName'].includes(e.detail?.category)) requestAnimationFrame(hthCheckMetaWrap);
+  if (['hthNameSize', 'teamName'].includes(e.detail?.category)) hthScheduleMetaWrap();
   if (!['teamLogo', 'panelColor', 'panelAlpha', 'bgColor', 'bgAlpha'].includes(e.detail?.category)) return;
   hthRerenderColors();
 });
@@ -653,6 +674,7 @@ window.hthSetMode = hthSetMode;
 window.hthUpdateVisibility = hthUpdateVisibility;
 window.hthReset = hthReset;
 window.hthCheckMetaWrap = hthCheckMetaWrap;
+window.hthScheduleMetaWrap = hthScheduleMetaWrap;
 /** 메모리와 sessionStorage의 상대 전적 캐시를 비운다. 현재 표시 중인 패널 상태는 별도로 유지된다. */
 window.hthClearCache = function hthClearCache() {
   _hthCache.clear();

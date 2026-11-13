@@ -801,6 +801,20 @@ const root = path.resolve(__dirname, '../..');
       assert.equal(scroll.overflow, 'auto');
       await page.screenshot({ path: `screenshots/tests/hth-font-scroll-${view}.png` });
     }
+    // 긴 상대전적도 행마다 강제 레이아웃을 만들지 않고 이름/메타정보를 함께 측정한다.
+    await page.evaluate(() => {
+      const match = _hthState.hthData.matches[0];
+      applyHthPanel({ matches: Array.from({ length: 40 }, (_, i) => ({ ...match, fixtureId: 900000 + i })) }, _hthState.fixtureData);
+    });
+    await settle(page);
+    const hthMetrics = await page.context().newCDPSession(page);
+    await hthMetrics.send('Performance.enable');
+    const layoutCount = async () => (await hthMetrics.send('Performance.getMetrics')).metrics.find(metric => metric.name === 'LayoutCount').value;
+    const beforeFitLayouts = await layoutCount();
+    await page.evaluate(() => { hthCheckMetaWrap(); document.querySelector('.layout-big .hth-list').scrollHeight; });
+    const fitLayouts = await layoutCount() - beforeFitLayouts;
+    assert(fitLayouts <= 8, `HTH fitting must batch layout reads/writes for 40 matches; actual layouts: ${fitLayouts}`);
+    await hthMetrics.detach();
     await page.evaluate(() => { setSetting('hthNameSize', 19); });
     await page.reload(); await settle(page);
     assert.deepEqual(await page.evaluate(() => ['matchInfoNameSize', 'hthNameSize'].map(getSetting)), [19, 19]);

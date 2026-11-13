@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 let count=0, now=0, id=0, advanced=0;
 const timers=new Map(), frames=new Map(), listeners=new Map();
-const list={scrollHeight:1300,clientHeight:300,scrollTop:0,
+const list={isConnected:true,scrollHeight:1300,clientHeight:300,scrollTop:0,
   querySelectorAll(selector){assert.equal(selector,'.ev-row[data-ev-key]'); return Array.from({length:count});},
   addEventListener(type,cb){listeners.set(type,cb);},removeEventListener(type){listeners.delete(type);}};
 const settings={statsAutoSwipeSec:10,statCycleAuto:'on'};
@@ -46,12 +46,36 @@ assert.equal(fire(run('_lpAuto.scrollTimer')),1000);
 now=20000;frame();assert.equal(list.scrollTop,0);
 assert.equal(fire(run('_lpAuto.scrollTimer')),2500);
 start(30);
+fire(run('_lpAuto.scrollTimer'));
+fire(run('_lpAuto.scrollProgrammaticTimer'));
+list.isConnected = false;
+list.scrollTop = 0;
+listeners.get('scroll')();
+assert(frames.size > 0, 'a detached list scroll event must not cancel automatic scrolling');
+list.isConnected = true;
+start(30);
 listeners.get('wheel')();
 assert.equal(frames.size,0,'user scroll cancels animation');
 assert.equal(fire(run('_lpAuto.timer')),10000,'user scroll restores ordinary timer');
 start(30);run('lpStatTogglePause()');assert.equal(frames.size,0);assert.equal(timers.size,0);
 for(const invalid of [0,-1,NaN,Infinity]) assert.equal(Object.keys(context._lpEventScrollOptions(invalid)).length,0);
 run('_lpStatCycle.paused=false');
+// HTH는 맨 위를 3초 보여준 뒤, 경기 수에 따른 기존 이동 시간으로 아래→위를 훑는다.
+for (const [rows, travel] of [[14, 6500], [15, 10000], [30, 20000], [60, 40000]]) {
+  run("_lpAutoClear(); _lpStatCycle.mode='hth';");
+  context._hthState = { displayMatches: Array.from({ length: rows }) };
+  now = 0;
+  run("_lpStartEventsScroll(10000, 'hth', 0, _lpHthScrollOptions(10000))");
+  frame(); frame();
+  assert.equal(list.scrollTop, 0);
+  assert.equal(fire(run('_lpAuto.scrollTimer')), 3000, 'HTH top hold is always three seconds');
+  frame(); frame();
+  assert.equal(list.scrollTop, 1000);
+  assert.equal(fire(run('_lpAuto.scrollTimer')), 1000);
+  now = travel / 2; frame(); assert.equal(list.scrollTop, 500);
+  now = travel; frame(); assert.equal(list.scrollTop, 0);
+  assert.equal(fire(run('_lpAuto.scrollTimer')), 2500);
+}
 // 최근·예정 경기에도 같은 대기/스크롤/끝 대기를 적용하고 두 페이지를 순서대로 넘긴다.
 const showFixtures = context.lpStatShowTeamFixturesPage;
 const selectedPages = [];

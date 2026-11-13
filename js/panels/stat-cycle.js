@@ -110,14 +110,11 @@ function _lpEventsScrollEl(mode = 'events') {
   if (mode === 'fixtures') return panel?.querySelector('.tf-body') || null;
   return panel?.querySelector('.ev-list') || panel;
 }
-/** 현재 모드가 자동 스크롤 대상인지 판단한다. 교체 명단은 패널이 스크롤 필요 상태일 때만 포함한다. */
+/** 현재 모드가 목록형 자동 스크롤 대상인지 판단한다. 실제 넘침은 레이아웃 후 측정한다. */
 function _lpModeUsesPanelAutoScroll(mode) {
-  if (mode === 'events' || mode === 'hth' || mode === 'fixtures') return true;
-  if (mode === 'bench_home' || mode === 'bench_away') {
-    const attr = mode === 'bench_home' ? 'data-bench-home-panel' : 'data-bench-away-panel';
-    return document.querySelector(`.lp-stat [${attr}]`)
-      ?.getAttribute('data-bench-scroll') === 'true';
-  }
+  // 교체 명단은 표시 후 다음 프레임에 overflow가 확정된다. 시작 전에 속성으로 거르면
+  // 숨겨져 있던 패널에 처음 진입할 때 자동 스크롤이 빠진다.
+  if (['events', 'hth', 'fixtures', 'bench_home', 'bench_away'].includes(mode)) return true;
   // match_info는 교체명단과 달리 2열 폴백 개념이 없고 .mi-body가 항상 overflow-y:auto라
   // 내용이 짧아 안 넘칠 때도 그냥 무해하게 대기 후 다음 모드로 넘어간다(_lpStartEventsScroll의
   // maxScroll<=0 분기) — 별도 overflow 게이트 없이 이벤트/HTH와 동일하게 항상 true.
@@ -209,6 +206,9 @@ function _lpBindEventsScrollInterruption(el) {
     if (_LP_SCROLL_KEYS.has(event.key)) cancel();
   };
   const onScroll = () => {
+    // DOM 교체로 분리된 목록도 scroll 이벤트를 낼 수 있다. 새 목록에 위치를
+    // 넘기기 전에 이를 사용자 조작으로 처리하면 진행 중인 스크롤이 취소된다.
+    if (!el.isConnected || el !== _lpAuto.scrollEl) return;
     if (_lpAuto.scrollProgrammatic) return;
     if (_lpAuto.scrollExpectedTop != null
       && Math.abs(el.scrollTop - _lpAuto.scrollExpectedTop) <= 1) {
@@ -364,19 +364,21 @@ const HTH_ROWS_PER_SLIDE_SECOND = 1.5;
 
 /** 실제 상대 전적 행 수가 기준 이상이면 이동 시간을 늘리는 옵션을 반환한다. 기본 속도면 빈 객체. */
 function _lpHthScrollOptions(baseIntervalMs) {
+  const options = { showNewestFirstMs: 3000 };
   // displayMatches는 오늘 포함 이후 예정 경기를 뺀, 실제로 화면에 그려지는 행 수와 일치하는 배열
   // (hth-panel.js applyHthPanel). 필터 전 hthData.matches를 쓰면 화면엔 안 보이는 예정 경기 때문에
   // 스크롤 시간이 실제 콘텐츠 길이보다 과하게 늘어난다.
   const count = Array.isArray(window._hthState?.displayMatches)
     ? window._hthState.displayMatches.length : 0;
-  if (!count || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return {};
+  if (!count || !Number.isFinite(baseIntervalMs) || baseIntervalMs <= 0) return options;
 
   const baseSec = baseIntervalMs / 1000;
   const countThreshold = baseSec * HTH_ROWS_PER_SLIDE_SECOND;
-  if (count < countThreshold) return {};
+  if (count < countThreshold) return options;
 
   const scrollGrowthRatio = count / countThreshold;
   return {
+    ...options,
     startHoldMs: baseIntervalMs * LP_PANEL_SCROLL_START_HOLD_RATIO,
     scrollDurationMs: Math.round(baseIntervalMs * scrollGrowthRatio),
     endHoldMs: Math.max(
@@ -400,6 +402,7 @@ function _lpInjuryScrollOptions(baseIntervalMs) {
 
 /** 상대 전적 데이터를 준비한 뒤 스크롤을 시작한다. 로딩 중에는 다음 패널로 넘어갈 대체 타이머를 둔다. */
 function _lpStartHthScrollWhenReady(intervalMs) {
+  const generation = _lpAuto.generation;
   const needsLoading = !(typeof window.hthCurrentDataIsFresh === 'function'
     && window.hthCurrentDataIsFresh(window._eventsLastData));
   const ready = lpStatEnsureModeReady('hth');
@@ -411,7 +414,7 @@ function _lpStartHthScrollWhenReady(intervalMs) {
 
   _lpAuto.timer = setTimeout(() => lpStatAutoAdvance(), intervalMs);
   Promise.resolve(ready).then(() => {
-    if (_lpStatCycle.mode !== 'hth' || !_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
+    if (generation !== _lpAuto.generation || _lpStatCycle.mode !== 'hth' || !_lpIsCycleAutoOn() || _lpStatCycle.paused) return;
     if (_lpAuto.timer) { clearTimeout(_lpAuto.timer); _lpAuto.timer = null; }
     _lpStartEventsScroll(intervalMs, 'hth', 0, _lpHthScrollOptions(intervalMs));
   });
@@ -638,7 +641,7 @@ function lpStatUpdateVisibility() {
   if (mode === 'stats') window.stRerenderActivePanels?.();
   document.querySelectorAll('.lp-stat [data-hth-panel]').forEach(el => {
     el.style.display = mode === 'hth' ? '' : 'none';
-    if (mode === 'hth') requestAnimationFrame(() => window.hthCheckMetaWrap?.());
+    if (mode === 'hth') window.hthScheduleMetaWrap?.();
   });
   document.querySelectorAll('.lp-stat [data-events-panel]').forEach(el => {
     el.style.display = mode === 'events' ? '' : 'none';
@@ -890,16 +893,22 @@ function lpStatResumeAfterNewEventRendered() {
 // ─── 이벤트 리스너 ────────────────────────────────────────────────────────────
 
 // 폴링으로 목록이 교체돼도 현재 위치와 스크롤 대상을 이어받는다.
-document.addEventListener('events-panel:rendered', event => {
-  if (_lpStatCycle.mode !== 'events' || !_lpAuto.scrollEl
+function _lpRebindPanelScroll(event, mode) {
+  if (_lpStatCycle.mode !== mode || !_lpAuto.scrollEl
     || !event.target?.closest?.('.lp-stat')) return;
-  const next = _lpEventsScrollEl('events');
+  const next = _lpEventsScrollEl(mode);
   if (!next || next === _lpAuto.scrollEl) return;
-  const top = _lpAuto.scrollEl.scrollTop;
+  const top = _lpAuto.scrollExpectedTop ?? _lpAuto.scrollEl.scrollTop;
   _lpClearEventsScrollListeners();
   _lpAuto.scrollEl = next;
   _lpSetEventsScrollTop(next, top);
   _lpBindEventsScrollInterruption(next);
+}
+document.addEventListener('events-panel:rendered', event => _lpRebindPanelScroll(event, 'events'));
+document.addEventListener('hth-panel:rendered', event => _lpRebindPanelScroll(event, 'hth'));
+document.addEventListener('bench-panel:rendered', event => {
+  const mode = event.target?.hasAttribute?.('data-bench-home-panel') ? 'bench_home' : 'bench_away';
+  _lpRebindPanelScroll(event, mode);
 });
 
 // stats 패널이 마지막 페이지 자동 스와이프 후 발생시키는 이벤트
@@ -957,7 +966,70 @@ window.lpStatAutoRestart = function lpStatAutoRestart() {
   }
 };
 
+// 작은 카메라 뷰의 홈/원정 후보 명단은 패널 전환 없이 독립적으로 위→아래 순환한다.
+// 같은 DOM을 사용하는 폴링 갱신은 진행 시간을 유지하고, 직접 조작하면 한 간격 쉬었다 재개한다.
+let _lpSmallBenchRaf = null;
+let _lpSmallBenchStates = new WeakMap();
+const LP_BENCH_SCROLL_PX_PER_SECOND = 40;
+function _lpSyncSmallBenchScroll() {
+  if (_lpSmallBenchRaf) cancelAnimationFrame(_lpSmallBenchRaf);
+  _lpSmallBenchRaf = null;
+  if (!_lpIsCycleAutoOn() || !document.querySelector('#page-main-small.active')) {
+    _lpSmallBenchStates = new WeakMap();
+    return;
+  }
+  const tick = now => {
+    const interval = _lpGetIntervalMs();
+    document.querySelectorAll('#benchPanel .dp-list').forEach(list => {
+      if (!list.getClientRects().length || list.clientHeight <= 0) return;
+      const max = Math.max(0, list.scrollHeight - list.clientHeight);
+      if (max <= 1) { _lpSmallBenchStates.delete(list); return; }
+      let state = _lpSmallBenchStates.get(list);
+      if (!state) {
+        state = { start: now, from: 0, fixture: list.dataset.scrollFixture };
+        _lpSmallBenchStates.set(list, state);
+      }
+      const fixture = list.dataset.scrollFixture;
+      if (fixture !== state.fixture) {
+        Object.assign(state, { start: now, from: 0, fixture });
+      }
+      const hold = interval * LP_PANEL_SCROLL_START_HOLD_RATIO;
+      const travel = Math.max(interval * LP_PANEL_SCROLL_DURATION_RATIO,
+        (max - state.from) / LP_BENCH_SCROLL_PX_PER_SECOND * 1000);
+      const endHold = interval * (1 - LP_PANEL_SCROLL_START_HOLD_RATIO - LP_PANEL_SCROLL_DURATION_RATIO);
+      const elapsed = now - state.start;
+      if (elapsed < 0) { state.from = list.scrollTop; return; }
+      const progress = Math.max(0, Math.min(1, (elapsed - hold) / travel));
+      list.scrollTop = state.from + (max - state.from) * progress;
+      if (elapsed >= hold + travel + endHold) Object.assign(state, { start: now, from: 0 });
+    });
+    _lpSmallBenchRaf = requestAnimationFrame(tick);
+  };
+  _lpSmallBenchRaf = requestAnimationFrame(tick);
+}
+
+document.addEventListener('page:activated', _lpSyncSmallBenchScroll);
+document.addEventListener('settings:change', event => {
+  if (['statCycleAuto', 'statsAutoSwipeSec'].includes(event.detail?.category)) _lpSyncSmallBenchScroll();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('#benchPanel .dp-list').forEach(list => {
+    const interrupt = event => {
+      if (event.type === 'keydown' && !_LP_SCROLL_KEYS.has(event.key)) return;
+      if (event.type === 'pointerdown' && !_lpPointerLooksLikeScrollbarDrag(event, list)) return;
+      const state = _lpSmallBenchStates.get(list);
+      if (state) {
+        state.start = performance.now() + _lpGetIntervalMs();
+        // wheel/touch 기본 동작이 반영된 실제 위치는 다음 프레임에 읽는다.
+        requestAnimationFrame(() => { state.from = list.scrollTop; });
+      }
+    };
+    for (const type of ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'keydown']) {
+      list.addEventListener(type, interrupt, { passive: true });
+    }
+  });
+  _lpSyncSmallBenchScroll();
   document.querySelectorAll('.lp-stat-cycle-btn').forEach(btn => {
     btn.addEventListener('click', lpStatCycleNext);
   });

@@ -544,14 +544,7 @@
     renderPK();
     renderRedCards();
     syncScoreCol();
-    for (const side of ['home', 'away']) {
-      // 네이션스리그는 팀 엠블럼 대신 전용 장식을 표시하므로 로고 분석을 적용하지 않습니다.
-      if (el[`${side}Logo`]?.closest('.fsm-board')?.dataset.fsmTheme === 'unl') continue;
-      LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
-        ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
-          chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
-      });
-    }
+    renderScoreboardLogos();
     // 전술판 토큰 색상 동기화 — 팀 색상이 실제로 바뀐 경우에만 재렌더 (매 render() 호출 시 DOM 재생성하면 드래그/선택 상태가 깨짐)
     if (typeof tacticsState !== 'undefined' && typeof tacticsRenderTokens === 'function') {
       const _tck = [state.colors.homeBg, state.colors.homeText, state.colors.awayBg, state.colors.awayText].join('|');
@@ -560,6 +553,18 @@
     requestAnimationFrame(() => {
       if (typeof fsmBoardRender === 'function') fsmBoardRender();
     });
+  }
+
+  /** 현재 테마에 팀 로고의 여백·채움·외곽색 보정을 적용한다. */
+  function renderScoreboardLogos() {
+    for (const side of ['home', 'away']) {
+      // UNL 장식에는 팀 로고 보정을 적용하지 않는다. 테마를 떠나면 캐시된 보정을 복원한다.
+      if (el[`${side}Logo`]?.closest('.fsm-board')?.dataset.fsmTheme === 'unl') continue;
+      LogoTrim.render(el[`${side}Logo`], state[`${side}Logo`], ready => {
+        ScoreboardLogoContrast.render(el[`${side}Logo`], el[`${side}Card`],
+          chromaSafe(state.colors[`${side}Bg`]), chromaSafe(state.colors[`${side}Text`]), ready);
+      });
+    }
   }
 
   /**

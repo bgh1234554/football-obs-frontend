@@ -546,6 +546,9 @@ function swapThemeLink(newlink, requestedTheme) {
   newlink.dispatchEvent(new Event('fsm-theme-applied'));
   requestAnimationFrame(() => {
     window.fsmBoardRender();
+    // render()는 비동기 CSS 교체 전에 끝날 수 있다. UNL이 지운 로고 보정을
+    // 목적 테마에서 다시 적용해야 다음 폴링/입력까지 작은 원본으로 남지 않는다.
+    renderScoreboardLogos();
     // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않습니다.
     // 불투명한 배경끼리의 색상 전환과 다른 전환 효과는 그대로 유지합니다.
     document.querySelectorAll('.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div)')

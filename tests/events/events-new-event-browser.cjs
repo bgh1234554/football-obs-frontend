@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '../..');
 const draftRoot = path.resolve(process.argv[2] || root);
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] });
   try {
     const page = await browser.newPage({ viewport: { width: 1920, height: 950 } });
     const errors = [];
@@ -62,8 +62,112 @@ const draftRoot = path.resolve(process.argv[2] || root);
     console.log('PASS: visible top insertion, five-second hold, bottom-to-top scroll, polling continuity, glow through completion and previous-panel return.');
 
     // 이벤트 개수가 그대로인 상태 변경도 실제 폴링 경로로 알림을 띄워야 합니다.
+    await page.evaluate(() => { setSetting('statCycleAuto', 'off'); _lpAutoClear(); });
     await page.clock.install();
     const baseFixture = JSON.parse(fs.readFileSync(path.join(root, 'tests/fixtures/1637598-lineup.json'), 'utf8'));
+    // 긴 상대전적과 후보명단도 실제 DOM 교체/폴링 뒤 스크롤을 이어간다.
+    await page.evaluate(async fixture => {
+      setSetting('statCycleAuto', 'off');
+      window.scrollFixture = structuredClone(fixture);
+      const players = Array.from({ length: 60 }, (_, i) => ({ playerId: 90000 + i, number: i + 1, name: `후보 선수 ${i}` }));
+      scrollFixture.homeLineup.substitutes = players;
+      scrollFixture.awayLineup.substitutes = players;
+      fetchFixture = async () => structuredClone(scrollFixture);
+      await fetchAndApplyFixtureData(scrollFixture.matchInfo.fixtureId, { silent: true }); clearPolling();
+      window.scrollHth = { matches: Array.from({ length: 35 }, (_, i) => ({
+        fixtureId: i + 1, date: '2020-01-01T12:00:00Z', homeTeamId: fixture.matchInfo.homeTeamId,
+        awayTeamId: fixture.matchInfo.awayTeamId, homeTeamName: '홈 팀', awayTeamName: '원정 팀',
+        homeScore: 1, awayScore: 0, leagueName: '테스트 대회', venueName: '경기장'
+      })) };
+      applyHthPanel(scrollHth, scrollFixture);
+    }, baseFixture);
+    for (const view of ['main-big', 'main-small']) {
+      const selector = view === 'main-big' ? '.layout-big .hth-list' : '.lp-events-s .hth-list';
+      await page.evaluate(view => {
+        setSetting('statCycleAuto', 'off'); activatePage(view); _lpAutoClear();
+        if (view === 'main-small') hthSetMode('hth');
+        else { _lpStatCycle.mode = 'hth'; lpStatUpdateVisibility(); }
+      }, view);
+      await page.clock.runFor(100);
+      await page.locator(selector).evaluate(list => { list.scrollTop = 200; });
+      const before = await page.locator(selector).evaluate(list => list.scrollTop);
+      assert(before > 0, `${view}: long HTH overflows: ${JSON.stringify(await page.locator(selector).evaluate(list => ({ mode: _lpStatCycle.mode, height: list.clientHeight, total: list.scrollHeight, rows: list.children.length, display: getComputedStyle(list.parentElement).display, available: lpStatAvailableModes() })))}`);
+      await page.evaluate(() => applyHthPanel(scrollHth, scrollFixture));
+      await page.clock.runFor(50);
+      assert.equal(await page.locator(selector).evaluate(list => list.scrollTop), before, `${view}: HTH rerender retains manual position`);
+    }
+    await page.evaluate(() => {
+      activatePage('main-big'); setSetting('statsAutoSwipeSec', 2.5); setSetting('statCycleAuto', 'on');
+      _lpAutoClear(); _lpStatCycle.mode = 'hth'; lpStatUpdateVisibility();
+    });
+    await page.clock.runFor(2600);
+    assert.equal(await page.locator('.layout-big .hth-list').evaluate(list => list.scrollTop), 0, 'HTH first holds the newest matches for three seconds');
+    await page.clock.runFor(2200);
+    const hthBefore = await page.locator('.layout-big .hth-list').evaluate(list => list.scrollTop);
+    await page.evaluate(() => applyHthPanel(scrollHth, scrollFixture));
+    await page.clock.runFor(600);
+    const hthAfter = await page.locator('.layout-big .hth-list').evaluate(list => list.scrollTop);
+    assert(hthAfter > 0 && hthAfter < hthBefore, 'HTH auto scroll continues on the new visible list');
+    const remainingHthTravel = await page.evaluate(() => {
+      const interval = _lpGetIntervalMs();
+      return _lpHthScrollOptions(interval).scrollDurationMs + interval * 0.1 - 2400 + 100;
+    });
+    await page.clock.fastForward(remainingHthTravel);
+    assert.equal(await page.locator('.layout-big .hth-list').evaluate(list => list.scrollTop), 0, 'long HTH finishes the full scroll after rerender');
+    for (const side of ['home', 'away']) {
+      await page.evaluate(side => {
+        _lpAutoClear(); _lpStatCycle.mode = `bench_${side}`;
+        const host = document.querySelector(`.layout-big [data-bench-${side}-panel]`);
+        host.removeAttribute('data-bench-scroll');
+        const panel = host.closest('.lp-stat'); panel.style.height = '160px'; panel.style.flex = '0 0 160px';
+        lpStatUpdateVisibility();
+      }, side);
+      await page.clock.runFor(800);
+      const selector = `.layout-big [data-bench-${side}-panel] .bc-body`;
+      const before = await page.locator(selector).evaluate(list => list.scrollTop);
+      assert(before > 0, `${side}: hidden bench starts scrolling after layout`);
+      const rebalanced = await page.evaluate(side => {
+        const panel = document.querySelector(`.layout-big [data-bench-${side}-panel]`);
+        const list = panel.querySelector('.bc-body'), before = list.scrollTop;
+        lpBenchCycleRebalance(panel);
+        return { before, after: list.scrollTop };
+      }, side);
+      assert.equal(rebalanced.after, rebalanced.before, `${side}: rebalancing retains scroll position`);
+      const replacement = await page.evaluate(side => {
+        const panel = document.querySelector(`.layout-big [data-bench-${side}-panel]`);
+        const previous = panel.querySelector('.bc-body'), top = previous.scrollTop;
+        renderBenchCyclePanels(scrollFixture);
+        // 브라우저가 제거된 목록에 전달하는 늦은 scroll 이벤트를 재현한다.
+        previous.dispatchEvent(new Event('scroll'));
+        return { before: top, after: panel.querySelector('.bc-body').scrollTop };
+      }, side);
+      assert(Math.abs(replacement.after - replacement.before) <= 1, `${side}: replacement restores position before the next frame: ${JSON.stringify(replacement)}`);
+      await page.clock.runFor(200);
+      const after = await page.locator(selector).evaluate(list => list.scrollTop);
+      assert(after > before, `${side}: polling preserves bench auto scroll`);
+    }
+    await page.evaluate(() => { activatePage('main-small'); _lpAutoClear(); });
+    await page.clock.runFor(1400);
+    const smallSelector = '#benchPanel .dp-list';
+    const beforeSmall = await page.locator(smallSelector).evaluateAll(lists => lists.map(list => list.scrollTop));
+    assert(beforeSmall.every(top => top > 0), 'small camera scrolls both bench lists');
+    await page.evaluate(() => renderBenchPanel(scrollFixture, scrollFixture));
+    await page.clock.runFor(250);
+    const afterSmall = await page.locator(smallSelector).evaluateAll(lists => lists.map(list => list.scrollTop));
+    assert(afterSmall.every((top, i) => top > beforeSmall[i]), 'small camera polling continues both lists');
+    await page.locator(smallSelector).first().dispatchEvent('wheel');
+    const manualTop = await page.locator(smallSelector).first().evaluate(list => list.scrollTop);
+    await page.clock.runFor(500);
+    assert.equal(await page.locator(smallSelector).first().evaluate(list => list.scrollTop), manualTop, 'manual scroll interrupts small bench animation');
+    await page.evaluate(() => setSetting('statCycleAuto', 'off'));
+    const stopped = await page.locator(smallSelector).evaluateAll(lists => lists.map(list => list.scrollTop));
+    await page.clock.runFor(500);
+    assert.deepEqual(await page.locator(smallSelector).evaluateAll(lists => lists.map(list => list.scrollTop)), stopped, 'auto off stops small bench animation');
+    await page.evaluate(() => {
+      const panel = document.querySelector('.layout-big .lp-stat'); panel.style.height = ''; panel.style.flex = '';
+    });
+    assert.deepEqual(errors, []);
+    console.log('PASS: both camera HTH positions, HTH and both bench polling continuity, small bench manual interruption and auto off.');
     let fixtureId = 20261020;
     async function poll(status, elapsed, penalties = false) {
       await page.evaluate(async ({ status, elapsed, penalties }) => {

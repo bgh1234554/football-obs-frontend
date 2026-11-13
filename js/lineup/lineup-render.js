@@ -1027,13 +1027,20 @@ function renderBenchPanel(effectiveData, rawData) {
 
   const homeList = panel.querySelector('[data-bench-side="home"] .dp-list');
   const awayList = panel.querySelector('[data-bench-side="away"] .dp-list');
+  const scrollFixture = String(effectiveData?.matchInfo?.fixtureId || '');
   if (homeList) {
+    const top = homeList.dataset.scrollFixture === scrollFixture ? homeList.scrollTop : 0;
+    homeList.dataset.scrollFixture = scrollFixture;
     homeList.innerHTML = buildBenchListHtml(effectiveData?.homeLineup?.substitutes || [], homeLineupExists, 'home');
     applyBenchCountClass(homeList);
+    homeList.scrollTop = top;
   }
   if (awayList) {
+    const top = awayList.dataset.scrollFixture === scrollFixture ? awayList.scrollTop : 0;
+    awayList.dataset.scrollFixture = scrollFixture;
     awayList.innerHTML = buildBenchListHtml(effectiveData?.awayLineup?.substitutes || [], awayLineupExists, 'away');
     applyBenchCountClass(awayList);
+    awayList.scrollTop = top;
   }
 
   // 3) 벤치 패널 하단의 감독 / 주심 인라인 편집 영역을 함께 갱신한다.
@@ -1336,6 +1343,7 @@ function lpBenchCycleRebalance(panel) {
   const body = panel?.querySelector('.bc-body');
   if (!body) return;
   if (!body.getClientRects().length || body.clientHeight <= 0) return;
+  const top = body.scrollTop;
 
   // 1열 상태에서 overflow 측정
   body.classList.remove('bc-two-col', 'bc-scroll-mode');
@@ -1356,6 +1364,7 @@ function lpBenchCycleRebalance(panel) {
     body.classList.remove('bc-two-col');
     body.classList.add('bc-scroll-mode');
     panel.setAttribute('data-bench-scroll', 'true');
+    body.scrollTop = top;
   }
 }
 
@@ -1387,9 +1396,11 @@ function renderBenchCyclePanels(effectiveData) {
 
   document.querySelectorAll('.lp-stat [data-bench-home-panel]').forEach(el => {
     el.innerHTML = buildBenchCyclePanelHtml(homeSubs, getTeamName(effectiveData, 'home'), homeColor, 'home');
+    el.dispatchEvent(new CustomEvent('bench-panel:rendered', { bubbles: true }));
   });
   document.querySelectorAll('.lp-stat [data-bench-away-panel]').forEach(el => {
     el.innerHTML = buildBenchCyclePanelHtml(awaySubs, getTeamName(effectiveData, 'away'), awayColor, 'away');
+    el.dispatchEvent(new CustomEvent('bench-panel:rendered', { bubbles: true }));
   });
 
   // 렌더 직후 rebalance

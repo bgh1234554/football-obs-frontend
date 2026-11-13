@@ -115,10 +115,37 @@ const { openPage, settle } = require('../tactics/helpers');
       render();
     });
     await page.waitForFunction(() => document.getElementById('homeLogo').classList.contains('logo-trimmed'));
+    // 비동기 테마 전환 완료만으로 보정이 복구돼야 한다. render()를 추가 호출하면
+    // UNL 장식에서 팀 로고로 돌아올 때 빠진 보정을 테스트가 대신 적용하게 된다.
+    await page.evaluate(() => applyTheme('cnl', null));
+    await page.waitForFunction(() => !pendingThemeLink);
+    await settle(page);
+    const cnlLogoSizes = await page.locator('.fsm-board .team-logo img').evaluateAll(images => images.map(img => ({
+      width: parseFloat(getComputedStyle(img).width), height: parseFloat(getComputedStyle(img).height)
+    })));
+    for (const sequence of [['unl', 'cnl'], ['unl', 'default', 'cnl'], ['default', 'cnl'], ['cnl', 'unl', 'cnl']]) {
+      for (const theme of sequence) {
+        await page.evaluate(theme => applyTheme(theme, null), theme);
+        await page.waitForFunction(() => !pendingThemeLink);
+        await settle(page);
+      }
+      const restored = await page.locator('.fsm-board .team-logo img').evaluateAll(images => images.map(img => ({
+        trimmed: img.classList.contains('logo-trimmed'),
+        width: parseFloat(getComputedStyle(img).width), height: parseFloat(getComputedStyle(img).height)
+      })));
+      restored.forEach((logo, i) => {
+        assert(logo.trimmed, `${sequence.join(' -> ')}: logo ${i} trim is restored without a data refresh`);
+        for (const axis of ['width', 'height']) assert(Math.abs(logo[axis] - cnlLogoSizes[i][axis]) < .1,
+          `${sequence.join(' -> ')}: logo ${i} ${axis} matches a clean CNL render`);
+      });
+    }
+    console.log('PASS default/UNL/CNL transition sequences restore both logos without an extra render');
     for (const theme of await page.evaluate(() => Object.keys(FSM_THEMES).filter(t => t !== 'unl'))) { // 네이션스리그는 로고 이미지를 숨기는 디자인
+      await page.evaluate(() => applyTheme('unl', null));
+      await page.waitForFunction(() => !pendingThemeLink);
+      await settle(page);
       await page.evaluate(theme => applyTheme(theme, null), theme);
       await page.waitForFunction(() => !pendingThemeLink);
-      await page.evaluate(() => { render(); fsmBoardRender(); });
       await settle(page);
       const metrics = await page.evaluate(() => ['homeLogo', 'awayLogo'].map(id => {
         const img = document.getElementById(id), image = img.getBoundingClientRect(), box = img.parentElement;
@@ -144,6 +171,22 @@ const { openPage, settle } = require('../tactics/helpers');
       }
       console.log('PASS trim fit and center', theme);
     }
+    // UNL에서 새 경기를 불러온 경우에도 CNL로 나오면 미분석 로고의 보정을 시작한다.
+    await page.evaluate(() => applyTheme('unl', null));
+    await page.waitForFunction(() => !pendingThemeLink);
+    await settle(page);
+    await page.evaluate(() => {
+      state.homeLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><circle cx="80" cy="60" r="30" fill="purple"/></svg>');
+      state.awayLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160"><circle cx="60" cy="80" r="35" fill="orange"/></svg>');
+      render();
+    });
+    await page.evaluate(() => applyTheme('cnl', null));
+    await page.waitForFunction(() => !pendingThemeLink);
+    await page.waitForFunction(() => ['home', 'away'].every(side => {
+      const img = document.getElementById(`${side}Logo`);
+      return img.getAttribute('src') === state[`${side}Logo`] && img.classList.contains('logo-trimmed');
+    }));
+    console.log('PASS UNL -> CNL starts cold logo analysis without an extra render');
     // 장식으로 바뀌는 테마에는 이전 엠블럼의 내부 채움과 여백 보정이 남지 않아야 한다.
     await page.evaluate(() => {
       const ring = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><path fill="black" fill-rule="evenodd" d="M10 10h60v60H10zM20 20v40h40V20z"/></svg>');
@@ -238,5 +281,71 @@ const { openPage, settle } = require('../tactics/helpers');
     assert(page.workers().some(worker => worker.url().endsWith('/js/core/logo-trim-worker.js')), 'logo analysis runs in a Web Worker');
     assert.deepEqual(workerWarnings, [], 'worker analysis did not fall back to the main thread');
     console.log('PASS worker logo analysis matches main-thread result (png, svg)');
+
+    // 모든 출발/도착 조합을 실제 비동기 CSS 교체 경로로 순회한다. 가상 시계는
+    // 프레임 대기만 단축하며, 테마 전환 후 render()를 대신 호출하지 않는다.
+    await page.evaluate(() => applyTheme('default', null));
+    await page.waitForFunction(() => !pendingThemeLink);
+    await settle(page);
+    await page.evaluate(() => {
+      state.homeLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><rect x="40" y="15" width="80" height="40" fill="blue"/></svg>');
+      state.awayLogo = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="200"><rect x="15" y="40" width="40" height="80" fill="red"/></svg>');
+      state.homeLogoScale = 1.25; state.awayLogoScale = 1.6;
+      state.homeLogoX = 3; state.awayLogoX = -4;
+      state.homeLogoY = -2; state.awayLogoY = 5;
+      render();
+    });
+    await page.waitForFunction(() => ['homeLogo', 'awayLogo'].every(id => document.getElementById(id).classList.contains('logo-trimmed')));
+    await page.clock.install();
+    const switchTheme = async theme => {
+      await page.evaluate(theme => applyTheme(theme, null), theme);
+      for (let retry = 0; retry < 10; retry++) {
+        await page.clock.runFor(100);
+        if (!await page.evaluate(() => !!pendingThemeLink)) break;
+      }
+      assert.equal(await page.evaluate(() => !!pendingThemeLink), false, `${theme}: stylesheet swap completed`);
+      await page.clock.runFor(50);
+    };
+    const logoGeometry = () => page.locator('.fsm-board .team-logo img').evaluateAll(images => images.map(img => {
+      const rect = img.getBoundingClientRect(), box = img.closest('.team-logo').getBoundingClientRect();
+      return { src: img.getAttribute('src'), trimmed: img.classList.contains('logo-trimmed'),
+        width: rect.width, height: rect.height,
+        centerX: rect.x + rect.width / 2 - box.x - box.width / 2,
+        centerY: rect.y + rect.height / 2 - box.y - box.height / 2 };
+    }));
+    const allThemes = await page.evaluate(() => Object.keys(FSM_THEMES));
+    const references = new Map();
+    for (const theme of allThemes) {
+      await switchTheme(theme);
+      await page.evaluate(() => document.fonts.ready);
+      await page.clock.runFor(50);
+      references.set(theme, await logoGeometry());
+    }
+    // 완전 방향 그래프의 오일러 경로: 불필요한 왕복 없이 모든 순서쌍을 한 번씩 지난다.
+    const remaining = allThemes.map(() => allThemes.map((_, index) => index));
+    const stack = [0], circuit = [];
+    while (stack.length) {
+      const from = stack[stack.length - 1];
+      if (remaining[from].length) stack.push(remaining[from].pop());
+      else circuit.push(stack.pop());
+    }
+    circuit.reverse();
+    await switchTheme(allThemes[circuit[0]]);
+    for (let index = 1; index < circuit.length; index++) {
+      const source = allThemes[circuit[index - 1]], target = allThemes[circuit[index]];
+      await switchTheme(target);
+      const actual = await logoGeometry(), expected = references.get(target);
+      actual.forEach((logo, side) => {
+        assert.equal(logo.src, expected[side].src, `${source} -> ${target}: logo ${side} source`);
+        assert.equal(logo.trimmed, expected[side].trimmed, `${source} -> ${target}: logo ${side} trim`);
+        for (const metric of ['width', 'height', 'centerX', 'centerY']) {
+          assert(Math.abs(logo[metric] - expected[side][metric]) < 1,
+            `${source} -> ${target}: logo ${side} ${metric}: ${logo[metric]} vs ${expected[side][metric]}`);
+        }
+      });
+      if (index % allThemes.length === 0) console.log(`PASS logo transition pairs ${index}/${allThemes.length ** 2}`);
+    }
+    assert.equal(circuit.length - 1, allThemes.length ** 2);
+    console.log(`PASS all ${allThemes.length ** 2} logo transition pairs (${allThemes.length} themes), both teams, manual scale and position`);
   } finally { await browser.close(); rmSync(screenshotDir, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
