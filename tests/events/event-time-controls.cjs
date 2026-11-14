@@ -424,6 +424,66 @@ const fixture = {
     assert.equal(await reviewOnlyRow.locator('.ev-label').textContent(), 'VAR 카드 변경');
     assert.equal(await reviewOnlyRow.locator('.football-icon-var-card-change').count(), 1);
     assert.deepEqual(await page.evaluate(() => [state.redHome, state.redAway]), [0, 0]);
+    // 값이 비어 있는 스탯 행도 수동 IN 후보의 정렬 단서로 쓰되, 선택/강조는 추가하지 않는다.
+    const priorityFixture = structuredClone(fixture);
+    priorityFixture.matchInfo.fixtureId = 1583660;
+    priorityFixture.matchInfo.elapsed = 90;
+    priorityFixture.matchInfo.status = 'FT';
+    priorityFixture.awayLineup.substitutes = [
+      { playerId: 30, name: 'Unused', number: 1 },
+      { playerId: 0, name: 'candidate a', number: 2 },
+      { playerId: 0, name: 'candidate b', number: 3 },
+      { playerId: 33, name: 'Linked', number: 4 },
+    ];
+    priorityFixture.playerStats = [
+      { side: 'away', playerId: 0, playerName: 'Candidate A', minutes: 0, rating: null },
+      { side: 'away', playerId: 0, playerName: 'Candidate B', minutes: null, rating: null },
+      { side: 'away', playerId: 33, minutes: 0, rating: null },
+      { side: 'home', playerId: 30, minutes: 10, rating: '6.5' },
+    ];
+    priorityFixture.events = [
+      { ...sub, elapsed: 61, assistId: null, assistName: null },
+      { ...sub, elapsed: 62, playerId: 14, playerName: 'Next', assistId: null, assistName: null, detail: 'Substitution 2' },
+      { ...sub, elapsed: 78, playerId: 11, playerName: 'Added', assistId: 33, assistName: 'Linked', detail: 'Substitution 3' },
+    ];
+    await poll(priorityFixture);
+    assert.deepEqual(await page.evaluate(() => {
+      const event = { type: 'Goal', side: 'away', playerId: 0, playerName: 'jamal gittens', playerNameKoLong: 'jamal gittens' };
+      const before = JSON.stringify(event);
+      const names = [evPickPlayerName(event, 'player'), getEventPlayerDisplayName(event),
+        evEditDisplayName({ playerId: 0, name: 'jamal gittens' })];
+      const profile = document.createElement('div');
+      profile.id = 'pmSznProfile'; document.body.append(profile);
+      pmRenderSeasonProfile({ id: 9998, fullName: 'al hassan', name: 'al hassan' });
+      const profileName = profile.querySelector('.pm-profile-name')?.textContent;
+      profile.remove();
+      const search = playerSearchResultsHtml({ state: {
+        pages: new Map([[1, [{ id: 9998, fullName: 'kevin de bruyne' }]]]), rawPage: 1,
+        localPage: 0, pageSize: 10, screenPage: 1, totalPages: 1,
+      } });
+      return { names, profileName, searchName: search.includes('Kevin de Bruyne'), immutable: before === JSON.stringify(event) };
+    }), { names: ['Jamal Gittens', 'Jamal Gittens', 'Jamal Gittens'], profileName: 'Al Hassan', searchName: true, immutable: true });
+    await page.locator('[data-events-panel]:visible .ev-row-subst').filter({ has: page.locator('.ev-time', { hasText: "61'" }) }).locator('.ev-subst-fix-btn').click();
+    const clusterModal = page.locator('.ev-subst-cluster-modal');
+    const firstCol = clusterModal.locator('.ev-subst-cluster-col').first();
+    const names = list => list.locator('.ev-subst-picker-name').allTextContents();
+    assert.deepEqual((await names(firstCol)).slice(1), ['Candidate A', 'Candidate B', 'Unused', 'Linked']);
+    assert.equal(await firstCol.locator('.ev-subst-picker-item.is-selected').count(), 1);
+    await firstCol.locator('.ev-subst-picker-item').filter({ hasText: 'Candidate A' }).click();
+    const secondCol = clusterModal.locator('.ev-subst-cluster-col').nth(1);
+    await secondCol.getByRole('button', { name: /^IN:/ }).click();
+    assert.equal((await names(secondCol))[1], 'Candidate B');
+    assert.equal(await secondCol.locator('.is-taken').count(), 1);
+    assert.match(await secondCol.locator('.is-taken').textContent(), /Candidate A/);
+    await clusterModal.getByRole('button', { name: '취소', exact: true }).click();
+    priorityFixture.matchInfo.fixtureId++;
+    priorityFixture.events.splice(1, 1);
+    await poll(priorityFixture);
+    await page.locator('[data-events-panel]:visible .ev-row-subst').filter({ has: page.locator('.ev-time', { hasText: "61'" }) }).locator('.ev-subst-fix-btn').click();
+    const singleModal = page.locator('.ev-subst-picker-modal');
+    assert.deepEqual(await names(singleModal), ['Candidate A', 'Candidate B', 'Unused', 'Linked']);
+    assert.equal(await singleModal.locator('.is-selected').count(), 0);
+    await singleModal.getByRole('button', { name: '취소', exact: true }).click();
     assert.deepEqual(errors, []);
     console.log('PASS: shared periods, lineup candidates, modal controls, polling/reload, fixture isolation, boundaries, real slider, missed penalties, shootout kickers/results/scores, VAR decisions/optional player/reset.');
   } finally { await browser.close(); }

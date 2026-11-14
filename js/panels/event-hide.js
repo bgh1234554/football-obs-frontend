@@ -1,3 +1,18 @@
+/**
+ * [이벤트 보정: 원본 보존·수동 편집·전체 화면 재적용]
+ * API 원본 이벤트를 보존한 채 숨김/내용 수정/구간 지정을 경기별 저장값으로 합성한다.
+ * IN/OUT 선수 연결 저장소는 events-panel.js가 맡고, 이 파일은 후보 계산과 묶음 편집 UI도 제공한다.
+ *
+ * 데이터 처리 순서:
+ *  1. 원본 내용과 같은 이벤트의 중복 순번으로 서명을 만들고 경기별 숨김/수정/구간 기록을 읽는다.
+ *  2. 유효한 원본 목록에 더 이상 없는 서명의 기록을 정리한다. 일시적 빈 응답은 정리 근거로 쓰지 않는다.
+ *  3. 숨김 제외 → 내용 수정 → 구간 지정 순으로 이벤트 복사본을 만든다.
+ *  4. 원본과 보정 목록의 득점 차이만 원본 점수에 더해 재적용 때 점수가 누적 보정되지 않게 한다.
+ *  5. 편집 저장/복원 후 fixture.js의 재적용 진입점으로 점수판·라인업·패널·타임라인을 함께 갱신한다.
+ *
+ * 후보는 공통 이벤트 시간 판정과 해당 시점까지의 교체/퇴장을 반영해 구한다. 교체 묶음의
+ * 시간 판정은 자동 매칭도 공유하므로 팝업 표시만 보고 별도 허용 범위를 만들지 않는다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [이벤트 숨기기 / 수정] API가 잘못된 이벤트를 내려줄 때 이벤트 패널에서 바로잡는다.
 //   - 숨기기: row hover X 버튼 -> 그 이벤트를 모든 곳(점수판 점수/득점자, 이벤트 패널, 라인업
@@ -139,6 +154,8 @@ function evHideGoalCredits(events) {
  * 4) 점수는 원본 점수 + (적용 후 득점 - 원본 득점). 원본 PK 점수가 null(승부차기 없음)이면 그대로 둔다.
  */
 function evHideApplyToFixtureData(data) {
+  // 이미 보정한 events/점수에서 다시 시작하면 같은 숨김이나 골 수정을 반복 적용하게 된다.
+  // 재적용은 보관한 _rawEvents/_rawScores를 우선해 항상 API 기준과의 차이를 새로 계산한다.
   if (!data) return data;
   const raw = Array.isArray(data._rawEvents) ? data._rawEvents : data.events;
   if (!Array.isArray(raw)) return data;
@@ -1106,7 +1123,13 @@ function evOpenSubstClusterEditor(cluster, focusEv, focusField, fixtureData) {
       keepObj?.number != null && keepObj.number !== '' ? String(keepObj.number) : '-',
       `현재: ${(typeof evGetSubstDisplayName === 'function' ? evGetSubstDisplayName(col.ev, field, fixtureId) : '') || '?'}`,
       keepObj?.pos || '', col.sel[field] === 'keep', () => { col.sel[field] = 'keep'; renderAll(); })];
-    cands[field].forEach((p, i) => {
+    // IN 목록만 현재 선택 가능한 스탯 후보를 앞에 둔다. 중복 선택 검사에는 원래 인덱스를 쓴다.
+    const available = cands[field].filter((_, i) => !taken.has(i));
+    const ordered = field === 'assist' && typeof evSortSubstInCandidates === 'function'
+      ? [...evSortSubstInCandidates(available, side, fixtureData), ...cands[field].filter((_, i) => taken.has(i))]
+      : cands[field];
+    ordered.forEach(p => {
+      const i = cands[field].indexOf(p);
       const item = evEditPlayerItem(p.number != null && p.number !== '' ? String(p.number) : '-',
         evEditDisplayName(p), p.pos || '', col.sel[field] === p, () => { col.sel[field] = p; renderAll(); });
       if (taken.has(i)) {
