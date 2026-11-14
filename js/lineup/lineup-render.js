@@ -1,3 +1,17 @@
+/**
+ * [라인업 렌더: 데이터 합성부터 화면·전술판 동기화]
+ * 경기 응답을 보관하고 같은 표시용 데이터를 선발 피치·목록·교체·미출전·경기 정보에 반영한다.
+ *
+ * 처리 순서:
+ *  1. applyLineupPanels가 경기 변경을 확인하고 필요한 스탯 기반 명단 추론/초기화를 수행한다.
+ *  2. rerenderLineupPanels가 수동값과 선수 연결을 합성한 뒤 설정에 따라 교체를 명단에 반영한다.
+ *  3. 보완된 이벤트/스탯으로 선수별 배지·평점·주장 조회 문맥을 한 번 만들고 각 빌더가 재사용한다.
+ *  4. 모든 라인업 패널과 전술판을 갱신하되 같은 경기의 사용자 드래그 위치는 보존한다.
+ *  5. 최종 화면 폭을 맞춘 뒤 lineup-name-fit.js의 피팅과 높이 균형 작업을 예약한다.
+ *
+ * 원본 lastFixture와 화면용 lastEffectiveData는 다른 단계이다. 팀 컬러만 변한 경우의 DOM 갱신과
+ * 전체 명단 갱신도 구분해 불필요한 재생성/실측을 줄이며, 경기 전환 때만 자동 폭 잠금을 다시 구한다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [라인업 패널 / 렌더]
 // 이벤트·평점 표시 헬퍼, 피치 좌표 매핑, 라인업/벤치/부상자 패널 HTML 빌더, 교체명단
@@ -140,7 +154,7 @@ function lpBuildRosterRowHtml(player, kind, side) {
   const isOff = !!(events?.red);
 
   const title = player.nameKoLong && player.nameKoLong !== player.name
-    ? ` title="${dpEscape(player.nameKoLong)}"`
+    ? ` title="${dpEscape(formatLatinPlayerName(player.nameKoLong))}"`
     : '';
   const nameClass = `dp-item-name${cardKind === 'yellow' ? ' is-yellow' : ''}${isOff ? ' is-red' : ''}`;
   const itemClass = `dp-item${isOff ? ' is-sent-off' : ''}`;
@@ -674,7 +688,7 @@ function buildLineupNodePairHtml(player, effectiveData, side, position, extraCla
   const colors = getLineupSideColors(effectiveData, side);
   const name = pickName(player, 'lineup', { preserveSurnameBreaks: true }) || player.name || '';
   const title = player.nameKoLong && player.nameKoLong !== player.name
-    ? ` title="${dpEscape(player.nameKoLong)}"`
+    ? ` title="${dpEscape(formatLatinPlayerName(player.nameKoLong))}"`
     : '';
   const colorVars = `--dp-node-bg:${colors.bg};--dp-node-text:${colors.text};--dp-node-glow:${withAlpha(colors.bg, '44')};--dp-node-border:${withAlpha(colors.text, '66')};`;
   const posStyle = `left:${position.left}%;top:${position.top}%;`;

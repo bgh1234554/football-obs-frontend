@@ -1,3 +1,17 @@
+/**
+ * [선수 메뉴: 연결 선수 조회·닉네임·경기/시즌 스탯]
+ * 피치/명단에서 클릭한 선수를 현재 경기의 연결 정보와 함께 해석하고 해당 편집기나 모달을 연다.
+ *
+ * 처리 흐름:
+ *  1. 원본 선수와 연결된 선수 ID/이름을 찾아 메뉴 대상을 확정한다.
+ *  2. 닉네임은 ID 키 또는 이름 키로 저장하고 ID 승격으로 생긴 값과 사용자의 직접 지정을 구분한다.
+ *  3. 경기 스탯은 현재 응답의 같은 팀/선수 기록으로 표시하고 프로필은 별도로 보강한다.
+ *  4. 시즌 스탯은 받은 결과를 메모리에 유지해 선택한 시즌/대회 기준으로 다시 그린다.
+ *  5. 모달을 그린 뒤 player-stats-modal-controls.js를 연결하고 닫기/다른 메뉴 열기에서 UI를 정리한다.
+ *
+ * 선수 신원 연결은 player-id-resolve.js, 검색 상태는 player-search.js가 맡는다. ID 0 선수들은
+ * 같은 숫자 키로 스탯/닉네임을 공유할 수 없으므로 팀과 원래 이름을 함께 사용하는 경로를 유지한다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [선수 컨텍스트 메뉴] Iter 6 — 선발/교체/부상 패널 선수 클릭 메뉴
 //   6-1: 닉네임 설정  6-2: 경기 스탯  6-3: 시즌 스탯
@@ -186,6 +200,11 @@ function clearAllPlayerNicknames() {
 // ── HTML 특수문자 이스케이프 ───────────────────────────────────────────────────────────────
 
 /** HTML에 삽입할 값을 문자열로 바꾸고 특수문자를 이스케이프한다. nullish 값은 빈 문자열이다. */
+/** 프로필 등 공통 이름 선택을 거치지 않는 화면도 같은 라틴 표시 규칙을 적용한다. */
+function pmFormatPlayerName(name) {
+  return typeof formatLatinPlayerName === 'function' ? formatLatinPlayerName(name) : name;
+}
+
 function pmEsc(v) {
   return displayText(v).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -259,7 +278,7 @@ function pmChooseMatchStats(playerId, player, candidates) {
         <button class="pm-btn" id="pmStatChoiceClose">닫기</button></div>
       <div class="pm-szn-scroll pm-stat-choices"><p>선수 정보를 확인하고 선택하세요.</p>
         ${candidates.map((s, i) => `<button class="pm-btn" data-stat-choice="${i}">
-          ${pmEsc(s.playerNameKoLong || s.playerName || s.name || '-')}
+          ${pmEsc(pmFormatPlayerName(s.playerNameKoLong || s.playerName || s.name || '-'))}
           / ${pmEsc(player._side === 'home' ? '홈' : '원정')}
           / 등번호 ${pmEsc(Number(s.number) > 0 ? s.number : '-')}
           / ${pmEsc(pmPosKo(s.position || s.pos))}
@@ -362,7 +381,7 @@ function pmShowMenu(playerId, clientX, clientY) {
   const shortName = player.name || player.playerName || '';
   const longName  = player.nameKoLong || player.playerNameKoLong || '';
   const displayName = nickname || (typeof pickName === 'function' ? pickName(player, 'roster') : shortName) || '-';
-  const fullName = longName || shortName;
+  const fullName = pmFormatPlayerName(longName || shortName);
   const number = player.number ?? '';
   const pos    = pmPosKo(player.pos || player.position);
 
@@ -536,7 +555,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
     <button class="pm-btn pm-btn-primary" id="pmIdFetch" style="white-space:nowrap;padding:4px 8px">검색</button>
   </div>
   <div id="pmIdPreview" style="margin-top:6px;min-height:20px;font-size:11px;color:var(--ui-text,#aaa)">
-    ${existing ? `연결됨${existing.name ? ' - ' + pmEsc(existing.name) : ''} · 다른 선수를 선택하고 저장하면 변경됩니다.` : '검색 결과에서 선수를 선택한 뒤 저장하세요.'}
+    ${existing ? `연결됨${existing.name ? ' - ' + pmEsc(pmFormatPlayerName(existing.name)) : ''} · 다른 선수를 선택하고 저장하면 변경됩니다.` : '검색 결과에서 선수를 선택한 뒤 저장하세요.'}
   </div>
   <div class="pm-nick-btns">
     <button class="pm-btn pm-btn-primary" id="pmIdSave">저장</button>
@@ -584,7 +603,7 @@ async function pmShowIdInput(pid, player, displayName, clientX, clientY) {
   function acceptSearchPlayer(p) {
     _fetched = { player: p };
     _fetchedPid = Number(p.id);
-    const pname = p.fullName || p.name || '';
+    const pname = pmFormatPlayerName(p.fullName || p.name || '');
     const photoHtml = p.photoUrl ? `<img src="${pmEsc(p.photoUrl)}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:4px">` : '';
     const nat = p.nationality ? ` · ${pmEsc(p.nationality)}` : '';
     const age = p.age ? ` · ${p.age}세` : '';
@@ -771,7 +790,7 @@ async function pmShowMatchStats(playerId, player, stats) {
       // 3) 상세 프로필과 제목만 갱신한다. 오른쪽 경기 스탯 표는 최초 경기 데이터로 유지한다.
       pmRenderSeasonProfile(data.player, player.number ?? '');
       const nick = getPlayerNickname(playerId);
-      const fullName = nick || data.player.fullName || data.player.name || displayName;
+      const fullName = nick || pmFormatPlayerName(data.player.fullName || data.player.name || displayName);
       const titleEl = document.querySelector('#pmBackdrop .pm-modal-title');
       if (titleEl) titleEl.textContent = `경기 스탯 — ${fullName}`;
     }
@@ -939,7 +958,7 @@ function pmRenderSeasonProfile(p, number) {
     : `<div class="pm-avatar pm-avatar-lg pm-avatar-empty"></div>`;
 
   const nick = getPlayerNickname(p.id);
-  const baseName   = nick || p.fullName || p.name || '';
+  const baseName   = nick || pmFormatPlayerName(p.fullName || p.name || '');
   const displayName = (number !== '' && number != null ? `${number} ` : '') + baseName;
 
   const birthDate  = p.birth?.date ? p.birth.date.replace(/-/g, '.') : '';
@@ -972,7 +991,7 @@ function pmRenderSeasonProfile(p, number) {
  */
 function pmFormatBodyMeasurement(value, unit) {
   if (!displayText(value)) return null;
-  // API에서 단위를 포함해 보내는 경우에도 단위는 한 번만 표시합니다.
+  // API에서 단위를 포함해 보내는 경우에도 단위는 한 번만 표시한다.
   const text = String(value).trim().replace(new RegExp(`(?:\\s*${unit})+$`, 'i'), '').trim();
   return displayText(text) ? `${pmEsc(text)}${unit}` : null;
 }
@@ -1194,7 +1213,7 @@ function pmShowNicknameList() {
           ? '<span title="ID 없이 내려온 선수 - API 원본 이름으로 매칭">0 (이름 매칭)</span>'
           : pmEsc(key);
         return `<tr>
-          <td class="pm-nick-list-name">${pmEsc(origName)}</td>
+          <td class="pm-nick-list-name">${pmEsc(pmFormatPlayerName(origName))}</td>
           <td class="pm-nick-list-id">${idCell}</td>
           <td class="pm-nick-list-nick">${pmEsc(nick)}</td>
           <td class="pm-nick-list-action">

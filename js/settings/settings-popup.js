@@ -1,7 +1,21 @@
+/**
+ * [설정: 기본값·모드별 조회·검증·화면 반영]
+ * 앱 설정의 저장 형식과 공통 getSetting/setSetting 진입점, 설정 팝업 및 표시 보정을 관리한다.
+ *
+ * 처리 흐름:
+ *  1. 기본값과 허용 범위를 정의하고 저장값을 읽어 검증/기본값 마이그레이션을 수행한다.
+ *  2. getSetting은 창모드/전체화면·밝은 모드 등 현재 문맥에 맞는 실제 적용값을 반환한다.
+ *  3. setSetting은 사용자 변경을 해당 저장 항목에 반영하고 UI·레이아웃·변경 이벤트를 연결한다.
+ *  4. 색상/글꼴/패널 크기 등 공통 CSS를 맞추고 각 소비 모듈이 필요한 렌더를 수행하게 한다.
+ *  5. 초기화와 외부 창 동기화도 같은 기본값/입력 동기화 기준을 사용한다.
+ *
+ * 저장된 원시값과 현재 화면에서 읽는 값은 다를 수 있다. 소비 모듈은 settingsState를 직접 읽기보다
+ * getSetting을 사용해야 모드별 기본값과 사용자 지정값 보존 정책을 빠뜨리지 않는다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [설정 팝업]
 // 사이드바 우측 상단 톱니바퀴 → 화면 가운데 설정 모달 오픈.
-// 이름 표시(long/short)와 라인업 노드 표시(photo/number)를 관리한다.
+// 이름/노드 표시뿐 아니라 배경·글꼴·패널·알림·전체화면 등 공통 표시 설정을 관리한다.
 // 설정은 localStorage에 저장하고, 변경 시 'settings:change' 이벤트를 보낸다.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -24,7 +38,7 @@ const OVERLAY_CHROMA_COLORS = {
   '--overlay-timeline-glyph': '#4ade80',
 };
 
-// 유효성 검사와 실제 배경 적용이 같은 이미지 목록을 사용합니다.
+// 유효성 검사와 실제 배경 적용이 같은 이미지 목록을 사용한다.
 const BACKGROUND_PRESET_IMAGES = {
   "stadium": "resources/backgrounds/dark/stadium-night.webp",
   "rainy-stadium": "resources/backgrounds/dark/rainy-stadium.webp",
@@ -737,7 +751,7 @@ function loadSettings() {
         ? (parsed.bgTeamDirection === 'vertical' ? 'vertical' : 'horizontal') : 'off';
       normalizedSettings = true;
     }
-    // 기본 배경에 있던 팀 컬러 무드를 팀 컬러 배경의 스타일로 이전합니다.
+    // 기본 배경에 있던 팀 컬러 무드를 팀 컬러 배경의 스타일로 이전한다.
     if (parsed.bgPreset === 'team') {
       parsed.bgPreset = 'off';
       parsed.bgTeamDirection = 'mood';
@@ -1270,7 +1284,7 @@ function applyPageBackground() {
 
   root.style.setProperty('--bg-ui', bgColor);
   const bgOpacity = (100 - clampPercent(getSetting('bgAlpha'), SETTINGS_DEFAULTS.bgAlpha)) / 100;
-  // 배경을 먼저 합성한 뒤 전체 레이어에 투명도를 한 번만 적용합니다.
+  // 배경을 먼저 합성한 뒤 전체 레이어에 투명도를 한 번만 적용한다.
   root.style.setProperty('--page-bg-opacity', String(bgOpacity));
   root.style.setProperty('--page-bg', bgColor);
   if (!imgSrc && getSetting('bgTeamDirection') === 'mood') {
@@ -1285,7 +1299,7 @@ function applyPageBackground() {
       }
       return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${lightMood ? .35 : .4})`;
     };
-    // 팀 색은 가장자리에 두고 중앙은 모드별 바탕색으로 차분하게 유지합니다.
+    // 팀 색은 가장자리에 두고 중앙은 모드별 바탕색으로 차분하게 유지한다.
     root.style.setProperty('--page-bg', 'transparent');
     root.style.setProperty('--bg-image', [
       lightMood
@@ -1477,7 +1491,7 @@ function bindPanelFontTitle(title, category) {
   title.title = '클릭하여 글자 크기·투명도 조절';
 }
 let panelFontPopup = null;
-/** 빠른 메뉴에서도 설정창과 같은 토글·저장·동기화를 사용합니다. */
+/** 빠른 메뉴에서도 설정창과 같은 토글·저장·동기화를 사용한다. */
 function createQuickSettingRow(category, compact = false) {
   const sourceCategory = category === 'lineupShowFormationButton' ? 'lineupHideInitial' : category;
   const source = document.querySelector(`#settingsBackdrop input[data-settings-cat="${sourceCategory}"]`).closest('.sp-row');
@@ -1710,7 +1724,7 @@ function syncColorUi(category) {
   });
 }
 
-/** 저장이나 전체 렌더 없이 현재 색상에 해당하는 화면 속성만 미리 보여줍니다. */
+/** 저장이나 전체 렌더 없이 현재 색상에 해당하는 화면 속성만 미리 보여준다. */
 function previewSettingsColor(category, value) {
   if (!HEX_COLOR_RE.test(value)) return;
   const root = document.documentElement;
@@ -1730,7 +1744,7 @@ function previewSettingsColor(category, value) {
       }
     });
   } else if (['bgColor', 'panelColor', 'matchInfoLabelColor'].includes(category)) {
-    // 기존 모드별 배경·대비 계산만 재사용하고 저장값은 즉시 원복합니다.
+    // 기존 모드별 배경·대비 계산만 재사용하고 저장값은 즉시 원복한다.
     const key = category === 'bgColor' && getSetting('uiMode') === 'light' ? 'lightBgColor' : category;
     const existed = Object.hasOwn(settingsState, key);
     const previous = settingsState[key];
@@ -1760,7 +1774,7 @@ function initSettingsColorEditors() {
     editor.dataset.colorEditor = category;
     label.replaceWith(editor);
     editor.append(label);
-    // 테마 탭에서는 기존 팀 색상 편집기처럼 라벨 아래에 입력기를 한 줄로 배치합니다.
+    // 테마 탭에서는 기존 팀 색상 편집기처럼 라벨 아래에 입력기를 한 줄로 배치한다.
     if (swatch.closest('#themePanel')) {
       const group = document.createElement('div');
       group.className = 'pgroup';
@@ -2207,6 +2221,13 @@ function normalizeLatinNameSeparators(name) {
   return String(name || '').replace(/(?<=\p{Script=Latin}|[.'’])\s*[·・‧∙]\s*(?=\p{Script=Latin})/gu, ' ');
 }
 
+/** 표시할 라틴 이름의 첫 글자만 대문자로 보완한다. 연결어와 기존 대소문자 표기는 보존한다. */
+function formatLatinPlayerName(name) {
+  const particles = new Set(['de', 'del', 'della', 'di', 'da', 'das', 'do', 'dos', 'du', 'des', 'van', 'von', 'der', 'den', 'ten', 'ter', 'zu', 'zur', 'zum']);
+  return normalizeLatinNameSeparators(name).replace(/\p{Script=Latin}[\p{Script=Latin}\p{M}]*/gu, word =>
+    particles.has(word) ? word : word[0].toUpperCase() + word.slice(1));
+}
+
 function getLineupShortName(player) {
   return stripKoreanSurnameBreaks(player?.name || player?.playerName || '');
 }
@@ -2291,7 +2312,7 @@ function shouldKeepLineupInitial(shortName) {
 function pickName(player, category, { preserveSurnameBreaks = false } = {}) {
   if (!player) return '';
   // 포메이션 pill만 원본 경계를 받아 피팅 단계에서 사용한다.
-  const display = name => normalizeLatinNameSeparators(preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name));
+  const display = name => formatLatinPlayerName(preserveSurnameBreaks ? name : stripKoreanSurnameBreaks(name));
   // Iter 6-1: 닉네임 override (player-menu.js가 로드된 경우)
   // 닉네임은 사용자가 자유 입력한 텍스트라 성 경계 하이픈 규칙 대상이 아니다 — 그대로 반환.
   const pid = player.playerId || player.id;
@@ -2375,7 +2396,7 @@ function getSwitchSides(category) {
   return { off: 'short', on: 'long' };
 }
 
-// 관련 설정을 같은 컴포넌트 예시에 반영합니다.
+// 관련 설정을 같은 컴포넌트 예시에 반영한다.
 function syncGroupedSettingExamples() {
   const section = document.querySelector('[data-sp-tab-section="names"]');
   if (!section) return;
@@ -2420,7 +2441,7 @@ function syncGroupedSettingExamples() {
   renderSettingsLiveExample(camera.querySelector('.sp-setting-example'), 'camera');
 }
 
-// 별도 문서에서 운영 화면의 CSS와 렌더 함수를 재사용하여 설정 창의 스타일 간섭을 막습니다.
+// 별도 문서에서 운영 화면의 CSS와 렌더 함수를 재사용하여 설정 창의 스타일 간섭을 막는다.
 function renderSettingsLiveExample(container, category) {
   if (typeof buildLineupNodePairHtml !== 'function' || typeof evCreateRow !== 'function') return;
   const loadedBoard = category === 'teamName' && !!lineupPanelState.lastFixture?.matchInfo?.fixtureId;
@@ -2441,7 +2462,7 @@ function renderSettingsLiveExample(container, category) {
     event: ['event', 'eventNameSize'],
     notes: ['scorer', 'noteShowPenaltyMisses', 'noteShowRedCards', 'noteOwnGoalColor', 'notePenaltyMissColor', 'noteRedCardColor'],
   }[category] || [];
-  // 무관한 설정 변경으로 iframe과 높이 측정이 다시 시작되지 않게 합니다.
+  // 무관한 설정 변경으로 iframe과 높이 측정이 다시 시작되지 않게 한다.
   const signature = category === 'teamName'
     ? JSON.stringify([category, boardTheme, loadedBoard ? document.querySelector('#board')?.outerHTML : getSetting('teamName')])
     : JSON.stringify([category, ...keys.map(key => getSetting(key)), getSetting('uiMode'), ['lineup', 'camera'].includes(category) ? state?.colors : null]);
@@ -2455,7 +2476,7 @@ function renderSettingsLiveExample(container, category) {
     frame.title = '실제 표시 예시';
     frame.tabIndex = -1;
     container.append(frame);
-    // 숨겨진 탭이 열릴 때도 내부 콘텐츠 높이를 다시 측정합니다.
+    // 숨겨진 탭이 열릴 때도 내부 콘텐츠 높이를 다시 측정한다.
     const observer = new ResizeObserver(() => frame._fitSettingsPreview?.());
     observer.observe(frame);
   }
@@ -2477,7 +2498,7 @@ function renderSettingsLiveExample(container, category) {
   } else if (category === 'event') {
     const goal = evCreateRow({ type: 'Goal', detail: 'Normal Goal', elapsed: 23, playerName: 'Kh. 크바라츠헬리아', playerNameKoLong: '흐비차 크바라츠헬리아' }, { matchInfo: {} });
     const substitution = evCreateRow({ type: 'subst', elapsed: 72, assistName: 'F. 토레스', assistNameKoLong: '페란 토레스', playerName: 'O. 뎀벨레', playerNameKoLong: '우스만 뎀벨레' }, { matchInfo: {} });
-    // 예시는 선수 선택을 수정하지 않으므로 편집 버튼과 점선 밑줄을 제거합니다.
+    // 예시는 선수 선택을 수정하지 않으므로 편집 버튼과 점선 밑줄을 제거한다.
     substitution.querySelectorAll('.ev-subst-name-editable').forEach(button => {
       const name = document.createElement('span');
       name.className = 'ev-text-name';
@@ -2535,7 +2556,7 @@ function renderSettingsLiveExample(container, category) {
     if (board) {
       const fit = () => {
         const stage = board.parentElement;
-        // 로고·카드·추가시간처럼 본체 밖으로 나온 자식까지 실제 표시 경계에 포함합니다.
+        // 로고·카드·추가시간처럼 본체 밖으로 나온 자식까지 실제 표시 경계에 포함한다.
         board.style.transform = 'none';
         const rects = [...board.querySelectorAll('.scoreboard-main, .scoreboard-main *, .scoreboard-timer, .scoreboard-timer *, .pso-status, .pso-status *')]
           .filter(el => {
@@ -2605,7 +2626,7 @@ function renderSettingsLiveExample(container, category) {
       const href = boardTheme;
       const current = doc.getElementById('fsm-theme-link') || doc.querySelector('link[href*="/theme/result_style_"]');
       if (current && current.href !== href) {
-        // 새 테마가 준비될 때까지 기존 점수판을 유지해 글자와 배경 테마가 섞이지 않게 합니다.
+        // 새 테마가 준비될 때까지 기존 점수판을 유지해 글자와 배경 테마가 섞이지 않게 한다.
         const pending = doc.querySelector('link[data-preview-theme-pending]');
         if (pending?.href === href) return;
         pending?.remove();
@@ -2637,7 +2658,7 @@ function renderSettingsLiveExample(container, category) {
   }
   frame.onload = () => {
     frame.dataset.initialized = 'true';
-    // 내용 갱신 때마다 리스너를 추가하지 않고 최신 피팅 함수로 전달합니다.
+    // 내용 갱신 때마다 리스너를 추가하지 않고 최신 피팅 함수로 전달한다.
     frame.contentWindow.addEventListener('resize', () => frame._fitSettingsPreview?.());
     updatePreview();
   };
@@ -2666,7 +2687,7 @@ function syncSwitchUi(category) {
   syncGroupedSettingExamples();
   const value = getSetting(category);
   const { off, on } = getSwitchSides(category);
-  // 일반 설정과 테마 탭에 있는 같은 옵션을 함께 동기화합니다.
+  // 일반 설정과 테마 탭에 있는 같은 옵션을 함께 동기화한다.
   document.querySelectorAll(`input[data-settings-cat="${category}"]`).forEach(input => {
     input.checked = value === on;
     syncSettingExample(input);
@@ -3105,7 +3126,7 @@ function initSettingsPopup() {
     const category = input.dataset.settingsColor;
     syncColorUi(category);
     input.addEventListener('input', () => previewSettingsColor(category, input.value));
-    // input은 색상 속성만 미리보기하고 change에서 저장·전체 갱신을 확정합니다.
+    // input은 색상 속성만 미리보기하고 change에서 저장·전체 갱신을 확정한다.
     input.addEventListener('change', () => {
       const v = String(input.value || '').toLowerCase();
       if (HEX_COLOR_RE.test(v)) {

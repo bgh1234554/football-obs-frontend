@@ -55,6 +55,35 @@ const read=p=>fs.readFileSync(path.resolve(__dirname,'../..',p),'utf8');
 }
 /** 파일 p에서 function name( 부터 end 문자열 직전까지의 소스를 잘라낸다. */
 const extract=(p,name,end)=>{const s=read(p);return s.slice(s.indexOf('function '+name+'('),s.indexOf(end,s.indexOf('function '+name+'(')));};
+// 라틴 이름은 표시 단계에서만 보완하고 연결어·기존 대문자·한글·사용자 닉네임은 보존한다.
+{
+ const source=read('js/settings/settings-popup.js');
+ const c={getSetting:()=> 'off',isLongName:()=>true,
+  lineupShortNameCollisionNames:new Set(),lineupInitialCollisionBaseNames:new Set()};
+ vm.createContext(c);
+ vm.runInContext(source.slice(source.indexOf('function stripKoreanSurnameBreaks('),source.indexOf('/** 설정 팝업 오픈.')),c);
+ for(const [input,expected] of [
+  ['benjamin ettienne','Benjamin Ettienne'],['jamal gittens','Jamal Gittens'],['Corey edwards','Corey Edwards'],
+  ['vijay valcin','Vijay Valcin'],['j. al hassan','J. Al Hassan'],['kevin de bruyne','Kevin de Bruyne'],
+  ['virgil van dijk','Virgil van Dijk'],['max von der leyen','Max von der Leyen'],
+  ['van dijk','van Dijk'],['de bruyne','de Bruyne'],['al hassan','Al Hassan'],
+  ['Al Dawsari','Al Dawsari'],['De Jong','De Jong'],['McDonald O’Neill','McDonald O’Neill'],
+  ['jean-luc o’neill','Jean-Luc O’Neill'],['élie étienne','Élie Étienne'],
+  ['Kimron·marshall','Kimron Marshall'],['손흥민','손흥민'],['김·민재','김·민재'],['',''],
+ ]) {
+  assert.equal(c.formatLatinPlayerName(input),expected);
+  assert.equal(c.formatLatinPlayerName(expected),expected);
+ }
+ const player={playerId:12,name:'b. ettienne',nameKoLong:'benjamin ettienne',origName:'benjamin ettienne'};
+ const before=JSON.stringify(player);
+ for(const category of ['lineup','roster','scorer','event']) assert.equal(c.pickName(player,category),'Benjamin Ettienne');
+ c.isLongName=()=>false;
+ for(const category of ['lineup','roster','scorer','event']) assert.equal(c.pickName(player,category),'B. Ettienne');
+ c.getPlayerNickname=()=> 'my nickname';
+ assert.equal(c.pickName(player,'lineup'),'my nickname');
+ assert.equal(JSON.stringify(player),before);
+ console.log('PASS Latin player display names: particles, Al, accents, hyphens, existing case, all categories, nicknames and immutable source');
+}
 // 누락 표기는 공통 표시/단위 처리 전에 비우고 0, 정상 이름, 원본 응답은 보존한다.
 {
  const profile={innerHTML:''};
