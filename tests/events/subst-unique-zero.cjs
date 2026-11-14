@@ -1,5 +1,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.resolve(__dirname,'../../js/panels/events-panel.js'),'utf8');let stored={};const c={window:{},SUBST_OVERRIDE_STORAGE_KEY:'subst',localStorage:{getItem:()=>JSON.stringify(stored),setItem:(_,s)=>stored=JSON.parse(s)}};vm.createContext(c);vm.runInContext(source.slice(source.indexOf('function evSubstEventKey('),source.indexOf('window.evPatchSubstEvents = evPatchSubstEvents;')),c);
+vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../../js/core/event-time.js'),'utf8'),c);
+const editSource=fs.readFileSync(path.resolve(__dirname,'../../js/panels/event-hide.js'),'utf8');
+vm.runInContext(editSource.slice(editSource.indexOf('function evEditTimeKey('),editSource.indexOf('\n/**',editSource.indexOf('function evEditTimeKey('))),c);
+vm.runInContext(editSource.slice(editSource.indexOf('function evSubstMinute('),editSource.indexOf('window.evSubstCluster = evSubstCluster;')),c);
 const fixture={matchInfo:{fixtureId:1490540},homeLineup:{startXi:[{playerId:265898,name:'Alejandro Alvarado'}],substitutes:[{playerId:0,name:'D. Mimbang',nameKoLong:'David Mimbang',number:36}]},awayLineup:{startXi:[],substitutes:[]},events:[{type:'subst',side:'home',elapsed:58,playerId:265898,playerName:'Alejandro Alvarado',assistId:null,assistName:null}]};
 const run=d=>c.evPatchSubstEvents(d.events,1490540,d);const original=JSON.stringify(fixture);let patched=run(fixture)[0];assert.equal(patched.assistName,'D. Mimbang');assert.equal(patched.assistNameKoLong,'David Mimbang');assert.equal(patched.assistId,null);assert(c.evSubstHasUnlinkedId(patched,'assist'));assert.equal(c.evSubstEventKey(patched),c.evSubstEventKey(fixture.events[0]));assert.equal(JSON.stringify(fixture),original);
 for(const change of [d=>d.homeLineup.substitutes.push({playerId:0,name:'Another'}),d=>d.events.push({...d.events[0],elapsed:70}),d=>d.homeLineup.startXi.push(d.homeLineup.substitutes.pop()),d=>d.matchInfo.fixtureId=2,d=>d.homeLineup.substitutes=[]]){const d=JSON.parse(original);change(d);assert.equal(run(d)[0].assistName,null)}
@@ -64,8 +68,8 @@ for (const count of [2, 3]) {
  const byKey=events=>Object.fromEntries(events.map(ev=>[c.evSubstEventKey(ev),ev.assistName]));
  assert.deepEqual(byKey(run(reversed)),byKey(resolved));
  for (const mutate of [
-  d=>d.events[0].elapsed=68,
-  d=>d.events[0].extra=1,
+  d=>d.events[0].elapsed=69,
+  d=>d.events[0].extra=2,
   d=>d.events.push({...d.events[0],elapsed:68,playerId:50}),
   d=>d.playerStats[1].minutes=40,
   d=>d.playerStats[1].side='home',
@@ -85,5 +89,73 @@ for (const count of [2, 3]) {
  assert.equal(manual[0].assistId,0);
  assert.equal(new Set(Array.from(manual,ev=>ev.assistName)).size,count);
  stored={};
+ // 1분 간격과 연쇄 교체도 수동 수정 창과 같은 묶음으로 취급한다.
+ const near=JSON.parse(before);
+ near.events.forEach((ev,i)=>{ev.elapsed=67+i;});
+ assert.equal(new Set(Array.from(run(near),ev=>ev.assistName)).size,count);
+ assert(run(near).every(ev=>ev.assistName));
+ // 자동 매칭은 이전 화면 데이터가 아닌 현재 응답으로 묶음을 판정한다.
+ c.window._eventsLastData={matchInfo:{fixtureId:2},events:[]};
+ assert(run(near).every(ev=>ev.assistName));
+ c.window._eventsLastData=near;
+ assert.equal(c.evSubstCluster(near.events[0]).length,count);
+ delete c.window._eventsLastData;
+ if (count===3) {
+  near.events[1].assistName='Played 1';
+  assert(run(near).every(ev=>ev.assistName));
+  assert.equal(new Set(Array.from(run(near),ev=>ev.assistName)).size,count);
+ }
+ const added=JSON.parse(before);
+ added.events[0].extra=1;
+ assert(run(added).every(ev=>ev.assistName));
+ // 분 합계가 가까워도 전반 추가시간과 후반은 합치지 않는다.
+ const boundary=JSON.parse(before);
+ boundary.events.forEach((ev,i)=>{ev.elapsed=i===0 ? 45 : 46;ev.extra=i===0 ? 1 : null;});
+ boundary.playerStats.filter(p=>p.minutes===23).forEach(p=>{p.minutes=45;});
+ assert(run(boundary).every(ev=>!ev.assistName));
 }
 console.log('PASS simultaneous substitution groups: complete played set, stable pairing, timing isolation, candidate counts, existing links and editability');
+
+// 이름 순서보다 보정된 관측 시점의 정확한 출전 시간을 우선하고, 나머지만 기존 순서로 배정한다.
+{
+ const make=(times,players,observed=90)=>({
+  matchInfo:{fixtureId:1490540,elapsed:90},
+  awayLineup:{startXi:[{playerId:1,name:'Starter'}],substitutes:players.map(([name])=>({playerId:0,name}))},
+  playerStats:[{side:'away',playerId:1,minutes:observed,rating:'6.5'},
+   ...players.map(([name,minutes])=>({side:'away',playerId:0,playerName:name,minutes,rating:'6.4'}))],
+  events:times.map((elapsed,i)=>({type:'subst',side:'away',elapsed,playerId:10+i,assistId:null})),
+ });
+ const incoming=data=>Array.from(run(data),ev=>ev.assistName);
+ for (const observed of [90,88]) {
+  const data=make([68,69],[['A later',observed-69],['Z earlier',observed-68]],observed);
+  const before=JSON.stringify(data);
+  assert.deepEqual(incoming(data),['Z earlier','A later']);
+  const reversed=JSON.parse(before);reversed.events.reverse();reversed.awayLineup.substitutes.reverse();
+  assert.deepEqual(incoming(reversed),['A later','Z earlier']);
+  run(data).forEach((ev,i)=>{
+   assert.equal(ev.assistId,null);
+   assert(c.evSubstHasUnlinkedId(ev,'assist'));
+   assert.equal(c.evSubstEventKey(ev),c.evSubstEventKey(data.events[i]));
+  });
+  assert.equal(JSON.stringify(data),before);
+  // 정확히 맞는 후보가 있어도 후보 수와 다른 교체와의 중복 검증은 유지한다.
+  const excess=JSON.parse(before);
+  excess.awayLineup.substitutes.push({playerId:0,name:'Extra'});
+  excess.playerStats.push({side:'away',playerId:0,playerName:'Extra',minutes:observed-68,rating:'6.0'});
+  assert(incoming(excess).every(name=>!name));
+  const overlap=JSON.parse(before);
+  overlap.events.push({type:'subst',side:'away',elapsed:71,playerId:50,assistId:null});
+  assert(incoming(overlap).every(name=>!name));
+  // API와 수동 연결은 시간상 더 잘 맞는 후보가 있어도 우선한다.
+  const named=JSON.parse(before);named.events[0].assistName='A later';
+  assert.deepEqual(incoming(named),['A later','Z earlier']);
+  stored={1490540:{[c.evSubstEventKey(data.events[0])]:{assist:{playerId:0,name:'A later'}}}};
+  assert.deepEqual(incoming(data),['A later','Z earlier']);stored={};
+ }
+ assert.deepEqual(incoming(make([68,69,69],[['A tied',21],['B tied',21],['Z exact',22]])),['Z exact','A tied','B tied']);
+ assert.deepEqual(incoming(make([68,68],[['A tied',22],['Z tied',22]])),['A tied','Z tied']);
+ for (const minutes of [null,undefined,0]) {
+  assert.deepEqual(incoming(make([89,90],[['A rating only',minutes],['Z played',2]])),['A rating only','Z played']);
+ }
+ console.log('PASS exact substitution timing: reversed name order, stat lag, ties, rating-only data, candidate guards, manual precedence and editable identity');
+}

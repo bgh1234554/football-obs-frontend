@@ -976,15 +976,25 @@ function evSubstMinute(ev) {
  * ev와 이어진 같은 팀 교체 묶음 — 시간 순으로 인접한 교체끼리 1분 이내면 한 묶음으로 잇는다.
  * API가 동시에 한 교체를 같은 분 또는 앞뒤 1분으로 나눠 기록하기 때문에, 한 교체의 선수가 잘못 들어오면
  * 옆 교체의 후보에서 올바른 선수가 빠질 수 있다 — 그래서 묶음 전체를 한 번에 고치게 한다.
- * 교체 override와 수정이 반영된 이벤트 패널 데이터 기준. 묶음이 없으면 [ev].
+ * 기본은 교체 override와 수정이 반영된 이벤트 패널 데이터이며, 자동 매칭은 현재 응답을 전달한다.
+ * 수동 수정 창과 events-panel.js의 스탯 자동 매칭이 이 함수를 공유하므로, 시간 허용 범위를
+ * 변경하면 두 기능 모두 영향을 받는다. 여기서는 묶음만 반환하고 선수 후보나 배정은 판단하지 않는다.
+ *
+ * 같은 팀 교체를 공통 시간 판정으로 정렬한 뒤, 대상 이벤트에서 앞뒤로 인접 간격을 따라 확장한다.
+ * 간격은 elapsed + extra의 분 합계로 비교하되 경기 구간도 같아야 하므로, 전반 추가시간과
+ * 후반 시작처럼 분 합계가 가까운 서로 다른 구간은 묶지 않는다. 68→69→70분은 연쇄적으로
+ * 한 묶음이 될 수 있으며, 첫 교체와 마지막 교체의 차이를 1분으로 제한하는 방식은 아니다.
+ * 이미 IN이 알려진 교체도 연결 고리에 포함한다. 미확인 교체만 추리면 중간 연결이 끊길 수 있다.
+ * 묶음이 없으면 [ev].
  */
-function evSubstCluster(ev) {
-  const timeContext = evBuildTimeContext(window._eventsLastData);
-  const sameSubst = (window._eventsLastData?.events || [])
+function evSubstCluster(ev, fixtureData = window._eventsLastData) {
+  const timeContext = evBuildTimeContext(fixtureData);
+  const sameSubst = (fixtureData?.events || [])
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => e && e.side === ev?.side && String(e.type || '').toLowerCase() === 'subst')
     .sort((a, b) => evEditTimeKey(a.e, timeContext) - evEditTimeKey(b.e, timeContext) || a.i - b.i)
     .map(({ e }) => e);
+  // 응답 보완 과정에서 이벤트가 복사되어도 객체 주소 대신 숨김 서명/원본 교체 키로 대상을 찾는다.
   const idx = sameSubst.findIndex(e => (ev?._hideSig && e._hideSig === ev._hideSig)
     || (typeof evSubstEventKey === 'function' && evSubstEventKey(e) === evSubstEventKey(ev)));
   if (idx < 0) return [ev];

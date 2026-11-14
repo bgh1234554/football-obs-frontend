@@ -278,31 +278,52 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
 }
 
 /**
- * 이름과 ID가 모두 비어 있는 교체 IN을 같은 팀의 출전 스탯으로 보완한다.
- * 원래 벤치 선수 중 출전 시간/평점이 생겼고, 다른 IN에 연결되지 않은 선수만 쓴다.
- * 같은 시각의 미확인 교체 수와 공통 후보 수가 같고 다른 시각과 겹치지 않으면 묶어서 연결한다.
- * 결과는 현재 응답에만 적용한다. 원본 ID/이벤트 키와 수동 연결은 그대로 유지한다.
+ * [교체 자동 매칭: 후보 추론 단계]
+ * API 교체 이벤트는 player가 OUT, assist가 IN이다. 이 함수는 ID가 0/null 등으로 연결되지 않았고
+ * 이름도 없는 IN만 대상으로 하며, 이미 제공된 API 이름이나 사용자의 수동 연결은 고치지 않는다.
+ *
+ * 처리 순서:
+ *  1. 같은 팀의 교체 명단에서 이미 IN으로 연결된 선수를 제외한다.
+ *  2. 선수별 스탯이 유일하게 조회되고 출전 시간 또는 평점이 있는 선수만 후보로 남긴다.
+ *  3. 스탯 갱신 지연을 보정한 관측 시점으로 예상 출전 시간을 구해 ±2분 이내 후보를 만든다.
+ *  4. 수동 수정 창과 같은 연속 교체 묶음을 구하고, 미확인 교체와 후보 집합이 닫혀 있는지 검증한다.
+ *  5. 검증된 묶음 안에서 정확한 출전 시간이 서로 유일하게 대응하면 그 연결을 우선한다.
+ *  6. 시간만으로 구분되지 않는 나머지는 일정한 정렬 순서로 일대일 배정한다.
+ *
+ * 반환값은 Map<입력 이벤트 객체, 명단 선수 객체>이다. 여기서는 입력 이벤트/명단을 수정하거나
+ * 수동 override를 저장하지 않는다. 실제 이름 반영은 아래 evPatchSubstEvents가 담당한다.
+ * 따라서 자동 추정은 새 응답에서 다시 판단할 수 있고, 추정 후에도 수동 수정이 가능하다.
  */
 function evInferSubstInFromStats(events, fixtureData, overrides) {
   const result = new Map();
+  // ID 0 선수가 여럿일 수 있어 ID만으로 동일인 처리하면 안 된다. API의 약칭/풀네임/원어명을
+  // 함께 비교하되 공백·일부 구두점·대소문자 차이는 제거한다. 팀 간 이름 비교는 아래에서 분리한다.
   const norm = value => String(value || '').trim().toLowerCase().replace(/[\s.\-'"]/g, '');
   const names = p => [p?.name, p?.nameKoLong, p?.origName, p?.playerOrigName, p?.playerName, p?.playerNameKoLong]
     .map(norm).filter(Boolean);
+  // API 선발 명단이 빠진 경우 기존 스탯 기반 라인업 추론 결과를 이용한다.
+  // 후보 역할은 이 명단에서 판단하고, 출전 시간/평점은 현재 응답의 playerStats에서 조회한다.
   const rosterData = typeof inferLineupsFromPlayerStats === 'function' ? inferLineupsFromPlayerStats(fixtureData) : fixtureData;
   for (const side of ['home', 'away']) {
     const subs = events.filter(ev => ev?.side === side && String(ev.type || '').toLowerCase() === 'subst');
+    // 이름만 있고 ID가 없는 이벤트도 수동 수정은 가능하지만, 자동 추론 대상으로는 넣지 않는다.
     const unknown = subs.filter(ev => evSubstHasUnlinkedId(ev, 'assist')
       && !overrides[evSubstEventKey(ev)]?.assist
       && ![ev.assistName, ev.assistNameKoLong, ev.assistOrigName].some(v => String(v || '').trim()));
     if (!unknown.length) continue;
     const stats = (fixtureData.playerStats || []).filter(p => p?.side === side);
     const lineup = rosterData[`${side}Lineup`];
+    // 팀 전체 교체를 살펴 이미 쓰인 IN을 제외한다. 수동 지정 ID를 우선하고 이름도 비교하므로,
+    // ID가 없는 수동 지정 선수나 다른 시각에 이미 투입된 선수를 다시 배정하지 않는다.
     const used = (lineup?.substitutes || []).filter(p => subs.some(ev => {
       const manual = overrides[evSubstEventKey(ev)]?.assist;
       const id = Number(manual?.playerId ?? ev.assistId);
       const inNames = [manual?.name, ev.assistName, ev.assistNameKoLong, ev.assistOrigName].map(norm).filter(Boolean);
       return (id > 0 && id === Number(p.playerId)) || names(p).some(n => inNames.includes(n));
     }));
+    // 선발이 아닌 교체 명단에서만 IN 후보를 찾는다. 공통 스탯 조회 함수는 팀/선수 식별을 맡고,
+    // 여러 스탯 행이 겹치면 유일한 선수로 확정하지 않는다. 평점만 있는 선수도 출전 후보에는
+    // 포함하지만, 뒤의 정확한 시간 우선 배정에서는 양수 출전 시간이 있는 선수만 사용한다.
     const candidates = (lineup?.substitutes || []).filter(p => p && !used.includes(p)).map(player => {
       const matches = typeof lpFindPlayerMatchStats === 'function'
         ? [lpFindPlayerMatchStats(stats, player.playerId, side, player)].filter(Boolean)
@@ -311,48 +332,93 @@ function evInferSubstInFromStats(events, fixtureData, overrides) {
       const stat = matches.length === 1 ? matches[0] : null;
       return stat && (Number(stat.minutes) > 0 || Number(stat.rating) > 0) ? { player, stat } : null;
     }).filter(Boolean);
-    // 이벤트보다 선수 스탯 갱신이 늦을 수 있다. 주전들의 누적 출전 시간을 스탯
-    // 관측 시점으로 사용해, 79분 응답에 77분 스탯이 온 경우도 같은 기준으로 비교한다.
+    // 스탯 관측 시점은 팀 스탯의 최대 출전 시간으로 근사한다. 경기 시간이 79분이어도 최대
+    // 출전 시간이 77분이면 77분 기준으로 비교한다. 둘 다 있으면 작은 값을, 하나만 있으면
+    // 그 값을 사용한다. 이는 갱신 지연 보정용 근사치이며 실제 투입 시각을 보증하는 값은 아니다.
     const now = Number(fixtureData.matchInfo?.elapsed) || 0;
     const statMinute = Math.max(0, ...stats.map(p => Number(p.minutes) || 0));
     const observed = now && statMinute ? Math.min(now, statMinute) : now || statMinute;
+    // 이벤트별 후보 관계를 만든다. 예상 출전 시간 = 보정 관측 시점 - 교체 elapsed이며,
+    // 이벤트가 관측 시점보다 미래이면 연결하지 않는다. 양수 출전 시간이 있으면 ±2분을 허용해
+    // API 분 단위 기록/갱신 차이를 흡수한다. 시간이 없고 평점만 있는 후보는 이 시간 검사를
+    // 통과시키되 이후 묶음의 인원수·중복 검증은 동일하게 적용한다.
+    // 현재 출전 시간 비교식은 elapsed 기준이며, extra와 경기 구간은 교체 묶음 판정에서 사용한다.
     const graph = unknown.map(ev => ({ ev, candidates: candidates.filter(({ stat }) => {
       const elapsed = Number(ev.elapsed) || 0;
       if (observed < elapsed) return false;
       return !(Number(stat.minutes) > 0) || Math.abs(Number(stat.minutes) - (observed - elapsed)) <= 2;
     }) }));
     const groups = new Map();
+    // 화면에 남아 있는 이전 응답이 아닌 이번 추론의 이벤트 목록으로 묶음을 구한다.
+    // evSubstCluster는 확인된 IN도 포함한 팀 전체 교체로 연쇄 간격을 판단한다. 따라서
+    // 68분 미확인 → 69분 확인됨 → 70분 미확인도 하나의 묶음이며, 여기에는 미확인 칸만 모인다.
+    const clusterData = { ...fixtureData, events };
     for (const edge of graph) {
-      const time = `${Number(edge.ev.elapsed) || 0}|${Number(edge.ev.extra) || 0}`;
-      if (!groups.has(time)) groups.set(time, []);
-      groups.get(time).push(edge);
+      const clusterKey = evSubstEventKey(evSubstCluster(edge.ev, clusterData)[0]);
+      if (!groups.has(clusterKey)) groups.set(clusterKey, []);
+      groups.get(clusterKey).push(edge);
     }
     for (const group of groups.values()) {
       const pool = group[0].candidates;
+      // 이 단계는 일반적인 최적 매칭 탐색이 아니다. 아래 세 조건을 모두 만족하는 묶음만
+      // 배정한다. 일부 선수의 시간이 정확히 맞아도 이 안전 조건을 건너뛰지는 않는다.
+      // (1) 미확인 IN 수와 후보 수가 같아야 누락/잉여 후보 없이 일대일 배정할 수 있다.
       if (pool.length !== group.length) continue;
+      // (2) 묶음의 모든 미확인 이벤트가 정확히 같은 후보 집합을 가져야 한다.
+      // 후보 수만 같고 구성이 다른 경우는 지원하지 않으며 미확인 상태로 남긴다.
       if (!group.every(edge => edge.candidates.length === pool.length
         && pool.every(candidate => edge.candidates.includes(candidate)))) continue;
+      // (3) 다른 묶음의 미확인 이벤트도 이 선수를 후보로 삼으면 어느 묶음에 속하는지
+      // 확정하지 않는다. 묶음 처리 순서에 따라 같은 선수가 중복 배정되는 것을 방지한다.
       if (graph.some(edge => !group.includes(edge)
         && edge.candidates.some(candidate => pool.includes(candidate)))) continue;
-      // 동시 교체의 OUT–IN 조합은 확정할 수 없으므로 일정한 순서로 표시하고 수동 수정은 유지한다.
+      // 후보 집합이 확정된 뒤에만 정확한 시간으로 묶음 내부 순서를 개선한다.
+      // 예: 관측 시점 90분, 교체 68/69분, 후보 출전 22/21분이면 각각 68→22, 69→21로 연결한다.
+      // null/0 출전 시간을 0분 출전의 정확한 증거로 취급하지 않도록 양수 조건을 둔다.
+      const exactMatches = group.map(edge => ({ edge, candidates: edge.candidates.filter(({ stat }) =>
+        Number(stat.minutes) > 0 && Number(stat.minutes) === observed - (Number(edge.ev.elapsed) || 0)) }));
+      const matchedPlayers = new Set();
+      for (const match of exactMatches) {
+        // 한 이벤트의 정확 일치 후보가 하나여야 하고, 그 선수도 다른 이벤트의 정확 일치
+        // 후보이면 안 된다. 같은 분의 2명 교체/동일 출전 시간은 여기서 억지로 구분하지 않는다.
+        if (match.candidates.length !== 1) continue;
+        const candidate = match.candidates[0];
+        if (exactMatches.filter(other => other.candidates.includes(candidate)).length !== 1) continue;
+        result.set(match.edge.ev, candidate.player);
+        matchedPlayers.add(candidate);
+      }
+      // 정확히 연결한 이벤트와 선수를 양쪽에서 제거한 뒤 나머지만 배정한다.
+      // 이벤트 원본 키와 선수 ID/정규화 이름으로 정렬해 응답 배열 순서가 바뀌어도 표시를 유지한다.
+      // 이는 남은 OUT–IN 조합의 표시상 추정이며 실제 조합을 확정한 것은 아니다. 수동 수정은 유지한다.
       const orderedEvents = [...group].sort((a, b) => evSubstEventKey(a.ev).localeCompare(evSubstEventKey(b.ev)));
-      const orderedPlayers = [...pool].sort((a, b) =>
+      const remainingEvents = orderedEvents.filter(edge => !result.has(edge.ev));
+      const orderedPlayers = pool.filter(candidate => !matchedPlayers.has(candidate)).sort((a, b) =>
         `${Number(a.player.playerId) || 0}|${names(a.player).join('|')}`.localeCompare(
           `${Number(b.player.playerId) || 0}|${names(b.player).join('|')}`));
-      orderedEvents.forEach((edge, index) => result.set(edge.ev, orderedPlayers[index].player));
+      remainingEvents.forEach((edge, index) => result.set(edge.ev, orderedPlayers[index].player));
     }
   }
   return result;
 }
 
-/** 저장된 수동 연결을 우선하며 현재 응답에만 교체 선수 이름 보완을 적용한다. */
+/**
+ * [교체 자동 매칭: 이벤트 반영 단계]
+ * 이벤트 패널 갱신(core/fixture.js), 라인업 데이터 합성(lineup/lineup-data.js), 전술 타임라인
+ * (tactics/tactics-timeline.js)에서 사용하는 보완 진입점이다. 경기별 수동 override를 읽고,
+ * 스탯 추론 → 단일 ID 0 선수 보완 → 수동 지정 순서로 적용해 수동 지정이 최종 우선하도록 한다.
+ * 자동 추론은 이름 메타데이터만 채우며, 수동 지정만 playerId/assistId까지 반영한다.
+ */
 function evPatchSubstEvents(events, fixtureId, fixtureData = window._eventsLastData) {
   if (!Array.isArray(events) || !fixtureId) return events;
   const overrides = evLoadSubstOverrides()[fixtureId] || {};
+  // 기본 인자인 화면 데이터가 다른 경기일 수 있으므로 자동 추론은 fixtureId가 같을 때만 한다.
+  // 추론한 이름을 저장하지 않아 스탯이 늦게 도착해도 이후 원본 응답에서 다시 판단할 수 있다.
   const sameFixture = String(fixtureData?.matchInfo?.fixtureId ?? '') === String(fixtureId);
   const statsInferred = sameFixture ? evInferSubstInFromStats(events, fixtureData, overrides) : new Map();
-  // 같은 팀의 미해결 교체 필드와 ID 0 명단 선수가 각각 하나일 때만 빈 이름을 보완합니다.
-  // ID는 그대로 두어 자동 추정 후에도 기존 밑줄과 수동 수정 기능을 유지합니다.
+  // 스탯 추론과 별개인 기존 단일 후보 보완이다. 출전 스탯이 없어도 같은 팀 전체에서
+  // 미연결 교체 필드와 ID 0 명단 선수가 각각 하나뿐이면 역할을 확인해 빈 이름을 채운다.
+  // IN은 교체 명단, OUT은 선발 명단에 있어야 하며 API 이름/수동 지정은 덮어쓰지 않는다.
+  // 미연결 필드는 이름 유무와 관계없이 세므로, 여러 미연결 필드가 있으면 이 보완은 적용하지 않는다.
   const fallback = {};
   if (sameFixture) {
     for (const side of ['home', 'away']) {
@@ -381,17 +447,22 @@ function evPatchSubstEvents(events, fixtureId, fixtureData = window._eventsLastD
     if (!evOverride && fallback[ev.side]?.ev !== ev && !statsInferred.has(ev)) return ev._evSubstKey ? ev : { ...ev, _evSubstKey: key };
     const patched = { ...ev, _evSubstKey: key };
     const statsPlayer = statsInferred.get(ev);
+    // 자동 매칭은 이름만 복사한다. 미연결 ID를 그대로 남겨 밑줄/선수 선택 창을 통한
+    // 수정이 가능하게 하고, API가 확인한 선수 ID인 것처럼 취급하지 않는다.
     if (statsPlayer) {
       patched.assistName = statsPlayer.name || statsPlayer.nameKoLong;
       patched.assistNameKoLong = statsPlayer.nameKoLong || null;
       patched.assistOrigName = statsPlayer.origName || null;
     }
     const inferred = fallback[ev.side];
+    // 동일 이벤트에 두 보완이 모두 가능하면 출전 스탯을 검증한 추론을 우선한다.
     if (inferred?.ev === ev && !statsPlayer) {
       patched[`${inferred.field}Name`] = inferred.candidate.name || inferred.candidate.nameKoLong;
       patched[`${inferred.field}NameKoLong`] = inferred.candidate.nameKoLong || null;
       patched[`${inferred.field}OrigName`] = inferred.candidate.origName || null;
     }
+    // 수동 지정은 마지막에 적용하며 ID도 반영한다. 자동 추론 결과를 로컬 저장소에 쓰지 않으므로
+    // 자동 연결이 사용자의 저장된 선택을 대체하거나 다음 응답에 수동 지정으로 남지 않는다.
     if (evOverride?.player) {
       patched.playerId = evOverride.player.playerId;
       patched.playerName = evOverride.player.name;
