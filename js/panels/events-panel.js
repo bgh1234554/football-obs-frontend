@@ -1,7 +1,21 @@
+/**
+ * [이벤트 패널: 교체 보완·행 생성·최신순 표시]
+ * 경기 이벤트를 표시용으로 분류하고 공통 시간 판정/필터/수동 편집 UI와 연결한다.
+ *
+ * 처리 흐름:
+ *  1. 교체의 빈 이름은 출전 스탯과 명단으로 보완하고 저장된 수동 연결을 우선 반영한다.
+ *  2. 골·카드·교체·VAR 등의 표시 종류와 선수 이름/코멘트를 정리한다.
+ *  3. event-time.js의 정렬 키와 구간 마커로 최신순 목록을 만들고 필터를 적용한다.
+ *  4. 행 재사용/신규 표시를 처리한 뒤 가용 폭에 맞춰 글자를 피팅한다.
+ *  5. 렌더 결과는 신규 이벤트 표시 모듈에 알리고, 편집은 event-hide.js의 팝업/재적용 경로로 연결한다.
+ *
+ * 교체 추론 함수는 라인업·전술판에서도 호출한다. DOM 렌더 전용 코드와 데이터 보완 코드를
+ * 분리해 두어 같은 경기의 여러 화면이 서로 다른 IN 이름이나 수동 연결을 사용하지 않게 한다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [이벤트 패널 / 문자중계 타임라인]
-// 캠 작음(/detail) 페이지의 lp-events-s에 fixture.events 데이터를 시간 내림차순으로 렌더.
-// 캠 큼 페이지에는 표시 안 함 (사용자 요청).
+// [data-events-panel]을 가진 화면에 fixture.events를 최신순으로 렌더한다.
+// 작은 캠의 이벤트 칼럼과 큰 캠의 패널 순환이 같은 렌더/분류 규칙을 공유한다.
 //
 // 주요 동작:
 // - 시간 기준 내림차순 정렬 (최신이 위)
@@ -101,7 +115,7 @@ function evDetailIs(detail, target) {
   return String(detail || '').trim().toLowerCase() === String(target || '').trim().toLowerCase();
 }
 
-/** 승부차기 분류와 구간 판정은 detail/comments의 같은 표기 규칙을 사용합니다. */
+/** 승부차기 분류와 구간 판정은 detail/comments의 같은 표기 규칙을 사용한다. */
 function evIsPenaltyShootoutEvent(ev) {
   return evTimeIsShootout(ev);
 }
@@ -222,7 +236,7 @@ function evSubstHasUnlinkedId(ev, field) {
  */
 function evGetSubstDisplayName(ev, field, fixtureId) {
   const override = evGetSubstOverride(fixtureId, ev, field);
-  if (override) return override.name || '';
+  if (override) return typeof formatLatinPlayerName === 'function' ? formatLatinPlayerName(override.name) : override.name || '';
   return evPickPlayerName(ev, field);
 }
 
@@ -286,7 +300,7 @@ function evCreateSubstEditableName(ev, field, fixtureData, name) {
  *  1. 같은 팀의 교체 명단에서 이미 IN으로 연결된 선수를 제외한다.
  *  2. 선수별 스탯이 유일하게 조회되고 출전 시간 또는 평점이 있는 선수만 후보로 남긴다.
  *  3. 스탯 갱신 지연을 보정한 관측 시점으로 예상 출전 시간을 구해 ±2분 이내 후보를 만든다.
- *  4. 수동 수정 창과 같은 연속 교체 묶음을 구하고, 미확인 교체와 후보 집합이 닫혀 있는지 검증한다.
+ *  4. 연속 교체 묶음의 후보 집합을 검증한다. 같은 시각의 교체는 확인된 후보만 일부 채울 수 있다.
  *  5. 검증된 묶음 안에서 정확한 출전 시간이 서로 유일하게 대응하면 그 연결을 우선한다.
  *  6. 시간만으로 구분되지 않는 나머지는 일정한 정렬 순서로 일대일 배정한다.
  *
@@ -360,10 +374,11 @@ function evInferSubstInFromStats(events, fixtureData, overrides) {
     }
     for (const group of groups.values()) {
       const pool = group[0].candidates;
-      // 이 단계는 일반적인 최적 매칭 탐색이 아니다. 아래 세 조건을 모두 만족하는 묶음만
-      // 배정한다. 일부 선수의 시간이 정확히 맞아도 이 안전 조건을 건너뛰지는 않는다.
-      // (1) 미확인 IN 수와 후보 수가 같아야 누락/잉여 후보 없이 일대일 배정할 수 있다.
-      if (pool.length !== group.length) continue;
+      // (1) 후보가 남는 묶음은 배정하지 않는다. 후보가 부족하면 모두 같은 시각인 경우에만
+      // 확인된 선수부터 채운다. 서로 다른 분이면 어느 교체에 누락이 있는지 판단할 수 없다.
+      const simultaneous = group.every(({ ev }) => Number(ev.elapsed) === Number(group[0].ev.elapsed)
+        && (Number(ev.extra) || 0) === (Number(group[0].ev.extra) || 0));
+      if (!pool.length || pool.length > group.length || (pool.length < group.length && !simultaneous)) continue;
       // (2) 묶음의 모든 미확인 이벤트가 정확히 같은 후보 집합을 가져야 한다.
       // 후보 수만 같고 구성이 다른 경우는 지원하지 않으며 미확인 상태로 남긴다.
       if (!group.every(edge => edge.candidates.length === pool.length
@@ -395,7 +410,8 @@ function evInferSubstInFromStats(events, fixtureData, overrides) {
       const orderedPlayers = pool.filter(candidate => !matchedPlayers.has(candidate)).sort((a, b) =>
         `${Number(a.player.playerId) || 0}|${names(a.player).join('|')}`.localeCompare(
           `${Number(b.player.playerId) || 0}|${names(b.player).join('|')}`));
-      remainingEvents.forEach((edge, index) => result.set(edge.ev, orderedPlayers[index].player));
+      // 후보가 없는 나머지 칸은 미확인 상태로 남겨 다음 응답이나 수동 수정으로 보완한다.
+      orderedPlayers.forEach((candidate, index) => result.set(remainingEvents[index].ev, candidate.player));
     }
   }
   return result;
@@ -480,6 +496,26 @@ function evPatchSubstEvents(events, fixtureId, fixtureData = window._eventsLastD
 }
 window.evPatchSubstEvents = evPatchSubstEvents;
 
+/** 수동 IN 선택에서는 스탯 행이 조회되고 아직 연결되지 않은 벤치 선수를 먼저 보여준다. */
+function evSortSubstInCandidates(players, side, fixtureData) {
+  if (typeof lpFindPlayerMatchStats !== 'function' || typeof evEditRosterIndex !== 'function') return [...players];
+  const lineup = fixtureData?.[`${side}Lineup`];
+  const stats = fixtureData?.playerStats || [];
+  const fixtureId = fixtureData?.matchInfo?.fixtureId;
+  const linked = (fixtureData?.events || []).filter(ev => ev.side === side && String(ev.type || '').toLowerCase() === 'subst')
+    .map(ev => {
+      const manual = evGetSubstOverride(fixtureId, ev, 'assist');
+      return { id: manual?.playerId ?? ev.assistId,
+        names: manual ? [manual.name] : [ev.assistName, ev.assistNameKoLong, ev.assistOrigName] };
+    });
+  const preferred = new Set(players.filter(player =>
+    evEditRosterIndex(lineup?.substitutes || [], player.playerId, [player.name, player.nameKoLong, player.origName]) >= 0
+    && lpFindPlayerMatchStats(stats, player.playerId, side, player)
+    && !linked.some(inPlayer => evEditRosterIndex([player], inPlayer.id, inPlayer.names) >= 0)));
+  // 출전 시간·평점이 비어도 스탯 행 자체를 단서로 사용한다. 각 집합 안의 기존 순서는 유지한다.
+  return [...players.filter(player => preferred.has(player)), ...players.filter(player => !preferred.has(player))];
+}
+
 /**
  * 교체 선수 선택 모달.
  * 해당 팀의 startXi + substitutes 전체를 목록으로 표시하고,
@@ -496,12 +532,13 @@ function evOpenSubstPicker(ev, field, fixtureData) {
   const lineup = ev.side === 'home' ? fixtureData?.homeLineup : fixtureData?.awayLineup;
   // 그 교체 시점에 실제로 가능한 선수만 — OUT은 그라운드에 있던 선수, IN은 아직 투입 안 된 교체 명단
   // 선수(event-hide.js evAvailablePlayers). 계산할 수 없으면 기존처럼 팀 전체 명단.
-  const allPlayers = typeof window.evAvailablePlayers === 'function'
+  let allPlayers = typeof window.evAvailablePlayers === 'function'
     ? window.evAvailablePlayers(ev, ev.side, field === 'player' ? 'onPitch' : 'bench')
     : [
       ...(lineup?.startXi || []),
       ...(lineup?.substitutes || []),
     ].filter(Boolean);
+  if (field === 'assist') allPlayers = evSortSubstInCandidates(allPlayers, ev.side, fixtureData);
 
   document.querySelector('.ev-subst-picker-overlay')?.remove();
 
@@ -547,9 +584,10 @@ function evOpenSubstPicker(ev, field, fixtureData) {
       num.className = 'ev-subst-picker-number';
       num.textContent = player.number != null ? String(player.number) : '-';
 
-      const displayName = useLong
+      const rawDisplayName = useLong
         ? (player.nameKoLong || player.name || String(player.playerId ?? '-'))
         : (player.name || player.nameKoLong || String(player.playerId ?? '-'));
+      const displayName = typeof formatLatinPlayerName === 'function' ? formatLatinPlayerName(rawDisplayName) : rawDisplayName;
 
       const nameEl = document.createElement('span');
       nameEl.className = 'ev-subst-picker-name';
@@ -569,13 +607,13 @@ function evOpenSubstPicker(ev, field, fixtureData) {
           && [player.name, player.nameKoLong, displayName].includes(existingOverride.name));
       if (matchesExisting) {
         item.classList.add('is-selected');
-        selectedPlayer = { playerId: player.playerId, name: displayName };
+        selectedPlayer = { playerId: player.playerId, name: rawDisplayName };
       }
       item.addEventListener('click', () => {
         list.querySelectorAll('.ev-subst-picker-item.is-selected')
           .forEach(el => el.classList.remove('is-selected'));
         item.classList.add('is-selected');
-        selectedPlayer = { playerId: player.playerId, name: displayName };
+        selectedPlayer = { playerId: player.playerId, name: rawDisplayName };
       });
       list.appendChild(item);
     });
@@ -827,7 +865,8 @@ function evPickPlayerName(ev, kind /* 'player'|'assist' */, fallback = '') {
     if (nick) return nick;
   }
   // 라틴 이름의 가운뎃점 구분자를 공백으로(settings-popup.js normalizeLatinNameSeparators, 점수판/라인업과 동일).
-  const sep = v => (typeof normalizeLatinNameSeparators === 'function' ? normalizeLatinNameSeparators(v) : v);
+  const sep = v => (typeof formatLatinPlayerName === 'function' ? formatLatinPlayerName(v)
+    : typeof normalizeLatinNameSeparators === 'function' ? normalizeLatinNameSeparators(v) : v);
   if (kind === 'assist') {
     const long = evNormalizeDisplayName(sep(ev.assistNameKoLong || ''));
     const short = evNormalizeDisplayName(sep(ev.assistName || ''));

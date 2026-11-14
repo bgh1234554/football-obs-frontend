@@ -30,7 +30,6 @@ console.log('PASS unique zero-ID substitution fallback, retained editable ID/key
  assert.equal(c.evSubstEventKey(resolved),c.evSubstEventKey(data.events[0]));
  assert.equal(JSON.stringify(data),before);
  for(const mutate of [
-  d=>d.events.push({...d.events[0],playerId:4}),
   d=>d.playerStats[2]={...d.playerStats[2],minutes:6,rating:'6.1'},
   d=>d.playerStats[1].minutes=40,
   d=>d.playerStats[1].side='away',
@@ -71,8 +70,6 @@ for (const count of [2, 3]) {
   d=>d.events[0].elapsed=69,
   d=>d.events[0].extra=2,
   d=>d.events.push({...d.events[0],elapsed:68,playerId:50}),
-  d=>d.playerStats[1].minutes=40,
-  d=>d.playerStats[1].side='home',
   d=>Object.assign(d.playerStats[d.playerStats.length-1],{minutes:23,rating:'6.0'}),
  ]) {
   const copy=JSON.parse(before);mutate(copy);
@@ -115,6 +112,53 @@ for (const count of [2, 3]) {
  assert(run(boundary).every(ev=>!ev.assistName));
 }
 console.log('PASS simultaneous substitution groups: complete played set, stable pairing, timing isolation, candidate counts, existing links and editability');
+
+// 같은 시각의 교체는 스탯이 일부 누락돼도 확인된 선수만 채우고 나머지는 미확인으로 남긴다.
+{
+ const data={
+  matchInfo:{fixtureId:1490540,elapsed:90},
+  homeLineup:{startXi:[{playerId:1,name:'Starter'}],substitutes:[
+   {playerId:0,name:'Played A'},{playerId:0,name:'Played B'},{playerId:0,name:'Missing'},
+  ]},
+  playerStats:[{side:'home',playerId:1,minutes:90,rating:'6.5'},
+   {side:'home',playerId:0,playerName:'Played A',minutes:12,rating:'6.3'},
+   {side:'home',playerId:0,playerName:'Played B',minutes:12,rating:'6.2'},
+  ],
+  events:[10,11,12].map(playerId=>({type:'subst',side:'home',elapsed:78,playerId,assistId:null})),
+ };
+ const before=JSON.stringify(data);
+ const filled=events=>Array.from(events,ev=>ev.assistName).filter(Boolean).sort();
+ const resolved=run(data);
+ assert.deepEqual(filled(resolved),['Played A','Played B']);
+ assert.equal(resolved.filter(ev=>!ev.assistName).length,1);
+ resolved.forEach((ev,i)=>{
+  assert.equal(ev.assistId,null);
+  assert(c.evSubstHasUnlinkedId(ev,'assist'));
+  assert.equal(c.evSubstEventKey(ev),c.evSubstEventKey(data.events[i]));
+ });
+ assert.equal(JSON.stringify(data),before);
+ const reverse=JSON.parse(before);reverse.events.reverse();reverse.homeLineup.substitutes.reverse();reverse.playerStats.reverse();
+ const byKey=events=>Object.fromEntries(events.map(ev=>[c.evSubstEventKey(ev),ev.assistName]));
+ assert.deepEqual(byKey(run(reverse)),byKey(resolved));
+ for(const mutate of [d=>d.events[0].elapsed=77,d=>d.events[0].extra=1,
+  d=>d.events.push({...d.events[0],elapsed:76,playerId:50})]) {
+  const copy=JSON.parse(before);mutate(copy);assert.deepEqual(filled(run(copy)),[]);
+ }
+ // 후보의 시간/팀이 맞지 않으면 그 선수만 제외하며, 스탯이 뒤늦게 오면 빈 칸도 채운다.
+ for(const mutate of [d=>d.playerStats[1].minutes=40,d=>d.playerStats[1].side='away',
+  d=>{d.playerStats[1].minutes=0;d.playerStats[1].rating='0';}]) {
+  const copy=JSON.parse(before);mutate(copy);assert.deepEqual(filled(run(copy)),['Played B']);
+ }
+ const later=JSON.parse(before);
+ later.playerStats.push({side:'home',playerId:0,playerName:'Missing',minutes:12,rating:'6.4'});
+ assert.deepEqual(filled(run(later)),['Missing','Played A','Played B']);
+ const known=JSON.parse(before);known.events[0].assistName='Played A';
+ assert.deepEqual(filled(run(known)),['Played A','Played B']);
+ stored={1490540:{[c.evSubstEventKey(data.events[0])]:{assist:{playerId:0,name:'Played B'}}}};
+ assert.equal(run(data)[0].assistName,'Played B');
+ assert.deepEqual(filled(run(data)),['Played A','Played B']);stored={};
+ console.log('PASS partial simultaneous substitutions: available players, unknown remainder, stable pairing, delayed stats, timing isolation and manual precedence');
+}
 
 // 이름 순서보다 보정된 관측 시점의 정확한 출전 시간을 우선하고, 나머지만 기존 순서로 배정한다.
 {
