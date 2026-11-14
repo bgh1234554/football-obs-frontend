@@ -1,3 +1,15 @@
+/**
+ * [공통 유틸: 표시값 정리·좌표 외 보조 계산·색상 비교]
+ * DOM 조회·숫자/시간 포맷·파일 출력과 여러 모듈이 공유하는 누락값/색상 판정 함수를 제공한다.
+ *
+ * 값 처리 흐름:
+ *  1. API/캐시 JSON의 문자열 누락 표기는 normalizeMissingValues로 실제 null에 맞춘다.
+ *  2. 화면 문자열은 displayText 등 표시 함수에서 대체값을 선택한다. 실제 0/false는 누락과 구분한다.
+ *  3. 정상 데이터는 재사용하고 값이 달라진 가지에만 복사본을 만들어 원본 변경을 피한다.
+ *
+ * 팀 색상의 유사도와 명도 대비는 공통 기준으로 제공하되 최종 보정 여부는 소비 모듈이 정한다.
+ * 이 파일의 헬퍼가 개별 화면의 저장/폴링 정책을 대신하지 않도록 입력 해석과 정책 결정을 분리한다.
+ */
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [유틸리티 헬퍼] DOM 조회, 시간 포맷, 숫자 클램핑, 파일 다운로드 등 공통 유틸
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -557,7 +569,7 @@
     const rgb = parseAnyColor(input);
     if (!rgb) return input;
     const { h, s, l } = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    // 같은 초록 그라데이션의 어두운 색도 함께 이동하되 노랑·무채색은 유지합니다.
+    // 같은 초록 그라데이션의 어두운 색도 함께 이동하되 노랑·무채색은 유지한다.
     const groupedGreen = gradientLightnessScale !== null && h > 60 && h <= 170 && s >= 0.18;
     if (!isChromaKeyGreen(rgb) && !groupedGreen) return input;
 
@@ -581,8 +593,8 @@
   }
 
   /**
-   * 각 그라데이션 안에 보정 대상이 있으면 같은 초록 계열의 색을 함께 변환합니다.
-   * 여러 배경 레이어는 독립적으로 판단하며, 노랑·무채색과 투명도는 유지합니다.
+   * 각 그라데이션 안에 보정 대상이 있으면 같은 초록 계열의 색을 함께 변환한다.
+   * 여러 배경 레이어는 독립적으로 판단하며, 노랑·무채색과 투명도는 유지한다.
    */
   function toChromaSafeGradient(input, forcedIntensity) {
     if (!input || typeof input !== 'string') return input;
@@ -593,7 +605,7 @@
     let match;
     while ((match = gradientPattern.exec(input))) {
       let end = gradientPattern.lastIndex, depth = 1;
-      // rgb()/var()의 괄호를 포함하므로 그라데이션 함수의 닫는 위치까지 추적합니다.
+      // rgb()/var()의 괄호를 포함하므로 그라데이션 함수의 닫는 위치까지 추적한다.
       for (; end < input.length && depth; end++) {
         if (input[end] === '(') depth++;
         else if (input[end] === ')') depth--;

@@ -1,3 +1,18 @@
+/**
+ * [FSM 점수판: 리그별 표시와 빠른 조작]
+ * 공통 state를 리그별 FSM DOM/CSS에 반영하고 점수·합계·승부차기·득점 메모·배율의 조작 UI를 연결한다.
+ * LEAGUE_THEME_MAP은 경기 리그와 테마의 연결이며, 실제 레이아웃/색상 규칙은 각 테마 CSS와 함께 동작한다.
+ *
+ * 처리 흐름:
+ *  1. 선택 테마와 경기 연결 정보를 확인해 텍스트·로고·색상과 테마별 표시 상태를 맞춘다.
+ *  2. 합계/승부차기 표시와 빠른 조작 버튼을 현재 state에 동기화한다.
+ *  3. 득점 메모의 실제 크기와 글꼴을 기준으로 배치를 조정하고 점수판 배율을 적용한다.
+ *  4. 사용자 조작은 공통 state를 변경한 뒤 기존 렌더/저장 경로로 전달한다.
+ *  5. 웹폰트가 준비되면 같은 프레임의 요청을 합쳐 실제 글꼴 기준으로 다시 렌더한다.
+ *
+ * 팀 색상 원본과 화면의 크로마/대비 보정은 구분한다. 자동 로고 보정은 LogoTrim 등 공통 모듈에 맡기며,
+ * 배율 조작 중 메뉴 좌표는 화면 기준으로 보정해 조작 대상이 커진 점수판과 함께 이동하지 않게 한다.
+ */
 /** selector에 맞는 노드(index를 주면 그 하나만)에 인라인 스타일 객체를 적용한다. */
 function setFsmStyle(selector, styles, index) {
   const nodes = document.querySelectorAll(selector);
@@ -158,8 +173,8 @@ const FSM_THEMES = Object.freeze({
   wc26: '월드컵', fifaintercontinental: 'FIFA 인터컨티넨탈 컵', cwc: 'FIFA 클럽 월드컵'
 });
 
-// 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용합니다.
-// 리그별 확인 근거와 시즌 예외는 about.md의 합계 점수 안내를 참고합니다.
+// 기존 컵 테마와 홈·원정 합산 승강 플레이오프가 있는 리그만 허용한다.
+// 리그별 확인 근거와 시즌 예외는 about.md의 합계 점수 안내를 참고한다.
 const FSM_AGGREGATE_THEMES = Object.freeze([
   'cypriotfirstdivision', 'default', 'cl', 'uel', 'uecl', 'acle', 'acl2', 'acgl', 'russiancup', 'tff1lig', 'turkishcup',
   'allsvenskan', 'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'nationalleague', 'laliga2',
@@ -169,7 +184,7 @@ const FSM_AGGREGATE_THEMES = Object.freeze([
   // DFB-포칼은 단판 경기라 합계 점수를 쓰지 않는다(체크해도 표시하지 않음).
 ]);
 
-// 점수·합계 칸과 겹치는 폭을 팀명 영역에서 제외하는 테마입니다.
+// 점수·합계 칸과 겹치는 폭을 팀명 영역에서 제외하는 테마이다.
 const FSM_SCORE_OVERLAP_THEMES = Object.freeze([
   'russiancup', 'romanian', 'serieb', 'danish', 'ekstraklasa', 'czech',
   'seriea', 'superlig', 'tff1lig', 'turkishcup', 'belgian', 'armenian',
@@ -183,28 +198,28 @@ const FSM_SCORE_OVERLAP_THEMES = Object.freeze([
   'coppaitalia', 'coupedefrance', 'dfb'
 ]);
 
-// 점수 칸 바깥에 8px 팀컬러 칩을 더 확보하는 테마입니다.
+// 점수 칸 바깥에 8px 팀컬러 칩을 더 확보하는 테마이다.
 const FSM_NAME_CHIP_8PX_THEMES = Object.freeze([
   'allsvenskan', 'rpl', 'erovnuli', 'serbia', 'kazakh', 'belgian',
   'coupedefrance', 'brazilseriea', 'concacafcc', 'concacafcentral', 'concacafcaribbean'
 ]);
 
-// 팀명 영역에서 7px 팀컬러 폭을 더 제외합니다.
+// 팀명 영역에서 7px 팀컬러 폭을 더 제외한다.
 const FSM_NAME_CHIP_7PX_THEMES = Object.freeze([
   'cnl', 'thirdliga', 'azerbaijan'
 ]);
 
-// 원형 로고 배경을 사용하는 테마입니다.
+// 원형 로고 배경을 사용하는 테마이다.
 const FSM_ROUND_LOGO_THEMES = Object.freeze([
   'carabao', 'fifaintercontinental'
 ]);
 
-// 곡선 팀컬러 도형을 별도로 계산하는 테마입니다.
+// 곡선 팀컬러 도형을 별도로 계산하는 테마이다.
 const FSM_CURVED_COLOR_THEMES = Object.freeze([
   'cnl', 'thirdliga', 'uzbek', 'ukrainian'
 ]);
 
-// 팀컬러 외곽선을 추가하지 않는 테마입니다.
+// 팀컬러 외곽선을 추가하지 않는 테마이다.
 const FSM_NO_COLOR_EDGE_THEMES = Object.freeze([
   'bundes', 'bundes2', 'serieb', 'laliga', 'laliga2', 'ligamx',
   'brazilseriea', 'russiancup', 'romanian', 'danish', 'pl', 'jleague',
@@ -213,19 +228,19 @@ const FSM_NO_COLOR_EDGE_THEMES = Object.freeze([
   'chinesesuperleague', 'wc26', 'uel', 'uecl', 'eredivisie', 'mls'
 ]);
 
-// 상단 팀컬러 띠와 해당 배경 처리를 함께 사용하는 테마입니다.
+// 상단 팀컬러 띠와 해당 배경 처리를 함께 사용하는 테마이다.
 const FSM_TOP_COLOR_STRIP_THEMES = Object.freeze([
   'czech', 'ekstraklasa'
 ]);
 
-// 세로 팀컬러 칩의 외곽선과 단색 배경을 함께 사용하는 테마입니다.
+// 세로 팀컬러 칩의 외곽선과 단색 배경을 함께 사용하는 테마이다.
 const FSM_COLOR_CHIP_THEMES = Object.freeze([
   'allsvenskan', 'rpl', 'erovnuli', 'serbia', 'kazakh', 'azerbaijan',
   'belgian', 'concacafcc', 'concacafcentral', 'concacafcaribbean', 'armenian', 'cnl', 'thirdliga',
   'uzbek', 'ukrainian', 'ukrainianfirst', 'ligaportugal', 'coupedefrance'
 ]);
 
-// 팀 카드 전체를 기본 팀컬러로 채우는 테마입니다.
+// 팀 카드 전체를 기본 팀컬러로 채우는 테마이다.
 const FSM_SOLID_TEAM_BACKGROUND_THEMES = Object.freeze([
   'jleague', 'belarus', 'fnl', 'fnl2a', 'fnl2b', 'nationalleague',
   'scottishcup', 'spfl', 'eflchampionship', 'eflleagueone', 'eflleaguetwo', 'saudi',
@@ -235,7 +250,7 @@ const FSM_SOLID_TEAM_BACKGROUND_THEMES = Object.freeze([
 // 팀컬러 띠를 두 색의 세로 그라데이션으로 채웁니다.
 const FSM_GRADIENT_COLOR_THEMES = Object.freeze(['laliga', 'laliga2', 'ligamx', 'brazilseriea', 'serieb']);
 
-/** 테마 선택 목록을 초기화하고 선택 변경을 저장 상태와 점수판에 반영합니다. */
+/** 테마 선택 목록을 초기화하고 선택 변경을 저장 상태와 점수판에 반영한다. */
 function initFsmThemeSelect() {
   const select = document.getElementById('fsmThemeSelect');
   if (!select) return;
@@ -252,8 +267,8 @@ function initFsmThemeSelect() {
   });
 }
 /**
- * 사용 가능한 테마를 순환 선택하고 전환 완료 후 선택한 테마를 안내합니다.
- * @param {number} direction 이전 테마는 -1, 다음 테마는 1입니다.
+ * 사용 가능한 테마를 순환 선택하고 전환 완료 후 선택한 테마를 안내한다.
+ * @param {number} direction 이전 테마는 -1, 다음 테마는 1이다.
  */
 function cycleFsmTheme(direction) {
   const select = document.getElementById('fsmThemeSelect');
@@ -342,9 +357,9 @@ var _currentType = 'club';
 var _timerMargin = 'none';
 
 /**
- * 수동 테마 선택을 우선하고, 자동 모드에서는 리그 매핑에 따라 테마와 로고를 적용합니다.
- * @param {number|null} leagueId 경기의 리그 ID입니다.
- * @param {string|null} apiLeagueLogoUrl 매핑에 로고가 없을 때 사용할 API 로고 URL입니다.
+ * 수동 테마 선택을 우선하고, 자동 모드에서는 리그 매핑에 따라 테마와 로고를 적용한다.
+ * @param {number|null} leagueId 경기의 리그 ID이다.
+ * @param {string|null} apiLeagueLogoUrl 매핑에 로고가 없을 때 사용할 API 로고 URL이다.
  */
 window.autoApplyTemplateByLeagueId = function(leagueId, apiLeagueLogoUrl) {
   const selectedTheme = Object.hasOwn(FSM_THEMES, state.fsmTheme) ? state.fsmTheme : null;
@@ -366,10 +381,10 @@ var pendingThemeLink = null;
 var fsmEntranceEndListener = null;
 var fsmInitialStateReady = false;
 
-/** 초기 상태 준비와 테마 로딩이 완료된 점수판의 등장 효과를 다시 시작합니다. */
+/** 초기 상태 준비와 테마 로딩이 완료된 점수판의 등장 효과를 다시 시작한다. */
 window.replayFsmBoardEntrance = function() {
   const board = document.querySelector('.fsm-board');
-  // 다른 테마로 바뀌는 경우에는 기존 테마 전환을 유지합니다.
+  // 다른 테마로 바뀌는 경우에는 기존 테마 전환을 유지한다.
   if (!board || pendingThemeLink || !fsmInitialStateReady) return;
   if (fsmEntranceEndListener) {
     board.removeEventListener('animationend', fsmEntranceEndListener);
@@ -380,13 +395,13 @@ window.replayFsmBoardEntrance = function() {
   window.fsmBoardRender();
 };
 
-/** 테마와 글꼴 로딩 후 배치를 확정하고 준비 중인 점수판의 등장 효과를 실행합니다. */
+/** 테마와 글꼴 로딩 후 배치를 확정하고 준비 중인 점수판의 등장 효과를 실행한다. */
 function revealFsmBoard() {
   const board = document.querySelector('.fsm-board.fsm-starting');
   if (!board || pendingThemeLink || !fsmInitialStateReady) return;
-  // 최종 테마의 크기를 transition:none 상태에서 확정합니다. CSS 교체와
-  // fsm-starting 제거가 같은 스타일 계산에 합쳐지면 이전 크기에서 전환됩니다.
-  // 이 계산으로 테마 폰트 로딩도 시작하므로 fonts.status는 이후 확인합니다.
+  // 최종 테마의 크기를 transition:none 상태에서 확정한다. CSS 교체와
+  // fsm-starting 제거가 같은 스타일 계산에 합쳐지면 이전 크기에서 전환된다.
+  // 이 계산으로 테마 폰트 로딩도 시작하므로 fonts.status는 이후 확인한다.
   void board.offsetHeight;
   if (document.fonts?.status === 'loading') {
     document.fonts.ready.then(revealFsmBoard);
@@ -394,7 +409,7 @@ function revealFsmBoard() {
   }
   requestAnimationFrame(() => {
     if (pendingThemeLink || !board.classList.contains('fsm-starting')) return;
-    // 예약 후 render/폰트 갱신이 발생해도 표시 직전의 레이아웃을 확정합니다.
+    // 예약 후 render/폰트 갱신이 발생해도 표시 직전의 레이아웃을 확정한다.
     void board.offsetHeight;
     if (document.fonts?.status === 'loading') {
       document.fonts.ready.then(revealFsmBoard);
@@ -448,9 +463,9 @@ window.addEventListener('load', () => setTimeout(() => {
 }, 3000));
 
 /**
- * 테마 스타일시트를 교체하고 로딩이 끝난 최신 요청의 점수판 배치를 갱신합니다.
- * @param {string} cssFile 적용할 테마 CSS 경로입니다.
- * @param {string} requestedTheme 요청한 테마 키입니다.
+ * 테마 스타일시트를 교체하고 로딩이 끝난 최신 요청의 점수판 배치를 갱신한다.
+ * @param {string} cssFile 적용할 테마 CSS 경로이다.
+ * @param {string} requestedTheme 요청한 테마 키이다.
  */
 function changeCSS(cssFile, requestedTheme = _currentTheme) {
   const href = new URL(cssFile, document.baseURI).href;
@@ -527,11 +542,11 @@ function whenBoardFramesSettle(callback) {
 /**
  * 로딩이 끝난 테마 link를 적용하고 다음 프레임에 점수판 배치를 갱신한다.
  * @param {HTMLLinkElement} newlink 적용할 테마 link.
- * @param {string} requestedTheme 요청한 테마 키입니다.
+ * @param {string} requestedTheme 요청한 테마 키이다.
  */
 function swapThemeLink(newlink, requestedTheme) {
   // 목적 테마의 전환 속성을 CSS 교체 전에 준비해야 크기/위치 전환이
-  // 스타일 계산 타이밍에 따라 생략되지 않습니다.
+  // 스타일 계산 타이밍에 따라 생략되지 않는다.
   const board = document.querySelector('.fsm-board');
   _currentTheme = requestedTheme;
   if (board) board.dataset.fsmTheme = _currentTheme;
@@ -553,8 +568,8 @@ function swapThemeLink(newlink, requestedTheme) {
     // 다음 폴링까지 보정되지 않은 작은 원본으로 남는다. 전체 render()를 재호출하지 않고
     // 로고 처리만 수행해 테마 교체 프레임에 다른 패널의 갱신 작업을 중복시키지 않는다.
     renderScoreboardLogos();
-    // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않습니다.
-    // 불투명한 배경끼리의 색상 전환과 다른 전환 효과는 그대로 유지합니다.
+    // 목적 테마에서 투명한 칸은 이전 배경색이 사라지는 동안 박스로 남기지 않는다.
+    // 불투명한 배경끼리의 색상 전환과 다른 전환 효과는 그대로 유지한다.
     document.querySelectorAll('.fsm-board :is(.scoreboard-main, .team-logo, .team-score, .score-div)')
       .forEach(node => node.getAnimations().forEach(animation => {
         if (animation.transitionProperty !== 'background-color') return;
@@ -569,7 +584,7 @@ function swapThemeLink(newlink, requestedTheme) {
 
 let fsmChromaSheet = null;
 let fsmChromaMode = '';
-/** 현재 테마의 색상 선언을 크로마키 안전색으로 보정하는 추가 스타일을 갱신합니다. */
+/** 현재 테마의 색상 선언을 크로마키 안전색으로 보정하는 추가 스타일을 갱신한다. */
 function applyFsmChromaTheme() {
   const sheet = oldlink?.sheet;
   const mode = isGreenscreenOn() ? getGreenscreenIntensity() : 'off';
@@ -853,7 +868,7 @@ function applyTheme(theme, logoUrl) {
       break;
     case 'romanian':
       changeCSS('css/theme/result_style_ROMANIAN.css', theme);
-      // 지정 SVG에서 글자를 제외하고 분리한 컵 경로를 표시합니다.
+      // 지정 SVG에서 글자를 제외하고 분리한 컵 경로를 표시한다.
       setFsmAttr('.epl-lion', 'src', logoUrl);
       break;
     case 'fnl':
@@ -943,7 +958,7 @@ function applyTheme(theme, logoUrl) {
 
 
     // 팀 로고: state.homeLogo / state.awayLogo는 백엔드 logos.csv CDN URL에서 옵니다.
-    // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영됩니다.
+    // logos.csv에 indvel GitHub CDN URL을 등록하면 여기서 자동으로 반영된다.
 
 
     // 팀 컬러 언더라인 — 현재 테마에 따라 다르게 처리 (applyTheme()에서 호출됨)
@@ -968,7 +983,7 @@ function applyTheme(theme, logoUrl) {
       marginLeft: '0px', left: `calc(50% + ${clock.offsetWidth / 2 + (_currentTheme === 'romanian' ? 6 : 0)}px)`
     });
     // 두 박스에 같은 숫자 기준을 사용하여 추가시간과 타이머의 기준선을 맞춥니다.
-    // 각 값을 따로 측정하면 높이가 낮은 글자가 90:00보다 아래로 이동합니다.
+    // 각 값을 따로 측정하면 높이가 낮은 글자가 90:00보다 아래로 이동한다.
     const timerPadding = Array.from(board.querySelectorAll('.time, .extra-time'), element => {
       const style = getComputedStyle(element);
       const context = document.createElement('canvas').getContext('2d');
@@ -994,7 +1009,7 @@ function applyTheme(theme, logoUrl) {
 
     const supportsAggregate = FSM_AGGREGATE_THEMES.includes(_currentTheme);
     board.dataset.fsmAggregate = String(supportsAggregate && !!state.aggEnabled);
-    // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않습니다.
+    // 테마에서 지정한 타이머·로고·팀명 칸의 색상 쌍은 대비색 자동 선택으로 바꾸지 않는다.
     const fixedAggregatePalette = {
       thirdliga: ['#000000', '#ffffff'],
       allsvenskan: ['#020125', '#ffffff'],
@@ -1071,7 +1086,7 @@ function applyTheme(theme, logoUrl) {
             ? (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent - metrics.fontBoundingBoxAscent + metrics.fontBoundingBoxDescent) / 2 : 0;
           board.style.setProperty('--fsm-aggregate-number-shift', `${shift}px`);
         }
-        // 자리수가 달라도 양쪽 합계 폭을 같게 유지해 중앙 로고와 경기 점수가 밀리지 않게 합니다.
+        // 자리수가 달라도 양쪽 합계 폭을 같게 유지해 중앙 로고와 경기 점수가 밀리지 않게 한다.
         const totals = Array.from(board.querySelectorAll('.total-score'));
         totals.forEach(node => { node.style.width = ''; });
         const totalWidth = Math.max(...totals.map(node => Math.max(node.offsetWidth, node.scrollWidth)));
@@ -1143,7 +1158,7 @@ window.syncEkstraklasaBoundaryPixelGrid = function() {
   const scale = rect.height / score.offsetHeight;
   if (!(scale > 0)) return;
   const dpr = window.devicePixelRatio || 1;
-  // 반 픽셀에 걸린 위쪽 행까지 같은 그라데이션으로 칠합니다.
+  // 반 픽셀에 걸린 위쪽 행까지 같은 그라데이션으로 칠한다.
   const overscan = (rect.top - Math.floor(rect.top * dpr + 1e-7) / dpr) / scale;
   board.style.setProperty('--fsm-ekstraklasa-paint-top', `${-overscan}px`);
   // 구분선의 시작점과 폭을 실제 화면 픽셀에 맞춰 흐릿한 반 픽셀 선을 없앱니다.
@@ -1173,7 +1188,7 @@ const FSM_WIDTH_LIMITS = Object.freeze({
  * 두 팀 이름이 원래 글꼴 크기로 들어가도록 점수판 너비를 조정한다(FSM_WIDTH_LIMITS 범위 안).
  * 테마별로 점수 영역·로고와 겹치는 폭을 팀명 영역에서 빼고, 그래도 넘치면 글꼴을 줄인다.
  */
-/** 팀명 글자가 실제로 그려진 픽셀의 상하 경계로 세로 보정값을 구합니다. 같은 글꼴·문자열·배율은 다시 그리지 않습니다. */
+/** 팀명 글자가 실제로 그려진 픽셀의 상하 경계로 세로 보정값을 구한다. 같은 글꼴·문자열·배율은 다시 그리지 않는다. */
 const fsmNameInkOffsetCache = new Map();
 function measureFsmNameInkOffset(font, value, fontSize, renderScale) {
   const key = `${font}|${renderScale}|${value}`;
@@ -1202,7 +1217,7 @@ function measureFsmNameInkOffset(font, value, fontSize, renderScale) {
     if (bottom >= top) offset = baseline - (top + bottom + 1) / (2 * renderScale)
       - (metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) / 2;
   }
-  // 글꼴 로딩 전 측정값이 남지 않도록 결과가 있을 때만 보관합니다.
+  // 글꼴 로딩 전 측정값이 남지 않도록 결과가 있을 때만 보관한다.
   if (offset !== null && document.fonts.status === 'loaded') {
     if (fsmNameInkOffsetCache.size > 200) fsmNameInkOffsetCache.clear();
     fsmNameInkOffsetCache.set(key, offset);
@@ -1223,9 +1238,9 @@ function adjustScoreboardWidth() {
   const texts = names.map(name => name?.querySelector('.text'));
   if (!scoreboard || texts.some(text => !text)) return;
   const limits = FSM_WIDTH_LIMITS;
-  // 모든 테마의 실제 좌우 패딩을 너비 계산에 사용하는 설정과 동기화합니다.
+  // 모든 테마의 실제 좌우 패딩을 너비 계산에 사용하는 설정과 동기화한다.
   board.style.setProperty('--fsm-team-name-padding', `${limits.teamPadding / 2}px`);
-  // 이전 렌더링 결과와 무관하게 원래 글꼴 크기로 측정합니다.
+  // 이전 렌더링 결과와 무관하게 원래 글꼴 크기로 측정한다.
   texts.forEach(text => {
     text.style.fontSize = limits.maxFont + 'px';
     text.style.width = 'max-content';
@@ -1246,7 +1261,7 @@ function adjustScoreboardWidth() {
     const padding = Math.ceil(radius - Math.sqrt(Math.max(0, radius * radius - reach * reach)) + 3);
     board.style.setProperty('--fsm-jleague-name-padding', `${Math.max(16, padding)}px`);
   }
-  // 합산 점수가 표시되는 경우 이를 포함해 실제 테마 영역을 측정합니다.
+  // 합산 점수가 표시되는 경우 이를 포함해 실제 테마 영역을 측정한다.
   const fixedWidth = Array.from(scoreboard.children).reduce((sum, child) => {
     const style = getComputedStyle(child);
     if (cards.includes(child) || style.position === 'absolute' || style.display === 'none') return sum;
@@ -1257,7 +1272,7 @@ function adjustScoreboardWidth() {
   if (_currentTheme === 'mls') board.style.setProperty('--fsm-name-reserved-width', '28px');
   if (_currentTheme === 'eredivisie') board.style.setProperty('--fsm-name-reserved-width', '8px');
   if (_currentTheme === 'unl') {
-    // 회전된 로고 박스의 안쪽 꼭짓점까지는 팀명 영역에서 제외합니다.
+    // 회전된 로고 박스의 안쪽 꼭짓점까지는 팀명 영역에서 제외한다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
     const homeLogo = document.getElementById('team-logo-left').getBoundingClientRect();
     const awayLogo = document.getElementById('team-logo-right').getBoundingClientRect();
@@ -1268,7 +1283,7 @@ function adjustScoreboardWidth() {
   }
   if (FSM_SCORE_OVERLAP_THEMES.includes(_currentTheme)) {
     // 절대 위치의 점수 영역이 팀 카드와 겹치므로 실제 표시 경계를 기준으로
-    // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산합니다.
+    // 세리에 A의 기울기까지 반영하여 바깥쪽 팀명 영역을 계산한다.
     const scale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth || 1;
     const homeScore = (board.dataset.fsmAggregate === 'true' && _currentTheme !== 'czech' ? document.getElementById('totalScoreLeft').parentElement : document.getElementById('team-score-left')).getBoundingClientRect();
     const awayScore = (board.dataset.fsmAggregate === 'true' && _currentTheme !== 'czech' ? document.getElementById('totalScoreRight').parentElement : document.getElementById('team-score-right')).getBoundingClientRect();
@@ -1278,20 +1293,20 @@ function adjustScoreboardWidth() {
     board.style.setProperty('--fsm-score-overlap', overlap + 'px');
     let danishWidth = 0;
     if (_currentTheme === 'danish') {
-      // 타이머와 팀컬러의 실제 높이에 같은 기울기를 적용합니다.
+      // 타이머와 팀컬러의 실제 높이에 같은 기울기를 적용한다.
       const slope = parseFloat(getComputedStyle(board).getPropertyValue('--danish-slope')) || .3;
       const clock = board.querySelector('.time');
       const chip = board.querySelector('#homeColor');
       board.style.setProperty('--danish-timer-inset', `${clock.offsetHeight * slope}px`);
       board.style.setProperty('--danish-team-color-width', `${chip.offsetHeight * slope}px`);
-      // 삼각형의 위쪽 바깥 꼭짓점까지 제외한 영역 안에서 팀명을 정렬합니다.
+      // 삼각형의 위쪽 바깥 꼭짓점까지 제외한 영역 안에서 팀명을 정렬한다.
       const homeEdge = board.querySelector('#homeColor').getBoundingClientRect().left;
       const awayEdge = board.querySelector('#awayColor').getBoundingClientRect().right;
       danishWidth = Math.max(
         (cards[0].getBoundingClientRect().right - homeEdge) / scale,
         (awayEdge - cards[1].getBoundingClientRect().left) / scale) - overlap;
     }
-    // 사선이 팀명 칸을 덮는 최대 폭을 빼면 위아래 중 짧은 변의 유효 너비가 됩니다.
+    // 사선이 팀명 칸을 덮는 최대 폭을 빼면 위아래 중 짧은 변의 유효 너비가 된다.
     let eliteserienInset = 0;
     if (_currentTheme === 'eliteserien') {
       const angle = parseFloat(getComputedStyle(board).getPropertyValue('--eliteserien-angle'));
@@ -1305,17 +1320,17 @@ function adjustScoreboardWidth() {
   const requestedTeam = Math.max(limits.minTeam, ...widths.map((width, index) => {
     const style = getComputedStyle(names[index]);
     const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
-    // 점수 영역을 위해 이미 확보한 여백은 중복해서 더하지 않습니다.
+    // 점수 영역을 위해 이미 확보한 여백은 중복해서 더하지 않는다.
     const margin = Math.max(0,
       (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0) - reservedWidth);
     return width + Math.max(_currentTheme === 'jleague' ? 32 : limits.teamPadding, padding + margin) + reservedWidth;
   }));
   const requestedBoard = Math.max(limits.minBoard, fixedWidth + 2 * requestedTeam);
-  // 합계 칸이 추가되어도 기존 팀명 공간을 유지하도록 최대 너비에 표시 폭을 더합니다.
+  // 합계 칸이 추가되어도 기존 팀명 공간을 유지하도록 최대 너비에 표시 폭을 더한다.
   const aggregateWidth = board.dataset.fsmAggregate === 'true'
     ? Array.from(board.querySelectorAll('.total-score')).reduce((sum, node) => sum + node.offsetWidth, 0)
     : 0;
-  // 중앙 배경을 실제 점수·로고·합계 칸 너비로 이어 배율에 따라 벌어지는 이음새를 막습니다.
+  // 중앙 배경을 실제 점수·로고·합계 칸 너비로 이어 배율에 따라 벌어지는 이음새를 막는다.
   const centerBackgroundWidth = Array.from(board.querySelectorAll('.team-score, .score-div'))
     .reduce((sum, node) => sum + node.offsetWidth, aggregateWidth);
   board.style.setProperty('--fsm-center-background-width', `${centerBackgroundWidth}px`);
@@ -1323,7 +1338,7 @@ function adjustScoreboardWidth() {
   const teamWidth = Math.max(0, (boardWidth - fixedWidth) / 2);
   cards.forEach(card => { card.style.width = teamWidth + 'px'; });
   scoreboard.style.width = boardWidth + 'px';
-  // 브라우저·점수판 배율이 달라도 합계 이음새의 겹침은 실제 화면 2px로 유지합니다.
+  // 브라우저·점수판 배율이 달라도 합계 이음새의 겹침은 실제 화면 2px로 유지한다.
   const paintScale = scoreboard.getBoundingClientRect().width / scoreboard.offsetWidth;
   if (paintScale > 0) board.style.setProperty('--fsm-aggregate-join-bleed', `${2 / paintScale / (window.devicePixelRatio || 1)}px`);
   if (board.dataset.fsmAggregate === 'true') board.querySelectorAll('.total-score').forEach(node => {
@@ -1335,7 +1350,7 @@ function adjustScoreboardWidth() {
   if (['cnl', 'thirdliga'].includes(_currentTheme)) syncCnlGeometry(board);
   if (_currentTheme === 'uzbek') syncCnlGeometry(board, 32);
   if (_currentTheme === 'ukrainian') {
-    // 팀컬러 원호는 로고 원을 감싸고, 점수 칸 원은 점수판 가운데에서 점수 칸(합계 포함) 바깥 위 꼭짓점까지를 반지름으로 합니다.
+    // 팀컬러 원호는 로고 원을 감싸고, 점수 칸 원은 점수판 가운데에서 점수 칸(합계 포함) 바깥 위 꼭짓점까지를 반지름으로 한다.
     syncCnlGeometry(board, 28);
     const halfWidth = Array.from(board.querySelectorAll('#team-score-left, .score-div, #team-score-right, .total-score'))
       .reduce((sum, node) => sum + node.offsetWidth, 0) / 2;
@@ -1348,8 +1363,8 @@ function adjustScoreboardWidth() {
   const background = board.querySelector('.div-background');
   if (background) background.style.width = boardWidth + 'px';
   // 팀명마다 따로 가운데를 맞추면 '로디나'/'스파르타크'처럼 글자 높이가 같아도 반 픽셀 반올림
-  // 차이로 한쪽만 1px 올라가 보입니다. 양쪽 글자를 합친 높이로 맞춘 값이 팀명별 값과
-  // 0.5px 이내면 그 값을 써서 홈/원정 기준선을 같게 둡니다. 차이가 크면 팀명별 가운데를 우선합니다.
+  // 차이로 한쪽만 1px 올라가 보인다. 양쪽 글자를 합친 높이로 맞춘 값이 팀명별 값과
+  // 0.5px 이내면 그 값을 써서 홈/원정 기준선을 같게 둡니다. 차이가 크면 팀명별 가운데를 우선한다.
   const sharedInkText = texts.map(text => text.textContent).join('');
   // 양쪽 팀 영역에 동일한 최종 너비를 적용한 뒤 글자를 맞춥니다.
   texts.forEach((text, index) => {
@@ -1360,8 +1375,8 @@ function adjustScoreboardWidth() {
     while (text.scrollWidth > available && size > limits.minFont) text.style.fontSize = --size + 'px';
     if (text.scrollWidth > available && available > 0) text.style.fontSize = (size * available / text.scrollWidth) + 'px';
     text.style.width = '';
-    // 글꼴의 줄 박스가 아니라 실제 글자 높이를 기준으로 가운데 정렬합니다.
-    // Gmarket 글꼴의 비대칭 상하 높이와 팀 카드의 테두리 높이 차이를 반영합니다.
+    // 글꼴의 줄 박스가 아니라 실제 글자 높이를 기준으로 가운데 정렬한다.
+    // Gmarket 글꼴의 비대칭 상하 높이와 팀 카드의 테두리 높이 차이를 반영한다.
     const textStyle = getComputedStyle(text);
     const context = document.createElement('canvas').getContext('2d');
     context.font = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
@@ -1373,7 +1388,7 @@ function adjustScoreboardWidth() {
     const textRect = text.getBoundingClientRect();
     const layoutScale = cardRect.height / cards[index].offsetHeight || 1;
     // 팀컬러 띠와 팀명 칸 사이의 1px 경계선도 빼고 남은 높이에서 가운데를 맞춥니다.
-    // K리그(하단)와 체코·엑스트라클라사(상단)는 경계선을 가상 요소로 그려 box-shadow로는 판별되지 않습니다.
+    // K리그(하단)와 체코·엑스트라클라사(상단)는 경계선을 가상 요소로 그려 box-shadow로는 판별되지 않는다.
     const colorEdge = board.dataset.fsmColorEdge;
     const stripEdge = colorEdge === 'strip' && (cardStyle.boxShadow !== 'none' || _currentTheme === 'kleague') ? 1 : 0;
     const topStripEdge = colorEdge === 'strip-top' ? 1 : 0;
@@ -1388,10 +1403,10 @@ function adjustScoreboardWidth() {
     let inkOffset = metricOffset(metrics);
     const sharedOffset = metricOffset(sharedMetrics);
     if (Math.abs(sharedOffset - inkOffset) <= .5) inkOffset = sharedOffset;
-    // 글꼴 측정값은 실제로 그려진 픽셀과 최대 0.5px 차이가 날 수 있습니다.
-    // 프리미어리그는 합성 굵기 때문에 팀명별 실제 픽셀 높이로 다시 보정합니다.
-    // 유로는 기본 크기에서 정중앙이 되도록 양쪽 팀명을 합친 실제 픽셀 높이로 보정합니다(6px 팀컬러 줄과 함께 맞춤).
-    // 다른 점수판에 일괄 적용하면 50% 배율에서 오히려 0.5px 어긋나는 경우가 많아 두 테마로 한정합니다.
+    // 글꼴 측정값은 실제로 그려진 픽셀과 최대 0.5px 차이가 날 수 있다.
+    // 프리미어리그는 합성 굵기 때문에 팀명별 실제 픽셀 높이로 다시 보정한다.
+    // 유로는 기본 크기에서 정중앙이 되도록 양쪽 팀명을 합친 실제 픽셀 높이로 보정한다(6px 팀컬러 줄과 함께 맞춤).
+    // 다른 점수판에 일괄 적용하면 50% 배율에서 오히려 0.5px 어긋나는 경우가 많아 두 테마로 한정한다.
     if (_currentTheme === 'pl') inkOffset = measureFsmNameInkOffset(context.font, text.textContent, textStyle.fontSize, renderScale) ?? inkOffset;
     if (_currentTheme === 'er24') inkOffset = measureFsmNameInkOffset(context.font, sharedInkText, textStyle.fontSize, renderScale) ?? inkOffset;
     text.style.transform = `translateY(${inkOffset + layoutOffset}px)`;
@@ -1422,18 +1437,18 @@ function adjustScoreboardWidth() {
     const teamColors = Object.fromEntries(Object.entries(state.colors).map(([key, value]) => [key, chromaSafe(value)]));
     syncFsmLogoClip();
     setFsmStyle('.fsm-board .team-name', {color: ''});
-    // 이전 테마의 팀컬러·글자색과 카라바오 전용 마감을 현재 테마로 넘기지 않습니다.
+    // 이전 테마의 팀컬러·글자색과 카라바오 전용 마감을 현재 테마로 넘기지 않는다.
     setFsmStyle('.fsm-board .team-color', {background: ''});
     setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {color: '', boxShadow: ''});
     // 네이션스리그 분기가 로고 칸에 넣은 팀 컬러 배경을 지운다. 지우지 않으면 다른 테마로 바꿔도
     // 인라인 스타일이 남아 로고 칸이 테마 CSS 색(whitesmoke/검정 등) 대신 팀 컬러로 보인다.
     setFsmStyle('.fsm-board .team-logo', {background: '', border: ''});
-    // UNL 전용 이미지·필터가 다른 테마의 팀 로고에 남지 않도록 복원합니다.
+    // UNL 전용 이미지·필터가 다른 테마의 팀 로고에 남지 않도록 복원한다.
     setFsmAttr('.fsm-board #team-logo-left img', 'src', state.homeLogo);
     setFsmAttr('.fsm-board #team-logo-right img', 'src', state.awayLogo);
     setFsmStyle('.fsm-board .team-logo img', {width: '', height: '', filter: '', mixBlendMode: ''});
     const theme = _currentTheme;  // applyTheme()에서 갱신하는 내부 변수
-    // 원호를 쓰지 않는 테마에서는 SVG를 제거해 세로 팀컬러 칸 밖으로 새지 않게 합니다.
+    // 원호를 쓰지 않는 테마에서는 SVG를 제거해 세로 팀컬러 칸 밖으로 새지 않게 한다.
     if (!FSM_CURVED_COLOR_THEMES.includes(theme)) {
       document.querySelectorAll('.fsm-board .cnl-curve').forEach(curve => curve.remove());
     }
@@ -1441,7 +1456,7 @@ function adjustScoreboardWidth() {
     const colorBoard = document.querySelector('.fsm-board');
     if (colorBoard) {
       if (theme === 'scottishcup') {
-        // 흰색에 가까운 팀 배경에서 흰 팀명이 묻히지 않도록 글자 외곽선만 추가합니다.
+        // 흰색에 가까운 팀 배경에서 흰 팀명이 묻히지 않도록 글자 외곽선만 추가한다.
         ['home', 'away'].forEach(side => {
           const rgb = parseAnyColor(teamColors[`${side}Bg`]);
           const nearWhite = rgb && Math.min(rgb.r, rgb.g, rgb.b) >= 235;
@@ -1479,7 +1494,7 @@ function adjustScoreboardWidth() {
         setFsmStyle(`.fsm-board #${side}Name`, {color: ink});
       });
     } else if(theme == 'unl') {
-      // 팀 엠블럼의 흰 채움과 비동기 분석 결과가 반투명 장식에 남지 않게 합니다.
+      // 팀 엠블럼의 흰 채움과 비동기 분석 결과가 반투명 장식에 남지 않게 한다.
       document.querySelectorAll('.fsm-board .team-logo img').forEach(img => LogoTrim.reset(img));
       // 네이션스리그 — 팀 컬러는 로고 칸(마름모) 배경으로만 표시하고 팀명 칸 아래 줄은 쓰지 않는다
       setFsmStyle('.fsm-board .teams-left, .fsm-board .teams-right', {background: '', borderBottom: 'none', borderTop: 'none'});
@@ -1488,7 +1503,7 @@ function adjustScoreboardWidth() {
       setFsmStyle('.fsm-board #team-logo-right', {background: teamColors.awayBg});
       setFsmAttr('.fsm-board .team-logo img', 'src', 'resources/imgs/UNL_shape.png');
       ['home', 'away'].forEach(side => {
-        // 검정에 가까운 색만 밝게 합성하고, 나머지는 원래 팀색을 유지하며 어둡게 합성합니다.
+        // 검정에 가까운 색만 밝게 합성하고, 나머지는 원래 팀색을 유지하며 어둡게 합성한다.
         const rgb = parseAnyColor(teamColors[`${side}Bg`]);
         const nearBlack = rgb && Math.max(rgb.r, rgb.g, rgb.b) <= 60;
         setFsmStyle(`.fsm-board #team-logo-${side === 'home' ? 'left' : 'right'} > img`, {
@@ -1564,7 +1579,7 @@ function adjustScoreboardWidth() {
     } else {
       // default / cl / seriea / ligue1 등 나머지 모든 테마 — 팀명 칸 아래 5px 팀 컬러 줄
       // (테마별 고정 배경색은 applyTheme() 안의 switch에서 이미 지정됨)
-      // 유로는 6px로 두어 기본 크기에서 팀명 칸 남은 높이와 글자 높이 차이가 짝수가 되게 합니다(반 픽셀 없이 정중앙).
+      // 유로는 6px로 두어 기본 크기에서 팀명 칸 남은 높이와 글자 높이 차이가 짝수가 되게 한다(반 픽셀 없이 정중앙).
       const stripWidth = theme === 'er24' ? 6 : 5;
       setFsmStyle('.fsm-board .teams-left', {background: '', borderBottom: stripWidth + 'px solid ' + teamColors.homeBg, borderTop: 'none'});
       setFsmStyle('.fsm-board .teams-right', {background: '', borderBottom: stripWidth + 'px solid ' + teamColors.awayBg, borderTop: 'none'});
@@ -1597,14 +1612,14 @@ function adjustScoreboardWidth() {
       const edge = document.createElementNS(namespace, 'path');
       edge.setAttribute('class', 'danish-triangle-edge');
       edge.setAttribute('d', 'M0 0 L1 1');
-      // 번호색 선을 삼각형 내부로 제한해 타이머와 만나는 사선의 외곽을 유지합니다.
+      // 번호색 선을 삼각형 내부로 제한해 타이머와 만나는 사선의 외곽을 유지한다.
       edge.setAttribute('clip-path', `url(#${clipId})`);
       svg.append(defs, fill, edge);
       panel.append(svg);
     });
   }
 
-  /** 러시아 컵 팀컬러 칸에 좌우 방향에 맞는 삼각형과 내부 경계선용 SVG를 생성합니다. */
+  /** 러시아 컵 팀컬러 칸에 좌우 방향에 맞는 삼각형과 내부 경계선용 SVG를 생성한다. */
   function ensureRussianCupTriangles() {
     const namespace = 'http://www.w3.org/2000/svg';
     document.querySelectorAll('.fsm-board .team-color').forEach(panel => {
@@ -1631,13 +1646,13 @@ function adjustScoreboardWidth() {
   }
 
   /**
-   * 경기 점수·합계 점수·로고의 전체 너비에 맞춰 CNL 원형 경계와 팀컬러 곡선을 갱신합니다.
-   * @param {HTMLElement} board 현재 FSM 점수판 요소입니다.
-   * @param {number|null} fixedInnerRadius 로고 원만 감싸는 테마의 고정 안쪽 반지름입니다.
-   * @param {boolean} withTeamCurves 중앙 원 바깥 팀컬러 원호를 생성할지 여부입니다.
+   * 경기 점수·합계 점수·로고의 전체 너비에 맞춰 CNL 원형 경계와 팀컬러 곡선을 갱신한다.
+   * @param {HTMLElement} board 현재 FSM 점수판 요소이다.
+   * @param {number|null} fixedInnerRadius 로고 원만 감싸는 테마의 고정 안쪽 반지름이다.
+   * @param {boolean} withTeamCurves 중앙 원 바깥 팀컬러 원호를 생성할지 여부이다.
    */
   function syncCnlGeometry(board, fixedInnerRadius = null, withTeamCurves = true) {
-    // 합계 숫자도 경기 점수·로고와 같은 원 안에 포함합니다. 숨긴 합계 칸의 폭은 0입니다.
+    // 합계 숫자도 경기 점수·로고와 같은 원 안에 포함한다. 숨긴 합계 칸의 폭은 0이다.
     const centerWidth = Array.from(board.querySelectorAll('#team-score-left, .score-div, #team-score-right, .total-score'))
       .reduce((sum, node) => sum + node.offsetWidth, 0);
     const innerRadius = fixedInnerRadius ?? centerWidth / 2;
@@ -1668,8 +1683,8 @@ function adjustScoreboardWidth() {
 
   /**
    * 아제르바이잔 테마의 점수 마름모꼴, 팀컬러 꺾쇠, 타이머 사다리꼴을 같은 기울기로 맞춥니다.
-   * 합계 점수를 켜면 중앙 폭이 넓어지므로 렌더링할 때마다 다시 계산합니다.
-   * @param {HTMLElement} board 현재 FSM 점수판 요소입니다.
+   * 합계 점수를 켜면 중앙 폭이 넓어지므로 렌더링할 때마다 다시 계산한다.
+   * @param {HTMLElement} board 현재 FSM 점수판 요소이다.
    */
   function syncAzerbaijanGeometry(board) {
     const style = getComputedStyle(board);
@@ -1677,11 +1692,11 @@ function adjustScoreboardWidth() {
     const band = parseFloat(style.getPropertyValue('--az-band')) || 5;
     // 원본 점수판처럼 좌우 꼭짓점을 사선 길이의 약 40%까지 크게 둥글립니다.
     const radius = 11;
-    // 합계 숫자까지 포함한 중앙 전체 폭으로 꺾쇠와 타이머 위치를 정합니다. 숨긴 합계 칸의 폭은 0입니다.
+    // 합계 숫자까지 포함한 중앙 전체 폭으로 꺾쇠와 타이머 위치를 정한다. 숨긴 합계 칸의 폭은 0이다.
     const half = Array.from(board.querySelectorAll('#team-score-left, .score-div, #team-score-right, .total-score'))
       .reduce((sum, node) => sum + node.offsetWidth, 0) / 2;
     const run = 24 * slope;
-    /** 지정한 꼭짓점만 이웃 변을 따라 radius만큼 깎아 둥글게 만든 닫힌 경로입니다. */
+    /** 지정한 꼭짓점만 이웃 변을 따라 radius만큼 깎아 둥글게 만든 닫힌 경로이다. */
     const roundedPath = points => points.map(([x, y, round], index) => {
       if (!round) return `${index ? 'L' : 'M'}${x} ${y}`;
       const toward = ([tx, ty]) => {
@@ -1692,7 +1707,7 @@ function adjustScoreboardWidth() {
       const next = points[(index + 1) % points.length];
       return `L${toward(prev)} Q${x} ${y} ${toward(next)}`;
     }).join(' ') + ' Z';
-    // 홈·원정 점수 칸은 같은 쪽 합계 숫자까지 포함한 좌우 대칭 마름모꼴입니다.
+    // 홈·원정 점수 칸은 같은 쪽 합계 숫자까지 포함한 좌우 대칭 마름모꼴이다.
     const width = ['#team-score-left', '#totalScoreLeft'].reduce((sum, selector) => {
       const node = board.querySelector(selector);
       return sum + (node.classList.contains('total') ? node.parentElement : node).offsetWidth;
@@ -1702,7 +1717,7 @@ function adjustScoreboardWidth() {
     board.style.setProperty('--az-score-clip', `path('${roundedPath([
       [run, 0], [width - run, 0], [width, 24, true], [width - run, 48], [run, 48], [0, 24, true]
     ])}')`);
-    // 꺾쇠 안쪽 선은 점수 칸 바깥 꼭짓점을 팀컬러 두께만큼 옮긴 같은 곡선입니다.
+    // 꺾쇠 안쪽 선은 점수 칸 바깥 꼭짓점을 팀컬러 두께만큼 옮긴 같은 곡선이다.
     const chevron = roundedPath([[run, 0], [0, 24, true], [run, 48], [run + band, 48], [band, 24, true], [run + band, 0]]);
     board.style.setProperty('--az-color-width', `${run + band}px`);
     const namespace = 'http://www.w3.org/2000/svg';
@@ -1726,7 +1741,7 @@ function adjustScoreboardWidth() {
     setFsmStyle('.fsm-board .extra-time', {left: `calc(50% + ${timerWidth / 2}px)`});
   }
 
-  /** J리그 팀컬러 칸의 양 끝에 채움과 경계선으로 구성된 SVG 원호를 생성합니다. */
+  /** J리그 팀컬러 칸의 양 끝에 채움과 경계선으로 구성된 SVG 원호를 생성한다. */
   function ensureJleagueArcs() {
     const namespace = 'http://www.w3.org/2000/svg';
     document.querySelectorAll('.fsm-board .team-color').forEach(panel => {
@@ -1749,9 +1764,9 @@ function adjustScoreboardWidth() {
   }
 
   /**
-   * 승부차기 기록을 최소 다섯 칸의 성공·실패·미실시 값으로 변환합니다.
-   * @param {string[]} pkArr 성공은 G, 실패는 M으로 저장한 승부차기 기록입니다.
-   * @returns {number[]} 성공 1, 실패 0, 미실시 -1로 구성된 배열입니다.
+   * 승부차기 기록을 최소 다섯 칸의 성공·실패·미실시 값으로 변환한다.
+   * @param {string[]} pkArr 성공은 G, 실패는 M으로 저장한 승부차기 기록이다.
+   * @returns {number[]} 성공 1, 실패 0, 미실시 -1로 구성된 배열이다.
    */
   function toPsoArr(pkArr) {
     const base = Math.max(5, (pkArr || []).length);
@@ -1821,7 +1836,7 @@ function adjustScoreboardWidth() {
     mls: ['#e1e3e7', '#000000'], wc26: ['#A0FBDC', '#000000'],
   });
 
-  /** PSO 띠 아래의 빠른 입력과 기존 테마 입력 버튼을 연결합니다. */
+  /** PSO 띠 아래의 빠른 입력과 기존 테마 입력 버튼을 연결한다. */
   function initPsoQuickControls(board) {
     const status = board.querySelector('.pso-status');
     const main = status.querySelector('.pso-main');
@@ -1832,7 +1847,7 @@ function adjustScoreboardWidth() {
       panel.hidden = true;
       panel.innerHTML = `<div class="pso-quick-row"><div class="pso-quick-team"><button type="button" data-pso-action="pkHomeGoal" aria-label="홈 성공">S</button><button type="button" data-pso-action="pkHomeMiss" aria-label="홈 실패">F</button></div><div class="pso-quick-middle"><button type="button" data-pso-action="pkUndo" aria-label="되돌리기" title="되돌리기">↶</button><button type="button" data-pso-action="pkReset" aria-label="초기화" title="초기화">×</button></div><div class="pso-quick-team"><button type="button" data-pso-action="pkAwayGoal" aria-label="원정 성공">S</button><button type="button" data-pso-action="pkAwayMiss" aria-label="원정 실패">F</button></div></div><div class="pso-quick-hint"></div>`;
       status.append(panel);
-      /** 클릭·포커스 이동·Esc가 같은 닫힘 상태와 접근성 속성을 사용합니다. */
+      /** 클릭·포커스 이동·Esc가 같은 닫힘 상태와 접근성 속성을 사용한다. */
       const close = () => { panel.hidden = true; main.setAttribute('aria-expanded', 'false'); };
       const toggle = () => { panel.hidden = !panel.hidden; main.setAttribute('aria-expanded', String(!panel.hidden)); };
       main.tabIndex = 0;
@@ -1918,13 +1933,13 @@ function adjustScoreboardWidth() {
       document.addEventListener('settings:change', event => {
         if (event.detail?.category === 'boardFlashSound') syncBoardSoundQuickControls(panel);
       });
-      // 테마 탭의 전환 경로를 공유해 이전 경기 구간과 승부차기 설정을 함께 유지합니다.
+      // 테마 탭의 전환 경로를 공유해 이전 경기 구간과 승부차기 설정을 함께 유지한다.
       scores.querySelector('.manual-score-pso-toggle input').addEventListener('change', event => {
         if (!state.manualMode) return;
         const toggle = document.getElementById('manualPsoMode');
         if (toggle && toggle.checked !== event.target.checked) toggle.click();
       });
-      // 일반 점수 버튼은 기존 수동 입력과 같은 경로로 반영합니다.
+      // 일반 점수 버튼은 기존 수동 입력과 같은 경로로 반영한다.
       scores.addEventListener('click', event => {
         const action = event.target.closest('[data-score-action]')?.dataset.scoreAction;
         if (!state.manualMode || state.half === 'PK' || !action) return;
@@ -1932,7 +1947,7 @@ function adjustScoreboardWidth() {
       });
       board.append(panel);
       const targets = '.team-score, .score-div, .total-score';
-      /** 클릭·Esc·바깥 클릭이 같은 닫힘 상태를 사용합니다. */
+      /** 클릭·Esc·바깥 클릭이 같은 닫힘 상태를 사용한다. */
       const scoreNodes = [...main.querySelectorAll(targets)];
       // 열림 상태를 점수 칸의 aria-expanded와 함께 맞춘다(승부차기 빠른 입력과 같은 방식).
       const setOpen = open => {
@@ -1947,7 +1962,7 @@ function adjustScoreboardWidth() {
         commit();
       };
       main.addEventListener('click', event => {
-        // 합계 표시 지원 여부와 관계없이 숫자 크기는 직접 조절할 수 있습니다.
+        // 합계 표시 지원 여부와 관계없이 숫자 크기는 직접 조절할 수 있다.
         if (!event.target.closest(targets) || board.dataset.fsmAggregateMenu !== 'true') return;
         setOpen(panel.hidden);
       });
@@ -1984,7 +1999,7 @@ function adjustScoreboardWidth() {
         if (event.key === 'Escape' && !panel.hidden) close();
       });
     }
-    // 승부차기 빠른 입력과 같은 테마 팔레트로 칠합니다.
+    // 승부차기 빠른 입력과 같은 테마 팔레트로 칠한다.
     const [background, ink] = FSM_PSO_PALETTES[_currentTheme] || FSM_PSO_PALETTES.default;
     panel.style.setProperty('--fsm-pso-background', chromaSafe(background));
     panel.style.setProperty('--fsm-pso-ink', chromaSafe(ink));
@@ -1992,7 +2007,7 @@ function adjustScoreboardWidth() {
     toggle.setAttribute('aria-pressed', String(!!state.aggEnabled));
     toggle.textContent = state.aggEnabled ? '합계 점수 표시 중' : '합계 점수 표시 안 함';
     panel.querySelectorAll('[data-agg-input]').forEach(input => {
-      // 입력 중인 칸은 사용자가 친 값을 덮어쓰지 않습니다.
+      // 입력 중인 칸은 사용자가 친 값을 덮어쓰지 않는다.
       if (document.activeElement === input) return;
       input.value = state[input.dataset.aggInput === 'home' ? 'aggHomeBase' : 'aggAwayBase'];
     });
@@ -2000,7 +2015,7 @@ function adjustScoreboardWidth() {
     const awayTotal = (Number(state.aggAwayBase) || 0) + (Number(state.awayScore) || 0);
     panel.querySelector('.agg-quick-total').textContent = `합계 ${homeTotal} : ${awayTotal}`;
     panel.classList.toggle('is-unsupported', !FSM_AGGREGATE_THEMES.includes(_currentTheme));
-    // 합계 미지원 테마에서는 합계 입력만 숨기고 글자 배율은 유지합니다.
+    // 합계 미지원 테마에서는 합계 입력만 숨기고 글자 배율은 유지한다.
     const menuEnabled = true;
     board.dataset.fsmAggregateMenu = String(menuEnabled);
     if (!panel.querySelector('.fsm-scale-control')) panel.prepend(createScoreboardScaleControl('boardScale', '점수판 배율'));
@@ -2103,10 +2118,10 @@ function adjustScoreboardWidth() {
   }
 
   /**
-   * 팀명 영역의 그라데이션 대비를 검사해 읽기 쉬운 검정 또는 흰 글자색을 선택합니다.
-   * @param {string} primary 그라데이션의 팀 배경색입니다.
-   * @param {string} number 그라데이션의 등번호 색상입니다.
-   * @returns {string} 대비 기준을 만족하면 black, 그렇지 않으면 white입니다.
+   * 팀명 영역의 그라데이션 대비를 검사해 읽기 쉬운 검정 또는 흰 글자색을 선택한다.
+   * @param {string} primary 그라데이션의 팀 배경색이다.
+   * @param {string} number 그라데이션의 등번호 색상이다.
+   * @returns {string} 대비 기준을 만족하면 black, 그렇지 않으면 white이다.
    */
   function getFsmGradientNameInk(primary, number) {
     const a = parseAnyColor(primary), b = parseAnyColor(number);
@@ -2121,9 +2136,9 @@ function adjustScoreboardWidth() {
   }
 
   /**
-   * 배경색의 가중 밝기를 기준으로 검정 또는 흰 글자색을 선택합니다.
-   * @param {string} color 파싱할 배경 색상입니다.
-   * @returns {string} 밝은 배경에는 #000000, 어둡거나 유효하지 않은 배경에는 #ffffff입니다.
+   * 배경색의 가중 밝기를 기준으로 검정 또는 흰 글자색을 선택한다.
+   * @param {string} color 파싱할 배경 색상이다.
+   * @returns {string} 밝은 배경에는 #000000, 어둡거나 유효하지 않은 배경에는 #ffffff이다.
    */
   function getColorContract(color) {
     const rgb = parseAnyColor(color);
@@ -2139,7 +2154,7 @@ function adjustScoreboardWidth() {
   }
 })();
 
-/** 점수판 내용·승부차기·메모 배치·배율을 갱신하고 준비된 점수판을 표시합니다. */
+/** 점수판 내용·승부차기·메모 배치·배율을 갱신하고 준비된 점수판을 표시한다. */
 /** 퇴장 카드가 팀 칸 위로 드러나는 비율. 테마와 관계없이 카드 높이의 55%만 보이게 한다. */
 const FSM_RED_CARD_EXPOSURE = .55;
 /**
@@ -2168,7 +2183,7 @@ function syncFsmRedCardExposure(board) {
 
 window.fsmBoardRender = function() { applyText(); applyPSO(); syncAggQuickControls(document.querySelector('.fsm-board')); autoLayoutNotes(); initBoardScale(); syncFsmRedCardExposure(document.querySelector('.fsm-board')); revealFsmBoard(); };
 
-/** 기존 테마 탭의 점수판 배율을 클릭 메뉴에도 표시합니다. */
+/** 기존 테마 탭의 점수판 배율을 클릭 메뉴에도 표시한다. */
 function syncScoreboardScaleControl(root, key) {
   const control = root.querySelector(`[data-scale-key="${key}"]`);
   if (!control) return;
@@ -2177,7 +2192,7 @@ function syncScoreboardScaleControl(root, key) {
   control.querySelector('output').textContent = `${value}%`;
 }
 
-/** 클릭 메뉴도 기존 점수판 배율 입력 경로를 사용합니다. */
+/** 클릭 메뉴도 기존 점수판 배율 입력 경로를 사용한다. */
 function createScoreboardScaleControl(key, label) {
   const control = document.createElement('div');
   control.className = 'fsm-scale-control';
@@ -2210,7 +2225,7 @@ function createScoreboardScaleControl(key, label) {
   return control;
 }
 
-/** 메뉴를 다시 열어도 전역 종료 리스너는 하나만 유지합니다. */
+/** 메뉴를 다시 열어도 전역 종료 리스너는 하나만 유지한다. */
 function finishScoreboardScaleDrag() {
   const drag = window.fsmScaleDrag;
   if (!drag) return;
@@ -2222,7 +2237,7 @@ function finishScoreboardScaleDrag() {
 }
 window.addEventListener('pointerup', finishScoreboardScaleDrag);
 
-/** 배율을 바꾸는 동안 조작 중인 메뉴는 화면의 같은 위치·크기를 유지합니다. */
+/** 배율을 바꾸는 동안 조작 중인 메뉴는 화면의 같은 위치·크기를 유지한다. */
 window.syncFsmScaleDrag = () => {
   const drag = window.fsmScaleDrag;
   if (!drag?.panel) return;
@@ -2255,7 +2270,7 @@ if (document.fonts) {
     });
   };
   document.fonts.ready.then(scheduleFontRender);
-  // 최초 글꼴 준비 완료 이후에도 테마 변경으로 새 글꼴이 로딩될 수 있습니다.
-  // 대체 글꼴이 아닌 로딩된 글꼴로 숫자의 위치 보정값을 다시 계산합니다.
+  // 최초 글꼴 준비 완료 이후에도 테마 변경으로 새 글꼴이 로딩될 수 있다.
+  // 대체 글꼴이 아닌 로딩된 글꼴로 숫자의 위치 보정값을 다시 계산한다.
   document.fonts.addEventListener('loadingdone', scheduleFontRender);
 }

@@ -1,5 +1,13 @@
 /**
+ * [OBS 색상 선택: HSV 편집과 원본 입력 이벤트 연결]
  * OBS의 네이티브 색상 선택 창을 문서 내부 팝오버로 대체한다.
+ *
+ * 처리 순서:
+ *  1. OBS의 color 입력 클릭을 가로채 재사용 팝오버를 열고 원본 HEX 값을 HSV로 읽는다.
+ *  2. 색상 평면/색조 막대/숫자 입력의 변경을 같은 HSV 상태에 모은다.
+ *  3. paint는 선택 UI만 갱신하고, commit은 원본 입력기와 기존 미리보기/저장 경로에 값을 전달한다.
+ *  4. 드래그 중에는 프레임당 미리보기만 보내고, 종료·캡처 해제·닫기에서 마지막 색을 확정한다.
+ *  5. 대상 입력을 바꿀 때는 이전 드래그부터 마쳐 색이 다른 입력기에 저장되지 않게 한다.
  *
  * 원본 input[type=color]를 유지하고 input은 화면 미리보기, change는 확정 저장에 사용한다.
  * 드래그 입력은 rAF당 한 번으로 합치고 종료 시 마지막 값을 확정해 매 포인터 이동마다
@@ -8,6 +16,8 @@
  */
 (() => {
   let picker, target, hue = 0, saturation = 0, brightness = 1;
+  // previewColor와 committedColor는 각각 마지막 input/change 전달값이다. 화면 미리보기와
+  // 저장 시점을 구분해야 같은 색을 반복 저장하지 않으면서 드래그의 마지막 값은 확정할 수 있다.
   let frame = 0, dragging = false, committedColor = '', previewColor = '';
   const rgb = () => {
     const channel = n => {
@@ -58,7 +68,8 @@
       previewColor = value;
       target.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    // 모든 색상은 input으로만 미리보기하고 드래그 종료 시 한 번 저장합니다.
+    // 드래그는 final=false로 미리보기만 보내고 종료 시 change로 저장한다. 키보드/숫자 입력은
+    // 기본 final=true로 즉시 확정하므로 모든 조작이 드래그 종료 이벤트에 의존하는 것은 아니다.
     if (final && committedColor !== value) {
       committedColor = value;
       target.dispatchEvent(new Event('change', { bubbles: true }));
@@ -77,6 +88,8 @@
     cancelAnimationFrame(frame); frame = 0;
     paint(); commit();
   }
+  // Escape도 취소/되돌리기가 아니라 현재 색을 확정하는 닫기이다. 예약된 미리보기를 먼저
+  // 정리해야 팝오버를 닫은 뒤 오래된 프레임이 값을 다시 전달하지 않는다.
   function close() { finishDrag(); picker.hidePopover(); target?.focus({ preventScroll: true }); }
   /**
    * 한 번 생성한 팝오버에 포인터, 방향키, 숫자 입력, 스포이트 처리를 연결한다.
@@ -108,10 +121,12 @@
         const selected = await new window.EyeDropper().open();
         read(selected.sRGBHex); paint(); commit();
       } catch (error) {
-        // 스포이트 취소 또는 브라우저의 화면 접근 거부 시 기존 색을 유지합니다.
+        // 스포이트 취소 또는 브라우저의 화면 접근 거부 시 기존 색을 유지한다.
       }
     });
     const plane = picker.querySelector('.obs-color-plane');
+    // 평면의 화면 좌표를 채도/밝기 0~1로 바꾸고 경계 밖은 제한한다. 포인터를 캡처하므로
+    // 평면 밖으로 드래그해도 마지막 위치까지 추적하며, 캡처 해제도 확정 경로로 연결한다.
     const move = event => {
       const box = plane.getBoundingClientRect();
       saturation = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
@@ -138,6 +153,8 @@
     hueInput.addEventListener('change', finishDrag);
     hueInput.addEventListener('blur', finishDrag);
     const hexInput = picker.querySelector('[data-picker-hex]');
+    // HEX는 완성된 6자리일 때만 읽는다. 입력 중 불완전한 값은 기다리고 change 시에도
+    // 유효하지 않으면 현재 HSV 표시로 되돌린다. RGB/HSL도 원본 필드의 유효성을 확인한 뒤 계산한다.
     const updateHex = event => {
       if (!/^#[0-9a-f]{6}$/i.test(event.target.value)) { if (event.type === 'change') paint(); return; }
       read(event.target.value); paint(); commit();
@@ -172,6 +189,8 @@
       event.currentTarget.setAttribute('aria-label', `색상 형식 전환: ${groups[next].dataset.pickerFields.toUpperCase()}`);
     });
     picker.addEventListener('keydown', event => {
+      // 색상 조절 방향키 등이 점수판 단축키로 전파되지 않게 하고, Tab은 현재 보이는
+      // 활성 입력 사이에서만 순환시킨다. 숨겨진 HEX/RGB/HSL 필드는 포커스 목록에서 제외한다.
       event.stopPropagation();
       if (event.key === 'Escape') { event.preventDefault(); close(); }
       if (event.key === 'Tab') {
@@ -192,7 +211,7 @@
     finishDrag();
     target = input;
     committedColor = previewColor = input.value;
-    // 팀 컬러 팝업 안에서 열어도 상위 팝업과 원래 입력기를 유지합니다.
+    // 팀 컬러 팝업 안에서 열어도 상위 팝업과 원래 입력기를 유지한다.
     const parent = input.closest(':popover-open') || document.body;
     if (picker.parentElement !== parent) parent.append(picker);
     hue = 0; read(input.value); paint();

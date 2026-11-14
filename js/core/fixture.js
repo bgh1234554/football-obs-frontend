@@ -1,5 +1,20 @@
 ﻿  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [API / 경기 ID 연동] API-Sports 위젯에서 경기 ID를 추출하고 스코어보드에 반영
+/**
+ * [경기 연결: 선택·조회·상태 반영·폴링 조정]
+ * 일정 위젯의 선택 경기와 실제 표시 중인 경기를 구분하고 경기 데이터를 점수판/패널에 배포한다.
+ * API 통신은 api.js, 다음 조회 시점 계산은 fixture-poll-policy.js에 맡긴다.
+ *
+ * 처리 순서:
+ *  1. 선택 ID를 정규화하고 수동 모드/실제 조회 대상을 확인한 뒤 요청 순번을 발급한다.
+ *  2. 이전 폴링 예약을 정리하고 조회한다. 더 최신 요청이 있거나 수동 모드로 바뀐 응답은 버린다.
+ *  3. 누락값 정리와 이벤트 숨김/수정을 적용한 뒤 현재 경기 상태·점수·팀 표시를 갱신한다.
+ *  4. 라인업·이벤트·스탯·전술 타임라인 등 소비처를 같은 경기 데이터로 갱신하고 캐시를 남긴다.
+ *  5. 경기 상태별 계획으로 다음 조회를 예약한다. 수동 새로고침은 실제 표시 경기를 대상으로 한다.
+ *
+ * currentFixtureId는 위젯에서 구경 중인 선택, activeFixtureId는 실제 적용한 경기이다.
+ * 이벤트 수동 수정의 재적용은 보관한 원본에서 다시 합성하며 API 재조회나 사용 중인 타이머 초기화를 요구하지 않는다.
+ */
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const selectedEls = Array.from(document.querySelectorAll('[data-selected-fixture-id]'));
   const statusEl = $('fixture-status');
@@ -594,8 +609,8 @@
   window.canResetFixtureTeamColors = () => !!fixtureDataForColorReset()?.matchInfo;
   /**
    * 지정한 팀 또는 양 팀의 색상을 현재 경기의 자동 색상으로 되돌립니다.
-   * @param {'home'|'away'} [onlySide] 생략하면 양 팀을 초기화합니다.
-   * @returns {boolean} 초기화할 경기 정보가 있고 요청이 유효하면 true입니다.
+   * @param {'home'|'away'} [onlySide] 생략하면 양 팀을 초기화한다.
+   * @returns {boolean} 초기화할 경기 정보가 있고 요청이 유효하면 true이다.
    */
   window.resetFixtureTeamColors = function(onlySide) {
     if (onlySide !== undefined && onlySide !== 'home' && onlySide !== 'away') return false;
@@ -674,10 +689,10 @@
   // _lastFixtureData.matchInfo는 API 원본 확인용으로 남겨 두기 때문에 여기서 수정하지 않는다.
   // 응답이 늦게 도착했거나 사용자가 컬러를 수동 수정한 경우에는 적용하지 않는다.
   /**
-   * API 색상이 없는 팀의 로고 색상을 비동기로 추출해 적용합니다.
-   * @param {Object} data 색상을 적용할 경기 데이터입니다.
-   * @param {boolean} preserveTeamColors 사용자 지정 색상을 유지하면 추출을 생략합니다.
-   * @param {'home'|'away'} [onlySide] 한 팀만 초기화할 때 추출 대상을 제한합니다.
+   * API 색상이 없는 팀의 로고 색상을 비동기로 추출해 적용한다.
+   * @param {Object} data 색상을 적용할 경기 데이터이다.
+   * @param {boolean} preserveTeamColors 사용자 지정 색상을 유지하면 추출을 생략한다.
+   * @param {'home'|'away'} [onlySide] 한 팀만 초기화할 때 추출 대상을 제한한다.
    */
   function queueFixtureLogoTeamColorFallback(data, preserveTeamColors, onlySide) {
     if (preserveTeamColors) return;
@@ -1035,7 +1050,7 @@
       state.leagueId = leagueId;
       state.leagueLogoUrl = data.matchInfo?.leagueLogoUrl || null;
       state.leagueThemeUpdateSilent = silent === true;
-      // 같은 리그를 비-silent로 다시 불러와도 팝업에서 테마 적용을 재개합니다.
+      // 같은 리그를 비-silent로 다시 불러와도 팝업에서 테마 적용을 재개한다.
       if (!silent) state.leagueThemeApplyVersion = (Number(state.leagueThemeApplyVersion) || 0) + 1;
       persist();
       if (!silent && leagueId != null && typeof window.autoApplyTemplateByLeagueId === 'function') {
@@ -1091,8 +1106,8 @@
       // 최근 목록은 silent(자동 폴링) 갱신마다 남기지 않고 실제 사용자 로딩 시점에만 기록.
       if (!silent) recordRecentFixture(normalizedFixtureId, m, m.kickoffAt || m.kickoffUtc);
 
-      // 같은 점수판 테마를 재사용하는 새 경기에도 최초 표시 효과를 적용합니다.
-      // 자동 폴링/같은 경기 새로 조회에는 반복하지 않고 성공한 새 경기 로딩에만 적용합니다.
+      // 같은 점수판 테마를 재사용하는 새 경기에도 최초 표시 효과를 적용한다.
+      // 자동 폴링/같은 경기 새로 조회에는 반복하지 않고 성공한 새 경기 로딩에만 적용한다.
       if (!silent && previousFixtureId !== normalizedFixtureId
         && typeof window.replayFsmBoardEntrance === 'function') {
         window.replayFsmBoardEntrance();
@@ -1476,7 +1491,7 @@
       .join('\n');
   }
 
-  // 설정 예시도 운영 화면과 같은 득점 시간·이벤트 표기 규칙을 사용합니다.
+  // 설정 예시도 운영 화면과 같은 득점 시간·이벤트 표기 규칙을 사용한다.
   window.buildScorerPreviewText = (events, side = 'home') => buildScorers(events, side);
 
   /** Red Card + Second Yellow Card 합산 */

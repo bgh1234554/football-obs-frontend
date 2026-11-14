@@ -1,3 +1,17 @@
+/**
+ * [경기 스탯: 가용 높이별 페이지와 팀 비교 막대]
+ * STATS_CONFIG의 표시 순서/라벨로 홈·원정 스탯을 비교하고 카메라별 독립 페이지 상태를 관리한다.
+ *
+ * 처리 흐름:
+ *  1. 최신 경기 데이터를 보관하고 활성 화면의 가용 공간이 확정된 뒤 렌더를 예약한다.
+ *  2. 현재 글자 크기/패널 높이에 맞는 페이지 항목 수를 구하고 표시할 스탯을 나눈다.
+ *  3. 원본 값을 숫자/표시 문자열로 해석해 막대 비율과 큰 값 강조를 계산한다.
+ *  4. 현재 페이지와 자동 넘김 상태를 패널별로 유지하고 한 순환이 끝나면 바깥 패널 순환에 알린다.
+ *  5. 설정/화면 크기 변경은 활성 패널만 다시 맞춘다. 레이아웃 전환 중이면 완료를 기다린다.
+ *
+ * 값이 없는 것과 실제 0은 다르다. 표시 문자열과 수치 비교를 분리하고, 팀 색상은 얇은 막대에서
+ * 구분 가능한지 별도 기준으로 검사한다. 숨은 패널의 이전 치수로 페이지 수를 확정하지 않는다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [경기 스탯 패널]
 // fixture.teamStats(홈/원정)를 STATS_CONFIG.order 순서대로 페이지네이션해서 표시.
@@ -21,7 +35,7 @@
 const statsPanelStates = new WeakMap();
 // 마지막 fixture 데이터 캐시 — settings 변경 / page 활성화 / resize 이벤트에서 재렌더 시 사용.
 let statsLastFixtureData = null;
-// 인접한 얇은 막대는 넓은 팀 색상 영역보다 더 뚜렷하게 구분해야 합니다.
+// 인접한 얇은 막대는 넓은 팀 색상 영역보다 더 뚜렷하게 구분해야 한다.
 const ST_BAR_SIMILAR_DELTA_E = 25;
 /**
  * 현재 활성 페이지(.page.active) 안의 stat 패널만 재렌더.
@@ -102,7 +116,7 @@ function stHexToRgb(hex) {
   if (/^[0-9a-fA-F]{3}$/.test(m)) {
     return { r: parseInt(m[0] + m[0], 16), g: parseInt(m[1] + m[1], 16), b: parseInt(m[2] + m[2], 16) };
   }
-  // 브라우저가 지원하는 다른 CSS 색상(HSL, 색상 이름 등)을 정규화합니다.
+  // 브라우저가 지원하는 다른 CSS 색상(HSL, 색상 이름 등)을 정규화한다.
   if (typeof document !== 'undefined' && CSS.supports('color', hex)) {
     const context = document.createElement('canvas').getContext('2d');
     context.fillStyle = hex;

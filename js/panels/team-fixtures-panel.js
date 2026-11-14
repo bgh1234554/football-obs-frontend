@@ -1,10 +1,24 @@
-// 양 캠의 최근·예정 경기: 팀별 요청을 공유하고 경기 전환 후 늦은 응답은 버린다.
+/**
+ * [팀 경기 목록: 양 캠의 최근/예정 경기와 요청 공유]
+ * 선택 경기의 홈/원정 팀별 목록을 받아 두 카메라 화면에 표시한다. 상대전적 패널의 팀 식별·
+ * 로고·모드 전환 헬퍼를 재사용하되 큰 캠과 작은 캠의 최근/예정 페이지는 독립적으로 관리한다.
+ *
+ * 처리 순서:
+ *  1. 경기/팀 구성이 바뀌었는지 동기화하고 필요한 기간의 양 팀 요청을 시작한다.
+ *  2. 같은 팀·기간의 진행 중 요청은 공유하며 양 팀의 성공/실패는 개별 결과로 받는다.
+ *  3. 응답 세대가 현재와 같을 때만 저장하고 양쪽 카메라 패널을 다시 그린다.
+ *  4. 현재 경기와 최근 목록의 한국 시간 기준 오늘 경기를 제외한 뒤 최대 5개를 표시한다.
+ *  5. 렌더 다음 프레임과 폭 변경 때 이름 피팅/행 높이를 맞춘다. 경기 초기화는 늦은 응답도 무효화한다.
+ *
+ * inFlight는 완료 데이터 캐시가 아니라 진행 중 요청의 중복 방지용이다. dataRows는 현재 경기의
+ * 기간별 표시 결과이고 sequence는 경기 초기화 경계를 구분하므로 세 상태를 혼용하지 않는다.
+ */
 (() => {
   const inFlight = new Map();
   let fixture = null;
   let page = 0;
   let bigPage = 0;
-  // 초기화 이전에 시작한 요청이 새 경기의 결과를 덮어쓰지 않도록 세대를 구분합니다.
+  // 초기화 이전에 시작한 요청이 새 경기의 결과를 덮어쓰지 않도록 세대를 구분한다.
   let sequence = 0;
   let dataRows = {};
   let pending = {};
@@ -18,11 +32,11 @@
   };
 
   /**
-   * 진행 중인 팀·기간별 요청만 공유해 두 캠의 동시 중복 요청을 막습니다.
-   * 요청이 끝나면 제거해 다음 조회에서는 새 응답을 받습니다.
-   * @param {number|string} teamId 조회할 팀 ID입니다.
-   * @param {'last'|'next'} period 최근 경기 또는 예정 경기입니다.
-   * @returns {Promise<Object>} 팀의 경기 목록 응답입니다.
+   * 진행 중인 팀·기간별 요청만 공유해 두 캠의 동시 중복 요청을 막는다.
+   * 요청이 끝나면 제거해 다음 조회에서는 새 응답을 받는다.
+   * @param {number|string} teamId 조회할 팀 ID이다.
+   * @param {'last'|'next'} period 최근 경기 또는 예정 경기이다.
+   * @returns {Promise<Object>} 팀의 경기 목록 응답이다.
    */
   function load(teamId, period) {
     const key = `${teamId}:${period}`;
@@ -234,7 +248,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     const widths = new WeakMap();
     const observer = new ResizeObserver(entries => {
-      // 높이 보정으로 다시 발생한 알림은 무시해 행 정렬이 반복되지 않게 합니다.
+      // 높이 보정으로 다시 발생한 알림은 무시해 행 정렬이 반복되지 않게 한다.
       if (entries.some(entry => {
         const changed = widths.get(entry.target) !== entry.contentRect.width;
         widths.set(entry.target, entry.contentRect.width);
@@ -246,6 +260,8 @@
 
   /** 양 팀을 독립적으로 조회해 한쪽 실패도 표시하며, 경기 초기화 후의 응답은 버립니다. */
   async function refresh(viewPage = page) {
+    // 같은 기간의 패널 갱신도 pending으로 묶고, 네트워크 요청 자체는 load에서 팀별로 공유한다.
+    // allSettled를 써 한쪽 팀 실패가 다른 팀의 정상 목록까지 숨기지 않도록 한다.
     const seq = sequence;
     const period = periods[viewPage];
     if (pending[period]) return pending[period];
@@ -272,6 +288,8 @@
   };
   /** 요청 세대를 바꿔 진행 중 응답을 무효화하고 양 캠의 표시 상태를 비웁니다. */
   window.teamFixturesReset = () => {
+    // 실제 요청 취소 대신 세대를 올려 응답 적용 권한을 없앤다. 이전 Promise가 끝나도
+    // 새 경기의 pending/dataRows를 지우거나 이전 팀의 카드로 덮지 못한다.
     sequence++;
     fixture = null;
     dataRows = {};
@@ -281,7 +299,7 @@
     document.querySelectorAll('[data-team-fixtures-panel]').forEach(el => el.replaceChildren());
   };
   // 큰 캠은 작은 캠의 선택 페이지와 독립적으로 최근→예정 순환한다.
-  /** 큰 캠의 페이지를 선택하고 양 팀의 경기 목록을 새로 조회합니다. */
+  /** 큰 캠의 페이지를 선택하고 양 팀의 경기 목록을 새로 조회한다. */
   window.teamFixturesEnsure = (data, index = 0) => {
     if (!hthGetTeamIds(data)) return Promise.resolve();
     window.teamFixturesSync(data);
@@ -290,7 +308,7 @@
     return refresh(index);
   };
   // 경기 제거·수동 모드 진입에서도 이전 팀과 진행 중인 요청을 정리한다.
-  /** 경기 또는 팀 구성이 바뀌면 패널을 초기화하고, 같은 경기의 갱신 데이터는 유지합니다. */
+  /** 경기 또는 팀 구성이 바뀌면 패널을 초기화하고, 같은 경기의 갱신 데이터는 유지한다. */
   window.teamFixturesSync = data => {
     if (!fixture) return;
     const old = fixture.matchInfo;

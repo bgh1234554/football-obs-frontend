@@ -1,3 +1,16 @@
+/**
+ * [점수판 상태: 기본값·저장·복원과 값 정규화]
+ * 점수·시계·이름·색상·메모 등 공통 state와 저장 형식을 정의한다. 화면 적용은 render/theme/timer가 맡는다.
+ *
+ * 처리 흐름:
+ *  1. 공통 기본값과 필드별 정규화 기준을 정의한다.
+ *  2. persist가 현재 상태를 저장하며 경기별 팀 수동 색상은 별도 기록으로 관리한다.
+ *  3. restore가 저장값을 읽고 허용되는 숫자/색상/글꼴 등을 검증해 기본값에 병합한다.
+ *  4. 과거 기본값을 변경하는 마이그레이션은 지정된 조건에만 적용해 사용자 지정값을 보존한다.
+ *
+ * 저장 형식과 state의 실시간 계산값을 혼동하지 않는다. 실행 중 시계의 경과 시간과 경기별
+ * 색상 적용 범위는 관련 기준 시각/경기 키도 함께 다뤄야 새로고침이나 경기 전환 때 일관되게 복원된다.
+ */
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [전역 상태] 스코어보드 전체 상태 객체와 LocalStorage 키 정의
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -180,7 +193,7 @@
   // [상태 저장/복원] LocalStorage를 통해 state를 영속화하고 새로고침 시 복원
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  /** 현재 수동 팀 컬러를 경기별로 보관해 다른 경기를 거쳐도 복원합니다. */
+  /** 현재 수동 팀 컬러를 경기별로 보관해 다른 경기를 거쳐도 복원한다. */
   function saveFixtureTeamColors() {
     const id = String(state.teamColorOverrideFixtureId || '').trim();
     if (!state.teamColorOverride || !id) return;
@@ -294,7 +307,7 @@
       if(!state.homeLogoManual && legacyHomeManual && state.homeLogo) state.homeLogoManual = state.homeLogo;
       if(!state.awayLogoManual && legacyAwayManual && state.awayLogo) state.awayLogoManual = state.awayLogo;
       if(state.manualMode){
-        // 자동 경기에서 이어 받은 표시 로고도 수동 모드의 새로고침에서는 유지합니다.
+        // 자동 경기에서 이어 받은 표시 로고도 수동 모드의 새로고침에서는 유지한다.
         state.homeLogo = state.homeLogoManual || state.homeLogo || '';
         state.awayLogo = state.awayLogoManual || state.awayLogo || '';
       }else{
@@ -309,7 +322,7 @@
       state.teamColorOverride = !!state.teamColorOverride;
       state.teamColorOverrideFixtureId = String(state.teamColorOverrideFixtureId || '').trim() || null;
       if (!state.teamColorsByFixture || typeof state.teamColorsByFixture !== 'object' || Array.isArray(state.teamColorsByFixture)) state.teamColorsByFixture = {};
-      // 기존에 마지막 경기 한 개만 저장했던 사용자 설정도 경기별 저장소로 이어 받습니다.
+      // 기존에 마지막 경기 한 개만 저장했던 사용자 설정도 경기별 저장소로 이어 받는다.
       if (!state.teamColorsByFixture[state.teamColorOverrideFixtureId]) saveFixtureTeamColors();
       state.leagueId = saved?.leagueId ?? null;
       state.leagueLogoUrl = saved?.leagueLogoUrl ?? null;

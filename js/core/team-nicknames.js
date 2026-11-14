@@ -1,4 +1,17 @@
-// 팀 ID를 기준으로 저장하고, ID가 없는 팀만 원래 이름으로 구분한다.
+/**
+ * [팀 닉네임: 팀 식별·저장·표시 갱신]
+ * API 원본 팀 이름과 사용자 표시 이름을 분리한다. ID가 있는 팀은 ID 키, 없는 팀은 원래 이름
+ * 키로 저장하므로 폴링에서 원본 이름이 다시 들어와도 닉네임은 표시 단계에서 적용된다.
+ *
+ * 처리 순서:
+ *  1. 현재 경기/점수판/목록 행의 팀 정보를 identity로 정규화한다.
+ *  2. 저장된 닉네임이 있으면 표시하고, 없으면 각 호출자가 정한 원래 이름으로 돌아간다.
+ *  3. 편집기를 열 때 팀 identity를 고정해 이후 경기 전환과 저장 대상이 섞이지 않게 한다.
+ *  4. 저장 성공 후 점수판·라인업을 다시 그리고 다른 패널에는 변경 이벤트를 알린다.
+ *
+ * 저장소는 {팀 키: {name, nickname}} 형식이다. CSV 변환은 settings/nickname-csv.js가 담당하며,
+ * 다른 창에서 같은 저장소가 바뀌면 storage 이벤트로 현재 창의 표시도 갱신한다.
+ */
 const TEAM_NICKNAME_KEY = 'obs.team.nicknames.v1';
 
 /**
@@ -58,6 +71,8 @@ function teamNicknameDisplay(matchInfo, side, fallback) {
  * 점수판 원본 이름은 그대로 보존해 폴링·초기화·긴 이름 설정과 닉네임이 섞이지 않게 한다.
  */
 function scoreboardTeamIdentity(side) {
+  // 경기 연동 때 보관한 팀 identity를 우선한다. 수동 점수판에서만 현재 원본 이름으로
+  // 대체 키를 만들어, 닉네임 표시 결과를 다시 저장 키로 사용하는 순환을 피한다.
   return state.teamNicknameTeams?.[side]
     || teamNicknameIdentity({ [`${side}TeamName`]: state[`${side}Name`] }, side);
 }

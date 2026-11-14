@@ -1,3 +1,16 @@
+/**
+ * [점수판 렌더: 공통 상태와 실제 배치 연결]
+ * state를 점수판 DOM/CSS에 반영하고 득점 메모·레드카드·승부차기·배율의 실제 배치를 맞춘다.
+ *
+ * 처리 흐름:
+ *  1. 이름/점수/시계/메모 등의 표시값을 현재 상태와 설정에서 구한다.
+ *  2. 팀 색상·로고와 활성 점수판 표시를 갱신하고 FSM 전용 처리는 fsm-board.js에 연결한다.
+ *  3. 점수 칸과 메모 영역의 실측 폭을 공유 CSS 변수에 반영해 행 정렬을 맞춘다.
+ *  4. 표시 내용·글꼴·배율 변화 후 메모/점수판의 자동 배치를 다시 계산한다.
+ *
+ * API 수신이나 영구 저장은 이 파일의 렌더 책임과 별개이다. 화면 배율이 적용된 DOMRect를
+ * CSS 좌표로 되돌릴 때는 display-scale.js의 논리 좌표 변환을 사용해 중복 배율 적용을 피한다.
+ */
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [스코어보드 렌더링] 점수판 UI 갱신, 레드카드·PK 렌더, 득점자 레이아웃, 배율 조정
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -14,11 +27,11 @@
 
   /** 레드카드 수만큼 .rc-card div를 생성해 홈/어웨이 컨테이너에 삽입 */
   function renderRedCards(){
-    // 이벤트와 같은 아이콘을 쓰되 점수판의 카드 크기·직사각형 배치는 유지합니다.
+    // 이벤트와 같은 아이콘을 쓰되 점수판의 카드 크기·직사각형 배치는 유지한다.
     /**
-     * 지정한 퇴장 수만큼 점수판 크기에 맞는 카드 아이콘 요소를 생성합니다.
-     * @param {number} n 생성할 퇴장 카드 수입니다.
-     * @returns {HTMLDivElement[]} 퇴장 표시 컨테이너에 삽입할 카드 요소 배열입니다.
+     * 지정한 퇴장 수만큼 점수판 크기에 맞는 카드 아이콘 요소를 생성한다.
+     * @param {number} n 생성할 퇴장 카드 수이다.
+     * @returns {HTMLDivElement[]} 퇴장 표시 컨테이너에 삽입할 카드 요소 배열이다.
      */
     const make = n => {
       const nodes = [];
@@ -58,7 +71,7 @@
     activeNoteMenu = null;
   }
 
-  /** 편집창과 자동 득점자 박스가 같은 빠른 설정을 사용합니다. */
+  /** 편집창과 자동 득점자 박스가 같은 빠른 설정을 사용한다. */
   function createNoteMenu() {
     const menu = document.createElement('div');
     menu.className = 'note-quick-menu';
@@ -124,7 +137,7 @@
     positionNoteMenus();
   }
 
-  /** 좌우 끝의 텍스트에서 열어도 편집창과 메뉴가 화면 안에 남도록 보정합니다. */
+  /** 좌우 끝의 텍스트에서 열어도 편집창과 메뉴가 화면 안에 남도록 보정한다. */
   function positionNoteMenus() {
     const targets = [activeNoteMenu?.menu, activeNoteEditor?.editorWrap].filter(Boolean);
     targets.forEach(node => {
@@ -167,7 +180,7 @@
       noteSide.style.width = '';
     }
     activeNoteEditor = null;
-    // 편집용 고정 너비를 해제했으므로 캐시를 비워 원래 클릭 영역까지 복원합니다.
+    // 편집용 고정 너비를 해제했으므로 캐시를 비워 원래 클릭 영역까지 복원한다.
     noteLayoutStamp = null;
 
     if (save) {
@@ -751,7 +764,7 @@
     return rows.join('');
   }
 
-  // 설정 미리보기에서도 실제 득점자 SVG와 외곽선 배치를 그대로 사용합니다.
+  // 설정 미리보기에서도 실제 득점자 SVG와 외곽선 배치를 그대로 사용한다.
   window.renderScorerPreview = (element, lines) => {
     element.innerHTML = formatScorers(lines, 1);
     if (!element.getClientRects().length) return;
@@ -778,31 +791,31 @@
     const baseSize = state.noteFontSize ?? 18;
     const MIN_SIZE = 8;
 
-    // 설정한 글자 크기를 우선 유지하며 배치를 탐색합니다.
+    // 설정한 글자 크기를 우선 유지하며 배치를 탐색한다.
     let effectiveSize = baseSize;
     while (true) {
-      // 1단계: 현재 글자 크기로 항목을 한 줄씩 그려 각 항목의 실제 폭을 측정합니다.
+      // 1단계: 현재 글자 크기로 항목을 한 줄씩 그려 각 항목의 실제 폭을 측정한다.
       setCSS(cssVar, effectiveSize + 'px');
       noteEl.innerHTML = formatScorers(lines, 1);
       const entries = [...noteEl.querySelectorAll('.note-line')];
       if (!entries.length) break;
       const style = getComputedStyle(noteEl);
-      // 2단계: 상하 패딩을 뺀 허용 높이를 줄 높이로 나눠 최대 줄 수를 정합니다.
-      // 줄 높이에는 글자 크기와 외곽선 두께가 포함되며, 항목 수보다 많은 줄은 만들지 않습니다.
+      // 2단계: 상하 패딩을 뺀 허용 높이를 줄 높이로 나눠 최대 줄 수를 정한다.
+      // 줄 높이에는 글자 크기와 외곽선 두께가 포함되며, 항목 수보다 많은 줄은 만들지 않는다.
       const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
       const rowHeight = parseFloat(style.lineHeight);
       const rowCount = Math.max(1, Math.min(lines.length, Math.floor((boardH - padding) / rowHeight)));
       if (rowCount < lines.length) {
-        // 3단계: 항목 순서를 유지하면서 가장 긴 줄의 폭이 최소가 되는 묶음을 찾습니다.
-        // 누적 폭으로 연속 항목의 너비를 구하고, 항목 사이 간격도 함께 더합니다.
+        // 3단계: 항목 순서를 유지하면서 가장 긴 줄의 폭이 최소가 되는 묶음을 찾는다.
+        // 누적 폭으로 연속 항목의 너비를 구하고, 항목 사이 간격도 함께 더한다.
         const gap = parseFloat(style.fontSize) * .9;
         const prefix = [0];
         entries.forEach(entry => prefix.push(prefix[prefix.length - 1] + entry.offsetWidth));
         const costs = Array.from({length: rowCount + 1}, () => Array(lines.length + 1).fill(Infinity));
         const breaks = Array.from({length: rowCount + 1}, () => []);
         costs[0][0] = 0;
-        // costs[줄 수][항목 수]는 해당 항목들을 배치했을 때 가장 긴 줄의 최소 폭입니다.
-        // 가능한 이전 줄의 끝을 비교하고, 선택한 경계를 breaks에 기록합니다.
+        // costs[줄 수][항목 수]는 해당 항목들을 배치했을 때 가장 긴 줄의 최소 폭이다.
+        // 가능한 이전 줄의 끝을 비교하고, 선택한 경계를 breaks에 기록한다.
         for (let row = 1; row <= rowCount; row++) {
           for (let end = row; end <= lines.length; end++) {
             for (let start = row - 1; start < end; start++) {
@@ -816,7 +829,7 @@
           }
         }
         const rows = [];
-        // 4단계: 마지막 항목부터 선택한 경계를 역추적해 실제 줄을 구성합니다.
+        // 4단계: 마지막 항목부터 선택한 경계를 역추적해 실제 줄을 구성한다.
         // 선수 이름이나 여러 득점 시간을 나누지 않고 항목 전체를 같은 줄에 둡니다.
         let end = lines.length;
         for (let row = rowCount; row > 0; row--) {
@@ -826,7 +839,7 @@
         }
         noteEl.innerHTML = rows.join('');
       }
-      // 5단계: 높이와 폭이 모두 맞으면 확정합니다. 부족할 때만 1px 줄여 줄 수와 묶음을 다시 계산합니다.
+      // 5단계: 높이와 폭이 모두 맞으면 확정한다. 부족할 때만 1px 줄여 줄 수와 묶음을 다시 계산한다.
       if ((noteEl.scrollHeight <= boardH && noteEl.scrollWidth <= maxWidth) || effectiveSize <= MIN_SIZE) break;
       effectiveSize -= 1;
     }
@@ -847,8 +860,8 @@
     if (!boardEl || !el.homeNote || !el.awayNote) return;
 
     const main = boardEl.querySelector('.scoreboard-main');
-    // 띠의 가운데를 유지하면서 타이머 높이만큼 위/아래 여유를 각각 확보합니다.
-    // offsetHeight는 미리보기 배율 적용 전 크기이며, display:none인 타이머는 0입니다.
+    // 띠의 가운데를 유지하면서 타이머 높이만큼 위/아래 여유를 각각 확보한다.
+    // offsetHeight는 미리보기 배율 적용 전 크기이며, display:none인 타이머는 0이다.
     const timerHeights = Array.from(boardEl.querySelectorAll('.scoreboard-timer, .time, .extra-time'))
       .map(node => node.offsetHeight);
     const timerH = Math.max(0, ...timerHeights);
@@ -925,13 +938,13 @@
     const viewportWidth = $('boardStageWrap').clientWidth;
     const available = Math.max(0, (viewportWidth - 16) / scale - boardEl.offsetWidth - 10);
     const position = state.boardPosition || 'center';
-    // 먼저 기존 세로 배치로 측정하고, 묶음의 중심이 과도하게 밀릴 때만 가로 폭을 줄입니다.
+    // 먼저 기존 세로 배치로 측정하고, 묶음의 중심이 과도하게 밀릴 때만 가로 폭을 줄이다.
     let homeSize = autoLayoutNote(el.homeNote, homeNoteSide, homeLines, boardH, '--note-font-size-home');
     let awaySize = autoLayoutNote(el.awayNote, awayNoteSide, awayLines, boardH, '--note-font-size-away');
     const homeNatural = homeLines.length ? el.homeNote.scrollWidth + 20 : 0;
     const awayNatural = awayLines.length ? el.awayNote.scrollWidth + 20 : 0;
     const totalNatural = homeNatural + awayNatural;
-    // 좌우 배치에서는 기본 중심과 화면 중앙 사이의 중간선을 넘을 때 축소합니다.
+    // 좌우 배치에서는 기본 중심과 화면 중앙 사이의 중간선을 넘을 때 축소한다.
     const horizontalLimit = position === 'center' ? available : available / 2;
     if (state.noteEnabled && totalNatural > horizontalLimit) {
       const ratio = horizontalLimit / totalNatural;
@@ -979,7 +992,7 @@
     if (awayNoteSide) awayNoteSide.style.left  = boardLeft  + boardEl.offsetWidth + 'px';
     if (main) {
       // 회전하거나 이동한 로고 영역의 끝은 점수판 배치 박스의 경계와 다릅니다.
-      // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치합니다.
+      // 미리보기 배율도 변환하여 실제 표시 영역을 기준으로 이벤트 텍스트를 배치한다.
       const stageRect = stageEl.getBoundingClientRect();
       const scale = stageRect.width / stageEl.offsetWidth || 1;
       const slots = Array.from(main.children).filter(child => {
@@ -1101,7 +1114,7 @@
    * @returns {void} boardStageWrap.style.height를 필요할 때만 변경한다.
    */
   function syncBoardStageHeight(){
-    // 두 뷰 모두 드래그 중에는 주변 패널을 고정하고 종료 시 최종 높이를 적용합니다.
+    // 두 뷰 모두 드래그 중에는 주변 패널을 고정하고 종료 시 최종 높이를 적용한다.
     if (window.fsmScaleDrag) return;
     // wrap 높이를 실제 축소 높이에 맞게 조정.
     // 점수판 아래로 펼쳐지는 빠른 입력 메뉴(합계 점수·승부차기)는 아래 패널 위에 겹쳐 띄우는 것이라
@@ -1115,8 +1128,8 @@
     const height = (naturalH * appliedBoardScale) + 'px';
     if (boardStageWrap.style.height !== height) {
       boardStageWrap.style.height = height;
-      // 피치가 이미 고정 높이이면 부모가 커져도 자체 ResizeObserver는 울리지 않습니다.
-      // 카메라 뷰의 기존 저장 비율 계산을 다시 실행해 줄었던 높이도 복원합니다.
+      // 피치가 이미 고정 높이이면 부모가 커져도 자체 ResizeObserver는 울리지 않는다.
+      // 카메라 뷰의 기존 저장 비율 계산을 다시 실행해 줄었던 높이도 복원한다.
       if (document.getElementById('page-main-big')?.classList.contains('active')) {
         window.scheduleLineupViewportFit?.();
       }
@@ -1133,7 +1146,7 @@
    * @returns {void} 미리보기 배치 및 배율 컨트롤을 갱신한다.
    */
   function applyBoardScale(pct){
-    // 종료·초기화 시 남은 미리보기가 최종 배율을 다시 덮어쓰지 않게 합니다.
+    // 종료·초기화 시 남은 미리보기가 최종 배율을 다시 덮어쓰지 않게 한다.
     if (boardScaleInputFrame !== null) {
       cancelAnimationFrame(boardScaleInputFrame);
       boardScaleInputFrame = null;
@@ -1156,7 +1169,7 @@
     window.syncEkstraklasaBoundaryPixelGrid?.();
   }
 
-  // 득점자 박스와 배율을 포함한 실제 표시 영역을 기준으로 배치합니다.
+  // 득점자 박스와 배율을 포함한 실제 표시 영역을 기준으로 배치한다.
   function syncBoardPosition() {
     const stage = $('boardStageInner'), wrap = $('boardStageWrap'), board = $('board');
     if (!stage || !wrap || !board || !board.offsetWidth) return;
@@ -1247,7 +1260,7 @@
     stage.dataset.positionShiftY = shiftY;
     return shiftY;
   }
-  /** 설정 창 패널/스탯 탭의 점수판 위치 버튼을 현재 값으로 표시합니다. */
+  /** 설정 창 패널/스탯 탭의 점수판 위치 버튼을 현재 값으로 표시한다. */
   function syncBoardPositionButtons() {
     const position = state.boardPosition || 'center';
     if ($('boardPosition')) $('boardPosition').value = position;
@@ -1309,7 +1322,7 @@
       applyBoardScale(getBoardScale());
       return;
     }
-    // 드래그 입력이 몰려도 프레임마다 최신 배율만 미리보기로 반영합니다.
+    // 드래그 입력이 몰려도 프레임마다 최신 배율만 미리보기로 반영한다.
     if (boardScaleInputFrame !== null) return;
     boardScaleInputFrame = requestAnimationFrame(() => {
       boardScaleInputFrame = null;

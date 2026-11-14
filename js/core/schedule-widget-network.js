@@ -1,10 +1,19 @@
 /**
+ * [일정 위젯: 비활성 화면의 원격 요청 차단]
  * API-Sports 위젯은 일정 화면이 보일 때만 원격 데이터를 조회한다.
  * overlay_dashboard.html에서 위젯 스크립트보다 먼저 로드해 fetch를 감싼다.
  *
  * 위젯의 DOM이나 내부 타이머를 제거·수정하지 않고, 전송 직전의 요청만 차단한다.
  * 따라서 숨겨진 동안에도 위젯의 갱신 콜백은 실행될 수 있지만 CDN으로 요청하지 않는다.
  * 일정 화면으로 돌아오면 위젯이 설정된 주기에 따라 보내는 다음 요청부터 다시 통과한다.
+ *
+ * 처리 순서:
+ *  1. 원래 fetch를 보관하고, 호출된 URL의 origin을 문서의 위젯 설정과 비교한다.
+ *  2. 위젯 요청이며 탭이 숨겨졌거나 일정 화면이 비활성이면 원격 호출 없이 저장한 본문을 돌려준다.
+ *  3. 나머지 요청은 원래 fetch에 전달하고, 성공한 위젯 응답만 복제해 URL별로 보관한다.
+ *
+ * 이 캐시는 현재 페이지 메모리에만 존재한다. 활성화 시 직접 새 요청을 만들거나 위젯 타이머를
+ * 재시작하지 않으며, 실제 전송 여부만 매 호출 시점의 DOM/브라우저 상태로 결정한다.
  */
 (() => {
   // 날짜 목록·경기 상세 등 서로 다른 조회 결과가 섞이지 않도록 요청 URL별로 보관한다.
@@ -12,6 +21,11 @@
   // 허용한 요청은 기존 fetch로 전달한다. 아래에서 window.fetch를 교체해도 재귀 호출하지 않는다.
   const originalFetch = window.fetch.bind(window);
 
+  /**
+   * 기존 fetch와 같은 입력을 받아 위젯 origin의 요청만 조건부로 처리한다.
+   * URL 경로별 차단이 아니라 origin 비교이므로, 같은 origin을 쓰는 다른 요청도 이 규칙에 포함된다.
+   * 차단 시에는 새 Response를 만들고, 통과 시에는 원래 Promise를 그대로 반환한다.
+   */
   function widgetFetch(resource, init) {
     // fetch는 문자열·URL·Request를 받을 수 있다. Request는 URL 속성을 따로 읽어야 한다.
     const url = resource instanceof Request ? resource.url : String(resource);
@@ -39,7 +53,7 @@
       }));
     }
 
-    // 위젯 CDN과 다른 주소를 사용하는 백엔드 경기 불러오기·폴링은 그대로 통과한다.
+    // 위젯과 다른 origin을 사용하는 백엔드 경기 불러오기·폴링은 그대로 통과한다.
     // 요청 옵션과 반환 Promise도 유지하며, 이미 전송된 요청을 취소하지는 않는다.
     const request = originalFetch(resource, init);
     if (isWidgetCall) {

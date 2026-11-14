@@ -1,5 +1,19 @@
-// 포메이션 변경은 API grid 번호가 아니라 현재 슬롯의 역할/좌우/좌표를 기준으로 한다.
-// 전술적 관계와 대응 규칙의 근거: docs/formation-transitions.md
+/**
+ * [포메이션 전환: 현재 슬롯을 목적 슬롯에 일대일 대응]
+ * 포메이션 변경은 API grid 번호가 아니라 현재 슬롯의 역할/좌우/좌표를 기준으로 한다.
+ * 선수 자체를 다시 분류하지 않고 슬롯 인덱스의 대응만 반환하므로 빈 자리와 사용자의 수동 배치도 옮길 수 있다.
+ * 전술적 관계와 명시적 이동 규칙의 근거는 docs/formation-transitions.md에 둔다.
+ *
+ * 판정 순서:
+ *  1. UI 역할을 전환용 역할/좌표로 정규화하고, 동일 포메이션이면 기존 인덱스를 유지한다.
+ *  2. 유사 포메이션끼리 역할이 유일하게 대응하면 그 확정 매핑을 사용한다.
+ *  3. 등록된 이동 규칙과 유사군을 연결한 경로가 있으면 보존 기준에 가장 맞는 경로를 선택한다.
+ *  4. 위 근거가 없으면 비트마스크 동적 계획법으로 전체 이동 비용이 가장 작은 일대일 배정을 구한다.
+ *  5. 호출자가 받은 목적 슬롯→출발 슬롯 배열에 따라 선수/ID/빈 슬롯 값을 이동한다.
+ *
+ * 개별 선수마다 가장 가까운 자리를 먼저 고르는 탐욕 배정은 사용하지 않는다. 먼저 선택한 선수가
+ * 다른 선수의 유일한 적합 슬롯을 차지하거나 좌우/역할 보존을 깨뜨릴 수 있기 때문이다.
+ */
 const LINEUP_FORMATION_FAMILIES = [
   { formations: ['4-3-1-2', '4-1-2-1-2', '4-1-3-2'], aliases: { RW: 'RCM', LW: 'LCM' } },
   { formations: ['3-5-2', '3-1-4-2', '5-3-2'], aliases: {} },
@@ -203,6 +217,9 @@ function getLineupFormationSlotMapping(fromFormation, toFormation) {
   if (transition) return transition.slots;
 
   const n = from.length, size = 1 << n;
+  // mask는 이미 사용한 출발 슬롯 집합이고, 켜진 비트 수가 다음 목적 슬롯 번호이다.
+  // best에는 해당 집합까지의 최소 총비용, chosen에는 복원할 마지막 출발 슬롯을 보관한다.
+  // 모든 슬롯을 중복 없이 한 번씩 쓴 뒤 역으로 복원하므로 선수 누락/중복을 만들지 않는다.
   const costs = from.map(a => to.map(b => lineupFormationMoveCost(a, b)));
   const best = new Float64Array(size).fill(Infinity);
   const chosen = new Int8Array(size).fill(-1);

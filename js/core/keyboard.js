@@ -1,5 +1,16 @@
-// 사용자 단축키 정의와 실행
-// 각 항목은 기능 ID, 그룹, 표시 이름, 기본 키 조합, 실행 함수 순서입니다.
+/**
+ * [전역 단축키: 기능 정의·키 정규화·실행]
+ * 기능 목록은 ID/그룹/표시명/기본 키/실행 함수 순서이다. shortcut-settings.js가 같은 목록으로 편집 UI를 만든다.
+ *
+ * 처리 흐름:
+ *  1. 저장한 키 지정이 있으면 사용하고 없으면 기능의 기본 조합을 읽는다. 빈 문자열은 명시적 해제이다.
+ *  2. 브라우저 키 이벤트를 조합 키와 물리 코드 중심의 공통 문자열로 정규화한다.
+ *  3. 입력 중/설정창 등 실행하면 안 되는 상태를 제외한 뒤 현재 조합의 기능을 찾는다.
+ *  4. 필요한 키패드/기호 대체를 적용하고 해당 기능의 기존 상태 변경 함수를 실행한다.
+ *
+ * 키 편집의 중복 검사와 되돌리기는 설정 UI가 맡는다. 실제 키 안내도 공통 binding/label 함수를
+ * 사용해야 사용자가 변경한 조합과 화면의 힌트가 다르게 남지 않는다.
+ */
 const shortcutActions = [
   ['clockToggle','타이머','시작 / 정지','Space',()=>{ window.toggleClockRunning ? window.toggleClockRunning() : state.running=!state.running; render(); persist(); }],
   ...[['clock0','00:00으로 초기화','KeyR',0],['clock45','45:00으로 초기화','KeyE',2700],['clock90','90:00으로 초기화','Shift+KeyR',5400],['clock105','105:00으로 초기화','Shift+KeyE',6300]].map(([id,label,key,seconds])=>[id,'타이머',label,key,()=>{ if(window.setClockSeconds) window.setClockSeconds(seconds); else {state.seconds=seconds;state.running=false;el.clock.textContent=fmtClock(seconds);} render();persist(); }]),
@@ -26,9 +37,9 @@ const shortcutActions = [
 const SHORTCUT_STORAGE_KEY='obs.shortcuts.v1';
 let shortcutBindings={};
 try { const saved=JSON.parse(localStorage.getItem(SHORTCUT_STORAGE_KEY)||'{}'); if(saved && typeof saved==='object') shortcutBindings=saved; } catch {}
-/** 저장된 빈 문자열은 해제 상태로 존중하며, 사용자 설정이 없을 때만 기본 키를 사용합니다. */
+/** 저장된 빈 문자열은 해제 상태로 존중하며, 사용자 설정이 없을 때만 기본 키를 사용한다. */
 function shortcutBinding(action){const value=shortcutBindings[action[0]];return typeof value==='string'?value:action[3];}
-/** event.code를 우선하고, 이를 제공하지 않는 OBS 환경에서는 가상 키와 key 값으로 보완합니다. */
+/** event.code를 우선하고, 이를 제공하지 않는 OBS 환경에서는 가상 키와 key 값으로 보완한다. */
 function shortcutCode(event){
   if(event.code && event.code!=='Unidentified')return event.code;
   // OBS 브라우저 소스에서의 단축키 대응
@@ -46,11 +57,11 @@ function shortcutCode(event){
   if(names[key])return names[key];
   return /^(Escape|Tab|Enter|Backspace|Delete|Insert|Home|End|PageUp|PageDown|Arrow(Left|Right|Up|Down)|F([1-9]|1[0-9]|2[0-4]))$/.test(key || '')?key:'';
 }
-/** 보조 키를 일정한 순서로 합쳐 저장·충돌 검사·실행에서 같은 키 조합으로 비교합니다. */
+/** 보조 키를 일정한 순서로 합쳐 저장·충돌 검사·실행에서 같은 키 조합으로 비교한다. */
 function shortcutKey(event){const code=shortcutCode(event);return code?[event.ctrlKey?'Ctrl':null,event.altKey?'Alt':null,event.shiftKey?'Shift':null,event.metaKey?'Meta':null,code].filter(Boolean).join('+'):'';}
-/** 저장용 키 코드를 화면에 표시할 이름으로 바꾸며, 빈 값은 미지정으로 표시합니다. */
+/** 저장용 키 코드를 화면에 표시할 이름으로 바꾸며, 빈 값은 미지정으로 표시한다. */
 function shortcutLabel(key){return key ? key.replace(/Key([A-Z])/g,'$1').replace(/Digit([0-9])/g,'$1').replace('Backslash','\\').replace('Equal','=').replace('Minus','−').replace('BracketLeft','[').replace('BracketRight',']').split('+').join(' + ') : '미지정';}
-/** 점수판 테마 선택 옆의 이전·다음 단축키 안내를 현재 설정으로 갱신합니다. */
+/** 점수판 테마 선택 옆의 이전·다음 단축키 안내를 현재 설정으로 갱신한다. */
 function updateThemeCycleShortcutHint(){
   const hint=document.getElementById('themeCycleShortcutHint');
   if(!hint)return;
@@ -62,7 +73,7 @@ function updateThemeCycleShortcutHint(){
     row.append(key,' '+label);hint.append(row);
   }
 }
-/** 테마 전환 안내와 전술판 되돌리기·다시 실행 버튼의 툴팁을 함께 갱신합니다. */
+/** 테마 전환 안내와 전술판 되돌리기·다시 실행 버튼의 툴팁을 함께 갱신한다. */
 function updateTacticsShortcutHints(){
   updateThemeCycleShortcutHint();
   if (typeof syncNoteMenus === 'function') syncNoteMenus();
@@ -81,13 +92,13 @@ function updateTacticsShortcutHints(){
     if(button)button.title=action[2]+' ('+shortcutLabel(shortcutBinding(action))+')';
   }
 }
-/** 저장 공간 접근에 실패하면 호출부가 이전 설정으로 되돌릴 수 있도록 false를 반환합니다. */
+/** 저장 공간 접근에 실패하면 호출부가 이전 설정으로 되돌릴 수 있도록 false를 반환한다. */
 function saveShortcutBindings(){try{localStorage.setItem(SHORTCUT_STORAGE_KEY,JSON.stringify(shortcutBindings));return true;}catch{return false;}}
 window.addEventListener('storage',event=>{if(event.key===SHORTCUT_STORAGE_KEY){try{shortcutBindings=JSON.parse(event.newValue||'{}')||{};}catch{shortcutBindings={};}window.renderShortcutSettings?.();}});
 window.addEventListener('keydown',event=>{
   if(event.defaultPrevented || event.repeat || event.isComposing || document.activeElement?.closest('input,textarea,select,[contenteditable="true"]') || document.getElementById('settingsBackdrop')?.classList.contains('open'))return;
   const key=shortcutKey(event);
-  // 숫자패드의 +/-도 글자 크기에 지정된 일반 +/- 키처럼 처리합니다.
+  // 숫자패드의 +/-도 글자 크기에 지정된 일반 +/- 키처럼 처리한다.
   const noteKey=key.replace(/NumpadAdd$/, 'Equal').replace(/NumpadSubtract$/, 'Minus');
   const action=shortcutActions.find(action=>shortcutBinding(action)===key)
     || (/Numpad[0-9]$/.test(key) ? shortcutActions.find(action=>shortcutBinding(action)===key.replace(/Numpad([0-9])$/, 'Digit$1')) : null)

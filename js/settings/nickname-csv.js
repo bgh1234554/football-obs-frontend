@@ -1,5 +1,14 @@
 /**
+ * [닉네임 CSV: 형식 검증과 기존 저장값 병합]
  * 선수와 팀 닉네임을 공통 3열 CSV 형식으로 내보내고 기존 저장값에 병합한다.
+ * 닉네임 표시와 편집은 player-menu.js/team-nicknames.js에 맡기고 이 모듈은 파일 경계를 담당한다.
+ *
+ * 가져오기 순서:
+ *  1. CSV 인용/줄바꿈을 해석한 뒤 종류별 3열 헤더를 검증한다.
+ *  2. ID·이름·닉네임을 검사해 적용 행과 제외 행을 나눈다. 구조 오류는 파일 전체를 거부한다.
+ *  3. 기존 맵을 읽고 이름 기반 행부터 병합한 다음 명시적 ID 행을 덮어 적용한다.
+ *  4. 주 저장소와 선수의 이름→ID 승격 정보를 저장한다. 보조 저장 실패 시 주 저장값을 복원한다.
+ *  5. 저장이 끝난 경우에만 해당 닉네임 표시를 갱신하고 적용/제외 건수를 반환한다.
  *
  * 선수 닉네임은 문자열, 팀 닉네임은 원래 이름을 포함한 객체로 저장되므로 파일 입출력
  * 단계에서 이 차이를 변환한다. ID가 없는 항목은 이름 기반 키를 유지하고, 파일 전체를
@@ -47,7 +56,7 @@
     return rows;
   }
 
-  /** 기존 ID가 없는 항목도 원래 이름으로 복원할 수 있게 ID=0으로 기록합니다. */
+  /** 양의 ID는 숫자 문자열 키로, ID 0은 이름 키로 복원한다. 이름도 없는 ID 0은 제외한다. */
   function identity(id, name) {
     id = String(id).trim();
     name = String(name).trim();
@@ -114,7 +123,8 @@
     const key = kind === 'player' ? PLAYER_NICKNAME_KEY : TEAM_NICKNAME_KEY;
     const map = readMap(key);
     const promoted = kind === 'player' ? readPromotedNicknames() : null;
-    // 이름에서 승격된 닉네임은 함께 갱신하되 CSV의 직접 ID 지정이 항상 우선합니다.
+    // 같은 파일에 이름 행과 ID 행이 함께 있어도 파일 행 순서에 따라 결과가 바뀌지 않게
+    // 두 번에 나누어 적용한다. 명시적 ID 지정은 이름 기반 승격 관계를 해제하며 최종 우선한다.
     for (const entry of valid.filter(entry => entry.key.startsWith('n:'))) {
       map[entry.key] = kind === 'player' ? entry.nickname : { name: entry.name, nickname: entry.nickname };
       if (promoted) for (const [id, source] of Object.entries(promoted)) {
@@ -131,7 +141,8 @@
       localStorage.setItem(key, JSON.stringify(map));
       if (promoted) localStorage.setItem(PLAYER_NICKNAME_PROMOTED_KEY, JSON.stringify(promoted));
     } catch {
-      // 보조 저장소 기록까지 실패하면 원래 닉네임으로 되돌리고 성공 건수를 표시하지 않습니다.
+      // localStorage는 여러 키의 원자적 저장을 지원하지 않는다. 보조 기록 실패 시 주 값을
+      // 가능한 범위에서 복원하고 오류를 전달해 일부 저장을 정상 완료로 보고하지 않는다.
       try { if (before === null) localStorage.removeItem(key); else localStorage.setItem(key, before); } catch {}
       throw new Error('닉네임을 저장하지 못했습니다. 저장 공간을 확인해 주세요.');
     }

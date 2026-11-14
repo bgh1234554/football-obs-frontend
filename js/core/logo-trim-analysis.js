@@ -1,8 +1,17 @@
 /**
- * 로고 픽셀 분석 공용 함수(logo-trim.js 메인 스레드 경로와 logo-trim-worker.js 백그라운드 경로가 함께 사용).
- * 화면(DOM)에 접근하지 않는 순수 계산만 둔다 — 같은 코드를 Web Worker에서 importScripts로 불러 쓰기 위해서다.
- * (2026-10-17) logo-trim.js 안에 있던 경계 탐색(findBounds)·내부 채우기 마스크(buildFillMask)와
- * 관련 상수를 그대로 옮겼다. 계산 내용은 바뀌지 않았다.
+ * [로고 픽셀 분석: 여백 경계와 내부 채우기 마스크]
+ * logo-trim.js의 메인 스레드 경로와 logo-trim-worker.js의 Worker 경로가 공유하는 계산 모듈이다.
+ * DOM/통신/캐시를 다루지 않고 입력 ImageData에서 결과를 만들므로, Worker에서도 importScripts로
+ * 같은 기준을 사용할 수 있다. 원본 그림은 변경하지 않고 경계 객체 또는 별도 흰색 마스크를 반환한다.
+ *
+ * 호출 순서:
+ *  1. findBounds로 의미 있는 알파 픽셀을 감싸는 사각형을 구한다. 그림이 없으면 null이다.
+ *  2. fillGeometry로 채우기 분석 해상도와 내부 영역의 최소 면적을 구한다.
+ *  3. 호출자가 그 크기로 다시 그린 픽셀을 buildFillMask에 전달한다.
+ *  4. buildFillMask는 외부 투명 영역과 내부 영역을 나누고, 조건을 만족할 때만 새 마스크를 만든다.
+ *
+ * findBounds의 알파 임계값은 희미한 여백 잡음 제거용이고, buildFillMask의 임계값은
+ * 안쪽/바깥쪽을 나누는 용도이다. 목적이 달라 같은 값으로 통일하면 경계나 채우기 결과가 달라진다.
  */
 const LogoTrimAnalysis = (() => {
   // 내부 채우기 색. 협업 프론트(FSM) 로고 구역 배경에 맞추려면 이 값만 바꾸면 된다.
@@ -53,19 +62,25 @@ const LogoTrimAnalysis = (() => {
   }
 
   /**
-   * 테두리/링으로 완전히 둘러싸인 큰 투명 영역을 찾아, 그 영역만 FILL_COLOR로 칠한 마스크
-   * ImageData를 반환한다. 채울 영역이 없으면 null.
+   * 테두리/링으로 완전히 둘러싸인 투명 영역을 찾아 FILL_COLOR 마스크 ImageData를 반환한다.
+   * minArea 이상의 내부 영역이 하나도 없으면 null이다. 조건을 만족하는 큰 영역이 하나라도
+   * 있으면 흰 바탕을 가진 로고로 간주하고, 16px 이상인 작은 내부 영역도 함께 채운다.
+   * 따라서 minArea는 모든 칸의 개별 채움 기준이 아니라 로고 전체의 채우기 활성 조건이다.
    * 1) 이미지 가장자리에서 시작해 투명 픽셀만 따라가며 "바깥"을 표시한다.
-   * 2) 남은 투명 픽셀을 연결 영역별로 묶고, 면적이 minArea 이상인 영역만 채운다.
-   *    테두리가 한 군데라도 끊겨 있으면 안쪽이 바깥과 이어져 채우지 않는다(원본 그대로 = 안전한 실패).
-   * 3) 채운 영역을 불투명 픽셀 쪽으로만 1px 넓혀, 안티앨리어싱된 테두리 안쪽 가장자리 밑까지
-   *    흰색이 깔리게 한다. 투명한 바깥 쪽으로는 넓히지 않아 로고 밖으로 흰 테두리가 새지 않는다.
+   * 2) 남은 내부 투명 픽셀을 연결 영역별로 묶어 면적을 기록하고 채우기 가능 여부를 판단한다.
+   * 3) 출력용 ImageData를 따로 만든다. 입력 픽셀과 외부/내부 판정 결과는 변경하지 않는다.
+   * 4) 외곽선 근처를 제외한 불투명 내부 선 밑과 채울 영역을 칠하고, 불투명 쪽으로만 1px 확장한다.
+   *
+   * 연결 판정은 상하좌우 네 방향이다. 그 경로로 외부와 이어진 칸은 내부로 보지 않으며,
+   * 바깥 투명 영역으로 흰색을 확장하지 않아 축소 표시에서도 외부 흰 테두리가 생기는 것을 줄인다.
    */
   function buildFillMask({ data, width, height }, minArea) {
     const n = width * height;
     const clear = new Uint8Array(n);
     for (let i = 0; i < n; i++) clear[i] = data[i * 4 + 3] < FILL_ALPHA_MAX ? 1 : 0;
     const visited = new Uint8Array(n);
+    // 픽셀마다 객체를 만들거나 재귀 호출하지 않고 고정 길이 숫자 배열을 탐색 스택으로 쓴다.
+    // push 시 방문 표시를 해 같은 픽셀이 여러 이웃에서 중복 등록되지 않게 한다.
     const stack = new Int32Array(n);
     let sp = 0;
     const push = i => { if (clear[i] && !visited[i]) { visited[i] = 1; stack[sp++] = i; } };
@@ -84,6 +99,8 @@ const LogoTrimAnalysis = (() => {
     for (let x = 0; x < width; x++) { push(x); push(n - width + x); }
     for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
     flood(null);
+    // 다음 내부 영역 탐색도 visited를 계속 사용하므로, 바깥 영역만 따로 복사해 둔다.
+    // 뒤의 외곽 거리 계산에서 내부 구멍을 바깥 여백으로 잘못 취급하지 않기 위해 필요하다.
     const outside = visited.slice();
 
     // 2) 둘러싸인 영역 중 큰 것만 채움
@@ -109,7 +126,7 @@ const LogoTrimAnalysis = (() => {
       if (regionId[i] && regionSizes[regionId[i]] >= 16) mask[i] = 1;
     }
 
-    // 3) 불투명 쪽으로만 1px 확장해 출력
+    // 3) 출력 마스크를 만든다. 실제 칠하기는 아래 내부 선 처리와 마지막 영역 확장에서 수행한다.
     const out = new ImageData(width, height);
     const [r, g, b] = FILL_COLOR;
     const paint = i => { const o = i * 4; out.data[o] = r; out.data[o + 1] = g; out.data[o + 2] = b; out.data[o + 3] = 255; };
@@ -165,6 +182,8 @@ const LogoTrimAnalysis = (() => {
    * @returns {{width:number, height:number, minArea:number}} 채우기 분석 캔버스 크기와 최소 면적.
    */
   function fillGeometry(bounds) {
+    // 원본 분석 캔버스의 비율을 유지해 줄이고, 그림 경계 면적도 같은 면적 비율로 환산한다.
+    // 긴 변 제한과 최소 16px 조건을 함께 둬 큰 원본의 계산 비용과 아주 작은 잡음 영역을 제한한다.
     const scale = Math.min(1, FILL_ANALYSIS_MAX / Math.max(bounds.width, bounds.height));
     const width = Math.max(1, Math.round(bounds.width * scale));
     const height = Math.max(1, Math.round(bounds.height * scale));

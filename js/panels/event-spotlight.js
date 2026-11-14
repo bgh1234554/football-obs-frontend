@@ -1,5 +1,14 @@
 /**
- * 신규 이벤트 표시 (설정 eventSpotlight: off/board/bottom, eventSpotlightScale).
+ * [신규 이벤트 표시: 렌더 결과 비교와 순차 알림]
+ * 설정 eventSpotlight(off/board/bottom)와 eventSpotlightScale에 따라 신규 이벤트를 잠깐 표시한다.
+ * 이벤트 원본을 별도 형식으로 다시 그리지 않고 events-panel.js가 만든 행을 복제해 사용한다.
+ *
+ * 처리 순서:
+ *  1. fixture.js가 신규 이벤트를 받은 응답에서 evSpotlightMarkNewEvents로 다음 렌더를 표시한다.
+ *  2. 패널 렌더 후 evSpotlightAfterRender가 이전 이벤트 키/구간 키와 비교해 새 행을 추린다.
+ *  3. 첫 조회의 과거 행은 제외하고, 새 행을 오래된 순서로 복제해 대기열에 넣는다.
+ *  4. showNext가 하나씩 글자 맞춤과 위치 계산을 마친 후 표시·퇴장 타이머를 진행한다.
+ *  5. 경기 변경/설정 끄기 때 표시와 대기열을 정리한다. 크기 견본은 별도 레이어로 관리한다.
  *
  * 폴링으로 같은 경기에 새 이벤트가 들어오거나 실제 경기 구간이 끝나면,
  * 이벤트 패널에 새로 생긴 행(.ev-row)을 복제해 점수판 아래 또는 화면 가운데 하단에 잠깐 띄운다.
@@ -17,6 +26,8 @@
   const SPOTLIGHT_BASE_SCALE = 1.25; // 설정 100%일 때의 실제 배율(이벤트 패널 칼럼 너비 기준)
   const SPOTLIGHT_BOARD_GAP = 6; // 점수판 아래 위치에서 점수판과의 간격(px)
   let seenFixtureId = '';
+  // 중복 판정 상태와 표시 대기열은 역할이 다르다. 알림이 꺼져 있어도 렌더 후 확인 키는
+  // 갱신해 두며, 다시 켰을 때 이미 지나간 이벤트를 새로운 이벤트로 취급하지 않는다.
   let seenKeys = null;     // 마지막 렌더에서 본 이벤트 키(data-ev-key)
   let seenMarkerKeys = new Set(); // 같은 경기에서 이미 확인한 구간은 재조회로 다시 알리지 않는다.
   let pendingNew = false;  // fixture.js가 "새 이벤트 수신"을 알린 뒤 다음 렌더에서만 표시
@@ -34,6 +45,8 @@
    * 타이머를 취소하지 않으면 다시 켠 뒤 새 표시가 예전 타이머 때문에 일찍 사라지거나 순서가 꼬인다.
    */
   function reset() {
+    // 현재 표시 수명만 정리한다. 확인 키의 갱신/경기별 구간 키 초기화는 AfterRender가 맡으므로,
+    // 설정을 껐다 켜는 동작 자체가 과거 이벤트를 다시 알리는 기준 초기화가 되지 않는다.
     window.notificationSounds?.stop('event');
     clearTimeout(hideTimer);
     clearTimeout(fadeTimer);
@@ -88,6 +101,8 @@
 
   /** 기본 너비·배율·아랫변 위치를 현재 레이아웃에 맞춘다. */
   function place(target, element = host) {
+    // 실제 알림과 크기 견본이 공유하는 배치 계산이다. body 화면 배율과 알림 배율을
+    // 분리해 처리하며, 모드마다 기준 변을 정해 확대해도 점수판/패널의 기준선에서 멀어지지 않게 한다.
     const host = element;
     const { layout, column } = target;
     // 패널 영역: 그 페이지의 패널(.lp)들이 차지하는 세로 범위(캠 작음은 이벤트 칼럼이 위쪽 절반뿐이라 전체 패널 기준으로 잰다).
@@ -143,6 +158,8 @@
     window.evRefitPanelRows?.(host, SPOTLIGHT_FONT_SIZE);
     place(target);
     requestAnimationFrame(() => {
+      // 크기/위치가 확정된 다음 프레임에서 보이게 한다. 복제 행의 신규 표시 클래스를
+      // 다시 붙여 애니메이션을 시작하며, 알림음은 notification-sounds.js가 이 시작을 감지한다.
       host.classList.add('is-visible');
       row.classList.remove('ev-row-new');
       void row.offsetWidth;
@@ -170,6 +187,9 @@
    */
   function enqueue(rows) {
     window.evSpotlightStopPreview();
+    // 패널은 최신순이지만 알림은 발생 순서대로 보여야 하므로 순서를 뒤집는다.
+    // cloneNode는 원본 이벤트 리스너를 복제하지 않는다. 남은 버튼도 탭 이동 대상에서 빼고
+    // 실제 알림 레이어의 클릭은 크기 조절 경로로만 전달되도록 한다.
     rows.reverse().forEach(source => {
       const clone = source.cloneNode(true);
       clone.classList.remove('ev-row-new', 'ev-row-glow-held', 'is-editable', 'has-hide-btn');
@@ -252,7 +272,11 @@
     }, 250);
   };
 
-  /** fixture.js: 같은 경기에서 이벤트 개수가 늘어난 응답을 렌더하기 직전에 호출. */
+  /**
+   * fixture.js가 같은 경기에서 이벤트 개수가 늘어난 응답을 렌더하기 직전에 호출한다.
+   * 즉시 행을 표시하지 않고 다음 AfterRender 한 번에만 쓸 표식을 남긴다. 실제 DOM 행과
+   * 중복 키 비교는 렌더 완료 후에 가능하므로, 수신 시점과 표시 판정 시점을 분리한다.
+   */
   window.evSpotlightMarkNewEvents = () => { pendingNew = true; };
 
   /**
@@ -264,6 +288,8 @@
    * @param {Iterable<HTMLElement>} containers 같은 경기의 이벤트 패널 컨테이너들.
    */
   window.evSpotlightAfterRender = (fixtureId, containers) => {
+    // 캠 큼/캠 작음 등 여러 패널이 같은 이벤트를 그려도 한 목록만 기준으로 삼는다.
+    // 일반 이벤트와 구간 종료 행은 서로 다른 키/갱신 조건을 사용한다.
     const source = Array.from(containers).find(container => container.querySelector('.ev-row[data-ev-key], .ev-period-marker')) || containers[0];
     const allRows = source ? [...source.querySelectorAll('.ev-list > .ev-row')] : [];
     const rows = allRows.filter(row => row.dataset.evKey && !row.classList.contains('ev-period-marker'));
@@ -278,6 +304,8 @@
     const freshMarker = sameFixture && enabled() && latestMarker && !seenMarkerKeys.has(latestMarker.dataset.evMarkerKey) ? latestMarker : null;
     const fresh = allRows.filter(row => freshEvents.includes(row) || row === freshMarker);
     seenFixtureId = fixtureId;
+    // 표시 대상이 없거나 알림 설정이 꺼졌어도 확인 상태를 먼저 갱신한다. pendingNew는
+    // 여기서 소모해 같은 응답의 다른 렌더가 신규 알림을 다시 만들지 않게 한다.
     seenKeys = keys;
     markers.forEach(row => seenMarkerKeys.add(row.dataset.evMarkerKey));
     pendingNew = false;

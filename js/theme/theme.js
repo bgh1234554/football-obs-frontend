@@ -1,3 +1,16 @@
+/**
+ * [테마 입력: 색상 상태·CSS·입력기 동기화]
+ * 색상 피커/HEX 입력과 점수판 state를 연결하며 팀 수동 색상의 경기별 적용 범위를 관리한다.
+ *
+ * 처리 흐름:
+ *  1. colorMap으로 입력 ID·state 키·CSS 변수를 연결하고 HEX 입력을 정규화한다.
+ *  2. 사용자가 팀 색상을 직접 확정하면 현재 경기의 수동 지정 여부도 함께 기록한다.
+ *  3. 상태와 실제 입력기를 동기화하고 값이 바뀐 경우 렌더·저장·변경 알림을 수행한다.
+ *  4. 같은 색을 다시 확정한 경우에는 필요한 수동 지정 기록만 남기고 불필요한 렌더를 생략한다.
+ *
+ * 팀 색상의 원본 상태와 로고 대비/크로마 표시 보정은 구분한다. 폴링이 API 색상을 적용할 때도
+ * 이 모듈이 기록한 경기별 수동 지정 범위를 확인해야 사용자의 선택을 덮어쓰지 않는다.
+ */
   window.colorMap = [
     ['inBoardA','boardA','--board-a'],
     ['inBoardB','boardB','--board-b'],
@@ -29,9 +42,9 @@
   const TEAM_COLOR_KEYS = new Set(['homeBg','homeText','awayBg','awayText']);
 
   /**
-   * 색상 상태와 입력기를 함께 갱신하고, 실제 변경이 있을 때 저장·렌더링·알림을 수행합니다.
-   * @param {Object<string,string>} updates 변경할 색상 키와 HEX 값입니다.
-   * @param {boolean} [syncColorInput=true] 색상 선택기의 값도 함께 동기화할지 지정합니다.
+   * 색상 상태와 입력기를 함께 갱신하고, 실제 변경이 있을 때 저장·렌더링·알림을 수행한다.
+   * @param {Object<string,string>} updates 변경할 색상 키와 HEX 값이다.
+   * @param {boolean} [syncColorInput=true] 색상 선택기의 값도 함께 동기화할지 지정한다.
    */
   function commitThemeColors(updates, syncColorInput = true) {
     const keys = Object.keys(updates);
@@ -113,7 +126,7 @@
       updateToggle();
       (rgb.hidden ? hexInput : rgb.querySelector('input')).focus();
     });
-    /** 세 채널이 모두 유효할 때만 HEX로 변환해 저장해, 입력 중인 빈 칸은 색상에 반영하지 않습니다. */
+    /** 세 채널이 모두 유효할 때만 HEX로 변환해 저장해, 입력 중인 빈 칸은 색상에 반영하지 않는다. */
     const commitRgb = () => {
       const inputs = [...rgb.querySelectorAll('input')];
       if (inputs.some(input => input.value === '' || !input.validity.valid)) return false;
@@ -169,7 +182,7 @@
   teamColorDialog.setAttribute('role', 'dialog');
   document.body.append(teamColorDialog);
   let quickColorAbort;
-  /** 닫힌 팝업의 동기화 이벤트를 해제해 다음 편집창에 이전 입력기가 남지 않게 합니다. */
+  /** 닫힌 팝업의 동기화 이벤트를 해제해 다음 편집창에 이전 입력기가 남지 않게 한다. */
   const restoreColorEditors = () => {
     quickColorAbort?.abort();
     teamColorDialog.replaceChildren();
@@ -291,9 +304,9 @@
   });
   /**
    * 점수판에서 팀 이름 또는 팀컬러 편집을 선택하는 메뉴를 엽니다.
-   * @param {'home'|'away'} side 편집할 팀입니다.
-   * @param {number} x 메뉴를 열 화면의 가로 좌표입니다.
-   * @param {number} y 메뉴를 열 화면의 세로 좌표입니다.
+   * @param {'home'|'away'} side 편집할 팀이다.
+   * @param {number} x 메뉴를 열 화면의 가로 좌표이다.
+   * @param {number} y 메뉴를 열 화면의 세로 좌표이다.
    */
   window.openScoreboardTeamEditMenu = (side, x, y) => {
     pmHideAll();
@@ -319,7 +332,7 @@
 
   // 수동 입력이 늘어나도 기본 패널 상단을 유지한다.
   const themePanel = document.getElementById('themePanel');
-  /** 수동 입력 영역을 제외한 기본 높이를 기록하고, 수동 모드에서는 이미 정한 높이를 유지합니다. */
+  /** 수동 입력 영역을 제외한 기본 높이를 기록하고, 수동 모드에서는 이미 정한 높이를 유지한다. */
   const syncThemePanelLimit = () => {
     if (!themePanel?.offsetWidth || window.__POPOUT_MODE__) return;
     if (state.manualMode && document.documentElement.style.getPropertyValue('--theme-panel-limit')) return;
@@ -401,7 +414,7 @@
     el.manualSection.classList.toggle('visible', turningOn);
     // 5. ON 시 현재 state 값을 입력 필드에 미리 채워 넣음
     if(turningOn){
-      // 현재 경기 로고는 표시값으로만 이어 받고, 직접 지정한 수동 로고와 구분합니다.
+      // 현재 경기 로고는 표시값으로만 이어 받고, 직접 지정한 수동 로고와 구분한다.
       state.homeLogo = state.homeLogoManual || state.homeLogo || '';
       state.awayLogo = state.awayLogoManual || state.awayLogo || '';
       syncManualInputs();
@@ -507,7 +520,7 @@
     r.onload = ()=> cb(r.result);
     r.readAsDataURL(file);
   }
-  // [이벤트 등록] 자동 경기의 교체 로고는 경기별로 보관하여 수동 로고와 섞이지 않게 합니다.
+  // [이벤트 등록] 자동 경기의 교체 로고는 경기별로 보관하여 수동 로고와 섞이지 않게 한다.
   for (const [side, id] of [['home', 'team-logo-left'], ['away', 'team-logo-right']]) {
     const box = document.getElementById(id);
     if (!box) continue;
@@ -538,7 +551,7 @@
       }
     };
     const open = () => {
-      // 네이션스리그의 로고 칸은 기존 팀컬러 편집 기능을 유지합니다.
+      // 네이션스리그의 로고 칸은 기존 팀컬러 편집 기능을 유지한다.
       if (document.getElementById('board')?.dataset.fsmTheme === 'unl') return;
       pmHideAll();
       pmContainer().innerHTML = `<div class="pm-popup" id="scoreboardLogoMenu" role="dialog" aria-label="${box.title}">
@@ -561,7 +574,7 @@
       if (!file || !file.type.startsWith('image/')) return;
       const selected = target;
       readLogoFile(file, url => {
-        // 파일을 읽는 동안 경기나 모드가 바뀌면 이전 업로드를 적용하지 않습니다.
+        // 파일을 읽는 동안 경기나 모드가 바뀌면 이전 업로드를 적용하지 않는다.
         if (selected.manual !== !!state.manualMode || (!selected.manual && selected.fixtureId !== String(getLastFixtureId() ?? ''))) return;
         if (selected.manual) state[side + 'LogoManual'] = url;
         else state[side + 'LogoUpload'] = { fixtureId: selected.fixtureId, url };

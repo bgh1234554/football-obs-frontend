@@ -1,5 +1,13 @@
 /**
+ * [로고 표시: 분석 캐시·Worker·요소별 비동기 반영]
  * 점수판 홈·원정 로고의 바깥 투명 여백을 자동으로 보정한다.
+ *
+ * 처리 순서:
+ *  1. render가 요소의 URL 변경/캐시 만료를 확인하고 이전 로고의 자동 보정만 제거한다.
+ *  2. 사용 가능한 캐시를 우선 적용하고, 없으면 같은 URL의 진행 중 분석을 공유한다.
+ *  3. 지원 환경에서는 Worker로 분석하며 실패 시 메인 스레드의 공통 분석 함수로 돌아간다.
+ *  4. 경계와 내부 마스크 결과를 저장한 뒤 여전히 같은 요소 상태인 요청에만 CSS로 반영한다.
+ *  5. 실패는 짧은 메모리 캐시로 제한하고 캐시 초기화 때는 이전 작업의 저장과 Blob URL을 정리한다.
  *
  * 처리 흐름: URL별 캐시 확인 → 필요할 때 픽셀 분석 → 경계 저장 → CSS 크기·중심 보정.
  * Canvas는 경계를 찾는 용도로만 사용하며, 화면에는 원본 PNG/SVG를 계속 표시한다.
@@ -9,7 +17,8 @@
  * 흰색(FILL_COLOR)으로 채워 보이게 한다. 원본 이미지는 그대로 두고, 채울 영역만 담은 마스크
  * PNG를 blob URL로 만들어 같은 <img>의 CSS background로 깐다 — 이미지 내용이 배경 위에
  * 그려지므로 원본 로고는 가려지지 않고 투명했던 안쪽만 흰색이 비친다. 글자/문양 속 작은
- * 구멍은 채우지 않도록 로고 면적 대비 MIN_FILL_SHARE 이상인 영역만 채운다.
+ * 구멍 처리와 내부 선 아래 확장은 logo-trim-analysis.js의 공통 규칙을 따른다. 큰 내부 영역이
+ * 하나라도 있으면 16px 이상인 작은 칸도 함께 채우므로, 각 칸이 모두 MIN_FILL_SHARE를 넘어야 하는 것은 아니다.
  *
  * 저장 형식: { bounds: { left, top, right, bottom, width, height }, hasFill, expiresAt }.
  * hasFill은 "채울 영역이 있는 로고인지"만 저장한다. 마스크 자체(blob URL)는 세션을 넘어
@@ -18,8 +27,9 @@
  * 완전히 투명한 이미지의 bounds는 null이다. 분석 실패도 화면에서는 원본으로 처리하지만,
  * 성공 결과와 달리 실패 결과는 localStorage에 저장하지 않고 메모리에서 잠시만 유지한다.
  *
- * 외부에는 render(img, source)만 공개한다. 점수판이 다시 렌더링될 때 호출하면
- * 로고 교체, 중복 분석 방지, 캐시 만료 확인까지 이 모듈 안에서 처리한다.
+ * 표시 진입점은 render(img, source, onReady)이다. reset/clearCache/getCachedBounds도 공개해
+ * 호출자가 보정 해제·캐시 초기화·후속 대비 분석을 할 수 있게 한다. ScoreboardLogoContrast는
+ * 준비 콜백과 캐시된 경계를 사용하므로 CSS 적용 전에 원본 그림 크기를 다시 추정하지 않는다.
  */
 const LogoTrim = (() => {
   // TTL은 분석 완료 시각부터 30일이다. 읽을 때마다 만료 시각을 연장하지 않는다.
@@ -331,6 +341,8 @@ const LogoTrim = (() => {
 
   /** 유효한 캐시 → 진행 중인 분석 공유 → 새 분석 순서로 경계를 얻는다. */
   function getBounds(url) {
+    // memory/pending은 URL 단위이고 elements는 DOM 요소 단위이다. 같은 로고를 여러 곳에
+    // 표시할 때 분석은 공유하되, 늦은 결과 적용 여부는 각 render의 상태 객체에서 따로 검사한다.
     const cached = usableCache(url);
     if (cached) return Promise.resolve(cached);
     if (pending.has(url)) return pending.get(url);

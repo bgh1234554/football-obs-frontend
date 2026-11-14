@@ -1,5 +1,15 @@
 /**
- * 공통 이벤트 시간 판정 — 이벤트 패널, 전술판, 수정 후보가 같은 시점을 사용한다.
+ * [이벤트 시간: 구간 판정과 화면별 공통 정렬 기준]
+ * 이벤트 패널, 전술판, 수정 후보가 같은 시점을 사용하도록 시간 판정과 구간 마커를 제공한다.
+ *
+ * 호출 흐름:
+ *  1. evBuildTimeContext가 현재 경기의 진행 근거와 경계분 관측 이력을 모은다.
+ *  2. evResolveEventTime이 개별 이벤트의 수동 지정/승부차기/경계분 조건으로 최종 구간을 구한다.
+ *  3. 소비자는 반환된 sortKey/period로 정렬·후보·교체 묶음을 판단하고 timelinePosition으로 시점을 적용한다.
+ *  4. 구간 마커도 같은 경기 진행 판정을 사용하되, 원본 elapsed/extra나 득점 정보는 수정하지 않는다.
+ *
+ * 관측 이력 갱신은 상태를 다루지만 최종 개별 판정은 전달된 context를 읽는 계산 단계이다.
+ * 한 목록을 처리할 때 context를 공유해야 이벤트마다 다른 근거로 구간을 판단하지 않는다.
  *
  * 이 파일을 수정할 때 먼저 읽을 전체 처리 규칙
  * ──────────────────────────────────────────────────────────────────────────
@@ -507,9 +517,9 @@ function evComputePeriodFlags(matchInfo, events = []) {
   const firstShootoutMinute = shootoutMinutes.length ? Math.min(...shootoutMinutes) : null;
   const extraTimeShootout = firstShootoutMinute !== null && firstShootoutMinute >= 120;
   const hasExtraTimeEvent = eventList.some(ev => !evTimeIsShootout(ev) && Number(ev?.elapsed) > 90);
-  // 승부차기 종료 응답은 실제 연장 없이도 elapsed=120일 수 있습니다.
-  // 첫 승부차기가 90분대부터 시작하고 일반 연장 이벤트가 없으면 직접 기록된 구간을 우선합니다.
-  // 킥마다 91, 92…로 증가하는 응답도 있으므로 마지막 킥의 분으로 연장 여부를 판단하지 않습니다.
+  // 승부차기 종료 응답은 실제 연장 없이도 elapsed=120일 수 있다.
+  // 첫 승부차기가 90분대부터 시작하고 일반 연장 이벤트가 없으면 직접 기록된 구간을 우선한다.
+  // 킥마다 91, 92…로 증가하는 응답도 있으므로 마지막 킥의 분으로 연장 여부를 판단하지 않는다.
   const directShootout = firstShootoutMinute !== null && firstShootoutMinute < 120 && !hasExtraTimeEvent;
   const isLiveExtraTime = status === 'ET1' || status === 'ET2';
   const extraTimeEvidence = extraTimeShootout || isLiveExtraTime || status === 'AET'

@@ -1,3 +1,18 @@
+/**
+ * [라인업 데이터: 원본 응답과 표시용 수동값 합성]
+ * API 명단·경기별 수동 저장값·교체 선수 연결을 한 표시 데이터로 합친다.
+ * DOM 렌더링은 lineup-render.js가 맡으며 이 파일은 원본과 표시용 복사본의 경계를 관리한다.
+ *
+ * 주요 합성 순서:
+ *  1. 원본의 명단/부상 배열을 복제하고 경기별 수동값을 읽는다.
+ *  2. 교체 이벤트 이름/수동 연결을 보완하고 입력 모드와 API 제공 여부에 따라 명단·배치 등을 병합한다.
+ *  3. ID 별칭을 기존 명단에 연결한 뒤 실제로 빠진 교체 선수를 보강한다.
+ *  4. 실제 명단과 양립하지 않는 일부 미출전 사유를 정리하고 포메이션 추론을 반영한다.
+ *  5. 렌더 진입점이 필요에 따라 교체 반영 명단을 별도로 만든다. 기본 합성 자체와 혼동하지 않는다.
+ *
+ * API 선발이 없는 경우의 스탯 기반 추론도 제공한다. 추론 명단에는 원래 API 상태를 보관해,
+ * 나중에 직접 입력한 11명이나 실제 API 선발이 추론 결과 때문에 가려지지 않도록 한다.
+ */
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // [라인업 패널 / 데이터 합성]
 // API fixture 응답 + lineup-manual-store.js의 수동 override를 합성해 실제 표시용
@@ -12,7 +27,8 @@
 function buildEffectiveFixtureData(data) {
   if (!data) return null;
 
-  // 1) 현재 fixture에 대해 저장된 수동 입력이 없으면 원본 응답을 그대로 사용.
+  // 1) 현재 경기의 수동값을 조회한다. 수동값이 없어도 교체 보완·ID 연결·명단 보강은 필요하므로
+  // 아래 복사/공통 보완을 거친다. 원본 응답 객체를 그대로 반환하는 조기 종료는 아니다.
   const fixtureId = getFixtureIdFromData(data);
   const entry = getManualEntry(fixtureId);
 
@@ -30,7 +46,7 @@ function buildEffectiveFixtureData(data) {
   }
   if (!entry) {
     applyManualCaptainToFixture(next, null);
-    // 수동 입력이 없으면 ID override만 적용하고 바로 반환.
+    // 수동 명단 병합만 생략한다. ID 연결을 먼저 하고 교체 선수 보강/미출전 정리까지 마친 뒤 반환한다.
     if (typeof window.applyZeroIdOverrides === 'function') {
       window.applyZeroIdOverrides(next, fixtureId);
     }

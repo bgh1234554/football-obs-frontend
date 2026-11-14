@@ -1,5 +1,17 @@
-// tools/scoreaxis-league-embed-codes.json에서 생성한 데이터입니다.
-// 백엔드 leagueId가 아직 확인되지 않은 ScoreAxis 항목도 유지합니다.
+/**
+ * [순위표 매핑: 리그별 임베드 데이터와 후보 해석]
+ * tools/scoreaxis-league-embed-codes.json에서 생성한 목록과 경기별 후보 선택 함수를 제공한다.
+ * 백엔드 leagueId가 아직 확인되지 않은 항목도 자료로 유지하며, DOM 생성은 순위표 패널에 맡긴다.
+ *
+ * 선택 순서:
+ *  1. 입력 경기 또는 리그 ID를 정규화하고 리그 별칭을 적용한다.
+ *  2. 같은 리그 ID의 후보를 모은다. 후보가 하나이거나 비교 텍스트가 없으면 그 목록을 반환한다.
+ *  3. 네이션스리그는 명시된 A/B/C/D 구분을 우선하고, 그 외에는 텍스트 유사도와 순위 차이를 본다.
+ *  4. 충분한 차이로 한 후보가 우세하면 하나만 반환하고, 근거가 부족하면 전체 후보를 유지한다.
+ *
+ * 복수 후보 반환은 오류가 아니라 모호함을 보존한 결과이다. 단일 항목 함수는 그중 첫 항목만
+ * 반환하는 편의 진입점이므로 모든 후보가 필요한 화면은 복수 항목 함수를 사용한다.
+ */
 window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
   {
     "leagueId": 1,
@@ -2903,7 +2915,7 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
 
 (function () {
   const entries = window.SCOREAXIS_STANDINGS_EMBEDS || [];
-  // ScoreAxis가 하나의 위젯으로 제공하는 대회의 API 리그 ID를 연결합니다.
+  // ScoreAxis가 하나의 위젯으로 제공하는 대회의 API 리그 ID를 연결한다.
   const leagueIdAliases = Object.freeze({
     51: 50,   // 내셔널리그 노스·사우스 통합 위젯
     984: 50,  // 내셔널리그 노스 승격 플레이오프
@@ -3028,7 +3040,7 @@ window.SCOREAXIS_STANDINGS_EMBEDS = Object.freeze([
 
   /**
    * 리그 ID + 텍스트 유사도(Dice)로 최적 ScoreAxis embed 항목 배열을 반환한다. window에 노출됨.
-   * 플레이오프 등 순위표 무관 라운드이면 빈 배열을 반환한다.
+   * 현재 이 진입점은 isNonStandingsRound로 후보를 제외하지 않으며, 같은 리그의 후보를 유지한다.
    * 후보가 여러 개이고 1위 점수가 0.66 이상이며 2위와 차이가 0.08 이상이면 1개만 반환한다.
    * @param {object|number|string} input - fixtureData 또는 리그 ID 값.
    * @returns {Array} 매칭된 ScoreAxis embed 항목 배열. 없으면 빈 배열.

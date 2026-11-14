@@ -1,5 +1,13 @@
 /**
+ * [OBS 선택 목록: 원본 select와 팝오버 연결]
  * OBS 브라우저 소스에서 표시되지 않는 네이티브 select 목록을 문서 내부 팝오버로 대체한다.
+ *
+ * 처리 순서:
+ *  1. 문서에 위임한 마우스/키 입력에서 OBS 환경과 단일 select 지원 조건을 확인한다.
+ *  2. 원본 option을 다시 읽어 하나의 재사용 팝오버에 선택 가능 상태와 현재 선택을 표시한다.
+ *  3. 화면 안에 목록을 배치하고 선택 항목으로 포커스를 옮긴다.
+ *  4. 선택 결과를 원본 selectedIndex에 반영하고 값이 바뀐 경우만 input/change를 발생시킨다.
+ *  5. 닫기 경로에 따라 포커스를 복원하며, 화면 크기/페이지 변경 시에는 이전 목록을 닫는다.
  *
  * 원본 select와 option은 그대로 두고 선택 결과를 selectedIndex에 돌려준 뒤 기존 input,
  * change 이벤트를 발생시킨다. 따라서 기존 설정 저장 로직을 별도로 구현할 필요가 없다.
@@ -8,6 +16,8 @@
  */
 (() => {
   let popup, source;
+  // 네이티브 목록이 필요한 다중 선택/상시 목록과 비활성 입력은 건드리지 않는다.
+  // 이벤트 발생 시마다 검사해 나중에 생성되거나 disabled 상태가 바뀐 select도 현재 상태를 따른다.
   const supported = el => window.obsstudio && typeof HTMLElement.prototype.showPopover === 'function' && el?.matches('select') && !el.disabled && !el.multiple && el.size <= 1;
   /**
    * 현재 팝오버를 닫고 필요하면 원본 select로 포커스를 돌린다.
@@ -33,6 +43,8 @@
       popup.popover = 'auto';
       popup.setAttribute('role', 'listbox');
       popup.addEventListener('keydown', event => {
+        // 팝오버 안의 방향키는 목록 이동에만 쓴다. 문서 단축키로 전파하지 않고,
+        // disabled 항목을 제외한 버튼 목록에서 순환하므로 비활성 option에 포커스가 가지 않는다.
         event.stopPropagation();
         if (event.key === 'Escape' || event.key === 'Tab') { close(); if (event.key === 'Escape') event.preventDefault(); return; }
         const items = [...popup.querySelectorAll('button:not(:disabled)')];
@@ -49,11 +61,15 @@
       });
     }
     close(false);
+    // 기존 목록을 닫은 다음 source를 바꾼다. 이전 입력의 aria-expanded를 정리한 뒤
+    // 새 입력 상태를 연결하며, 상위 팝오버 안에서 열 때는 그 하위에 붙여 부모를 유지한다.
     source = select;
     popup.replaceChildren();
     (select.closest(':popover-open') || document.body).append(popup);
     popup.setAttribute('aria-label', select.getAttribute('aria-label') || select.labels?.[0]?.textContent || '선택 목록');
     [...select.options].forEach((option, index) => {
+      // 표시 행 번호가 아니라 원본 options의 인덱스를 유지한다. 숨겨진 option을 제외하거나
+      // optgroup이 비활성화되어도 실제 선택값과 표시 버튼이 어긋나지 않게 하기 위함이다.
       const group = option.closest('optgroup');
       if (option.hidden || group?.hidden) return;
       const button = document.createElement('button');
@@ -88,7 +104,8 @@
     (popup.querySelector('[aria-selected="true"]:not(:disabled)') || popup.querySelector('button:not(:disabled)'))?.focus({ preventScroll: true });
     popup.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }
-  // mousedown의 네이티브 팝업 실행만 막고 click에서 내부 목록을 엽니다.
+  // 캡처 단계에서 mousedown의 네이티브 팝업 실행을 막고 click에서 문서 내부 목록을 연다.
+  // 원본 select를 교체하지 않아 기존 설정 저장 리스너와 동적 생성 입력을 그대로 사용할 수 있다.
   document.addEventListener('mousedown', event => {
     if (event.button === 0 && supported(event.target)) event.preventDefault();
   }, true);

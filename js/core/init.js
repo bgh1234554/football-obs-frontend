@@ -1,3 +1,16 @@
+/**
+ * [앱 초기화: 저장 상태 복원과 화면 제어 연결]
+ * 앞서 로드된 상태/렌더/테마/타이머 모듈을 실제 DOM에 연결하는 실행 단계이다.
+ *
+ * 처리 순서:
+ *  1. 저장 상태를 복원하고 FSM 테마 선택/리그 연결과 수동 모드 입력을 동기화한다.
+ *  2. 초기 시계와 점수판을 렌더한 뒤 실측이 필요한 배율/득점자 배치를 예약한다.
+ *  3. 수동 입력·리셋·보조 조작 등 공통 컨트롤에 기존 상태 변경 함수를 연결한다.
+ *  4. 창/보드 크기와 글꼴·관련 화면 변경에 따라 필요한 레이아웃 보정을 다시 예약한다.
+ *
+ * 저장 상태 복원 전의 기본값이 잠깐 노출되지 않도록 FSM 준비 플래그를 복원 이후에 세운다.
+ * DOM 크기를 쓰는 작업은 초기 render 뒤에 두어 아직 내용이 없는 높이로 배율을 정하지 않는다.
+ */
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // [초기화] 페이지 로드 시 저장된 상태를 복원하고 스코어보드를 초기 렌더링
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -6,7 +19,7 @@
   restore();
   initFsmThemeSelect();
   window.autoApplyTemplateByLeagueId(state.leagueId, state.leagueLogoUrl || null);
-  // 폰트 완료 콜백이 init.js 로딩보다 빨라도 저장 상태 복원 전에는 표시하지 않습니다.
+  // 폰트 완료 콜백이 init.js 로딩보다 빨라도 저장 상태 복원 전에는 표시하지 않는다.
   fsmInitialStateReady = true;
   // 1-1. 수동 모드 상태 UI 반영
   if(state.manualMode){
@@ -108,7 +121,7 @@
       else if (group) sections.get(group).panel.append(node);
       else if (node.tagName === 'HR') node.remove();
     }
-    /** 선택한 본문과 탭의 접근성 상태를 맞추고, 문서 내 이동에서는 스크롤을 유지합니다. */
+    /** 선택한 본문과 탭의 접근성 상태를 맞추고, 문서 내 이동에서는 스크롤을 유지한다. */
     function select(panel, { resetScroll = true, focus = false } = {}) {
       for (const { panel: item, button } of sections.values()) {
         const active = item === panel;
@@ -121,7 +134,7 @@
       restoreMenu();
       updateCurrentHeading();
     }
-    /** 모든 소메뉴를 닫으며 각 탭 버튼의 펼침 상태도 함께 갱신합니다. */
+    /** 모든 소메뉴를 닫으며 각 탭 버튼의 펼침 상태도 함께 갱신한다. */
     function closeMenus() {
       for (const { button, menu } of sections.values()) {
         if (!menu) continue;
@@ -129,7 +142,7 @@
         button.setAttribute('aria-expanded', 'false');
       }
     }
-    /** 본문 탭을 바꾸지 않고 지정한 탭의 소메뉴만 열어 마우스 탐색을 지원합니다. */
+    /** 본문 탭을 바꾸지 않고 지정한 탭의 소메뉴만 열어 마우스 탐색을 지원한다. */
     function openMenu(section) {
       closeMenus();
       section.menu.hidden = false;
@@ -140,7 +153,7 @@
       const current = [...sections.values()].find(section => !section.panel.hidden);
       if (current) openMenu(current);
     }
-    /** 고정 메뉴 아래의 현재 제목을 표시하며, 본문 끝에서는 마지막 제목을 선택합니다. */
+    /** 고정 메뉴 아래의 현재 제목을 표시하며, 본문 끝에서는 마지막 제목을 선택한다. */
     function updateCurrentHeading() {
       const section = [...sections.values()].find(item => !item.panel.hidden);
       if (!section) return;
@@ -253,7 +266,7 @@
     }, { signal: aboutEl.aboutTabsController.signal });
     scrollPane?.addEventListener('scroll', updateCurrentHeading, { passive: true, signal: aboutEl.aboutTabsController.signal });
     window.addEventListener('resize', updateCurrentHeading, { signal: aboutEl.aboutTabsController.signal });
-    // 메뉴와 본문을 서로 다른 영역에 두어 스크롤해도 글자가 겹치지 않게 합니다.
+    // 메뉴와 본문을 서로 다른 영역에 두어 스크롤해도 글자가 겹치지 않게 한다.
     scrollPane.parentElement.querySelector('.about-header')?.remove();
     const header = document.createElement('div');
     header.className = 'about-header md-body';
@@ -331,7 +344,7 @@
       // 5) 마크다운 → HTML → DOMPurify 정화 (custom-block 클래스 등은 ALLOWED_ATTR로 보존).
       const rawHtml = md.render(text);
       aboutEl.innerHTML = window.DOMPurify.sanitize(rawHtml);
-      // 문서와 함께 둔 상대 경로 이미지는 SPA 화면 주소가 아닌 안내서 위치를 기준으로 읽습니다.
+      // 문서와 함께 둔 상대 경로 이미지는 SPA 화면 주소가 아닌 안내서 위치를 기준으로 읽는다.
       aboutEl.querySelectorAll('img[src]').forEach(image => {
         image.src = new URL(image.getAttribute('src'), guideUrl).href;
         image.loading = 'lazy';

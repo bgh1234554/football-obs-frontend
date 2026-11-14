@@ -1,5 +1,19 @@
+/**
+ * [경기 시계: 실제 경과 시간 동기화와 편집]
+ * 시작/정지/직접 입력/프리셋/추가시간 UI를 공통 시계 state에 연결한다.
+ *
+ * 처리 흐름:
+ *  1. 시작 때 실제 시각을 기준점으로 기록하고, 갱신 때 지난 시간을 secPerTick 비율로 환산한다.
+ *  2. 일시정지는 정지 직전까지의 경과를 먼저 반영하고 기준 시각을 초기화한다.
+ *  3. 직접 입력/프리셋은 표시된 편집값을 초로 해석해 적용하고 해당 조작의 시작/정지 정책을 따른다.
+ *  4. 편집기·프리셋·추가시간은 각 UI의 가시성/포커스/포인터 영역을 관리한다.
+ *  5. 탭 숨김/종료 등 저장 시점에는 실행 상태와 기준 시각을 함께 보관한다.
+ *
+ * 인터벌은 화면 갱신 기회일 뿐 시간의 원천이 아니다. 백그라운드에서 호출이 늦어져도
+ * 다음 동기화에서 실제 경과를 반영하므로 매 콜백마다 고정 초를 더하는 방식으로 바꾸면 안 된다.
+ */
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // [타이머] 200ms 인터벌로 경기 시간을 증가시키고 시계 텍스트를 갱신
+  // [타이머] 200ms 인터벌에서 실제 경과 시간을 동기화하고 시계 텍스트를 갱신한다.
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   /**
@@ -345,7 +359,7 @@
       clockEditor.style.setProperty('--clock-editor-anchor', (clockEl.offsetLeft + colonCenter) + 'px');
       clockEditor.style.setProperty('--clock-editor-top', (clockEl.offsetTop + clockEl.offsetHeight / 2) + 'px');
       clockEditor.style.setProperty('--fsm-clock-background', style.background);
-      // 가상 요소의 배경을 프리셋 메뉴에도 전달합니다.
+      // 가상 요소의 배경을 프리셋 메뉴에도 전달한다.
       const shapeStyle = getComputedStyle(clockEl, '::before');
       const usesShapeBackground = style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.backgroundImage === 'none'
         && shapeStyle.content !== 'none' && shapeStyle.content !== 'normal';
@@ -355,7 +369,7 @@
       clockEditor.style.setProperty('--fsm-clock-height', clockEl.offsetHeight + 'px');
       clockEditor.style.setProperty('--fsm-clock-font-size', style.fontSize);
       if (clockEl.closest('[data-fsm-theme="eliteserien"]')) {
-        // 편집 전후 숫자 폭과 기준선을 같게 유지합니다.
+        // 편집 전후 숫자 폭과 기준선을 같게 유지한다.
         ceMin.value = String(m).padStart(2, '0');
         ceSec.value = String(s).padStart(2, '0');
         const context = document.createElement('canvas').getContext('2d');
