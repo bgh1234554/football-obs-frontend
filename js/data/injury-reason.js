@@ -70,6 +70,7 @@
     'Broken Arm':        '팔 골절',
     'Broken calfbone':   '종아리뼈 골절',
     'Broken shinbone':   '정강이뼈 골절',
+    'Broken collarbone': '쇄골뼈 골절',
     'Pelvis Injury':     '골반 부상',
     'Fracture':          '골절',
     'Abdominal strain':  '복부 근육 긴장',
