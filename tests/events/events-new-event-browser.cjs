@@ -222,6 +222,33 @@ const draftRoot = path.resolve(process.argv[2] || root);
         await page.clock.runFor(50);
         assert.equal(await notice().count(), 0, '첫 조회는 과거 구간을 알리지 않는다.');
       }
+      await start('1H', 30);
+      await page.evaluate(() => {
+        Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      for (const end of [3, 7]) {
+        await page.evaluate(end => {
+          const events = window.spotlightFixture.events;
+          while (events.length < end) {
+            const minute = events.length + 1;
+            events.push({ type: 'Card', detail: 'Yellow Card', side: 'home', elapsed: minute, playerName: '경고선수' + minute });
+          }
+        }, end);
+        await poll('1H', 30);
+      }
+      await page.clock.fastForward(6500);
+      assert.equal(await notice().count(), 0);
+      await page.evaluate(() => {
+        delete document.hidden;
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await poll('1H', 30);
+      for (let minute = 3; minute <= 7; minute++) {
+        assert((await notice().innerText()).includes('경고선수' + minute));
+        await page.clock.runFor(5350);
+      }
+      assert.equal(await notice().count(), 0);
       await start('1H', 44);
       await poll('HT', 45); await expectNotice('하프타임');
       await poll('HT', 45); assert.equal(await notice().count(), 0, '같은 하프타임을 중복 알리지 않는다.');

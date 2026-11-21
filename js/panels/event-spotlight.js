@@ -22,6 +22,7 @@
 (() => {
   const SHOW_MS = 5000;   // 한 이벤트를 보여 주는 시간 (캠 큰 패널 새 이벤트 유지 시간과 같음)
   const FADE_MS = 320;
+  const MISSED_LIMIT = 5;
   const SPOTLIGHT_FONT_SIZE = 15; // 패널 글씨 크기와 분리한 알림 전용 기준 크기
   const SPOTLIGHT_BASE_SCALE = 1.25; // 설정 100%일 때의 실제 배율(이벤트 패널 칼럼 너비 기준)
   const SPOTLIGHT_BOARD_GAP = 6; // 점수판 아래 위치에서 점수판과의 간격(px)
@@ -33,6 +34,7 @@
   let pendingNew = false;  // fixture.js가 "새 이벤트 수신"을 알린 뒤 다음 렌더에서만 표시
   const queue = [];
   let showing = false;
+  let showFrame = null;
   let host = null;
   let hideTimer = null;    // 표시 시간(SHOW_MS)이 끝나면 사라지기 시작
   let fadeTimer = null;    // 사라지는 효과(FADE_MS)가 끝나면 다음 이벤트로
@@ -44,16 +46,22 @@
    * 대기열·보이는 표시·진행 중인 타이머를 모두 치운다. 설정을 끄거나 다른 경기로 바뀔 때 쓴다.
    * 타이머를 취소하지 않으면 다시 켠 뒤 새 표시가 예전 타이머 때문에 일찍 사라지거나 순서가 꼬인다.
    */
-  function reset() {
+  function clearDisplay() {
     // 현재 표시 수명만 정리한다. 확인 키의 갱신/경기별 구간 키 초기화는 AfterRender가 맡으므로,
     // 설정을 껐다 켜는 동작 자체가 과거 이벤트를 다시 알리는 기준 초기화가 되지 않는다.
     window.notificationSounds?.stop('event');
+    if (showFrame !== null) cancelAnimationFrame(showFrame);
+    showFrame = null;
     clearTimeout(hideTimer);
     clearTimeout(fadeTimer);
     hideTimer = fadeTimer = null;
-    queue.length = 0;
     if (host) { host.classList.remove('is-visible'); host.hidden = true; host.replaceChildren(); }
     showing = false;
+  }
+
+  function reset() {
+    clearDisplay();
+    queue.length = 0;
   }
 
   const mode = () => (typeof getSetting === 'function' ? getSetting('eventSpotlight') : 'off');
@@ -142,7 +150,26 @@
    * 알림이 꺼졌거나 카메라 레이아웃이 아니면 대기열을 비워 나중에 과거 이벤트를 몰아 띄우지 않는다.
    */
   function showNext() {
-    if (showing || !queue.length) return;
+    if (!queue.length) return;
+    if (!enabled() || !document.querySelector('#page-main-big.active, #page-main-small.active')) {
+      queue.length = 0;
+      return;
+    }
+    if (document.hidden) {
+      if (queue.length > MISSED_LIMIT) queue.splice(0, queue.length - MISSED_LIMIT);
+      return;
+    }
+    if (showing || showFrame !== null) return;
+    // 표시할 프레임까지 행을 큐에 남겨 탭 전환 직전에 받은 이벤트도 복귀 후 표시한다.
+    showFrame = requestAnimationFrame(() => {
+      showFrame = null;
+      if (document.hidden) { showNext(); return; }
+      displayNext();
+    });
+  }
+
+  function displayNext() {
+    if (!queue.length) return;
     const target = enabled() ? activeLayout() : null;
     if (!target) { queue.length = 0; return; }
     showing = true;
@@ -157,14 +184,10 @@
     // 패널과 같은 글자 맞춤을 복제 행에도 적용한 뒤(행 높이 확정) 위치를 잡는다. 아직 투명 상태라 보이지 않는다.
     window.evRefitPanelRows?.(host, SPOTLIGHT_FONT_SIZE);
     place(target);
-    requestAnimationFrame(() => {
-      // 크기/위치가 확정된 다음 프레임에서 보이게 한다. 복제 행의 신규 표시 클래스를
-      // 다시 붙여 애니메이션을 시작하며, 알림음은 notification-sounds.js가 이 시작을 감지한다.
-      host.classList.add('is-visible');
-      row.classList.remove('ev-row-new');
-      void row.offsetWidth;
-      row.classList.add('ev-row-new');
-    });
+    // 투명 상태의 배치를 먼저 확정하고, 이 프레임에서 표시를 시작한 뒤 5초를 센다.
+    void host.offsetWidth;
+    host.classList.add('is-visible');
+    row.classList.add('ev-row-new');
     hideTimer = setTimeout(() => {
       hideTimer = null;
       window.notificationSounds?.stop('event');
@@ -329,4 +352,9 @@
     if (target) place(target);
   });
   document.addEventListener('page:activated', () => window.evSpotlightStopPreview());
+  document.addEventListener('visibilitychange', () => {
+    // 이미 표시한 행은 다시 재생하지 않고, 아직 표시하지 않은 행만 복귀할 때 이어서 보여 준다.
+    if (document.hidden) clearDisplay();
+    showNext();
+  });
 })();
