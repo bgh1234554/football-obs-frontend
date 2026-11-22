@@ -230,14 +230,20 @@ const draftRoot = path.resolve(process.argv[2] || root);
       for (const end of [3, 7]) {
         await page.evaluate(end => {
           const events = window.spotlightFixture.events;
+          // 기존 골의 선수 정보 보완과 별개 신규 이벤트가 한 응답에 함께 도착한다.
+          if (end === 7) Object.assign(events[2], { playerId: 80003, playerName: '확정득점자' });
           while (events.length < end) {
             const minute = events.length + 1;
-            events.push({ type: 'Card', detail: 'Yellow Card', side: 'home', elapsed: minute, playerName: '경고선수' + minute });
+            events.push(minute === 3
+              ? { type: 'Goal', detail: 'Normal Goal', side: 'home', elapsed: minute }
+              : { type: 'Card', detail: 'Yellow Card', side: 'home', elapsed: minute, playerName: '경고선수' + minute });
           }
         }, end);
         await poll('1H', 30);
       }
       await page.clock.fastForward(6500);
+      await page.evaluate(() => { window.spotlightFixture.events[2].assistName = '확정도움'; });
+      await poll('1H', 30);
       assert.equal(await notice().count(), 0);
       await page.evaluate(() => {
         delete document.hidden;
@@ -245,7 +251,10 @@ const draftRoot = path.resolve(process.argv[2] || root);
       });
       await poll('1H', 30);
       for (let minute = 3; minute <= 7; minute++) {
-        assert((await notice().innerText()).includes('경고선수' + minute));
+        const text = await notice().innerText();
+        if (minute === 3) {
+          assert(text.includes('확정득점자') && text.includes('확정도움'));
+        } else assert(text.includes('경고선수' + minute));
         await page.clock.runFor(5350);
       }
       assert.equal(await notice().count(), 0);

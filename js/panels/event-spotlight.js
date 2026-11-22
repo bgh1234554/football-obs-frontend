@@ -6,7 +6,7 @@
  * 처리 순서:
  *  1. fixture.js가 신규 이벤트를 받은 응답에서 evSpotlightMarkNewEvents로 다음 렌더를 표시한다.
  *  2. 패널 렌더 후 evSpotlightAfterRender가 이전 이벤트 키/구간 키와 비교해 새 행을 추린다.
- *  3. 첫 조회의 과거 행은 제외하고, 새 행을 오래된 순서로 복제해 대기열에 넣는다.
+ *  3. 새 행을 발생 순서대로 보관하고, 이후 렌더에서 대기 중인 행을 최신 행으로 교체한다.
  *  4. showNext가 하나씩 글자 맞춤과 위치 계산을 마친 후 표시·퇴장 타이머를 진행한다.
  *  5. 경기 변경/설정 끄기 때 표시와 대기열을 정리한다. 크기 견본은 별도 레이어로 관리한다.
  *
@@ -30,6 +30,7 @@
   // 중복 판정 상태와 표시 대기열은 역할이 다르다. 알림이 꺼져 있어도 렌더 후 확인 키는
   // 갱신해 두며, 다시 켰을 때 이미 지나간 이벤트를 새로운 이벤트로 취급하지 않는다.
   let seenKeys = null;     // 마지막 렌더에서 본 이벤트 키(data-ev-key)
+  let previousGoals = new Map();
   let seenMarkerKeys = new Set(); // 같은 경기에서 이미 확인한 구간은 재조회로 다시 알리지 않는다.
   let pendingNew = false;  // fixture.js가 "새 이벤트 수신"을 알린 뒤 다음 렌더에서만 표시
   const queue = [];
@@ -173,7 +174,15 @@
     const target = enabled() ? activeLayout() : null;
     if (!target) { queue.length = 0; return; }
     showing = true;
-    const row = queue.shift();
+    const source = queue.shift();
+    const row = source.cloneNode(true);
+    row.classList.remove('ev-row-new', 'ev-row-glow-held', 'is-editable', 'has-hide-btn');
+    row.removeAttribute('style');
+    row.querySelectorAll('.ev-marker-label').forEach(label => { label.style.fontSize = `${SPOTLIGHT_FONT_SIZE}px`; });
+    row.querySelectorAll('.ev-hide-btn, .ev-row-menu, button').forEach(node => {
+      if (node.matches('.ev-hide-btn, .ev-row-menu')) node.remove();
+      else node.setAttribute('tabindex', '-1');
+    });
     ensureHost();
     const list = document.createElement('div');
     list.className = 'ev-list';
@@ -203,27 +212,14 @@
   }
 
   /**
-   * 새 이벤트 행을 오래된 것부터 복제해 표시 대기열에 넣는다.
-   * 원본 패널의 편집/숨기기 버튼과 유지 중인 강조 상태를 제거해 알림이 원본 동작을
-   * 대신 실행하지 않게 한다. 실제 이벤트가 오면 크기 견본을 먼저 치워 겹치지 않게 한다.
+   * 새 이벤트 행을 오래된 것부터 대기열에 넣고, 실제 표시 시점에 최신 행을 복제한다.
+   * 실제 이벤트가 오면 크기 견본을 먼저 치워 겹치지 않게 한다.
    * @param {HTMLElement[]} rows 원본 이벤트 패널에서 새로 추가된 행.
    */
   function enqueue(rows) {
     window.evSpotlightStopPreview();
     // 패널은 최신순이지만 알림은 발생 순서대로 보여야 하므로 순서를 뒤집는다.
-    // cloneNode는 원본 이벤트 리스너를 복제하지 않는다. 남은 버튼도 탭 이동 대상에서 빼고
-    // 실제 알림 레이어의 클릭은 크기 조절 경로로만 전달되도록 한다.
-    rows.reverse().forEach(source => {
-      const clone = source.cloneNode(true);
-      clone.classList.remove('ev-row-new', 'ev-row-glow-held', 'is-editable', 'has-hide-btn');
-      clone.removeAttribute('style');
-      clone.querySelectorAll('.ev-marker-label').forEach(label => { label.style.fontSize = `${SPOTLIGHT_FONT_SIZE}px`; });
-      clone.querySelectorAll('.ev-hide-btn, .ev-row-menu, button').forEach(node => {
-        if (node.matches('.ev-hide-btn, .ev-row-menu')) node.remove();
-        else node.setAttribute('tabindex', '-1');
-      });
-      queue.push(clone);
-    });
+    rows.reverse().forEach(source => queue.push(source));
     showNext();
   }
 
@@ -321,7 +317,27 @@
     // 다른 경기로 바뀌면 이전 경기의 대기 중·표시 중인 이벤트를 치운다.
     if (fixtureId !== seenFixtureId) { reset(); seenMarkerKeys = new Set(); }
     const sameFixture = fixtureId && fixtureId === seenFixtureId && seenKeys;
-    const freshEvents = sameFixture && pendingNew && enabled() ? rows.filter(row => !seenKeys.has(row.dataset.evKey)) : [];
+    const latestByKey = new Map(rows.map(row => [row.dataset.evKey, row]));
+    const goals = new Map();
+    for (const row of rows) {
+      const moment = row.dataset.goalMoment;
+      if (moment) goals.set(moment, goals.has(moment) ? null : row.dataset.evKey);
+    }
+    const correctedKeys = new Set();
+    if (sameFixture) {
+      // 양쪽 목록에서 같은 팀·시간의 골이 하나씩일 때만 변경된 키를 이어 준다.
+      for (const [moment, newKey] of goals) {
+        const oldKey = previousGoals.get(moment);
+        if (oldKey && newKey && oldKey !== newKey && !keys.has(oldKey) && !seenKeys.has(newKey)) {
+          latestByKey.set(oldKey, latestByKey.get(newKey));
+          correctedKeys.add(newKey);
+        }
+      }
+      queue.forEach((row, i) => { queue[i] = latestByKey.get(row.dataset.evKey) || row; });
+    }
+    previousGoals = goals;
+    const freshEvents = sameFixture && pendingNew && enabled()
+      ? rows.filter(row => !seenKeys.has(row.dataset.evKey) && !correctedKeys.has(row.dataset.evKey)) : [];
     // 첫 조회의 과거 구간이나 건너뛴 중간 구간을 뒤늦게 나열하지 않는다.
     const latestMarker = markers[0];
     const freshMarker = sameFixture && enabled() && latestMarker && !seenMarkerKeys.has(latestMarker.dataset.evMarkerKey) ? latestMarker : null;

@@ -1270,6 +1270,8 @@ function evCreateRow(ev, fixtureData, renderKey = '', timeContext) {
     main.appendChild(stack);
   } else if (evTypeIs(ev, 'Goal')) {
     const assistName = evPickPlayerName(ev, 'assist');
+    // 득점자 정보가 뒤늦게 들어와 렌더 키가 바뀌면 같은 팀·시간의 골을 대기 중인 알림과 연결한다.
+    row.dataset.goalMoment = JSON.stringify([ev.side, ev.elapsed, Number(ev.extra || 0), timing.period]);
     const stack = document.createElement('span');
     stack.className = assistName ? 'ev-text ev-text-stack' : 'ev-text';
 
