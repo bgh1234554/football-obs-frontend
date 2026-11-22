@@ -1174,6 +1174,10 @@ function evCreateRow(ev, fixtureData, renderKey = '', timeContext) {
   row.className = `ev-row ev-bar-${style.color}`;
   row.style.setProperty('--ev-ui-scale', String(evGetBaseFontSize() / EVENTS_PANEL_FONT_DEFAULT));
   if (renderKey) row.dataset.evKey = renderKey;
+  if (evTypeIs(ev, 'Goal') || (evTypeIs(ev, 'Card') &&
+      (ev._isCumulativeRed || evDetailIs(ev.detail, 'Red Card') || evDetailIs(ev.detail, 'Second Yellow Card')))) {
+    row.dataset.majorEvent = 'true';
+  }
   if (evTypeIs(ev, 'subst')) row.classList.add('ev-row-subst');
 
   // 좌측 컬러 막대

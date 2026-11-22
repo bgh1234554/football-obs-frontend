@@ -22,7 +22,8 @@
 (() => {
   const SHOW_MS = 5000;   // 한 이벤트를 보여 주는 시간 (캠 큰 패널 새 이벤트 유지 시간과 같음)
   const FADE_MS = 320;
-  const MISSED_LIMIT = 5;
+  const MISSED_FILL_COUNT = 5;
+  const MISSED_ORDINARY_COUNT = 3;
   const SPOTLIGHT_FONT_SIZE = 15; // 패널 글씨 크기와 분리한 알림 전용 기준 크기
   const SPOTLIGHT_BASE_SCALE = 1.25; // 설정 100%일 때의 실제 배율(이벤트 패널 칼럼 너비 기준)
   const SPOTLIGHT_BOARD_GAP = 6; // 점수판 아래 위치에서 점수판과의 간격(px)
@@ -33,7 +34,7 @@
   let previousGoals = new Map();
   let seenMarkerKeys = new Set(); // 같은 경기에서 이미 확인한 구간은 재조회로 다시 알리지 않는다.
   let pendingNew = false;  // fixture.js가 "새 이벤트 수신"을 알린 뒤 다음 렌더에서만 표시
-  const queue = [];
+  let queue = [];
   let showing = false;
   let showFrame = null;
   let host = null;
@@ -157,7 +158,14 @@
       return;
     }
     if (document.hidden) {
-      if (queue.length > MISSED_LIMIT) queue.splice(0, queue.length - MISSED_LIMIT);
+      if (queue.length > MISSED_FILL_COUNT) {
+        // 주요 이벤트는 모두 남기고, 일반 이벤트는 최근 3건 또는 총 5건을 채우는 데 필요한 만큼 남긴다.
+        const ordinary = queue.filter(row => !row.dataset.majorEvent);
+        const majorCount = queue.length - ordinary.length;
+        const keep = Math.max(MISSED_ORDINARY_COUNT, MISSED_FILL_COUNT - majorCount);
+        const discard = new Set(ordinary.slice(0, Math.max(0, ordinary.length - keep)));
+        if (discard.size) queue = queue.filter(row => !discard.has(row));
+      }
       return;
     }
     if (showing || showFrame !== null) return;

@@ -227,18 +227,22 @@ const draftRoot = path.resolve(process.argv[2] || root);
         Object.defineProperty(document, 'hidden', { configurable: true, value: true });
         document.dispatchEvent(new Event('visibilitychange'));
       });
-      for (const end of [3, 7]) {
-        await page.evaluate(end => {
+      const mixed = layout === 'main-small';
+      for (const end of [3, 7, ...(mixed ? [10] : [])]) {
+        await page.evaluate(({ end, mixed }) => {
           const events = window.spotlightFixture.events;
           // 기존 골의 선수 정보 보완과 별개 신규 이벤트가 한 응답에 함께 도착한다.
           if (end === 7) Object.assign(events[2], { playerId: 80003, playerName: '확정득점자' });
           while (events.length < end) {
             const minute = events.length + 1;
+            const major = mixed && ({ 1: ['Goal', 'Own Goal'], 2: ['Card', 'Red Card'],
+              4: ['Goal', 'Missed Penalty'], 5: ['Card', 'Second Yellow Card'] })[minute];
             events.push(minute === 3
               ? { type: 'Goal', detail: 'Normal Goal', side: 'home', elapsed: minute }
-              : { type: 'Card', detail: 'Yellow Card', side: 'home', elapsed: minute, playerName: '경고선수' + minute });
+              : { type: major ? major[0] : 'Card', detail: major ? major[1] : 'Yellow Card',
+                side: 'home', elapsed: minute, playerName: '선수' + minute });
           }
-        }, end);
+        }, { end, mixed });
         await poll('1H', 30);
       }
       await page.clock.fastForward(6500);
@@ -250,11 +254,11 @@ const draftRoot = path.resolve(process.argv[2] || root);
         document.dispatchEvent(new Event('visibilitychange'));
       });
       await poll('1H', 30);
-      for (let minute = 3; minute <= 7; minute++) {
+      for (const minute of (mixed ? [1, 2, 3, 4, 5, 8, 9, 10] : [3, 4, 5, 6, 7])) {
         const text = await notice().innerText();
         if (minute === 3) {
           assert(text.includes('확정득점자') && text.includes('확정도움'));
-        } else assert(text.includes('경고선수' + minute));
+        } else assert(text.includes('선수' + minute));
         await page.clock.runFor(5350);
       }
       assert.equal(await notice().count(), 0);

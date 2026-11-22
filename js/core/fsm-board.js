@@ -1888,13 +1888,19 @@ function adjustScoreboardWidth() {
     });
   }
 
-  /** 점수·득점자 알림음은 설정 창과 같은 저장값을 사용한다. */
+  const boardSoundOptions = {
+    boardFlashSound: '점수·득점자 알림음',
+    eventSpotlightSound: '신규 이벤트 알림음',
+  };
+
+  /** 각 스위치를 설정창의 해당 알림음 값에 맞춘다. */
   function syncBoardSoundQuickControls(panel) {
-    const value = typeof getSetting === 'function' ? getSetting('boardFlashSound') : 'off';
-    const input = panel.querySelector('[data-settings-cat="boardFlashSound"]');
-    if (input) input.checked = value === 'on';
-    panel.querySelectorAll('.board-sound-setting [data-side]').forEach(label => {
-      label.classList.toggle('is-active', label.dataset.side === value);
+    panel.querySelectorAll('[data-board-sound]').forEach(input => {
+      const value = typeof getSetting === 'function' ? getSetting(input.dataset.boardSound) : 'off';
+      input.checked = value === 'on';
+      input.closest('.sp-toggle-cluster').querySelectorAll('[data-side]').forEach(label => {
+        label.classList.toggle('is-active', label.dataset.side === value);
+      });
     });
   }
 
@@ -1921,17 +1927,16 @@ function adjustScoreboardWidth() {
         return `<div class="agg-quick-team"><span class="agg-quick-label">${label}</span><div class="agg-quick-stepper"><button type="button" data-score-action="${side}Minus" aria-label="${label} 1 감소">&minus;</button><output data-score-value="${side}"></output><button type="button" data-score-action="${side}Plus" aria-label="${label} 1 증가">+</button></div></div>`;
       }).join('')}</div><div class="manual-score-quick-options"><label class="manual-score-pso-toggle"><input type="checkbox" aria-label="승부차기 (PSO)">PSO</label><div class="manual-score-quick-hint"></div></div><div class="manual-score-pso-notice" hidden>승부차기 중에는 일반 점수 변경 불가</div>`;
       panel.prepend(scores);
-      const sound = document.createElement('div');
-      sound.className = 'board-sound-setting';
-      sound.setAttribute('role', 'group');
-      sound.setAttribute('aria-label', '점수·득점자 알림음');
-      sound.innerHTML = '<span>알림음</span><div class="sp-toggle-cluster"><span class="sp-toggle-side" data-side="off">OFF</span><label class="sp-switch sp-switch-mini"><input type="checkbox" data-settings-cat="boardFlashSound" aria-label="알림음"><span class="sp-switch-slider"></span></label><span class="sp-toggle-side" data-side="on">ON</span></div>';
-      sound.addEventListener('change', event => {
-        if (event.target.matches('input')) setSetting('boardFlashSound', event.target.checked ? 'on' : 'off');
-      });
-      panel.append(sound);
+      for (const [category, label] of Object.entries(boardSoundOptions)) {
+        const sound = document.createElement('div');
+        sound.className = 'board-sound-setting';
+        sound.innerHTML = `<span>${label}</span><div class="sp-toggle-cluster"><span class="sp-toggle-side" data-side="off">OFF</span><label class="sp-switch sp-switch-mini"><input type="checkbox" data-board-sound="${category}" aria-label="${label}"><span class="sp-switch-slider"></span></label><span class="sp-toggle-side" data-side="on">ON</span></div>`;
+        const input = sound.querySelector('input');
+        input.addEventListener('change', () => setSetting(category, input.checked ? 'on' : 'off'));
+        panel.append(sound);
+      }
       document.addEventListener('settings:change', event => {
-        if (event.detail?.category === 'boardFlashSound') syncBoardSoundQuickControls(panel);
+        if (Object.hasOwn(boardSoundOptions, event.detail?.category)) syncBoardSoundQuickControls(panel);
       });
       // 테마 탭의 전환 경로를 공유해 이전 경기 구간과 승부차기 설정을 함께 유지한다.
       scores.querySelector('.manual-score-pso-toggle input').addEventListener('change', event => {

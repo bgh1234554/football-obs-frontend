@@ -639,6 +639,8 @@
   font-size: 14px;
   font-weight: bold;
 }
+/* 점수·득점자 / 신규 이벤트 알림음 두 줄은 구분선 하나 아래 한 묶음으로 보인다. */
+#boardAggControls .board-sound-setting + .board-sound-setting { margin-top: 4px; padding-top: 0; border-top: 0; }
 #boardAggControls .board-sound-setting > span { padding-left: 6px; }
 #boardAggControls .board-sound-setting .sp-toggle-cluster { padding-right: 6px; }
 #boardAggControls .board-sound-setting .sp-toggle-side { color: inherit; opacity: .6; }
