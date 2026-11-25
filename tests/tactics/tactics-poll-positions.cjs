@@ -117,9 +117,15 @@ const fixture = require('../fixtures/1637598-lineup.json');
     assert.deepEqual(modes, { manual: '5-4-1', automatic: '3-5-2', first: 'auto' });
     await page.evaluate(() => activatePage('tactics'));
     const trigger = page.locator('.td-fm-home .td-fm-trigger');
-    await trigger.click();
-    await page.locator('#tactics-home-fm-menu [data-value="4-3-3"]').click();
-    assert.equal(await page.locator('#tactics-home-fm').inputValue(), '4-3-3');
+    for (const side of ['home', 'away']) {
+      await page.locator(`.td-fm-${side} .td-fm-trigger`).click();
+      await page.locator(`#tactics-${side}-fm-menu [data-value="4-2-4"]`).click();
+      assert.equal(await page.locator(`#tactics-${side}-fm-label`).textContent(), '4-2-4');
+      const depths = await page.locator(`.tactics-token[data-team="${side}"]`).evaluateAll(
+        tokens => tokens.map(token => parseFloat(token.style.left)));
+      const lines = [...new Set(depths)].sort((a, b) => side === 'home' ? a - b : b - a);
+      assert.deepEqual(lines.map(x => depths.filter(depth => depth === x).length), [1, 4, 2, 4]);
+    }
     await trigger.click();
     await page.keyboard.press('Escape');
     assert.equal(await trigger.getAttribute('aria-expanded'), 'false');

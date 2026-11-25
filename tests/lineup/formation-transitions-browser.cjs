@@ -32,7 +32,7 @@ const root = path.resolve(__dirname, '../..');
       await select().selectOption('3-1-4-2');
       await select().selectOption('3-5-2');
       assert.deepEqual(await slots(),initial);
-      await page.locator('.dp-grid-row[data-slot-index="1"]').dragTo(page.locator('.dp-grid-row[data-slot-index="3"]'));
+      await page.locator('.dp-grid-row[data-slot-index="1"] .dp-grid-handle').dragTo(page.locator('.dp-grid-row[data-slot-index="3"]'));
       const moved=await slots();assert.notDeepEqual(moved,initial);
       await select().selectOption('5-3-2');
       assert.deepEqual(await slots(),[0,4,1,2,3,8,5,6,7,9,10].map(i=>moved[i]));
@@ -49,6 +49,7 @@ const root = path.resolve(__dirname, '../..');
     // 실제 선택 UI에서도 양쪽 측면을 유지하고 CAM을 기존 ST 옆으로 보내야 한다.
     for(const [from,to,expected] of [
       ['3-4-2-1','3-2-4-1',[0,1,2,3,5,6,4,8,9,7,10]],
+      ['4-4-2','4-2-4',[0,1,2,3,4,6,7,5,9,10,8]],
       ['4-3-3','3-4-3',[0,2,6,3,1,5,7,4,8,9,10]],
       ['4-2-1-3','3-3-1-3',[0,2,5,3,1,6,4,7,8,9,10]],
       ['4-4-2','4-2-2-2',[0,1,2,3,4,6,7,5,8,9,10]],
@@ -88,7 +89,7 @@ const root = path.resolve(__dirname, '../..');
       applyLineupPanels({matchInfo:{fixtureId:'formation-chain-drag',homeTeamId:1,awayTeamId:2},homeLineup:lineup,awayLineup:lineup,events:[],playerStats:[]});
       openManualPanel('lineup','home');
     });
-    await page.locator('.dp-grid-row[data-slot-index="5"]').dragTo(page.locator('.dp-grid-row[data-slot-index="6"]'));
+    await page.locator('.dp-grid-row[data-slot-index="5"] .dp-grid-handle').dragTo(page.locator('.dp-grid-row[data-slot-index="6"]'));
     const moved=await slots();
     await select().selectOption('5-2-3');
     const direct=await slots();
@@ -106,11 +107,11 @@ const root = path.resolve(__dirname, '../..');
     const field=(key,i)=>page.locator(`[name="lineup-${key}-${i}"]`);
     const formation=page.locator('#manualLineupFormation');
     await formation.selectOption('4-3-1-2');
-    for(let i=0;i<11;i++) {await field('name',i).fill(`person ${i}`);await field('number',i).fill(String(i+1));}
+    for(let i=0;i<11;i++) {await field('name',i).fill(`Person ${i}`);await field('number',i).fill(String(i+1));}
     await field('goals',6).fill('2');await field('assists',6).fill('3');await field('captain',6).check();await field('yellow',6).check();
     await field('name',7).fill('');await field('goals',7).fill('4');
     await formation.selectOption('4-1-2-1-2');
-    assert.equal(await field('name',5).inputValue(),'person 6');
+    assert.equal(await field('name',5).inputValue(),'Person 6');
     assert.equal(await field('number',5).inputValue(),'7');
     assert.equal(await field('goals',5).inputValue(),'2');assert.equal(await field('assists',5).inputValue(),'3');
     assert(await field('captain',5).isChecked());assert(await field('yellow',5).isChecked());
@@ -118,12 +119,12 @@ const root = path.resolve(__dirname, '../..');
     await page.locator('#manualPanelGridToggle').click();
     await select().selectOption('4-3-1-2');
     await page.locator('#manualPanelGridToggle').click();
-    assert.equal(await field('name',6).inputValue(),'person 6');assert(await field('captain',6).isChecked());
+    assert.equal(await field('name',6).inputValue(),'Person 6');assert(await field('captain',6).isChecked());
     await formation.selectOption('4-1-3-2');
-    assert.equal(await field('name',5).inputValue(),'person 6','full-form tracks the formation after grid toggle');
+    assert.equal(await field('name',5).inputValue(),'Person 6','full-form tracks the formation after grid toggle');
     await page.locator('#manualPanelSave').click();
     await page.evaluate(()=>openManualPanel('lineup','home'));
-    assert.equal(await field('name',5).inputValue(),'person 6');assert(await field('captain',5).isChecked());
+    assert.equal(await field('name',5).inputValue(),'Person 6');assert(await field('captain',5).isChecked());
     const screenshotDir = path.join(root, 'screenshots');
     fs.mkdirSync(screenshotDir, { recursive: true });
     await page.locator('.dp-manual-modal').first().screenshot({path:path.join(screenshotDir,'formation-transitions.png')});
