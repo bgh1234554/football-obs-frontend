@@ -630,7 +630,7 @@ function shouldShowLineupNameNumber() {
 /** 풀네임에도 같은 선수의 숏네임에서 확인된 성 경계만 연결한다. */
 function getLineupNameWithSurnameBreaks(player, name) {
   const selectedName = String(name || '');
-  if (stripKoreanSurnameBreaks(selectedName) !== selectedName) return selectedName;
+  // 이름에 이미 경계가 있어도 숏네임에서 확인된 성 경계는 함께 복원한다.
   const shortName = String(player?.name || player?.playerName || '');
   const surname = stripLeadingLineupInitial(shortName);
   const parts = surname.split(/(?<=[가-힣])-(?=[가-힣])/);

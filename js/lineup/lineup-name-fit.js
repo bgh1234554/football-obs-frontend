@@ -91,12 +91,21 @@ function computeLineupSurnameBreakLines(raw) {
  * 기존 성 경계 후보를 먼저 두어 같은 크기에서는 기존 배치를 유지한다. */
 function computeLineupSurnameBreakCandidates(raw) {
   const primary = computeLineupSurnameBreakLines(raw);
-  const candidates = primary ? [primary] : [];
-  const tokens = stripKoreanSurnameBreaks(String(raw || '')).trim().split(/\s+/).filter(Boolean);
-  if (tokens.length >= 3) {
-    for (let first = 1; first < tokens.length - 1; first += 1) {
-      for (let second = first + 1; second < tokens.length; second += 1) {
-        const lines = [tokens.slice(0, first).join(' '), tokens.slice(first, second).join(' '), tokens.slice(second).join(' ')];
+  const candidates = primary ? [primary.map(stripKoreanSurnameBreaks)] : [];
+  const text = String(raw || '').trim();
+  // 공백과 한글 하이픈 중 두 경계를 골라 세 줄을 만든다. 선택하지 않은 하이픈은
+  // 숨기되, 원래 붙여 쓰던 이름 안에 새 공백이 생기지 않도록 원문을 잘라 사용한다.
+  const boundaries = [...text.matchAll(/\s+|(?<=[가-힣])-(?=[가-힣])/g)];
+  if (boundaries.length >= 2) {
+    for (let first = 0; first < boundaries.length - 1; first += 1) {
+      for (let second = first + 1; second < boundaries.length; second += 1) {
+        const a = boundaries[first];
+        const b = boundaries[second];
+        const lines = [
+          text.slice(0, a.index),
+          text.slice(a.index + a[0].length, b.index),
+          text.slice(b.index + b[0].length),
+        ].map(stripKoreanSurnameBreaks);
         if (!candidates.some(candidate => candidate.join('\n') === lines.join('\n'))) candidates.push(lines);
       }
     }
