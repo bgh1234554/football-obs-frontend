@@ -35,6 +35,13 @@ const { openPage } = require('../tactics/helpers');
     await assertStable();
     assert(await page.getByRole('combobox', { name: '알림음 세트' }).isVisible());
     assert(await page.locator('#settingsBackdrop [data-settings-cat="boardFlashSound"]').locator('..').isVisible());
+    // OBS 상호작용 창은 한/영 전환이 안 되므로 한글 자판으로 친 영문도 두벌식 한글로 찾는다.
+    assert.deepEqual(await page.evaluate(() => ['dkffladma', 'dhkswjs', 'ekfrdl', 'ekfrl', 'Qkfrks', 'obs', 'r1'].map(settingsQwertyToHangul)),
+      ['알림음', '완전', '닭이', '달기', '빨간', 'ㅐㅠㄴ', 'ㄱ1']);
+    await search.fill('dkffladma');
+    assert(await page.getByRole('combobox', { name: '알림음 세트' }).isVisible(), '영문 자판 입력도 한글 설정 검색');
+    await search.fill('VHSXM');
+    assert(await rowVisible('lineupNameSize'), 'Caps Lock 입력과 동의어(폰트)도 적용');
     await search.fill('없는설정검색어');
     await assertStable();
     assert.equal(await page.locator('#settingsSearchStatus').textContent(), '검색 결과가 없습니다.');

@@ -2810,10 +2810,68 @@ function syncSettingsTabSectionHeights() {
  * 탭 활성화 — sp-tab 버튼 is-active 상태 + 매칭하는 섹션만 표시.
  * 마지막 활성 탭은 localStorage(SETTINGS_TAB_KEY)에 저장해 다음 진입 시 복원.
  */
-/** 검색어의 띄어쓰기와 대소문자를 정규화하고 자주 쓰는 표현을 같은 뜻으로 찾는다. */
+// ━━━ [설정 검색] 두벌식 영문 입력 -> 한글 변환 ━━━
+// OBS 브라우저 소스 상호작용 창은 한/영 전환(IME)이 전달되지 않아 한글 자판으로 쳐도 영문이 들어온다.
+// 검색어를 두벌식 자판 기준 한글로도 바꿔 함께 찾는다(예: fkdlsdjq -> 라인업). 검색창 글자는 그대로 둔다.
+const QWERTY_HANGUL_JAMO = {
+  q: 'ㅂ', w: 'ㅈ', e: 'ㄷ', r: 'ㄱ', t: 'ㅅ', y: 'ㅛ', u: 'ㅕ', i: 'ㅑ', o: 'ㅐ', p: 'ㅔ',
+  a: 'ㅁ', s: 'ㄴ', d: 'ㅇ', f: 'ㄹ', g: 'ㅎ', h: 'ㅗ', j: 'ㅓ', k: 'ㅏ', l: 'ㅣ',
+  z: 'ㅋ', x: 'ㅌ', c: 'ㅊ', v: 'ㅍ', b: 'ㅠ', n: 'ㅜ', m: 'ㅡ',
+  Q: 'ㅃ', W: 'ㅉ', E: 'ㄸ', R: 'ㄲ', T: 'ㅆ', O: 'ㅒ', P: 'ㅖ'
+};
+const HANGUL_CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+const HANGUL_JUNG = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
+const HANGUL_JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const HANGUL_VOWEL_COMBO = { 'ㅗㅏ': 'ㅘ', 'ㅗㅐ': 'ㅙ', 'ㅗㅣ': 'ㅚ', 'ㅜㅓ': 'ㅝ', 'ㅜㅔ': 'ㅞ', 'ㅜㅣ': 'ㅟ', 'ㅡㅣ': 'ㅢ' };
+const HANGUL_FINAL_COMBO = { 'ㄱㅅ': 'ㄳ', 'ㄴㅈ': 'ㄵ', 'ㄴㅎ': 'ㄶ', 'ㄹㄱ': 'ㄺ', 'ㄹㅁ': 'ㄻ', 'ㄹㅂ': 'ㄼ', 'ㄹㅅ': 'ㄽ', 'ㄹㅌ': 'ㄾ', 'ㄹㅍ': 'ㄿ', 'ㄹㅎ': 'ㅀ', 'ㅂㅅ': 'ㅄ' };
+
+/** 두벌식 자판으로 친 영문 문자열을 한글 음절로 조합한다. 자판에 없는 글자(숫자, 기호 등)는 그대로 둔다. */
+function settingsQwertyToHangul(text) {
+  let out = '', cho = '', jung = '', jong = '';
+  // 1. 지금까지 조합 중인 글자를 확정 — 초성+중성이 있으면 음절, 아니면 낱자 그대로
+  const flush = () => {
+    if (cho && jung) out += String.fromCharCode(0xAC00 + (HANGUL_CHO.indexOf(cho) * 21 + HANGUL_JUNG.indexOf(jung)) * 28 + HANGUL_JONG.indexOf(jong));
+    else out += cho + jung;
+    cho = jung = jong = '';
+  };
+  for (const ch of text) {
+    const jamo = QWERTY_HANGUL_JAMO[ch] || QWERTY_HANGUL_JAMO[ch.toLowerCase()];
+    if (!jamo) { flush(); out += ch; continue; }
+    if (!HANGUL_JUNG.includes(jamo)) {
+      // 2. 자음 — 받침으로 붙이거나(겹받침 포함) 새 글자의 초성으로 시작
+      if (cho && jung && !jong && HANGUL_JONG.includes(jamo)) jong = jamo;
+      else if (cho && jung && jong && HANGUL_FINAL_COMBO[jong + jamo]) jong = HANGUL_FINAL_COMBO[jong + jamo];
+      else { flush(); cho = jamo; }
+      continue;
+    }
+    // 3. 모음 — 받침이 있으면 받침(겹받침은 뒷자음)을 다음 글자 초성으로 넘기고, 아니면 겹모음 조합 시도
+    if (cho && jung && jong) {
+      const split = Object.keys(HANGUL_FINAL_COMBO).find(key => HANGUL_FINAL_COMBO[key] === jong);
+      const nextCho = split ? split[1] : jong;
+      jong = split ? split[0] : '';
+      flush(); cho = nextCho; jung = jamo;
+    } else if (jung && HANGUL_VOWEL_COMBO[jung + jamo]) jung = HANGUL_VOWEL_COMBO[jung + jamo];
+    else if (cho && !jung) jung = jamo;
+    else { flush(); jung = jamo; }
+  }
+  flush();
+  return out;
+}
+
+/** 검색어의 띄어쓰기와 대소문자를 정규화하고 자주 쓰는 표현을 같은 뜻으로 찾는다. 영문은 두벌식 한글 변환 결과도 후보에 넣는다. */
 function settingsSearchTerms(query) {
   const aliases = { '폰트': ['폰트', '글씨', '글자', '크기'], '사이즈': ['사이즈', '크기'] };
-  return query.trim().toLowerCase().split(/\s+/).filter(Boolean).map(term => aliases[term] || [term]);
+  return query.trim().split(/\s+/).filter(Boolean).map(raw => {
+    const term = raw.toLowerCase();
+    const list = [...(aliases[term] || [term])];
+    // Caps Lock이 켜진 경우도 있어 원래 대소문자와 소문자 두 가지로 변환한다(Shift 쌍자음/ㅒ/ㅖ는 원래 대소문자 쪽에서 살아남음).
+    for (const source of [raw, term]) {
+      const hangul = settingsQwertyToHangul(source);
+      if (!/[가-힣]/.test(hangul)) continue;
+      for (const alt of aliases[hangul] || [hangul]) if (!list.includes(alt)) list.push(alt);
+    }
+    return list;
+  });
 }
 
 /** 기존 입력 요소를 그대로 필터링하므로 검색 결과에서도 저장·초기화 경로를 공유한다. */
