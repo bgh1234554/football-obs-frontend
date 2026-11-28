@@ -286,12 +286,12 @@
 
 .fsm-board .div-background { display: none; }
 .fsm-board .scoreboard-main { position: relative; }
-.fsm-board .teams-left, .fsm-board .teams-right { position: relative; background: #272927; }
+.fsm-board .teams-left, .fsm-board .teams-right { position: relative; background: #3F4241; }
 .fsm-board .team-name { color: #ffffff; }
 .fsm-board .team-logo { background: #f5f5f5; border-color: #f5f5f5; border-radius: 0; }
-.fsm-board .team-score { height: 48px; display: flex; align-items: center; justify-content: center; color: #ffffff; }
-.fsm-board #team-score-left, .fsm-board #team-score-right { background: #4B4E4B; }
-.fsm-board .score-div { position: relative; background: #4B4E4B; z-index: 3; }
+.fsm-board .team-score { height: 48px; display: flex; align-items: center; justify-content: center; color: #3F4241; }
+.fsm-board #team-score-left, .fsm-board #team-score-right { background: #ECFF03; }
+.fsm-board .score-div { position: relative; background: #ECFF03; color: #3F4241; z-index: 3; }
 .fsm-board .score-div::before {
     content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     width: 68px; height: 68px; background: #FCFFFA; clip-path: circle(50%); pointer-events: none;
@@ -306,16 +306,16 @@
 }
 .fsm-board { row-gap: 0; }
 .fsm-board .scoreboard-timer { height: 32px; margin-top: 4px; }
-.fsm-board .time { width: 114px; background: #ffffff; color: #000000; border-radius: 0; }
-.fsm-board .extra-time { width: 48px; height: 32px; color: #ffffff; border-radius: 0; }
+.fsm-board .time { width: 114px; background: #ffffff; color: #3F4241; border-radius: 0; }
+.fsm-board .extra-time { width: 48px; height: 32px; border-radius: 0; }
 #board.fsm-board[data-fsm-theme="cafcc"] {
     --cafcc-aggregate: linear-gradient(to right, #BDC4C2, #787F7E 50%, #BDC4C2);
 }
 #board.fsm-board[data-fsm-theme="cafcc"] .extra-time {
-    background: #787F7E linear-gradient(to right, #BDC4C2, #787F7E 50%, #BDC4C2);
+    background: #ECFF03; color: #3F4241;
 }
-#board.fsm-board[data-fsm-theme="cafcc"] .total-score,
-#board.fsm-board[data-fsm-theme="cafcc"] .pso-main {
+#board.fsm-board[data-fsm-theme="cafcc"] .pso-main { background: #ECFF03; color: #3F4241; border-radius: 0; }
+#board.fsm-board[data-fsm-theme="cafcc"] .total-score {
     background: #787F7E var(--cafcc-aggregate); color: #ffffff; border-radius: 0;
 }
 #board.fsm-board[data-fsm-theme="cafcc"] .total-score:has(#totalScoreLeft) {

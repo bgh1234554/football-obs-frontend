@@ -1822,7 +1822,7 @@ function adjustScoreboardWidth() {
     ligamx: ['#002237', '#54E663'],
     ligue1: ['#ffffff', '#000000'], ligue2: ['#ffffff', '#000000'],
     ligaportugal: ['#ffffff', '#102556'], eredivisie: ['#d1d1d1', '#0a0a0a'],
-    concacafcc: ['#01FCDA', '#001021'], concacafcentral: ['#FC633A', '#001021'], concacafcaribbean: ['#2B95FF', '#001021'], cafcc: ['#787F7E', '#ffffff'], cafcl: ['#B0902E', '#ffffff'], recopa: ['#77F8FB', '#000000'], sudamericana: ['#ffffff', '#000000'], libertadores: ['#F2DA82', '#000000'], turkishcup: ['#E51636', '#ffffff'], tff1lig: ['#ffffff', '#08151B'], belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
+    concacafcc: ['#01FCDA', '#001021'], concacafcentral: ['#FC633A', '#001021'], concacafcaribbean: ['#2B95FF', '#001021'], cafcc: ['#ECFF03', '#3F4241'], cafcl: ['#B0902E', '#ffffff'], recopa: ['#77F8FB', '#000000'], sudamericana: ['#ffffff', '#000000'], libertadores: ['#F2DA82', '#000000'], turkishcup: ['#E51636', '#ffffff'], tff1lig: ['#ffffff', '#08151B'], belgian: ['#141809', '#ffffff'], cl: ['#00009c', '#ffffff'],
     uel: ['#ffffff', '#000000'], uecl: ['#ffffff', '#000000'], acle: ['#ffffff', '#000000'],
     unl: ['#48516E', '#ffffff'], er24: ['#ffffff', '#000000'],
     russiancup: ['#162940', '#ffffff'],
